@@ -5,10 +5,12 @@
  * Splitting it into several RequireJS modules allows async loading. We cannot take full advantage
  * of RequireJS and lazy-load stuff because the angular modules have their own dependency system.
  */
-define(["angular", "home", "user", "dashboard"], function(angular) {
-  "use strict";
+define(["angular", "home", "user", "dashboard", "angular-file-upload"], function (angular) {
+    "use strict";
 
-  // We must already declare most dependencies here (except for common), or the submodules' routes
-  // will not be resolved
-  return angular.module("app", ["xml-ray.home", "xml-ray.user", "xml-ray.dashboard"]);
+//    require(['angular-file-upload'], function () { });
+
+    // We must already declare most dependencies here (except for common), or the submodules' routes
+    // will not be resolved
+    return angular.module("app", ["xml-ray.home", "xml-ray.user", "xml-ray.dashboard", "angularFileUpload"]);
 });

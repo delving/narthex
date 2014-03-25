@@ -23,6 +23,11 @@
         console.log(err);
     };
 
+    requirejs.config({
+        'paths': { 'angular-file-upload': webjars.path("angular-file-upload", "angular-file-upload") }
+//        'shim': {'angular-file-upload': ['angular']} // for some reason this isn't working
+    });
+
     // Load the app. This is kept minimal so it doesn't need much updating.
     require(
         [

@@ -1,6 +1,17 @@
 <h1>XML-RAY</h1>
-<hr />
-<h2>this is from the controller: {{pageTitle}}</h2>
+<hr/>
 
-<input type="file" file-model="metadataFile"/>
-<button ng-click="uploadFile()">Go for it!</button>
+<!--<input type="file" file-model="metadataFile"/>-->
+<!--<button ng-click="uploadFile()">Go for it!</button>-->
+
+<input ng-show="false" type="file" file-model="metadataFile">
+<!--<input type="file" ng-file-select="onFileSelect($files)" >-->
+<!--<input type="file" ng-file-select="onFileSelect($files)" multiple>-->
+<div ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="optional-css-class" ng-show="dropSupported">
+<img ng-src="/assets/images/bucket.png"/>
+</div>
+<div ng-file-drop-available="dropSupported=true" ng-show="!dropSupported">
+    HTML5 Drop File is not supported!
+</div>
+
+<button ng-click="upload.abort()">Cancel Upload</button>
