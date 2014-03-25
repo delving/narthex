@@ -10,11 +10,13 @@ define(["angular"], function (angular) {
 
         $rootScope.pageTitle = "Welcome";
 
+        $scope.image = 'jpg';
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.
             for (var i = 0; i < $files.length; i++) {
                 var file = $files[i];
+                $scope.image = "gif";
                 $scope.upload = $upload.upload({
                     url: '/fileUpload', //upload.php script, node.js route, or servlet url
                     // method: POST or PUT,
@@ -27,6 +29,7 @@ define(["angular"], function (angular) {
                 }).success(function (data, status, headers, config) {
                     // file is uploaded successfully
                     console.log(data);
+                    $scope.image = "jpg";
                 });
                 //.error(...)
                 //.then(success, error, progress);
