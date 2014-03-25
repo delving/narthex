@@ -4,16 +4,16 @@
  * http://requirejs.org/docs/optimization.html#mainConfigFile
  */
 requirejs.config({
-  packages: ["common", "home", "user", "dashboard"],
-  paths: {
-    // Make the optimizer ignore CDN assets
-    "_" : "empty:",
-    "jquery": "empty:",
-    "bootstrap": "empty:",
-    "angular": "empty:",
-    "angular-cookies": "empty:",
-    "angular-route": "empty:",
-    // empty: so the optimizer doesn't try to find jsRoutes.js in our project
-    "jsRoutes" : "empty:"
-  }
+    packages: ["common", "home", "user", "dashboard"],
+    paths: {
+        // Make the optimizer ignore CDN assets
+        "_": "empty:",
+        "jquery": "empty:",
+        "bootstrap": "empty:",
+        "angular": "empty:",
+        "angular-cookies": "empty:",
+        "angular-route": "empty:",
+        // empty: so the optimizer doesn't try to find jsRoutes.js in our project
+        "jsRoutes": "empty:"
+    }
 });

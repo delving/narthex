@@ -16,8 +16,8 @@ trait RequiresApp {
  */
 object mainScriptSrc extends RequiresApp {
   def apply(folder: String = "javascripts", scriptName: String): String = app.mode match {
-    case Mode.Dev => s"${folder}/${scriptName}"
-    case Mode.Test => s"${folder}/${scriptName}"
-    case Mode.Prod => s"${folder}-min/${scriptName}"
+    case Mode.Dev => s"$folder/$scriptName"
+    case Mode.Test => s"$folder/$scriptName"
+    case Mode.Prod => s"$folder-min/$scriptName"
   }
 }

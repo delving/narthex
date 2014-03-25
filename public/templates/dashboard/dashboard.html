@@ -1,4 +1,16 @@
 <div class="page-header">
   <h1>Dashboard</h1>
 </div>
-Welcome, {{user.email}}!
+<p>
+    Welcome, {{user.email}}!
+</p>
+
+@helper.form(action = routes.Application.upload, 'enctype -> "multipart/form-data") {
+
+<input type="file" name="picture">
+
+<p>
+    <input type="submit">
+</p>
+
+}

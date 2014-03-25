@@ -1,43 +1,55 @@
 /**
  * Home controllers.
  */
-define(["angular"], function(angular) {
-  "use strict";
+define(["angular"], function (angular) {
+    "use strict";
 
-  /** Controls the index page */
-  var HomeCtrl = function($scope, $rootScope, $location, helper) {
-    console.log(helper.sayHi());
-    $rootScope.pageTitle = "Welcome";
-  };
-  HomeCtrl.$inject = ["$scope", "$rootScope", "$location", "helper"];
+    /** Controls the index page */
+    var HomeCtrl = function ($scope, $rootScope, fileUpload, $location, helper) {
 
-  /** Controls the header */
-  var HeaderCtrl = function($scope, userService, helper, $location) {
-    // Wrap the current user from the service in a watch expression
-    $scope.$watch(function() {
-      var user = userService.getUser();
-      return user;
-    }, function(user) {
-      $scope.user = user;
-    }, true);
 
-    $scope.logout = function() {
-      userService.logout();
-      $scope.user = undefined;
-      $location.path("/");
+
+        $rootScope.pageTitle = "Welcome";
+
+
+        $scope.uploadFile = function(){
+            var file = $scope.metadataFile;
+            console.log('file is ' + JSON.stringify(file));
+            var uploadUrl = "/fileUpload";
+            fileUpload.uploadFileToUrl(file, uploadUrl);
+        };
+
+
     };
-  };
-  HeaderCtrl.$inject = ["$scope", "userService", "helper", "$location"];
+    HomeCtrl.$inject = ["$scope", "$rootScope", "fileUpload", "$location", "helper"];
 
-  /** Controls the footer */
-  var FooterCtrl = function(/*$scope*/) {
-  };
-  //FooterCtrl.$inject = ["$scope"];
+    /** Controls the header */
+    var HeaderCtrl = function ($scope, userService, helper, $location) {
+        // Wrap the current user from the service in a watch expression
+        $scope.$watch(function () {
+            var user = userService.getUser();
+            return user;
+        }, function (user) {
+            $scope.user = user;
+        }, true);
 
-  return {
-    HeaderCtrl: HeaderCtrl,
-    FooterCtrl: FooterCtrl,
-    HomeCtrl: HomeCtrl
-  };
+        $scope.logout = function () {
+            userService.logout();
+            $scope.user = undefined;
+            $location.path("/");
+        };
+    };
+    HeaderCtrl.$inject = ["$scope", "userService", "helper", "$location"];
+
+    /** Controls the footer */
+    var FooterCtrl = function (/*$scope*/) {
+    };
+    //FooterCtrl.$inject = ["$scope"];
+
+    return {
+        HeaderCtrl: HeaderCtrl,
+        FooterCtrl: FooterCtrl,
+        HomeCtrl: HomeCtrl
+    };
 
 });

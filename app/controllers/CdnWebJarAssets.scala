@@ -11,7 +11,8 @@ object CdnWebJarAssets extends WebJarAssets(Assets) {
   def getUrl(file: String) = {
     val maybeContentUrl = Play.configuration.getString("contentUrl")
 
-    maybeContentUrl.map { contentUrl =>
+    maybeContentUrl.map {
+      contentUrl =>
         contentUrl + controllers.routes.CdnWebJarAssets.at(file).url
     } getOrElse controllers.routes.CdnWebJarAssets.at(file).url
   }

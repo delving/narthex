@@ -10,5 +10,5 @@ define(["angular", "home", "user", "dashboard"], function(angular) {
 
   // We must already declare most dependencies here (except for common), or the submodules' routes
   // will not be resolved
-  return angular.module("app", ["yourprefix.home", "yourprefix.user", "yourprefix.dashboard"]);
+  return angular.module("app", ["xml-ray.home", "xml-ray.user", "xml-ray.dashboard"]);
 });
