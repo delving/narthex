@@ -3,8 +3,21 @@
  * dashboard/main.js is the entry module which serves as an entry point so other modules only have
  * to include a single module.
  */
-define(["angular", "./routes"], function (angular) {
+define(
+    [
+        "angular",
+        "./routes",
+        "./services"
+    ],
+    function (angular) {
     "use strict";
 
-    return angular.module("xml-ray.dashboard", ["ngRoute", "dashboard.routes"]);
+    return angular.module(
+        "xml-ray.dashboard",
+        [
+            "ngRoute",
+            "dashboard.routes",
+            "dashboard.services"
+        ]
+    );
 });

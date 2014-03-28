@@ -7,8 +7,7 @@ define(
     [
         "angular",
         "./routes",
-        "./controllers",
-        "./services"
+        "./controllers"
     ],
     function (angular, routes, controllers) {
         "use strict";
@@ -17,8 +16,7 @@ define(
             "xml-ray.home",
             [
                 "ngRoute",
-                "home.routes",
-                "home.services"
+                "home.routes"
             ]
         );
         mod.controller("HeaderCtrl", controllers.HeaderCtrl);

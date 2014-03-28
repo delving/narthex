@@ -4,21 +4,3 @@
 <!--<input type="file" file-model="metadataFile"/>-->
 <!--<button ng-click="uploadFile()">Go for it!</button>-->
 
-<input ng-show="false" type="file" file-model="metadataFile">
-<!--<input type="file" ng-file-select="onFileSelect($files)" >-->
-<!--<input type="file" ng-file-select="onFileSelect($files)" multiple>-->
-<div ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="optional-css-class" ng-show="dropSupported">
-<img ng-src="/assets/images/omnom1.{{ image }}"/>
-</div>
-<div ng-file-drop-available="dropSupported=true" ng-show="!dropSupported">
-    HTML5 Drop File is not supported!
-</div>
-
-<button ng-click="upload.abort()">Cancel Upload</button>
-
-<hr/>
-<ul>
-    <li ng-repeat="file in files">
-        {{ file }}
-    </li>
-</ul>

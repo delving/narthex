@@ -13,7 +13,9 @@ libraryDependencies ++= Seq(
   "org.webjars" % "jquery" % "1.11.0-1",
   "org.webjars" % "bootstrap" % "3.1.1" exclude("org.webjars", "jquery"),
   "org.webjars" % "angularjs" % "1.2.14" exclude("org.webjars", "jquery"),
-  "org.webjars" % "angular-file-upload" % "1.2.8"
+  "org.webjars" % "angular-file-upload" % "1.2.8",
+  // use cache
+  cache
 )
 
 playScalaSettings

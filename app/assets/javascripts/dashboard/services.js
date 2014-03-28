@@ -4,9 +4,9 @@
 define(["angular", "common"], function (angular) {
     "use strict";
 
-    var mod = angular.module("home.services", ["xml-ray.common"]);
+    var mod = angular.module("dashboard.services", ["xml-ray.common"]);
 
-    mod.service("homeService", ["$http", "$q", "playRoutes", function ($http, $q, playRoutes) {
+    mod.service("dashboardService", ["$http", "$q", "playRoutes", function ($http, $q, playRoutes) {
         var user, token;
         return {
             listFiles: function () {

@@ -26,8 +26,7 @@ object Application extends Controller with Security {
           routes.javascript.Users.createUser,
           routes.javascript.Users.updateUser,
           routes.javascript.Users.deleteUser,
-          routes.javascript.FileHandling.list,
-          routes.javascript.FileHandling.upload
+          routes.javascript.FileHandling.list
         )
       ).as(JAVASCRIPT)
   }
@@ -38,15 +37,20 @@ object Application extends Controller with Security {
    */
   def login() = Action(parse.json) {
     implicit request =>
-    // TODO Check credentials, log user in, return correct token
       val token = java.util.UUID.randomUUID().toString
-      Ok(Json.obj("token" -> token))
+      val email = (request.body \ "email").as[String]
+      // todo: use password
+      Ok(Json.obj(
+        "token" -> token,
+        "user" -> Json.obj("email" -> email)
+      )).withToken(token -> email)
   }
 
   /** Logs the user out, i.e. invalidated the token. */
-  def logout() = Action {
+  def logout() = HasToken(parse.json) {
+    token => email => implicit request =>
     // TODO Invalidate token, remove cookie
-    Ok
+    Ok.discardingToken(token)
   }
 
 }

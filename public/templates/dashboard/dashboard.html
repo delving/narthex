@@ -5,12 +5,21 @@
     Welcome, {{user.email}}!
 </p>
 
-@helper.form(action = routes.Application.upload, 'enctype -> "multipart/form-data") {
+<input ng-show="false" type="file" file-model="metadataFile">
+<!--<input type="file" ng-file-select="onFileSelect($files)" >-->
+<!--<input type="file" ng-file-select="onFileSelect($files)" multiple>-->
+<div ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="optional-css-class" ng-show="dropSupported">
+    <img ng-src="/assets/images/omnom1.{{ image }}"/>
+</div>
+<div ng-file-drop-available="dropSupported=true" ng-show="!dropSupported">
+    HTML5 Drop File is not supported!
+</div>
 
-<input type="file" name="picture">
+<button ng-click="upload.abort()">Cancel Upload</button>
 
-<p>
-    <input type="submit">
-</p>
-
-}
+<hr/>
+<ul>
+    <li ng-repeat="file in files">
+        {{ file }}
+    </li>
+</ul>
