@@ -25,8 +25,9 @@ object Application extends Controller with Security {
           routes.javascript.Users.user,
           routes.javascript.Users.createUser,
           routes.javascript.Users.updateUser,
-          routes.javascript.Users.deleteUser
-          // TODO Add your routes here
+          routes.javascript.Users.deleteUser,
+          routes.javascript.FileHandling.list,
+          routes.javascript.FileHandling.upload
         )
       ).as(JAVASCRIPT)
   }

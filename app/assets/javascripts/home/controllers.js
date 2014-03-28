@@ -5,12 +5,20 @@ define(["angular"], function (angular) {
     "use strict";
 
     /** Controls the index page */
-    var HomeCtrl = function ($scope, $rootScope, fileUpload, $location, helper, $upload) {
+    var HomeCtrl = function ($scope, $rootScope, fileUpload, homeService, $location, helper, $upload) {
 
 
         $rootScope.pageTitle = "Welcome";
 
         $scope.image = 'jpg';
+
+        function fetchFileList() {
+            homeService.listFiles().then(function(data) {
+                $scope.files = data;
+            })
+        }
+
+        fetchFileList();
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.
@@ -18,7 +26,7 @@ define(["angular"], function (angular) {
                 var file = $files[i];
                 $scope.image = "gif";
                 $scope.upload = $upload.upload({
-                    url: '/fileUpload', //upload.php script, node.js route, or servlet url
+                    url: '/file/upload', //upload.php script, node.js route, or servlet url
                     // method: POST or PUT,
                     // headers: {'header-key': 'header-value'},
                     // withCredentials: true,
@@ -30,6 +38,7 @@ define(["angular"], function (angular) {
                     // file is uploaded successfully
                     console.log(data);
                     $scope.image = "jpg";
+                    fetchFileList();
                 });
                 //.error(...)
                 //.then(success, error, progress);
@@ -38,7 +47,7 @@ define(["angular"], function (angular) {
 
 
     };
-    HomeCtrl.$inject = ["$scope", "$rootScope", "fileUpload", "$location", "helper", "$upload"];
+    HomeCtrl.$inject = ["$scope", "$rootScope", "fileUpload", "homeService", "$location", "helper", "$upload"];
 
     /** Controls the header */
     var HeaderCtrl = function ($scope, userService, helper, $location) {

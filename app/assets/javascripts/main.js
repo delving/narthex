@@ -42,4 +42,6 @@
             angular.bootstrap(document, ["app"]);
         }
     );
+
+
 })(requirejs);
