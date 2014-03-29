@@ -16,8 +16,6 @@ define(
     function (angular) {
         "use strict";
 
-        require(['angular-file-upload'], function () { });
-
         // We must already declare most dependencies here (except for common), or the submodules' routes
         // will not be resolved
         return angular.module(
