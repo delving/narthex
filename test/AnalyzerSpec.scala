@@ -1,10 +1,20 @@
 import org.scalatest._
+import play.api.libs.json.{JsString, JsArray, Json, Writes}
 import play.api.Logger
 import scala.collection.mutable
 import scala.io.Source
 import scala.xml.pull.{EvText, EvElemEnd, EvElemStart, XMLEventReader}
 
-class AnalyzerSpec extends FlatSpec {
+trait Nodey {
+
+  implicit val nodeWrites = new Writes[XRayNode] {
+    def writes(node: XRayNode) = Json.obj(
+      "tag" -> node.tag,
+      "count" -> node.count,
+      "kids" -> JsArray(node.kids.values.map(writes(_)).toSeq),
+      "values" -> JsArray(node.values.map(JsString(_)).toSeq)
+    )
+  }
 
   class XRayNode(val parent: XRayNode, val tag: String) {
     var kids = Map.empty[String, XRayNode]
@@ -31,11 +41,14 @@ class AnalyzerSpec extends FlatSpec {
       this
     }
   }
+}
+
+class AnalyzerSpec extends FlatSpec with Nodey {
 
   "The parse" should "reveal hello" in {
     val xml = new XMLEventReader(Source.fromString(
       """<hello at="tr">
-        |  <there it="is"/>
+        |  <there it="is" was="not"/>
         |  <there>was</there>
         |  <there it="isn't"/>
         |</hello>
@@ -49,12 +62,11 @@ class AnalyzerSpec extends FlatSpec {
     xml.foreach {
       case EvElemStart(pre, label, attrs, scope) =>
         node = node.kid(label).occurrence()
-        attrs.foreach(md => 
-          {
-            val kid = node.kid(s"@${md.key}").occurrence()
-            kid.value(md.value.toString())
-          }
-        )
+        attrs.foreach {
+          attr =>
+            val kid = node.kid(s"@${attr.key}").occurrence()
+            kid.value(attr.value.toString())
+        }
       case EvText(text) if !text.trim.isEmpty =>
         node.value(text.trim)
       case EvElemEnd(pre, label) =>
@@ -62,11 +74,14 @@ class AnalyzerSpec extends FlatSpec {
       case _ =>
     }
 
-    val hello: XRayNode = root.kid("hello")
+    val hello = root.kid("hello")
     assert(hello.count == 1)
     assert(hello.kid("@at").count == 1)
-    val there: XRayNode = hello.kid("there")
+    val there = hello.kid("there")
     assert(there.count == 3)
     assert(there.kid("@it").count == 2)
+    assert(there.kid("@was").count == 1)
+
+    println(Json.prettyPrint(Json.toJson(hello)))
   }
 }
