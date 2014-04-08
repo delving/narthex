@@ -14,6 +14,8 @@ libraryDependencies ++= Seq(
   "org.webjars" % "bootstrap" % "3.1.1" exclude("org.webjars", "jquery"),
   "org.webjars" % "angularjs" % "1.2.14" exclude("org.webjars", "jquery"),
   "org.webjars" % "angular-file-upload" % "1.2.8-1",
+  "org.scalatest" % "scalatest_2.10" % "2.1.3" % "test",
+  "org.scalautils" % "scalautils_2.10" % "2.1.3",
   // use cache
   cache
 )
