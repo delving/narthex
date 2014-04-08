@@ -46,6 +46,11 @@ define(["angular"], function () {
             }
         };
 
+        $scope.analyzeFile = function(file) {
+            dashboardService.analyzeFile(file).then(function(data) {
+                $scope.fileLength = data;
+            });
+        };
     };
     DashboardCtrl.$inject = ["$scope", "user", "dashboardService", "fileUpload", "$location", "helper", "$upload"];
 

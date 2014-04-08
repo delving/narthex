@@ -5,6 +5,7 @@
     Welcome, {{user.email}}!
 </p>
 
+<h2>Feed the Gerenuk!</h2>
 <input ng-show="false" type="file" file-model="metadataFile">
 <!--<input type="file" ng-file-select="onFileSelect($files)" >-->
 <!--<input type="file" ng-file-select="onFileSelect($files)" multiple>-->
@@ -20,6 +21,7 @@
 <hr/>
 <ul>
     <li ng-repeat="file in files">
-        {{ file }}
+        <a href data-ng-click="analyzeFile(file)">{{ file }}</a>
     </li>
 </ul>
+<h1>length: {{ fileLength }}</h1>
