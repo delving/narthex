@@ -3,12 +3,16 @@ package controllers
 import play.api.mvc._
 import java.io.File
 import play.api.Logger
-import services.{AnalyzeFile, Analyzer, FileRepository}
+import services._
 import play.api.libs.json._
 import akka.actor.{Props, ActorSystem}
+import akka.pattern.ask
+import akka.util.Timeout
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
-
-object FileHandling extends Controller with Security {
+object FileHandling extends Controller with Security with XRay {
 
   val actorSystem = ActorSystem("Analysis")
 
@@ -45,13 +49,30 @@ object FileHandling extends Controller with Security {
       val file = repo.uploadedFile(fileName)
       if (file.exists()) {
         val analyzer = actorSystem.actorOf(Props[Analyzer], fileName)
-        analyzer ! AnalyzeFile(file)
+        analyzer ! Initialize(file)
         Ok(s"${file.getName} is ${file.length()}")
       }
       else {
         Ok(s"${file.getAbsolutePath} doesn't exist!")
       }
     }
-
   }
+
+//  def progress(fileName: String) = Action.async {
+//    implicit request => {
+//
+//      val repo = new FileRepository(email)
+//      val file = repo.uploadedFile(fileName)
+//      if (file.exists()) {
+//        val analyzer = actorSystem.actorOf(Props[Analyzer], fileName)
+//        implicit val timeout = Timeout(5 seconds)
+//        val answer: Future[Any] = analyzer ? GetStatus
+//        val status = answer.mapTo[XRayStatus]
+//        status.map(xs => Ok(s"${file.getAbsolutePath} "))
+//      }
+//      else {
+//        Future.successful(Ok(s"${file.getAbsolutePath} doesn't exist!"))
+//      }
+//    }
+//  }
 }

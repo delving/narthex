@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<hello at="tr">
+    <there it="is" was="not"/>
+    <there>was</there>
+    <there it="isn't"/>
+</hello>

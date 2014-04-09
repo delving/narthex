@@ -5,6 +5,7 @@ import play.api.libs.json._
 import play.api.cache.Cache
 import play.Logger
 import play.api.Play.current
+import scala.concurrent.Future
 
 /** Manages the security architecture */
 trait Security { this: Controller =>
