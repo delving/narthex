@@ -25,6 +25,7 @@ DELETE  /users/:id              controllers.Users.deleteUser(id: Long)
 POST    /file/upload                controllers.FileHandling.upload
 GET     /file/list                  controllers.FileHandling.list
 GET     /file/analyze/:fileName     controllers.FileHandling.analyze(fileName)
+GET     /file/status/:fileName      controllers.FileHandling.status(fileName)
 
 # Static
 # ~~~~

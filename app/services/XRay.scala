@@ -4,13 +4,8 @@ import play.api.libs.json.{JsString, JsArray, Json, Writes}
 import scala.collection.mutable
 import scala.xml.pull.{EvElemEnd, EvText, EvElemStart, XMLEventReader}
 import scala.io.Source
-import java.io.File
 
 trait XRay {
-
-  case class Initialize(file: File)
-  case class XRayStatus(root: XRayNode, progressCount : Long, completed: Boolean)
-  case class GetStatus()
 
   implicit val nodeWrites = new Writes[XRayNode] {
     def writes(node: XRayNode) = Json.obj(
@@ -47,10 +42,12 @@ trait XRay {
       values.add(value)
       this
     }
+
+    override def toString = s"XRayNode($tag)"
   }
 
   object XRayNode {
-    val STEP = 2
+    val STEP = 1000
 
     def apply(source: Source, progress: Long => Boolean): XRayNode = {
       val root = new XRayNode(null, null)
@@ -71,6 +68,7 @@ trait XRay {
 
       while (events.hasNext && checkProgress()) {
         events.next() match {
+
           case EvElemStart(pre, label, attrs, scope) =>
             node = node.kid(label).occurrence()
             attrs.foreach {
@@ -78,11 +76,15 @@ trait XRay {
                 val kid = node.kid(s"@${attr.key}").occurrence()
                 kid.value(attr.value.toString())
             }
+
           case EvText(text) if !text.trim.isEmpty =>
             node.value(text.trim)
+
           case EvElemEnd(pre, label) =>
             node = node.parent
+
           case _ =>
+
         }
       }
 

@@ -1,28 +1,46 @@
 package services
 
-import akka.actor.Actor
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import akka.actor.{ActorLogging, Actor}
 import java.io.{FileInputStream, File}
 import scala.io.Source
 import java.util.zip.GZIPInputStream
+import scala.concurrent.Future
 
-class Analyzer extends Actor with XRay {
+case class Initialize(file: File)
 
+case class Progress(progressCount: Long, completed: Boolean)
+
+case class GetStatus()
+
+class Analyzer extends Actor with XRay with ActorLogging {
   var elementProgress: Long = 0
-  var node: XRayNode = null
+  var tree: Option[XRayNode] = None
 
   def progress(elementCount: Long): Boolean = {
     elementProgress = elementCount
     true
   }
 
-  override def receive = {
+  def receive = {
+
     case Initialize(file) =>
-      if (elementProgress == 0) {
-        val source = Source.fromInputStream(new GZIPInputStream(new FileInputStream(file)))
-        node = XRayNode(source, progress)
+      log.info("Initializing!")
+      if (!tree.isDefined) {
+        val futureTree: Future[XRayNode] = Future {
+          val source = Source.fromInputStream(new GZIPInputStream(new FileInputStream(file)))
+          XRayNode(source, progress)
+        }
+        futureTree.map(createdTree => tree = Some(createdTree))
       }
-    case GetStatus =>
-      sender ! XRayStatus(node, elementProgress, false)
+
+    case GetStatus() =>
+      log.info("Get status message came in!")
+      sender ! Progress(elementProgress, tree.isDefined)
+
+    case x =>
+      log.info("WHAT? " + x)
+
   }
 }
 

@@ -18,6 +18,11 @@ define(["angular", "common"], function (angular) {
                 return playRoutes.controllers.FileHandling.analyze(fileName).get().then(function(response) {
                     return response.data;
                 });
+            },
+            statusFile: function(fileName) {
+                return playRoutes.controllers.FileHandling.status(fileName).get().then(function(response) {
+                    return response.data;
+                });
             }
         };
     }]);

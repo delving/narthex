@@ -20,19 +20,33 @@ trait Security { this: Controller =>
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def HasToken[A](p: BodyParser[A] = parse.anyContent)(f: String => String => Request[A] => Result): Action[A] =
+  def HasToken[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Result): Action[A] =
     Action(p) { implicit request =>
       val maybeToken = request.headers.get(TOKEN)
       Logger.info(s"maybeToken: $maybeToken")
       maybeToken flatMap { token =>
         Cache.getAs[String](token) map { userid =>
-          f(token)(userid)(request)
+          block(token)(userid)(request)
         }
       } getOrElse {
         Logger.info("No Token!")
         Unauthorized(Json.obj("err" -> "No Token"))
       }
     }
+
+  def HasTokenAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Future[SimpleResult]): Action[A] =
+    Action.async(p) { implicit request =>
+      request.headers.get(TOKEN) flatMap { token =>
+        Cache.getAs[String](token) map { userid =>
+          block(token)(userid)(request)
+        }
+      } getOrElse {
+        Logger.info("No Token!")
+        Future.successful(Unauthorized(Json.obj("err" -> "No Token")))
+      }
+    }
+
+  case class TokenRequest[A](token: String, email:String, request: Request[A]) extends WrappedRequest(request)
 
   implicit class ResultWithToken(result: Result) {
     def withToken(token: (String, String)): Result = {
