@@ -6,8 +6,8 @@ import play.api.cache.Cache
 import play.Logger
 import play.api.Play.current
 import scala.concurrent.Future
+import akka.actor.ActorRef
 
-/** Manages the security architecture */
 trait Security { this: Controller =>
   val TOKEN = "X-XSRF-TOKEN"
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
@@ -20,13 +20,12 @@ trait Security { this: Controller =>
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def HasToken[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Result): Action[A] =
+  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Result): Action[A] =
     Action(p) { implicit request =>
       val maybeToken = request.headers.get(TOKEN)
-      Logger.info(s"maybeToken: $maybeToken")
       maybeToken flatMap { token =>
-        Cache.getAs[String](token) map { userid =>
-          block(token)(userid)(request)
+        Cache.getAs[String](token) map { email =>
+          block(token)(email)(request)
         }
       } getOrElse {
         Logger.info("No Token!")
@@ -34,11 +33,11 @@ trait Security { this: Controller =>
       }
     }
 
-  def HasTokenAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Future[SimpleResult]): Action[A] =
+  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Future[SimpleResult]): Action[A] =
     Action.async(p) { implicit request =>
       request.headers.get(TOKEN) flatMap { token =>
-        Cache.getAs[String](token) map { userid =>
-          block(token)(userid)(request)
+        Cache.getAs[String](token) map { email =>
+          block(token)(email)(request)
         }
       } getOrElse {
         Logger.info("No Token!")
@@ -46,13 +45,11 @@ trait Security { this: Controller =>
       }
     }
 
-  case class TokenRequest[A](token: String, email:String, request: Request[A]) extends WrappedRequest(request)
-
   implicit class ResultWithToken(result: Result) {
-    def withToken(token: (String, String)): Result = {
+    def withToken(token:String, email: String): Result = {
       Logger.info(s"with token $token")
-      Cache.set(token._1, token._2, CACHE_EXPIRATION)
-      result.withCookies(Cookie(TOKEN_COOKIE_KEY, token._1, None, httpOnly = false))
+      Cache.set(token, email, CACHE_EXPIRATION)
+      result.withCookies(Cookie(TOKEN_COOKIE_KEY, token, None, httpOnly = false))
     }
 
     def discardingToken(token: String): Result = {

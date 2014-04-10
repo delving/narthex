@@ -25,6 +25,7 @@ define(
                 "xml-ray.user",
                 "xml-ray.dashboard",
                 "angularFileUpload"
-            ]);
+            ]
+        );
     }
 );

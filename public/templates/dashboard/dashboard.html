@@ -19,12 +19,21 @@
 <button ng-click="upload.abort()">Cancel Upload</button>
 
 <hr/>
-<ul>
-    <li ng-repeat="file in files">
-        <a href data-ng-click="analyzeFile(file)">{{ file }}</a>
-    </li>
-</ul>
-<h1>length: {{ fileLength }}</h1>
-<a href data-ng-click="statusFile(chosenFile)">{{ chosenFile }}</a>
-<hr/>
-<h1>{{ fileStatus }}</h1>
+
+<div>
+    <ul>
+        <li ng-repeat="file in files">
+            <a href data-ng-click="watchFile(file)">{{ file }}</a>
+        </li>
+    </ul>
+
+    <div ng-show="chosenFile">
+        <h1>{{ chosenFile }}</h1>
+        <ul>
+            <li>length: {{ fileLength }}</li>
+            <li>status: {{ fileStatus }}</li>
+            <li ng-show="analysisComplete">COMPLETE!</li>
+        </ul>
+    </div>
+</div>
+

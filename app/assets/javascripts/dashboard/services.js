@@ -9,18 +9,18 @@ define(["angular", "common"], function (angular) {
     mod.service("dashboardService", ["$http", "$q", "playRoutes", function ($http, $q, playRoutes) {
         var user, token;
         return {
-            listFiles: function () {
-                return playRoutes.controllers.FileHandling.list().get().then(function (response) {
+            list: function () {
+                return playRoutes.controllers.Dashboard.list().get().then(function (response) {
                     return response.data;
                 });
             },
-            analyzeFile: function(fileName) {
-                return playRoutes.controllers.FileHandling.analyze(fileName).get().then(function(response) {
+            status: function(fileName) {
+                return playRoutes.controllers.Dashboard.status(fileName).get().then(function(response) {
                     return response.data;
                 });
             },
-            statusFile: function(fileName) {
-                return playRoutes.controllers.FileHandling.status(fileName).get().then(function(response) {
+            analysis: function(fileName) {
+                return playRoutes.controllers.Dashboard.analysis(fileName).get().then(function(response) {
                     return response.data;
                 });
             }

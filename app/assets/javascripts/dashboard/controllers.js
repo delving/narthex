@@ -7,21 +7,11 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/services.js) object used by dashboard.routes.
      */
-    var DashboardCtrl = function (
-        $scope, user, dashboardService, fileUpload, $location, helper, $upload, $timeout
-        ) {
+    var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, helper, $upload, $timeout) {
 
         $scope.user = user;
 
         $scope.image = 'jpg';
-
-        function fetchFileList() {
-            dashboardService.listFiles().then(function(data) {
-                $scope.files = data;
-            })
-        }
-
-        fetchFileList();
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.
@@ -54,29 +44,33 @@ define(["angular"], function () {
             }
         };
 
-        function pollStatus() {
-            dashboardService.statusFile($scope.chosenFile).then(function(data) {
+        function fetchFileList() {
+            dashboardService.list().then(function (data) {
+                $scope.files = data;
+            })
+        }
+
+        fetchFileList();
+
+        function pollChosenFileStatus() {
+            console.log("Polling status "+$scope.chosenFile);
+            dashboardService.status($scope.chosenFile).then(function (data) {
                 if (data.problem) {
                     $scope.fileStatus = data.problem;
                 }
                 else {
-                    $scope.fileStatus = 'progressCount:' + data.progressCount + ', completed=' + data.completed
-                    $timeout(pollStatus, 500)
+                    $scope.fileStatus = "Count: " + data.count;
+                    $scope.analysisComplete = data.complete;
+                    if ($scope.chosenFile && !$scope.analysisComplete) {
+                        $timeout(pollChosenFileStatus, 500)
+                    }
                 }
             })
         }
 
-        $scope.analyzeFile = function(file) {
-            dashboardService.analyzeFile(file).then(function(data) {
-                $scope.chosenFile = file;
-                if (data.problem) {
-                    $scope.fileLength = data.problem; // todo: silly, fix this
-                }
-                else {
-                    $scope.fileLength = data.fileLength;
-                    pollStatus()
-                }
-            });
+        $scope.watchFile = function (file) {
+            $scope.chosenFile = file;
+            pollChosenFileStatus();
         };
     };
 

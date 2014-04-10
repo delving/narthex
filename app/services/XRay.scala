@@ -47,26 +47,22 @@ trait XRay {
   }
 
   object XRayNode {
-    val STEP = 1000
+    val STEP = 10000
 
-    def apply(source: Source, progress: Long => Boolean): XRayNode = {
+    def apply(source: Source, progress: Long => Unit): XRayNode = {
       val root = new XRayNode(null, null)
       var node = root
       var count = 0L
 
-      def checkProgress() : Boolean = {
-        count += 1
+      var events = new XMLEventReader(source)
+
+      while (events.hasNext) {
+
         if (count % STEP == 0) {
           progress(count)
         }
-        else {
-          true
-        }
-      }
+        count += 1
 
-      var events = new XMLEventReader(source)
-
-      while (events.hasNext && checkProgress()) {
         events.next() match {
 
           case EvElemStart(pre, label, attrs, scope) =>
@@ -84,14 +80,10 @@ trait XRay {
             node = node.parent
 
           case _ =>
-
         }
       }
 
-      if (events.hasNext) {
-        source.close()
-      }
-
+      progress(-1)
       root
     }
   }

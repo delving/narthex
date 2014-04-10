@@ -11,9 +11,8 @@ class AnalyzerSpec extends FlatSpec with XRay {
 
   "The parse" should "reveal hello" in {
 
-    def progress(elementCount: Long): Boolean = {
+    def progress(elementCount: Long) {
       println(elementCount)
-      true
     }
 
     val root = XRayNode(source, progress)

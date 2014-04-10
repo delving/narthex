@@ -26,9 +26,10 @@ object Application extends Controller with Security {
           routes.javascript.Users.createUser,
           routes.javascript.Users.updateUser,
           routes.javascript.Users.deleteUser,
-          routes.javascript.FileHandling.list,
-          routes.javascript.FileHandling.analyze,
-          routes.javascript.FileHandling.status
+          routes.javascript.Dashboard.list,
+          routes.javascript.Dashboard.work,
+          routes.javascript.Dashboard.status,
+          routes.javascript.Dashboard.analysis
         )
       ).as(JAVASCRIPT)
   }
@@ -45,11 +46,11 @@ object Application extends Controller with Security {
       Ok(Json.obj(
         "token" -> token,
         "user" -> Json.obj("email" -> email)
-      )).withToken(token -> email)
+      )).withToken(token, email)
   }
 
   /** Logs the user out, i.e. invalidated the token. */
-  def logout() = HasToken(parse.json) {
+  def logout() = Secure(parse.json) {
     token => email => implicit request =>
     // TODO Invalidate token, remove cookie
     Ok.discardingToken(token)

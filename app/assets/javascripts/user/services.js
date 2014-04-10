@@ -31,22 +31,28 @@ define(["angular", "common"], function (angular) {
             }
         ]
     );
+
     /**
      * Add this object to a route definition to only allow resolving the route if the user is
      * logged in. This also adds the contents of the objects as a dependency of the controller.
      */
     mod.constant("userResolve", {
-        user: ["$q", "userService", function ($q, userService) {
-            var deferred = $q.defer();
-            var user = userService.getUser();
-            if (user) {
-                deferred.resolve(user);
-            } else {
-                deferred.reject();
+        user: [
+            "$q", "userService",
+            function ($q, userService) {
+                var deferred = $q.defer();
+                var user = userService.getUser();
+                if (user) {
+                    deferred.resolve(user);
+                }
+                else {
+                    deferred.reject();
+                }
+                return deferred.promise;
             }
-            return deferred.promise;
-        }]
+        ]
     });
+
     /**
      * If the current route does not resolve, go back to the start page.
      */
