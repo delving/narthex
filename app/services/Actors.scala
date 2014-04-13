@@ -35,9 +35,9 @@ class Boss extends Actor with ActorLogging {
       val pretty = Json.prettyPrint(json)
       val analysisFile = new File(directory, FileRepository.analysisFileName)
       FileUtils.writeStringToFile(analysisFile, pretty, "UTF-8")
+
   }
 }
-
 
 class Analyzer extends Actor with XRay with ActorLogging {
 
@@ -51,9 +51,6 @@ class Analyzer extends Actor with XRay with ActorLogging {
           sender ! Progress(count, directory)
       })
       sender ! AnalysisComplete(Json.toJson(root), directory)
-
-    case x =>
-      log.info("WHAT? " + x)
 
   }
 }
