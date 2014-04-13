@@ -52,7 +52,7 @@ object FileRepository {
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "XML-RAY")
 
-  val boss = Akka.system.actorOf(Props[Boss])
+  val boss = Akka.system.actorOf(Props[Boss], "boss")
 
   def apply(email: String) = new FileRepository(root, email)
 
