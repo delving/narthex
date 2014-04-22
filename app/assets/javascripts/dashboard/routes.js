@@ -24,6 +24,7 @@ define(
                 }
             ]
         );
+
         return mod;
     }
 );

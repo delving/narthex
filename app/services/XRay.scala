@@ -1,26 +1,77 @@
 package services
 
-import play.api.libs.json.{JsString, JsArray, Json, Writes}
+import play.api.libs.json._
 import scala.collection.mutable
-import scala.xml.pull.{EvElemEnd, EvText, EvElemStart, XMLEventReader}
+import scala.xml.pull.XMLEventReader
 import scala.io.Source
+import scala.xml.pull.EvElemStart
+import scala.xml.pull.EvText
+import scala.xml.pull.EvElemEnd
+import scala.Some
 
 trait XRay {
 
+  case class HistogramRange(from: Int, to: Int = 0) {
+
+    def fits(value: Int) = (to < 0) || (to == 0 && value == from) || (value >= from && value <= to)
+
+    override def toString = {
+      if (to < 0) s"$from-*"
+      else if (to > 0) s"$from-$to"
+      else s"$from"
+    }
+  }
+
+  val lengthRanges = Seq(
+    HistogramRange(0),
+    HistogramRange(1),
+    HistogramRange(2),
+    HistogramRange(3),
+    HistogramRange(4),
+    HistogramRange(5),
+    HistogramRange(6),
+    HistogramRange(7),
+    HistogramRange(8),
+    HistogramRange(9),
+    HistogramRange(10),
+    HistogramRange(11, 20),
+    HistogramRange(21, 30),
+    HistogramRange(31, 60),
+    HistogramRange(60, -1)
+  )
+
+  class Counter(val range: HistogramRange, var count: Int = 0)
+
+  class LengthHistogram(val name: String) {
+    val counters = lengthRanges.map(range => new Counter(range))
+
+    def record(string: String) {
+      for (counter <- counters if counter.range.fits(string.length)) {
+        counter.count += 1
+      }
+    }
+  }
+
   implicit val nodeWrites = new Writes[XRayNode] {
+
+    def writes(counter: Counter): JsValue = Json.arr(counter.range.toString, counter.count.toString)
+
+    def writes(histogram: LengthHistogram): JsValue = {
+      JsArray(histogram.counters.filter(counter => counter.count > 0).map(counter => writes(counter)))
+    }
+
     def writes(node: XRayNode) = Json.obj(
       "tag" -> node.tag,
       "count" -> node.count,
       "kids" -> JsArray(node.kids.values.map(writes(_)).toSeq),
-      "values" -> JsArray(node.values.map(JsString).toSeq)
+      "lengthHistogram" -> writes(node.lengthHistogram)
     )
   }
 
   class XRayNode(val parent: XRayNode, val tag: String) {
     var kids = Map.empty[String, XRayNode]
     var count = 0
-    var values = mutable.HashSet[String]()
-    var unique = true
+    var lengthHistogram = new LengthHistogram(tag)
 
     def kid(tag: String) = {
       kids.get(tag) match {
@@ -38,8 +89,7 @@ trait XRay {
     }
 
     def value(value: String): XRayNode = {
-      if (unique && values.contains(value)) unique = false
-      values.add(value)
+      lengthHistogram.record(value)
       this
     }
 

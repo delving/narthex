@@ -6,18 +6,26 @@
 define(
     [
         "angular",
+        "./controllers",
         "./routes",
         "./services"
     ],
-    function (angular) {
-    "use strict";
+    function (angular, controllers) {
+        "use strict";
 
-    return angular.module(
-        "xml-ray.dashboard",
-        [
-            "ngRoute",
-            "dashboard.routes",
-            "dashboard.services"
-        ]
-    );
-});
+        var mod = angular.module(
+            "xml-ray.dashboard",
+            [
+                "ngRoute",
+                "dashboard.routes",
+                "dashboard.services"
+            ]
+        );
+
+        mod.controller('TreeCtrl', controllers.TreeCtrl);
+        mod.controller('TreeNodeCtrl', controllers.TreeNodeCtrl);
+        mod.config(function($rootScopeProvider) {
+            $rootScopeProvider.digestTtl(15);
+        });
+        return mod;
+    });

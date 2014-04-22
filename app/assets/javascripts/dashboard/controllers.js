@@ -62,7 +62,15 @@ define(["angular"], function () {
                     $scope.fileStatus = "Count: " + data.count;
                     $scope.analysisComplete = data.complete;
                     if ($scope.chosenFile && !$scope.analysisComplete) {
+                        console.log("Poll again");
                         $timeout(pollChosenFileStatus, 500)
+                    }
+                    else {
+                        console.log("fetching analysis");
+                        dashboardService.analysis($scope.chosenFile).then(function (data) {
+                            console.log("tree=", data);
+                            $scope.tree = data;
+                        });
                     }
                 }
             })
@@ -72,6 +80,7 @@ define(["angular"], function () {
             $scope.chosenFile = file;
             pollChosenFileStatus();
         };
+
     };
 
     DashboardCtrl.$inject = [
@@ -84,9 +93,30 @@ define(["angular"], function () {
 
     AdminDashboardCtrl.$inject = ["$scope", "user"];
 
+    var TreeCtrl = function ($scope) {
+        $scope.$watch('tree', function(tree, oldTree) {
+            if (tree) {
+                $scope.node = tree;
+            }
+        });
+    };
+
+    TreeCtrl.$inject = ["$scope"];
+
+    var TreeNodeCtrl = function ($scope) {
+//        $scope.setNode = function(node) {
+//            console.log("node", node);
+//            $scope.node = node;
+//        };
+    };
+
+    TreeNodeCtrl.$inject = ["$scope"];
+
     return {
         DashboardCtrl: DashboardCtrl,
-        AdminDashboardCtrl: AdminDashboardCtrl
+        TreeCtrl: TreeCtrl,
+        TreeNodeCtrl: TreeNodeCtrl,
+        AdminDashboardCtrl: AdminDashboardCtrl // todo: is this used?
     };
 
 });
