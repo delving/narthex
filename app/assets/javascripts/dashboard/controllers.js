@@ -20,7 +20,7 @@ define(["angular"], function () {
                 $scope.image = "gif";
                 $scope.upload = $upload.upload(
                     {
-                        url: '/file/upload', //upload.php script, node.js route, or servlet url
+                        url: '/dashboard/upload', //upload.php script, node.js route, or servlet url
                         // method: POST or PUT,
                         // headers: {'header-key': 'header-value'},
                         // withCredentials: true,

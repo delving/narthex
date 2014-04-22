@@ -6,7 +6,7 @@ define(["angular"], function (angular) {
 
     /** Controls the index page */
     var HomeCtrl = function ($scope, $rootScope) {
-        $rootScope.pageTitle = "Welcome";
+        $rootScope.pageTitle = "XML-RAY";
     };
     HomeCtrl.$inject = ["$scope", "$rootScope"];
 

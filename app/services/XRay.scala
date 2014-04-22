@@ -54,7 +54,7 @@ trait XRay {
       var node = root
       var count = 0L
 
-      var events = new XMLEventReader(source)
+      val events = new XMLEventReader(source)
 
       while (events.hasNext) {
 

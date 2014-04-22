@@ -1,39 +1,35 @@
-<div class="page-header">
-  <h1>Dashboard</h1>
-</div>
-<p>
-    Welcome, {{user.email}}!
-</p>
-
-<h2>Feed the Gerenuk!</h2>
-<input ng-show="false" type="file" file-model="metadataFile">
-<!--<input type="file" ng-file-select="onFileSelect($files)" >-->
-<!--<input type="file" ng-file-select="onFileSelect($files)" multiple>-->
-<div ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="optional-css-class" ng-show="dropSupported">
-    <img ng-src="/assets/images/omnom1.{{ image }}"/>
-</div>
-<div ng-file-drop-available="dropSupported=true" ng-show="!dropSupported">
-    HTML5 Drop File is not supported!
-</div>
-
-<button ng-click="upload.abort()">Cancel Upload</button>
-
-<hr/>
-
 <div>
-    <ul>
-        <li ng-repeat="file in files">
-            <a href data-ng-click="watchFile(file)">{{ file }}</a>
-        </li>
-    </ul>
-
-    <div ng-show="chosenFile">
-        <h1>{{ chosenFile }}</h1>
-        <ul>
-            <li>length: {{ fileLength }}</li>
-            <li>status: {{ fileStatus }}</li>
-            <li ng-show="analysisComplete">COMPLETE!</li>
-        </ul>
+    <div class="page-header">
+        <h1>Your files</h1>
     </div>
-</div>
+    <div>
+        <input ng-show="false" type="file" file-model="metadataFile">
+        <!--<input type="file" ng-file-select="onFileSelect($files)" >-->
+        <!--<input type="file" ng-file-select="onFileSelect($files)" multiple>-->
+        <div ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="optional-css-class" ng-show="dropSupported">
+            <img ng-src="/assets/images/spiral.{{ image }}"/>
+        </div>
+        <div ng-file-drop-available="dropSupported=true" ng-show="!dropSupported">
+            HTML5 Drop File is not supported!
+        </div>
+        <!--<button ng-click="upload.abort()">Cancel Upload</button>-->
+    </div>
 
+    <div>
+        <ul>
+            <li ng-repeat="file in files">
+                <a href data-ng-click="watchFile(file)">{{ file }}</a>
+            </li>
+        </ul>
+
+        <div ng-show="chosenFile">
+            <h1>{{ chosenFile }}</h1>
+            <ul>
+                <li>length: {{ fileLength }}</li>
+                <li>status: {{ fileStatus }}</li>
+                <li ng-show="analysisComplete">COMPLETE!</li>
+            </ul>
+        </div>
+    </div>
+
+</div>
