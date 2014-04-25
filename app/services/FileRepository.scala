@@ -55,13 +55,15 @@ object FileRepository {
 
   def random(directory: File, size: Int): File = new File(directory, s"random-$size.txt")
 
-  def tempSortedFile(directory: File): File = new File(directory, s"sorted-${UUID.randomUUID()}.txt")
+  def tempSortFile(directory: File): File = new File(directory, s"sorting-${UUID.randomUUID()}.txt")
 
   def sortedFile(directory: File): File = new File(directory, "sorted.txt")
 
   def countedFile(directory: File): File = new File(directory, "counted.txt")
 
-  def histogramFile(directory: File): File = new File(directory, "histogram.json")
+  def histogramTextFile(directory: File): File = new File(directory, "histogram.txt")
+
+  def histogramJsonFile(directory: File): File = new File(directory, "histogram.json")
 
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "XML-RAY")
