@@ -12,7 +12,13 @@ case class AnalyzeThese(jobs: List[(File, File)])
 
 case class Analyze(file: File, directory: File)
 
-case class Sort(directory: File)
+case class Sort(valuesFile: File)
+
+case class Sorted(sortedFile: File)
+
+case class Count(sortedFile: File)
+
+case class Counted(countedFile: File)
 
 case class Merge(fileA: File, fileB: File)
 
@@ -56,11 +62,22 @@ class Analyzer extends Actor with XRay with ActorLogging {
         count =>
           sender ! Progress(count, directory)
       })
+      source.close()
       root.sort { node =>
         val sorter = context.actorOf(Props[Sorter])
-        sorter ! Sort(node.directory)
+        sorter ! Sort(FileRepository.valuesFile(node.directory))
       }
       sender ! TreeComplete(Json.toJson(root), directory)
+
+    case Sorted(sortedFile) =>
+      log.info(s"Sort finished : ${sortedFile.getAbsolutePath}")
+      val counter = context.actorOf(Props[CounterActor])
+      counter ! Count(sortedFile)
+
+    case Counted(countedFile) =>
+      log.info(s"Count finished : ${countedFile.getAbsolutePath}")
+      // todo: build histogram
+        
   }
 }
 
@@ -83,24 +100,23 @@ class Sorter extends Actor with ActorLogging {
     }
   }
 
-  def conclude(directory: File): Unit = {
+  def reportSorted(directory: File): Unit = {
     val sortedFile: File = FileRepository.sortedFile(directory)
     sortFiles.head.renameTo(sortedFile)
     sortFiles = List.empty
-    log.info(s"Sort finished : ${sortedFile.getAbsolutePath}")
-    // todo: change the status, start histogrammer
+    context.parent ! Sorted(sortedFile)
   }
 
   def receive = {
 
-    case Sort(directory) =>
-      log.info(s"Sorter on ${directory.getName}")
-      val input = new BufferedReader(new FileReader(FileRepository.valuesFile(directory)))
+    case Sort(valuesFile) =>
+      log.info(s"Sorter on ${valuesFile.getName}")
+      val input = new BufferedReader(new FileReader(valuesFile))
       var count = linesToSort
       var lines = List.empty[String]
       
       def dumpSortedToFile() = {
-        val outputFile = FileRepository.tempSortedFile(directory)
+        val outputFile = FileRepository.tempSortedFile(valuesFile.getParentFile)
         val output = new FileWriter(outputFile)
         lines.sorted.foreach {
           line =>
@@ -127,8 +143,9 @@ class Sorter extends Actor with ActorLogging {
           }
         }
       }
+      input.close()
       initiateMerges()
-      if (merges.isEmpty) conclude(directory)
+      if (merges.isEmpty) reportSorted(valuesFile.getParentFile)
 
     case Merged(merge, file) =>
       merges = merges.filter(pending => pending != merge)
@@ -136,7 +153,7 @@ class Sorter extends Actor with ActorLogging {
       sortFiles = file :: sortFiles
       if (merges.isEmpty) {
         initiateMerges()
-        if (merges.isEmpty) conclude(file.getParentFile)
+        if (merges.isEmpty) reportSorted(file.getParentFile)
       }
   }
 }
@@ -150,7 +167,7 @@ class Merger extends Actor with ActorLogging {
       val inputA = new BufferedReader(new FileReader(fileA))
       val inputB = new BufferedReader(new FileReader(fileB))
       
-      def line(reader: BufferedReader) = {
+      def lineOption(reader: BufferedReader) = {
         val string = reader.readLine()
         if (string != null) Some(string) else None
       } 
@@ -163,32 +180,73 @@ class Merger extends Actor with ActorLogging {
         output.write("\n")
       }
       
-      var lineA: Option[String] = line(inputA)
-      var lineB: Option[String] = line(inputB)
+      var lineA: Option[String] = lineOption(inputA)
+      var lineB: Option[String] = lineOption(inputB)
       while (lineA.isDefined || lineB.isDefined) {
         if (lineA.isDefined && lineB.isDefined) {
           if (lineA.get < lineB.get) {
             write(lineA)
-            lineA = line(inputA)
+            lineA = lineOption(inputA)
           }
           else {
             write(lineB)
-            lineB = line(inputB)
+            lineB = lineOption(inputB)
           }
         }
         else if (lineA.isDefined) {
           write(lineA)
-          lineA = line(inputA)
+          lineA = lineOption(inputA)
         }
         else if (lineB.isDefined) {
           write(lineB)
-          lineB = line(inputB)
+          lineB = lineOption(inputB)
         }
       }
       output.close()
+      inputA.close()
+      inputB.close()
       FileUtils.deleteQuietly(fileA)
       FileUtils.deleteQuietly(fileB)
       sender ! Merged(Merge(fileA, fileB), outputFile)
+  }
+}
+
+
+class CounterActor extends Actor with ActorLogging {
+
+  def receive = {
+
+    case Count(sortedFile) =>
+      log.info(s"Count : ${sortedFile.getName}")
+      val sorted = new BufferedReader(new FileReader(sortedFile))
+
+      def lineOption = {
+        val string = sorted.readLine()
+        if (string != null) Some(string) else None
+      }
+
+      val countedFile = FileRepository.countedFile(sortedFile.getParentFile)
+      val counted = new FileWriter(countedFile)
+      var count: Int = 0
+      var previous: Option[String] = None
+      var current = lineOption
+      while (current.isDefined) {
+        if (current == previous) {
+          count += 1
+        }
+        else {
+          previous.map{
+            string =>
+              counted.write(s"$count $string\n")
+          }
+          previous = current
+          count = 1
+        }
+        current = lineOption
+      }
+      sorted.close()
+      counted.close()
+      sender ! Counted(countedFile)
   }
 }
 

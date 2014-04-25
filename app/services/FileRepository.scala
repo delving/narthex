@@ -59,6 +59,8 @@ object FileRepository {
 
   def sortedFile(directory: File): File = new File(directory, "sorted.txt")
 
+  def countedFile(directory: File): File = new File(directory, "counted.txt")
+
   def histogramFile(directory: File): File = new File(directory, "histogram.json")
 
   val home = new File(System.getProperty("user.home"))
