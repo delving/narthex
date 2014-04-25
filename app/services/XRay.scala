@@ -1,14 +1,15 @@
 package services
 
 import play.api.libs.json._
-import scala.xml.pull.XMLEventReader
+import scala.xml.pull._
 import scala.io.Source
+import java.io.{File, FileWriter, BufferedWriter}
+import org.apache.commons.io.FileUtils
 import scala.xml.pull.EvElemStart
+import play.api.libs.json.JsArray
 import scala.xml.pull.EvText
 import scala.xml.pull.EvElemEnd
 import scala.Some
-import java.io.{File, FileWriter, BufferedWriter}
-import org.apache.commons.io.FileUtils
 
 trait XRay {
 
@@ -16,7 +17,7 @@ trait XRay {
     var kids = Map.empty[String, XRayNode]
     var count = 0
     var lengthHistogram = new LengthHistogram(tag)
-    var directory : File = if (tag == null) parentDirectory else new File(parentDirectory, tag.replace(":", "_").replace("@", "_"))
+    var directory: File = if (tag == null) parentDirectory else new File(parentDirectory, tag.replace(":", "_").replace("@", "_"))
     var valueWriter: Option[BufferedWriter] = None
     var valueBuffer = new StringBuilder
     directory.mkdirs()
@@ -52,9 +53,10 @@ trait XRay {
         if (valueWriter == None) {
           valueWriter = Option(new BufferedWriter(new FileWriter(new File(directory, "values.txt"))))
         }
-        valueWriter.map { writer =>
-          writer.write(stripLines(value))
-          writer.newLine()
+        valueWriter.map {
+          writer =>
+            writer.write(stripLines(value))
+            writer.newLine()
         }
       }
     }
@@ -96,7 +98,7 @@ trait XRay {
   object XRayNode {
     val STEP = 10000
 
-    def apply(source: Source, directory:File, progress: Long => Unit): XRayNode = {
+    def apply(source: Source, directory: File, progress: Long => Unit): XRayNode = {
       val root = new XRayNode(directory, null, null)
       var node = root
       var count = 0L
@@ -124,12 +126,22 @@ trait XRay {
           case EvText(text) =>
             node.value(text.trim)
 
+          case EvEntityRef(entity) =>
+            entity match {
+              case "amp" => node.value("&")
+              case "quot" => node.value("\"")
+              case x => println("Entity:" + x)
+            }
+
           case EvElemEnd(pre, label) =>
             node.end()
             node = node.parent
 
+          case EvComment(text) =>
+            // todo: unknown entity apos; // probably tell the parser to resolve or something
+
           case x =>
-            println("EVENT? "+x)
+            println("EVENT? " + x) // todo: record these in an error file for later
         }
       }
       root.finish()
