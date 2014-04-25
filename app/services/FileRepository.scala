@@ -47,12 +47,12 @@ class FileRepository(root: File, val email: String) {
 
 object FileRepository {
 
-  val analysisFileName = "analysis.json"
+  val analysisFileName = "tree.json"
   val statusFileName = "status.json"
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "XML-RAY")
 
-  val boss = Akka.system.actorOf(Props[Boss], "boss")
+  lazy val boss = Akka.system.actorOf(Props[Boss], "boss")
 
   def apply(email: String) = new FileRepository(root, email)
 

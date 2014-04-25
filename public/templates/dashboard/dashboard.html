@@ -42,8 +42,9 @@
 
 <script type="text/ng-template" id="node.html">
     <li>
-        <b>{{ node.tag }}</b>
-        <ul>
+        <span>{{ node.tag }} </span><input type="checkbox" data-ng-model="node.showHistogram"/><span>{{ node.path }}</span>
+
+        <ul ng-show="node.showHistogram">
             <li data-ng-repeat="count in node.lengthHistogram">
                 <span>{{ count[0] }}: </span><span>{{ count[1] }}</span>
             </li>

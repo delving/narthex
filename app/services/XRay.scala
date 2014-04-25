@@ -1,19 +1,146 @@
 package services
 
 import play.api.libs.json._
-import scala.collection.mutable
 import scala.xml.pull.XMLEventReader
 import scala.io.Source
 import scala.xml.pull.EvElemStart
 import scala.xml.pull.EvText
 import scala.xml.pull.EvElemEnd
 import scala.Some
+import java.io.{File, FileWriter, BufferedWriter}
+import org.apache.commons.io.FileUtils
 
 trait XRay {
 
+  class XRayNode(val parentDirectory: File, val parent: XRayNode, val tag: String) {
+    var kids = Map.empty[String, XRayNode]
+    var count = 0
+    var lengthHistogram = new LengthHistogram(tag)
+    var directory : File = if (tag == null) parentDirectory else new File(parentDirectory, tag.replace(":", "_").replace("@", "_"))
+    var valueWriter: Option[BufferedWriter] = None
+    var valueBuffer = new StringBuilder
+    directory.mkdirs()
+
+    def kid(tag: String) = {
+      kids.get(tag) match {
+        case Some(kid) => kid
+        case None =>
+          val kid = new XRayNode(directory, this, tag)
+          kids += tag -> kid
+          kid
+      }
+    }
+
+    def start(): XRayNode = {
+      count += 1
+      valueBuffer.clear()
+      this
+    }
+
+    def value(value: String): XRayNode = {
+      val trimmed = value.trim()
+      if (!trimmed.isEmpty) {
+        addToValue(trimmed)
+      }
+      this
+    }
+
+    def end() = {
+      var value = valueBuffer.toString().trim()
+      if (!value.isEmpty) {
+        lengthHistogram.record(value)
+        if (valueWriter == None) {
+          valueWriter = Option(new BufferedWriter(new FileWriter(new File(directory, "values.txt"))))
+        }
+        valueWriter.map { writer =>
+          writer.write(stripLines(value))
+          writer.newLine()
+        }
+      }
+    }
+
+    def finish(): Unit = {
+      valueWriter.map(_.close())
+      kids.values.foreach(_.finish())
+      if (parent == null) {
+        val pretty = Json.prettyPrint(Json.toJson(this))
+        val analysisFile = new File(directory, FileRepository.analysisFileName)
+        FileUtils.writeStringToFile(analysisFile, pretty, "UTF-8")
+      }
+      // todo: write out the local status file too?
+    }
+
+    def path: String = {
+      if (tag == null) "" else parent.path + s"/$tag"
+    }
+
+    private def addToValue(value: String) = {
+      if (!valueBuffer.isEmpty) {
+        valueBuffer.append(' ')
+      }
+      valueBuffer.append(value)
+    }
+
+    private def stripLines(value: String) = {
+      val noReturn = value.replaceAll("\n", " ") // todo: refine to remove double spaces
+      noReturn
+    }
+
+    private def close = {
+      valueWriter.map(_.close())
+    }
+
+    override def toString = s"XRayNode($tag)"
+  }
+
+  object XRayNode {
+    val STEP = 10000
+
+    def apply(source: Source, directory:File, progress: Long => Unit): XRayNode = {
+      val root = new XRayNode(directory, null, null)
+      var node = root
+      var count = 0L
+
+      val events = new XMLEventReader(source)
+
+      while (events.hasNext) {
+
+        if (count % STEP == 0) {
+          progress(count)
+        }
+        count += 1
+
+        events.next() match {
+
+          case EvElemStart(pre, label, attrs, scope) =>
+            node = node.kid(label).start()
+            attrs.foreach {
+              attr =>
+                val kid = node.kid(s"@${attr.key}").start()
+                kid.value(attr.value.toString())
+                kid.end()
+            }
+
+          case EvText(text) =>
+            node.value(text.trim)
+
+          case EvElemEnd(pre, label) =>
+            node.end()
+            node = node.parent
+
+          case x =>
+            println("EVENT? "+x)
+        }
+      }
+      root.finish()
+      progress(-1)
+      root
+    }
+  }
+
   case class HistogramRange(from: Int, to: Int = 0) {
 
-    def fits(value: Int) = (to < 0) || (to == 0 && value == from) || (value >= from && value <= to)
+    def fits(value: Int) = (to == 0 && value == from) || (value >= from && (to == 0 || value <= to))
 
     override def toString = {
       if (to < 0) s"$from-*"
@@ -62,80 +189,10 @@ trait XRay {
 
     def writes(node: XRayNode) = Json.obj(
       "tag" -> node.tag,
+      "path" -> node.path,
       "count" -> node.count,
       "kids" -> JsArray(node.kids.values.map(writes(_)).toSeq),
       "lengthHistogram" -> writes(node.lengthHistogram)
     )
   }
-
-  class XRayNode(val parent: XRayNode, val tag: String) {
-    var kids = Map.empty[String, XRayNode]
-    var count = 0
-    var lengthHistogram = new LengthHistogram(tag)
-
-    def kid(tag: String) = {
-      kids.get(tag) match {
-        case Some(kid) => kid
-        case None =>
-          val kid = new XRayNode(this, tag)
-          kids += tag -> kid
-          kid
-      }
-    }
-
-    def occurrence(): XRayNode = {
-      count += 1
-      this
-    }
-
-    def value(value: String): XRayNode = {
-      lengthHistogram.record(value)
-      this
-    }
-
-    override def toString = s"XRayNode($tag)"
-  }
-
-  object XRayNode {
-    val STEP = 10000
-
-    def apply(source: Source, progress: Long => Unit): XRayNode = {
-      val root = new XRayNode(null, null)
-      var node = root
-      var count = 0L
-
-      val events = new XMLEventReader(source)
-
-      while (events.hasNext) {
-
-        if (count % STEP == 0) {
-          progress(count)
-        }
-        count += 1
-
-        events.next() match {
-
-          case EvElemStart(pre, label, attrs, scope) =>
-            node = node.kid(label).occurrence()
-            attrs.foreach {
-              attr =>
-                val kid = node.kid(s"@${attr.key}").occurrence()
-                kid.value(attr.value.toString())
-            }
-
-          case EvText(text) if !text.trim.isEmpty =>
-            node.value(text.trim)
-
-          case EvElemEnd(pre, label) =>
-            node = node.parent
-
-          case _ =>
-        }
-      }
-
-      progress(-1)
-      root
-    }
-  }
-
 }

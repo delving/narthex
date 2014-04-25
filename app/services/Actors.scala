@@ -32,9 +32,6 @@ class Boss extends Actor with ActorLogging {
 
     case AnalysisComplete(json, directory) =>
       log.info(s"AnalysisComplete at ${directory.getName}")
-      val pretty = Json.prettyPrint(json)
-      val analysisFile = new File(directory, FileRepository.analysisFileName)
-      FileUtils.writeStringToFile(analysisFile, pretty, "UTF-8")
 
   }
 }
@@ -46,7 +43,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
     case Analyze(file, directory) =>
       log.info(s"Analyzer looking at ${file.getName}")
       val source = Source.fromInputStream(new GZIPInputStream(new FileInputStream(file)))
-      val root: XRayNode = XRayNode(source, {
+      val root: XRayNode = XRayNode(source, directory, {
         count =>
           sender ! Progress(count, directory)
       })
