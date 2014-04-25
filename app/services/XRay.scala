@@ -51,7 +51,7 @@ trait XRay {
       if (!value.isEmpty) {
         lengthHistogram.record(value)
         if (valueWriter == None) {
-          valueWriter = Option(new BufferedWriter(new FileWriter(new File(directory, "values.txt"))))
+          valueWriter = Option(new BufferedWriter(new FileWriter(FileRepository.valuesFile(directory))))
         }
         valueWriter.map {
           writer =>
@@ -66,10 +66,14 @@ trait XRay {
       kids.values.foreach(_.finish())
       if (parent == null) {
         val pretty = Json.prettyPrint(Json.toJson(this))
-        val analysisFile = new File(directory, FileRepository.analysisFileName)
-        FileUtils.writeStringToFile(analysisFile, pretty, "UTF-8")
+        FileUtils.writeStringToFile(FileRepository.treeFile(directory), pretty, "UTF-8")
       }
       // todo: write out the local status file too?
+    }
+
+    def sort(sortStarter: XRayNode => Unit) : Unit = {
+      if (!lengthHistogram.isEmpty) sortStarter(this)
+      kids.values.foreach(_.sort(sortStarter))
     }
 
     def path: String = {
@@ -78,7 +82,7 @@ trait XRay {
 
     private def addToValue(value: String) = {
       if (!valueBuffer.isEmpty) {
-        valueBuffer.append(' ')
+        valueBuffer.append(' ') // todo: problem when entities are added
       }
       valueBuffer.append(value)
     }
@@ -130,6 +134,8 @@ trait XRay {
             entity match {
               case "amp" => node.value("&")
               case "quot" => node.value("\"")
+              case "lt" => node.value("<")
+              case "gt" => node.value(">")
               case x => println("Entity:" + x)
             }
 
@@ -189,6 +195,8 @@ trait XRay {
         counter.count += 1
       }
     }
+
+    def isEmpty = counters.filter(_.count > 0).isEmpty
   }
 
   implicit val nodeWrites = new Writes[XRayNode] {

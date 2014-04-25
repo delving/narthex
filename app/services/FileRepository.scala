@@ -1,10 +1,10 @@
 package services
 
 import java.io.File
-import play.Logger
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import akka.actor.Props
+import java.util.UUID
 
 class FileRepository(root: File, val email: String) {
 
@@ -17,9 +17,9 @@ class FileRepository(root: File, val email: String) {
 
   def analyzedDir(dirName: String) = new File(analyzed, dirName)
 
-  def analyzedFile(fileName: String) = new File(analyzedDir(fileName), FileRepository.analysisFileName)
+  def treeFile(fileName: String) = FileRepository.treeFile(analyzedDir(fileName))
 
-  def statusFile(fileName: String) = new File(analyzedDir(fileName), FileRepository.statusFileName)
+  def statusFile(fileName: String) = FileRepository.statusFile(analyzedDir(fileName))
 
   def listUploadedFiles = listFiles(uploaded)
 
@@ -47,8 +47,20 @@ class FileRepository(root: File, val email: String) {
 
 object FileRepository {
 
-  val analysisFileName = "tree.json"
-  val statusFileName = "status.json"
+  def treeFile(directory: File): File = new File(directory, "tree.json")
+
+  def statusFile(directory: File): File = new File(directory, "status.json")
+
+  def valuesFile(directory: File): File = new File(directory, "values.txt")
+
+  def random(directory: File, size: Int): File = new File(directory, s"random-$size.txt")
+
+  def tempSortedFile(directory: File): File = new File(directory, s"sorted-${UUID.randomUUID()}.txt")
+
+  def sortedFile(directory: File): File = new File(directory, "sorted.txt")
+
+  def histogramFile(directory: File): File = new File(directory, "histogram.json")
+
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "XML-RAY")
 

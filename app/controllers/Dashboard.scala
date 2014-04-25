@@ -5,7 +5,6 @@ import java.io.{FileInputStream, File}
 import play.api.Logger
 import services._
 import play.api.libs.json._
-import play.api.libs.MimeTypes
 import play.api.libs.iteratee.Enumerator
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -57,7 +56,7 @@ object Dashboard extends Controller with Security with XRay {
   def analysis(fileName: String) = Secure() {
     token => email => implicit request => {
       val repo = FileRepository(email)
-      fileResult(repo.analyzedFile(fileName))
+      fileResult(repo.treeFile(fileName))
     }
   }
 
