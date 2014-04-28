@@ -49,14 +49,14 @@ object Dashboard extends Controller with Security with XRay {
   def status(fileName: String) = Secure() {
     token => email => implicit request => {
       val repo = FileRepository(email)
-      fileResult(repo.statusFile(fileName))
+      fileResult(repo.analysis(fileName).statusFile)
     }
   }
 
   def analysis(fileName: String) = Secure() {
     token => email => implicit request => {
       val repo = FileRepository(email)
-      fileResult(repo.treeFile(fileName))
+      fileResult(repo.analysis(fileName).treeFile)
     }
   }
 

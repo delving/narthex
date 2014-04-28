@@ -6,7 +6,18 @@ import play.api.libs.concurrent.Akka
 import akka.actor.Props
 import java.util.UUID
 
-class FileRepository(root: File, val email: String) {
+object FileRepository {
+
+  val home = new File(System.getProperty("user.home"))
+  val root = new File(home, "XML-RAY")
+
+  lazy val boss = Akka.system.actorOf(Props[Boss], "boss")
+
+  def apply(email: String) = new PersonalRepository(root, email)
+
+}
+
+class PersonalRepository(root: File, val email: String) {
 
   val SUFFIXES = List(".xml.gz", ".tgz", ".zip")
   val repo = new File(root, email.replaceAll("@", "_"))
@@ -16,10 +27,6 @@ class FileRepository(root: File, val email: String) {
   def uploadedFile(fileName: String) = new File(uploaded, fileName)
 
   def analyzedDir(dirName: String) = new File(analyzed, dirName)
-
-  def treeFile(fileName: String) = FileRepository.treeFile(analyzedDir(fileName))
-
-  def statusFile(fileName: String) = FileRepository.statusFile(analyzedDir(fileName))
 
   def listUploadedFiles = listFiles(uploaded)
 
@@ -31,6 +38,8 @@ class FileRepository(root: File, val email: String) {
     analyzedDirs.foreach(_.mkdirs())
     FileRepository.boss ! AnalyzeThese(filesToAnalyze.zip(analyzedDirs))
   }
+
+  def analysis(fileName: String) = new FileAnalysisDirectory(analyzedDir(fileName))
 
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
@@ -45,33 +54,46 @@ class FileRepository(root: File, val email: String) {
 
 }
 
-object FileRepository {
+class FileAnalysisDirectory(val directory: File) {
 
-  def treeFile(directory: File): File = new File(directory, "tree.json")
+  def treeFile = new File(directory, "tree.json")
 
-  def statusFile(directory: File): File = new File(directory, "status.json")
+  def statusFile = new File(directory, "status.json")
 
-  def valuesFile(directory: File): File = new File(directory, "values.txt")
-
-  def random(directory: File, size: Int): File = new File(directory, s"random-$size.txt")
-
-  def tempSortFile(directory: File): File = new File(directory, s"sorting-${UUID.randomUUID()}.txt")
-
-  def sortedFile(directory: File): File = new File(directory, "sorted.txt")
-
-  def countedFile(directory: File): File = new File(directory, "counted.txt")
-
-  def uniqueFile(directory: File): File = new File(directory, "unique.txt")
-
-  def histogramTextFile(directory: File): File = new File(directory, "histogram.txt")
-
-  def histogramJsonFile(directory: File): File = new File(directory, "histogram.json")
-
-  val home = new File(System.getProperty("user.home"))
-  val root = new File(home, "XML-RAY")
-
-  lazy val boss = Akka.system.actorOf(Props[Boss], "boss")
-
-  def apply(email: String) = new FileRepository(root, email)
+  def root = new NodeDirectory(directory, null)
 
 }
+
+class NodeDirectory(val parentDirectory: File, tag: String) {
+
+  val directory: File = {
+    val dir = if (tag == null) parentDirectory else {
+      val directoryName = tag.replace(":", "_").replace("@", "_")
+      new File(parentDirectory, directoryName)
+    }
+    dir.mkdirs()
+    dir
+  }
+
+  def child(childTag: String) = new NodeDirectory(directory, childTag)
+
+  def treeFile = new File(directory, "tree.json")
+
+  def statusFile = new File(directory, "status.json")
+
+  def valuesFile = new File(directory, "values.txt")
+
+  def tempSortFile = new File(directory, s"sorting-${UUID.randomUUID()}.txt")
+
+  def sortedFile = new File(directory, "sorted.txt")
+
+  def countedFile = new File(directory, "counted.txt")
+
+  def uniqueFile = new File(directory, "unique.txt")
+
+  def histogramTextFile = new File(directory, "histogram.txt")
+
+  def histogramJsonFiles = List(10, 100, 1000).map(size => (size, new File(directory, s"histogram-$size.json")))
+
+}
+

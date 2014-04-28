@@ -15,8 +15,7 @@ class AnalyzerSpec extends FlatSpec with XRay {
       println(elementCount)
     }
 
-    val directory = new File("/tmp/AnalyzerSpec")
-    directory.mkdir()
+    val directory = new FileAnalysisDirectory(new File("/tmp/AnalyzerSpec"))
     val root = XRayNode(source, directory, progress)
 
     val hello = root.kid("hello")

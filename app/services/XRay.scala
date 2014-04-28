@@ -3,7 +3,7 @@ package services
 import play.api.libs.json._
 import scala.xml.pull._
 import scala.io.Source
-import java.io.{File, FileWriter, BufferedWriter}
+import java.io.{FileWriter, BufferedWriter}
 import org.apache.commons.io.FileUtils
 import scala.xml.pull.EvElemStart
 import play.api.libs.json.JsArray
@@ -15,21 +15,19 @@ import scala.util.Random
 
 trait XRay {
 
-  class XRayNode(val parentDirectory: File, val parent: XRayNode, val tag: String) {
+  class XRayNode(val directory: NodeDirectory, val parent: XRayNode, val tag: String) {
     var kids = Map.empty[String, XRayNode]
     var count = 0
     var lengthHistogram = new LengthHistogram(tag)
     var randomSample = new RandomSample(tag)
-    var directory: File = if (tag == null) parentDirectory else new File(parentDirectory, tag.replace(":", "_").replace("@", "_"))
     var valueWriter: Option[BufferedWriter] = None
     var valueBuffer = new StringBuilder
-    directory.mkdirs()
 
     def kid(tag: String) = {
       kids.get(tag) match {
         case Some(kid) => kid
         case None =>
-          val kid = new XRayNode(directory, this, tag)
+          val kid = new XRayNode(directory.child(tag), this, tag)
           kids += tag -> kid
           kid
       }
@@ -55,7 +53,7 @@ trait XRay {
         lengthHistogram.record(value)
         randomSample.record(value)
         if (valueWriter == None) {
-          valueWriter = Option(new BufferedWriter(new FileWriter(FileRepository.valuesFile(directory))))
+          valueWriter = Option(new BufferedWriter(new FileWriter(directory.valuesFile)))
         }
         valueWriter.map {
           writer =>
@@ -70,7 +68,7 @@ trait XRay {
       kids.values.foreach(_.finish())
       if (parent == null) {
         val pretty = Json.prettyPrint(Json.toJson(this))
-        FileUtils.writeStringToFile(FileRepository.treeFile(directory), pretty, "UTF-8")
+        FileUtils.writeStringToFile(directory.treeFile, pretty, "UTF-8")
       }
       // todo: write out the local status file too?
     }
@@ -106,8 +104,8 @@ trait XRay {
   object XRayNode {
     val STEP = 10000
 
-    def apply(source: Source, directory: File, progress: Long => Unit): XRayNode = {
-      val root = new XRayNode(directory, null, null)
+    def apply(source: Source, directory: FileAnalysisDirectory, progress: Long => Unit): XRayNode = {
+      val root = new XRayNode(directory.root, null, null)
       var node = root
       var count = 0L
 
