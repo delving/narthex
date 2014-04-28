@@ -10,6 +10,8 @@ import play.api.libs.json.JsArray
 import scala.xml.pull.EvText
 import scala.xml.pull.EvElemEnd
 import scala.Some
+import scala.collection.mutable
+import scala.util.Random
 
 trait XRay {
 
@@ -17,6 +19,7 @@ trait XRay {
     var kids = Map.empty[String, XRayNode]
     var count = 0
     var lengthHistogram = new LengthHistogram(tag)
+    var randomSample = new RandomSample(tag)
     var directory: File = if (tag == null) parentDirectory else new File(parentDirectory, tag.replace(":", "_").replace("@", "_"))
     var valueWriter: Option[BufferedWriter] = None
     var valueBuffer = new StringBuilder
@@ -50,6 +53,7 @@ trait XRay {
       var value = valueBuffer.toString().trim()
       if (!value.isEmpty) {
         lengthHistogram.record(value)
+        randomSample.record(value)
         if (valueWriter == None) {
           valueWriter = Option(new BufferedWriter(new FileWriter(FileRepository.valuesFile(directory))))
         }
@@ -156,9 +160,9 @@ trait XRay {
     }
   }
 
-  case class HistogramRange(from: Int, to: Int = 0) {
+  case class LengthRange(from: Int, to: Int = 0) {
 
-    def fits(value: Int) = (to == 0 && value == from) || (value >= from && (to == 0 || value <= to))
+    def fits(value: Int) = (to == 0 && value == from) || (value >= from && (to < 0 || value <= to))
 
     override def toString = {
       if (to < 0) s"$from-*"
@@ -168,35 +172,49 @@ trait XRay {
   }
 
   val lengthRanges = Seq(
-    HistogramRange(0),
-    HistogramRange(1),
-    HistogramRange(2),
-    HistogramRange(3),
-    HistogramRange(4),
-    HistogramRange(5),
-    HistogramRange(6),
-    HistogramRange(7),
-    HistogramRange(8),
-    HistogramRange(9),
-    HistogramRange(10),
-    HistogramRange(11, 20),
-    HistogramRange(21, 30),
-    HistogramRange(31, 60),
-    HistogramRange(60, -1)
+    LengthRange(0),
+    LengthRange(1),
+    LengthRange(2),
+    LengthRange(3),
+    LengthRange(4),
+    LengthRange(5),
+    LengthRange(6),
+    LengthRange(7),
+    LengthRange(8),
+    LengthRange(9),
+    LengthRange(10),
+    LengthRange(11, 15),
+    LengthRange(16, 20),
+    LengthRange(21, 30),
+    LengthRange(31, 50),
+    LengthRange(50, 100),
+    LengthRange(100, -1)
   )
 
-  class Counter(val range: HistogramRange, var count: Int = 0)
+  class Counter(val range: LengthRange, var count: Int = 0)
 
   class LengthHistogram(val name: String) {
     val counters = lengthRanges.map(range => new Counter(range))
 
-    def record(string: String) {
+    def record(string: String):Unit = {
       for (counter <- counters if counter.range.fits(string.length)) {
         counter.count += 1
       }
     }
 
     def isEmpty = counters.filter(_.count > 0).isEmpty
+  }
+
+  class RandomSample(val tag:String, val size: Int = 60, random: Random = new Random()) {
+    val queue = new mutable.PriorityQueue[(Int, String)]()
+
+    def record(string: String):Unit = {
+      val randomIn: Int = random.nextInt()
+      queue += (randomIn -> string)
+      if (queue.size > size) queue.dequeue()
+    }
+
+    def values: List[String] = queue.map(pair => pair._2).toList.sorted.distinct
   }
 
   implicit val nodeWrites = new Writes[XRayNode] {
@@ -206,13 +224,18 @@ trait XRay {
     def writes(histogram: LengthHistogram): JsValue = {
       JsArray(histogram.counters.filter(counter => counter.count > 0).map(counter => writes(counter)))
     }
+    
+    def writes(sample: RandomSample) : JsValue = {
+      JsArray(sample.values.map(value => JsString(value)))
+    }
 
     def writes(node: XRayNode) = Json.obj(
       "tag" -> node.tag,
       "path" -> node.path,
       "count" -> node.count,
-      "kids" -> JsArray(node.kids.values.map(writes(_)).toSeq),
-      "lengthHistogram" -> writes(node.lengthHistogram)
+      "lengthHistogram" -> writes(node.lengthHistogram),
+      "randomSample" -> writes(node.randomSample),
+      "kids" -> JsArray(node.kids.values.map(writes).toSeq)
     )
   }
 }

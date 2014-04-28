@@ -61,6 +61,8 @@ object FileRepository {
 
   def countedFile(directory: File): File = new File(directory, "counted.txt")
 
+  def uniqueFile(directory: File): File = new File(directory, "unique.txt")
+
   def histogramTextFile(directory: File): File = new File(directory, "histogram.txt")
 
   def histogramJsonFile(directory: File): File = new File(directory, "histogram.json")

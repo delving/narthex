@@ -42,16 +42,31 @@
 
 <script type="text/ng-template" id="node.html">
     <li>
-        <span>{{ node.tag }} </span><input type="checkbox" data-ng-model="node.showHistogram"/><span>{{ node.path }}</span>
+        <span><b>{{ node.tag }}</b></span><span>({{ node.count }})</span>
+        <label data-ng-show="node.randomSample.length">Sample:
+            <input type="checkbox" data-ng-model="node.showSample"/>
+        </label>
+        <label data-ng-show="node.lengthHistogram.length">Lengths:
+            <input type="checkbox" data-ng-model="node.showHistogram"/>
+        </label>
 
-        <ul ng-show="node.showHistogram">
-            <li data-ng-repeat="count in node.lengthHistogram">
-                <span>{{ count[0] }}: </span><span>{{ count[1] }}</span>
-            </li>
-        </ul>
+        <div ng-show="node.showSample">
+            <ul>
+                <li data-ng-repeat="sample in node.randomSample">
+                    <span>&quot;{{ sample }}&quot;</span>
+                </li>
+            </ul>
+        </div>
+        <div ng-show="node.showHistogram">
+            <ul>
+                <li data-ng-repeat="count in node.lengthHistogram">
+                    <span>{{ count[0] }}: </span><span>{{ count[1] }}</span>
+                </li>
+            </ul>
+        </div>
         <ul ng-if="node.kids" class="">
             <li class="" data-ng-repeat="(nodeIndex, node) in node.kids" data-ng-controller="TreeNodeCtrl">
-                <div ng-include="'node.html'"/>
+                <div ng-include="'node.html'">node</div>
             </li>
         </ul>
     </li>

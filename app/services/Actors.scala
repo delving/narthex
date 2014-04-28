@@ -20,7 +20,7 @@ case class Sorted(sortedFile: File, sortType: SortType)
 
 case class Count(sortedFile: File)
 
-case class Counted(countedFile: File)
+case class Counted(countedFile: File, uniqueFile: File)
 
 case class Merge(fileA: File, fileB: File, sortedFile: File, sortType: SortType)
 
@@ -81,7 +81,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
       }
       sender ! TreeComplete(Json.toJson(root), directory)
 
-    case Counted(countedFile) =>
+    case Counted(countedFile, uniqueFile) =>
       log.info(s"Count finished : ${countedFile.getAbsolutePath}")
       val sorter = context.actorOf(Props[Sorter])
       sorters = sorter :: sorters
@@ -94,7 +94,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
       sorters = sorters.filter(sorter => sender != sorter)
       sortType.name match {
         case "Values" =>
-          val counter = context.actorOf(Props[CounterActor])
+          val counter = context.actorOf(Props[Collator])
           counters = counter :: counters
           counter ! Count(sortedFile)
 
@@ -240,7 +240,7 @@ class Merger extends Actor with ActorLogging {
 }
 
 
-class CounterActor extends Actor with ActorLogging {
+class Collator extends Actor with ActorLogging {
 
   def receive = {
 
@@ -255,6 +255,8 @@ class CounterActor extends Actor with ActorLogging {
 
       val countedFile = FileRepository.countedFile(sortedFile.getParentFile)
       val counted = new FileWriter(countedFile)
+      val uniqueFile = FileRepository.uniqueFile(sortedFile.getParentFile)
+      val unique = new FileWriter(uniqueFile)
       var count: Int = 0
       var previous: Option[String] = None
       var current = lineOption
@@ -263,7 +265,12 @@ class CounterActor extends Actor with ActorLogging {
           count += 1
         }
         else {
-          previous.map(string => counted.write(f"$count%7d $string%s\n"))
+          previous.foreach {
+            string =>
+              counted.write(f"$count%7d $string%s\n")
+              unique.write(string)
+              unique.write("\n")
+          }
           previous = current
           count = 1
         }
@@ -272,7 +279,8 @@ class CounterActor extends Actor with ActorLogging {
       previous.map(string => counted.write(f"$count%7d $string%s\n"))
       sorted.close()
       counted.close()
-      sender ! Counted(countedFile)
+      unique.close()
+      sender ! Counted(countedFile, uniqueFile)
   }
 }
 

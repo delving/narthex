@@ -53,7 +53,7 @@ define(["angular"], function () {
         fetchFileList();
 
         function pollChosenFileStatus() {
-            console.log("Polling status "+$scope.chosenFile);
+            console.log("Polling status " + $scope.chosenFile);
             dashboardService.status($scope.chosenFile).then(function (data) {
                 if (data.problem) {
                     $scope.fileStatus = data.problem;
@@ -62,13 +62,13 @@ define(["angular"], function () {
                     $scope.fileStatus = "Count: " + data.count;
                     $scope.analysisComplete = data.complete;
                     if ($scope.chosenFile && !$scope.analysisComplete) {
-                        console.log("Poll again");
+//                        console.log("Poll again");
                         $timeout(pollChosenFileStatus, 500)
                     }
                     else {
-                        console.log("fetching analysis");
+//                        console.log("fetching analysis");
                         dashboardService.analysis($scope.chosenFile).then(function (data) {
-                            console.log("tree=", data);
+//                            console.log("tree=", data);
                             $scope.tree = data;
                         });
                     }
@@ -94,7 +94,7 @@ define(["angular"], function () {
     AdminDashboardCtrl.$inject = ["$scope", "user"];
 
     var TreeCtrl = function ($scope) {
-        $scope.$watch('tree', function(tree, oldTree) {
+        $scope.$watch('tree', function (tree, oldTree) {
             if (tree) {
                 $scope.node = tree;
             }

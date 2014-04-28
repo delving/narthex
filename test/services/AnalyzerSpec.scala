@@ -1,9 +1,8 @@
 package services
 
 import org.scalatest._
-import play.api.libs.json.{JsResult, JsValue, Json}
+import play.api.libs.json.{JsValue, Json}
 import scala.io.Source
-import scala.xml.pull.{EvText, EvElemEnd, EvElemStart, XMLEventReader}
 import java.io.File
 
 class AnalyzerSpec extends FlatSpec with XRay {
