@@ -95,5 +95,7 @@ class NodeDirectory(val parentDirectory: File, tag: String) {
 
   def histogramJsonFiles = List(10, 100, 1000).map(size => (size, new File(directory, s"histogram-$size.json")))
 
+  def sampleJsonFiles = List(100, 1000).map(size => (size, new File(directory, s"sample-$size.json")))
+
 }
 

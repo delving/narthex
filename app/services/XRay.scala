@@ -18,8 +18,8 @@ trait XRay {
   class XRayNode(val directory: NodeDirectory, val parent: XRayNode, val tag: String) {
     var kids = Map.empty[String, XRayNode]
     var count = 0
-    var lengthHistogram = new LengthHistogram(tag)
-    var randomSample = new RandomSample(tag)
+    var lengthHistogram = new LengthHistogram()
+    var randomSample = new RandomSample(20)
     var valueWriter: Option[BufferedWriter] = None
     var valueBuffer = new StringBuilder
 
@@ -191,7 +191,7 @@ trait XRay {
 
   class Counter(val range: LengthRange, var count: Int = 0)
 
-  class LengthHistogram(val name: String) {
+  class LengthHistogram() {
     val counters = lengthRanges.map(range => new Counter(range))
 
     def record(string: String):Unit = {
@@ -203,7 +203,7 @@ trait XRay {
     def isEmpty = counters.filter(_.count > 0).isEmpty
   }
 
-  class RandomSample(val tag:String, val size: Int = 60, random: Random = new Random()) {
+  class RandomSample(val size: Int, random: Random = new Random()) {
     val queue = new mutable.PriorityQueue[(Int, String)]()
 
     def record(string: String):Unit = {
