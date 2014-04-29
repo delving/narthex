@@ -66,10 +66,6 @@ trait XRay {
     def finish(): Unit = {
       valueWriter.map(_.close())
       kids.values.foreach(_.finish())
-      if (parent == null) {
-        val pretty = Json.prettyPrint(Json.toJson(this))
-        FileUtils.writeStringToFile(directory.treeFile, pretty, "UTF-8")
-      }
     }
 
     def sort(sortStarter: XRayNode => Unit) : Unit = {
@@ -104,8 +100,8 @@ trait XRay {
     val STEP = 10000
 
     def apply(source: Source, directory: FileAnalysisDirectory, progress: Long => Unit): XRayNode = {
-      val root = new XRayNode(directory.root, null, null)
-      var node = root
+      val base = new XRayNode(directory.root, null, null)
+      var node = base
       var count = 0L
       val events = new XMLEventReader(source)
 
@@ -148,7 +144,11 @@ trait XRay {
             println("EVENT? " + x) // todo: record these in an error file for later
         }
       }
+
+      val root = base.kids.values.head
       root.finish()
+      val pretty = Json.prettyPrint(Json.toJson(root))
+      FileUtils.writeStringToFile(directory.treeFile, pretty, "UTF-8")
       progress(-1) // todo: should record the count somehow (xml element count)
       root
     }
