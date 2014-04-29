@@ -70,7 +70,6 @@ trait XRay {
         val pretty = Json.prettyPrint(Json.toJson(this))
         FileUtils.writeStringToFile(directory.treeFile, pretty, "UTF-8")
       }
-      // todo: write out the local status file too?
     }
 
     def sort(sortStarter: XRayNode => Unit) : Unit = {
@@ -108,14 +107,11 @@ trait XRay {
       val root = new XRayNode(directory.root, null, null)
       var node = root
       var count = 0L
-
       val events = new XMLEventReader(source)
 
       while (events.hasNext) {
 
-        if (count % STEP == 0) {
-          progress(count)
-        }
+        if (count % STEP == 0) progress(count)
         count += 1
 
         events.next() match {
@@ -153,7 +149,7 @@ trait XRay {
         }
       }
       root.finish()
-      progress(-1)
+      progress(-1) // todo: should record the count somehow (xml element count)
       root
     }
   }

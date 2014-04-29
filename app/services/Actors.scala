@@ -30,7 +30,7 @@ case class Sorted(directory: NodeDirectory, sortedFile: File, sortType: SortType
 
 case class Count(directory: NodeDirectory)
 
-case class Counted(directory: NodeDirectory)
+case class Counted(directory: NodeDirectory, uniqueCount: Int)
 
 case class Merge(directory: NodeDirectory, inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
 
@@ -85,19 +85,19 @@ class Analyzer extends Actor with XRay with ActorLogging {
     }
 
     var accumulators = directory.histogramJsonFiles.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
-    var lin = lineOption
-    var cou = 1
-    while (lin.isDefined && !accumulators.isEmpty) {
-      val mm = LINE.findFirstMatchIn(lin.get)
+    var line = lineOption
+    var count = 1
+    while (line.isDefined && !accumulators.isEmpty) {
+      val lineMatch = LINE.findFirstMatchIn(line.get)
       accumulators = accumulators.filter {
         triple =>
-          mm.map(mmm => triple._2 += Json.arr(mmm.group(1), mmm.group(2)))
-          val keep = cou < triple._1
+          lineMatch.map(groups => triple._2 += Json.arr(groups.group(1), groups.group(2)))
+          val keep = count < triple._1
           if (!keep) createFile(triple._2, triple._3)
           keep
       }
-      lin = lineOption
-      cou += 1
+      line = lineOption
+      count += 1
     }
     accumulators.foreach(triple => createFile(triple._2, triple._3))
     input.close()
@@ -118,11 +118,13 @@ class Analyzer extends Actor with XRay with ActorLogging {
       }
       sender ! TreeComplete(Json.toJson(root), directory)
 
-    case Counted(directory) =>
+    case Counted(directory, uniqueCount) =>
       log.debug(s"Count finished : ${directory.countedFile.getAbsolutePath}")
+      // todo: store the unique count
       val sorter = context.actorOf(Props[Sorter])
       sorters = sorter :: sorters
       collators = collators.filter(collator => collator != sender)
+      FileUtils.deleteQuietly(directory.sortedFile)
       sorter ! Sort(directory, SortType.HISTOGRAM_SORT)
 
     case Sorted(directory, sortedFile, sortType) =>
@@ -130,6 +132,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
       sorters = sorters.filter(sorter => sender != sorter)
       sortType match {
         case SortType.VALUE_SORT =>
+          FileUtils.deleteQuietly(directory.valuesFile)
           val collator = context.actorOf(Props[Collator])
           collators = collator :: collators
           collator ! Count(directory)
@@ -137,6 +140,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
         case SortType.HISTOGRAM_SORT =>
           log.debug(s"writing histograms : ${directory.directory.getAbsolutePath}")
           writeHistograms(directory)
+          FileUtils.deleteQuietly(directory.countedFile)
           if (sorters.isEmpty && collators.isEmpty) {
             context.parent ! AnalysisComplete()
           }
@@ -293,7 +297,7 @@ class Collator extends Actor with ActorLogging with XRay {
 
       val samples = directory.sampleJsonFiles.map(pair => (new RandomSample(pair._1), pair._2))
 
-      def createFile(randomSample: RandomSample, histogramFile: File) = {
+      def createSampleFile(randomSample: RandomSample, histogramFile: File) = {
         val json = Json.obj("sample" -> randomSample.values)
         FileUtils.writeStringToFile(histogramFile, Json.prettyPrint(json), "UTF-8")
       }
@@ -305,32 +309,36 @@ class Collator extends Actor with ActorLogging with XRay {
 
       val counted = new FileWriter(directory.countedFile)
       val unique = new FileWriter(directory.uniqueFile)
-      var count: Int = 0
+      var occurrences = 0
+      var uniqueCount = 0
+
+      def writeValue(string: String) = {
+        counted.write(f"$occurrences%7d $string%s\n")
+        unique.write(string)
+        unique.write("\n")
+        samples.foreach(pair => pair._1.record(string))
+        uniqueCount += 1
+      }
+
       var previous: Option[String] = None
       var current = lineOption
       while (current.isDefined) {
         if (current == previous) {
-          count += 1
+          occurrences += 1
         }
         else {
-          previous.foreach {
-            string =>
-              counted.write(f"$count%7d $string%s\n")
-              unique.write(string)
-              unique.write("\n")
-              samples.foreach(pair => pair._1.record(string))
-          }
+          previous.foreach(writeValue)
           previous = current
-          count = 1
+          occurrences = 1
         }
         current = lineOption
       }
-      previous.map(string => counted.write(f"$count%7d $string%s\n"))
+      previous.foreach(writeValue)
       sorted.close()
       counted.close()
       unique.close()
-      samples.foreach(pair => createFile(pair._1, pair._2))
-      sender ! Counted(directory)
+      samples.foreach(pair => createSampleFile(pair._1, pair._2))
+      sender ! Counted(directory, uniqueCount)
   }
 }
 
