@@ -7,6 +7,7 @@ import scala.io.Source
 import java.util.zip.GZIPInputStream
 import play.api.libs.json._
 import org.apache.commons.io.FileUtils
+import scala.collection.mutable.ArrayBuffer
 
 case class AnalyzeThese(jobs: List[(File, File)])
 
@@ -78,29 +79,28 @@ class Analyzer extends Actor with XRay with ActorLogging {
       if (string != null) Some(string) else None
     }
 
-    val writers = directory.histogramJsonFiles.map(pair => (pair._1, new FileWriter(pair._2)))
-    writers.foreach(writer => writer._2.write("{\n  histogram : [\n"))
-    var activeWriters = writers.map(writer => writer)
-    var line = lineOption
-    var count = 1
-    while (line.isDefined && !activeWriters.isEmpty) {
-      val mm = LINE.findFirstMatchIn(line.get)
-      line = lineOption
-      count += 1
-      activeWriters.foreach {
-        pair =>
-          mm.map {
-            mmm =>
-              pair._2.write( s"""    [${mmm.group(1)}, "${mmm.group(2)}"]""")
-              if (count < pair._1) pair._2.write(",")
-              pair._2.write("\n")
-          }
-      }
-      activeWriters = activeWriters.filter(pair => count < pair._1)
+    def createFile(entries: ArrayBuffer[JsArray], histogramFile: File) = {
+      val json = Json.obj("histogram" -> entries)
+      FileUtils.writeStringToFile(histogramFile, Json.prettyPrint(json), "UTF-8")
     }
+
+    var accumulators = directory.histogramJsonFiles.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
+    var lin = lineOption
+    var cou = 1
+    while (lin.isDefined && !accumulators.isEmpty) {
+      val mm = LINE.findFirstMatchIn(lin.get)
+      accumulators = accumulators.filter {
+        triple =>
+          mm.map(mmm => triple._2 += Json.arr(mmm.group(1), mmm.group(2)))
+          val keep = cou < triple._1
+          if (!keep) createFile(triple._2, triple._3)
+          keep
+      }
+      lin = lineOption
+      cou += 1
+    }
+    accumulators.foreach(triple => createFile(triple._2, triple._3))
     input.close()
-    writers.foreach(writer => writer._2.write("  ]\n}"))
-    writers.foreach(_._2.close())
   }
 
   def receive = {
