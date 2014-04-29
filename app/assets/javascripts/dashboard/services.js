@@ -14,13 +14,23 @@ define(["angular", "common"], function (angular) {
                     return response.data;
                 });
             },
-            status: function(fileName) {
-                return playRoutes.controllers.Dashboard.status(fileName).get().then(function(response) {
+            status: function (fileName) {
+                return playRoutes.controllers.Dashboard.status(fileName).get().then(function (response) {
                     return response.data;
                 });
             },
-            analysis: function(fileName) {
-                return playRoutes.controllers.Dashboard.analysis(fileName).get().then(function(response) {
+            index: function (fileName) {
+                return playRoutes.controllers.Dashboard.index(fileName).get().then(function (response) {
+                    return response.data;
+                });
+            },
+            sample: function (fileName, path, size) {
+                return playRoutes.controllers.Dashboard.sample(fileName, path, size).get().then(function (response) {
+                    return response.data;
+                });
+            },
+            histogram: function (fileName, path, size) {
+                return playRoutes.controllers.Dashboard.histogram(fileName, path, size).get().then(function (response) {
                     return response.data;
                 });
             }

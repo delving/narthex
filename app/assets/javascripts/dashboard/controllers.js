@@ -66,9 +66,9 @@ define(["angular"], function () {
                         $timeout(pollChosenFileStatus, 500)
                     }
                     else {
-//                        console.log("fetching analysis");
-                        dashboardService.analysis($scope.chosenFile).then(function (data) {
-//                            console.log("tree=", data);
+                        console.log("fetching analysis");
+                        dashboardService.index($scope.chosenFile).then(function (data) {
+                            console.log("tree=", data);
                             $scope.tree = data;
                         });
                     }
@@ -79,6 +79,20 @@ define(["angular"], function () {
         $scope.watchFile = function (file) {
             $scope.chosenFile = file;
             pollChosenFileStatus();
+        };
+
+        $scope.fetchSample = function(node, size) {
+            dashboardService.sample($scope.chosenFile, node.path, size).then(function (data) {
+                console.log("sample=", data);
+                node.sample = data.sample;
+            });
+        };
+
+        $scope.fetchHistogram = function(node, size) {
+            dashboardService.histogram($scope.chosenFile, node.path, size).then(function (data) {
+                console.log("histogram=", data);
+                node.histogram = data.histogram;
+            });
         };
 
     };

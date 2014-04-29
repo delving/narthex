@@ -29,7 +29,9 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.list,
           routes.javascript.Dashboard.work,
           routes.javascript.Dashboard.status,
-          routes.javascript.Dashboard.analysis
+          routes.javascript.Dashboard.index,
+          routes.javascript.Dashboard.sample,
+          routes.javascript.Dashboard.histogram
         )
       ).as(JAVASCRIPT)
   }

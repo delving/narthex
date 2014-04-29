@@ -148,7 +148,7 @@ trait XRay {
       val root = base.kids.values.head
       root.finish()
       val pretty = Json.prettyPrint(Json.toJson(root))
-      FileUtils.writeStringToFile(directory.treeFile, pretty, "UTF-8")
+      FileUtils.writeStringToFile(directory.indexFile, pretty, "UTF-8")
       progress(-1) // todo: should record the count somehow (xml element count)
       root
     }

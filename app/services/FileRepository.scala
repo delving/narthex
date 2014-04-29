@@ -15,6 +15,8 @@ object FileRepository {
 
   def apply(email: String) = new PersonalRepository(root, email)
 
+  def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
+
 }
 
 class PersonalRepository(root: File, val email: String) {
@@ -56,28 +58,48 @@ class PersonalRepository(root: File, val email: String) {
 
 class FileAnalysisDirectory(val directory: File) {
 
-  def treeFile = new File(directory, "tree.json")
+  def indexFile = new File(directory, "index.json")
 
   def statusFile = new File(directory, "status.json")
 
-  def root = new NodeDirectory(directory, null)
+  def root = new NodeDirectory(directory)
+
+  def sampleFile(path: String, size: Int): Option[File] = {
+    nodeDirectory(path) match {
+      case None => None
+      case Some(nodeDirectory) =>
+        val fileList = nodeDirectory.sampleJsonFiles.filter(pair => pair._1 == size)
+        if (fileList.isEmpty) None else Some(fileList.head._2)
+    }
+  }
+
+  def histogramFile(path: String, size: Int): Option[File] = {
+    nodeDirectory(path) match {
+      case None => None
+      case Some(nodeDirectory) =>
+        val fileList = nodeDirectory.histogramJsonFiles.filter(pair => pair._1 == size)
+        if (fileList.isEmpty) None else Some(fileList.head._2)
+    }
+  }
+
+  def nodeDirectory(path: String): Option[NodeDirectory] = {
+    val dir = path.split('/').toList.foldLeft(directory)((file, tag) => new File(file, FileRepository.tagToDirectory(tag)))
+    if (dir.exists()) Some(new NodeDirectory(dir)) else None
+  }
 
 }
 
-class NodeDirectory(val parentDirectory: File, tag: String) {
-
-  val directory: File = {
-    val dir = if (tag == null) parentDirectory else {
-      val directoryName = tag.replace(":", "_").replace("@", "_")
-      new File(parentDirectory, directoryName)
-    }
+object NodeDirectory {
+  def apply(parentDirectory: File, tag: String) = {
+    val dir = if (tag == null) parentDirectory else new File(parentDirectory, FileRepository.tagToDirectory(tag))
     dir.mkdirs()
-    dir
+    new NodeDirectory(dir)
   }
+}
 
-  def child(childTag: String) = new NodeDirectory(directory, childTag)
+class NodeDirectory(val directory: File) {
 
-  def treeFile = new File(directory, "tree.json")
+  def child(childTag: String) = NodeDirectory(directory, childTag)
 
   def statusFile = new File(directory, "status.json")
 
@@ -96,6 +118,5 @@ class NodeDirectory(val parentDirectory: File, tag: String) {
   def histogramJsonFiles = List(10, 100, 1000).map(size => (size, new File(directory, s"histogram-$size.json")))
 
   def sampleJsonFiles = List(100, 1000).map(size => (size, new File(directory, s"sample-$size.json")))
-
 }
 

@@ -32,7 +32,7 @@
             <div ng-show="tree">
                 <hr/>
                 <ul data-ng-controller="TreeCtrl">
-                    <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl"/>
+                    <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
                 </ul>
             </div>
         </div>
@@ -49,8 +49,32 @@
         <label data-ng-show="node.lengthHistogram.length">Lengths:
             <input type="checkbox" data-ng-model="node.showHistogram"/>
         </label>
+        <div>
+            <span data-ng-click="fetchSample(node, 100)">Sample-100</span>,
+            <span data-ng-click="fetchSample(node, 1000)">Sample-1000</span>,
+            <span data-ng-click="fetchHistogram(node, 10)">Histogram-10</span>,
+            <span data-ng-click="fetchHistogram(node, 100)">Histogram-100</span>,
+            <span data-ng-click="fetchHistogram(node, 1000)">Histogram-1000</span>
+        </div>
 
+        <div ng-show="node.sample">
+            <span>Sample</span>
+            <ul>
+                <li data-ng-repeat="sample in node.sample">
+                    <span>&quot;{{ sample }}&quot;</span>
+                </li>
+            </ul>
+        </div>
+        <div ng-show="node.histogram">
+            <span>Sample</span>
+            <ul>
+                <li data-ng-repeat="count in node.histogram">
+                    <span>{{ count[0] }}</span>: <span>&quot;{{ count[1] }}&quot;</span>
+                </li>
+            </ul>
+        </div>
         <div ng-show="node.showSample">
+            <span>Small Sample</span>
             <ul>
                 <li data-ng-repeat="sample in node.randomSample">
                     <span>&quot;{{ sample }}&quot;</span>
@@ -58,6 +82,7 @@
             </ul>
         </div>
         <div ng-show="node.showHistogram">
+            <span>Length Histogram</span>
             <ul>
                 <li data-ng-repeat="count in node.lengthHistogram">
                     <span>{{ count[0] }}: </span><span>{{ count[1] }}</span>

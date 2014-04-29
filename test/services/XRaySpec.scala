@@ -5,7 +5,7 @@ import scala.util.Random
 
 class XRaySpec extends FlatSpec with XRay {
 
-  val random = new RandomSample("test", 10, new Random(939))
+  val random = new RandomSample(10, new Random(939))
 
   "Random sampler" should "keep the right values" in {
 

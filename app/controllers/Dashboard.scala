@@ -53,10 +53,31 @@ object Dashboard extends Controller with Security with XRay {
     }
   }
 
-  def analysis(fileName: String) = Secure() {
+  def index(fileName: String) = Secure() {
+    token => email => implicit request => {
+      println(s"index for $fileName")
+      val repo = FileRepository(email)
+      fileResult(repo.analysis(fileName).indexFile)
+    }
+  }
+
+  def sample(fileName: String, path: String, size: Int) = Secure() {
     token => email => implicit request => {
       val repo = FileRepository(email)
-      fileResult(repo.analysis(fileName).treeFile)
+      repo.analysis(fileName).sampleFile(path, size) match {
+        case None => NotFound(Json.obj("path" -> path, "size" -> size))
+        case Some(file) => fileResult(file)
+      }
+    }
+  }
+
+  def histogram(fileName: String, path: String, size: Int) = Secure() {
+    token => email => implicit request => {
+      val repo = FileRepository(email)
+      repo.analysis(fileName).histogramFile(path, size) match {
+        case None => NotFound(Json.obj("path" -> path, "size" -> size))
+        case Some(file) => fileResult(file)
+      }
     }
   }
 
@@ -75,7 +96,8 @@ object Dashboard extends Controller with Security with XRay {
       )
     }
     else {
-      Ok(Json.obj("problem" -> "no status"))
+      println(s"index for ${file.getAbsolutePath}")
+      NotFound(Json.obj("file" -> file.getName))
     }
   }
 }
