@@ -2,7 +2,7 @@
  * Dashboard routes.
  */
 define(
-    ["angular", "./controllers", "common"],
+    ["angular", "./dashboard-controllers", "common"],
     function (angular, controllers) {
         "use strict";
 

@@ -6,8 +6,8 @@
 define(
     [
         "angular",
-        "./routes",
-        "./controllers"
+        "./home-routes",
+        "./home-controllers"
     ],
     function (angular, routes, controllers) {
         "use strict";

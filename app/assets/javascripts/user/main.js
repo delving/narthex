@@ -5,8 +5,8 @@
 define(
     [
         "angular",
-        "./routes",
-        "./services"
+        "./user-routes",
+        "./user-services"
     ],
     function (angular) {
         "use strict";

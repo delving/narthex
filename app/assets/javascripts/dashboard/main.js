@@ -6,9 +6,9 @@
 define(
     [
         "angular",
-        "./controllers",
-        "./routes",
-        "./services"
+        "./dashboard-controllers",
+        "./dashboard-routes",
+        "./dashboard-services"
     ],
     function (angular, controllers) {
         "use strict";

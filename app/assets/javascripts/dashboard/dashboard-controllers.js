@@ -5,7 +5,7 @@ define(["angular"], function () {
     "use strict";
 
     /**
-     * user is not a service, but stems from userResolve (Check ../user/services.js) object used by dashboard.routes.
+     * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
     var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout) {
 

@@ -1,7 +1,7 @@
 /**
  * Home routes.
  */
-define(["angular", "./controllers", "common"], function(angular, controllers) {
+define(["angular", "./home-controllers", "common"], function(angular, controllers) {
   "use strict";
 
   var mod = angular.module("home.routes", ["xml-ray.common"]);
