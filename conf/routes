@@ -14,7 +14,7 @@ GET     /jsroutes.js            controllers.Application.jsRoutes()
 # Authentication
 GET     /checkLogin             controllers.Application.checkLogin
 POST    /login                  controllers.Application.login
-POST    /logout                 controllers.Application.logout
+GET     /logout                 controllers.Application.logout
 
 # Users
 GET     /users/:id              controllers.Users.user(id: Long)

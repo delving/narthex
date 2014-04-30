@@ -43,7 +43,6 @@ class Boss extends Actor with ActorLogging {
   override def receive: Receive = {
 
     case AnalyzeThese(jobs) =>
-      log.info(s"Boss has ${jobs.size} jobs to do")
       jobs.map {
         job =>
           val analyzer = context.actorOf(Props[Analyzer], job._1.getName)

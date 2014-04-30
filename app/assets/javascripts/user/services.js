@@ -12,23 +12,25 @@ define(["angular", "common"], function (angular) {
                 var user;
                 var app = playRoutes.controllers.Application;
                 return {
-                    checkLogin: function() {
-                        return app.checkLogin().get().then(function(response) {
+                    checkLogin: function () {
+                        return app.checkLogin().get().then(function (response) {
                             user = response.data.user;
                             return user;
                         });
                     },
                     loginUser: function (credentials) {
                         return app.login().post(credentials).then(function (response) {
-                            // return promise so we can chain easily
                             user = response.data.user;
                             // todo: fetch user details?
                             return user;
                         });
                     },
                     logout: function () {
-                        // Logout on server in a real app
-                        user = undefined;
+                        console.log("notifying the server of logout");
+                        return app.logout().get().then(function (response) {
+                            user = undefined;
+                            return "logged out"
+                        });
                     },
                     getUser: function () {
                         return user;
@@ -52,11 +54,9 @@ define(["angular", "common"], function (angular) {
                     deferred.resolve(user);
                 }
                 else {
-                    userService.checkLogin().then(function(revealedUser) {
-                        console.log("check revealed user "+revealedUser);
+                    userService.checkLogin().then(function (revealedUser) {
                         deferred.resolve(user)
-                    }, function(reason) {
-                        console.log("no user revealed: "+reason);
+                    }, function (reason) {
                         deferred.reject();
                     });
                 }

@@ -46,7 +46,6 @@ trait Security { this: Controller =>
 
   implicit class ResultWithToken(result: Result) {
     def withToken(token:String, email: String): Result = {
-      Logger.info(s"with token $token")
       Cache.set(token, email, CACHE_EXPIRATION)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, token, None, httpOnly = false))
     }

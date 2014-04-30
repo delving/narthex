@@ -3,6 +3,8 @@ package controllers
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
+import play.api.cache.Cache
+import play.api.Play.current
 
 /** Application controller, handles authentication */
 object Application extends Controller with Security {
@@ -49,17 +51,29 @@ object Application extends Controller with Security {
       Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
   }
 
-  def checkLogin = Secure() {
-    token => email => implicit request => {
-      Ok(Json.obj("user" -> Json.obj("email" -> email)))
-    }
+  def checkLogin = Action {
+    implicit request =>
+      val maybeToken = request.headers.get(TOKEN)
+      maybeToken flatMap {
+        token =>
+          Cache.getAs[String](token) map {
+            email =>
+              Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
+          }
+      } getOrElse {
+        Unauthorized(Json.obj("err" -> "No Token"))
+      }
   }
 
   /** Logs the user out, i.e. invalidated the token. */
-  def logout = Secure(parse.json) {
-    token => email => implicit request =>
-    // TODO Invalidate token, remove cookie
-    Ok.discardingToken(token)
+  def logout = Action {
+    implicit request =>
+      request.headers.get(TOKEN) match {
+        case Some(token) =>
+          Ok.discardingToken(token)
+        case None =>
+          Unauthorized(Json.obj("err" -> "No Token"))
+      }
   }
 
 }

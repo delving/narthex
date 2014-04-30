@@ -5,13 +5,18 @@ define(["angular"], function (angular) {
     "use strict";
 
     /** Controls the index page */
-    var HomeCtrl = function ($scope, $rootScope, $cookies, $location) {
+    var HomeCtrl = function ($scope, $rootScope, $cookies, $location, userService) {
         $scope.token = $cookies["XSRF-TOKEN"];
         if ($scope.token) {
-            $location.path("/dashboard")
+            userService.checkLogin().then(function(response) {
+                $location.path("/dashboard")
+            }, function(reason) {
+                $scope.token = "no token";
+                $cookies["XSRF-TOKEN"] = undefined;
+            });
         }
     };
-    HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location"];
+    HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService"];
 
     /** Controls the header */
     var HeaderCtrl = function ($scope, userService, $location) {
@@ -27,9 +32,12 @@ define(["angular"], function (angular) {
         );
 
         $scope.logout = function () {
-            userService.logout();
-            $scope.user = undefined;
-            $location.path("/");
+            userService.logout().then(function() {
+                $scope.user = undefined;
+                $location.path("/");
+            }, function(why) {
+                console.log("unable to logout", why);
+            });
         };
     };
     HeaderCtrl.$inject = ["$scope", "userService", "$location"];
