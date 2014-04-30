@@ -19,19 +19,13 @@
         <ul>
             <li ng-repeat="file in files">
                 <a href data-ng-click="watchFile(file)">{{ file }}</a>
+                <div data-ng-show="file == chosenFile">
+                    <span>Elements:{{ fileStatus.elements }}</span>
+                    <a href data-ng-click="viewFile()" data-ng-show="fileStatus.index">Index Available</a>
+                    <span data-ng-show="fileStatus.complete">Analysis Complete</span>
+                </div>
             </li>
         </ul>
-
-        <div ng-show="chosenFile">
-            <h1>{{ chosenFile }}</h1>
-            <ul>
-                <li>length: {{ fileLength }}</li>
-                <li>status: {{ fileStatus }}</li>
-                <li ng-show="analysisComplete">
-                    <span ng-href="/dashboard/{{chosenFile}}">View it!</span>
-                </li>
-            </ul>
-        </div>
     </div>
 
 </div>

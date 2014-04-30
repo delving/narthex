@@ -38,7 +38,7 @@ class PersonalRepository(root: File, val email: String) {
     val filesToAnalyze = uploadedOnly()
     val analyzedDirs = filesToAnalyze.map(file => analyzedDir(file.getName))
     analyzedDirs.foreach(_.mkdirs())
-    FileRepository.boss ! AnalyzeThese(filesToAnalyze.zip(analyzedDirs))
+    FileRepository.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(analyzedDirs))
   }
 
   def analysis(fileName: String) = new FileAnalysisDirectory(analyzedDir(fileName))
@@ -62,7 +62,7 @@ class FileAnalysisDirectory(val directory: File) {
 
   def statusFile = new File(directory, "status.json")
 
-  def root = new NodeDirectory(directory)
+  def root = new NodeDirectory(this, directory)
 
   def sampleFile(path: String, size: Int): Option[File] = {
     nodeDirectory(path) match {
@@ -84,22 +84,22 @@ class FileAnalysisDirectory(val directory: File) {
 
   def nodeDirectory(path: String): Option[NodeDirectory] = {
     val dir = path.split('/').toList.foldLeft(directory)((file, tag) => new File(file, FileRepository.tagToDirectory(tag)))
-    if (dir.exists()) Some(new NodeDirectory(dir)) else None
+    if (dir.exists()) Some(new NodeDirectory(this, dir)) else None
   }
 
 }
 
 object NodeDirectory {
-  def apply(parentDirectory: File, tag: String) = {
+  def apply(fileAnalysisDirectory: FileAnalysisDirectory, parentDirectory: File, tag: String) = {
     val dir = if (tag == null) parentDirectory else new File(parentDirectory, FileRepository.tagToDirectory(tag))
     dir.mkdirs()
-    new NodeDirectory(dir)
+    new NodeDirectory(fileAnalysisDirectory, dir)
   }
 }
 
-class NodeDirectory(val directory: File) {
+class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val directory: File) {
 
-  def child(childTag: String) = NodeDirectory(directory, childTag)
+  def child(childTag: String) = NodeDirectory(fileAnalysisDirectory, directory, childTag)
 
   def statusFile = new File(directory, "status.json")
 

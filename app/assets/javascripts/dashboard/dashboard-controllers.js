@@ -59,17 +59,19 @@ define(["angular"], function () {
                     $scope.fileStatus = data.problem;
                 }
                 else {
-                    $scope.fileStatus = "Count: " + data.count;
-                    $scope.analysisComplete = data.complete;
-                    if ($scope.chosenFile && !$scope.analysisComplete) {
+                    $scope.fileStatus = data;
+                    if ($scope.chosenFile && !$scope.fileStatus.complete) {
                         $timeout(checkFileStatus, 1000)
-                    }
-                    else {
-                        $location.path("/dashboard/"+$scope.chosenFile);
                     }
                 }
             })
         }
+
+        $scope.viewFile = function() {
+            if ($scope.chosenFile) {
+                $location.path("/dashboard/" + $scope.chosenFile);
+            }
+        };
 
         $scope.watchFile = function (file) {
             $scope.chosenFile = file;
@@ -87,20 +89,17 @@ define(["angular"], function () {
 
         console.log("fetching analysis");
         dashboardService.index($scope.fileName).then(function (data) {
-            console.log("tree=", data);
             $scope.tree = data;
         });
 
-        $scope.fetchSample = function(node, size) {
+        $scope.fetchSample = function (node, size) {
             dashboardService.sample($scope.fileName, node.path, size).then(function (data) {
-                console.log("sample=", data);
                 node.sample = data.sample;
             });
         };
 
-        $scope.fetchHistogram = function(node, size) {
+        $scope.fetchHistogram = function (node, size) {
             dashboardService.histogram($scope.fileName, node.path, size).then(function (data) {
-                console.log("histogram=", data);
                 node.histogram = data.histogram;
             });
         };

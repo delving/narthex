@@ -149,7 +149,7 @@ trait XRay {
       root.finish()
       val pretty = Json.prettyPrint(Json.toJson(root))
       FileUtils.writeStringToFile(directory.indexFile, pretty, "UTF-8")
-      progress(-1) // todo: should record the count somehow (xml element count)
+      progress(count)
       root
     }
   }
