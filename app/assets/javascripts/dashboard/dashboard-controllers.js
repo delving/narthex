@@ -52,8 +52,8 @@ define(["angular"], function () {
 
         fetchFileList();
 
-        function pollChosenFileStatus() {
-            console.log("Polling status " + $scope.chosenFile);
+        function checkFileStatus() {
+            console.log("Checking status " + $scope.chosenFile);
             dashboardService.status($scope.chosenFile).then(function (data) {
                 if (data.problem) {
                     $scope.fileStatus = data.problem;
@@ -62,15 +62,10 @@ define(["angular"], function () {
                     $scope.fileStatus = "Count: " + data.count;
                     $scope.analysisComplete = data.complete;
                     if ($scope.chosenFile && !$scope.analysisComplete) {
-//                        console.log("Poll again");
-                        $timeout(pollChosenFileStatus, 500)
+                        $timeout(checkFileStatus, 1000)
                     }
                     else {
-                        console.log("fetching analysis");
-                        dashboardService.index($scope.chosenFile).then(function (data) {
-                            console.log("tree=", data);
-                            $scope.tree = data;
-                        });
+                        $location.path("/dashboard/"+$scope.chosenFile);
                     }
                 }
             })
@@ -78,21 +73,7 @@ define(["angular"], function () {
 
         $scope.watchFile = function (file) {
             $scope.chosenFile = file;
-            pollChosenFileStatus();
-        };
-
-        $scope.fetchSample = function(node, size) {
-            dashboardService.sample($scope.chosenFile, node.path, size).then(function (data) {
-                console.log("sample=", data);
-                node.sample = data.sample;
-            });
-        };
-
-        $scope.fetchHistogram = function(node, size) {
-            dashboardService.histogram($scope.chosenFile, node.path, size).then(function (data) {
-                console.log("histogram=", data);
-                node.histogram = data.histogram;
-            });
+            checkFileStatus();
         };
 
     };
@@ -101,11 +82,31 @@ define(["angular"], function () {
         "$scope", "user", "dashboardService", "fileUpload", "$location", "$upload", "$timeout"
     ];
 
-    var AdminDashboardCtrl = function ($scope, user) {
-        $scope.user = user;
+    var FileDetailCtrl = function ($scope, $routeParams, dashboardService) {
+        $scope.fileName = $routeParams.fileName;
+
+        console.log("fetching analysis");
+        dashboardService.index($scope.fileName).then(function (data) {
+            console.log("tree=", data);
+            $scope.tree = data;
+        });
+
+        $scope.fetchSample = function(node, size) {
+            dashboardService.sample($scope.fileName, node.path, size).then(function (data) {
+                console.log("sample=", data);
+                node.sample = data.sample;
+            });
+        };
+
+        $scope.fetchHistogram = function(node, size) {
+            dashboardService.histogram($scope.fileName, node.path, size).then(function (data) {
+                console.log("histogram=", data);
+                node.histogram = data.histogram;
+            });
+        };
     };
 
-    AdminDashboardCtrl.$inject = ["$scope", "user"];
+    FileDetailCtrl.$inject = ["$scope", "$routeParams", "dashboardService"];
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree, oldTree) {
@@ -130,7 +131,7 @@ define(["angular"], function () {
         DashboardCtrl: DashboardCtrl,
         TreeCtrl: TreeCtrl,
         TreeNodeCtrl: TreeNodeCtrl,
-        AdminDashboardCtrl: AdminDashboardCtrl // todo: is this used?
+        FileDetailCtrl: FileDetailCtrl
     };
 
 });

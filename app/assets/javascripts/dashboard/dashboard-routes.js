@@ -11,12 +11,16 @@ define(
             [
                 "$routeProvider", "userResolve",
                 function ($routeProvider, userResolve) {
-                    $routeProvider
-                        .when(
-                        "/dashboard",
-                        {
+                    $routeProvider.when(
+                        "/dashboard", {
                             templateUrl: "/assets/templates/dashboard/dashboard.html",
                             controller: controllers.DashboardCtrl,
+                            resolve: userResolve
+                        }
+                    ).when(
+                        "/dashboard/:fileName", {
+                            templateUrl: "/assets/templates/dashboard/file-detail.html",
+                            controller: controllers.FileDetailCtrl,
                             resolve: userResolve
                         }
                     );

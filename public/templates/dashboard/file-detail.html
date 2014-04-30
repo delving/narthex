@@ -1,0 +1,69 @@
+<div>
+    <div class="page-header">
+        <h1>{{ fileName }}</h1>
+    </div>
+    <div ng-show="tree">
+        <hr/>
+        <ul data-ng-controller="TreeCtrl">
+            <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
+        </ul>
+    </div>
+</div>
+
+<script type="text/ng-template" id="node.html">
+    <li>
+        <span><b>{{ node.tag }}</b></span><span>({{ node.count }})</span>
+        <label data-ng-show="node.randomSample.length">Sample:
+            <input type="checkbox" data-ng-model="node.showSample"/>
+        </label>
+        <label data-ng-show="node.lengthHistogram.length">Lengths:
+            <input type="checkbox" data-ng-model="node.showHistogram"/>
+        </label>
+
+        <div>
+            <span data-ng-click="fetchSample(node, 100)">Sample-100</span>,
+            <span data-ng-click="fetchSample(node, 1000)">Sample-1000</span>,
+            <span data-ng-click="fetchHistogram(node, 10)">Histogram-10</span>,
+            <span data-ng-click="fetchHistogram(node, 100)">Histogram-100</span>,
+            <span data-ng-click="fetchHistogram(node, 1000)">Histogram-1000</span>
+        </div>
+
+        <div ng-show="node.sample">
+            <span>Sample</span>
+            <ul>
+                <li data-ng-repeat="sample in node.sample">
+                    <span>&quot;{{ sample }}&quot;</span>
+                </li>
+            </ul>
+        </div>
+        <div ng-show="node.histogram">
+            <span>Sample</span>
+            <ul>
+                <li data-ng-repeat="count in node.histogram">
+                    <span>{{ count[0] }}</span>: <span>&quot;{{ count[1] }}&quot;</span>
+                </li>
+            </ul>
+        </div>
+        <div ng-show="node.showSample">
+            <span>Small Sample</span>
+            <ul>
+                <li data-ng-repeat="sample in node.randomSample">
+                    <span>&quot;{{ sample }}&quot;</span>
+                </li>
+            </ul>
+        </div>
+        <div ng-show="node.showHistogram">
+            <span>Length Histogram</span>
+            <ul>
+                <li data-ng-repeat="count in node.lengthHistogram">
+                    <span>{{ count[0] }}: </span><span>{{ count[1] }}</span>
+                </li>
+            </ul>
+        </div>
+        <ul ng-if="node.kids" class="">
+            <li class="" data-ng-repeat="(nodeIndex, node) in node.kids" data-ng-controller="TreeNodeCtrl">
+                <div ng-include="'node.html'">node</div>
+            </li>
+        </ul>
+    </li>
+</script>

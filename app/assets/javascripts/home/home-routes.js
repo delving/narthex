@@ -1,14 +1,17 @@
 /**
  * Home routes.
  */
-define(["angular", "./home-controllers", "common"], function(angular, controllers) {
-  "use strict";
+define(
+    ["angular", "./home-controllers", "common"],
+    function (angular, controllers) {
+        "use strict";
 
-  var mod = angular.module("home.routes", ["xml-ray.common"]);
-  mod.config(["$routeProvider", function($routeProvider) {
-    $routeProvider
-      .when("/",  {templateUrl: "/assets/templates/home/home.html", controller:controllers.HomeCtrl})
-      .otherwise( {templateUrl: "/assets/templates/home/notFound.html"});
-  }]);
-  return mod;
-});
+        var mod = angular.module("home.routes", ["xml-ray.common"]);
+        mod.config(["$routeProvider", function ($routeProvider) {
+            $routeProvider
+                .when("/", {templateUrl: "/assets/templates/home/home.html", controller: controllers.HomeCtrl})
+                .otherwise({templateUrl: "/assets/templates/home/notFound.html"});
+        }]);
+        return mod;
+    }
+);
