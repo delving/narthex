@@ -69,7 +69,7 @@ trait XRay {
     }
 
     def sort(sortStarter: XRayNode => Unit) : Unit = {
-      if (!lengthHistogram.isEmpty) sortStarter(this)
+      sortStarter(this)
       kids.values.foreach(_.sort(sortStarter))
     }
 

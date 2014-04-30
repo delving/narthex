@@ -35,7 +35,7 @@ object Actors {
 
   case class Count(directory: NodeDirectory)
 
-  case class Counted(directory: NodeDirectory, uniqueCount: Int)
+  case class Counted(directory: NodeDirectory, uniqueCount: Int, sampleFiles: Seq[File])
 
   case class Merge(directory: NodeDirectory, inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
 
@@ -89,7 +89,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
   var sorters = List.empty[ActorRef]
   var collators = List.empty[ActorRef]
 
-  def writeHistograms(directory: NodeDirectory) = {
+  def writeHistograms(directory: NodeDirectory, uniqueCount: Int) = {
     val input = new BufferedReader(new FileReader(directory.histogramTextFile))
 
     def lineOption = {
@@ -97,29 +97,37 @@ class Analyzer extends Actor with XRay with ActorLogging {
       if (string != null) Some(string) else None
     }
 
-    def createFile(entries: ArrayBuffer[JsArray], histogramFile: File) = {
+    def createFile(maximum: Int, entries: ArrayBuffer[JsArray], histogramFile: File) = {
       jsonFile(histogramFile) {
-        current => Json.obj("histogram" -> entries)
+        current => Json.obj(
+          "uniqueCount" -> uniqueCount,
+          "entries" -> entries.size,
+          "maximum" -> maximum,
+          "complete" -> (entries.size == uniqueCount),
+          "histogram" -> entries
+        )
       }
     }
 
-    var accumulators = directory.histogramJsonFiles.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
+    var activeCounters = directory.histogramJsonFiles.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
+    activeCounters = activeCounters.filter(triple => uniqueCount > triple._1 / directory.sizeFactor)
+    val counters = activeCounters
     var line = lineOption
     var count = 1
-    while (line.isDefined && !accumulators.isEmpty) {
+    while (line.isDefined && !activeCounters.isEmpty) {
       val lineMatch = LINE.findFirstMatchIn(line.get)
-      accumulators = accumulators.filter {
+      activeCounters = activeCounters.filter {
         triple =>
           lineMatch.map(groups => triple._2 += Json.arr(groups.group(1), groups.group(2)))
           val keep = count < triple._1
-          if (!keep) createFile(triple._2, triple._3)
+          if (!keep) createFile(triple._1, triple._2, triple._3) // side effect
           keep
       }
       line = lineOption
       count += 1
     }
-    accumulators.foreach(triple => createFile(triple._2, triple._3))
-    input.close()
+    activeCounters.foreach(triple => createFile(triple._1, triple._2, triple._3))
+    counters.map(triple => triple._3)
   }
 
   def receive = {
@@ -131,20 +139,30 @@ class Analyzer extends Actor with XRay with ActorLogging {
       source.close()
       root.sort {
         node =>
-          val sorter = context.actorOf(Props[Sorter])
-          sorters = sorter :: sorters
-          sorter ! Sort(node.directory, SortType.VALUE_SORT)
+          if (node.lengthHistogram.isEmpty) {
+            jsonFile(node.directory.statusFile) {
+              current => Json.obj("uniqueCount" -> 0)
+            }
+          }
+          else {
+            val sorter = context.actorOf(Props[Sorter])
+            sorters = sorter :: sorters
+            sorter ! Sort(node.directory, SortType.VALUE_SORT)
+          }
       }
       sender ! TreeComplete(Json.toJson(root), directory)
 
-    case Counted(directory, uniqueCount) =>
+    case Counted(directory, uniqueCount, sampleFiles) =>
       log.debug(s"Count finished : ${directory.countedFile.getAbsolutePath}")
       val sorter = context.actorOf(Props[Sorter])
       sorters = sorter :: sorters
       collators = collators.filter(collator => collator != sender)
       FileUtils.deleteQuietly(directory.sortedFile)
       jsonFile(directory.statusFile) {
-        current => Json.obj("uniqueCount" -> uniqueCount)
+        current => Json.obj(
+          "uniqueCount" -> uniqueCount,
+          "samples" -> Json.arr(sampleFiles.map(file => file.getName))
+        )
       }
       sorter ! Sort(directory, SortType.HISTOGRAM_SORT)
 
@@ -160,7 +178,17 @@ class Analyzer extends Actor with XRay with ActorLogging {
 
         case SortType.HISTOGRAM_SORT =>
           log.debug(s"writing histograms : ${directory.directory.getAbsolutePath}")
-          writeHistograms(directory)
+          jsonFile(directory.statusFile) {
+            current =>
+              val uniqueCount = (current \ "uniqueCount").as[Int]
+              val samples = current \ "samples"
+              val histogramFiles = writeHistograms(directory, uniqueCount)
+              Json.obj(
+                "uniqueCount" -> uniqueCount,
+                "samples" -> samples,
+                "histograms" -> Json.arr(histogramFiles.map(file => file.getName))
+              )
+          }
           FileUtils.deleteQuietly(directory.countedFile)
           if (sorters.isEmpty && collators.isEmpty) {
             context.parent ! AnalysisComplete(directory.fileAnalysisDirectory)
@@ -359,8 +387,9 @@ class Collator extends Actor with ActorLogging with XRay {
       sorted.close()
       counted.close()
       unique.close()
-      samples.foreach(pair => createSampleFile(pair._1, pair._2))
-      sender ! Counted(directory, uniqueCount)
+      val usefulSamples = samples.filter(pair => uniqueCount > pair._1.size * 2)
+      usefulSamples.foreach(pair => createSampleFile(pair._1, pair._2))
+      sender ! Counted(directory, uniqueCount, usefulSamples.map(pair => pair._2))
   }
 }
 

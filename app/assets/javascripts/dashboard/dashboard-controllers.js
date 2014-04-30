@@ -53,7 +53,6 @@ define(["angular"], function () {
         fetchFileList();
 
         function checkFileStatus() {
-            console.log("Checking status " + $scope.chosenFile);
             dashboardService.status($scope.chosenFile).then(function (data) {
                 if (data.problem) {
                     $scope.fileStatus = data.problem;
