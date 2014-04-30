@@ -19,11 +19,11 @@
         <ul>
             <li ng-repeat="file in files">
                 <a href data-ng-click="watchFile(file)">{{ file }}</a>
-                <div data-ng-show="file == chosenFile">
+                <span data-ng-show="file == chosenFile">
                     <span>Elements:{{ fileStatus.elements }}</span>
                     <a href data-ng-click="viewFile()" data-ng-show="fileStatus.index">Index Available</a>
                     <span data-ng-show="fileStatus.complete">Analysis Complete</span>
-                </div>
+                </span>
             </li>
         </ul>
     </div>

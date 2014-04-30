@@ -24,6 +24,11 @@ define(["angular", "common"], function (angular) {
                     return response.data;
                 });
             },
+            nodeStatus: function (fileName, path) {
+                return dash.nodeStatus(fileName, path).get().then(function (response) {
+                    return response.data;
+                });
+            },
             sample: function (fileName, path, size) {
                 return dash.sample(fileName, path, size).get().then(function (response) {
                     return response.data;

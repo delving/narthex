@@ -18,8 +18,7 @@ trait XRay {
   class XRayNode(val directory: NodeDirectory, val parent: XRayNode, val tag: String) {
     var kids = Map.empty[String, XRayNode]
     var count = 0
-    var lengthHistogram = new LengthHistogram()
-    var randomSample = new RandomSample(20)
+    var lengths = new LengthHistogram()
     var valueWriter: Option[BufferedWriter] = None
     var valueBuffer = new StringBuilder
 
@@ -50,8 +49,7 @@ trait XRay {
     def end() = {
       var value = valueBuffer.toString().trim()
       if (!value.isEmpty) {
-        lengthHistogram.record(value)
-        randomSample.record(value)
+        lengths.record(value)
         if (valueWriter == None) {
           valueWriter = Option(new BufferedWriter(new FileWriter(directory.valuesFile)))
         }
@@ -227,8 +225,7 @@ trait XRay {
       "tag" -> node.tag,
       "path" -> node.path,
       "count" -> node.count,
-      "lengthHistogram" -> writes(node.lengthHistogram),
-      "randomSample" -> writes(node.randomSample),
+      "lengths" -> writes(node.lengths),
       "kids" -> JsArray(node.kids.values.map(writes).toSeq)
     )
   }

@@ -86,20 +86,28 @@ define(["angular"], function () {
     var FileDetailCtrl = function ($scope, $routeParams, dashboardService) {
         $scope.fileName = $routeParams.fileName;
 
-        console.log("fetching analysis");
         dashboardService.index($scope.fileName).then(function (data) {
             $scope.tree = data;
         });
 
+        $scope.selectNode = function(node) {
+            $scope.node = node;
+            dashboardService.nodeStatus($scope.fileName, node.path).then(function(data){
+                $scope.status = data;
+                $scope.sample = undefined;
+                $scope.histogram = undefined;
+            });
+        };
+
         $scope.fetchSample = function (node, size) {
             dashboardService.sample($scope.fileName, node.path, size).then(function (data) {
-                node.sample = data.sample;
+                $scope.sample = data;
             });
         };
 
         $scope.fetchHistogram = function (node, size) {
             dashboardService.histogram($scope.fileName, node.path, size).then(function (data) {
-                node.histogram = data.histogram;
+                $scope.histogram = data;
             });
         };
     };

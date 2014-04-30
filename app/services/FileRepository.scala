@@ -64,6 +64,13 @@ class FileAnalysisDirectory(val directory: File) {
 
   def root = new NodeDirectory(this, directory)
 
+  def statusFile(path: String): Option[File] = {
+    nodeDirectory(path) match {
+      case None => None
+      case Some(nodeDirectory) => Some(nodeDirectory.statusFile)
+    }
+  }
+
   def sampleFile(path: String, size: Int): Option[File] = {
     nodeDirectory(path) match {
       case None => None
@@ -119,6 +126,6 @@ class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val direct
 
   def histogramJsonFiles = List(10, 100, 1000).map(size => (size, new File(directory, s"histogram-$size.json")))
 
-  def sampleJsonFiles = List(100, 1000).map(size => (size, new File(directory, s"sample-$size.json")))
+  def sampleJsonFiles = List(10, 100, 1000).map(size => (size, new File(directory, s"sample-$size.json")))
 }
 

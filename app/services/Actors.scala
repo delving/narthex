@@ -35,15 +35,25 @@ object Actors {
 
   case class Count(directory: NodeDirectory)
 
-  case class Counted(directory: NodeDirectory, uniqueCount: Int, sampleFiles: Seq[File])
+  case class Counted(directory: NodeDirectory, uniqueCount: Int, sampleFiles: Seq[Int])
 
   case class Merge(directory: NodeDirectory, inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
 
   case class Merged(merge: Merge, fileA: File, sortType: SortType)
 
   def jsonFile(file: File)(xform: JsValue => JsObject) = {
-    def input = if (file.exists()) Json.parse(FileUtils.readFileToString(file)) else Json.obj()
-    FileUtils.writeStringToFile(file, Json.prettyPrint(xform(input)), "UTF-8")
+    if (file.exists()) {
+      val value = Json.parse(FileUtils.readFileToString(file))
+      val tempFile = new File(file.getParentFile, s"${file.getName}.temp")
+      FileUtils.writeStringToFile(tempFile, Json.prettyPrint(xform(value)), "UTF-8")
+      FileUtils.deleteQuietly(file)
+      FileUtils.moveFile(tempFile, file)
+    }
+    else {
+      FileUtils.writeStringToFile(file, Json.prettyPrint(xform(Json.obj())), "UTF-8")
+    }
+//    def input = if (file.exists()) Json.parse(FileUtils.readFileToString(file)) else Json.obj()
+//    FileUtils.writeStringToFile(file, Json.prettyPrint(xform(input)), "UTF-8")
   }
 
 }
@@ -127,7 +137,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
       count += 1
     }
     activeCounters.foreach(triple => createFile(triple._1, triple._2, triple._3))
-    counters.map(triple => triple._3)
+    counters.map(triple => triple._1)
   }
 
   def receive = {
@@ -139,7 +149,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
       source.close()
       root.sort {
         node =>
-          if (node.lengthHistogram.isEmpty) {
+          if (node.lengths.isEmpty) {
             jsonFile(node.directory.statusFile) {
               current => Json.obj("uniqueCount" -> 0)
             }
@@ -152,7 +162,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
       }
       sender ! TreeComplete(Json.toJson(root), directory)
 
-    case Counted(directory, uniqueCount, sampleFiles) =>
+    case Counted(directory, uniqueCount, sampleSizes) =>
       log.debug(s"Count finished : ${directory.countedFile.getAbsolutePath}")
       val sorter = context.actorOf(Props[Sorter])
       sorters = sorter :: sorters
@@ -161,7 +171,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
       jsonFile(directory.statusFile) {
         current => Json.obj(
           "uniqueCount" -> uniqueCount,
-          "samples" -> Json.arr(sampleFiles.map(file => file.getName))
+          "samples" -> sampleSizes
         )
       }
       sorter ! Sort(directory, SortType.HISTOGRAM_SORT)
@@ -182,11 +192,11 @@ class Analyzer extends Actor with XRay with ActorLogging {
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]
               val samples = current \ "samples"
-              val histogramFiles = writeHistograms(directory, uniqueCount)
+              val histogramSizes = writeHistograms(directory, uniqueCount)
               Json.obj(
                 "uniqueCount" -> uniqueCount,
                 "samples" -> samples,
-                "histograms" -> Json.arr(histogramFiles.map(file => file.getName))
+                "histograms" -> histogramSizes
               )
           }
           FileUtils.deleteQuietly(directory.countedFile)
@@ -387,9 +397,10 @@ class Collator extends Actor with ActorLogging with XRay {
       sorted.close()
       counted.close()
       unique.close()
-      val usefulSamples = samples.filter(pair => uniqueCount > pair._1.size * 2)
+      val bigEnoughSamples = samples.filter(pair => uniqueCount > pair._1.size * 2)
+      val usefulSamples = if (bigEnoughSamples.isEmpty) List(samples.head) else bigEnoughSamples
       usefulSamples.foreach(pair => createSampleFile(pair._1, pair._2))
-      sender ! Counted(directory, uniqueCount, usefulSamples.map(pair => pair._2))
+      sender ! Counted(directory, uniqueCount, usefulSamples.map(pair => pair._1.size))
   }
 }
 
