@@ -24,7 +24,7 @@ trait Security { this: Controller =>
       val maybeToken = request.headers.get(TOKEN)
       maybeToken flatMap { token =>
         Cache.getAs[String](token) map { email =>
-          block(token)(email)(request)
+          block(token)(email)(request).withToken(token, email)
         }
       } getOrElse {
         Logger.info("No Token!")

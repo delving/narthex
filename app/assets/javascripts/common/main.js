@@ -4,7 +4,6 @@
 define(
     [
         "angular",
-        "./services/helper",
         "./services/fileUpload",
         "./services/playRoutes",
         "./filters",
@@ -17,7 +16,6 @@ define(
         return angular.module(
             "xml-ray.common",
             [
-                "common.helper",
                 "common.fileUpload",
                 "common.playRoutes",
                 "common.filters",

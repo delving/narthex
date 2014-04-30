@@ -9,12 +9,18 @@ define(["angular", "common"], function (angular) {
         "userService",
         ["$http", "$q", "playRoutes",
             function ($http, $q, playRoutes) {
-                var user, token;
+                var user;
+                var app = playRoutes.controllers.Application;
                 return {
+                    checkLogin: function() {
+                        return app.checkLogin().get().then(function(response) {
+                            user = response.data.user;
+                            return user;
+                        });
+                    },
                     loginUser: function (credentials) {
-                        return playRoutes.controllers.Application.login().post(credentials).then(function (response) {
+                        return app.login().post(credentials).then(function (response) {
                             // return promise so we can chain easily
-                            token = response.data.token;
                             user = response.data.user;
                             // todo: fetch user details?
                             return user;
@@ -46,7 +52,13 @@ define(["angular", "common"], function (angular) {
                     deferred.resolve(user);
                 }
                 else {
-                    deferred.reject();
+                    userService.checkLogin().then(function(revealedUser) {
+                        console.log("check revealed user "+revealedUser);
+                        deferred.resolve(user)
+                    }, function(reason) {
+                        console.log("no user revealed: "+reason);
+                        deferred.reject();
+                    });
                 }
                 return deferred.promise;
             }

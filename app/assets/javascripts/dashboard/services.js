@@ -7,30 +7,30 @@ define(["angular", "common"], function (angular) {
     var mod = angular.module("dashboard.services", ["xml-ray.common"]);
 
     mod.service("dashboardService", ["$http", "$q", "playRoutes", function ($http, $q, playRoutes) {
-        var user, token;
+        var dash = playRoutes.controllers.Dashboard;
         return {
             list: function () {
-                return playRoutes.controllers.Dashboard.list().get().then(function (response) {
+                return dash.list().get().then(function (response) {
                     return response.data;
                 });
             },
             status: function (fileName) {
-                return playRoutes.controllers.Dashboard.status(fileName).get().then(function (response) {
+                return dash.status(fileName).get().then(function (response) {
                     return response.data;
                 });
             },
             index: function (fileName) {
-                return playRoutes.controllers.Dashboard.index(fileName).get().then(function (response) {
+                return dash.index(fileName).get().then(function (response) {
                     return response.data;
                 });
             },
             sample: function (fileName, path, size) {
-                return playRoutes.controllers.Dashboard.sample(fileName, path, size).get().then(function (response) {
+                return dash.sample(fileName, path, size).get().then(function (response) {
                     return response.data;
                 });
             },
             histogram: function (fileName, path, size) {
-                return playRoutes.controllers.Dashboard.histogram(fileName, path, size).get().then(function (response) {
+                return dash.histogram(fileName, path, size).get().then(function (response) {
                     return response.data;
                 });
             }

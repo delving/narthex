@@ -13,17 +13,15 @@ object Dashboard extends Controller with Security with XRay {
   def upload = Secure(parse.multipartFormData) {
     token => email => implicit request => {
       val repo = FileRepository(email)
-      request.body.file("file").map {
-        file =>
+      request.body.file("file") match {
+        case Some(file) =>
           val filename = file.filename
           val contentType = file.contentType
           Logger.info(s"upload $filename ($contentType) to $email")
           file.ref.moveTo(repo.uploadedFile(filename))
           Ok(filename)
-      }.getOrElse {
-        Redirect(routes.Application.index()).flashing(
-          "error" -> "Missing file"
-        )
+        case None =>
+          Redirect(routes.Application.index()).flashing("error" -> "Missing file")
       }
     }
   }
@@ -34,7 +32,7 @@ object Dashboard extends Controller with Security with XRay {
       repo.scanForWork()
       val fileList: Seq[File] = repo.listUploadedFiles
       val stringList = fileList.map(file => s"${file.getName}")
-      Ok(Json.toJson(stringList)).withToken(token, email)
+      Ok(Json.toJson(stringList))
     }
   }
 
@@ -42,7 +40,7 @@ object Dashboard extends Controller with Security with XRay {
     token => email => implicit request => {
       val repo = FileRepository(email)
       repo.scanForWork()
-      Ok(Json.obj("should report how many" -> "or something"))
+      Ok
     }
   }
 

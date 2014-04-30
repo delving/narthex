@@ -5,13 +5,16 @@ define(["angular"], function (angular) {
     "use strict";
 
     /** Controls the index page */
-    var HomeCtrl = function ($scope, $rootScope) {
-        $rootScope.pageTitle = "XML-RAY";
+    var HomeCtrl = function ($scope, $rootScope, $cookies, $location) {
+        $scope.token = $cookies["XSRF-TOKEN"];
+        if ($scope.token) {
+            $location.path("/dashboard")
+        }
     };
-    HomeCtrl.$inject = ["$scope", "$rootScope"];
+    HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location"];
 
     /** Controls the header */
-    var HeaderCtrl = function ($scope, userService, helper, $location) {
+    var HeaderCtrl = function ($scope, userService, $location) {
         // Wrap the current user from the service in a watch expression
         $scope.$watch(
             function () {
@@ -29,7 +32,7 @@ define(["angular"], function (angular) {
             $location.path("/");
         };
     };
-    HeaderCtrl.$inject = ["$scope", "userService", "helper", "$location"];
+    HeaderCtrl.$inject = ["$scope", "userService", "$location"];
 
     /** Controls the footer */
     var FooterCtrl = function (/*$scope*/) {

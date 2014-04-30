@@ -7,7 +7,7 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/services.js) object used by dashboard.routes.
      */
-    var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, helper, $upload, $timeout) {
+    var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout) {
 
         $scope.user = user;
 
@@ -98,7 +98,7 @@ define(["angular"], function () {
     };
 
     DashboardCtrl.$inject = [
-        "$scope", "user", "dashboardService", "fileUpload", "$location", "helper", "$upload", "$timeout"
+        "$scope", "user", "dashboardService", "fileUpload", "$location", "$upload", "$timeout"
     ];
 
     var AdminDashboardCtrl = function ($scope, user) {
