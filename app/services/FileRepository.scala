@@ -108,24 +108,26 @@ class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val direct
 
   def child(childTag: String) = NodeDirectory(fileAnalysisDirectory, directory, childTag)
 
-  def statusFile = new File(directory, "status.json")
+  def file(name: String) = new File(directory, name)
 
-  def valuesFile = new File(directory, "values.txt")
+  def statusFile = file("status.json")
 
-  def tempSortFile = new File(directory, s"sorting-${UUID.randomUUID()}.txt")
+  def valuesFile = file("values.txt")
 
-  def sortedFile = new File(directory, "sorted.txt")
+  def tempSortFile = file(s"sorting-${UUID.randomUUID()}.txt")
 
-  def countedFile = new File(directory, "counted.txt")
+  def sortedFile = file("sorted.txt")
 
-  def uniqueFile = new File(directory, "unique.txt")
+  def countedFile = file("counted.txt")
 
-  def histogramTextFile = new File(directory, "histogram.txt")
+  def uniqueFile = file("unique.txt")
+
+  def histogramTextFile = file("histogram.txt")
 
   val sizeFactor = 10 // relates to the lists below
 
-  def histogramJsonFiles = List(10, 100, 1000).map(size => (size, new File(directory, s"histogram-$size.json")))
+  def histogramJsonFiles = List(10, 100, 1000).map(size => (size, file(s"histogram-$size.json")))
 
-  def sampleJsonFiles = List(10, 100, 1000).map(size => (size, new File(directory, s"sample-$size.json")))
+  def sampleJsonFiles = List(10, 100, 1000).map(size => (size, file(s"sample-$size.json")))
 }
 

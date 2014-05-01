@@ -6,7 +6,7 @@ import scala.language.postfixOps
 import scala.io.Source
 import java.util.zip.GZIPInputStream
 import play.api.libs.json._
-import org.apache.commons.io.FileUtils
+import org.apache.commons.io.FileUtils._
 import scala.collection.mutable.ArrayBuffer
 import services.Actors._
 
@@ -41,16 +41,16 @@ object Actors {
 
   case class Merged(merge: Merge, fileA: File, sortType: SortType)
 
-  def jsonFile(file: File)(xform: JsValue => JsObject) = {
+  def updateJson(file: File)(xform: JsValue => JsObject) = {
     if (file.exists()) {
-      val value = Json.parse(FileUtils.readFileToString(file))
+      val value = Json.parse(readFileToString(file))
       val tempFile = new File(file.getParentFile, s"${file.getName}.temp")
-      FileUtils.writeStringToFile(tempFile, Json.prettyPrint(xform(value)), "UTF-8")
-      FileUtils.deleteQuietly(file)
-      FileUtils.moveFile(tempFile, file)
+      writeStringToFile(tempFile, Json.prettyPrint(xform(value)), "UTF-8")
+      deleteQuietly(file)
+      moveFile(tempFile, file)
     }
     else {
-      FileUtils.writeStringToFile(file, Json.prettyPrint(xform(Json.obj())), "UTF-8")
+      writeStringToFile(file, Json.prettyPrint(xform(Json.obj())), "UTF-8")
     }
 //    def input = if (file.exists()) Json.parse(FileUtils.readFileToString(file)) else Json.obj()
 //    FileUtils.writeStringToFile(file, Json.prettyPrint(xform(input)), "UTF-8")
@@ -70,12 +70,12 @@ class Boss extends Actor with ActorLogging {
       }
 
     case Progress(count, directory) =>
-      jsonFile(directory.statusFile) {
+      updateJson(directory.statusFile) {
         current => Json.obj("elements" -> count)
       }
 
     case TreeComplete(json, directory) =>
-      jsonFile(directory.statusFile) {
+      updateJson(directory.statusFile) {
         current =>
           val elements = (current \ "elements").as[Int]
           Json.obj("elements" -> elements, "index" -> true)
@@ -85,7 +85,7 @@ class Boss extends Actor with ActorLogging {
     case AnalysisComplete(directory) =>
       log.info(s"Analysis Complete, kill: ${sender.toString()}")
       context.stop(sender)
-      jsonFile(directory.statusFile) {
+      updateJson(directory.statusFile) {
         current =>
           val elements = (current \ "elements").as[Int]
           Json.obj("elements" -> elements, "index" -> true, "complete" -> true)
@@ -108,7 +108,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
     }
 
     def createFile(maximum: Int, entries: ArrayBuffer[JsArray], histogramFile: File) = {
-      jsonFile(histogramFile) {
+      updateJson(histogramFile) {
         current => Json.obj(
           "uniqueCount" -> uniqueCount,
           "entries" -> entries.size,
@@ -150,7 +150,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
       root.sort {
         node =>
           if (node.lengths.isEmpty) {
-            jsonFile(node.directory.statusFile) {
+            updateJson(node.directory.statusFile) {
               current => Json.obj("uniqueCount" -> 0)
             }
           }
@@ -167,8 +167,8 @@ class Analyzer extends Actor with XRay with ActorLogging {
       val sorter = context.actorOf(Props[Sorter])
       sorters = sorter :: sorters
       collators = collators.filter(collator => collator != sender)
-      FileUtils.deleteQuietly(directory.sortedFile)
-      jsonFile(directory.statusFile) {
+      deleteQuietly(directory.sortedFile)
+      updateJson(directory.statusFile) {
         current => Json.obj(
           "uniqueCount" -> uniqueCount,
           "samples" -> sampleSizes
@@ -181,14 +181,14 @@ class Analyzer extends Actor with XRay with ActorLogging {
       sorters = sorters.filter(sorter => sender != sorter)
       sortType match {
         case SortType.VALUE_SORT =>
-          FileUtils.deleteQuietly(directory.valuesFile)
+          deleteQuietly(directory.valuesFile)
           val collator = context.actorOf(Props[Collator])
           collators = collator :: collators
           collator ! Count(directory)
 
         case SortType.HISTOGRAM_SORT =>
           log.debug(s"writing histograms : ${directory.directory.getAbsolutePath}")
-          jsonFile(directory.statusFile) {
+          updateJson(directory.statusFile) {
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]
               val samples = current \ "samples"
@@ -199,7 +199,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
                 "histograms" -> histogramSizes
               )
           }
-          FileUtils.deleteQuietly(directory.countedFile)
+          deleteQuietly(directory.countedFile)
           if (sorters.isEmpty && collators.isEmpty) {
             context.parent ! AnalysisComplete(directory.fileAnalysisDirectory)
           }
@@ -338,8 +338,8 @@ class Merger extends Actor with ActorLogging {
       output.close()
       inputA.close()
       inputB.close()
-      FileUtils.deleteQuietly(inFileA)
-      FileUtils.deleteQuietly(inFileB)
+      deleteQuietly(inFileA)
+      deleteQuietly(inFileB)
       sender ! Merged(Merge(directory, inFileA, inFileB, mergeResultFile, sortType), outputFile, sortType)
   }
 }
@@ -357,7 +357,7 @@ class Collator extends Actor with ActorLogging with XRay {
       val samples = directory.sampleJsonFiles.map(pair => (new RandomSample(pair._1), pair._2))
 
       def createSampleFile(randomSample: RandomSample, sampleFile: File) = {
-        jsonFile(sampleFile) {
+        updateJson(sampleFile) {
           current => Json.obj("sample" -> randomSample.values)
         }
       }
@@ -403,6 +403,3 @@ class Collator extends Actor with ActorLogging with XRay {
       sender ! Counted(directory, uniqueCount, usefulSamples.map(pair => pair._1.size))
   }
 }
-
-
-
