@@ -1,23 +1,22 @@
+@import "variables";
+
 body {
-  margin-top: 40px;
+  margin-top: 60px;
 }
 
-@link-color: #e3ffc7;
+.file-drop {
+    border: 4px dashed @brand-info;
+    padding: @padding-base-vertical @padding-base-horizontal;
+    text-align: center;
+}
 
-.basics-nav {
-  background-color: #068ece;
-  .navbar-brand {
-    color: @link-color;
-  }
-  .navbar-nav {
-    li a {
-      color: @link-color;
-    }
-    .dropdown-menu {
-      a {
-        color: #000;
-      }
-    }
+.file-drop-over {
+  border-color: @brand-warning;
+}
+
+.view-list {
+  .list-group-item.odd {
+    background-color: lighten(@gray-light, 10%);
   }
 }
 

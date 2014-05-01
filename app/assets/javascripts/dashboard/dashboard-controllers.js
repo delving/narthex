@@ -99,17 +99,28 @@ define(["angular"], function () {
             });
         };
 
-        $scope.fetchSample = function (node, size) {
+
+        $scope.activate = function ($target) {
+            angular.element('.view-list-controls').find('li').removeClass('active');
+            angular.element($target).parent().addClass('active');
+        };
+
+        $scope.fetchSample = function (node, size, $event) {
             dashboardService.sample($scope.fileName, node.path, size).then(function (data) {
                 $scope.sample = data;
+                $scope.histogram = undefined;
+                $scope.activate($event.target);
             });
         };
 
-        $scope.fetchHistogram = function (node, size) {
+        $scope.fetchHistogram = function (node, size, $event) {
             dashboardService.histogram($scope.fileName, node.path, size).then(function (data) {
                 $scope.histogram = data;
+                $scope.sample = undefined;
+                $scope.activate($event.target);
             });
         };
+
     };
 
     FileDetailCtrl.$inject = ["$scope", "$routeParams", "dashboardService"];

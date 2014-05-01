@@ -1,49 +1,72 @@
-<div>
-    <div class="page-header">
-        <h1>{{ fileName }}</h1>
-    </div>
-    <div ng-show="tree">
-        <hr/>
-        <ul data-ng-controller="TreeCtrl">
-            <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
-        </ul>
-        <hr/>
-        <div data-ng-show="node">
-            <h2>Details of {{ node.path }}</h2>
-            <ul ng-show="status">
-                <li data-ng-repeat="size in status.samples">
-                    <span data-ng-click="fetchSample(node, size)">Sample-{{size}}</span>
-                </li>
-                <li data-ng-repeat="size in status.histograms">
-                    <span data-ng-click="fetchHistogram(node, size)">Histogram-{{size}}</span>
-                </li>
-            </ul>
-            <hr/>
-            <div ng-show="sample">
-                <span>Sample</span>
-                <ul>
-                    <li data-ng-repeat="value in sample.sample">
-                        <span>{{ value }}</span>
-                    </li>
+<div class="page-header">
+    <h1>{{ fileName }}</h1>
+</div>
+
+
+<div class="row" ng-show="tree">
+    <div class="col-md-4">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">Your file:</h3>
+            </div>
+            <div class="panel-body">
+                <ul data-ng-controller="TreeCtrl" >
+                    <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
                 </ul>
             </div>
-            <div ng-show="histogram">
-                <span data-ng-show="histogram.complete">Complete Histogram ({{histogram.entries}} entries)</span>
-                <span data-ng-show="!histogram.complete">Incomplete Histogram ({{histogram.entries}}/{{histogram.uniqueCount}})</span>
-                <ul>
-                    <li data-ng-repeat="count in histogram.histogram">
-                        <span>{{ count[0] }}</span>: <span>{{ count[1] }}</span>
-                    </li>
-                </ul>
+        </div>
+    </div>
+    <div class="col-md-8" data-ng-show="node">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                Details of {{ node.path }}
+            </div>
+            <div class="panel-body">
+                <div ng-show="status" class="btn-group">
+                    <ul class="nav nav-pills view-list-controls">
+                        <li data-ng-repeat="size in status.samples" class="pill">
+                            <a href data-ng-click="fetchSample(node, size, $event)">Sample-{{size}}</a>
+                        </li>
+                        <li data-ng-repeat="size in status.histograms" class="pill">
+                            <a href data-ng-click="fetchHistogram(node, size, $event)">Histogram-{{size}}</a>
+                        </li>
+                    </ul>
+                </div>
+             </div>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                Analyses
+            </div>
+            <div class="panel-body view-list">
+                        <ul>
+                            <li data-ng-repeat="value in sample.sample">
+                                <span>{{ value }}</span>
+                            </li>
+                        </ul>
+
+                    <div ng-show="histogram">
+                        <div data-ng-show="histogram.complete" class="alert alert-info">Complete Histogram ({{histogram.entries}} entries)</div>
+                        <div data-ng-show="!histogram.complete" class="alert alert-info">Incomplete Histogram ({{histogram.entries}}/{{histogram.uniqueCount}})</div>
+                        <ul class="list-group">
+                            <li data-ng-repeat="count in histogram.histogram" class="list-group-item" ng-class-odd="'odd'" ng-class-even="'even'">
+                                <span class="badge">{{ count[0] }}</span>
+                                <span>{{ count[1] }}</span>
+                            </li>
+                        </ul>
+                    </div>
+
+
             </div>
         </div>
     </div>
 </div>
 
+
 <script type="text/ng-template" id="node.html">
-    <li>
+    <li >
         <span data-ng-click="selectNode(node)">
-            <span><b>{{ node.tag }}</b></span><span>({{ node.count }})</span>
+            <span><b>{{ node.tag }}</b></span><span class="badge">({{ node.count }})</span>
         </span>
         <label data-ng-show="node.lengthHistogram.length">Lengths:
             <input type="checkbox" data-ng-model="node.showLengths"/>
@@ -53,7 +76,8 @@
             <span>Length Histogram</span>
             <ul>
                 <li data-ng-repeat="count in node.lengthHistogram">
-                    <span>{{ count[0] }}: </span><span>{{ count[1] }}</span>
+                    <span>{{ count[0] }}: </span>
+                    <span>{{ count[1] }}</span>
                 </li>
             </ul>
         </div>
