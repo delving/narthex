@@ -78,6 +78,7 @@ define(["angular"], function () {
     ];
 
     var FileDetailCtrl = function ($scope, $routeParams, dashboardService) {
+
         $scope.fileName = $routeParams.fileName;
 
         dashboardService.index($scope.fileName).then(function (data) {
@@ -86,33 +87,63 @@ define(["angular"], function () {
 
         $scope.selectNode = function(node) {
             $scope.node = node;
+            $scope.sampleSize = 10;
+            $scope.histogramSize = 10;
             dashboardService.nodeStatus($scope.fileName, node.path).then(function(data){
                 $scope.status = data;
-                $scope.sample = undefined;
-                $scope.histogram = undefined;
+                $scope.fetchSample(node);
             });
         };
 
-
-        $scope.activate = function ($target) {
-            angular.element('.view-list-controls').find('li').removeClass('active');
-            angular.element($target).parent().addClass('active');
-        };
-
-        $scope.fetchSample = function (node, size, $event) {
-            dashboardService.sample($scope.fileName, node.path, size).then(function (data) {
+        $scope.fetchSample = function () {
+            $scope.currentList = "Sample";
+            $scope.otherList = "Histogram";
+            dashboardService.sample($scope.fileName, $scope.node.path, $scope.sampleSize).then(function (data) {
                 $scope.sample = data;
                 $scope.histogram = undefined;
-                $scope.activate($event.target);
             });
         };
 
-        $scope.fetchHistogram = function (node, size, $event) {
-            dashboardService.histogram($scope.fileName, node.path, size).then(function (data) {
+        $scope.fetchHistogram = function () {
+            $scope.currentList = "Histogram";
+            $scope.otherList = "Sample";
+            dashboardService.histogram($scope.fileName, $scope.node.path, $scope.histogramSize).then(function (data) {
                 $scope.histogram = data;
                 $scope.sample = undefined;
-                $scope.activate($event.target);
             });
+        };
+
+        $scope.fetch = function(listName) {
+            if (listName == "Sample") {
+                $scope.fetchSample()
+            }
+            else {
+                $scope.fetchHistogram()
+            }
+        };
+
+        $scope.isMoreSample = function() {
+            if (!$scope.status) return false;
+            var which = _.indexOf($scope.status.samples, $scope.sampleSize, true);
+            return which < $scope.status.samples.length - 1;
+        };
+
+        $scope.moreSample = function() {
+            var which = _.indexOf($scope.status.samples, $scope.sampleSize, true);
+            $scope.sampleSize = $scope.status.samples[which + 1];
+            $scope.fetchSample();
+        };
+
+        $scope.isMoreHistogram = function() {
+            if (!$scope.status) return false;
+            var which = _.indexOf($scope.status.histograms, $scope.histogramSize, true);
+            return which < $scope.status.histograms.length - 1;
+        };
+
+        $scope.moreHistogram = function() {
+            var which = _.indexOf($scope.status.histograms, $scope.histogramSize, true);
+            $scope.histogramSize = $scope.status.histograms[which + 1];
+            $scope.fetchHistogram();
         };
 
     };
