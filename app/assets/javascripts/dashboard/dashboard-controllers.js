@@ -10,7 +10,6 @@ define(["angular"], function () {
     var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout) {
 
         $scope.user = user;
-
         $scope.image = 'jpg';
 
         $scope.onFileSelect = function ($files) {
@@ -34,7 +33,6 @@ define(["angular"], function () {
                 ).success(
                     function (data, status, headers, config) {
                         // file is uploaded successfully
-                        console.log(data);
                         $scope.image = "jpg";
                         fetchFileList();
                     }
@@ -44,37 +42,33 @@ define(["angular"], function () {
             }
         };
 
-        function fetchFileList() {
-            dashboardService.list().then(function (data) {
-                $scope.files = data;
-            })
-        }
-
-        fetchFileList();
-
-        function checkFileStatus() {
-            dashboardService.status($scope.chosenFile).then(function (data) {
+        function checkFileStatus(file) {
+            dashboardService.status(file.name).then(function (data) {
                 if (data.problem) {
-                    $scope.fileStatus = data.problem;
+                    file.status = data.problem;
                 }
                 else {
-                    $scope.fileStatus = data;
-                    if ($scope.chosenFile && !$scope.fileStatus.complete) {
-                        $timeout(checkFileStatus, 1000)
+                    file.status = data;
+                    if (file && !file.status.complete) {
+                        $timeout(function() { checkFileStatus(file) }, 1000)
                     }
                 }
             })
         }
 
-        $scope.viewFile = function() {
-            if ($scope.chosenFile) {
-                $location.path("/dashboard/" + $scope.chosenFile);
-            }
-        };
+        function fetchFileList() {
+            dashboardService.list().then(function (data) {
+                $scope.files = data;
+                _.forEach($scope.files, function(file) {
+                    checkFileStatus(file)
+                });
+            });
+        }
 
-        $scope.watchFile = function (file) {
-            $scope.chosenFile = file;
-            checkFileStatus();
+        fetchFileList();
+
+        $scope.viewFile = function(file) {
+            $location.path("/dashboard/" + file.name);
         };
 
     };

@@ -30,6 +30,7 @@
             "angular-cookies",
             "angular-route",
             "jquery",
+            "underscorejs",
             "bootstrap",
             "./app"
         ],

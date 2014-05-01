@@ -30,7 +30,7 @@ object Dashboard extends Controller with Security with XRay {
       repo.scanForWork()
       val fileList: Seq[File] = repo.listUploadedFiles
       val stringList = fileList.map(file => s"${file.getName}")
-      Ok(Json.toJson(stringList))
+      Ok(Json.toJson(stringList.map(string => Json.obj("name" -> string))))
     }
   }
 

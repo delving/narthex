@@ -1,17 +1,19 @@
 <div class="alert alert-dismissable alert-warning" ng-file-drop-available="dropSupported=true" ng-show="!dropSupported">
     <button type="button" class="close" data-dismiss="alert">×</button>
-    <h4>Dang!  HTML5 Drop File is not supported!</h4>
-    <p>Go get yourself an  <a href="#" class="alert-link">HTML5 compliant browser</a>.</p>
+    <h4>Dang! HTML5 Drop File is not supported!</h4>
+
+    <p>Go get yourself an <a href="#" class="alert-link">HTML5 compliant browser</a>.</p>
 </div>
 
 <div class="row">
-    <div class="col-md-6">
-        <div class="file-drop" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over" ng-show="dropSupported">
+    <div class="col-md-4">
+        <div class="file-drop" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
+             ng-show="dropSupported">
             <h3>File-drop-area</h3>
             <img ng-src="/assets/images/spiral.{{ image }}"/>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-8">
         <div class="panel panel-primary">
             <div class="panel-heading">
                 <h3 class="panel-title">Your files:</h3>
@@ -19,12 +21,14 @@
             <div class="panel-body">
                 <ul class="list-group">
                     <li ng-repeat="file in files" class="list-group-item">
-                        <a href data-ng-click="watchFile(file)">{{ file }}</a>
-                <span data-ng-show="file == chosenFile">
-                    <span>Elements:{{ fileStatus.elements }}</span>
-                    <a href data-ng-click="viewFile()" data-ng-show="fileStatus.index">Index Available</a>
-                    <span data-ng-show="fileStatus.complete">Analysis Complete</span>
-                </span>
+                        <div data-ng-show="!file.status">
+                            <span>{{ file.name }}</span>
+                        </div>
+                        <div data-ng-show="file.status">
+                            <span data-ng-show="!file.status.index">{{ file.name }} (analyzing {{ file.status.elements }})</span>
+                            <a href data-ng-click="viewFile(file)" data-ng-show="file.status.index"><b>{{ file.name }}</b></a>
+                            <span data-ng-show="file.status.index && !file.status.complete"> (processing)</span>
+                        </div>
                     </li>
                 </ul>
             </div>
