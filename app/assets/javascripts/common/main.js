@@ -7,7 +7,7 @@ define(
         "./services/fileUpload",
         "./services/playRoutes",
         "./filters",
-        "./directives/example",
+        "./directives/scrollable",
         "./directives/fileModel"
     ],
     function (angular) {
@@ -19,7 +19,7 @@ define(
                 "common.fileUpload",
                 "common.playRoutes",
                 "common.filters",
-                "common.directives.example",
+                "common.directives.scrollable",
                 "common.directives.fileModel"
             ]
         );

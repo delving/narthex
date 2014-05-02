@@ -1,18 +1,17 @@
-<div class="page-header">
-    <pre>Your file: {{ fileName }}</pre>
-</div>
-
+<pre>Your file: {{ fileName }}</pre>
 
 <div class="row" ng-show="tree">
     <div class="col-md-4">
         <div class="panel panel-primary">
             <div class="panel-heading">
-                <h3 class="panel-title">File tree</h3>
+                <h3 class="panel-title">Schema</h3>
             </div>
             <div class="panel-body">
+                <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="300" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }" >
                 <ul data-ng-controller="TreeCtrl" class="list-node">
                     <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
                 </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -20,39 +19,44 @@
         <div class="panel panel-primary">
             <div class="panel-heading">
                 <code class="path">File path: {{ node.path }}</code>
-                <span> (<a style="color: white;" ng-href="{{uniquePath}}" target="_blank">All Values</a>)</span>
-                <span> (<a style="color: white;" ng-href="{{histogramPath}}" target="_blank">Full Histogram</a>)</span>
-            </div>
-        </div>
 
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <a href data-ng-click="fetchSample()" data-ng-class="{ active: sampleActive }">Sample</a>
-                <span>   </span>
-                <a href data-ng-click="fetchHistogram()" data-ng-class="{ active: histogramActive }">Histogram</a>
+                    <i class="fa fa-cloud-download"></i> <a ng-href="{{uniquePath}}" target="_blank">All Values</a>
+                    <i class="fa fa-cloud-download"></i> <a ng-href="{{histogramPath}}" target="_blank">Full Histogram</a>
             </div>
+
             <div class="panel-body view-list">
+
+                <div class="list-controls">
+                <ul class="nav nav-pills">
+                    <li data-ng-class="{ active: sampleActive }"><a href data-ng-click="fetchSample()" >Sample</a></li>
+                    <li data-ng-class="{ active: histogramActive }"><a href data-ng-click="fetchHistogram()" >Histogram</a></li>
+                </ul>
+                </div>
+
                 <div ng-show="sample">
-                    <ul>
-                        <li data-ng-repeat="value in sample.sample">
+                    <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="410" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }" >
+                    <ul class="list-group">
+                        <li data-ng-repeat="value in sample.sample" class="list-group-item">
                             <span>{{ value }}</span>
                         </li>
-                        <li data-ng-show="isMoreSample()">
-                            <a href data-ng-click="moreSample()" class="alert-info">MORE</a>
-                        </li>
-                    </ul>
+                     </ul>
+                     </div>
+                    <a data-ng-show="isMoreSample()" href data-ng-click="moreSample()" class="badge badge-info">MORE</a>
+
                 </div>
                 <div ng-show="histogram">
+                    <div class="vertical-scroll" data-scrollable id="historgram-list" data-offset="400" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }" >
                     <ul class="list-group">
                         <li data-ng-repeat="count in histogram.histogram" class="list-group-item" ng-class-odd="'odd'" ng-class-even="'even'">
                             <span class="badge">{{ count[0] }}</span>
                             <span>{{ count[1] }}</span>
                         </li>
-                        <li data-ng-show="!histogram.complete">
-                            <span class="alert alert-info">({{histogram.entries}}/{{histogram.uniqueCount}})</span>
-                            <a href data-ng-click="moreHistogram()" class="alert alert-info" data-ng-show="isMoreHistogram()">MORE</a>
-                        </li>
-                    </ul>
+                        </ul>
+                    </div>
+                        <div data-ng-show="!histogram.complete">
+                            <span class="badge badge-info">({{histogram.entries}}/{{histogram.uniqueCount}})</span>
+                            <a href data-ng-click="moreHistogram()" class="badge badge-info" data-ng-show="isMoreHistogram()">MORE</a>
+                        </div>
                 </div>
             </div>
         </div>

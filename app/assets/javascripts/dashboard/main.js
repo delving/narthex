@@ -8,7 +8,8 @@ define(
         "angular",
         "./dashboard-controllers",
         "./dashboard-routes",
-        "./dashboard-services"
+        "./dashboard-services",
+        "../common/directives/scrollable"
     ],
     function (angular, controllers) {
         "use strict";
@@ -18,7 +19,8 @@ define(
             [
                 "ngRoute",
                 "dashboard.routes",
-                "dashboard.services"
+                "dashboard.services",
+                "common.directives.scrollable"
             ]
         );
 

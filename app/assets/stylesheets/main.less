@@ -1,8 +1,9 @@
 @import "variables";
+@import "elements";
 @import "font-awesome";
 
 body {
-  margin-top: 60px;
+  margin-top: 80px;
 }
 
 .file-drop {
@@ -16,8 +17,10 @@ body {
 }
 
 .view-list {
-  .list-group-item.odd {
-    background-color: lighten(@gray-light, 10%);
+  .list-group-item {
+    background-color: lighten(@gray-dark, 10%);
+    padding: 8px 12px;
+    margin-bottom: 2px;
   }
 }
 
@@ -33,11 +36,24 @@ ul.list-node {
 span.node {
   border-bottom: 1px solid @gray;
   display: block;
-  padding: 4px 0;
+  padding: 2px 0;
   cursor: default;
   &.active {
     cursor: pointer;
   }
+}
+
+.list-controls {
+  background: lighten(@gray-dark, 10%);
+  .border-radius(4px);
+  margin-bottom: 20px;
+  padding: 4px;
+
+}
+
+.vertical-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* AngularJS */

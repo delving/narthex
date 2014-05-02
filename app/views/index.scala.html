@@ -17,7 +17,7 @@
     @*-- Header -- *@
     <header class="navbar navbar-default navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl"
         data-ng-cloak>
-      <div class="container" data-ng-switch="!!user" data-ng-cloak>
+      <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
         <a href="#/" class="navbar-brand">XML-RAY Online XML Analyzer</a>
         <div data-ng-switch-when="true">
           <ul class="nav navbar-nav navbar-right">
@@ -44,7 +44,7 @@
       </div>
     </header>
     @* -- Main Content -- *@
-    <div class="container" data-ng-cloak>
+    <div class="container-fluid" data-ng-cloak>
       <div data-ng-view></div>
     </div>
     @*-- Footer -- *@
