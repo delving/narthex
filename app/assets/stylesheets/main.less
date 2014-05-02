@@ -1,4 +1,5 @@
 @import "variables";
+@import "font-awesome";
 
 body {
   margin-top: 60px;
@@ -17,6 +18,25 @@ body {
 .view-list {
   .list-group-item.odd {
     background-color: lighten(@gray-light, 10%);
+  }
+}
+
+code.path {
+  color: @gray-darker;
+}
+
+ul.list-node {
+  margin: 0 0 0 10px;
+  padding: 0 0 0 0;
+}
+
+span.node {
+  border-bottom: 1px solid @gray;
+  display: block;
+  padding: 4px 0;
+  cursor: default;
+  &.active {
+    cursor: pointer;
   }
 }
 
