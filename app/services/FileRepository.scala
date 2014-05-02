@@ -21,7 +21,7 @@ object FileRepository {
 
 class PersonalRepository(root: File, val email: String) {
 
-  val SUFFIXES = List(".xml.gz", ".tgz", ".zip")
+  val SUFFIXES = List(".xml.gz", ".xml.zip")
   val repo = new File(root, email.replaceAll("@", "_"))
   val uploaded = new File(repo, "uploaded")
   val analyzed = new File(repo, "analyzed")
@@ -89,6 +89,20 @@ class FileAnalysisDirectory(val directory: File) {
     }
   }
 
+  def uniqueTextFile(path: String): Option[File] = {
+    nodeDirectory(path) match {
+      case None => None
+      case Some(nodeDirectory) => Some(nodeDirectory.uniqueTextFile)
+    }
+  }
+
+  def histogramTextFile(path: String): Option[File] = {
+    nodeDirectory(path) match {
+      case None => None
+      case Some(nodeDirectory) => Some(nodeDirectory.histogramTextFile)
+    }
+  }
+
   def nodeDirectory(path: String): Option[NodeDirectory] = {
     val dir = path.split('/').toList.foldLeft(directory)((file, tag) => new File(file, FileRepository.tagToDirectory(tag)))
     if (dir.exists()) Some(new NodeDirectory(this, dir)) else None
@@ -120,14 +134,15 @@ class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val direct
 
   def countedFile = file("counted.txt")
 
-  def uniqueFile = file("unique.txt")
-
-  def histogramTextFile = file("histogram.txt")
-
   val sizeFactor = 10 // relates to the lists below
 
   def histogramJsonFiles = List(10, 100, 1000).map(size => (size, file(s"histogram-$size.json")))
 
   def sampleJsonFiles = List(10, 100, 1000).map(size => (size, file(s"sample-$size.json")))
+
+  def uniqueTextFile = file("unique.txt")
+
+  def histogramTextFile = file("histogram.txt")
+
 }
 

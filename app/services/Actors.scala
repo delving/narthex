@@ -368,7 +368,7 @@ class Collator extends Actor with ActorLogging with XRay {
       }
 
       val counted = new FileWriter(directory.countedFile)
-      val unique = new FileWriter(directory.uniqueFile)
+      val unique = new FileWriter(directory.uniqueTextFile)
       var occurrences = 0
       var uniqueCount = 0
 

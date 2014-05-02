@@ -87,12 +87,53 @@ object Dashboard extends Controller with Security with XRay {
     }
   }
 
+  def uniqueText(fileName: String, path: String) = Secure() {
+    token => email => implicit request => {
+      val repo = FileRepository(email)
+      repo.analysis(fileName).uniqueTextFile(path) match {
+        case None => NotFound(Json.obj("path" -> path))
+        case Some(file) => OkFile(file)
+      }
+    }
+  }
+
+  def histogramText(fileName: String, path: String) = Secure() {
+    token => email => implicit request => {
+      val repo = FileRepository(email)
+      repo.analysis(fileName).histogramTextFile(path) match {
+        case None => NotFound(Json.obj("path" -> path))
+        case Some(file) => OkFile(file)
+      }
+    }
+  }
+
+  def uniqueTextAPI(fileName: String, path: String, email:String) = Action(parse.anyContent) {
+    implicit request => {
+      val repo = FileRepository(email)
+      repo.analysis(fileName).uniqueTextFile(path) match {
+        case None => NotFound(Json.obj("path" -> path))
+        case Some(file) => OkFile(file)
+      }
+    }
+  }
+
+  def histogramTextAPI(fileName: String, path: String, email:String) = Action(parse.anyContent) {
+    implicit request => {
+      val repo = FileRepository(email)
+      repo.analysis(fileName).histogramTextFile(path) match {
+        case None => NotFound(Json.obj("path" -> path))
+        case Some(file) => OkFile(file)
+      }
+    }
+  }
+
   private def OkFile(file: File, attempt: Int = 0): SimpleResult = {
     try {
       val input = new FileInputStream(file)
       val resourceData = Enumerator.fromStream(input)
+      val contentType = if (file.getName.endsWith(".json")) "application/json" else "text/plain"
       SimpleResult(
-        ResponseHeader(OK, Map(CONTENT_LENGTH -> file.length().toString, CONTENT_TYPE -> "application/json")),
+        ResponseHeader(OK, Map(CONTENT_LENGTH -> file.length().toString, CONTENT_TYPE -> contentType)),
         resourceData
       )
     }

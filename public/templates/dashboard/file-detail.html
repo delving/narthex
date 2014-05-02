@@ -19,7 +19,9 @@
     <div class="col-md-8" data-ng-show="node">
         <div class="panel panel-primary">
             <div class="panel-heading">
-                 <code class="path">File path: {{ node.path }}</code>
+                <code class="path">File path: {{ node.path }}</code>
+                <span> (<a style="color: white;" ng-href="{{uniquePath}}" target="_blank">All Values</a>)</span>
+                <span> (<a style="color: white;" ng-href="{{histogramPath}}" target="_blank">Full Histogram</a>)</span>
             </div>
         </div>
 

@@ -38,6 +38,16 @@ define(["angular", "common"], function (angular) {
                 return dash.histogram(fileName, path, size).get().then(function (response) {
                     return response.data;
                 });
+            },
+            uniqueText: function (fileName, path) {
+                return dash.uniqueText(fileName, path).get().then(function (response) {
+                    return response.data;
+                });
+            },
+            histogramText: function (fileName, path) {
+                return dash.histogramText(fileName, path, size).get().then(function (response) {
+                    return response.data;
+                });
             }
         };
     }]);

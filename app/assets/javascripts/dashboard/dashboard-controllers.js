@@ -77,7 +77,7 @@ define(["angular"], function () {
         "$scope", "user", "dashboardService", "fileUpload", "$location", "$upload", "$timeout"
     ];
 
-    var FileDetailCtrl = function ($scope, $routeParams, dashboardService) {
+    var FileDetailCtrl = function ($scope, $routeParams, dashboardService, userService) {
 
         $scope.fileName = $routeParams.fileName;
 
@@ -86,9 +86,13 @@ define(["angular"], function () {
         });
 
         $scope.selectNode = function(node) {
+            if (!node.lengths.length) return;
             $scope.node = node;
             $scope.sampleSize = 10;
             $scope.histogramSize = 10;
+            var user = userService.getUser();
+            $scope.uniquePath = "/api/" + user.email + "/" + $scope.fileName + "/unique-text/" + $scope.node.path;
+            $scope.histogramPath = "/api/" + user.email + "/" + $scope.fileName + "/histogram-text/" + $scope.node.path;
             dashboardService.nodeStatus($scope.fileName, node.path).then(function(data){
                 $scope.status = data;
                 $scope.fetchSample(node);
@@ -123,7 +127,7 @@ define(["angular"], function () {
         };
 
         $scope.isMoreSample = function() {
-            if (!$scope.status) return false;
+            if (!($scope.status && $scope.status.samples)) return false;
             var which = _.indexOf($scope.status.samples, $scope.sampleSize, true);
             return which < $scope.status.samples.length - 1;
         };
@@ -135,7 +139,7 @@ define(["angular"], function () {
         };
 
         $scope.isMoreHistogram = function() {
-            if (!$scope.status) return false;
+            if (!($scope.status && $scope.status.histograms)) return false;
             var which = _.indexOf($scope.status.histograms, $scope.histogramSize, true);
             return which < $scope.status.histograms.length - 1;
         };
@@ -145,10 +149,9 @@ define(["angular"], function () {
             $scope.histogramSize = $scope.status.histograms[which + 1];
             $scope.fetchHistogram();
         };
-
     };
 
-    FileDetailCtrl.$inject = ["$scope", "$routeParams", "dashboardService"];
+    FileDetailCtrl.$inject = ["$scope", "$routeParams", "dashboardService", "userService"];
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree, oldTree) {
