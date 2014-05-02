@@ -10,6 +10,7 @@ libraryDependencies ++= Seq(
   "org.webjars" %% "webjars-play" % "2.2.1-2",
   // WebJars dependencies
   "org.webjars" % "underscorejs" % "1.6.0-1",
+  "org.webjars" % "d3js" % "3.4.6",
   "org.webjars" % "jquery" % "1.11.0-1",
   "org.webjars" % "bootstrap" % "3.1.1" exclude("org.webjars", "jquery"),
   "org.webjars" % "angularjs" % "1.2.14" exclude("org.webjars", "jquery"),
