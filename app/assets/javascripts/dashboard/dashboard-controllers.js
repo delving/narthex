@@ -91,8 +91,8 @@ define(["angular"], function () {
             $scope.sampleSize = 10;
             $scope.histogramSize = 10;
             var user = userService.getUser();
-            $scope.uniquePath = "/api/" + user.email + "/" + $scope.fileName + "/unique-text/" + $scope.node.path;
-            $scope.histogramPath = "/api/" + user.email + "/" + $scope.fileName + "/histogram-text/" + $scope.node.path;
+            $scope.uniquePath = "/api/" + user.email + "/" + $scope.fileName + "/unique-text" + $scope.node.path;
+            $scope.histogramPath = "/api/" + user.email + "/" + $scope.fileName + "/histogram-text" + $scope.node.path;
             dashboardService.nodeStatus($scope.fileName, node.path).then(function(data){
                 $scope.status = data;
                 $scope.fetchSample(node);
