@@ -27,7 +27,9 @@
 
         <div class="panel panel-default">
             <div class="panel-heading">
-                <span>{{ currentList }}</span> <a href data-ng-click="fetch(otherList)"> &rarr; {{ otherList }}</a>
+                <a href data-ng-click="fetchSample()" data-ng-class="{ active: sampleActive }">Sample</a>
+                <span>   </span>
+                <a href data-ng-click="fetchHistogram()" data-ng-class="{ active: histogramActive }">Histogram</a>
             </div>
             <div class="panel-body view-list">
                 <div ng-show="sample">

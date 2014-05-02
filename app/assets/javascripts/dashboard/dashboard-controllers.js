@@ -100,8 +100,8 @@ define(["angular"], function () {
         };
 
         $scope.fetchSample = function () {
-            $scope.currentList = "Sample";
-            $scope.otherList = "Histogram";
+            $scope.sampleActive = true;
+            $scope.histogramActive = false;
             dashboardService.sample($scope.fileName, $scope.node.path, $scope.sampleSize).then(function (data) {
                 $scope.sample = data;
                 $scope.histogram = undefined;
@@ -109,21 +109,12 @@ define(["angular"], function () {
         };
 
         $scope.fetchHistogram = function () {
-            $scope.currentList = "Histogram";
-            $scope.otherList = "Sample";
+            $scope.sampleActive = false;
+            $scope.histogramActive = true;
             dashboardService.histogram($scope.fileName, $scope.node.path, $scope.histogramSize).then(function (data) {
                 $scope.histogram = data;
                 $scope.sample = undefined;
             });
-        };
-
-        $scope.fetch = function(listName) {
-            if (listName == "Sample") {
-                $scope.fetchSample()
-            }
-            else {
-                $scope.fetchHistogram()
-            }
         };
 
         $scope.isMoreSample = function() {
