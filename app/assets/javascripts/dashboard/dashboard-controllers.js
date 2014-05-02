@@ -90,18 +90,24 @@ define(["angular"], function () {
             $scope.node = node;
             $scope.sampleSize = 10;
             $scope.histogramSize = 10;
+            $scope.activeView = "lengths";
+            $scope.fetchLengths();
             var user = userService.getUser();
             $scope.uniquePath = "/api/" + user.email + "/" + $scope.fileName + "/unique-text" + $scope.node.path;
             $scope.histogramPath = "/api/" + user.email + "/" + $scope.fileName + "/histogram-text" + $scope.node.path;
             dashboardService.nodeStatus($scope.fileName, node.path).then(function(data){
                 $scope.status = data;
-                $scope.fetchSample(node);
             });
         };
 
+        $scope.fetchLengths = function() {
+            $scope.activeView = "lengths";
+            $scope.sample = undefined;
+            $scope.histogram = undefined;
+        };
+
         $scope.fetchSample = function () {
-            $scope.sampleActive = true;
-            $scope.histogramActive = false;
+            $scope.activeView = "sample";
             dashboardService.sample($scope.fileName, $scope.node.path, $scope.sampleSize).then(function (data) {
                 $scope.sample = data;
                 $scope.histogram = undefined;
@@ -109,8 +115,7 @@ define(["angular"], function () {
         };
 
         $scope.fetchHistogram = function () {
-            $scope.sampleActive = false;
-            $scope.histogramActive = true;
+            $scope.activeView = "histogram";
             dashboardService.histogram($scope.fileName, $scope.node.path, $scope.histogramSize).then(function (data) {
                 $scope.histogram = data;
                 $scope.sample = undefined;
