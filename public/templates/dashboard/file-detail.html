@@ -92,7 +92,7 @@
 <script type="text/ng-template" id="node.html">
     <li>
         <span data-ng-click="selectNode(node)" class="node" data-ng-class="{ 'active': node.lengths.length!=0 }">
-            {{ node.tag }} <span class="badge pull-right" data-ng-show="node.lengths.length > 0"> {{ node.count }} </span>
+            {{ node.tag }} <span class="badge" data-ng-class="{ 'pull-right' : node.lengths.length > 0 }"> {{ node.count }} </span>
         </span>
         <ul ng-if="node.kids" class="">
             <li class="" data-ng-repeat="(nodeIndex, node) in node.kids" data-ng-controller="TreeNodeCtrl">
