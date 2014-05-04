@@ -136,9 +136,9 @@ class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val direct
 
   val sizeFactor = 10 // relates to the lists below
 
-  def histogramJsonFiles = List(10, 100, 1000).map(size => (size, file(s"histogram-$size.json")))
+  def histogramJsonFiles = List(100, 1000, 10000).map(size => (size, file(s"histogram-$size.json")))
 
-  def sampleJsonFiles = List(10, 100, 1000).map(size => (size, file(s"sample-$size.json")))
+  def sampleJsonFiles = List(100, 1000, 10000).map(size => (size, file(s"sample-$size.json")))
 
   def uniqueTextFile = file("unique.txt")
 

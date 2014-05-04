@@ -63,7 +63,7 @@ class Boss extends Actor with ActorLogging {
   override def receive: Receive = {
 
     case AnalyzeThese(jobs) =>
-      jobs.map {
+      jobs.foreach {
         job =>
           val analyzer = context.actorOf(Props[Analyzer], job._1.getName)
           analyzer ! Analyze(job._1, new FileAnalysisDirectory(job._2))
