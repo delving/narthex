@@ -56,8 +56,16 @@ body {
 }
 
 .view-list {
+  &.panel-body {
+    background: @gray-lighter;
+    padding: 0 0 0 0;
+  }
+  .navbar {
+    margin-bottom: 0px;
+  }
   .list-group {
     background: @gray-light;
+//    border-bottom: 1px solid @gray-light;
   }
   .list-group-item {
 //    background-color: lighten(@gray-dark, 10%);
@@ -65,6 +73,9 @@ body {
     color: @gray-dark;
     padding: 2px 12px;
     margin-bottom: 1px;
+    &:last-of-type {
+     border-bottom: 1px solid @gray-light;
+    }
     .badge {
       background: @brand-primary;
       color: @white;

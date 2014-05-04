@@ -11,14 +11,12 @@ define(["angular"], function () {
 
         $scope.user = user;
         $scope.image = 'png';
-        $scope.processing = false;
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.
             for (var i = 0; i < $files.length; i++) {
                 var file = $files[i];
                 $scope.image = "gif";
-                $scope.processing = true;
                 $scope.upload = $upload.upload(
                     {
                         url: '/dashboard/upload', //upload.php script, node.js route, or servlet url
@@ -36,7 +34,6 @@ define(["angular"], function () {
                     function (data, status, headers, config) {
                         // file is uploaded successfully
                         $scope.image = "png";
-                        $scope.processing = false;
                         fetchFileList();
                     }
                 );
