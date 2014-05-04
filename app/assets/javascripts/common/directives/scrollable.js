@@ -14,8 +14,6 @@ define(["angular"], function (angular) {
             replace: false,
             scope: true,
             link: function($scope, $element, $attrs){
-                // wrap in timeout because this directive is also called inside the mediaList directive (media.js)
-                // and needs to run the $apply cycle to pick up it's offsetHeight attribute to pass into here
                 $timeout(function(){
                     var offset = $attrs.offset,
                         height = $attrs.fixedHeight;
@@ -33,7 +31,7 @@ define(["angular"], function (angular) {
                         initialize();
                         return $scope.$apply();
                     });
-                });
+                },500,true);
             }
         }
     }]);

@@ -55,6 +55,50 @@ body {
   }
 }
 
+.panel-schema {
+
+  ul {
+    margin: 0 0 0 18px;
+    padding: 0 0 0 0;
+  }
+  div.node {
+    border-bottom: 1px solid @gray;
+    padding: 2px;
+    &.active:hover {
+      background: @gray;
+      cursor: pointer;
+    }
+  }
+//
+//  li.node {
+//    border-bottom: 1px solid @gray;
+//    display: block;
+//    padding: 2px 0;
+//    cursor: default;
+//    &.active {
+//      cursor: pointer;
+//      &:hover {
+//        background: @gray-light;
+//      }
+//    }
+//  }
+
+  .badge {
+    background: @black;
+    &.badge-info {
+      background: @brand-primary;
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
 .view-list {
   &.panel-body {
     background: @gray-lighter;
@@ -71,7 +115,7 @@ body {
 //    background-color: lighten(@gray-dark, 10%);
     background: @gray-lighter;
     color: @gray-dark;
-    padding: 2px 12px;
+    padding: 2px 14px;
     margin-bottom: 1px;
     &:last-of-type {
      border-bottom: 1px solid @gray-light;
@@ -96,20 +140,6 @@ code {
   }
 }
 
-ul.list-node {
-  margin: 0 0 0 10px;
-  padding: 0 0 0 0;
-}
-
-span.node {
-  border-bottom: 1px solid @gray;
-  display: block;
-  padding: 2px 0;
-  cursor: default;
-  &.active {
-    cursor: pointer;
-  }
-}
 
 .vertical-scroll {
   overflow-x: hidden;
