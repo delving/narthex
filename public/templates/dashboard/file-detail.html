@@ -26,9 +26,9 @@
                     <!--<div class="list-controls">-->
 
                     <ul class="nav navbar-nav">
-                        <li data-ng-class="{ active: activeView == 'lengths' }">
-                            <a href data-ng-click="fetchLengths()">Lengths</a>
-                        </li>
+                        <!--<li data-ng-class="{ active: activeView == 'lengths' }">-->
+                            <!--<a href data-ng-click="fetchLengths()">Lengths</a>-->
+                        <!--</li>-->
                         <li data-ng-class="{ active: activeView == 'sample' }">
                             <a href data-ng-click="fetchSample()">Sample</a>
                         </li>
@@ -66,26 +66,24 @@
                         </ul>
                         <form class="navbar-form navbar-right" role="search">
                             <div class="form-group">
-                                <input type="text" class="form-control" placeholder="Filter" ng-model="filterText">
+                                <input type="text" class="form-control" placeholder="Filter" ng-model="filterTyped">
                             </div>
                         </form>
 
                     </div>
                 </div>
 
+                <!--<div ng-show="node && !(sample || histogram)">-->
+                    <!--<div class="vertical-scroll" data-scrollable id="length-list" data-offset="253" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">-->
+                        <!--<ul class="list-group">-->
+                            <!--<li data-ng-repeat="count in node.lengths | filter:filterText" class="list-group-item" ng-class-odd="'odd'" ng-class-even="'even'" >-->
+                                <!--<span>{{ count[0] }}</span>-->
+                                <!--<span class="badge">{{ count[1] }}</span>-->
+                            <!--</li>-->
 
-                <div ng-show="node && !(sample || histogram)">
-                    <div class="vertical-scroll" data-scrollable id="length-list" data-offset="253" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                        <ul class="list-group">
-                            <li data-ng-repeat="count in node.lengths | filter:filterText" class="list-group-item" ng-class-odd="'odd'" ng-class-even="'even'" >
-                                <span>{{ count[0] }}</span>
-                                <span class="badge">{{ count[1] }}</span>
-                            </li>
-
-                        </ul>
-                    </div>
-                    <!--<a data-ng-show="isMoreSample()" href data-ng-click="moreSample()" class="badge badge-info">MORE</a>-->
-                </div>
+                        <!--</ul>-->
+                    <!--</div>-->
+                <!--</div>-->
 
                 <div ng-show="sample">
                     <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="253" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">

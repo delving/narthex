@@ -51,7 +51,9 @@ define(["angular"], function () {
                     file.status = data;
                     if (file && !file.status.complete) {
                         $scope.image = "gif";
-                        $timeout(function() { checkFileStatus(file) }, 1000)
+                        $timeout(function () {
+                            checkFileStatus(file)
+                        }, 1000)
                     }
                     else {
                         $scope.image = "png";
@@ -63,7 +65,7 @@ define(["angular"], function () {
         function fetchFileList() {
             dashboardService.list().then(function (data) {
                 $scope.files = data;
-                _.forEach($scope.files, function(file) {
+                _.forEach($scope.files, function (file) {
                     checkFileStatus(file)
                 });
             });
@@ -71,7 +73,7 @@ define(["angular"], function () {
 
         fetchFileList();
 
-        $scope.viewFile = function(file) {
+        $scope.viewFile = function (file) {
             $location.path("/dashboard/" + file.name);
         };
 
@@ -89,26 +91,26 @@ define(["angular"], function () {
             $scope.tree = data;
         });
 
-        $scope.selectNode = function(node) {
+        $scope.selectNode = function (node) {
             if (!node.lengths.length) return;
             $scope.node = node;
             $scope.sampleSize = 100;
             $scope.histogramSize = 100;
-            $scope.activeView = "lengths";
-            $scope.fetchLengths();
+//            $scope.fetchLengths();
             var user = userService.getUser();
             $scope.uniquePath = "/api/" + user.email + "/" + $scope.fileName + "/unique-text" + $scope.node.path;
             $scope.histogramPath = "/api/" + user.email + "/" + $scope.fileName + "/histogram-text" + $scope.node.path;
-            dashboardService.nodeStatus($scope.fileName, node.path).then(function(data){
+            dashboardService.nodeStatus($scope.fileName, node.path).then(function (data) {
                 $scope.status = data;
+                $scope.fetchSample();
             });
         };
 
-        $scope.fetchLengths = function() {
-            $scope.activeView = "lengths";
-            $scope.sample = undefined;
-            $scope.histogram = undefined;
-        };
+//        $scope.fetchLengths = function() {
+//            $scope.activeView = "lengths";
+//            $scope.sample = undefined;
+//            $scope.histogram = undefined;
+//        };
 
         $scope.fetchSample = function () {
             $scope.activeView = "sample";
@@ -126,29 +128,42 @@ define(["angular"], function () {
             });
         };
 
-        $scope.isMoreSample = function() {
+        $scope.isMoreSample = function () {
             if (!($scope.status && $scope.status.samples)) return false;
             var which = _.indexOf($scope.status.samples, $scope.sampleSize, true);
             return which < $scope.status.samples.length - 1;
         };
 
-        $scope.moreSample = function() {
+        $scope.moreSample = function () {
             var which = _.indexOf($scope.status.samples, $scope.sampleSize, true);
             $scope.sampleSize = $scope.status.samples[which + 1];
             $scope.fetchSample();
         };
 
-        $scope.isMoreHistogram = function() {
+        $scope.isMoreHistogram = function () {
             if (!($scope.status && $scope.status.histograms)) return false;
             var which = _.indexOf($scope.status.histograms, $scope.histogramSize, true);
             return which < $scope.status.histograms.length - 1;
         };
 
-        $scope.moreHistogram = function() {
+        $scope.moreHistogram = function () {
             var which = _.indexOf($scope.status.histograms, $scope.histogramSize, true);
             $scope.histogramSize = $scope.status.histograms[which + 1];
             $scope.fetchHistogram();
         };
+
+        $scope.$watch("filterTyped", function (filterTyped, oldFilterTyped) {
+            if ($scope.filterTicking) {
+                $timeout.cancel($scope.filterTicking);
+                $scope.filterTicking = undefined;
+            }
+            $scope.filterTicking = $timeout(
+                function () {
+                    $scope.filterText = filterTyped;
+                },
+                500
+            );
+        });
 
         /**
          * Scrolls up and down to a named anchor hash, or top/bottom of an element
@@ -162,30 +177,30 @@ define(["angular"], function () {
                 element = options.element || undefined,
                 direction = options.direction || 'up';
             // navigate to hash
-            if(hash) {
+            if (hash) {
                 var old = $location.hash();
                 $location.hash(hash);
                 $anchorScroll();
                 $location.hash(old);//reset to old location in order to maintain routing logic (no hash in the url)
             }
             // scroll the provided dom element if it exists
-            if(element && $(options.element).length) {
+            if (element && $(options.element).length) {
                 var scrollElement = $(options.element);
                 // get the height from the actual content, not the container
                 var scrollHeight = scrollElement[0].scrollHeight;
                 var distance = '';
-                if(!direction || direction == 'up') {
+                if (!direction || direction == 'up') {
                     distance = -scrollHeight;
                 }
                 else {
                     distance = scrollHeight;
                 }
-                $timeout(function() {
+                $timeout(function () {
                     scrollElement.stop().animate({
                         scrollLeft: '+=' + 0,
                         scrollTop: '+=' + distance
                     });
-                },250);
+                }, 250);
             }
         };
     };
