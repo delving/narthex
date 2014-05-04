@@ -92,8 +92,8 @@ define(["angular"], function () {
         $scope.selectNode = function(node) {
             if (!node.lengths.length) return;
             $scope.node = node;
-            $scope.sampleSize = 10;
-            $scope.histogramSize = 10;
+            $scope.sampleSize = 100;
+            $scope.histogramSize = 100;
             $scope.activeView = "lengths";
             $scope.fetchLengths();
             var user = userService.getUser();
