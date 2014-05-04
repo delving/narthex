@@ -10,13 +10,15 @@ define(["angular"], function () {
     var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout) {
 
         $scope.user = user;
-        $scope.image = 'jpg';
+        $scope.image = 'png';
+        $scope.processing = false;
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.
             for (var i = 0; i < $files.length; i++) {
                 var file = $files[i];
                 $scope.image = "gif";
+                $scope.processing = true;
                 $scope.upload = $upload.upload(
                     {
                         url: '/dashboard/upload', //upload.php script, node.js route, or servlet url
@@ -33,7 +35,8 @@ define(["angular"], function () {
                 ).success(
                     function (data, status, headers, config) {
                         // file is uploaded successfully
-                        $scope.image = "jpg";
+                        $scope.image = "png";
+                        $scope.processing = false;
                         fetchFileList();
                     }
                 );
@@ -50,7 +53,11 @@ define(["angular"], function () {
                 else {
                     file.status = data;
                     if (file && !file.status.complete) {
+                        $scope.image = "gif";
                         $timeout(function() { checkFileStatus(file) }, 1000)
+                    }
+                    else {
+                        $scope.image = "png";
                     }
                 }
             })
@@ -77,7 +84,7 @@ define(["angular"], function () {
         "$scope", "user", "dashboardService", "fileUpload", "$location", "$upload", "$timeout"
     ];
 
-    var FileDetailCtrl = function ($scope, $routeParams, dashboardService, userService) {
+    var FileDetailCtrl = function ($scope, $routeParams, $timeout, dashboardService, userService) {
 
         $scope.fileName = $routeParams.fileName;
 
@@ -145,9 +152,48 @@ define(["angular"], function () {
             $scope.histogramSize = $scope.status.histograms[which + 1];
             $scope.fetchHistogram();
         };
+
+        /**
+         * Scrolls up and down to a named anchor hash, or top/bottom of an element
+         * @param {Object} options: hash - named anchor, element - html element (usually a div) with id
+         * eg. scrollTo({'hash': 'page-top'})
+         * eg. scrollto({'element': '#document-list-container'})
+         */
+        $scope.scrollTo = function (options) {
+            options = options || {};
+            var hash = options.hash || undefined,
+                element = options.element || undefined,
+                direction = options.direction || 'up';
+            // navigate to hash
+            if(hash) {
+                var old = $location.hash();
+                $location.hash(hash);
+                $anchorScroll();
+                $location.hash(old);//reset to old location in order to maintain routing logic (no hash in the url)
+            }
+            // scroll the provided dom element if it exists
+            if(element && $(options.element).length) {
+                var scrollElement = $(options.element);
+                // get the height from the actual content, not the container
+                var scrollHeight = scrollElement[0].scrollHeight;
+                var distance = '';
+                if(!direction || direction == 'up') {
+                    distance = -scrollHeight;
+                }
+                else {
+                    distance = scrollHeight;
+                }
+                $timeout(function() {
+                    scrollElement.stop().animate({
+                        scrollLeft: '+=' + 0,
+                        scrollTop: '+=' + distance
+                    });
+                },250);
+            }
+        };
     };
 
-    FileDetailCtrl.$inject = ["$scope", "$routeParams", "dashboardService", "userService"];
+    FileDetailCtrl.$inject = ["$scope", "$routeParams", "$timeout", "dashboardService", "userService"];
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree, oldTree) {

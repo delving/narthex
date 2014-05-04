@@ -9,8 +9,8 @@
     <div class="col-md-4">
         <div class="file-drop" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
              ng-show="dropSupported">
-            <h3>File-drop-area</h3>
-            <img ng-src="/assets/images/spiral.{{ image }}"/>
+            <h6>Drag and drop your xml source file into this area</h6>
+            <img ng-src="/assets/images/shell.{{ image }}"/>
         </div>
     </div>
     <div class="col-md-8">
@@ -18,17 +18,25 @@
             <div class="panel-heading">
                 <h3 class="panel-title">Your files:</h3>
             </div>
-            <div class="panel-body">
+            <div class="panel-body file-list">
                 <ul class="list-group">
-                    <li ng-repeat="file in files" class="list-group-item">
-                        <div data-ng-show="!file.status">
-                            <span>{{ file.name }}</span>
-                        </div>
-                        <div data-ng-show="file.status">
-                            <span data-ng-show="!file.status.index">{{ file.name }} (analyzing {{ file.status.elements }})</span>
-                            <a href data-ng-click="viewFile(file)" data-ng-show="file.status.index"><b>{{ file.name }}</b></a>
-                            <span data-ng-show="file.status.index && !file.status.complete"> (processing)</span>
-                        </div>
+                    <li class="list-group-item list-group-item-success">   <a href> afafafafafasf  </a>
+                        <code class="analyze">asdfasfdsf</code>
+                        <code class="process">asdfasfdsf</code>
+                    </li>
+                    <li ng-repeat="file in files" class="list-group-item clearfix">
+                        <span data-ng-show="!file.status.complete">
+                            {{ file.name }}
+                        </span>
+
+                        <span data-ng-show="file.status.complete">
+                            <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                        </span>
+                        <span data-ng-show="file.status">
+                            <button class="btn btn-success btn-xs pull-right" data-ng-click="viewFile(file)" data-ng-show="file.status.complete">View</button>
+                            <code class="process" data-ng-show="file.status.index && !file.status.complete">processing</code>
+                            <code class="analyze" data-ng-show="!file.status.index">analyzing {{ file.status.elements }}</code>
+                        </span>
                     </li>
                 </ul>
             </div>
