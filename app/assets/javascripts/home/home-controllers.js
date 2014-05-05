@@ -8,12 +8,15 @@ define(["angular"], function (angular) {
     var HomeCtrl = function ($scope, $rootScope, $cookies, $location, userService) {
         $scope.token = $cookies["XSRF-TOKEN"];
         if ($scope.token) {
-            userService.checkLogin().then(function(response) {
-                $location.path("/dashboard")
-            }, function(reason) {
-                $scope.token = "no token";
-                $cookies["XSRF-TOKEN"] = undefined;
-            });
+            userService.checkLogin().then(
+                function (response) {
+                    $location.path("/dashboard")
+                },
+                function (reason) {
+                    $scope.token = "no token";
+                    $cookies["XSRF-TOKEN"] = undefined;
+                }
+            );
         }
     };
     HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService"];
@@ -32,10 +35,10 @@ define(["angular"], function (angular) {
         );
 
         $scope.logout = function () {
-            userService.logout().then(function() {
+            userService.logout().then(function () {
                 $scope.user = undefined;
                 $location.path("/");
-            }, function(why) {
+            }, function (why) {
                 console.log("unable to logout", why);
             });
         };

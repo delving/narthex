@@ -54,11 +54,14 @@ define(["angular", "common"], function (angular) {
                     deferred.resolve(user);
                 }
                 else {
-                    userService.checkLogin().then(function (revealedUser) {
-                        deferred.resolve(user)
-                    }, function (reason) {
-                        deferred.reject();
-                    });
+                    userService.checkLogin().then(
+                        function (revealedUser) {
+                            deferred.resolve(user)
+                        },
+                        function (reason) {
+                            deferred.reject();
+                        }
+                    );
                 }
                 return deferred.promise;
             }
