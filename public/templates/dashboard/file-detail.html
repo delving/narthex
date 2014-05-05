@@ -90,9 +90,9 @@
                 <div class="navbar navbar-default">
                     <div class="navbar-left sub-controls">
                         <span data-ng-if="histogram">
+                            <button class="btn navbar-btn count-btn">({{histogram.entries}}/{{histogram.uniqueCount}})</button>
                             <button class="btn btn-default btn-sm navbar-btn" data-ng-click="moreHistogram();scrollTo({element: '#historgram-list', direction: 'down'})" data-ng-show="isMoreHistogram()">MORE</button>
-                            <code>({{histogram.entries}}/{{histogram.uniqueCount}})</code>
-                            <span data-ng-if="histogram.complete">
+                            <span data-ng-if="histogram.complete && histogram.uniqueCount > 30">
                                 <button class="btn btn-default btn-sm navbar-btn" data-ng-click="scrollTo({element: '#historgram-list', direction: 'up'})"><i class="fa fa-hand-o-up"></i></button>
                                     <button class="btn btn-default btn-sm navbar-btn" data-ng-click="scrollTo({element: '#historgram-list', direction: 'down'})"><i class="fa fa-hand-o-down"></i></button>
                             </span>
