@@ -10,7 +10,7 @@ import scala.concurrent.Future
 trait Security { this: Controller =>
   val TOKEN = "X-XSRF-TOKEN"
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
-  lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60*20)
+  lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 2)
 
   /*
     To make this work seamlessly with Angular, you should read the token from a header called

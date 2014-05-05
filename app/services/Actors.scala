@@ -120,7 +120,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
     }
 
     var activeCounters = directory.histogramJsonFiles.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
-    activeCounters = activeCounters.filter(triple => uniqueCount > triple._1 / directory.sizeFactor)
+    activeCounters = activeCounters.filter(pair => pair._1 == activeCounters.head._1 || uniqueCount > pair._1 / directory.sizeFactor)
     val counters = activeCounters
     var line = lineOption
     var count = 1
