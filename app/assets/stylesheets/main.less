@@ -56,7 +56,7 @@ body {
 }
 
 .panel-schema {
-
+  margin-bottom: 0px;
   ul {
     margin: 0 0 0 18px;
     padding: 0 0 0 0;
@@ -69,20 +69,6 @@ body {
       cursor: pointer;
     }
   }
-//
-//  li.node {
-//    border-bottom: 1px solid @gray;
-//    display: block;
-//    padding: 2px 0;
-//    cursor: default;
-//    &.active {
-//      cursor: pointer;
-//      &:hover {
-//        background: @gray-light;
-//      }
-//    }
-//  }
-
   .badge {
     background: @black;
     &.badge-info {
@@ -91,28 +77,22 @@ body {
   }
 }
 
-
-
-
-
-
-
-
-
-.view-list {
-  &.panel-body {
+.panel-lists {
+  margin-bottom: 0px;
+  .navbar {
+    margin: 0 0 0 0;
+  }
+  .sub-controls {
+    margin-left: 10px;
+  }
+  .panel-body {
     background: @gray-lighter;
     padding: 0 0 0 0;
   }
-  .navbar {
-    margin-bottom: 0px;
-  }
   .list-group {
     background: @gray-light;
-//    border-bottom: 1px solid @gray-light;
   }
   .list-group-item {
-//    background-color: lighten(@gray-dark, 10%);
     background: @gray-lighter;
     color: @gray-dark;
     padding: 2px 14px;
