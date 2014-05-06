@@ -51,7 +51,6 @@ object Dashboard extends Controller with Security with XRay {
 
   def index(fileName: String) = Secure() {
     token => email => implicit request => {
-      println(s"index for $fileName")
       val repo = FileRepository(email)
       OkFile(repo.analysis(fileName).indexFile)
     }
