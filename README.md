@@ -1,5 +1,4 @@
 # XML-Ray
-=======
 
 ## Introduction
 
