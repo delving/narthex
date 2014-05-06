@@ -12,16 +12,9 @@ define(["angular", "common"], function (angular) {
                 var user;
                 var app = playRoutes.controllers.Application;
                 return {
-                    checkLogin: function () {
-                        return app.checkLogin().get().then(function (response) {
-                            user = response.data.user;
-                            return user;
-                        });
-                    },
                     loginUser: function (credentials) {
                         return app.login().post(credentials).then(function (response) {
                             user = response.data.user;
-                            // todo: fetch user details?
                             return user;
                         });
                     },
@@ -30,6 +23,12 @@ define(["angular", "common"], function (angular) {
                         return app.logout().get().then(function (response) {
                             user = undefined;
                             return "logged out"
+                        });
+                    },
+                    checkLogin: function () {
+                        return app.checkLogin().get().then(function (response) {
+                            user = response.data.user;
+                            return user;
                         });
                     },
                     getUser: function () {

@@ -5,6 +5,10 @@ import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import akka.actor.Props
 import java.util.UUID
+import play.api.libs.json.Json
+import org.mindrot.jbcrypt.BCrypt
+import org.apache.commons.io.FileUtils._
+import scala.Some
 
 object FileRepository {
 
@@ -23,8 +27,26 @@ class PersonalRepository(root: File, val email: String) {
 
   val SUFFIXES = List(".xml.gz", ".xml.zip")
   val repo = new File(root, email.replaceAll("@", "_"))
+  val user = new File(repo, "user.json")
   val uploaded = new File(repo, "uploaded")
   val analyzed = new File(repo, "analyzed")
+
+  def create(password: String) = {
+    repo.mkdirs()
+    val passwordHash = BCrypt.hashpw(password, BCrypt.gensalt())
+    writeStringToFile(user, Json.prettyPrint(Json.obj("passwordHash" -> passwordHash)))
+  }
+
+  def authenticate(password: String) = {
+    if (user.exists()) {
+      val userObject = Json.parse(readFileToString(user))
+      val passwordHash = (userObject \ "passwordHash").as[String]
+      BCrypt.checkpw(password, passwordHash)
+    }
+    else {
+      false
+    }
+  }
 
   def uploadedFile(fileName: String) = new File(uploaded, fileName)
 

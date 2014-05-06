@@ -2,7 +2,7 @@ import play.Project._
 
 name := """xml-ray"""
 
-version := "2.2.2"
+version := "0.5"
 
 libraryDependencies ++= Seq(
   // WebJars infrastructure
@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "bootstrap" % "3.1.1" exclude("org.webjars", "jquery"),
   "org.webjars" % "angularjs" % "1.2.14" exclude("org.webjars", "jquery"),
   "org.webjars" % "angular-file-upload" % "1.2.8-1",
+  "org.mindrot" % "jbcrypt" % "0.3m",
   "org.scalatest" % "scalatest_2.10" % "2.1.3" % "test",
   "org.scalautils" % "scalautils_2.10" % "2.1.3",
   "commons-io" % "commons-io" % "2.4",

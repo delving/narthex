@@ -5,6 +5,7 @@ import play.api.mvc._
 import play.api.libs.json._
 import play.api.cache.Cache
 import play.api.Play.current
+import services.FileRepository
 
 /** Application controller, handles authentication */
 object Application extends Controller with Security {
@@ -25,10 +26,6 @@ object Application extends Controller with Security {
           routes.javascript.Application.login,
           routes.javascript.Application.checkLogin,
           routes.javascript.Application.logout,
-          routes.javascript.Users.user,
-          routes.javascript.Users.createUser,
-          routes.javascript.Users.updateUser,
-          routes.javascript.Users.deleteUser,
           routes.javascript.Dashboard.list,
           routes.javascript.Dashboard.work,
           routes.javascript.Dashboard.status,
@@ -50,8 +47,25 @@ object Application extends Controller with Security {
     implicit request =>
       val token = java.util.UUID.randomUUID().toString
       val email = (request.body \ "email").as[String]
-      // todo: use password
-      Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
+      val password = (request.body \ "password").as[String]
+      val repeatPassword = (request.body \ "repeatPassword").asOpt[String]
+      if (repeatPassword.isDefined) {
+        if (password == repeatPassword.get) {
+          FileRepository(email).create(password)
+          Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
+        }
+        else {
+          Unauthorized(Json.obj("problem" -> "Passwords do not match"))
+        }
+      }
+      else {
+        if (FileRepository(email).authenticate(password)) {
+          Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
+        }
+        else {
+          Unauthorized(Json.obj("problem" -> "EMail - Password combination doesn't exist"))
+        }
+      }
   }
 
   def checkLogin = Action {

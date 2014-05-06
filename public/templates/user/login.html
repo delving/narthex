@@ -1,19 +1,36 @@
 <div class="container">
     <div class="row">
         <div class="col-md-6 col-md-offset-3">
-            <div class="page-header"><h1>Log In <small>Use any email/password (for now)</small></h1></div>
+            <div class="page-header">
+                <h1>Log In</h1>
+            </div>
             <form name="form" class="form well">
                 <fieldset>
                     <div class="form-group">
                         <label for="email">Email address</label>
-                        <input id="email" type="email" class="form-control" data-ng-model="credentials.email" placeholder="E-Mail" required /><br />
+                        <input id="email" type="email" class="form-control"
+                               data-ng-model="credentials.email" placeholder="E-Mail" required/><br/>
                     </div>
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input id="password" type="password" class="form-control" data-ng-model="credentials.password" placeholder="Password" required /><br />
-                        <button class="btn btn-primary" data-ng-disabled="form.$invalid" data-ng-click="login(credentials)">Log In</button>
+                        <input id="password" type="password" class="form-control"
+                               data-ng-model="credentials.password" placeholder="Password" required/>
                     </div>
+                    <div class="form-group" data-ng-show="showRepeatPassword">
+                        <label for="repeatPassword">Verify Password</label>
+                        <input id="repeatPassword" type="password" class="form-control"
+                               data-ng-model="credentials.repeatPassword" placeholder="Password"/>
+                    </div>
+                    <br/>
+                    <button class="btn btn-primary" data-ng-disabled="form.$invalid"
+                            data-ng-click="login(credentials)">Log In</button>
+                    <button class="btn btn-primary" data-ng-disabled="form.$invalid" data-ng-show="!showRepeatPassword"
+                            data-ng-click="showRepeatPassword = true">Register</button>
                 </fieldset>
+                <div data-ng-show="errorMessage">
+                    <br/>
+                    <span class="badge">{{ errorMessage }}</span>
+                </div>
             </form>
         </div>
     </div>
