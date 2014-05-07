@@ -116,6 +116,10 @@ define(["angular"], function () {
         var garbage = ('xml-ray|' + email + '|' + $scope.fileName).hashCode().toString(16).substring(1);
         var apiPrefix = serverUrl + 'api/' + garbage + '/' + email + '/' + $scope.fileName;
 
+        $scope.goToDashboard = function() {
+            $location.path("/dashboard");
+        };
+
         dashboardService.index($scope.fileName).then(function (data) {
             $scope.tree = data;
         });
