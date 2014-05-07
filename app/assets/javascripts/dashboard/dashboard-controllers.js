@@ -136,7 +136,8 @@ define(["angular"], function () {
             _.forEach(node.kids, removeChosen);
         }
 
-        $scope.selectNode = function (node) {
+        $scope.selectNode = function (node, $event) {
+            $event.stopPropagation();
             if (!node.lengths.length) return;
             removeChosen($scope.tree);
             node.chosen = true;
