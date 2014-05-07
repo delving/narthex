@@ -120,8 +120,16 @@ define(["angular"], function () {
             $scope.tree = data;
         });
 
+        function removeChosen(node) {
+            if (!node) return;
+            if (node.chosen) node.chosen = undefined;
+            _.forEach(node.kids, removeChosen);
+        }
+
         $scope.selectNode = function (node) {
             if (!node.lengths.length) return;
+            removeChosen($scope.tree);
+            node.chosen = true;
             $scope.node = node;
             $scope.apiPath = apiPrefix + node.path.replace(":", "_").replace("@", "_");
             $scope.sampleSize = 100;

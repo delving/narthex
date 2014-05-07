@@ -66,7 +66,18 @@ body {
     padding: 2px;
     &.active:hover {
       background: @gray;
+      color: @white;
       cursor: pointer;
+    }
+    &.chosen {
+      background: @white;
+      color: @black;
+      cursor: default;
+    }
+    &.chosen:hover {
+      background: @white;
+      color: @black;
+      cursor: default;
     }
   }
   .badge {
@@ -105,10 +116,11 @@ body {
     background: @gray-lighter;
     color: @gray-dark;
     padding: 2px 14px;
-    margin-bottom: 1px;
-    &:last-of-type {
-     border-bottom: 1px solid @gray-light;
-    }
+    margin-bottom: 2px;
+    border-bottom: 1px solid @gray-light;
+//    &:last-of-type {
+//     border-bottom: 2px solid @gray-light;
+//    }
     .badge {
       background: @brand-primary;
       color: @white;
