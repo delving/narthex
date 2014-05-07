@@ -90,6 +90,12 @@ define(["angular"], function () {
             $location.path("/dashboard/" + file.name);
         };
 
+        $scope.deleteFile = function(file) {
+            dashboardService.zap(file.name).then(function(data) {
+                fetchFileList();
+            });
+        }
+
     };
 
     DashboardCtrl.$inject = [

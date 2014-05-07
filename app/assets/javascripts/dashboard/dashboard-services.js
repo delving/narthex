@@ -49,6 +49,14 @@ define(["angular", "common"], function (angular) {
                     rejection
                 );
             },
+            zap: function (fileName) {
+                return dash.zap(fileName).get().then(
+                    function (response) {
+                        return response.data;
+                    },
+                    rejection
+                );
+            },
             index: function (fileName) {
                 return dash.index(fileName).get().then(
                     function (response) {

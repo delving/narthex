@@ -22,6 +22,8 @@ import play.api.Logger
 import services._
 import play.api.libs.json._
 import controllers.Application.OkFile
+import org.apache.commons.io.FileUtils._
+import scala.Some
 
 object Dashboard extends Controller with Security with XRay {
 
@@ -61,6 +63,15 @@ object Dashboard extends Controller with Security with XRay {
     token => email => implicit request => {
       val repo = FileRepository(email)
       OkFile(repo.analysis(fileName).statusFile)
+    }
+  }
+
+  def zap(fileName: String) = Secure() {
+    token => email => implicit request => {
+      val repo = FileRepository(email)
+      deleteQuietly(repo.uploadedFile(fileName))
+      deleteDirectory(repo.analysis(fileName).directory)
+      Ok
     }
   }
 

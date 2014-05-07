@@ -29,7 +29,7 @@
                             <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
                         </span>
                         <span data-ng-show="file.status">
-                            <button class="btn btn-success btn-xs pull-right" data-ng-click="viewFile(file)" data-ng-show="file.status.complete">View</button>
+                            <button class="btn btn-success btn-xs pull-right" data-ng-click="deleteFile(file)" data-ng-show="file.status.complete">Delete</button>
                             <code class="process" data-ng-show="file.status.index && !file.status.complete">processing</code>
                             <code class="analyze" data-ng-show="!file.status.index">analyzing {{ file.status.elements }}</code>
                         </span>
