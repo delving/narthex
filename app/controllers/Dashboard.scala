@@ -17,12 +17,11 @@
 package controllers
 
 import play.api.mvc._
-import java.io.{FileNotFoundException, FileInputStream, File}
+import java.io.File
 import play.api.Logger
 import services._
 import play.api.libs.json._
-import play.api.libs.iteratee.Enumerator
-import scala.concurrent.ExecutionContext.Implicits.global
+import controllers.Application.OkFile
 
 object Dashboard extends Controller with Security with XRay {
 
@@ -99,65 +98,6 @@ object Dashboard extends Controller with Security with XRay {
         case None => NotFound(Json.obj("path" -> path, "size" -> size))
         case Some(file) => OkFile(file)
       }
-    }
-  }
-
-  def uniqueText(fileName: String, path: String) = Secure() {
-    token => email => implicit request => {
-      val repo = FileRepository(email)
-      repo.analysis(fileName).uniqueTextFile(path) match {
-        case None => NotFound(Json.obj("path" -> path))
-        case Some(file) => OkFile(file)
-      }
-    }
-  }
-
-  def histogramText(fileName: String, path: String) = Secure() {
-    token => email => implicit request => {
-      val repo = FileRepository(email)
-      repo.analysis(fileName).histogramTextFile(path) match {
-        case None => NotFound(Json.obj("path" -> path))
-        case Some(file) => OkFile(file)
-      }
-    }
-  }
-
-  def uniqueTextAPI(fileName: String, path: String, email:String) = Action(parse.anyContent) {
-    implicit request => {
-      val repo = FileRepository(email)
-      repo.analysis(fileName).uniqueTextFile(path) match {
-        case None => NotFound(Json.obj("path" -> path))
-        case Some(file) => OkFile(file)
-      }
-    }
-  }
-
-  def histogramTextAPI(fileName: String, path: String, email:String) = Action(parse.anyContent) {
-    implicit request => {
-      val repo = FileRepository(email)
-      repo.analysis(fileName).histogramTextFile(path) match {
-        case None => NotFound(Json.obj("path" -> path))
-        case Some(file) => OkFile(file)
-      }
-    }
-  }
-
-  private def OkFile(file: File, attempt: Int = 0): SimpleResult = {
-    try {
-      val input = new FileInputStream(file)
-      val resourceData = Enumerator.fromStream(input)
-      val contentType = if (file.getName.endsWith(".json")) "application/json" else "text/plain"
-      SimpleResult(
-        ResponseHeader(OK, Map(CONTENT_LENGTH -> file.length().toString, CONTENT_TYPE -> contentType)),
-        resourceData
-      )
-    }
-    catch {
-      case ex: FileNotFoundException if attempt < 5 => // sometimes status files are in the process of being written
-        Thread.sleep(30)
-        OkFile(file, attempt + 1)
-      case x: Throwable =>
-        NotFound(Json.obj("file" -> file.getName))
     }
   }
 }

@@ -25,11 +25,9 @@ GET     /dashboard/:fileName/status                     controllers.Dashboard.st
 GET     /dashboard/:fileName/status/*path               controllers.Dashboard.nodeStatus(fileName, path)
 GET     /dashboard/:fileName/sample/:size/*path         controllers.Dashboard.sample(fileName, path, size:Int)
 GET     /dashboard/:fileName/histogram/:size/*path      controllers.Dashboard.histogram(fileName, path, size:Int)
-GET     /dashboard/:fileName/unique-text/*path          controllers.Dashboard.uniqueText(fileName, path)
-GET     /dashboard/:fileName/histogram-text/*path       controllers.Dashboard.histogramText(fileName, path)
 
-GET     /api/:email/:fileName/unique-text/*path         controllers.Dashboard.uniqueTextAPI(fileName, path, email)
-GET     /api/:email/:fileName/histogram-text/*path      controllers.Dashboard.histogramTextAPI(fileName, path, email)
+GET     /api/:apiKey/:email/:fileName/*path/unique      controllers.API.uniqueText(apiKey, email, fileName, path)
+GET     /api/:apiKey/:email/:fileName/*path/histogram   controllers.API.histogramText(apiKey, email, fileName, path)
 
 # Static
 # ~~~~

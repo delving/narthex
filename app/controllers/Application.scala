@@ -22,6 +22,9 @@ import play.api.libs.json._
 import play.api.cache.Cache
 import play.api.Play.current
 import services.FileRepository
+import java.io.{FileNotFoundException, FileInputStream, File}
+import play.api.libs.iteratee.Enumerator
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /** Application controller, handles authentication */
 object Application extends Controller with Security {
@@ -48,9 +51,7 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.nodeStatus,
           routes.javascript.Dashboard.index,
           routes.javascript.Dashboard.sample,
-          routes.javascript.Dashboard.histogram,
-          routes.javascript.Dashboard.uniqueText,
-          routes.javascript.Dashboard.histogramText
+          routes.javascript.Dashboard.histogram
         )
       ).as(JAVASCRIPT)
   }
@@ -107,6 +108,28 @@ object Application extends Controller with Security {
         case None =>
           Unauthorized(Json.obj("err" -> "No Token"))
       }
+  }
+
+  def OkFile(file: File, attempt: Int = 0): SimpleResult = {
+    try {
+      val input = new FileInputStream(file)
+      val resourceData = Enumerator.fromStream(input)
+      val contentType = if (file.getName.endsWith(".json")) "application/json" else "text/plain; charset=utf-8"
+      SimpleResult(
+        ResponseHeader(OK, Map(
+          CONTENT_LENGTH -> file.length().toString,
+          CONTENT_TYPE -> contentType
+        )),
+        resourceData
+      )
+    }
+    catch {
+      case ex: FileNotFoundException if attempt < 5 => // sometimes status files are in the process of being written
+        Thread.sleep(30)
+        OkFile(file, attempt + 1)
+      case x: Throwable =>
+        NotFound(Json.obj("file" -> file.getName))
+    }
   }
 
 }

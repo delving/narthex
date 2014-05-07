@@ -17,7 +17,9 @@
         <div class="panel panel-default panel-lists">
             <div class="panel-heading">
                 <pre>File source: {{ fileName }}</pre>
-                <code class="path">File path: {{ node.path }}</code>
+                <div data-ng-show="node">
+                    <code class="path">File path: {{ node.path }}</code>
+                </div>
             </div>
             <div class="panel-body" data-ng-show="node">
                 <div class="navbar navbar-inverse list-controls">
@@ -35,12 +37,12 @@
                     <div class="collapse navbar-collapse">
                         <ul class="nav navbar-nav navbar-right">
                             <li class="dropdown">
-                                <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-cloud-download"></i> Download
-                                    <i class="caret"></i></a>
+                                <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                                    <i class="fa fa-cloud-download"></i><span> API Access </span><i class="caret"></i></a>
 
                                 <ul class="dropdown-menu">
-                                    <li><a ng-href="{{uniquePath}}" target="_blank">All Values</a></li>
-                                    <li><a ng-href="{{histogramPath}}" target="_blank">Full Histogram</a></li>
+                                    <li><a ng-href="{{apiPath}}/unique" target="_blank">All Values</a></li>
+                                    <li><a ng-href="{{apiPath}}/histogram" target="_blank">Full Histogram</a></li>
                                 </ul>
                             </li>
                         </ul>
