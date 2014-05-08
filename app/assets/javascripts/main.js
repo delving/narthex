@@ -47,7 +47,6 @@
             "angular-route",
             "jquery",
             "underscorejs",
-//            "crypto-js",
             "bootstrap",
             "./app"
         ],

@@ -90,8 +90,8 @@ define(["angular"], function () {
             $location.path("/dashboard/" + file.name);
         };
 
-        $scope.deleteFile = function(file) {
-            dashboardService.zap(file.name).then(function(data) {
+        $scope.deleteFile = function (file) {
+            dashboardService.zap(file.name).then(function (data) {
                 fetchFileList();
             });
         }
@@ -122,7 +122,7 @@ define(["angular"], function () {
         var garbage = ('xml-ray|' + email + '|' + $scope.fileName).hashCode().toString(16).substring(1);
         var apiPrefix = serverUrl + 'api/' + garbage + '/' + email + '/' + $scope.fileName;
 
-        $scope.goToDashboard = function() {
+        $scope.goToDashboard = function () {
             $location.path("/dashboard");
         };
 
@@ -157,11 +157,20 @@ define(["angular"], function () {
             });
         };
 
-//        $scope.fetchLengths = function() {
-//            $scope.activeView = "lengths";
-//            $scope.sample = undefined;
-//            $scope.histogram = undefined;
-//        };
+        $scope.fetchLengths = function () {
+            $scope.activeView = "lengths";
+            $scope.sample = undefined;
+            $scope.histogram = undefined;
+            $scope.exampleData = [
+                { key: "One", y: 5 },
+                { key: "Two", y: 2 },
+                { key: "Three", y: 9 },
+                { key: "Four", y: 7 },
+                { key: "Five", y: 4 },
+                { key: "Six", y: 3 },
+                { key: "Seven", y: 9 }
+            ];
+        };
 
         $scope.fetchSample = function () {
             $scope.activeView = "sample";

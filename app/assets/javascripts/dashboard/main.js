@@ -26,7 +26,7 @@ define(
 
         mod.controller('TreeCtrl', controllers.TreeCtrl);
         mod.controller('TreeNodeCtrl', controllers.TreeNodeCtrl);
-        mod.config(function($rootScopeProvider) {
+        mod.config(function ($rootScopeProvider) {
             $rootScopeProvider.digestTtl(15);
         });
         return mod;
