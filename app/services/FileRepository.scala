@@ -27,7 +27,7 @@ import org.apache.commons.io.FileUtils._
 import scala.Some
 
 object FileRepository {
-
+  val SUFFIXES = List(".xml.gz", ".xml")
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "XML-RAY")
 
@@ -37,11 +37,15 @@ object FileRepository {
 
   def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
 
+  def acceptable(fileName: String, contentType: Option[String]) = {
+    // todo: something with content-type
+    println("content type "+contentType)
+    !SUFFIXES.filter(suffix => fileName.endsWith(suffix)).isEmpty
+  }
 }
 
 class PersonalRepository(root: File, val email: String) {
 
-  val SUFFIXES = List(".xml.gz", ".xml.zip")
   val repo = new File(root, email.replaceAll("@", "_"))
   val user = new File(repo, "user.json")
   val uploaded = new File(repo, "uploaded")
@@ -84,7 +88,7 @@ class PersonalRepository(root: File, val email: String) {
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
       directory.listFiles.filter(file =>
-        file.isFile && !SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).isEmpty
+        file.isFile && !FileRepository.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).isEmpty
       ).toList
     }
     else {

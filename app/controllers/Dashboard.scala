@@ -32,11 +32,18 @@ object Dashboard extends Controller with Security with XRay {
       request.body.file("file") match {
         case Some(file) =>
           Logger.info(s"upload ${file.filename} (${file.contentType}) to $email")
-          val repo = FileRepository(email)
-          file.ref.moveTo(repo.uploadedFile(file.filename))
-          Ok(file.filename)
+          if (FileRepository.acceptable(file.filename, file.contentType)) {
+            println(s"Acceptable ${file.filename}")
+            val repo = FileRepository(email)
+            file.ref.moveTo(repo.uploadedFile(file.filename))
+            Ok(file.filename)
+          }
+          else {
+            println(s"NOT Acceptable ${file.filename}")
+            NotAcceptable(Json.obj("problem" -> "File must be .xml or .xml.gz"))
+          }
         case None =>
-          Redirect(routes.Application.index()).flashing("error" -> "Missing file")
+          NotAcceptable(Json.obj("problem" -> "Missing file"))
       }
     }
   }

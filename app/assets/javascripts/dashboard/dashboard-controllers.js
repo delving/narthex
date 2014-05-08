@@ -49,9 +49,12 @@ define(["angular"], function () {
                         $scope.image = "png";
                         fetchFileList();
                     }
+                ).error(
+                    function (data) {
+                        $scope.image = "png";
+                        alert(data.problem);
+                    }
                 );
-                //.error(...)
-                //.then(success, error, progress);
             }
         };
 

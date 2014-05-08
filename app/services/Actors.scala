@@ -160,7 +160,9 @@ class Analyzer extends Actor with XRay with ActorLogging {
 
     case Analyze(file, directory) =>
       log.debug(s"Analyzer on ${file.getName}")
-      val source = Source.fromInputStream(new GZIPInputStream(new FileInputStream(file)))
+      val inputStream = new FileInputStream(file)
+      val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(inputStream) else inputStream
+      val source = Source.fromInputStream(stream)
       val root: XRayNode = XRayNode(source, directory, count => sender ! Progress(count, directory))
       source.close()
       root.sort {
