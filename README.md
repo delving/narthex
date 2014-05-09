@@ -1,14 +1,14 @@
-# XML-Ray
+# Narthex
 
 ## Introduction
 
-XML-Ray is an online XML analyzer offering an easy way to get something like an X-Ray of the contents of your XML.  It was originally designed for use in analyzing cultural heritage metadata.  You drop your XML file (in zipped form) onto the XML-Ray dashboard and it will initiate and complete a full rigorous analysis, revealing the schema as well as everything about the content of all non-empty elements and attributes.  The results can be browsed as well as made available via an API to other software.
+Narthex is an online XML analyzer offering an easy way to get something like an X-Ray of the contents of your XML.  It was originally designed for use in analyzing cultural heritage metadata.  You drop your XML file (in zipped form) onto the Narthex dashboard and it will initiate and complete a full rigorous analysis, revealing the schema as well as everything about the content of all non-empty elements and attributes.  The results can be browsed as well as made available via an API to other software.
 
 The purpose of the analysis is first to get an overview of the XML contents, but it also reveals the vocabularies of values which were used in the data.
 
 ## Background
 
-XML-Ray makes up part of the CultureBrokers project, co-funded by the Swedish Arts Council and the British Museum.  It is being developed by Delving BV, and represents an elaboration of the analysis functionality present in Delving's SIP-Creator software.
+Narthex makes up part of the CultureBrokers project, co-funded by the Swedish Arts Council and the British Museum.  It is being developed by Delving BV, and represents an elaboration of the analysis functionality present in Delving's SIP-Creator software.
 
 ## Development
 
@@ -47,7 +47,7 @@ The functionality of NARTHEX suggests and leads the way to some interesting pote
 
 ### Vocabulary Alignment
 
-When XML-Ray has perform its analysis, any vocabularies used in practice for terminology fields in the source data will be revealed.  When a full list of utilized terminology values is available, it is not a great deal of work to build an alignment interface in which each found value is associated with the URI of an entry from a shared vocabulary.
+When Narthex has perform its analysis, any vocabularies used in practice for terminology fields in the source data will be revealed.  When a full list of utilized terminology values is available, it is not a great deal of work to build an alignment interface in which each found value is associated with the URI of an entry from a shared vocabulary.
 
 The source data can then be rendered with the vocabulary URI assignments inserted, which is an important part of integrating data together from various sources into storage where they can be collectively accessed.
 
