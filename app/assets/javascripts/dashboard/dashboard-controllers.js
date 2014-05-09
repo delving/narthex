@@ -118,7 +118,15 @@ define(["angular"], function () {
     };
 
     var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, userService) {
+
+        if (!userService.getUser()) {
+            $location.path("/dashboard");
+        }
+
         $scope.fileName = $routeParams.fileName;
+        $scope.columns = { left: 4, right: 8 };
+        $scope.aligning = false;
+
         var absUrl = $location.absUrl();
         var email = userService.getUser().email.replace("@", "_");
         var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
@@ -127,6 +135,18 @@ define(["angular"], function () {
 
         $scope.goToDashboard = function () {
             $location.path("/dashboard");
+        };
+
+        $scope.setAligning = function(on) {
+            $scope.aligning = on;
+            if (on) {
+                $scope.columns.left = 6;
+                $scope.columns.right = 6;
+            }
+            else {
+                $scope.columns.left = 4;
+                $scope.columns.right = 8;
+            }
         };
 
         dashboardService.index($scope.fileName).then(function (data) {

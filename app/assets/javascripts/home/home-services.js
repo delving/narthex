@@ -17,7 +17,7 @@
 define(["angular", "common"], function (angular) {
     "use strict";
 
-    var mod = angular.module("user.services", ["narthex.common"]);
+    var mod = angular.module("home.services", ["narthex.common"]);
     mod.factory(
         "userService",
         ["$http", "$q", "playRoutes",

@@ -1,11 +1,11 @@
 <div class="row" ng-show="tree">
-    <div class="col-md-12">
+    <div class="col-md-{{columns.left + columns.right}}">
         <div class="panel-heading">
-            <h2><img data-ng-click="goToDashboard()" ng-src="/assets/images/shell.png" style="width: 50; height:62"/><span> {{ fileName }}</span></h2>
+            <h2><img data-ng-click="goToDashboard()" ng-src="/assets/images/narthex.png" style="width: 46; height:50"/><span> {{ fileName }}</span></h2>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="panel panel-primary panel-schema">
+    <div class="col-md-{{columns.left}}">
+        <div data-ng-if="!aligning" class="panel panel-primary panel-schema">
             <div class="panel-heading">
                 <h3 class="panel-title">Schema</h3>
             </div>
@@ -17,11 +17,74 @@
                 </div>
             </div>
         </div>
+        <div data-ng-if="aligning" class="panel panel-primary panel-schema">
+            <div class="panel-heading">
+                <span>
+                    <span class="panel-title">Enrichment</span>
+                    <span>
+                        <button class="btn btn-success btn-xs pull-right" data-ng-click="setAligning(false)">Done</button>
+                    </span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <div class="vertical-scroll" data-scrollable id="skos-browser" data-offset="168" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                    <p>
+                        This functionality is outside of the scope of the current project, but in the future this
+                        panel could contain an enrichment interface tuned to the nature of the data in the field
+                        listed to the right.
+                    </p>
+                    <dl>
+                        <dt>SKOS Browser</dt>
+                        <dd>
+                            For each entry on the right, browsing a SKOS vocabulary here would allow curators to
+                            make links from vocabularies arising from collection registration practice, pointing to
+                            shared resources which better capture the intended meaning for aggregation purposes.
+                        </dd>
+                        <dt>Link Checker</dt>
+                        <dd>
+                            A URL field pointing to external resources can have all entries slowly and patiently checked
+                            for availability.  Periodic checks could be scheduled as well, to verify that the
+                            resources available.
+                        </dd>
+                        <dt>Geo-converter</dt>
+                        <dd>
+                            If a field contains a geo-coordinate, the contents could be verified, displayed on a map,
+                            and converted to other coordinate systems if necessary.
+                        </dd>
+                        <dt>Date Fixer</dt>
+                        <dd>
+                            Date fields are notorious for having many formats in practice, so a date fixer could look
+                            for ambiguous values according to chosen best practices and prompt for improvements.
+                        </dd>
+                        <dt>Syntax Normalizer</dt>
+                        <dd>
+                            Values internally delimited with semicolons or commas can be exploded into separate elements.
+                            First name - surname order could be switched, that kind of thing.  Corner cases. Using
+                            Javascript for this would allow live viewing of results in the browser.
+                        </dd>
+                        <dt>Enrichment Lookup</dt>
+                        <dd>
+                            Enrichment results from work performed elsewhere, such as time-consuming instance matching
+                            algorithms on people, places, and events, could be dropped here so that the values
+                            of this field can be rendered through the a translation lookup that renders the found
+                            matches.
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="col-md-8">
+    <div class="col-md-{{columns.right}}">
         <div class="panel panel-default panel-lists" data-ng-show="node">
             <div class="panel-heading">
-                <h3 class="panel-title">{{ node.path }}</h3>
+                <span>
+                    <span>
+                        <button class="btn btn-success btn-xs left" data-ng-click="setAligning(true)"
+                                data-ng-show="!aligning">Enrich</button>
+                    </span>
+                    <span class="panel-title">{{ node.path }}</span>
+                </span>
+
             </div>
             <div class="panel-body">
                 <div class="navbar navbar-inverse list-controls">

@@ -21,7 +21,7 @@
     requirejs.config({
         // Packages = top-level folders; loads a contained file named "main.js"
         packages: [
-            "common", "home", "user", "dashboard"
+            "common", "home", "dashboard"
         ],
         shim: {
             "jsRoutes": {

@@ -18,7 +18,9 @@
     <header class="navbar navbar-inverse navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl"
         data-ng-cloak>
       <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
-        <a href="#/" class="navbar-brand"><img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>NARTHEX Analyzer</a>
+        <a href="#/" class="navbar-brand"><img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
+            <span>Narthex</span> <span style="font-size: 10pt;">Your metadata fit for integration.</span>
+        </a>
         <div data-ng-switch-when="true">
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">
@@ -34,11 +36,6 @@
                 </li>
               </ul>
             </li>
-          </ul>
-        </div>
-        <div data-ng-switch-when="false">
-          <ul class="nav navbar-nav pull-right">
-            <li><a href="#/login">Login</a></li>
           </ul>
         </div>
       </div>

@@ -26,7 +26,6 @@ define(
     [
         "angular",
         "home",
-        "user",
         "dashboard",
         "angular-file-upload"
     ],
@@ -70,7 +69,6 @@ define(
             "app",
             [
                 "narthex.home",
-                "narthex.user",
                 "narthex.dashboard",
                 "angularFileUpload"
             ]

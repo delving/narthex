@@ -24,7 +24,7 @@ define(["angular", "common"], function (angular) {
 
         var rejection = function (why) {
             if (why.status == 401) {
-                $location.path('/login');
+                $location.path('/');
             }
             else {
                 console.log('why', why);

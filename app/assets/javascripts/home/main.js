@@ -7,16 +7,19 @@ define(
     [
         "angular",
         "./home-routes",
+        "./home-services",
         "./home-controllers"
     ],
-    function (angular, routes, controllers) {
+    function (angular, routes, services, controllers) {
         "use strict";
 
         var mod = angular.module(
             "narthex.home",
             [
+                "ngCookies",
                 "ngRoute",
-                "home.routes"
+                "home.routes",
+                "home.services"
             ]
         );
         mod.controller("HeaderCtrl", controllers.HeaderCtrl);

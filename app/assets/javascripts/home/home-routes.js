@@ -15,7 +15,12 @@
 //===========================================================================
 
 define(
-    ["angular", "./home-controllers", "common"],
+    [
+        "angular",
+        "./home-controllers",
+        "./home-services",
+        "common"
+    ],
     function (angular, controllers) {
         "use strict";
 

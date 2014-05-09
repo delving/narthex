@@ -1,22 +1,58 @@
-<div class="jumbotron">
-    <h1>NARTHEX <small>XML Analyzer</small></h1>
-    <p>Get a grip on your XML!</p>
-    <p><a class="btn btn-default btn-lg" href="#/login">Get started!</a></p>
+<div class="jumbotron row">
+    <div class="col-md-4">
+        <img src="/assets/images/narthex.png"/>
+    </div>
+    <div class="col-md-4">
+        <h1>Narthex</h1>
+        <div class="row">
+            <div>
+                <form name="form" class="form well">
+                    <fieldset>
+                        <div class="form-group">
+                            <label for="email">Email address</label>
+                            <input id="email" type="email" class="form-control"
+                                   data-ng-model="credentials.email" placeholder="E-Mail" required/><br/>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input id="password" type="password" class="form-control"
+                                   data-ng-model="credentials.password" placeholder="Password" required/>
+                        </div>
+                        <div class="form-group" data-ng-show="showRepeatPassword">
+                            <label for="repeatPassword">Verify Password</label>
+                            <input id="repeatPassword" type="password" class="form-control"
+                                   data-ng-model="credentials.repeatPassword" placeholder="Password"/>
+                        </div>
+                        <br/>
+                        <button class="btn btn-primary" data-ng-disabled="form.$invalid"
+                                data-ng-click="login(credentials)">Log In</button>
+                        <button class="btn btn-primary" data-ng-disabled="form.$invalid" data-ng-show="!showRepeatPassword"
+                                data-ng-click="showRepeatPassword = true">Register</button>
+                    </fieldset>
+                    <div data-ng-show="errorMessage">
+                        <br/>
+                        <span class="badge">{{ errorMessage }}</span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row">
-    <div class="col-md-6">
+    <div class="col-md-10">
         <h2>Instructions</h2>
-
         <hr/>
 
         <h4>1) Prepare your XML</h4>
+
         <p>
-            The input for Narthex is XML which is first packed in a GZIP or ZIP archive.
-            The uploaded archive can contain either a single XML file or a collection of files.
+            The input for Narthex is XML either as text or GZipped text, so first you must dump your data to XML
+            and decide if you want to put it in a package.
         </p>
 
         <h4>2) Login and Upload</h4>
+
         <p>
             Before uploading your XML you must register/login to Narthex.
             Once logged in, all you have to do is drag the archive and drop it on the upload page.
@@ -24,16 +60,33 @@
         </p>
 
         <h4>3) Explore</h4>
+
         <p>
-            When the initial analysis is complete, you will be able to explore the tree that represents the XML structure.
+            When the initial analysis is complete, you will be able to explore the tree that represents the XML
+            structure.
             The complete analysis continues in the background, and should be complete within a few minutes.
             All values are sorted, collated and counted, and histograms are made available.
         </p>
 
         <h4>4) Review and Access</h4>
+
         <p>
-            When the second phase of analysis is complete, the resulting tree and terminology lists can be explored in detail,
-            and they are then also available for other software to access via the REST API.
+            When the second phase of analysis is complete, the resulting tree and terminology lists can be explored in
+            detail,
+            and they are then also available for other software to access via the REST API. The API link contains
+            a key which gives permission.
+        </p>
+
+        <h4>5) Think about the Potential</h4>
+
+        <p>
+            Once you have some experience with this program, think about what could be done with it in the future,
+            and let us know about it! (narthex@delving.eu)
+            It is an <a href="https://github.com/delving/narthex" target="_blank">open source project</a> so we can use
+            the ideas
+            and funding to take the project further. More graphical renderings will be possible using the
+            <a href="https://github.com/mbostock/d3/wiki/Gallery" target="_blank">D3 Library</a>, and be sure to
+            press the "Enrich" button to see the enrichment potentials.
         </p>
     </div>
 </div>

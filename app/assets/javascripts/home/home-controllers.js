@@ -17,8 +17,29 @@
 define(["angular"], function (angular) {
     "use strict";
 
+    var EMAIL_COOKIE = "NARTHEX-EMail";
+
     /** Controls the index page */
     var HomeCtrl = function ($scope, $rootScope, $cookies, $location, userService) {
+
+        $scope.credentials = {
+            email: $cookies[EMAIL_COOKIE]
+        };
+        $scope.login = function (credentials) {
+            userService.loginUser(credentials).then(
+                function (/*user*/) {
+                    $cookies[EMAIL_COOKIE] = credentials.email;
+                    $location.path("/dashboard");
+                },
+                function (rejection) {
+                    if (rejection.status == 401) {
+                        $scope.errorMessage = rejection.data.problem;
+                        $scope.credentials.password = "";
+                    }
+                }
+            );
+        };
+
         $scope.token = $cookies["XSRF-TOKEN"];
         if ($scope.token) {
             userService.checkLogin().then(
