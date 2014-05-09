@@ -89,9 +89,9 @@
             <div class="panel-body">
                 <div class="navbar navbar-inverse list-controls">
                     <ul class="nav navbar-nav">
-                        <!--<li data-ng-class="{ active: activeView == 'lengths' }">-->
-                            <!--<a href data-ng-click="fetchLengths()">Lengths</a>-->
-                        <!--</li>-->
+                        <li data-ng-class="{ active: activeView == 'lengths' }">
+                            <a href data-ng-click="fetchLengths()">Lengths</a>
+                        </li>
                         <li data-ng-class="{ active: activeView == 'sample' }">
                             <a href data-ng-click="fetchSample()">Sample</a>
                         </li>
@@ -120,29 +120,29 @@
                 </div>
 
                 <!--todo: an attempt at showing a graph example using d3 directives-->
-                <!--<div ng-show="node && !(sample || histogram)">-->
-                    <!--<div>-->
-                        <!--<span class="badge">{{ exampleData }}</span>-->
-                        <!--<nvd3-pie-chart-->
-                                <!--data="exampleData"-->
-                                <!--id="exampleId"-->
-                                <!--width="400"-->
-                                <!--height="200"-->
-                                <!--x="xFunction()"-->
-                                <!--y="yFunction()"-->
-                                <!--showLabels="true">-->
-                            <!--<svg></svg>-->
-                        <!--</nvd3-pie-chart>-->
-                    <!--</div>-->
-                    <!--<div>-->
-                        <!--<ul>-->
-                            <!--<li data-ng-repeat="count in node.lengths">-->
-                                <!--<span class="badge">{{ count[0] }}</span>-->
-                                <!--<span class="badge">{{ count[1] }}</span>-->
-                            <!--</li>-->
-                        <!--</ul>-->
-                    <!--</div>-->
-                <!--</div>-->
+                <div ng-show="node && !(sample || histogram)">
+                    <div>
+                        <span class="badge">{{ exampleData }}</span>
+                        <nvd3-pie-chart
+                                data="exampleData"
+                                id="exampleId"
+                                width="400"
+                                height="200"
+                                x="xFunction()"
+                                y="yFunction()"
+                                showLabels="true">
+                            <svg></svg>
+                        </nvd3-pie-chart>
+                    </div>
+                    <div>
+                        <ul>
+                            <li data-ng-repeat="count in node.lengths">
+                                <span class="badge">{{ count[0] }}</span>
+                                <span class="badge">{{ count[1] }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
 
                 <div ng-show="sample">
                     <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="315" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">

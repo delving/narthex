@@ -168,15 +168,15 @@ define(["angular"], function () {
             $scope.apiPath = apiPrefix + node.path.replace(":", "_").replace("@", "_");
             $scope.sampleSize = 100;
             $scope.histogramSize = 100;
-//            $scope.fetchLengths();
+            $scope.fetchLengths();
             dashboardService.nodeStatus($scope.fileName, node.path).then(function (data) {
                 $scope.status = data;
-                if ($scope.activeView == "histogram") {
-                    $scope.fetchHistogram();
-                }
-                else {
-                    $scope.fetchSample();
-                }
+//                if ($scope.activeView == "histogram") {
+//                    $scope.fetchHistogram();
+//                }
+//                else {
+//                    $scope.fetchSample();
+//                }
             });
         };
 

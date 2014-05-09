@@ -27,42 +27,12 @@ define(
         "angular",
         "home",
         "dashboard",
-        "angular-file-upload"
+        "angular-file-upload",
+        "angularjs-nvd3-directives"
     ],
     function (angular) {
         "use strict";
 
-// todo: get this workaround working or wait for reply
-// https://github.com/webjars/angularjs-nvd3-directives/issues/1
-//        require.config({
-//            'paths': { d3js: webjars.path("d3js", "d3") },
-//            'shim': { d3: {
-//                'deps': [ 'angular']
-//            } }
-//        });
-//
-//        require(['d3js'], function (d3js) {
-//            console.log("d3js", d3js);
-//        });
-//
-//        require.config({
-//            'paths': { nvd3: webjars.path("nvd3", "nv.d3") },
-//            'shim': { 'nv.d3': ['d3js'] }
-//        });
-//
-//        require(['nvd3'], function (nvd3) {
-//            console.log("nvd3", nvd3);
-//        });
-//
-//        require.config({
-//            'paths': { 'angularjs-nvd3-directives': webjars.path("angularjs-nvd3-directives", "angularjs-nvd3-directives") },
-//            'shim': { 'angularjs-nvd3-directives': [ 'd3js', 'nvd3'] }
-//        });
-//
-//        require(['angularjs-nvd3-directives'], function (directives) {
-//            console.log("This should define directives, not be undefined:", directives);
-//        });
-//
         // We must already declare most dependencies here (except for common), or the submodules' routes
         // will not be resolved
         return angular.module(
@@ -70,7 +40,8 @@ define(
             [
                 "narthex.home",
                 "narthex.dashboard",
-                "angularFileUpload"
+                "angularFileUpload",
+                "angularjs-nvd3-directives"
             ]
         );
     }
