@@ -28,7 +28,7 @@ The distribution is in the form of a zip-file which you must unpack, and then a 
 
 ### Storage and API
 
-All files related to NARTHEX are stored in a folder called **NARTHEX** in the user's home directory.  Inside that folder there is a sub-folder for every user which is named according to their email address, and it contains **user.json** for storing the hash of the password that the user has set up.
+All files related to the program are stored in a folder called **NARTHEX** in the user's home directory.  Inside that folder there is a sub-folder for every user which is named according to their email address, and it contains **user.json** for storing the hash of the password that the user has set up.
 
 Inside the user's folder here are folders for all **uploaded** XML zip files, and a corresponding folders for the result of the analysis called **analyzed**.  The sub-folders of **analyzed** have names corresponding exactly to the files which were uploaded, and each of these contains the following:
 
@@ -41,25 +41,27 @@ Inside the user's folder here are folders for all **uploaded** XML zip files, an
 	* **sample-N.json** - a number of files of different maximum sizes (N) containing random samples of the values encountered, for display
 	* **histogram-N.json** - a number of files (N) containing partial or full histograms of the values, for display
 
-Every node of the tree contained in *index.json* also contains a *path* attribute, whcih leads to the directory in the *"exploded tree"*.  All of these files are created during the analysis process and are then made available via an API, served up simply as as *assets*.
+Every node of the tree contained in *index.json* also contains a *path* attribute, which leads to the directory in the *"exploded tree"*.  All of these files are created during the analysis process and are then made available via an API, served up simply as as *assets*.
 
 ## Future
 
 The functionality of NARTHEX suggests and leads the way to some interesting potential future developments.  This program represents the first phase of a work-flow which can provide for online publishing of metadata in various forms.
 
-### Vocabulary Alignment
+### Field Enrichment
 
 When Narthex has perform its analysis, any vocabularies used in practice for terminology fields in the source data will be revealed.  When a full list of utilized terminology values is available, it is not a great deal of work to build an alignment interface in which each found value is associated with the URI of an entry from a shared vocabulary.
 
 The source data can then be rendered with the vocabulary URI assignments inserted, which is an important part of integrating data together from various sources into storage where they can be collectively accessed.
 
+Various other possibilities exist, such as link checking of URL fields, and specific improvement strategies for date fields etc.
+
 ### Records for Indexing/Search/Harvest
 
-Assuming the source data consists of records, they can be marked and used.  With the schema in view, it is possible to derive or intentionally assign both a record root element and another element or attributre containing the record's unique identifier, and that allows the source to be split up into identified records.  These records could be inserted into an XML database like [BaseX](http://basex.org/) for searching, and made available for harvest via OAI-PMH or some other API interface.
+Assuming the source data consists of records, they can be marked and used.  With the schema in view, it is possible to derive or intentionally assign both a record root element and another element or attributre containing the record's unique identifier, and that allows the source to be split up into identified records.  These records could be inserted into an XML database like [BaseX](http://basex.org/) or [Elastic Search](http://www.elasticsearch.org/) for searching, and made available for harvest via OAI-PMH or some other API interface.
 
 ### Transformation to RDF
 
-Combined with another element of the CultureBrokers project called the [X3ML Engine](https://github.com/delving/x3ml), a mapping to RDF can be built, and the source data could be presented as meaningful RDF, according to an ontology such as the [CIDOC-CRM](http://www.cidoc-crm.org/).
+Combined with another element of the CultureBrokers project called the [X3ML Engine](https://github.com/delving/x3ml), a mapping to RDF can be built, and the source data could be presented as meaningful RDF, according to an ontology such as the [CIDOC-CRM](http://www.cidoc-crm.org/), and a triple store could be filled and exposed for querying.
 
 ---
 
