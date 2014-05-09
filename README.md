@@ -4,13 +4,13 @@
 
 ## Introduction
 
-Narthex is an online XML analyzer offering an easy way to get something like an X-Ray of the contents of your XML.  It was originally designed for use in analyzing cultural heritage metadata.  You drop your XML file (in zipped form) onto the Narthex dashboard and it will initiate and complete a full rigorous analysis, revealing the schema as well as everything about the content of all non-empty elements and attributes.  The results can be browsed as well as made available via an API to other software.
+Narthex is an online XML analyzer for preparing cultural heritage metadata files for consumption by other software.  You drop your XML file (zipped) onto Narthex and it will initiate and complete a full rigorous analysis, revealing the schema as well as everything about the content of all non-empty elements and attributes.  The results can be browsed as well as made available via an API to other software.
 
-The purpose of the analysis is first to get an overview of the XML contents, but it also reveals the vocabularies of values which were used in the data.
+This is only the first step. The next phases in the project will involve building vocabulary alignments, performing link checks, geo-coordinate conversions or whatever else is necessary to prepare the data.
 
 ## Background
 
-Narthex makes up part of the CultureBrokers project, co-funded by the Swedish Arts Council and the British Museum.  It is being developed by Delving BV, and represents an elaboration of the analysis functionality present in Delving's SIP-Creator software.
+Narthex makes up part of the CultureBrokers project, co-funded by the Swedish Arts Council and the British Museum, and developed by by Delving BV.
 
 ## Development
 
