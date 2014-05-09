@@ -4,9 +4,9 @@
 
 ## Introduction
 
-Narthex is an online XML analyzer for preparing cultural heritage metadata files for consumption by other software.  You drop your XML file (zipped) onto Narthex and it will initiate and complete a full rigorous analysis, revealing the schema as well as everything about the content of all non-empty elements and attributes.  The results can be browsed as well as made available via an API to other software.
+[Narthex](http://en.wikipedia.org/wiki/Narthex) is an online XML analyzer for preparing cultural heritage metadata files for consumption by other software.  You drop your XML file (zipped) onto Narthex and it will do complete comprehensive rigorous analysis, revealing the schema as well as everything about the content of all non-empty elements and attributes.  The results can be browsed as well as made available via an API to other software.
 
-This is only the first step. The next phases in the project will involve building vocabulary alignments, performing link checks, geo-coordinate conversions or whatever else is necessary to prepare the data.
+This is only the first step. The next phases in the project will involve building vocabulary alignments, performing link checks, geo-coordinate conversions or whatever else is necessary to prepare the data for entry into the [nave](http://en.wikipedia.org/wiki/Nave) of the CultureCloud.
 
 ## Background
 
