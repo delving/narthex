@@ -1,5 +1,7 @@
 # Narthex
 
+![Prezi](public/images/narthex.gif?raw=true)
+
 ## Introduction
 
 Narthex is an online XML analyzer offering an easy way to get something like an X-Ray of the contents of your XML.  It was originally designed for use in analyzing cultural heritage metadata.  You drop your XML file (in zipped form) onto the Narthex dashboard and it will initiate and complete a full rigorous analysis, revealing the schema as well as everything about the content of all non-empty elements and attributes.  The results can be browsed as well as made available via an API to other software.
