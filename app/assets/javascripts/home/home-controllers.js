@@ -39,19 +39,19 @@ define(["angular"], function (angular) {
                 }
             );
         };
-
-        $scope.token = $cookies["XSRF-TOKEN"];
-        if ($scope.token) {
-            userService.checkLogin().then(
-                function (response) {
-                    $location.path("/dashboard")
-                },
-                function (reason) {
-                    $scope.token = "no token";
-                    $cookies["XSRF-TOKEN"] = undefined;
-                }
-            );
-        }
+//
+//        $scope.token = $cookies["XSRF-TOKEN"];
+//        if ($scope.token) {
+//            userService.checkLogin().then(
+//                function (response) {
+//                    $location.path("/dashboard")
+//                },
+//                function (reason) {
+//                    $scope.token = "no token";
+//                    $cookies["XSRF-TOKEN"] = undefined;
+//                }
+//            );
+//        }
     };
     HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService"];
 
