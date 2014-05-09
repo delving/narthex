@@ -19,7 +19,7 @@ define(
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("home.routes", ["xml-ray.common"]);
+        var mod = angular.module("home.routes", ["narthex.common"]);
         mod.config(["$routeProvider", function ($routeProvider) {
             $routeProvider
                 .when("/", {templateUrl: "/assets/templates/home/home.html", controller: controllers.HomeCtrl})

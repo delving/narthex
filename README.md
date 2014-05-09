@@ -20,13 +20,13 @@ Since the project has only a few simple dependencies, it is very easy to deploy 
 
 The distribution is in the form of a zip-file which you must unpack, and then a script or batch file can be used to start the server.
 
-* **xml-ray-X.X.zip** - the distribution zip file
-* **xml-ray-X.X/bin/xml-ray** - the shell script (unix/osx)
-* **xml-ray-X.X/bin/xml-ray.bat** - the batch file (windows)
+* **narthex-X.X.zip** - the distribution zip file
+* **narthex-X.X/bin/narthex** - the shell script (unix/osx)
+* **narthex-X.X/bin/narthex.bat** - the batch file (windows)
 
 ### Storage and API
 
-All files related to XML-RAY are stored in a folder called **XML-RAY** in the user's home directory.  Inside that folder there is a sub-folder for every user which is named according to their email address, and it contains **user.json** for storing the hash of the password that the user has set up.
+All files related to NARTHEX are stored in a folder called **NARTHEX** in the user's home directory.  Inside that folder there is a sub-folder for every user which is named according to their email address, and it contains **user.json** for storing the hash of the password that the user has set up.
 
 Inside the user's folder here are folders for all **uploaded** XML zip files, and a corresponding folders for the result of the analysis called **analyzed**.  The sub-folders of **analyzed** have names corresponding exactly to the files which were uploaded, and each of these contains the following:
 
@@ -43,7 +43,7 @@ Every node of the tree contained in *index.json* also contains a *path* attribut
 
 ## Future
 
-The functionality of XML-RAY suggests and leads the way to some interesting potential future developments.  This program represents the first phase of a work-flow which can provide for online publishing of metadata in various forms.
+The functionality of NARTHEX suggests and leads the way to some interesting potential future developments.  This program represents the first phase of a work-flow which can provide for online publishing of metadata in various forms.
 
 ### Vocabulary Alignment
 

@@ -17,7 +17,7 @@
 define(
     ["angular", "./user-controllers", "common"],
     function (angular, controllers) {
-        var mod = angular.module("user.routes", ["user.services", "xml-ray.common"]);
+        var mod = angular.module("user.routes", ["user.services", "narthex.common"]);
         mod.config([
             "$routeProvider",
             function ($routeProvider) {

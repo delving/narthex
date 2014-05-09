@@ -19,7 +19,7 @@ define(
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("dashboard.routes", ["xml-ray.common"]);
+        var mod = angular.module("dashboard.routes", ["narthex.common"]);
         mod.config(
             [
                 "$routeProvider", "userResolve",

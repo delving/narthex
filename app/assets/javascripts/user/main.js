@@ -12,7 +12,7 @@ define(
         "use strict";
 
         return angular.module(
-            "xml-ray.user",
+            "narthex.user",
             [
                 "ngCookies",
                 "ngRoute",

@@ -17,7 +17,7 @@
 define(["angular", "common"], function (angular) {
     "use strict";
 
-    var mod = angular.module("dashboard.services", ["xml-ray.common"]);
+    var mod = angular.module("dashboard.services", ["narthex.common"]);
 
     mod.service("dashboardService", ["$http", "$q", "playRoutes", "$location", function ($http, $q, playRoutes, $location) {
         var dash = playRoutes.controllers.Dashboard;

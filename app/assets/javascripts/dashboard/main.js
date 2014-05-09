@@ -15,7 +15,7 @@ define(
         "use strict";
 
         var mod = angular.module(
-            "xml-ray.dashboard",
+            "narthex.dashboard",
             [
                 "ngRoute",
                 "dashboard.routes",

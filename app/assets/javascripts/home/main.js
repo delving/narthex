@@ -13,7 +13,7 @@ define(
         "use strict";
 
         var mod = angular.module(
-            "xml-ray.home",
+            "narthex.home",
             [
                 "ngRoute",
                 "home.routes"

@@ -14,7 +14,7 @@ define(
         "use strict";
 
         return angular.module(
-            "xml-ray.common",
+            "narthex.common",
             [
                 "common.fileUpload",
                 "common.playRoutes",

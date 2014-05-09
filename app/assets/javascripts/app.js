@@ -69,9 +69,9 @@ define(
         return angular.module(
             "app",
             [
-                "xml-ray.home",
-                "xml-ray.user",
-                "xml-ray.dashboard",
+                "narthex.home",
+                "narthex.user",
+                "narthex.dashboard",
                 "angularFileUpload"
             ]
         );

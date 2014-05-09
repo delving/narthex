@@ -16,7 +16,7 @@
 
 import play.Project._
 
-name := """xml-ray"""
+name := """narthex"""
 
 version := "0.5"
 

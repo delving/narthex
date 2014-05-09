@@ -17,7 +17,7 @@
 define(["angular", "common"], function (angular) {
     "use strict";
 
-    var mod = angular.module("user.services", ["xml-ray.common"]);
+    var mod = angular.module("user.services", ["narthex.common"]);
     mod.factory(
         "userService",
         ["$http", "$q", "playRoutes",
@@ -42,6 +42,8 @@ define(["angular", "common"], function (angular) {
                         return app.checkLogin().get().then(function (response) {
                             user = response.data.user;
                             return user;
+                        }, function(problem) {
+                            // todo: react properly
                         });
                     },
                     getUser: function () {

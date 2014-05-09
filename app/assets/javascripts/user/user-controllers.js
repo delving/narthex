@@ -18,7 +18,7 @@ define(["angular"], function (angular) {
 
     "use strict";
 
-    var EMAIL_COOKIE = "XML-RAY-EMail";
+    var EMAIL_COOKIE = "NARTHEX-EMail";
 
     var LoginCtrl = function ($scope, $location, userService, $cookies) {
         $scope.credentials = {

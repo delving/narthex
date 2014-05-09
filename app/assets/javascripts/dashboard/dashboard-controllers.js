@@ -122,7 +122,7 @@ define(["angular"], function () {
         var absUrl = $location.absUrl();
         var email = userService.getUser().email.replace("@", "_");
         var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-        var garbage = ('xml-ray|' + email + '|' + $scope.fileName).hashCode().toString(16).substring(1);
+        var garbage = ('narthex|' + email + '|' + $scope.fileName).hashCode().toString(16).substring(1);
         var apiPrefix = serverUrl + 'api/' + garbage + '/' + email + '/' + $scope.fileName;
 
         $scope.goToDashboard = function () {

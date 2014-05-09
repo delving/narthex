@@ -29,7 +29,7 @@ import scala.Some
 object FileRepository {
   val SUFFIXES = List(".xml.gz", ".xml")
   val home = new File(System.getProperty("user.home"))
-  val root = new File(home, "XML-RAY")
+  val root = new File(home, "NARTHEX")
 
   lazy val boss = Akka.system.actorOf(Props[Boss], "boss")
 
