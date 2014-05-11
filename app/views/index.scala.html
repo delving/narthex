@@ -9,7 +9,7 @@
     <link rel='stylesheet' media='screen' href='@routes.Assets.at("stylesheets/main.css")'>
     @import play.api.Play.current
     <script>
-     @Html(org.webjars.RequireJS.getSetupJavaScript("/webjars/", current.configuration.getString("contentUrl").orNull))
+     @Html(org.webjars.RequireJS.getSetupJavaScript(routes.CdnWebJarAssets.at("").url, current.configuration.getString("contentUrl").orNull))
     </script>
     <script data-main='@routes.Assets.at(helper.mainScriptSrc(scriptName = "main"))' src='@CdnWebJarAssets.getUrl(CdnWebJarAssets.locate("require.js"))'></script>
   </head>

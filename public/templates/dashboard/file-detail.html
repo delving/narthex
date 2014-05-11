@@ -122,14 +122,13 @@
                 <!--todo: an attempt at showing a graph example using d3 directives-->
                 <div ng-show="node && !(sample || histogram)">
                     <div>
-                        <span class="badge">{{ exampleData }}</span>
                         <nvd3-pie-chart
                                 data="exampleData"
                                 id="exampleId"
-                                width="400"
-                                height="200"
-                                x="xFunction()"
-                                y="yFunction()"
+                                width="550"
+                                height="350"
+                                x="getX()"
+                                y="getY()"
                                 showLabels="true">
                             <svg></svg>
                         </nvd3-pie-chart>

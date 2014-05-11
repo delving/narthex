@@ -184,15 +184,28 @@ define(["angular"], function () {
             $scope.activeView = "lengths";
             $scope.sample = undefined;
             $scope.histogram = undefined;
-            $scope.exampleData = [
-                { key: "One", y: 5 },
-                { key: "Two", y: 2 },
-                { key: "Three", y: 9 },
-                { key: "Four", y: 7 },
-                { key: "Five", y: 4 },
-                { key: "Six", y: 3 },
-                { key: "Seven", y: 9 }
-            ];
+        };
+
+        $scope.exampleData = [
+            { key: "One", y: 5 },
+            { key: "Two", y: 2 },
+            { key: "Three", y: 9 },
+            { key: "Four", y: 7 },
+            { key: "Five", y: 4 },
+            { key: "Six", y: 3 },
+            { key: "Seven", y: 9 }
+        ];
+
+        $scope.getX = function() {
+            return function(d) {
+                return d.key;
+            }
+        };
+
+        $scope.getY = function() {
+            return function(d) {
+                return d.y;
+            }
         };
 
         $scope.fetchSample = function () {

@@ -27,8 +27,7 @@ define(
         "angular",
         "home",
         "dashboard",
-        "angular-file-upload",
-        "angularjs-nvd3-directives"
+        "angular-file-upload"
     ],
     function (angular) {
         "use strict";
@@ -41,7 +40,7 @@ define(
                 "narthex.home",
                 "narthex.dashboard",
                 "angularFileUpload",
-                "angularjs-nvd3-directives"
+                "nvd3ChartDirectives"
             ]
         );
     }

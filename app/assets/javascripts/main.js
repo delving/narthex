@@ -17,6 +17,11 @@
 (function (requirejs) {
     "use strict";
 
+    require(['d3js'], function(d3) {
+        window.d3 = d3;
+        require(['nvd3']);
+    });
+
     // -- DEV RequireJS config --
     requirejs.config({
         // Packages = top-level folders; loads a contained file named "main.js"
@@ -45,6 +50,7 @@
             "angular",
             "angular-cookies",
             "angular-route",
+            "angularjs-nvd3-directives",
             "jquery",
             "underscorejs",
             "bootstrap",
