@@ -137,7 +137,7 @@ define(["angular"], function () {
             $location.path("/dashboard");
         };
 
-        $scope.setAligning = function(on) {
+        $scope.setAligning = function (on) {
             $scope.aligning = on;
             if (on) {
                 $scope.columns.left = 6;
@@ -186,41 +186,38 @@ define(["angular"], function () {
             $scope.histogram = undefined;
         };
 
-        $scope.getX = function() {
-            return function(d) {
+        $scope.getX = function () {
+            return function (d) {
                 return d[0];
             }
         };
 
-        $scope.getY = function() {
-            return function(d) {
+        $scope.getY = function () {
+            return function (d) {
                 return d[1];
             }
         };
 
-        $scope.getColor = function() {
-            var noOfColors = 15; // from XRay.scala
-            var frequency = 5 / noOfColors;
-            var colorArray = [];
-
+        $scope.getColor = function () {
+            var lengthName = ["0", "1", "2", "3", "4", "5", "6-10", "11-15", "16-20", "21-30", "31-50", "50-100", "100-*"]; // from XRay.scala lengthRanges
+            var noOfColors = lengthName.length;
+            var frequency = 4 / noOfColors;
             function toHex(c) {
                 var hex = c.toString(16);
                 return hex.length == 1 ? "0" + hex : hex;
             }
-
             function rgbToHex(r, g, b) {
                 return "#" + toHex(r) + toHex(g) + toHex(b);
             }
-
+            var colorLookup = {};
             for (var walk = 0; walk < noOfColors; ++walk) {
                 var r = Math.floor(Math.sin(frequency * walk + 0) * (127) + 128);
                 var g = Math.floor(Math.sin(frequency * walk + 1) * (127) + 128);
                 var b = Math.floor(Math.sin(frequency * walk + 3) * (127) + 128);
-                colorArray.push(rgbToHex(r, g, b));
+                colorLookup[lengthName[walk]] = rgbToHex(r, g, b);
             }
-
-            return function(d, i) {
-                return colorArray[i];
+            return function (d, i) {
+                return colorLookup[d.data[0]];
             };
         };
 
