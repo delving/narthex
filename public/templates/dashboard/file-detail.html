@@ -123,23 +123,16 @@
                 <div ng-show="node && !(sample || histogram)">
                     <div>
                         <nvd3-pie-chart
-                                data="exampleData"
+                                data="node.lengths"
                                 id="exampleId"
                                 width="550"
                                 height="350"
                                 x="getX()"
                                 y="getY()"
+                                color="getColor()"
                                 showLabels="true">
                             <svg></svg>
                         </nvd3-pie-chart>
-                    </div>
-                    <div>
-                        <ul>
-                            <li data-ng-repeat="count in node.lengths">
-                                <span class="badge">{{ count[0] }}</span>
-                                <span class="badge">{{ count[1] }}</span>
-                            </li>
-                        </ul>
                     </div>
                 </div>
 

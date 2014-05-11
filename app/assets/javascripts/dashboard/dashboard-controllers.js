@@ -186,26 +186,42 @@ define(["angular"], function () {
             $scope.histogram = undefined;
         };
 
-        $scope.exampleData = [
-            { key: "One", y: 5 },
-            { key: "Two", y: 2 },
-            { key: "Three", y: 9 },
-            { key: "Four", y: 7 },
-            { key: "Five", y: 4 },
-            { key: "Six", y: 3 },
-            { key: "Seven", y: 9 }
-        ];
-
         $scope.getX = function() {
             return function(d) {
-                return d.key;
+                return d[0];
             }
         };
 
         $scope.getY = function() {
             return function(d) {
-                return d.y;
+                return d[1];
             }
+        };
+
+        $scope.getColor = function() {
+            var noOfColors = 15; // from XRay.scala
+            var frequency = 5 / noOfColors;
+            var colorArray = [];
+
+            function toHex(c) {
+                var hex = c.toString(16);
+                return hex.length == 1 ? "0" + hex : hex;
+            }
+
+            function rgbToHex(r, g, b) {
+                return "#" + toHex(r) + toHex(g) + toHex(b);
+            }
+
+            for (var walk = 0; walk < noOfColors; ++walk) {
+                var r = Math.floor(Math.sin(frequency * walk + 0) * (127) + 128);
+                var g = Math.floor(Math.sin(frequency * walk + 1) * (127) + 128);
+                var b = Math.floor(Math.sin(frequency * walk + 3) * (127) + 128);
+                colorArray.push(rgbToHex(r, g, b));
+            }
+
+            return function(d, i) {
+                return colorArray[i];
+            };
         };
 
         $scope.fetchSample = function () {
