@@ -79,6 +79,8 @@ trait XRay {
 
     def finish(): Unit = {
       valueWriter.map(_.close())
+      val index = kids.values.map(kid => FileRepository.tagToDirectory(kid.tag)).mkString("\n")
+      FileUtils.writeStringToFile(directory.indexTextFile, index)
       kids.values.foreach(_.finish())
     }
 
@@ -101,10 +103,6 @@ trait XRay {
     private def stripLines(value: String) = {
       val noReturn = value.replaceAll("\n", " ") // todo: refine to remove double spaces
       noReturn
-    }
-
-    private def close = {
-      valueWriter.map(_.close())
     }
 
     override def toString = s"XRayNode($tag)"
@@ -160,7 +158,7 @@ trait XRay {
       }
 
       val root = base.kids.values.head
-      root.finish()
+      base.finish()
       val pretty = Json.prettyPrint(Json.toJson(root))
       FileUtils.writeStringToFile(directory.indexFile, pretty, "UTF-8")
       progress(count)

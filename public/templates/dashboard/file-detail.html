@@ -7,7 +7,19 @@
     <div class="col-md-{{columns.left}}">
         <div data-ng-if="!aligning" class="panel panel-primary panel-schema">
             <div class="panel-heading">
-                <h3 class="panel-title">Schema</h3>
+                <span class="panel-title">Schema</span>
+                <ul class="pull-right">
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                            <i class="fa fa-cloud-download"></i><span> API Access </span><i class="caret"></i></a>
+
+                        <ul class="dropdown-menu">
+                            <li><a ng-href="{{apiPrefix}}/tree" target="_blank">JSON Tree</a></li>
+                            <li><a ng-href="{{apiPrefix}}/index" target="_blank">Root Index</a></li>
+                        </ul>
+                    </li>
+                </ul>
+
             </div>
             <div class="panel-body">
                 <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="168" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
@@ -119,7 +131,6 @@
                     </div>
                 </div>
 
-                <!--todo: an attempt at showing a graph example using d3 directives-->
                 <div ng-show="node && !(sample || histogram)">
                     <div>
                         <nvd3-pie-chart

@@ -24,6 +24,33 @@ import scala.Some
 
 object API extends Controller with Security with XRay {
 
+  def indexJSON(apiKey: String, email:String, fileName: String) = Action(parse.anyContent) {
+    implicit request => {
+      if (checkKey(email, fileName, apiKey)) {
+        val repo = FileRepository(email)
+        OkFile(repo.analysis(fileName).indexFile)
+      }
+      else {
+        Unauthorized
+      }
+    }
+  }
+
+  def indexText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
+    implicit request => {
+      if (checkKey(email, fileName, apiKey)) {
+        val repo = FileRepository(email)
+        repo.analysis(fileName).indexTextFile(path) match {
+          case None => NotFound(Json.obj("path" -> path))
+          case Some(file) => OkFile(file)
+        }
+      }
+      else {
+        Unauthorized
+      }
+    }
+  }
+
   def uniqueText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {

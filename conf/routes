@@ -27,6 +27,9 @@ GET     /dashboard/:fileName/status/*path               controllers.Dashboard.no
 GET     /dashboard/:fileName/sample/:size/*path         controllers.Dashboard.sample(fileName, path, size:Int)
 GET     /dashboard/:fileName/histogram/:size/*path      controllers.Dashboard.histogram(fileName, path, size:Int)
 
+GET     /api/:apiKey/:email/:fileName/tree              controllers.API.indexJSON(apiKey, email, fileName)
+GET     /api/:apiKey/:email/:fileName/index             controllers.API.indexText(apiKey, email, fileName, path="")
+GET     /api/:apiKey/:email/:fileName/*path/index       controllers.API.indexText(apiKey, email, fileName, path)
 GET     /api/:apiKey/:email/:fileName/*path/unique      controllers.API.uniqueText(apiKey, email, fileName, path)
 GET     /api/:apiKey/:email/:fileName/*path/histogram   controllers.API.histogramText(apiKey, email, fileName, path)
 

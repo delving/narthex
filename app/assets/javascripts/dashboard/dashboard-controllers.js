@@ -119,9 +119,7 @@ define(["angular"], function () {
 
     var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, userService) {
 
-        if (!userService.getUser()) {
-            $location.path("/dashboard");
-        }
+        if (!userService.getUser()) $location.path("/");
 
         $scope.fileName = $routeParams.fileName;
         $scope.columns = { left: 4, right: 8 };
@@ -131,7 +129,7 @@ define(["angular"], function () {
         var email = userService.getUser().email.replace("@", "_");
         var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
         var garbage = ('narthex|' + email + '|' + $scope.fileName).hashCode().toString(16).substring(1);
-        var apiPrefix = serverUrl + 'api/' + garbage + '/' + email + '/' + $scope.fileName;
+        $scope.apiPrefix = serverUrl + 'api/' + garbage + '/' + email + '/' + $scope.fileName;
 
         $scope.goToDashboard = function () {
             $location.path("/dashboard");
@@ -165,7 +163,7 @@ define(["angular"], function () {
             removeChosen($scope.tree);
             node.chosen = true;
             $scope.node = node;
-            $scope.apiPath = apiPrefix + node.path.replace(":", "_").replace("@", "_");
+            $scope.apiPath = $scope.apiPrefix + node.path.replace(":", "_").replace("@", "_");
             $scope.sampleSize = 100;
             $scope.histogramSize = 100;
             $scope.fetchLengths();

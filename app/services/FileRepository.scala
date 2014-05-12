@@ -131,6 +131,13 @@ class FileAnalysisDirectory(val directory: File) {
     }
   }
 
+  def indexTextFile(path: String): Option[File] = {
+    nodeDirectory(path) match {
+      case None => None
+      case Some(nodeDirectory) => Some(nodeDirectory.indexTextFile)
+    }
+  }
+
   def uniqueTextFile(path: String): Option[File] = {
     nodeDirectory(path) match {
       case None => None
@@ -181,6 +188,8 @@ class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val direct
   def histogramJsonFiles = List(100, 500, 2500).map(size => (size, file(s"histogram-$size.json")))
 
   def sampleJsonFiles = List(100, 500, 2500).map(size => (size, file(s"sample-$size.json")))
+
+  def indexTextFile = file("index.txt")
 
   def uniqueTextFile = file("unique.txt")
 

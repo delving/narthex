@@ -41,7 +41,9 @@ define(["angular"], function (angular) {
         };
 
         if (userService.getUser()) {
-            $location.path("/dashboard")
+            if (userService.checkLogin()) {
+                $location.path("/dashboard")
+            }
         }
     };
     HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService"];
