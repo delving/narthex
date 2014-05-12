@@ -22,17 +22,6 @@ val versionString = "0.5.4-SNAPSHOT"
 
 version := versionString
 
-val buildScalaVersion = "2.10.1"
-
-val delvingReleases = "Delving Releases Repository" at "http://nexus.delving.org/nexus/content/repositories/releases"
-val delvingSnapshots = "Delving Snapshot Repository" at "http://nexus.delving.org/nexus/content/repositories/snapshots"
-
-val commonResolvers = Seq(
-  "Delving Proxy repository" at "http://nexus.delving.org/nexus/content/groups/public/"
-)
-
-def delvingRepository(version: String) = if (version.endsWith("SNAPSHOT")) delvingSnapshots else delvingReleases
-
 libraryDependencies ++= Seq(
   // WebJars infrastructure
   "org.webjars" % "webjars-locator" % "0.14",
@@ -59,6 +48,8 @@ playScalaSettings
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 
+resolvers += "Delving Proxy repository" at "http://nexus.delving.org/nexus/content/groups/public/"
+
 // This tells Play to optimize this file and its dependencies
 requireJs += "main.js"
 
@@ -70,8 +61,6 @@ requireJsShim := "build.js"
 //requireNativePath := Some("node r.js -o name=main out=javascript-min/main.min.js")
 
 resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"))(Resolver.ivyStylePatterns)
-
-resolvers ++= commonResolvers
 
 publishMavenStyle := true
 
