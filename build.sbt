@@ -18,7 +18,20 @@ import play.Project._
 
 name := """narthex"""
 
-version := "0.5.3"
+val versionString = "0.5.4-SNAPSHOT"
+
+version := versionString
+
+val buildScalaVersion = "2.10.1"
+
+val delvingReleases = "Delving Releases Repository" at "http://nexus.delving.org/nexus/content/repositories/releases"
+val delvingSnapshots = "Delving Snapshot Repository" at "http://nexus.delving.org/nexus/content/repositories/snapshots"
+
+val commonResolvers = Seq(
+  "Delving Proxy repository" at "http://nexus.delving.org/nexus/content/groups/public/"
+)
+
+def delvingRepository(version: String) = if (version.endsWith("SNAPSHOT")) delvingSnapshots else delvingReleases
 
 libraryDependencies ++= Seq(
   // WebJars infrastructure
@@ -55,3 +68,15 @@ requireJsShim := "build.js"
 
 // To completely override the optimization process, use this config option:
 //requireNativePath := Some("node r.js -o name=main out=javascript-min/main.min.js")
+
+resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"))(Resolver.ivyStylePatterns)
+
+resolvers ++= commonResolvers
+
+publishArtifact in (Compile, packageDoc) := false
+
+publishArtifact in (Compile, packageSrc) := false
+
+publishTo := Some(delvingRepository(versionString))
+
+credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
