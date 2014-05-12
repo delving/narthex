@@ -18,7 +18,7 @@ import play.Project._
 
 name := """narthex"""
 
-val versionString = "0.5.4-SNAPSHOT"
+val versionString = "0.5.5-SNAPSHOT"
 
 version := versionString
 

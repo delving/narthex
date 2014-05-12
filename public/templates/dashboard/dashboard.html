@@ -10,8 +10,13 @@
         <div class="file-drop" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
              ng-show="dropSupported">
             <h6>Drag and drop your xml source file into this area</h6>
-            <img ng-src="/assets/images/narthex-1.png"/>
-            <i data-ng-show="busy" class="busy fa fa-spinner fa-spin fa-5x"></i>
+            <div class="img-holder">
+                <img ng-src="/assets/images/narthex-1.png"/>
+                <i data-ng-show="busy" class="busy1 fa fa-gear fa-spin fa-5x"></i>
+                <i data-ng-show="busy" class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
+                <i data-ng-show="busy" class="busy3 fa fa-gear fa-spin fa-3x"></i>
+            </div>
+
         </div>
     </div>
     <div class="col-md-8">

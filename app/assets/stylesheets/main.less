@@ -2,6 +2,54 @@
 @import "elements";
 @import "font-awesome";
 
+.fa-spin-left {
+  -webkit-animation: spin-left 2s infinite linear;
+  -moz-animation: spin-left 2s infinite linear;
+  -o-animation: spin-left 2s infinite linear;
+  animation: spin-left 2s infinite linear;
+}
+
+@-moz-keyframes spin-left {
+  0% {
+    -moz-transform: rotate(0deg);
+  }
+  100% {
+    -moz-transform: rotate(-359deg);
+  }
+}
+@-webkit-keyframes spin-left {
+  0% {
+    -webkit-transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(-359deg);
+  }
+}
+@-o-keyframes spin-left {
+  0% {
+    -o-transform: rotate(0deg);
+  }
+  100% {
+    -o-transform: rotate(-359deg);
+  }
+}
+@-ms-keyframes spin-left {
+  0% {
+    -ms-transform: rotate(0deg);
+  }
+  100% {
+    -ms-transform: rotate(-359deg);
+  }
+}
+@keyframes spin-left {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-359deg);
+  }
+}
+
 
 @white: #fff;
 @black: #000;
@@ -33,12 +81,28 @@ body {
   border: 2px dashed @gray;
   padding: @padding-base-vertical @padding-base-horizontal;
   text-align: center;
-  position: relative;
-  .busy {
+
+  .img-holder {
+    position: relative;
+    display: inline-block;
+  }
+  .busy1 {
     position: absolute;
-    top: 225px;
-    left: 220px;
+    top: 101px;
+    left: 48px;
     color: @brand-warning;
+  }
+  .busy2 {
+    position: absolute;
+    top: 68px;
+    right: 54px;
+    color: @brand-primary;
+  }
+  .busy3 {
+    position: absolute;
+    top: 315px;
+    right: 61px;
+    color: @brand-info;
   }
 }
 
