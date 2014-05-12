@@ -24,12 +24,14 @@ define(["angular"], function () {
 
         $scope.user = user;
         $scope.image = 'png';
+        $scope.busy = false;
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.
             for (var i = 0; i < $files.length; i++) {
                 var file = $files[i];
-                $scope.image = "gif";
+//                $scope.image = "gif";
+                $scope.busy = true;
                 $scope.upload = $upload.upload(
                     {
                         url: '/dashboard/upload', //upload.php script, node.js route, or servlet url
@@ -46,12 +48,14 @@ define(["angular"], function () {
                 ).success(
                     function (data, status, headers, config) {
                         // file is uploaded successfully
-                        $scope.image = "png";
+//                        $scope.image = "png";
+                        $scope.busy = false;
                         fetchFileList();
                     }
                 ).error(
                     function (data) {
-                        $scope.image = "png";
+//                        $scope.image = "png";
+                        $scope.busy = false;
                         alert(data.problem);
                     }
                 );
@@ -66,13 +70,15 @@ define(["angular"], function () {
                 else {
                     file.status = data;
                     if (file && !file.status.complete) {
-                        $scope.image = "gif";
+//                        $scope.image = "gif";
+                        $scope.busy = true;
                         $timeout(function () {
                             checkFileStatus(file)
                         }, 1000)
                     }
                     else {
-                        $scope.image = "png";
+//                        $scope.image = "png";
+                        $scope.busy = false;
                     }
                 }
             })

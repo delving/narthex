@@ -10,7 +10,8 @@
         <div class="file-drop" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
              ng-show="dropSupported">
             <h6>Drag and drop your xml source file into this area</h6>
-            <img ng-src="/assets/images/narthex.{{ image }}"/>
+            <img ng-src="/assets/images/narthex-1.png"/>
+            <i data-ng-show="busy" class="busy fa fa-spinner fa-spin fa-5x"></i>
         </div>
     </div>
     <div class="col-md-8">
@@ -29,7 +30,7 @@
                             <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
                         </span>
                         <span data-ng-show="file.status">
-                            <button class="btn btn-success btn-xs pull-right" data-ng-click="deleteFile(file)" data-ng-show="file.status.complete">Delete</button>
+                            <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteFile(file)" data-ng-show="file.status.complete">Delete</button>
                             <code class="process" data-ng-show="file.status.index && !file.status.complete">processing</code>
                             <code class="analyze" data-ng-show="!file.status.index">analyzing {{ file.status.elements }}</code>
                         </span>

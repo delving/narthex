@@ -1,35 +1,32 @@
+<div class="nav-tab">
+    <a href data-ng-click="goToDashboard()">Return to dashboard</a>
+</div>
+
+
 <div class="row" ng-show="tree">
-    <div class="col-md-{{columns.left + columns.right}}">
-        <div class="panel-heading">
-            <h2><img data-ng-click="goToDashboard()" ng-src="/assets/images/narthex.png" style="width: 46; height:50"/><span> {{ fileName }}</span></h2>
-        </div>
-    </div>
     <div class="col-md-{{columns.left}}">
         <div data-ng-if="!aligning" class="panel panel-primary panel-schema">
             <div class="panel-heading">
                 <span class="panel-title">Schema</span>
-                <ul class="pull-right">
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                            <i class="fa fa-cloud-download"></i><span> API Access </span><i class="caret"></i></a>
-
-                        <ul class="dropdown-menu">
-                            <li><a ng-href="{{apiPrefix}}/tree" target="_blank">JSON Tree</a></li>
-                            <li><a ng-href="{{apiPrefix}}/index" target="_blank">Root Index</a></li>
-                        </ul>
-                    </li>
-                </ul>
-
+                <div class="btn-group pull-right">
+                    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                        Schema API output  <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <li><a ng-href="{{apiPrefix}}/tree" target="_blank">JSON Tree</a></li>
+                        <li><a ng-href="{{apiPrefix}}/index" target="_blank">Root Index</a></li>
+                    </ul>
+                </div>
             </div>
             <div class="panel-body">
-                <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="168" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="170" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <ul data-ng-controller="TreeCtrl" class="list-node">
                         <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
                     </ul>
                 </div>
             </div>
         </div>
-        <div data-ng-if="aligning" class="panel panel-primary panel-schema">
+        <div data-ng-if="aligning" class="panel panel-primary panel-enrich-info">
             <div class="panel-heading">
                 <span>
                     <span class="panel-title">Enrichment</span>
@@ -39,42 +36,42 @@
                 </span>
             </div>
             <div class="panel-body">
-                <div class="vertical-scroll" data-scrollable id="skos-browser" data-offset="168" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                    <p>
+                <div class="vertical-scroll" data-scrollable id="skos-browser" data-offset="170" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                    <p class="lead">
                         This functionality is outside of the scope of the current project, but in the future this
                         panel could contain an enrichment interface tuned to the nature of the data in the field
-                        listed to the right.
+                        listed to the right. Imagine the following:
                     </p>
-                    <dl>
-                        <dt>SKOS Browser</dt>
+                    <dl class="dl-horizontal">
+                        <dt><code>SKOS Browser</code></dt>
                         <dd>
-                            For each entry on the right, browsing a SKOS vocabulary here would allow curators to
+                            For each entry on the right, browsing a SKOS vocabulary. This would allow curators to
                             make links from vocabularies arising from collection registration practice, pointing to
                             shared resources which better capture the intended meaning for aggregation purposes.
                         </dd>
-                        <dt>Link Checker</dt>
+                        <dt><code>Link Checker</code></dt>
                         <dd>
-                            A URL field pointing to external resources can have all entries slowly and patiently checked
+                            A URL field pointing to external resources can have all entries checked
                             for availability.  Periodic checks could be scheduled as well, to verify that the
-                            resources available.
+                            resources are actually available.
                         </dd>
-                        <dt>Geo-converter</dt>
+                        <dt><code>Geo-converter</code></dt>
                         <dd>
                             If a field contains a geo-coordinate, the contents could be verified, displayed on a map,
-                            and converted to other coordinate systems if necessary.
+                            and even converted to other coordinate systems.
                         </dd>
-                        <dt>Date Fixer</dt>
+                        <dt><code>Date Fixer</code></dt>
                         <dd>
                             Date fields are notorious for having many formats in practice, so a date fixer could look
                             for ambiguous values according to chosen best practices and prompt for improvements.
                         </dd>
-                        <dt>Syntax Normalizer</dt>
+                        <dt><code>Syntax Normalizer</code></dt>
                         <dd>
                             Values internally delimited with semicolons or commas can be exploded into separate elements.
                             First name - surname order could be switched, that kind of thing.  Corner cases. Using
                             Javascript for this would allow live viewing of results in the browser.
                         </dd>
-                        <dt>Enrichment Lookup</dt>
+                        <dt><code>Enrichment Lookup</code></dt>
                         <dd>
                             Enrichment results from work performed elsewhere, such as time-consuming instance matching
                             algorithms on people, places, and events, could be dropped here so that the values
@@ -87,18 +84,17 @@
         </div>
     </div>
     <div class="col-md-{{columns.right}}">
-        <div class="panel panel-default panel-lists" data-ng-show="node">
-            <div class="panel-heading">
-                <span>
-                    <span>
-                        <button class="btn btn-success btn-xs left" data-ng-click="setAligning(true)"
-                                data-ng-show="!aligning">Enrich</button>
-                    </span>
-                    <span class="panel-title">{{ node.path }}</span>
-                </span>
 
+        <div class="panel panel-default panel-lists">
+            <div class="panel-heading">
+                <pre>Source: {{ fileName }}</pre>
+                <div data-ng-if="node">
+                    <code class="path">Node: {{ node.path }}</code>
+                    <button class="btn btn-success btn-xs" data-ng-click="setAligning(true)" data-ng-show="!aligning">Enrich</button>
+                </div>
             </div>
-            <div class="panel-body">
+
+            <div class="panel-body" data-ng-show="node">
                 <div class="navbar navbar-inverse list-controls">
                     <ul class="nav navbar-nav">
                         <li data-ng-class="{ active: activeView == 'lengths' }">
@@ -115,7 +111,7 @@
                         <ul class="nav navbar-nav navbar-right">
                             <li class="dropdown">
                                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                                    <i class="fa fa-cloud-download"></i><span> API Access </span><i class="caret"></i></a>
+                                    <span>Node complete API output </span><i class="caret"></i></a>
 
                                 <ul class="dropdown-menu">
                                     <li><a ng-href="{{apiPath}}/unique" target="_blank">All Values</a></li>
@@ -131,7 +127,7 @@
                     </div>
                 </div>
 
-                <div ng-show="node && !(sample || histogram)">
+                <div ng-show="node && !(sample || histogram)" data-scrollable id="graph-list" data-offset="315" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <div>
                         <nvd3-pie-chart
                                 data="node.lengths"
@@ -151,7 +147,7 @@
                     <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="315" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <ul class="list-group">
                             <li data-ng-repeat="value in sample.sample | filter:filterText" class="list-group-item">
-                                <span>{{ value }}</span>
+                                {{ value }}
                             </li>
                         </ul>
                     </div>
@@ -173,21 +169,21 @@
                 <div class="navbar navbar-default">
                     <div class="navbar-left sub-controls">
                         <span data-ng-if="histogram">
-                            <button class="btn navbar-btn count-btn">({{histogram.entries}}/{{histogram.uniqueCount}})</button>
-                            <button class="btn btn-default btn-sm navbar-btn" data-ng-click="moreHistogram();scrollTo({element: '#historgram-list', direction: 'down'})" data-ng-show="isMoreHistogram()">
+                            <button class="btn navbar-btn count-btn">( {{histogram.entries}} / {{histogram.uniqueCount}} )</button>
+                            <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="moreHistogram();scrollTo({element: '#historgram-list', direction: 'down'})" data-ng-show="isMoreHistogram()">
                                 More histogram entries
                             </button>
-                            <span data-ng-if="histogram.complete && histogram.uniqueCount > 30">
-                                <button class="btn btn-default btn-sm navbar-btn" data-ng-click="scrollTo({element: '#historgram-list', direction: 'up'})">
+                            <span data-ng-if="histogram.uniqueCount > 30">
+                                <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="scrollTo({element: '#historgram-list', direction: 'up'})">
                                     <i class="fa fa-hand-o-up"></i>
                                 </button>
-                                <button class="btn btn-default btn-sm navbar-btn" data-ng-click="scrollTo({element: '#historgram-list', direction: 'down'})">
+                                <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="scrollTo({element: '#historgram-list', direction: 'down'})">
                                     <i class="fa fa-hand-o-down"></i>
                                 </button>
                             </span>
                         </span>
                         <span ng-if="sample">
-                            <button class="btn btn-default btn-sm navbar-btn" data-ng-show="isMoreSample()" data-ng-click="moreSample();scrollTo({element: '#sample-list', direction: 'down'})">
+                            <button class="btn btn-primary btn-sm navbar-btn" data-ng-show="isMoreSample()" data-ng-click="moreSample();scrollTo({element: '#sample-list', direction: 'down'})">
                                 <i class="fa fa-plus-circle"></i> More samples
                             </button>
                         </span>
@@ -195,6 +191,7 @@
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 
