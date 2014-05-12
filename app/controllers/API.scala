@@ -57,7 +57,6 @@ object API extends Controller with Security with XRay {
   private def checkKey(email:String , fileName:String, apiKey:String) = { // todo: mindless so far, and do it as an action like in Security.scala
     val hash = s"narthex|$email|$fileName".hashCode
     val expected: String = Integer.toString(hash, 16).substring(1)
-    println(s"expected [$expected] but got [$apiKey]")
     expected == apiKey
   }
 }
