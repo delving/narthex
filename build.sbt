@@ -73,10 +73,18 @@ resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"
 
 resolvers ++= commonResolvers
 
+publishMavenStyle := true
+
 publishArtifact in (Compile, packageDoc) := false
 
 publishArtifact in (Compile, packageSrc) := false
 
-publishTo := Some(delvingRepository(versionString))
+publishTo := {
+  val nexus = "http://nexus.delving.org/nexus/content/repositories/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "snapshots")
+  else
+    Some("releases"  at nexus + "releases")
+}
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
