@@ -18,7 +18,7 @@ import play.Project._
 
 name := """narthex"""
 
-version := "0.5.1"
+version := "0.5.2"
 
 libraryDependencies ++= Seq(
   // WebJars infrastructure
