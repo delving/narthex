@@ -3,13 +3,15 @@
 
 | >>>>>>>>>>>>>>>>>>>> | What? |
 |-----|------|
-| ![](public/images/narthex-1.png?raw=true =300x480) | The **Narthex** is a place which separates the entrance of the church from the inner **Nave**, and it was considered to be a place of penitence. This software is the place where you can put your metadata, and by doing so be able to see it in cross section. All values that appear at every path are collected and counted and you have instant insight into what your data contains, and how it can be improved.|
+| ![](public/images/narthex-1.png?raw=true) | The **Narthex** is a place which separates the entrance of the church from the inner **Nave**, and it was considered to be a place of penitence. This software is the place where you can put your metadata, and by doing so be able to see it in **cross section**. All values that appear at every path are collected and counted and you have instant insight into what your data contains, and how it can be improved.
 
 ## Introduction
 
 [Narthex](http://en.wikipedia.org/wiki/Narthex) is an online XML analyzer for preparing cultural heritage metadata files for consumption by other software.  You drop your XML file (zipped) onto Narthex and it will do complete comprehensive rigorous analysis, revealing the schema as well as everything about the content of all non-empty elements and attributes.  The results can be browsed as well as made available via an API to other software.
 
 This is only the first step. The next phases in the project will involve building vocabulary alignments, performing link checks, geo-coordinate conversions or whatever else is necessary to prepare the data for entry into the [nave](http://en.wikipedia.org/wiki/Nave) of the CultureCloud.
+
+Technologies: **AngularJS**, **D3JS**, **RequireJS**, **Playframework**, and **Akka**. (Thanks to James Ward and the TypeSafe Activator and WebJars people!)|
 
 ## Background
 
