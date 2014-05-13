@@ -3,7 +3,7 @@
 
 | > | What? |
 |-----|------|
-| ![](public/images/narthex-1.png?raw=true) | The **Narthex** is a place which separates the entrance of the church from the inner **Nave**, and it was considered to be a place of penitence. This software is the place where you can put your metadata, and by doing so be able to see it in cross section. All values that appear at every path are collected and counted and you have instant insight into what your data contains, and how it can be improved.|
+| ![](public/images/narthex-1.png?raw=true =300x480) | The **Narthex** is a place which separates the entrance of the church from the inner **Nave**, and it was considered to be a place of penitence. This software is the place where you can put your metadata, and by doing so be able to see it in cross section. All values that appear at every path are collected and counted and you have instant insight into what your data contains, and how it can be improved.|
 
 ## Introduction
 
