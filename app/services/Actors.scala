@@ -25,6 +25,7 @@ import play.api.libs.json._
 import org.apache.commons.io.FileUtils._
 import scala.collection.mutable.ArrayBuffer
 import services.Actors._
+import org.apache.commons.io.input.BOMInputStream
 
 object Actors {
 
@@ -162,7 +163,7 @@ class Analyzer extends Actor with XRay with ActorLogging {
       log.debug(s"Analyzer on ${file.getName}")
       val inputStream = new FileInputStream(file)
       val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(inputStream) else inputStream
-      val source = Source.fromInputStream(stream)
+      val source = Source.fromInputStream(new BOMInputStream(stream))
       val root: XRayNode = XRayNode(source, directory, count => sender ! Progress(count, directory))
       source.close()
       root.sort {
