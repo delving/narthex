@@ -7,7 +7,7 @@
     <div class="col-md-{{columns.left}}">
         <div data-ng-if="!aligning" class="panel panel-primary panel-schema">
             <div class="panel-heading">
-                <span class="panel-title">Schema</span>
+                <span class="panel-title">{{ fileName }}</span>
                 <div class="btn-group pull-right">
                     <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
                         Schema API output  <span class="caret"></span>
@@ -87,7 +87,6 @@
 
         <div class="panel panel-default panel-lists">
             <div class="panel-heading">
-                <pre>Source: {{ fileName }}</pre>
                 <div data-ng-if="node">
                     <code class="path">Node: {{ node.path }}</code>
                     <button class="btn btn-success btn-xs" data-ng-click="setAligning(true)" data-ng-show="!aligning">Enrich</button>
