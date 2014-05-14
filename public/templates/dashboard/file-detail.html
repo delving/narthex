@@ -7,10 +7,10 @@
     <div class="col-md-{{columns.left}}">
         <div data-ng-if="!aligning" class="panel panel-primary panel-schema">
             <div class="panel-heading">
-                <span class="panel-title">Schema: {{ fileName }}</span>
+                <span class="panel-title">Schema: </span><span>{{ fileName }}</span>
                 <div class="btn-group pull-right">
                     <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                        Schema API output  <span class="caret"></span>
+                        API <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" role="menu">
                         <li><a ng-href="{{apiPrefix}}/tree" target="_blank">JSON Tree</a></li>
@@ -83,17 +83,15 @@
             </div>
         </div>
     </div>
-    <div class="col-md-{{columns.right}}">
+    <div class="col-md-{{columns.right}}" data-ng-if="node">
 
         <div class="panel panel-default panel-lists">
             <div class="panel-heading">
-                <div data-ng-if="node">
-                    <code class="path">Node: {{ node.path }}</code>
-                    <button class="btn btn-success btn-xs" data-ng-click="setAligning(true)" data-ng-show="!aligning">Enrich</button>
-                </div>
+                <code class="path">Node: {{ node.path }}</code>
+                <button class="btn btn-success btn-xs" data-ng-click="setAligning(true)" data-ng-show="!aligning">Enrich</button>
             </div>
 
-            <div class="panel-body" data-ng-show="node">
+            <div class="panel-body">
                 <div class="navbar navbar-inverse list-controls">
                     <ul class="nav navbar-nav">
                         <li data-ng-class="{ active: activeView == 'lengths' }">
@@ -110,8 +108,8 @@
                         <ul class="nav navbar-nav navbar-right">
                             <li class="dropdown">
                                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                                    <span>Node API output </span><i class="caret"></i></a>
-
+                                    <span>API </span><i class="caret"></i>
+                                </a>
                                 <ul class="dropdown-menu">
                                     <li><a ng-href="{{apiPath}}/unique" target="_blank">All Values</a></li>
                                     <li><a ng-href="{{apiPath}}/histogram" target="_blank">Full Histogram</a></li>

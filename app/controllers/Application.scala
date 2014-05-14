@@ -113,7 +113,6 @@ object Application extends Controller with Security {
 
   def OkFile(file: File, attempt: Int = 0): SimpleResult = {
     try {
-      println("OkFile: "+file.getAbsolutePath)
       val input = new FileInputStream(file)
       val resourceData = Enumerator.fromStream(input)
       val contentType = if (file.getName.endsWith(".json")) "application/json" else "text/plain; charset=utf-8"

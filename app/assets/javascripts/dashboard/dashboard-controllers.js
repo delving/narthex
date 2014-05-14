@@ -176,8 +176,23 @@ define(["angular"], function () {
             }
         };
 
+        function selectFirstWithValues(node) {
+            if (node.lengths.length) {
+                return node;
+            }
+            else {
+                for (var index=0; index < node.kids.length; index++) {
+                    var nodeWithValues = selectFirstWithValues(node.kids[index]);
+                    if (nodeWithValues) return nodeWithValues;
+                }
+                return undefined;
+            }
+        }
+
         dashboardService.index($scope.fileName).then(function (data) {
             $scope.tree = data;
+            var first = selectFirstWithValues(data);
+            if (first) $scope.selectNode(first);
         });
 
         function removeChosen(node) {
@@ -187,7 +202,7 @@ define(["angular"], function () {
         }
 
         $scope.selectNode = function (node, $event) {
-            $event.stopPropagation();
+            if ($event) $event.stopPropagation();
             if (!node.lengths.length) return;
             removeChosen($scope.tree);
             node.chosen = true;
