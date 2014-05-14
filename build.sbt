@@ -18,7 +18,7 @@ import play.Project._
 
 name := """narthex"""
 
-val versionString = "0.5.7"
+val versionString = "0.5.8"
 
 version := versionString
 
@@ -33,6 +33,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "nvd3" % "1.1.15-beta-2",
   "org.webjars" % "angularjs-nvd3-directives" % "0.0.7-1",
   "org.webjars" % "angular-file-upload" % "1.3.1-1",
+//  "org.webjars" % "angular-ui-bootstrap" % "0.11.0",
   "org.mindrot" % "jbcrypt" % "0.3m",
   "org.scalatest" % "scalatest_2.10" % "2.1.3" % "test",
   "org.scalautils" % "scalautils_2.10" % "2.1.3",

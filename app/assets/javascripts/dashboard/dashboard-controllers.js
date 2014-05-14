@@ -58,17 +58,18 @@ define(["angular"], function () {
                     }
                 ).progress(
                     function (evt) {
-                        console.log('percent: ' + parseInt(100.0 * evt.loaded / evt.total));
+                        $scope.percent = parseInt(100.0 * evt.loaded / evt.total);
                     }
                 ).success(
                     function (data, status, headers, config) {
-                        // file is uploaded successfully
                         $scope.uploading = false;
+                        $scope.percent = null;
                         fetchFileList();
                     }
                 ).error(
                     function (data) {
                         $scope.uploading = false;
+                        $scope.percent = null;
                         alert(data.problem);
                     }
                 );

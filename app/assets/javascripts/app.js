@@ -26,8 +26,7 @@ define(
     [
         "angular",
         "home",
-        "dashboard",
-        "angular-file-upload"
+        "dashboard"
     ],
     function (angular) {
         "use strict";
@@ -40,6 +39,7 @@ define(
                 "narthex.home",
                 "narthex.dashboard",
                 "angularFileUpload",
+//                "ui.bootstrap",
                 "nvd3ChartDirectives"
             ]
         );

@@ -44,22 +44,24 @@
         console.log(err);
     };
 
-    // Load the app. This is kept minimal so it doesn't need much updating.
-    require(
-        [
-            "angular",
-            "angular-cookies",
-            "angular-route",
-            "angularjs-nvd3-directives",
-            "jquery",
-            "underscorejs",
-            "bootstrap",
-            "./app"
-        ],
-        function (angular) {
-            angular.bootstrap(document, ["app"]);
-        }
-    );
-
+    require(['angular-file-upload-shim'], function() {
+        require(
+            [
+                "angular",
+                "angular-cookies",
+                "angular-route",
+                "angular-file-upload",
+                "angularjs-nvd3-directives",
+                "jquery",
+                "underscorejs",
+                "bootstrap",
+//                "angular-ui-bootstrap",
+                "./app"
+            ],
+            function (angular) {
+                angular.bootstrap(document, ["app"]);
+            }
+        );
+    });
 
 })(requirejs);
