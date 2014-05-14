@@ -23,15 +23,30 @@ define(["angular"], function () {
     var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout) {
 
         $scope.user = user;
-        $scope.image = 'png';
+        $scope.uploading = false;
         $scope.busy = false;
+        $scope.files = [];
+        $scope.checkDelay = 1000;
+        $scope.lastStatusCheck = 0;
+
+        function timeSinceStatusCheck() {
+            var now = new Date().getTime();
+            return now - $scope.lastStatusCheck;
+        }
+
+        var checkBusy = function () {
+            var timeSince = timeSinceStatusCheck();
+            var busy = $scope.uploading || (timeSince < 1500);
+            if (busy != $scope.busy) $scope.busy = busy;
+            $timeout(checkBusy, 1200);
+        };
+        checkBusy();
 
         $scope.onFileSelect = function ($files) {
-            //$files: an array of files selected, each file has name, size, and type.
-            for (var i = 0; i < $files.length; i++) {
-                var file = $files[i];
-//                $scope.image = "gif";
-                $scope.busy = true;
+            //$files: an array of files selected, each file has name, size, and type.  Take the first only.
+            if ($files.length) {
+                var file = $files[0];
+                $scope.uploading = true;
                 $scope.upload = $upload.upload(
                     {
                         url: '/dashboard/upload', //upload.php script, node.js route, or servlet url
@@ -48,14 +63,12 @@ define(["angular"], function () {
                 ).success(
                     function (data, status, headers, config) {
                         // file is uploaded successfully
-//                        $scope.image = "png";
-                        $scope.busy = false;
+                        $scope.uploading = false;
                         fetchFileList();
                     }
                 ).error(
                     function (data) {
-//                        $scope.image = "png";
-                        $scope.busy = false;
+                        $scope.uploading = false;
                         alert(data.problem);
                     }
                 );
@@ -64,32 +77,41 @@ define(["angular"], function () {
 
         function checkFileStatus(file) {
             dashboardService.status(file.name).then(function (data) {
-                if (data.problem) {
-                    file.status = data.problem;
+                file.status = data;
+                if (file && !file.status.complete) {
+                    var interval = timeSinceStatusCheck();
+                    if (interval > 1000) { // don't change the scope thing too often
+                        $scope.lastStatusCheck = new Date().getTime();
+                    }
+                    console.log("continuing " + file.name);
+                    file.checker = $timeout(
+                        function () {
+                            checkFileStatus(file)
+                        },
+                        $scope.checkDelay
+                    );
+                }
+            }, function (problem) {
+                if (problem.data.message) {
+                    alert("Processing problem " + problem.status + " (" + problem.data.message + ")");
                 }
                 else {
-                    file.status = data;
-                    if (file && !file.status.complete) {
-//                        $scope.image = "gif";
-                        $scope.busy = true;
-                        $timeout(function () {
-                            checkFileStatus(file)
-                        }, 1000)
-                    }
-                    else {
-//                        $scope.image = "png";
-                        $scope.busy = false;
-                    }
+                    alert("Network problem " + problem.status);
                 }
             })
         }
 
         function fetchFileList() {
             dashboardService.list().then(function (data) {
-                $scope.files = data;
                 _.forEach($scope.files, function (file) {
-                    checkFileStatus(file)
+                    if (file.checker) {
+                        $timeout.cancel(file.checker);
+                        file.checker = undefined;
+                        console.log("cancelling " + file.name);
+                    }
                 });
+                $scope.files = data;
+                _.forEach($scope.files, checkFileStatus);
             });
         }
 
@@ -206,13 +228,16 @@ define(["angular"], function () {
             var lengthName = ["0", "1", "2", "3", "4", "5", "6-10", "11-15", "16-20", "21-30", "31-50", "50-100", "100-*"]; // from XRay.scala lengthRanges
             var noOfColors = lengthName.length;
             var frequency = 4 / noOfColors;
+
             function toHex(c) {
                 var hex = c.toString(16);
                 return hex.length == 1 ? "0" + hex : hex;
             }
+
             function rgbToHex(r, g, b) {
                 return "#" + toHex(r) + toHex(g) + toHex(b);
             }
+
             var colorLookup = {};
             for (var walk = 0; walk < noOfColors; ++walk) {
                 var r = Math.floor(Math.sin(frequency * walk + 0) * (127) + 128);

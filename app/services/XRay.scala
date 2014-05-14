@@ -27,7 +27,7 @@ import scala.xml.pull.EvText
 import scala.xml.pull.EvElemEnd
 import scala.Some
 import scala.collection.mutable
-import scala.util.Random
+import scala.util.{Try, Random}
 
 trait XRay {
 
@@ -111,7 +111,7 @@ trait XRay {
   object XRayNode {
     val STEP = 10000
 
-    def apply(source: Source, directory: FileAnalysisDirectory, progress: Long => Unit): XRayNode = {
+    def apply(source: Source, directory: FileAnalysisDirectory, progress: Long => Unit): Try[XRayNode] = Try {
       val base = new XRayNode(directory.root, null, null)
       var node = base
       var count = 0L

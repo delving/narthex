@@ -129,7 +129,7 @@ object Application extends Controller with Security {
         Thread.sleep(30)
         OkFile(file, attempt + 1)
       case x: Throwable =>
-        NotFound(Json.obj("file" -> file.getName))
+        NotFound(Json.obj("file" -> file.getName, "message" -> x.getMessage))
     }
   }
 

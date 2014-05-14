@@ -22,13 +22,18 @@ define(["angular", "common"], function (angular) {
     mod.service("dashboardService", ["$http", "$q", "playRoutes", "$location", function ($http, $q, playRoutes, $location) {
         var dash = playRoutes.controllers.Dashboard;
 
-        var rejection = function (why) {
-            if (why.status == 401) {
+        var rejection = function (problem) {
+            if (problem.status == 401) { // unauthorized
                 $location.path('/');
             }
             else {
-                console.log('why', why);
-                alert("HTTP Problem code +" + why.status);
+                console.log('why', problem);
+                if (problem.data.message) {
+                    alert("Processing problem " + problem.status + " (" + problem.data.message + ")");
+                }
+                else {
+                    alert("Network problem " + problem.status);
+                }
             }
         };
 
@@ -45,8 +50,7 @@ define(["angular", "common"], function (angular) {
                 return dash.status(fileName).get().then(
                     function (response) {
                         return response.data;
-                    },
-                    rejection
+                    }
                 );
             },
             zap: function (fileName) {

@@ -26,6 +26,7 @@ import org.apache.commons.io.FileUtils._
 import scala.collection.mutable.ArrayBuffer
 import services.Actors._
 import org.apache.commons.io.input.BOMInputStream
+import scala.util.{Failure, Success}
 
 object Actors {
 
@@ -36,6 +37,8 @@ object Actors {
   case class Progress(progressCount: Long, directory: FileAnalysisDirectory)
 
   case class TreeComplete(json: JsValue, directory: FileAnalysisDirectory)
+
+  case class FileError(file: File, directory: FileAnalysisDirectory)
 
   case class AnalysisComplete(directory: FileAnalysisDirectory)
 
@@ -90,6 +93,11 @@ class Boss extends Actor with ActorLogging {
       updateJson(directory.statusFile) {
         current => Json.obj("elements" -> count)
       }
+
+    case FileError(file, directory) =>
+      deleteQuietly(file)
+      deleteQuietly(directory.directory)
+      context.stop(sender)
 
     case TreeComplete(json, directory) =>
       updateJson(directory.statusFile) {
@@ -164,22 +172,28 @@ class Analyzer extends Actor with XRay with ActorLogging {
       val inputStream = new FileInputStream(file)
       val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(inputStream) else inputStream
       val source = Source.fromInputStream(new BOMInputStream(stream))
-      val root: XRayNode = XRayNode(source, directory, count => sender ! Progress(count, directory))
-      source.close()
-      root.sort {
-        node =>
-          if (node.lengths.isEmpty) {
-            updateJson(node.directory.statusFile) {
-              current => Json.obj("uniqueCount" -> 0)
-            }
+      XRayNode(source, directory, count => sender ! Progress(count, directory)) match {
+        case Success(root) =>
+          root.sort {
+            node =>
+              if (node.lengths.isEmpty) {
+                updateJson(node.directory.statusFile) {
+                  current => Json.obj("uniqueCount" -> 0)
+                }
+              }
+              else {
+                val sorter = context.actorOf(Props[Sorter])
+                sorters = sorter :: sorters
+                sorter ! Sort(node.directory, SortType.VALUE_SORT)
+              }
           }
-          else {
-            val sorter = context.actorOf(Props[Sorter])
-            sorters = sorter :: sorters
-            sorter ! Sort(node.directory, SortType.VALUE_SORT)
-          }
+          sender ! TreeComplete(Json.toJson(root), directory)
+
+        case Failure(e) =>
+          log.error(e, "Problem reading the file")
+          sender ! FileError(file, directory)
       }
-      sender ! TreeComplete(Json.toJson(root), directory)
+      source.close()
 
     case Counted(directory, uniqueCount, sampleSizes) =>
       log.debug(s"Count finished : ${directory.countedFile.getAbsolutePath}")
