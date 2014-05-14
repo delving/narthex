@@ -56,17 +56,26 @@
 
 body {
   margin-top: 80px;
+  font-family: Arial, Helvetica Neue, Helvetica;
 }
 
 .home.row {
 //  margin-top: 0px;
 //  margin-bot: 0px;
   margin-top: -@navbar-margin-bottom;
-  background: @brand-primary;
+//  background: @brand-primary;
   padding: 40px;
   .img {
-    text-align: center;
+    margin-top: 20px;
+    img {
+      max-width: 100%;
+      height: auto;
+    }
   }
+}
+
+.instructions {
+  font-size: 14px;
 }
 
 .navbar-brand {

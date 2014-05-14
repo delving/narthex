@@ -1,38 +1,12 @@
+
 <div class="home row clearfix">
-    <div class="col-md-2">
+    <div class="col-sm-2">
         <div class="img">
-            <img src="/assets/images/narthex-1.png" height="300" />
+            <img src="/assets/images/narthex-blue.png" />
         </div>
-
-        <h2>Login</h2>
-
-        <form name="form" class="form well">
-            <fieldset>
-                <div class="form-group">
-                    <label for="email">Email address</label>
-                    <input id="email" type="email" class="form-control" data-ng-model="credentials.email" placeholder="E-Mail" required/><br/>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input id="password" type="password" class="form-control" data-ng-model="credentials.password" placeholder="Password" required/>
-                </div>
-                <div class="form-group" data-ng-show="showRepeatPassword">
-                    <label for="repeatPassword">Verify Password</label>
-                    <input id="repeatPassword" type="password" class="form-control" data-ng-model="credentials.repeatPassword" placeholder="Password"/>
-                </div>
-                <br/>
-                <button class="btn btn-primary" data-ng-disabled="form.$invalid" data-ng-click="login(credentials)">Log In</button>
-                <button class="btn btn-primary" data-ng-disabled="form.$invalid" data-ng-show="!showRepeatPassword" data-ng-click="showRepeatPassword = true">Register</button>
-            </fieldset>
-            <div data-ng-show="errorMessage">
-                <br/>
-                <span class="badge">{{ errorMessage }}</span>
-            </div>
-        </form>
-
     </div>
-    <div class="col-md-10">
-        <h1>Narthex</h1>
+    <div class="col-sm-6 instructions">
+        <h1 >Narthex</h1>
         <h4>1) Prepare your XML</h4>
         <p>
             The input for Narthex is XML (either as text or GZipped text). The first step for you is to dump your data to XML
@@ -71,6 +45,33 @@
             and funding to take the project further. More graphical renderings will be possible using the
             <a href="https://github.com/mbostock/d3/wiki/Gallery" target="_blank">D3 Library</a>, and be sure to
             press the "Enrich" button to see the enrichment potentials. </p>
+    </div>
+    <div class="col-sm-4">
+        <h2>Login</h2>
+
+        <form name="form" class="form well">
+            <fieldset>
+                <div class="form-group">
+                    <label for="email">Email address</label>
+                    <input id="email" type="email" class="form-control" data-ng-model="credentials.email" placeholder="E-Mail" required/><br/>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input id="password" type="password" class="form-control" data-ng-model="credentials.password" placeholder="Password" required/>
+                </div>
+                <div class="form-group" data-ng-show="showRepeatPassword">
+                    <label for="repeatPassword">Verify Password</label>
+                    <input id="repeatPassword" type="password" class="form-control" data-ng-model="credentials.repeatPassword" placeholder="Password"/>
+                </div>
+                <br/>
+                <button class="btn btn-primary" data-ng-disabled="form.$invalid" data-ng-click="login(credentials)">Log In</button>
+                <button class="btn btn-primary" data-ng-disabled="form.$invalid" data-ng-show="!showRepeatPassword" data-ng-click="showRepeatPassword = true">Register</button>
+            </fieldset>
+            <div data-ng-show="errorMessage">
+                <br/>
+                <span class="badge">{{ errorMessage }}</span>
+            </div>
+        </form>
     </div>
 </div>
 
