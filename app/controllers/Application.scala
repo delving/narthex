@@ -126,7 +126,7 @@ object Application extends Controller with Security {
     }
     catch {
       case ex: FileNotFoundException if attempt < 5 => // sometimes status files are in the process of being written
-        Thread.sleep(30)
+        Thread.sleep(333)
         OkFile(file, attempt + 1)
       case x: Throwable =>
         NotFound(Json.obj("file" -> file.getName, "message" -> x.getMessage))

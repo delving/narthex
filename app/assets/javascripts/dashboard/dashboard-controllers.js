@@ -92,8 +92,9 @@ define(["angular"], function () {
                     );
                 }
             }, function (problem) {
-                if (problem.data.message) {
-                    alert("Processing problem " + problem.status + " (" + problem.data.message + ")");
+                if (problem.status == 404) {
+                    alert("Processing problem with " + file.name);
+                    fetchFileList()
                 }
                 else {
                     alert("Network problem " + problem.status);
