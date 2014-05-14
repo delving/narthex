@@ -27,8 +27,8 @@ object API extends Controller with Security with XRay {
   def indexJSON(apiKey: String, email:String, fileName: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
-        val repo = FileRepository(email)
-        OkFile(repo.analysis(fileName).indexFile)
+        val repo = Repository(email)
+        OkFile(repo.fileRepo(fileName).index)
       }
       else {
         Unauthorized
@@ -39,8 +39,8 @@ object API extends Controller with Security with XRay {
   def indexText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
-        val repo = FileRepository(email)
-        repo.analysis(fileName).indexTextFile(path) match {
+        val repo = Repository(email)
+        repo.fileRepo(fileName).indexText(path) match {
           case None => NotFound(Json.obj("path" -> path))
           case Some(file) => OkFile(file)
         }
@@ -54,8 +54,8 @@ object API extends Controller with Security with XRay {
   def uniqueText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
-        val repo = FileRepository(email)
-        repo.analysis(fileName).uniqueTextFile(path) match {
+        val repo = Repository(email)
+        repo.fileRepo(fileName).uniqueText(path) match {
           case None => NotFound(Json.obj("path" -> path))
           case Some(file) => OkFile(file)
         }
@@ -69,8 +69,8 @@ object API extends Controller with Security with XRay {
   def histogramText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
-        val repo = FileRepository(email)
-        repo.analysis(fileName).histogramTextFile(path) match {
+        val repo = Repository(email)
+        repo.fileRepo(fileName).histogramText(path) match {
           case None => NotFound(Json.obj("path" -> path))
           case Some(file) => OkFile(file)
         }

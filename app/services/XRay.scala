@@ -31,7 +31,7 @@ import scala.util.{Try, Random}
 
 trait XRay {
 
-  class XRayNode(val directory: NodeDirectory, val parent: XRayNode, val tag: String) {
+  class XRayNode(val directory: NodeRepo, val parent: XRayNode, val tag: String) {
     var kids = Map.empty[String, XRayNode]
     var count = 0
     var lengths = new LengthHistogram()
@@ -67,7 +67,7 @@ trait XRay {
       if (!value.isEmpty) {
         lengths.record(value)
         if (valueWriter == None) {
-          valueWriter = Option(new BufferedWriter(new FileWriter(directory.valuesFile)))
+          valueWriter = Option(new BufferedWriter(new FileWriter(directory.values)))
         }
         valueWriter.map {
           writer =>
@@ -79,8 +79,8 @@ trait XRay {
 
     def finish(): Unit = {
       valueWriter.map(_.close())
-      val index = kids.values.map(kid => FileRepository.tagToDirectory(kid.tag)).mkString("\n")
-      FileUtils.writeStringToFile(directory.indexTextFile, index)
+      val index = kids.values.map(kid => Repository.tagToDirectory(kid.tag)).mkString("\n")
+      FileUtils.writeStringToFile(directory.indexText, index)
       kids.values.foreach(_.finish())
     }
 
@@ -111,7 +111,7 @@ trait XRay {
   object XRayNode {
     val STEP = 10000
 
-    def apply(source: Source, directory: FileAnalysisDirectory, progress: Long => Unit): Try[XRayNode] = Try {
+    def apply(source: Source, directory: FileRepo, progress: Long => Unit): Try[XRayNode] = Try {
       val base = new XRayNode(directory.root, null, null)
       var node = base
       var count = 0L
@@ -160,7 +160,7 @@ trait XRay {
       val root = base.kids.values.head
       base.finish()
       val pretty = Json.prettyPrint(Json.toJson(root))
-      FileUtils.writeStringToFile(directory.indexFile, pretty, "UTF-8")
+      FileUtils.writeStringToFile(directory.index, pretty, "UTF-8")
       progress(count)
       root
     }

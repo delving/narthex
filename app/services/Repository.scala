@@ -27,14 +27,14 @@ import org.apache.commons.io.FileUtils._
 import scala.Some
 import scala.collection.mutable.ArrayBuffer
 
-object FileRepository {
+object Repository {
   val SUFFIXES = List(".xml.gz", ".xml")
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "NARTHEX")
 
   lazy val boss = Akka.system.actorOf(Props[Boss], "boss")
 
-  def apply(email: String) = new PersonalRepository(root, email)
+  def apply(email: String) = new PersonalRepo(root, email)
 
   def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
 
@@ -59,7 +59,7 @@ object FileRepository {
 
 }
 
-class PersonalRepository(root: File, val email: String) {
+class PersonalRepo(root: File, val email: String) {
 
   val repo = new File(root, email.replaceAll("@", "_"))
   val user = new File(repo, "user.json")
@@ -94,16 +94,16 @@ class PersonalRepository(root: File, val email: String) {
   def scanForWork() = {
     val filesToAnalyze = uploadedOnly()
     val dirs = filesToAnalyze.map(file => analyzedDir(file.getName))
-    val fileAnalysisDirs = dirs.map(new FileAnalysisDirectory(_).mkdirs)
-    FileRepository.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
+    val fileAnalysisDirs = dirs.map(new FileRepo(_).mkdirs)
+    Repository.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
   }
 
-  def analysis(fileName: String) = new FileAnalysisDirectory(analyzedDir(fileName))
+  def fileRepo(fileName: String) = new FileRepo(analyzedDir(fileName))
 
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
       directory.listFiles.filter(file =>
-        file.isFile && !FileRepository.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).isEmpty
+        file.isFile && !Repository.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).isEmpty
       ).toList
     }
     else {
@@ -113,112 +113,112 @@ class PersonalRepository(root: File, val email: String) {
 
 }
 
-class FileAnalysisDirectory(val directory: File) {
+class FileRepo(val dir: File) {
 
   def mkdirs = {
-    directory.mkdirs()
+    dir.mkdirs()
     this
   }
 
-  def indexFile = new File(directory, "index.json")
+  def index = new File(dir, "index.json")
 
-  def statusFile = new File(directory, "status.json")
+  def status = new File(dir, "status.json")
 
-  def root = new NodeDirectory(this, directory)
+  def root = new NodeRepo(this, dir)
 
-  def statusFile(path: String): Option[File] = {
-    nodeDirectory(path) match {
+  def status(path: String): Option[File] = {
+    nodeRepo(path) match {
       case None => None
-      case Some(nodeDirectory) => Some(nodeDirectory.statusFile)
+      case Some(nodeDirectory) => Some(nodeDirectory.status)
     }
   }
 
-  def sampleFile(path: String, size: Int): Option[File] = {
-    nodeDirectory(path) match {
+  def sample(path: String, size: Int): Option[File] = {
+    nodeRepo(path) match {
       case None => None
-      case Some(nodeDirectory) =>
-        val fileList = nodeDirectory.sampleJsonFiles.filter(pair => pair._1 == size)
+      case Some(repo) =>
+        val fileList = repo.sampleJson.filter(pair => pair._1 == size)
         if (fileList.isEmpty) None else Some(fileList.head._2)
     }
   }
 
-  def histogramFile(path: String, size: Int): Option[File] = {
-    nodeDirectory(path) match {
+  def histogram(path: String, size: Int): Option[File] = {
+    nodeRepo(path) match {
       case None => None
-      case Some(nodeDirectory) =>
-        val fileList = nodeDirectory.histogramJsonFiles.filter(pair => pair._1 == size)
+      case Some(repo) =>
+        val fileList = repo.histogramJson.filter(pair => pair._1 == size)
         if (fileList.isEmpty) None else Some(fileList.head._2)
     }
   }
 
-  def indexTextFile(path: String): Option[File] = {
-    nodeDirectory(path) match {
+  def indexText(path: String): Option[File] = {
+    nodeRepo(path) match {
       case None => None
-      case Some(nodeDirectory) => Some(nodeDirectory.indexTextFile)
+      case Some(repo) => Some(repo.indexText)
     }
   }
 
-  def uniqueTextFile(path: String): Option[File] = {
-    nodeDirectory(path) match {
+  def uniqueText(path: String): Option[File] = {
+    nodeRepo(path) match {
       case None => None
-      case Some(nodeDirectory) => Some(nodeDirectory.uniqueTextFile)
+      case Some(repo) => Some(repo.uniqueText)
     }
   }
 
-  def histogramTextFile(path: String): Option[File] = {
-    nodeDirectory(path) match {
+  def histogramText(path: String): Option[File] = {
+    nodeRepo(path) match {
       case None => None
-      case Some(nodeDirectory) => Some(nodeDirectory.histogramTextFile)
+      case Some(repo) => Some(repo.histogramText)
     }
   }
 
-  def nodeDirectory(path: String): Option[NodeDirectory] = {
-    val dir = path.split('/').toList.foldLeft(directory)((file, tag) => new File(file, FileRepository.tagToDirectory(tag)))
-    if (dir.exists()) Some(new NodeDirectory(this, dir)) else None
+  def nodeRepo(path: String): Option[NodeRepo] = {
+    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, Repository.tagToDirectory(tag)))
+    if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 
 }
 
-object NodeDirectory {
-  def apply(fileAnalysisDirectory: FileAnalysisDirectory, parentDirectory: File, tag: String) = {
-    val dir = if (tag == null) parentDirectory else new File(parentDirectory, FileRepository.tagToDirectory(tag))
+object NodeRepo {
+  def apply(parent: FileRepo, parentDir: File, tag: String) = {
+    val dir = if (tag == null) parentDir else new File(parentDir, Repository.tagToDirectory(tag))
     dir.mkdirs()
-    new NodeDirectory(fileAnalysisDirectory, dir)
+    new NodeRepo(parent, dir)
   }
 }
 
-class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val directory: File) {
+class NodeRepo(val parent: FileRepo, val dir: File) {
 
-  def child(childTag: String) = NodeDirectory(fileAnalysisDirectory, directory, childTag)
+  def child(childTag: String) = NodeRepo(parent, dir, childTag)
 
-  def file(name: String) = new File(directory, name)
+  def f(name: String) = new File(dir, name)
 
-  def statusFile = file("status.json")
+  def status = f("status.json")
 
-  def valuesFile = file("values.txt")
+  def values = f("values.txt")
 
-  def tempSortFile = file(s"sorting-${UUID.randomUUID()}.txt")
+  def tempSort = f(s"sorting-${UUID.randomUUID()}.txt")
 
-  def sortedFile = file("sorted.txt")
+  def sorted = f("sorted.txt")
 
-  def countedFile = file("counted.txt")
+  def counted = f("counted.txt")
 
   val sizeFactor = 5 // relates to the lists below
 
-  def histogramJsonFiles = List(100, 500, 2500).map(size => (size, file(s"histogram-$size.json")))
+  def histogramJson = List(100, 500, 2500).map(size => (size, f(s"histogram-$size.json")))
 
-  def sampleJsonFiles = List(100, 500, 2500).map(size => (size, file(s"sample-$size.json")))
+  def sampleJson = List(100, 500, 2500).map(size => (size, f(s"sample-$size.json")))
 
-  def indexTextFile = file("index.txt")
+  def indexText = f("index.txt")
 
-  def uniqueTextFile = file("unique.txt")
+  def uniqueText = f("unique.txt")
 
-  def histogramTextFile = file("histogram.txt")
+  def histogramText = f("histogram.txt")
 
   def writeHistograms(uniqueCount: Int) = {
 
     val LINE = """^ *(\d*) (.*)$""".r
-    val input = new BufferedReader(new FileReader(histogramTextFile))
+    val input = new BufferedReader(new FileReader(histogramText))
 
     def lineOption = {
       val string = input.readLine()
@@ -226,7 +226,7 @@ class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val direct
     }
 
     def createFile(maximum: Int, entries: ArrayBuffer[JsArray], histogramFile: File) = {
-      FileRepository.updateJson(histogramFile) {
+      Repository.updateJson(histogramFile) {
         current => Json.obj(
           "uniqueCount" -> uniqueCount,
           "entries" -> entries.size,
@@ -237,7 +237,7 @@ class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val direct
       }
     }
 
-    var activeCounters = histogramJsonFiles.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
+    var activeCounters = histogramJson.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
     activeCounters = activeCounters.filter(pair => pair._1 == activeCounters.head._1 || uniqueCount > pair._1 / sizeFactor)
     val counters = activeCounters
     var line = lineOption

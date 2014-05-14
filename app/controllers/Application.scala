@@ -21,7 +21,7 @@ import play.api.mvc._
 import play.api.libs.json._
 import play.api.cache.Cache
 import play.api.Play.current
-import services.FileRepository
+import services.Repository
 import java.io.{FileNotFoundException, FileInputStream, File}
 import play.api.libs.iteratee.Enumerator
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -69,7 +69,7 @@ object Application extends Controller with Security {
       val repeatPassword = (request.body \ "repeatPassword").asOpt[String]
       if (repeatPassword.isDefined) {
         if (password == repeatPassword.get) {
-          FileRepository(email).create(password)
+          Repository(email).create(password)
           Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
         }
         else {
@@ -77,7 +77,7 @@ object Application extends Controller with Security {
         }
       }
       else {
-        if (FileRepository(email).authenticate(password)) {
+        if (Repository(email).authenticate(password)) {
           Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
         }
         else {
@@ -113,6 +113,7 @@ object Application extends Controller with Security {
 
   def OkFile(file: File, attempt: Int = 0): SimpleResult = {
     try {
+      println("OkFile: "+file.getAbsolutePath)
       val input = new FileInputStream(file)
       val resourceData = Enumerator.fromStream(input)
       val contentType = if (file.getName.endsWith(".json")) "application/json" else "text/plain; charset=utf-8"

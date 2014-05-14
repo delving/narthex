@@ -32,9 +32,9 @@ object Dashboard extends Controller with Security with XRay {
       request.body.file("file") match {
         case Some(file) =>
           Logger.info(s"upload ${file.filename} (${file.contentType}) to $email")
-          if (FileRepository.acceptable(file.filename, file.contentType)) {
+          if (Repository.acceptable(file.filename, file.contentType)) {
             println(s"Acceptable ${file.filename}")
-            val repo = FileRepository(email)
+            val repo = Repository(email)
             file.ref.moveTo(repo.uploadedFile(file.filename))
             Ok(file.filename)
           }
@@ -50,7 +50,7 @@ object Dashboard extends Controller with Security with XRay {
 
   def list = Secure() {
     token => email => implicit request => {
-      val repo = FileRepository(email)
+      val repo = Repository(email)
       repo.scanForWork()
       val fileList: Seq[File] = repo.listUploadedFiles
       val stringList = fileList.map(file => s"${file.getName}")
@@ -60,7 +60,7 @@ object Dashboard extends Controller with Security with XRay {
 
   def work = Secure() {
     token => email => implicit request => {
-      val repo = FileRepository(email)
+      val repo = Repository(email)
       repo.scanForWork()
       Ok
     }
@@ -68,31 +68,31 @@ object Dashboard extends Controller with Security with XRay {
 
   def status(fileName: String) = Secure() {
     token => email => implicit request => {
-      val repo = FileRepository(email)
-      OkFile(repo.analysis(fileName).statusFile)
+      val repo = Repository(email)
+      OkFile(repo.fileRepo(fileName).status)
     }
   }
 
   def zap(fileName: String) = Secure() {
     token => email => implicit request => {
-      val repo = FileRepository(email)
+      val repo = Repository(email)
       deleteQuietly(repo.uploadedFile(fileName))
-      deleteDirectory(repo.analysis(fileName).directory)
+      deleteDirectory(repo.fileRepo(fileName).dir)
       Ok
     }
   }
 
   def index(fileName: String) = Secure() {
     token => email => implicit request => {
-      val repo = FileRepository(email)
-      OkFile(repo.analysis(fileName).indexFile)
+      val repo = Repository(email)
+      OkFile(repo.fileRepo(fileName).index)
     }
   }
 
   def nodeStatus(fileName: String, path: String) = Secure() {
     token => email => implicit request => {
-      val repo = FileRepository(email)
-      repo.analysis(fileName).statusFile(path) match {
+      val repo = Repository(email)
+      repo.fileRepo(fileName).status(path) match {
         case None => NotFound(Json.obj("path" -> path))
         case Some(file) => OkFile(file)
       }
@@ -101,8 +101,8 @@ object Dashboard extends Controller with Security with XRay {
 
   def sample(fileName: String, path: String, size: Int) = Secure() {
     token => email => implicit request => {
-      val repo = FileRepository(email)
-      repo.analysis(fileName).sampleFile(path, size) match {
+      val repo = Repository(email)
+      repo.fileRepo(fileName).sample(path, size) match {
         case None => NotFound(Json.obj("path" -> path, "size" -> size))
         case Some(file) => OkFile(file)
       }
@@ -111,8 +111,8 @@ object Dashboard extends Controller with Security with XRay {
 
   def histogram(fileName: String, path: String, size: Int) = Secure() {
     token => email => implicit request => {
-      val repo = FileRepository(email)
-      repo.analysis(fileName).histogramFile(path, size) match {
+      val repo = Repository(email)
+      repo.fileRepo(fileName).histogram(path, size) match {
         case None => NotFound(Json.obj("path" -> path, "size" -> size))
         case Some(file) => OkFile(file)
       }
