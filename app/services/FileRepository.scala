@@ -16,15 +16,16 @@
 
 package services
 
-import java.io.File
+import java.io.{FileReader, BufferedReader, File}
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import akka.actor.Props
 import java.util.UUID
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, JsValue, JsArray, Json}
 import org.mindrot.jbcrypt.BCrypt
 import org.apache.commons.io.FileUtils._
 import scala.Some
+import scala.collection.mutable.ArrayBuffer
 
 object FileRepository {
   val SUFFIXES = List(".xml.gz", ".xml")
@@ -42,6 +43,20 @@ object FileRepository {
     println("content type "+contentType)
     !SUFFIXES.filter(suffix => fileName.endsWith(suffix)).isEmpty
   }
+
+  def updateJson(file: File)(xform: JsValue => JsObject) = {
+    if (file.exists()) {
+      val value = Json.parse(readFileToString(file))
+      val tempFile = new File(file.getParentFile, s"${file.getName}.temp")
+      writeStringToFile(tempFile, Json.prettyPrint(xform(value)), "UTF-8")
+      deleteQuietly(file)
+      moveFile(tempFile, file)
+    }
+    else {
+      writeStringToFile(file, Json.prettyPrint(xform(Json.obj())), "UTF-8")
+    }
+  }
+
 }
 
 class PersonalRepository(root: File, val email: String) {
@@ -78,9 +93,9 @@ class PersonalRepository(root: File, val email: String) {
 
   def scanForWork() = {
     val filesToAnalyze = uploadedOnly()
-    val analyzedDirs = filesToAnalyze.map(file => analyzedDir(file.getName))
-    analyzedDirs.foreach(_.mkdirs())
-    FileRepository.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(analyzedDirs))
+    val dirs = filesToAnalyze.map(file => analyzedDir(file.getName))
+    val fileAnalysisDirs = dirs.map(new FileAnalysisDirectory(_).mkdirs)
+    FileRepository.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
   }
 
   def analysis(fileName: String) = new FileAnalysisDirectory(analyzedDir(fileName))
@@ -99,6 +114,11 @@ class PersonalRepository(root: File, val email: String) {
 }
 
 class FileAnalysisDirectory(val directory: File) {
+
+  def mkdirs = {
+    directory.mkdirs()
+    this
+  }
 
   def indexFile = new File(directory, "index.json")
 
@@ -194,6 +214,50 @@ class NodeDirectory(val fileAnalysisDirectory: FileAnalysisDirectory, val direct
   def uniqueTextFile = file("unique.txt")
 
   def histogramTextFile = file("histogram.txt")
+
+  def writeHistograms(uniqueCount: Int) = {
+
+    val LINE = """^ *(\d*) (.*)$""".r
+    val input = new BufferedReader(new FileReader(histogramTextFile))
+
+    def lineOption = {
+      val string = input.readLine()
+      if (string != null) Some(string) else None
+    }
+
+    def createFile(maximum: Int, entries: ArrayBuffer[JsArray], histogramFile: File) = {
+      FileRepository.updateJson(histogramFile) {
+        current => Json.obj(
+          "uniqueCount" -> uniqueCount,
+          "entries" -> entries.size,
+          "maximum" -> maximum,
+          "complete" -> (entries.size == uniqueCount),
+          "histogram" -> entries
+        )
+      }
+    }
+
+    var activeCounters = histogramJsonFiles.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
+    activeCounters = activeCounters.filter(pair => pair._1 == activeCounters.head._1 || uniqueCount > pair._1 / sizeFactor)
+    val counters = activeCounters
+    var line = lineOption
+    var count = 1
+    while (line.isDefined && !activeCounters.isEmpty) {
+      val lineMatch = LINE.findFirstMatchIn(line.get)
+      activeCounters = activeCounters.filter {
+        triple =>
+          lineMatch.map(groups => triple._2 += Json.arr(groups.group(1), groups.group(2)))
+          val keep = count < triple._1
+          if (!keep) createFile(triple._1, triple._2, triple._3) // side effect
+          keep
+      }
+      line = lineOption
+      count += 1
+    }
+    activeCounters.foreach(triple => createFile(triple._1, triple._2, triple._3))
+    counters.map(triple => triple._1)
+
+  }
 
 }
 

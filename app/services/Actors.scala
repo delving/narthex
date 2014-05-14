@@ -26,11 +26,28 @@ import org.apache.commons.io.FileUtils._
 import scala.collection.mutable.ArrayBuffer
 import services.Actors._
 import org.apache.commons.io.input.BOMInputStream
-import scala.util.{Failure, Success}
+import scala.util.Failure
+import services.FileRepository._
+import services.Actors.Analyze
+import play.api.libs.json.JsArray
+import services.Actors.Merged
+import services.Actors.Progress
+import scala.util.Failure
+import scala.Some
+import services.Actors.Counted
+import services.Actors.FileError
+import scala.util.Success
+import services.Actors.Count
+import services.Actors.Sort
+import services.Actors.AnalysisComplete
+import services.Actors.AnalyzeThese
+import services.Actors.Sorted
+import services.Actors.TreeComplete
+import services.Actors.Merge
 
 object Actors {
 
-  case class AnalyzeThese(jobs: List[(File, File)])
+  case class AnalyzeThese(jobs: List[(File, FileAnalysisDirectory)])
 
   case class Analyze(file: File, directory: FileAnalysisDirectory)
 
@@ -61,21 +78,6 @@ object Actors {
 
   case class Merged(merge: Merge, fileA: File, sortType: SortType)
 
-  def updateJson(file: File)(xform: JsValue => JsObject) = {
-    if (file.exists()) {
-      val value = Json.parse(readFileToString(file))
-      val tempFile = new File(file.getParentFile, s"${file.getName}.temp")
-      writeStringToFile(tempFile, Json.prettyPrint(xform(value)), "UTF-8")
-      deleteQuietly(file)
-      moveFile(tempFile, file)
-    }
-    else {
-      writeStringToFile(file, Json.prettyPrint(xform(Json.obj())), "UTF-8")
-    }
-//    def input = if (file.exists()) Json.parse(FileUtils.readFileToString(file)) else Json.obj()
-//    FileUtils.writeStringToFile(file, Json.prettyPrint(xform(input)), "UTF-8")
-  }
-
 }
 
 class Boss extends Actor with ActorLogging {
@@ -86,7 +88,7 @@ class Boss extends Actor with ActorLogging {
       jobs.foreach {
         job =>
           val analyzer = context.actorOf(Props[Analyzer], job._1.getName)
-          analyzer ! Analyze(job._1, new FileAnalysisDirectory(job._2))
+          analyzer ! Analyze(job._1, job._2)
       }
 
     case Progress(count, directory) =>
