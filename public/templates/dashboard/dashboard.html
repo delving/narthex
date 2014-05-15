@@ -42,9 +42,13 @@
                             <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
                         </span>
                         <span data-ng-show="file.status">
+                            <span data-ng-show="!file.status.index">
+                                <progressbar animate="true" value="file.status.percent" max="100" type="success">
+                                    <b>{{file.status.percent}}%</b>
+                                </progressbar>
+                            </span>
                             <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteFile(file)" data-ng-show="file.status.complete">Delete</button>
-                            <code class="process" data-ng-show="file.status.index && !file.status.complete">processing</code>
-                            <code class="analyze" data-ng-show="!file.status.index">analyzing {{ file.status.elements }}</code>
+                            <code class="process" data-ng-show="file.status.index && !file.status.complete">Sorting and Counting</code>
                         </span>
                     </li>
                 </ul>

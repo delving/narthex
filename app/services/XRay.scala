@@ -28,6 +28,7 @@ import scala.xml.pull.EvElemEnd
 import scala.Some
 import scala.collection.mutable
 import scala.util.{Try, Random}
+import org.apache.commons.io.input.CountingInputStream
 
 trait XRay {
 
@@ -84,7 +85,7 @@ trait XRay {
       kids.values.foreach(_.finish())
     }
 
-    def sort(sortStarter: XRayNode => Unit) : Unit = {
+    def sort(sortStarter: XRayNode => Unit): Unit = {
       sortStarter(this)
       kids.values.foreach(_.sort(sortStarter))
     }
@@ -109,18 +110,24 @@ trait XRay {
   }
 
   object XRayNode {
-    val STEP = 10000
 
-    def apply(source: Source, directory: FileRepo, progress: Long => Unit): Try[XRayNode] = Try {
+    def apply(source: Source, length: Long, counter: CountingInputStream, directory: FileRepo, progress: Int => Unit): Try[XRayNode] = Try {
       val base = new XRayNode(directory.root, null, null)
       var node = base
-      var count = 0L
+      var percentWas = -1
+      var lastProgress = 0l
       val events = new XMLEventReader(source)
 
-      while (events.hasNext) {
+      def sendProgress(): Unit = {
+        val percent = ((counter.getByteCount * 100) / length).toInt
+        if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
+          progress(percent)
+          percentWas = percent
+          lastProgress = System.currentTimeMillis()
+        }
+      }
 
-        if (count % STEP == 0) progress(count)
-        count += 1
+      while (events.hasNext) {
 
         events.next() match {
 
@@ -146,11 +153,12 @@ trait XRay {
             }
 
           case EvElemEnd(pre, label) =>
+            sendProgress()
             node.end()
             node = node.parent
 
           case EvComment(text) =>
-            // todo: unknown entity apos; // probably tell the parser to resolve or something
+          // todo: unknown entity apos; // probably tell the parser to resolve or something
 
           case x =>
             println("EVENT? " + x) // todo: record these in an error file for later
@@ -161,7 +169,7 @@ trait XRay {
       base.finish()
       val pretty = Json.prettyPrint(Json.toJson(root))
       FileUtils.writeStringToFile(directory.index, pretty, "UTF-8")
-      progress(count)
+      progress(100)
       root
     }
   }
@@ -198,7 +206,7 @@ trait XRay {
   class LengthHistogram() {
     val counters = lengthRanges.map(range => new Counter(range))
 
-    def record(string: String):Unit = {
+    def record(string: String): Unit = {
       for (counter <- counters if counter.range.fits(string.length)) {
         counter.count += 1
       }
@@ -210,7 +218,7 @@ trait XRay {
   class RandomSample(val size: Int, random: Random = new Random()) {
     val queue = new mutable.PriorityQueue[(Int, String)]()
 
-    def record(string: String):Unit = {
+    def record(string: String): Unit = {
       val randomIn: Int = random.nextInt()
       queue += (randomIn -> string)
       if (queue.size > size) queue.dequeue()
@@ -226,8 +234,8 @@ trait XRay {
     def writes(histogram: LengthHistogram): JsValue = {
       JsArray(histogram.counters.filter(counter => counter.count > 0).map(counter => writes(counter)))
     }
-    
-    def writes(sample: RandomSample) : JsValue = {
+
+    def writes(sample: RandomSample): JsValue = {
       JsArray(sample.values.map(value => JsString(value)))
     }
 

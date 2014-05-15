@@ -25,7 +25,7 @@ import play.api.libs.json._
 import org.apache.commons.io.FileUtils._
 import scala.collection.mutable.ArrayBuffer
 import services.Actors._
-import org.apache.commons.io.input.BOMInputStream
+import org.apache.commons.io.input.{CountingInputStream, BOMInputStream}
 import services.Repository._
 import services.Actors.Analyze
 import play.api.libs.json.JsArray
@@ -50,7 +50,7 @@ object Actors {
 
   case class Analyze(file: File, directory: FileRepo)
 
-  case class Progress(progressCount: Long, directory: FileRepo)
+  case class Progress(percent: Int, directory: FileRepo)
 
   case class TreeComplete(json: JsValue, directory: FileRepo)
 
@@ -92,7 +92,7 @@ class Boss extends Actor with ActorLogging {
 
     case Progress(count, directory) =>
       updateJson(directory.status) {
-        current => Json.obj("elements" -> count)
+        current => Json.obj("percent" -> count)
       }
 
     case FileError(file, directory) =>
@@ -103,8 +103,7 @@ class Boss extends Actor with ActorLogging {
     case TreeComplete(json, directory) =>
       updateJson(directory.status) {
         current =>
-          val elements = (current \ "elements").as[Int]
-          Json.obj("elements" -> elements, "index" -> true)
+          Json.obj("index" -> true)
       }
       log.info(s"Tree Complete at ${directory.dir.getName}")
 
@@ -113,8 +112,7 @@ class Boss extends Actor with ActorLogging {
       context.stop(sender)
       updateJson(directory.status) {
         current =>
-          val elements = (current \ "elements").as[Int]
-          Json.obj("elements" -> elements, "index" -> true, "complete" -> true)
+          Json.obj("index" -> true, "complete" -> true)
       }
   }
 }
@@ -170,10 +168,15 @@ class Analyzer extends Actor with XRay with ActorLogging {
 
     case Analyze(file, directory) =>
       log.debug(s"Analyzer on ${file.getName}")
-      val inputStream = new FileInputStream(file)
-      val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(inputStream) else inputStream
+      val countingStream = new CountingInputStream(new FileInputStream(file))
+      val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(countingStream) else countingStream
       val source = Source.fromInputStream(new BOMInputStream(stream))
-      XRayNode(source, directory, count => sender ! Progress(count, directory)) match {
+
+      def sendProgress(percent: Int) = {
+        sender ! Progress(percent, directory)
+      }
+
+      XRayNode(source, file.length, countingStream, directory, sendProgress) match {
         case Success(tree) =>
           tree.sort {
             node =>
