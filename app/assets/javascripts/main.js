@@ -55,7 +55,8 @@
                 "jquery",
                 "underscorejs",
                 "bootstrap",
-//                "angular-ui-bootstrap",
+                "ui-bootstrap-tpls",
+                "ui-bootstrap",
                 "./app"
             ],
             function (angular) {

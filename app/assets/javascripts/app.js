@@ -39,7 +39,8 @@ define(
                 "narthex.home",
                 "narthex.dashboard",
                 "angularFileUpload",
-//                "ui.bootstrap",
+                "ui.bootstrap.tpls",
+                "ui.bootstrap",
                 "nvd3ChartDirectives"
             ]
         );

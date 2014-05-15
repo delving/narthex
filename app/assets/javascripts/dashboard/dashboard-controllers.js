@@ -28,6 +28,7 @@ define(["angular"], function () {
         $scope.files = [];
         $scope.checkDelay = 1000;
         $scope.lastStatusCheck = 0;
+        $scope.percent = null;
 
         function timeSinceStatusCheck() {
             var now = new Date().getTime();
@@ -58,7 +59,7 @@ define(["angular"], function () {
                     }
                 ).progress(
                     function (evt) {
-                        $scope.percent = parseInt(100.0 * evt.loaded / evt.total);
+                        if ($scope.uploading) $scope.percent = parseInt(100.0 * evt.loaded / evt.total);
                     }
                 ).success(
                     function (data, status, headers, config) {
