@@ -24,7 +24,6 @@ define(["angular"], function () {
 
         $scope.user = user;
         $scope.uploading = false;
-        $scope.busy = false;
         $scope.files = [];
         $scope.checkDelay = 1000;
         $scope.lastStatusCheck = 0;
@@ -34,14 +33,6 @@ define(["angular"], function () {
             var now = new Date().getTime();
             return now - $scope.lastStatusCheck;
         }
-
-        var checkBusy = function () {
-            var timeSince = timeSinceStatusCheck();
-            var busy = $scope.uploading || (timeSince < 1500);
-            if (busy != $scope.busy) $scope.busy = busy;
-            $timeout(checkBusy, 1200);
-        };
-        checkBusy();
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.

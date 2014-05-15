@@ -234,12 +234,6 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String, use
 
   implicit def withRichClientSession[A <: ClientSession](session: A): RichClientSession = new RichClientSession(session)
 
-
-  /**
-   * This implementation of a [[org.basex.server.ClientSession]] does not cache the incoming query results but instead
-   * streams them directly, which is useful when a query returns a big chunk of results that would otherwise not hold in memory.
-   *
-   */
   class StreamingClientSession(val host: String, val port: Int, val user: String, val pass: String) extends ClientSession(host, port, user, pass) {
 
     def getServerOutput = sout
