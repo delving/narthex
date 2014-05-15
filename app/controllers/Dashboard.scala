@@ -35,7 +35,7 @@ object Dashboard extends Controller with Security with XRay {
           if (Repository.acceptable(file.filename, file.contentType)) {
             println(s"Acceptable ${file.filename}")
             val repo = Repository(email)
-            file.ref.moveTo(repo.uploadedFile(file.filename))
+            file.ref.moveTo(repo.uploadedFile(file.filename), replace = true)
             Ok(file.filename)
           }
           else {
