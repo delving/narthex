@@ -118,4 +118,14 @@ object Dashboard extends Controller with Security with XRay {
       }
     }
   }
+
+  def storeRecords(fileName: String) = Secure(parse.json) {
+    token => email => implicit request => {
+      var recordRoot = (request.body \ "recordRoot").as[String]
+      var uniqueId = (request.body \ "uniqueId").as[String]
+      println(s"store recordRoot=$recordRoot uniqueId=$uniqueId")
+      Ok(Json.obj("message" -> "Not yet implemented"))
+    }
+  }
+
 }

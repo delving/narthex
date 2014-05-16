@@ -224,9 +224,11 @@ define(["angular"], function () {
         };
 
         $scope.storeRecords = function () {
-            console.log("Initiate the storage of records with..");
-            console.log("recordRoot=" + $scope.recordRootNode.path);
-            console.log("uniqueId=" + $scope.uniqueIdNode.path);
+            if (!($scope.recordRootNode && $scope.uniqueIdNode)) return;
+            $scope.storingRecords = true;
+            dashboardService.storeRecords($scope.fileName, $scope.recordRootNode.path, $scope.uniqueIdNode.path).then(function(data) {
+                console.log("seems they're storing");
+            });
         };
 
         $scope.fetchLengths = function () {

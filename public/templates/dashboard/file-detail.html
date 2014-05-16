@@ -23,9 +23,10 @@
                     <ul data-ng-controller="TreeCtrl" class="list-node">
                         <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
                     </ul>
-                    <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="storeRecords()" data-ng-show="recordRootNode && uniqueIdNode">
+                    <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="storeRecords()" data-ng-show="recordRootNode && uniqueIdNode" data-ng-disabled="storingRecords">
                         Store records
                     </button>
+                    <!--todo: show a progress bar of the storage process-->
                 </div>
             </div>
         </div>

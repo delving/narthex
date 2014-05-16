@@ -26,6 +26,7 @@ GET     /dashboard/:fileName/zap                        controllers.Dashboard.za
 GET     /dashboard/:fileName/status/*path               controllers.Dashboard.nodeStatus(fileName, path)
 GET     /dashboard/:fileName/sample/:size/*path         controllers.Dashboard.sample(fileName, path, size:Int)
 GET     /dashboard/:fileName/histogram/:size/*path      controllers.Dashboard.histogram(fileName, path, size:Int)
+POST    /dashboard/:fileName/storeRecords               controllers.Dashboard.storeRecords(fileName)
 
 GET     /api/:apiKey/:email/:fileName/tree              controllers.API.indexJSON(apiKey, email, fileName)
 GET     /api/:apiKey/:email/:fileName/index             controllers.API.indexText(apiKey, email, fileName, path="")
