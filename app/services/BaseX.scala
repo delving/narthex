@@ -28,16 +28,12 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String, use
    * Starts an embedded BaseX server
    * @param dataDirectory the data directory on disk. Leave empty to use BaseX default.
    */
-  def start(dataDirectory: Option[String] = None) {
-    if(dataDirectory.isDefined) {
-      val d = new File(dataDirectory.get)
-      if(!d.exists()) {
-        val created = d.mkdirs()
-        if(!created) throw new RuntimeException("Failed to create data directory for BaseX " + dataDirectory)
-      }
-      System.setProperty("org.basex.path", d.getAbsolutePath)
+  def start(dataDirectory: File) {
+    if(!dataDirectory.exists()) {
+      if(!dataDirectory.mkdirs()) throw new RuntimeException("Failed to create data directory for BaseX " + dataDirectory)
     }
-    server = new BaseXServer("-e%s".format(eport), "-p%s".format(port))
+    System.setProperty("org.basex.path", dataDirectory.getAbsolutePath)
+    server = new BaseXServer(s"-e$eport", s"-p$port")
   }
 
   /**

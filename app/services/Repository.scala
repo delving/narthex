@@ -65,6 +65,7 @@ class PersonalRepo(root: File, val email: String) {
   val user = new File(repo, "user.json")
   val uploaded = new File(repo, "uploaded")
   val analyzed = new File(repo, "analyzed")
+  var baseX: Option[BaseX] = None
 
   def create(password: String) = {
     repo.mkdirs()
@@ -96,6 +97,13 @@ class PersonalRepo(root: File, val email: String) {
     val dirs = filesToAnalyze.map(file => analyzedDir(file.getName))
     val fileAnalysisDirs = dirs.map(new FileRepo(_).mkdirs)
     Repository.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
+  }
+
+  def storeRecords(recordRoot: String, uniqueId: String) = {
+    val b = if (baseX.isDefined) baseX.get else new BaseX("localhost", 6789, 6788, "admin", "admin", false)
+    b.start(new File(repo, "basex"))
+    b.createDatabase("narthex")
+    b.stop()
   }
 
   def fileRepo(fileName: String) = new FileRepo(analyzedDir(fileName))
