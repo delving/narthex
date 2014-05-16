@@ -23,6 +23,9 @@
                     <ul data-ng-controller="TreeCtrl" class="list-node">
                         <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
                     </ul>
+                    <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="storeRecords()" data-ng-show="recordRootNode && uniqueIdNode">
+                        Store records
+                    </button>
                 </div>
             </div>
         </div>
@@ -83,11 +86,11 @@
             </div>
         </div>
     </div>
-    <div class="col-md-{{columns.right}}" data-ng-if="node">
+    <div class="col-md-{{columns.right}}" data-ng-if="selectedNode">
 
         <div class="panel panel-default panel-lists">
             <div class="panel-heading">
-                <code class="path">Node: {{ node.path }}</code>
+                <code class="path">Node: {{ selectedNode.path }}</code>
                 <button class="btn btn-success btn-xs" data-ng-click="setAligning(true)" data-ng-show="!aligning">Enrich</button>
             </div>
 
@@ -102,6 +105,9 @@
                         </li>
                         <li data-ng-class="{ active: activeView == 'histogram' }">
                             <a href data-ng-click="fetchHistogram()">Histogram</a>
+                        </li>
+                        <li data-ng-show="activeView == 'histogram' && histogramUnique">
+                            <button style="color: #000000; background: white" data-ng-click="setUniqueIdNode(selectedNode)">Use as Unique Element</button>
                         </li>
                     </ul>
                     <div class="collapse navbar-collapse">
@@ -124,10 +130,10 @@
                     </div>
                 </div>
 
-                <div ng-show="node && !(sample || histogram)" data-scrollable id="graph-list" data-offset="315" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                <div ng-show="selectedNode && !(sample || histogram)" data-scrollable id="graph-list" data-offset="315" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <div>
                         <nvd3-pie-chart
-                                data="node.lengths"
+                                data="selectedNode.lengths"
                                 id="exampleId"
                                 width="500"
                                 height="500"
@@ -195,9 +201,11 @@
 
 <script type="text/ng-template" id="node.html">
     <li data-ng-click="selectNode(node, $event)">
-        <div class="node" data-ng-class="{ 'chosen': node.chosen, 'active': node.lengths.length!=0 }">
+        <div class="node" data-ng-class="{ 'chosen': node.chosen, 'active': node.lengths.length != 0 }">
             <span>{{ node.tag }}</span>
-            <span class="badge pull-right" data-ng-class="{ 'badge-info' : node.lengths.length > 0 }"> {{ node.count }} </span>
+            <span class="badge pull-right"
+                  data-ng-class="{ 'badge-info': node.lengths.length > 0, 'badge-unique': node == uniqueIdNode, 'badge-record-root': node == recordRootNode }"
+                    > {{ node.count }} </span>
         </div>
         <ul ng-if="node.kids" class="">
             <li class="" data-ng-repeat="(nodeIndex, node) in node.kids" data-ng-controller="TreeNodeCtrl">
