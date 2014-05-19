@@ -29,8 +29,8 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String, use
    * @param dataDirectory the data directory on disk. Leave empty to use BaseX default.
    */
   def start(dataDirectory: File) {
-    if(!dataDirectory.exists()) {
-      if(!dataDirectory.mkdirs()) throw new RuntimeException("Failed to create data directory for BaseX " + dataDirectory)
+    if (!dataDirectory.exists()) {
+      if (!dataDirectory.mkdirs()) throw new RuntimeException("Failed to create data directory for BaseX " + dataDirectory)
     }
     System.setProperty("org.basex.path", dataDirectory.getAbsolutePath)
     server = new BaseXServer(s"-e$eport", s"-p$port")
@@ -63,7 +63,7 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String, use
    * @param block the code to run in the context of the session
    */
   def withSession[T](block: ClientSession => T): T = {
-    val session = if(useQueryCache) {
+    val session = if (useQueryCache) {
       new ClientSession(host, port, user, pass)
     } else {
       new StreamingClientSession(host, port, user, pass)
@@ -165,7 +165,7 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String, use
 
   def fetchRaw(database: String, path: String): Option[String] = {
     withSession {
-      session => session.query("""db:open("%s", "%s")""".format(database, path)).toList.headOption
+      session => session.query( """db:open("%s", "%s")""".format(database, path)).toList.headOption
     }
   }
 
@@ -279,14 +279,14 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String, use
         while ( {
           b = di.read
           b
-        } != -1 ) bl.add(b)
+        } != -1) bl.add(b)
         pos += 1
         bl.toArray
       }
     }
 
     def initStream() {
-      if(resultStream == null) {
+      if (resultStream == null) {
         ncs.getServerOutput.write(ServerCmd.ITER.code)
         ncs.send(id)
         ncs.getServerOutput.flush()

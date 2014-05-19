@@ -72,20 +72,25 @@ class TestNarthex extends PlaySpecification with XRay {
           (status \ "complete").as[Boolean] must equalTo(true)
         }
 
-        var baseXDir = new File(repo.personalRoot, "basex")
+        var baseXDir = new File(Repository.root, "basex")
+        var databaseDir = new File(new File(baseXDir, "data"), repo.personalRootName)
 
         "create a basex directory when told to store records" in {
-          repo.storeRecords("/delving-sip-source/input", "/delving-sip-source/input/@id")
+//          baseXDir.exists() must equalTo(false)  //it's actually already there, why?
+          Repository.startBaseX()
           baseXDir.exists() must equalTo(true)
+          databaseDir.exists() must equalTo(false)
+          fileRepo.storeRecords("/delving-sip-source/input", "/delving-sip-source/input/@id")
+          Repository.stopBaseX() // cannot put this after the following line.. why?
+          databaseDir.exists() must equalTo(true)
         }
 
-
       }
+
     }
 
     Thread.sleep(4000) // must wait until the actors have had the chance to do their work
     println("sleep is done")
-
   }
   //
   //  "The parse" should "reveal hello" in {

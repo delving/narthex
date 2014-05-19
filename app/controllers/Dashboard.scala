@@ -125,7 +125,7 @@ object Dashboard extends Controller with Security with XRay {
       var recordRoot = (request.body \ "recordRoot").as[String]
       var uniqueId = (request.body \ "uniqueId").as[String]
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId")
-      repo.storeRecords(recordRoot, uniqueId)
+//      repo.storeRecords(recordRoot, uniqueId)
       Ok(Json.obj("message" -> "Not yet implemented"))
     }
   }
