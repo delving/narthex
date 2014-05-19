@@ -61,14 +61,14 @@ object Repository {
 
 class PersonalRepo(root: File, val email: String) {
 
-  val repo = new File(root, email.replaceAll("@", "_"))
-  val user = new File(repo, "user.json")
-  val uploaded = new File(repo, "uploaded")
-  val analyzed = new File(repo, "analyzed")
+  val personalRoot = new File(root, email.replaceAll("@", "_"))
+  val user = new File(personalRoot, "user.json")
+  val uploaded = new File(personalRoot, "uploaded")
+  val analyzed = new File(personalRoot, "analyzed")
   var baseX: Option[BaseX] = None
 
   def create(password: String) = {
-    repo.mkdirs()
+    personalRoot.mkdirs()
     val passwordHash = BCrypt.hashpw(password, BCrypt.gensalt())
     writeStringToFile(user, Json.prettyPrint(Json.obj("passwordHash" -> passwordHash)))
   }
@@ -102,7 +102,7 @@ class PersonalRepo(root: File, val email: String) {
 
   def storeRecords(recordRoot: String, uniqueId: String) = {
     val b = if (baseX.isDefined) baseX.get else new BaseX("localhost", 6789, 6788, "admin", "admin", false)
-    b.start(new File(repo, "basex"))
+    b.start(new File(personalRoot, "basex"))
     b.createDatabase("narthex")
     b.stop()
   }

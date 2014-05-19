@@ -66,11 +66,19 @@ class TestNarthex extends PlaySpecification with XRay {
           fileRepo.dir.exists() must equalTo(true)
         }
 
-        "must have status complete" in {
+        "have status complete" in {
           waitForStatus()
           val status = Json.parse(readFileToString(fileRepo.status))
           (status \ "complete").as[Boolean] must equalTo(true)
         }
+
+        var baseXDir = new File(repo.personalRoot, "basex")
+
+        "create a basex directory when told to store records" in {
+          repo.storeRecords("/delving-sip-source/input", "/delving-sip-source/input/@id")
+          baseXDir.exists() must equalTo(true)
+        }
+
 
       }
     }
