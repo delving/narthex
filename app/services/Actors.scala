@@ -96,6 +96,7 @@ class Boss extends Actor with ActorLogging {
       }
 
     case FileError(file, directory) =>
+      log.info(s"File error at ${directory.dir.getName}")
       deleteQuietly(file)
       deleteQuietly(directory.dir)
       context.stop(sender)

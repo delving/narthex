@@ -97,6 +97,7 @@ class PersonalRepo(root: File, val email: String) {
     val dirs = filesToAnalyze.map(file => analyzedDir(file.getName))
     val fileAnalysisDirs = dirs.map(new FileRepo(_).mkdirs)
     Repository.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
+    filesToAnalyze
   }
 
   def storeRecords(recordRoot: String, uniqueId: String) = {

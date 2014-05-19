@@ -22,7 +22,7 @@ import play.api.libs.json._
 import controllers.Application.OkFile
 import scala.Some
 
-object API extends Controller with Security with XRay {
+object API extends Controller with XRay {
 
   def indexJSON(apiKey: String, email:String, fileName: String) = Action(parse.anyContent) {
     implicit request => {
