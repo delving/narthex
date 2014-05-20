@@ -114,14 +114,14 @@ class Analyzer extends Actor with TreeHandling with ActorLogging {
           tree.launchSorters {
             node =>
               if (node.lengths.isEmpty) {
-                updateJson(node.directory.status) {
+                updateJson(node.nodeRepo.status) {
                   current => Json.obj("uniqueCount" -> 0)
                 }
               }
               else {
                 val sorter = context.actorOf(Props[Sorter])
                 sorters = sorter :: sorters
-                sorter ! Sort(node.directory, SortType.VALUE_SORT)
+                sorter ! Sort(node.nodeRepo, SortType.VALUE_SORT)
               }
           }
           sender ! AnalysisTreeComplete(Json.toJson(tree), fileRepo)

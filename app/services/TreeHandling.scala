@@ -29,18 +29,32 @@ import org.apache.commons.io.input.CountingInputStream
 
 trait TreeHandling {
 
-  class TreeNode(val directory: NodeRepo, val parent: TreeNode, val tag: String) {
+  class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
+    val MAX_LIST = 10000
     var kids = Map.empty[String, TreeNode]
     var count = 0
     var lengths = new LengthHistogram()
-    var valueWriter: Option[BufferedWriter] = None
-    var valueBuffer = new StringBuilder
+    var valueBuilder = new StringBuilder
+    var valueListSize = 0
+    var valueList = List.empty[String]
+    
+    def flush() = {
+      val writer = new BufferedWriter(new FileWriter(nodeRepo.values, true))
+      valueList.foreach{
+        line =>
+          writer.write(line)
+          writer.newLine()
+      }
+      valueList = List.empty[String]
+      valueListSize = 0
+      writer.close()
+    }
 
     def kid(tag: String) = {
       kids.get(tag) match {
         case Some(kid) => kid
         case None =>
-          val kid = new TreeNode(directory.child(tag), this, tag)
+          val kid = new TreeNode(nodeRepo.child(tag), this, tag)
           kids += tag -> kid
           kid
       }
@@ -48,34 +62,29 @@ trait TreeHandling {
 
     def start(): TreeNode = {
       count += 1
-      valueBuffer.clear()
+      valueBuilder.clear()
       this
     }
 
     def value(value: String): TreeNode = {
-      valueBuffer.append(value)
+      valueBuilder.append(value)
       this
     }
 
     def end() = {
-      var value = FileHandling.crunchWhitespace(valueBuffer.toString())
+      var value = FileHandling.crunchWhitespace(valueBuilder.toString())
       if (!value.isEmpty) {
         lengths.record(value)
-        if (valueWriter == None) {
-          valueWriter = Some(new BufferedWriter(new FileWriter(directory.values)))
-        }
-        valueWriter.map {
-          writer =>
-            writer.write(value)
-            writer.newLine()
-        }
+        valueList = value :: valueList
+        valueListSize += 1
+        if (valueListSize >= MAX_LIST) flush()
       }
     }
 
     def finish(): Unit = {
-      valueWriter.map(_.close())
+      flush()
       val index = kids.values.map(kid => Repo.tagToDirectory(kid.tag)).mkString("\n")
-      FileUtils.writeStringToFile(directory.indexText, index)
+      FileUtils.writeStringToFile(nodeRepo.indexText, index)
       kids.values.foreach(_.finish())
     }
 
