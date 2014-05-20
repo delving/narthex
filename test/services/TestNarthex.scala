@@ -5,7 +5,7 @@ import org.apache.commons.io.FileUtils._
 import play.api.test._
 import play.api.libs.json.Json
 
-class TestNarthex extends PlaySpecification with Tree {
+class TestNarthex extends PlaySpecification with TreeHandling {
 
 //  override def is = args(sequential = true) ^ super.is
 

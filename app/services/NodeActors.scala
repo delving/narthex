@@ -163,7 +163,7 @@ class Merger extends Actor with ActorLogging {
 }
 
 
-class Collator extends Actor with ActorLogging with Tree {
+class Collator extends Actor with ActorLogging with TreeHandling {
 
   def receive = {
 

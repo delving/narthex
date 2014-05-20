@@ -30,7 +30,7 @@ import scala.collection.mutable
 import scala.util.{Try, Random}
 import org.apache.commons.io.input.CountingInputStream
 
-trait Tree {
+trait TreeHandling {
 
   class TreeNode(val directory: NodeRepo, val parent: TreeNode, val tag: String) {
     var kids = Map.empty[String, TreeNode]
@@ -106,7 +106,7 @@ trait Tree {
       noReturn
     }
 
-    override def toString = s"XRayNode($tag)"
+    override def toString = s"TreeNode($tag)"
   }
 
   object TreeNode {
@@ -132,10 +132,10 @@ trait Tree {
         events.next() match {
 
           case EvElemStart(pre, label, attrs, scope) =>
-            node = node.kid(label).start()
+            node = node.kid(FileHandling.tag(pre, label)).start()
             attrs.foreach {
               attr =>
-                val kid = node.kid(s"@${attr.key}").start()
+                val kid = node.kid(s"@${attr.prefixedKey}").start()
                 kid.value(attr.value.toString())
                 kid.end()
             }

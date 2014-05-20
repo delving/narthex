@@ -19,12 +19,10 @@ package services
 import akka.actor.{ActorRef, Props, ActorLogging, Actor}
 import java.io._
 import scala.language.postfixOps
-import scala.io.Source
-import java.util.zip.GZIPInputStream
 import play.api.libs.json._
 import org.apache.commons.io.FileUtils._
 import scala.collection.mutable.ArrayBuffer
-import org.apache.commons.io.input.{CountingInputStream, BOMInputStream}
+import org.apache.commons.io.input.CountingInputStream
 import services.Repo._
 import play.api.libs.json.JsArray
 import scala.util.Failure
@@ -71,7 +69,7 @@ class Boss extends Actor with ActorLogging {
 
     case SaveRecords(fileRepo, recordRoot, uniqueId) =>
       // todo: save record root and unique id in a JSON file
-      var saver = context.actorOf(Props[RecordSaver], fileRepo.dir.toString)
+      var saver = context.actorOf(Props[RecordSaver], fileRepo.dir.getName)
       saver ! SaveRecords(fileRepo, recordRoot, uniqueId)
 
     case RecordsSaved(fileRepo) =>
@@ -80,17 +78,22 @@ class Boss extends Actor with ActorLogging {
   }
 }
 
-class RecordSaver extends Actor with ActorLogging {
+class RecordSaver extends Actor with RecordHandling with ActorLogging {
+
   def receive = {
 
     case SaveRecords(fileRepo, recordRoot, uniqueId) =>
-
+      val parser = new RecordParser(recordRoot, uniqueId)
+      val source = FileHandling.source(fileRepo.sourceFile)
+      val totalRecords = 100 // todo: get this from the JSON file
+      def sendProgress(percent: Int) = sender ! AnalysisProgress(percent, fileRepo)
+      parser.parse(source, totalRecords, sendProgress)
+      source.close()
       sender ! RecordsSaved(fileRepo)
-
   }
 }
 
-class Analyzer extends Actor with Tree with ActorLogging {
+class Analyzer extends Actor with TreeHandling with ActorLogging {
 
   val LINE = """^ *(\d*) (.*)$""".r
   var sorters = List.empty[ActorRef]
@@ -100,14 +103,8 @@ class Analyzer extends Actor with Tree with ActorLogging {
 
     case Analyze(file, fileRepo) =>
       log.debug(s"Analyzer on ${file.getName}")
-      val countingStream = new CountingInputStream(new FileInputStream(file))
-      val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(countingStream) else countingStream
-      val source = Source.fromInputStream(new BOMInputStream(stream))
-
-      def sendProgress(percent: Int) = {
-        sender ! AnalysisProgress(percent, fileRepo)
-      }
-
+      val (countingStream, source) = FileHandling.countingSource(file)
+      def sendProgress(percent: Int) = sender ! AnalysisProgress(percent, fileRepo)
       TreeNode(source, file.length, countingStream, fileRepo, sendProgress) match {
         case Success(tree) =>
           tree.launchSorters {

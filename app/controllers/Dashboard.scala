@@ -25,7 +25,7 @@ import controllers.Application.OkFile
 import org.apache.commons.io.FileUtils._
 import scala.Some
 
-object Dashboard extends Controller with Security with Tree {
+object Dashboard extends Controller with Security with TreeHandling {
 
   def upload = Secure(parse.multipartFormData) {
     token => email => implicit request => {

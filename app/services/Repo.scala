@@ -70,6 +70,11 @@ object Repo {
     }
   }
 
+  def stripSuffix(fileName: String) = {
+    val suffix = SUFFIXES.filter(suf => fileName.endsWith(suf))
+    if (suffix.isEmpty) throw new RuntimeException(s"Cannot identify suffix for $fileName")
+    fileName.substring(0, fileName.length - suffix.head.length)
+  }
 }
 
 class Repo(root: File, val email: String) {
@@ -99,21 +104,22 @@ class Repo(root: File, val email: String) {
 
   def uploadedFile(fileName: String) = new File(uploaded, fileName)
 
-  def analyzedDir(dirName: String) = new File(analyzed, dirName)
+  def analyzedDir(fileName: String) = new File(analyzed, Repo.stripSuffix(fileName))
 
   def listUploadedFiles = listFiles(uploaded)
 
   def uploadedOnly() = listUploadedFiles.filter(file => !analyzedDir(file.getName).exists())
 
   def scanForWork() = {
-    val filesToAnalyze = uploadedOnly()
-    val dirs = filesToAnalyze.map(file => analyzedDir(file.getName))
-    val fileAnalysisDirs = dirs.map(new FileRepo(this, _).mkdirs)
-    Repo.boss ! ActorMessages.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
-    filesToAnalyze
+    val files = uploadedOnly()
+    val dirs = files.map(file => analyzedDir(file.getName))
+    val pairs = files.zip(dirs)
+    val fileAnalysisDirs = pairs.map(pair => new FileRepo(this, pair._1, pair._2).mkdirs)
+    Repo.boss ! ActorMessages.AnalyzeThese(files.zip(fileAnalysisDirs))
+    files
   }
 
-  def FileRepo(fileName: String) = new FileRepo(this, analyzedDir(fileName))
+  def FileRepo(fileName: String) = new FileRepo(this, uploadedFile(fileName), analyzedDir(fileName))
 
   def withSession[T](block: ClientSession => T): T = {
     Repo.baseX.createDatabase(personalRootName) // todo: creating brute force for now
@@ -134,7 +140,7 @@ class Repo(root: File, val email: String) {
 
 }
 
-class FileRepo(val personalRepo: Repo, val dir: File) {
+class FileRepo(val personalRepo: Repo, val sourceFile: File, val dir: File) {
 
   def mkdirs = {
     dir.mkdirs()
