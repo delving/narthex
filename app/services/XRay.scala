@@ -80,7 +80,7 @@ trait XRay {
 
     def finish(): Unit = {
       valueWriter.map(_.close())
-      val index = kids.values.map(kid => Repository.tagToDirectory(kid.tag)).mkString("\n")
+      val index = kids.values.map(kid => Repo.tagToDirectory(kid.tag)).mkString("\n")
       FileUtils.writeStringToFile(directory.indexText, index)
       kids.values.foreach(_.finish())
     }

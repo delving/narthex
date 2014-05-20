@@ -26,7 +26,7 @@ class TestNarthex extends PlaySpecification with XRay {
   System.setProperty("user.home", userHome)
   deleteQuietly(new File(userHome))
 
-  val repo = Repository("test@narthex.delving.org")
+  val repo = Repo("test@narthex.delving.org")
   repo.create("password")
 
   val fileName = "Martena.xml.gz"
@@ -72,16 +72,16 @@ class TestNarthex extends PlaySpecification with XRay {
           (status \ "complete").as[Boolean] must equalTo(true)
         }
 
-        var baseXDir = new File(Repository.root, "basex")
+        var baseXDir = new File(Repo.root, "basex")
         var databaseDir = new File(new File(baseXDir, "data"), repo.personalRootName)
 
         "create a basex directory when told to store records" in {
 //          baseXDir.exists() must equalTo(false)  //it's actually already there, why?
-          Repository.startBaseX()
+          Repo.startBaseX()
           baseXDir.exists() must equalTo(true)
           databaseDir.exists() must equalTo(false)
           fileRepo.storeRecords("/delving-sip-source/input", "/delving-sip-source/input/@id")
-          Repository.stopBaseX() // cannot put this after the following line.. why?
+          Repo.stopBaseX() // cannot put this after the following line.. why?
           databaseDir.exists() must equalTo(true)
         }
 

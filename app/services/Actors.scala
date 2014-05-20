@@ -26,7 +26,7 @@ import org.apache.commons.io.FileUtils._
 import scala.collection.mutable.ArrayBuffer
 import services.Actors._
 import org.apache.commons.io.input.{CountingInputStream, BOMInputStream}
-import services.Repository._
+import services.Repo._
 import services.Actors.Analyze
 import play.api.libs.json.JsArray
 import services.Actors.Merged

@@ -28,7 +28,7 @@ import scala.Some
 import scala.collection.mutable.ArrayBuffer
 import org.basex.server.ClientSession
 
-object Repository {
+object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "NARTHEX")
@@ -38,7 +38,7 @@ object Repository {
 
   lazy val boss = Akka.system.actorOf(Props[Boss], "boss")
 
-  def apply(email: String) = new PersonalRepo(root, email)
+  def apply(email: String) = new Repo(root, email)
 
   def startBaseX() = {
     baseX.start(baseXDir)
@@ -50,7 +50,7 @@ object Repository {
 
   def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
 
-  def acceptable(fileName: String, contentType: Option[String]) = {
+  def acceptableFile(fileName: String, contentType: Option[String]) = {
     // todo: something with content-type
     println("content type " + contentType)
     !SUFFIXES.filter(suffix => fileName.endsWith(suffix)).isEmpty
@@ -71,7 +71,7 @@ object Repository {
 
 }
 
-class PersonalRepo(root: File, val email: String) {
+class Repo(root: File, val email: String) {
 
   val personalRootName: String = email.replaceAll("[@.]", "_")
   val personalRoot = new File(root, personalRootName)
@@ -108,22 +108,22 @@ class PersonalRepo(root: File, val email: String) {
     val filesToAnalyze = uploadedOnly()
     val dirs = filesToAnalyze.map(file => analyzedDir(file.getName))
     val fileAnalysisDirs = dirs.map(new FileRepo(this, _).mkdirs)
-    Repository.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
+    Repo.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
     filesToAnalyze
   }
 
   def fileRepo(fileName: String) = new FileRepo(this, analyzedDir(fileName))
 
   def withSession[T](block: ClientSession => T): T = {
-    Repository.baseX.createDatabase(personalRootName) // todo: creating brute force for now
+    Repo.baseX.createDatabase(personalRootName) // todo: creating brute force for now
     //    Repository.baseX.openDatabase(personalRootName) todo: open if it's there, otherwise create?
-    Repository.baseX.withSession(personalRootName)(block)
+    Repo.baseX.withSession(personalRootName)(block)
   }
 
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
       directory.listFiles.filter(file =>
-        file.isFile && !Repository.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).isEmpty
+        file.isFile && !Repo.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).isEmpty
       ).toList
     }
     else {
@@ -133,7 +133,7 @@ class PersonalRepo(root: File, val email: String) {
 
 }
 
-class FileRepo(val personalRepo: PersonalRepo, val dir: File) {
+class FileRepo(val personalRepo: Repo, val dir: File) {
 
   def mkdirs = {
     dir.mkdirs()
@@ -198,7 +198,7 @@ class FileRepo(val personalRepo: PersonalRepo, val dir: File) {
   }
 
   def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, Repository.tagToDirectory(tag)))
+    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 
@@ -206,7 +206,7 @@ class FileRepo(val personalRepo: PersonalRepo, val dir: File) {
 
 object NodeRepo {
   def apply(parent: FileRepo, parentDir: File, tag: String) = {
-    val dir = if (tag == null) parentDir else new File(parentDir, Repository.tagToDirectory(tag))
+    val dir = if (tag == null) parentDir else new File(parentDir, Repo.tagToDirectory(tag))
     dir.mkdirs()
     new NodeRepo(parent, dir)
   }
@@ -251,7 +251,7 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
     }
 
     def createFile(maximum: Int, entries: ArrayBuffer[JsArray], histogramFile: File) = {
-      Repository.updateJson(histogramFile) {
+      Repo.updateJson(histogramFile) {
         current => Json.obj(
           "uniqueCount" -> uniqueCount,
           "entries" -> entries.size,
