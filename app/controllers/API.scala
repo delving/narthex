@@ -28,7 +28,7 @@ object API extends Controller with XRay {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
-        OkFile(repo.fileRepo(fileName).index)
+        OkFile(repo.FileRepo(fileName).index)
       }
       else {
         Unauthorized
@@ -40,7 +40,7 @@ object API extends Controller with XRay {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
-        repo.fileRepo(fileName).indexText(path) match {
+        repo.FileRepo(fileName).indexText(path) match {
           case None => NotFound(Json.obj("path" -> path))
           case Some(file) => OkFile(file)
         }
@@ -55,7 +55,7 @@ object API extends Controller with XRay {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
-        repo.fileRepo(fileName).uniqueText(path) match {
+        repo.FileRepo(fileName).uniqueText(path) match {
           case None => NotFound(Json.obj("path" -> path))
           case Some(file) => OkFile(file)
         }
@@ -70,7 +70,7 @@ object API extends Controller with XRay {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
-        repo.fileRepo(fileName).histogramText(path) match {
+        repo.FileRepo(fileName).histogramText(path) match {
           case None => NotFound(Json.obj("path" -> path))
           case Some(file) => OkFile(file)
         }

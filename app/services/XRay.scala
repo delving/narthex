@@ -85,9 +85,9 @@ trait XRay {
       kids.values.foreach(_.finish())
     }
 
-    def sort(sortStarter: XRayNode => Unit): Unit = {
+    def launchSorters(sortStarter: XRayNode => Unit): Unit = {
       sortStarter(this)
-      kids.values.foreach(_.sort(sortStarter))
+      kids.values.foreach(_.launchSorters(sortStarter))
     }
 
     def path: String = {

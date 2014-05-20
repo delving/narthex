@@ -108,11 +108,11 @@ class Repo(root: File, val email: String) {
     val filesToAnalyze = uploadedOnly()
     val dirs = filesToAnalyze.map(file => analyzedDir(file.getName))
     val fileAnalysisDirs = dirs.map(new FileRepo(this, _).mkdirs)
-    Repo.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
+    Repo.boss ! ActorMessages.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
     filesToAnalyze
   }
 
-  def fileRepo(fileName: String) = new FileRepo(this, analyzedDir(fileName))
+  def FileRepo(fileName: String) = new FileRepo(this, analyzedDir(fileName))
 
   def withSession[T](block: ClientSession => T): T = {
     Repo.baseX.createDatabase(personalRootName) // todo: creating brute force for now

@@ -51,7 +51,7 @@ class TestNarthex extends PlaySpecification with XRay {
         }
       }
 
-      val fileRepo = repo.fileRepo(fileName)
+      val fileRepo = repo.FileRepo(fileName)
 
       def waitForStatus() = {
         while (!fileRepo.status.exists()) {
