@@ -5,7 +5,7 @@ import org.apache.commons.io.FileUtils._
 import play.api.test._
 import play.api.libs.json.Json
 
-class TestNarthex extends PlaySpecification with XRay {
+class TestNarthex extends PlaySpecification with Tree {
 
 //  override def is = args(sequential = true) ^ super.is
 
@@ -80,7 +80,7 @@ class TestNarthex extends PlaySpecification with XRay {
           Repo.startBaseX()
           baseXDir.exists() must equalTo(true)
           databaseDir.exists() must equalTo(false)
-          fileRepo.storeRecords("/delving-sip-source/input", "/delving-sip-source/input/@id")
+          fileRepo.saveRecords("/delving-sip-source/input", "/delving-sip-source/input/@id")
           Repo.stopBaseX() // cannot put this after the following line.. why?
           databaseDir.exists() must equalTo(true)
         }

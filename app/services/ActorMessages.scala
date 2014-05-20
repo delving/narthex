@@ -24,15 +24,15 @@ object ActorMessages {
 
   case class AnalyzeThese(jobs: List[(File, FileRepo)])
 
-  case class Analyze(file: File, directory: FileRepo)
+  case class Analyze(file: File, fileRepo: FileRepo)
 
-  case class Progress(percent: Int, directory: FileRepo)
+  case class AnalysisProgress(percent: Int, fileRepo: FileRepo)
 
-  case class TreeComplete(json: JsValue, directory: FileRepo)
+  case class AnalysisTreeComplete(json: JsValue, fileRepo: FileRepo)
 
-  case class FileError(file: File, directory: FileRepo)
+  case class AnalysisError(file: File, fileRepo: FileRepo)
 
-  case class AnalysisComplete(directory: FileRepo)
+  case class AnalysisComplete(fileRepo: FileRepo)
 
   case class SortType(ordering: Ordering[String])
 
@@ -41,17 +41,21 @@ object ActorMessages {
     val HISTOGRAM_SORT: SortType = SortType(Ordering[String].reverse)
   }
 
-  case class Sort(directory: NodeRepo, sortType: SortType)
+  case class Sort(nodeRepo: NodeRepo, sortType: SortType)
 
-  case class Sorted(directory: NodeRepo, sortedFile: File, sortType: SortType)
+  case class Sorted(nodeRepo: NodeRepo, sortedFile: File, sortType: SortType)
 
-  case class Count(directory: NodeRepo)
+  case class Count(nodeRepo: NodeRepo)
 
-  case class Counted(directory: NodeRepo, uniqueCount: Int, sampleFiles: Seq[Int])
+  case class Counted(nodeRepo: NodeRepo, uniqueCount: Int, sampleFiles: Seq[Int])
 
-  case class Merge(directory: NodeRepo, inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
+  case class Merge(nodeRepo: NodeRepo, inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
 
   case class Merged(merge: Merge, fileA: File, sortType: SortType)
+  
+  case class SaveRecords(fileRepo: FileRepo, recordRoot: String, uniqueId: String)
+
+  case class RecordsSaved(fileRepo: FileRepo)
 
 }
 

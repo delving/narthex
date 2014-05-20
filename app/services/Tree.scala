@@ -30,10 +30,10 @@ import scala.collection.mutable
 import scala.util.{Try, Random}
 import org.apache.commons.io.input.CountingInputStream
 
-trait XRay {
+trait Tree {
 
-  class XRayNode(val directory: NodeRepo, val parent: XRayNode, val tag: String) {
-    var kids = Map.empty[String, XRayNode]
+  class TreeNode(val directory: NodeRepo, val parent: TreeNode, val tag: String) {
+    var kids = Map.empty[String, TreeNode]
     var count = 0
     var lengths = new LengthHistogram()
     var valueWriter: Option[BufferedWriter] = None
@@ -43,19 +43,19 @@ trait XRay {
       kids.get(tag) match {
         case Some(kid) => kid
         case None =>
-          val kid = new XRayNode(directory.child(tag), this, tag)
+          val kid = new TreeNode(directory.child(tag), this, tag)
           kids += tag -> kid
           kid
       }
     }
 
-    def start(): XRayNode = {
+    def start(): TreeNode = {
       count += 1
       valueBuffer.clear()
       this
     }
 
-    def value(value: String): XRayNode = {
+    def value(value: String): TreeNode = {
       val trimmed = value.trim()
       if (!trimmed.isEmpty) {
         addToValue(trimmed)
@@ -85,7 +85,7 @@ trait XRay {
       kids.values.foreach(_.finish())
     }
 
-    def launchSorters(sortStarter: XRayNode => Unit): Unit = {
+    def launchSorters(sortStarter: TreeNode => Unit): Unit = {
       sortStarter(this)
       kids.values.foreach(_.launchSorters(sortStarter))
     }
@@ -109,10 +109,10 @@ trait XRay {
     override def toString = s"XRayNode($tag)"
   }
 
-  object XRayNode {
+  object TreeNode {
 
-    def apply(source: Source, length: Long, counter: CountingInputStream, directory: FileRepo, progress: Int => Unit): Try[XRayNode] = Try {
-      val base = new XRayNode(directory.root, null, null)
+    def apply(source: Source, length: Long, counter: CountingInputStream, directory: FileRepo, progress: Int => Unit): Try[TreeNode] = Try {
+      val base = new TreeNode(directory.root, null, null)
       var node = base
       var percentWas = -1
       var lastProgress = 0l
@@ -227,7 +227,7 @@ trait XRay {
     def values: List[String] = queue.map(pair => pair._2).toList.sorted.distinct
   }
 
-  implicit val nodeWrites = new Writes[XRayNode] {
+  implicit val nodeWrites = new Writes[TreeNode] {
 
     def writes(counter: Counter): JsValue = Json.arr(counter.range.toString, counter.count.toString)
 
@@ -239,7 +239,7 @@ trait XRay {
       JsArray(sample.values.map(value => JsString(value)))
     }
 
-    def writes(node: XRayNode) = Json.obj(
+    def writes(node: TreeNode) = Json.obj(
       "tag" -> node.tag,
       "path" -> node.path,
       "count" -> node.count,

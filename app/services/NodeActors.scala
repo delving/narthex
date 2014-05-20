@@ -31,11 +31,11 @@ class Sorter extends Actor with ActorLogging {
   var sortFiles = List.empty[File]
   var merges = List.empty[Merge]
 
-  def initiateMerges(directory: NodeRepo, outFile: File, sortType: SortType): Unit = {
+  def initiateMerges(nodeRepo: NodeRepo, outFile: File, sortType: SortType): Unit = {
     while (sortFiles.size > 1) {
       sortFiles = sortFiles match {
         case inFileA :: inFileB :: remainder =>
-          val merge: Merge = Merge(directory, inFileA, inFileB, outFile, sortType)
+          val merge: Merge = Merge(nodeRepo, inFileA, inFileB, outFile, sortType)
           merges = merge :: merges
           val merger = context.actorOf(Props[Merger])
           merger ! merge
@@ -47,25 +47,25 @@ class Sorter extends Actor with ActorLogging {
     }
   }
 
-  def reportSorted(directory: NodeRepo, sortedFile: File, sortType: SortType): Unit = {
+  def reportSorted(nodeRepo: NodeRepo, sortedFile: File, sortType: SortType): Unit = {
     sortFiles.head.renameTo(sortedFile)
     sortFiles = List.empty
-    context.parent ! Sorted(directory, sortedFile, sortType)
+    context.parent ! Sorted(nodeRepo, sortedFile, sortType)
   }
 
   def receive = {
 
-    case Sort(directory, sortType) =>
+    case Sort(nodeRepo, sortType) =>
       val (inputFile, sortedFile) = sortType match {
-        case SortType.VALUE_SORT => (directory.values, directory.sorted)
-        case SortType.HISTOGRAM_SORT => (directory.counted, directory.histogramText)
+        case SortType.VALUE_SORT => (nodeRepo.values, nodeRepo.sorted)
+        case SortType.HISTOGRAM_SORT => (nodeRepo.counted, nodeRepo.histogramText)
       }
       log.debug(s"Sorter on ${inputFile.getName}")
       val input = new BufferedReader(new FileReader(inputFile))
 
       var lines = List.empty[String]
       def dumpSortedToFile() = {
-        val outputFile = directory.tempSort
+        val outputFile = nodeRepo.tempSort
         val output = new FileWriter(outputFile)
         lines.sorted(sortType.ordering).foreach {
           line =>
@@ -94,16 +94,16 @@ class Sorter extends Actor with ActorLogging {
         }
       }
       input.close()
-      initiateMerges(directory, sortedFile, sortType)
-      if (merges.isEmpty) reportSorted(directory, sortedFile, sortType)
+      initiateMerges(nodeRepo, sortedFile, sortType)
+      if (merges.isEmpty) reportSorted(nodeRepo, sortedFile, sortType)
 
     case Merged(merge, file, sortType) =>
       merges = merges.filter(pending => pending != merge)
       log.debug(s"Merged : ${file.getName} (size=${merges.size})")
       sortFiles = file :: sortFiles
       if (merges.isEmpty) {
-        initiateMerges(merge.directory, merge.mergeResultFile, sortType)
-        if (merges.isEmpty) reportSorted(merge.directory, merge.mergeResultFile, sortType)
+        initiateMerges(merge.nodeRepo, merge.mergeResultFile, sortType)
+        if (merges.isEmpty) reportSorted(merge.nodeRepo, merge.mergeResultFile, sortType)
       }
   }
 }
@@ -112,7 +112,7 @@ class Merger extends Actor with ActorLogging {
 
   def receive = {
 
-    case Merge(directory, inFileA, inFileB, mergeResultFile, sortType) =>
+    case Merge(nodeRepo, inFileA, inFileB, mergeResultFile, sortType) =>
       log.debug(s"Merge : ${inFileA.getName} and ${inFileB.getName}")
       val inputA = new BufferedReader(new FileReader(inFileA))
       val inputB = new BufferedReader(new FileReader(inFileB))
@@ -122,7 +122,7 @@ class Merger extends Actor with ActorLogging {
         if (string != null) Some(string) else None
       }
 
-      val outputFile = directory.tempSort
+      val outputFile = nodeRepo.tempSort
       val output = new FileWriter(outputFile)
 
       def write(line: Option[String]) = {
@@ -158,21 +158,20 @@ class Merger extends Actor with ActorLogging {
       inputB.close()
       deleteQuietly(inFileA)
       deleteQuietly(inFileB)
-      sender ! Merged(Merge(directory, inFileA, inFileB, mergeResultFile, sortType), outputFile, sortType)
+      sender ! Merged(Merge(nodeRepo, inFileA, inFileB, mergeResultFile, sortType), outputFile, sortType)
   }
 }
 
 
-class Collator extends Actor with ActorLogging with XRay {
-
+class Collator extends Actor with ActorLogging with Tree {
 
   def receive = {
 
-    case Count(directory) =>
-      log.debug(s"Count : ${directory.sorted.getName}")
-      val sorted = new BufferedReader(new FileReader(directory.sorted))
+    case Count(nodeRepo) =>
+      log.debug(s"Count : ${nodeRepo.sorted.getName}")
+      val sorted = new BufferedReader(new FileReader(nodeRepo.sorted))
 
-      val samples = directory.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
+      val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
 
       def createSampleFile(randomSample: RandomSample, sampleFile: File) = {
         updateJson(sampleFile) {
@@ -185,8 +184,8 @@ class Collator extends Actor with ActorLogging with XRay {
         if (string != null) Some(string) else None
       }
 
-      val counted = new FileWriter(directory.counted)
-      val unique = new FileWriter(directory.uniqueText)
+      val counted = new FileWriter(nodeRepo.counted)
+      val unique = new FileWriter(nodeRepo.uniqueText)
       var occurrences = 0
       var uniqueCount = 0
 
@@ -218,6 +217,6 @@ class Collator extends Actor with ActorLogging with XRay {
       val bigEnoughSamples = samples.filter(pair => uniqueCount > pair._1.size * 2)
       val usefulSamples = if (bigEnoughSamples.isEmpty) List(samples.head) else bigEnoughSamples
       usefulSamples.foreach(pair => createSampleFile(pair._1, pair._2))
-      sender ! Counted(directory, uniqueCount, usefulSamples.map(pair => pair._1.size))
+      sender ! Counted(nodeRepo, uniqueCount, usefulSamples.map(pair => pair._1.size))
   }
 }

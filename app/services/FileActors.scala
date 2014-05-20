@@ -43,35 +43,54 @@ class Boss extends Actor with ActorLogging {
           analyzer ! Analyze(job._1, job._2)
       }
 
-    case Progress(count, directory) =>
-      updateJson(directory.status) {
+    case AnalysisProgress(count, fileRepo) =>
+      updateJson(fileRepo.status) {
         current => Json.obj("percent" -> count)
       }
 
-    case FileError(file, directory) =>
-      log.info(s"File error at ${directory.dir.getName}")
+    case AnalysisError(file, fileRepo) =>
+      log.info(s"File error at ${fileRepo.dir.getName}")
       deleteQuietly(file)
-      deleteQuietly(directory.dir)
+      deleteQuietly(fileRepo.dir)
       context.stop(sender)
 
-    case TreeComplete(json, directory) =>
-      updateJson(directory.status) {
+    case AnalysisTreeComplete(json, fileRepo) =>
+      updateJson(fileRepo.status) {
         current =>
           Json.obj("index" -> true)
       }
-      log.info(s"Tree Complete at ${directory.dir.getName}")
+      log.info(s"Tree Complete at ${fileRepo.dir.getName}")
 
-    case AnalysisComplete(directory) =>
+    case AnalysisComplete(fileRepo) =>
       log.info(s"Analysis Complete, kill: ${sender.toString()}")
       context.stop(sender)
-      updateJson(directory.status) {
+      updateJson(fileRepo.status) {
         current =>
           Json.obj("index" -> true, "complete" -> true)
       }
+
+    case SaveRecords(fileRepo, recordRoot, uniqueId) =>
+      // todo: save record root and unique id in a JSON file
+      var saver = context.actorOf(Props[RecordSaver], fileRepo.dir.toString)
+      saver ! SaveRecords(fileRepo, recordRoot, uniqueId)
+
+    case RecordsSaved(fileRepo) =>
+      // todo: save the fact that it is finished
+      context.stop(sender)
   }
 }
 
-class Analyzer extends Actor with XRay with ActorLogging {
+class RecordSaver extends Actor with ActorLogging {
+  def receive = {
+
+    case SaveRecords(fileRepo, recordRoot, uniqueId) =>
+
+      sender ! RecordsSaved(fileRepo)
+
+  }
+}
+
+class Analyzer extends Actor with Tree with ActorLogging {
 
   val LINE = """^ *(\d*) (.*)$""".r
   var sorters = List.empty[ActorRef]
@@ -79,17 +98,17 @@ class Analyzer extends Actor with XRay with ActorLogging {
 
   def receive = {
 
-    case Analyze(file, directory) =>
+    case Analyze(file, fileRepo) =>
       log.debug(s"Analyzer on ${file.getName}")
       val countingStream = new CountingInputStream(new FileInputStream(file))
       val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(countingStream) else countingStream
       val source = Source.fromInputStream(new BOMInputStream(stream))
 
       def sendProgress(percent: Int) = {
-        sender ! Progress(percent, directory)
+        sender ! AnalysisProgress(percent, fileRepo)
       }
 
-      XRayNode(source, file.length, countingStream, directory, sendProgress) match {
+      TreeNode(source, file.length, countingStream, fileRepo, sendProgress) match {
         case Success(tree) =>
           tree.launchSorters {
             node =>
@@ -104,60 +123,60 @@ class Analyzer extends Actor with XRay with ActorLogging {
                 sorter ! Sort(node.directory, SortType.VALUE_SORT)
               }
           }
-          sender ! TreeComplete(Json.toJson(tree), directory)
+          sender ! AnalysisTreeComplete(Json.toJson(tree), fileRepo)
 
         case Failure(e) =>
           log.error(e, "Problem reading the file")
-          sender ! FileError(file, directory)
+          sender ! AnalysisError(file, fileRepo)
       }
       source.close()
 
-    case Counted(directory, uniqueCount, sampleSizes) =>
-      log.debug(s"Count finished : ${directory.counted.getAbsolutePath}")
+    case Counted(fileRepo, uniqueCount, sampleSizes) =>
+      log.debug(s"Count finished : ${fileRepo.counted.getAbsolutePath}")
       val sorter = context.actorOf(Props[Sorter])
       sorters = sorter :: sorters
       collators = collators.filter(collator => collator != sender)
-      deleteQuietly(directory.sorted)
-      updateJson(directory.status) {
+      deleteQuietly(fileRepo.sorted)
+      updateJson(fileRepo.status) {
         current => Json.obj(
           "uniqueCount" -> uniqueCount,
           "samples" -> sampleSizes
         )
       }
-      sorter ! Sort(directory, SortType.HISTOGRAM_SORT)
+      sorter ! Sort(fileRepo, SortType.HISTOGRAM_SORT)
 
-    case Sorted(directory, sortedFile, sortType) =>
+    case Sorted(fileRepo, sortedFile, sortType) =>
       log.debug(s"Sort finished : ${sortedFile.getAbsolutePath}")
       sorters = sorters.filter(sorter => sender != sorter)
       sortType match {
         case SortType.VALUE_SORT =>
-          deleteQuietly(directory.values)
+          deleteQuietly(fileRepo.values)
           val collator = context.actorOf(Props[Collator])
           collators = collator :: collators
-          collator ! Count(directory)
+          collator ! Count(fileRepo)
 
         case SortType.HISTOGRAM_SORT =>
-          log.debug(s"writing histograms : ${directory.dir.getAbsolutePath}")
-          updateJson(directory.status) {
+          log.debug(s"writing histograms : ${fileRepo.dir.getAbsolutePath}")
+          updateJson(fileRepo.status) {
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]
               val samples = current \ "samples"
-              val histogramSizes = writeHistograms(directory, uniqueCount)
+              val histogramSizes = writeHistograms(fileRepo, uniqueCount)
               Json.obj(
                 "uniqueCount" -> uniqueCount,
                 "samples" -> samples,
                 "histograms" -> histogramSizes
               )
           }
-          deleteQuietly(directory.counted)
+          deleteQuietly(fileRepo.counted)
           if (sorters.isEmpty && collators.isEmpty) {
-            context.parent ! AnalysisComplete(directory.parent)
+            context.parent ! AnalysisComplete(fileRepo.parent)
           }
       }
   }
 
-  def writeHistograms(directory: NodeRepo, uniqueCount: Int) = {
-    val input = new BufferedReader(new FileReader(directory.histogramText))
+  def writeHistograms(nodeRepo: NodeRepo, uniqueCount: Int) = {
+    val input = new BufferedReader(new FileReader(nodeRepo.histogramText))
 
     def lineOption = {
       val string = input.readLine()
@@ -176,8 +195,8 @@ class Analyzer extends Actor with XRay with ActorLogging {
       }
     }
 
-    var activeCounters = directory.histogramJson.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
-    activeCounters = activeCounters.filter(pair => pair._1 == activeCounters.head._1 || uniqueCount > pair._1 / directory.sizeFactor)
+    var activeCounters = nodeRepo.histogramJson.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
+    activeCounters = activeCounters.filter(pair => pair._1 == activeCounters.head._1 || uniqueCount > pair._1 / nodeRepo.sizeFactor)
     val counters = activeCounters
     var line = lineOption
     var count = 1

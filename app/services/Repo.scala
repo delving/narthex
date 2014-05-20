@@ -27,6 +27,7 @@ import org.apache.commons.io.FileUtils._
 import scala.Some
 import scala.collection.mutable.ArrayBuffer
 import org.basex.server.ClientSession
+import services.ActorMessages.SaveRecords
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
@@ -146,9 +147,8 @@ class FileRepo(val personalRepo: Repo, val dir: File) {
 
   def root = new NodeRepo(this, dir)
 
-  def storeRecords(recordRoot: String, uniqueId: String) = {
-    personalRepo.withSession { session =>
-    }
+  def saveRecords(recordRoot: String, uniqueId: String) = {
+    Repo.boss ! SaveRecords(this, recordRoot, uniqueId)
   }
 
   def status(path: String): Option[File] = {

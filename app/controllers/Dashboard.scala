@@ -25,7 +25,7 @@ import controllers.Application.OkFile
 import org.apache.commons.io.FileUtils._
 import scala.Some
 
-object Dashboard extends Controller with Security with XRay {
+object Dashboard extends Controller with Security with Tree {
 
   def upload = Secure(parse.multipartFormData) {
     token => email => implicit request => {
@@ -127,7 +127,7 @@ object Dashboard extends Controller with Security with XRay {
       val fileRepo = repo.FileRepo(fileName)
       // todo: check existence
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId")
-      fileRepo.storeRecords(recordRoot, uniqueId)
+      fileRepo.saveRecords(recordRoot, uniqueId)
       Ok(Json.obj("message" -> "Not yet implemented"))
     }
   }
