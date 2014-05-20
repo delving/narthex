@@ -55,6 +55,8 @@ object ActorMessages {
   
   case class SaveRecords(fileRepo: FileRepo, recordRoot: String, uniqueId: String)
 
+  case class SaveProgress(percent: Int, fileRepo: FileRepo)
+
   case class RecordsSaved(fileRepo: FileRepo)
 
 }

@@ -32,6 +32,23 @@ object FileHandling {
   }
 
   def tag(pre: String, label: String) = if (pre == null || pre.isEmpty) label else s"${pre}_$label"
+  
+  def stupidParser(comment: String, addEntity: String => Unit) = {
+    if (comment == " unknown entity apos; ") {
+      addEntity("apos")
+    }
+  }
+
+  def crunchWhitespace(text: String) = text.replaceAll("\\s+", " ").trim
+
+  def translateEntity(text: String) = text match {
+    case "amp" => "&"
+    case "quot" => "\""
+    case "lt" =>  "<"
+    case "gt" =>  ">"
+    case "apos" =>   "'"
+    case x => ""
+  }
 
   private def unzipXML(file: File, inputStream: InputStream) = {
     val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(inputStream) else inputStream

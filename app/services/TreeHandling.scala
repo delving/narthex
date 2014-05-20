@@ -21,10 +21,7 @@ import scala.xml.pull._
 import scala.io.Source
 import java.io.{FileWriter, BufferedWriter}
 import org.apache.commons.io.FileUtils
-import scala.xml.pull.EvElemStart
 import play.api.libs.json.JsArray
-import scala.xml.pull.EvText
-import scala.xml.pull.EvElemEnd
 import scala.Some
 import scala.collection.mutable
 import scala.util.{Try, Random}
@@ -56,23 +53,20 @@ trait TreeHandling {
     }
 
     def value(value: String): TreeNode = {
-      val trimmed = value.trim()
-      if (!trimmed.isEmpty) {
-        addToValue(trimmed)
-      }
+      valueBuffer.append(value)
       this
     }
 
     def end() = {
-      var value = valueBuffer.toString().trim()
+      var value = FileHandling.crunchWhitespace(valueBuffer.toString())
       if (!value.isEmpty) {
         lengths.record(value)
         if (valueWriter == None) {
-          valueWriter = Option(new BufferedWriter(new FileWriter(directory.values)))
+          valueWriter = Some(new BufferedWriter(new FileWriter(directory.values)))
         }
         valueWriter.map {
           writer =>
-            writer.write(stripLines(value))
+            writer.write(value)
             writer.newLine()
         }
       }
@@ -92,18 +86,6 @@ trait TreeHandling {
 
     def path: String = {
       if (tag == null) "" else parent.path + s"/$tag"
-    }
-
-    private def addToValue(value: String) = {
-      if (!valueBuffer.isEmpty) {
-        valueBuffer.append(' ') // todo: problem when entities are added
-      }
-      valueBuffer.append(value)
-    }
-
-    private def stripLines(value: String) = {
-      val noReturn = value.replaceAll("\n", " ") // todo: refine to remove double spaces
-      noReturn
     }
 
     override def toString = s"TreeNode($tag)"
@@ -141,16 +123,9 @@ trait TreeHandling {
             }
 
           case EvText(text) =>
-            node.value(text.trim)
+            node.value(text)
 
-          case EvEntityRef(entity) =>
-            entity match {
-              case "amp" => node.value("&")
-              case "quot" => node.value("\"")
-              case "lt" => node.value("<")
-              case "gt" => node.value(">")
-              case x => println("Entity:" + x)
-            }
+          case EvEntityRef(entity) => node.value(FileHandling.translateEntity(entity))
 
           case EvElemEnd(pre, label) =>
             sendProgress()
@@ -158,7 +133,7 @@ trait TreeHandling {
             node = node.parent
 
           case EvComment(text) =>
-          // todo: unknown entity apos; // probably tell the parser to resolve or something
+            FileHandling.stupidParser(text, string => node.value(FileHandling.translateEntity(string)))
 
           case x =>
             println("EVENT? " + x) // todo: record these in an error file for later

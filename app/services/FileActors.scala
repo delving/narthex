@@ -22,13 +22,13 @@ import scala.language.postfixOps
 import play.api.libs.json._
 import org.apache.commons.io.FileUtils._
 import scala.collection.mutable.ArrayBuffer
-import org.apache.commons.io.input.CountingInputStream
 import services.Repo._
 import play.api.libs.json.JsArray
 import scala.util.Failure
 import scala.Some
 import scala.util.Success
 import services.ActorMessages._
+import play.Logger
 
 class Boss extends Actor with ActorLogging {
 
@@ -72,6 +72,9 @@ class Boss extends Actor with ActorLogging {
       var saver = context.actorOf(Props[RecordSaver], fileRepo.dir.getName)
       saver ! SaveRecords(fileRepo, recordRoot, uniqueId)
 
+    case SaveProgress(count, fileRepo) =>
+      // todo: record progress in an asset
+
     case RecordsSaved(fileRepo) =>
       // todo: save the fact that it is finished
       context.stop(sender)
@@ -86,8 +89,9 @@ class RecordSaver extends Actor with RecordHandling with ActorLogging {
       val parser = new RecordParser(recordRoot, uniqueId)
       val source = FileHandling.source(fileRepo.sourceFile)
       val totalRecords = 100 // todo: get this from the JSON file
-      def sendProgress(percent: Int) = sender ! AnalysisProgress(percent, fileRepo)
-      parser.parse(source, totalRecords, sendProgress)
+      def sendProgress(percent: Int) = sender ! SaveProgress(percent, fileRepo)
+      def receiveRecord(record:String) = Logger.info("\n" + record)
+      parser.parse(source, receiveRecord, totalRecords, sendProgress)
       source.close()
       sender ! RecordsSaved(fileRepo)
   }
