@@ -23,9 +23,9 @@ import play.Logger
 import scala.xml.{MetaData, NamespaceBinding}
 
 trait RecordHandling {
+  val ID_PLACEHOLDER = "__id__"
 
   class RecordParser(val recordRoot: String, val uniqueId: String) {
-    val isSipCreatorSource = "/delving-sip-source/input" == recordRoot
     val path = new mutable.Stack[(String, StringBuilder)]
 
     def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit) = {
@@ -35,7 +35,6 @@ trait RecordHandling {
       var recordCount = 0L
       var withinRecord = false
       var recordText = new mutable.StringBuilder()
-      var scopeAttributes: String = null
       var uniqueIdAttribute: String = null
       var startElement: Option[String] = None
 
@@ -60,18 +59,17 @@ trait RecordHandling {
         val string = pathString
         if (withinRecord) {
           flushStartElement()
-          startElement = Some(startElementString(tag, attrs))
+          startElement = Some(startElementString(tag, attrs, isRecordRoot = false))
           attrs.foreach {
             attr =>
               path.push((tag, new StringBuilder()))
-              if (pathString == uniqueId) uniqueIdAttribute = "id=\"" + attr.value + "\""
+              if (pathString == uniqueId) uniqueIdAttribute = " id=\"" + attr.value + "\""
               path.pop()
           }
         }
         else if (string == recordRoot) {
           withinRecord = true
-          scopeAttributes = scope.toString()
-          if (!isSipCreatorSource) startElement = Some(startElementString(tag, attrs))
+          startElement = Some(startElementString(tag, attrs, isRecordRoot = true))
         }
       }
 
@@ -93,16 +91,20 @@ trait RecordHandling {
             withinRecord = false
             recordCount += 1
             sendProgress()
-            if (!isSipCreatorSource) recordText.append(s"</$tag>\n")
-            output(s"<narthex $uniqueIdAttribute$scopeAttributes>\n$recordText</narthex>\n")
+            recordText.append(s"</$tag>\n")
+            val recordWithId = recordText.toString().replace(ID_PLACEHOLDER, uniqueIdAttribute)
+            output(s"$recordWithId</narthex>\n")
             recordText.clear()
           }
           else {
-            if (string == uniqueId) uniqueIdAttribute = "id=\"" + text + "\""
-            if (!startElement.isDefined) throw new RuntimeException("Missing start element!")
-            val start = startElement.get
-            startElement = None
-            recordText.append(s"$start$text</$tag>\n")
+            if (string == uniqueId) uniqueIdAttribute = " id=\"" + text + "\""
+            if (startElement.isDefined) {
+              val start = startElement.get
+              startElement = None
+              recordText.append(s"$start$text")
+            }
+            else if (!text.isEmpty) throw new RuntimeException(s"expected no text for $tag")
+            recordText.append(s"</$tag>\n")
           }
         }
       }
@@ -133,14 +135,15 @@ trait RecordHandling {
 
     def showPath() = Logger.info(pathString)
 
-    def startElementString(tag: String, attrs: MetaData) = {
+    def startElementString(tag: String, attrs: MetaData, isRecordRoot: Boolean) = {
       val attrString = new mutable.StringBuilder()
       attrs.foreach {
         attr =>
           val value = "\"" + attr.value.toString() + "\""
           attrString.append(s" ${attr.prefixedKey}=$value")
       }
-      s"<$tag$attrString>"
+      val idPlaceholder = if (isRecordRoot) ID_PLACEHOLDER else ""
+      s"<$tag$idPlaceholder$attrString>"
     }
   }
 

@@ -57,6 +57,7 @@ class Boss extends Actor with ActorLogging {
         current =>
           Json.obj("index" -> true)
       }
+      // todo: rename the original file to include date and digest
       log.info(s"Tree Complete at ${fileRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
 
     case AnalysisComplete(fileRepo) =>
