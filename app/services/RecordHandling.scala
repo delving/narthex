@@ -35,6 +35,8 @@ trait RecordHandling {
       var recordCount = 0L
       var withinRecord = false
       var recordText = new mutable.StringBuilder()
+      var scopeAttributes: String = null
+      var uniqueIdAttribute: String = null
       var startElement: Option[String] = None
 
       def sendProgress(): Unit = {
@@ -57,16 +59,20 @@ trait RecordHandling {
         path.push((tag, new StringBuilder()))
         val string = pathString
         if (withinRecord) {
-          if (string == uniqueId) {
-            Logger.info(s"unique=$string")
-          }
           flushStartElement()
           startElement = Some(startElementString(tag, attrs))
+          attrs.foreach {
+            attr =>
+              path.push((tag, new StringBuilder()))
+              if (pathString == uniqueId) {
+                uniqueIdAttribute = "id=\"" + attr.value + "\""
+              }
+              path.pop()
+          }
         }
         else if (string == recordRoot) {
           withinRecord = true
-          recordText.append(s"<narthex$scope>\n")
-          flushStartElement()
+          scopeAttributes = scope.toString()
           startElement = Some(startElementString(tag, attrs))
         }
       }
@@ -89,12 +95,12 @@ trait RecordHandling {
             withinRecord = false
             recordCount += 1
             sendProgress()
-            recordText.append(s"</$tag>\n")
-            recordText.append(s"</narthex>\n")
-            output(recordText.toString())
+            recordText.append(s"</$tag>")
+            output(s"<narthex $uniqueIdAttribute$scopeAttributes>\n$recordText\n</narthex>\n")
             recordText.clear()
           }
           else {
+            if (string == uniqueId) uniqueIdAttribute = "id=\"" + text + "\""
             if (!startElement.isDefined) throw new RuntimeException("Missing start element!")
             val start = startElement.get
             startElement = None
