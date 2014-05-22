@@ -25,7 +25,7 @@ import scala.xml.{MetaData, NamespaceBinding}
 trait RecordHandling {
 
   class RecordParser(val recordRoot: String, val uniqueId: String) {
-
+    val isSipCreatorSource = "/delving-sip-source/input" == recordRoot
     val path = new mutable.Stack[(String, StringBuilder)]
 
     def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit) = {
@@ -64,16 +64,14 @@ trait RecordHandling {
           attrs.foreach {
             attr =>
               path.push((tag, new StringBuilder()))
-              if (pathString == uniqueId) {
-                uniqueIdAttribute = "id=\"" + attr.value + "\""
-              }
+              if (pathString == uniqueId) uniqueIdAttribute = "id=\"" + attr.value + "\""
               path.pop()
           }
         }
         else if (string == recordRoot) {
           withinRecord = true
           scopeAttributes = scope.toString()
-          startElement = Some(startElementString(tag, attrs))
+          if (!isSipCreatorSource) startElement = Some(startElementString(tag, attrs))
         }
       }
 
@@ -95,8 +93,8 @@ trait RecordHandling {
             withinRecord = false
             recordCount += 1
             sendProgress()
-            recordText.append(s"</$tag>")
-            output(s"<narthex $uniqueIdAttribute$scopeAttributes>\n$recordText\n</narthex>\n")
+            if (!isSipCreatorSource) recordText.append(s"</$tag>\n")
+            output(s"<narthex $uniqueIdAttribute$scopeAttributes>\n$recordText</narthex>\n")
             recordText.clear()
           }
           else {
