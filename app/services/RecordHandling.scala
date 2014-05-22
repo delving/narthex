@@ -35,7 +35,7 @@ trait RecordHandling {
       var recordCount = 0L
       var withinRecord = false
       var recordText = new mutable.StringBuilder()
-      var startElement : Option[String] = None
+      var startElement: Option[String] = None
 
       def sendProgress(): Unit = {
         val percent = ((recordCount * 100) / totalRecords).toInt
@@ -61,13 +61,13 @@ trait RecordHandling {
             Logger.info(s"unique=$string")
           }
           flushStartElement()
-          startElement = Some(startElementString(tag,attrs))
+          startElement = Some(startElementString(tag, attrs))
         }
         else if (string == recordRoot) {
           withinRecord = true
           recordText.append(s"<narthex$scope>\n")
           flushStartElement()
-          startElement = Some(startElementString(tag,attrs))
+          startElement = Some(startElementString(tag, attrs))
         }
       }
 
@@ -131,7 +131,7 @@ trait RecordHandling {
 
     def startElementString(tag: String, attrs: MetaData) = {
       val attrString = new mutable.StringBuilder()
-      attrs.foreach{
+      attrs.foreach {
         attr =>
           val value = "\"" + attr.value.toString() + "\""
           attrString.append(s" ${attr.prefixedKey}=$value")

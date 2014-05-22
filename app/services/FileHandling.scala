@@ -31,8 +31,8 @@ object FileHandling {
     (countingStream, source)
   }
 
-  def tag(pre: String, label: String) = if (pre == null || pre.isEmpty) label else s"${pre}_$label"
-  
+  def tag(pre: String, label: String) = if (pre == null || pre.isEmpty) label else s"$pre:$label"
+
   def stupidParser(comment: String, addEntity: String => Unit) = {
     if (comment == " unknown entity apos; ") {
       addEntity("apos")
