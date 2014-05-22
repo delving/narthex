@@ -52,12 +52,12 @@ class Boss extends Actor with ActorLogging {
       deleteQuietly(fileRepo.dir)
       context.stop(sender)
 
-    case AnalysisTreeComplete(json, fileRepo) =>
+    case AnalysisTreeComplete(fileRepo, json, digest) =>
       updateJson(fileRepo.status) {
         current =>
           Json.obj("index" -> true)
       }
-      log.info(s"Tree Complete at ${fileRepo.dir.getName}")
+      log.info(s"Tree Complete at ${fileRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
 
     case AnalysisComplete(fileRepo) =>
       log.info(s"Analysis Complete, kill: ${sender.toString()}")
@@ -107,7 +107,7 @@ class Analyzer extends Actor with TreeHandling with ActorLogging {
 
     case Analyze(file, fileRepo) =>
       log.debug(s"Analyzer on ${file.getName}")
-      val (countingStream, source) = FileHandling.countingSource(file)
+      val (source, countingStream, digest) = FileHandling.countingSource(file)
       def sendProgress(percent: Int) = sender ! AnalysisProgress(percent, fileRepo)
       TreeNode(source, file.length, countingStream, fileRepo, sendProgress) match {
         case Success(tree) =>
@@ -124,7 +124,7 @@ class Analyzer extends Actor with TreeHandling with ActorLogging {
                 sorter ! Sort(node.nodeRepo, SortType.VALUE_SORT)
               }
           }
-          sender ! AnalysisTreeComplete(Json.toJson(tree), fileRepo)
+          sender ! AnalysisTreeComplete(fileRepo, Json.toJson(tree), digest)
 
         case Failure(e) =>
           log.error(e, "Problem reading the file")

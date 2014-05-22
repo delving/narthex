@@ -19,6 +19,7 @@ package services
 import java.io._
 import scala.language.postfixOps
 import play.api.libs.json._
+import java.security.MessageDigest
 
 object ActorMessages {
 
@@ -28,7 +29,7 @@ object ActorMessages {
 
   case class AnalysisProgress(percent: Int, fileRepo: FileRepo)
 
-  case class AnalysisTreeComplete(json: JsValue, fileRepo: FileRepo)
+  case class AnalysisTreeComplete(fileRepo: FileRepo, json: JsValue, digest: MessageDigest)
 
   case class AnalysisError(file: File, fileRepo: FileRepo)
 
@@ -52,7 +53,7 @@ object ActorMessages {
   case class Merge(nodeRepo: NodeRepo, inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
 
   case class Merged(merge: Merge, fileA: File, sortType: SortType)
-  
+
   case class SaveRecords(fileRepo: FileRepo, recordRoot: String, uniqueId: String)
 
   case class SaveProgress(percent: Int, fileRepo: FileRepo)

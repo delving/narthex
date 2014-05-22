@@ -20,15 +20,18 @@ import java.io.{InputStream, FileInputStream, File}
 import java.util.zip.GZIPInputStream
 import org.apache.commons.io.input.{BOMInputStream, CountingInputStream}
 import scala.io.Source
+import java.security.{DigestInputStream, MessageDigest}
 
 object FileHandling {
 
   def source(file: File): Source = Source.fromInputStream(unzipXML(file, new FileInputStream(file)))
 
-  def countingSource(file: File): (CountingInputStream, Source) = {
+  def countingSource(file: File): (Source, CountingInputStream, MessageDigest) = {
     val countingStream = new CountingInputStream(new FileInputStream(file))
-    val source = Source.fromInputStream(unzipXML(file, countingStream))
-    (countingStream, source)
+    val digest = createDigest
+    val digestStream = new DigestInputStream(unzipXML(file, countingStream), digest)
+    val source = Source.fromInputStream(digestStream)
+    (source, countingStream, digest)
   }
 
   def tag(pre: String, label: String) = if (pre == null || pre.isEmpty) label else s"$pre:$label"
@@ -49,6 +52,10 @@ object FileHandling {
     case "apos" =>   "'"
     case x => ""
   }
+
+  def createDigest = MessageDigest.getInstance("SHA1")
+
+  def hex(digest: MessageDigest) = digest.digest().map("%02X" format _).mkString
 
   private def unzipXML(file: File, inputStream: InputStream) = {
     val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(inputStream) else inputStream
