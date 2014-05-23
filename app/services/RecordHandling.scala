@@ -33,10 +33,18 @@ trait RecordHandling {
       var percentWas = -1
       var lastProgress = 0l
       var recordCount = 0L
-      var withinRecord = false
+      var depth = 0
       var recordText = new mutable.StringBuilder()
       var uniqueIdAttribute: String = null
       var startElement: Option[String] = None
+
+      def indent() = {
+        var countdown = depth
+        while (countdown > 0) {
+          recordText.append(' ')
+          countdown -= 1
+        }
+      }
 
       def sendProgress(): Unit = {
         val percent = ((recordCount * 100) / totalRecords).toInt
@@ -51,15 +59,17 @@ trait RecordHandling {
         def flushStartElement() = {
           if (startElement.isDefined) {
             // todo: check if there was text, if so it's a violation
+            indent()
             recordText.append(startElement.get).append("\n")
             startElement = None
           }
         }
         path.push((tag, new StringBuilder()))
         val string = pathString
-        if (withinRecord) {
+        if (depth > 0) {
           flushStartElement()
-          startElement = Some(startElementString(tag, attrs, isRecordRoot = false))
+          depth += 1
+          startElement = Some(startElementString(tag, attrs))
           attrs.foreach {
             attr =>
               path.push((tag, new StringBuilder()))
@@ -68,13 +78,14 @@ trait RecordHandling {
           }
         }
         else if (string == recordRoot) {
-          withinRecord = true
-          startElement = Some(startElementString(tag, attrs, isRecordRoot = true))
+          recordText.append(s"<narthex$ID_PLACEHOLDER$scope>\n")
+          depth = 1
+          startElement = Some(startElementString(tag, attrs))
         }
       }
 
       def addFieldText(text: String) = {
-        if (withinRecord) {
+        if (depth > 0) {
           val fieldText = path.head._2
           fieldText.append(text)
         }
@@ -86,18 +97,21 @@ trait RecordHandling {
         val text = FileHandling.crunchWhitespace(fieldText.toString())
         fieldText.clear()
         path.pop()
-        if (withinRecord) {
+        if (depth > 0) {
           if (string == recordRoot) {
-            withinRecord = false
             recordCount += 1
             sendProgress()
+            indent()
             recordText.append(s"</$tag>\n")
             val recordWithId = recordText.toString().replace(ID_PLACEHOLDER, uniqueIdAttribute)
             output(s"$recordWithId</narthex>\n")
             recordText.clear()
+            depth = 0
           }
           else {
             if (string == uniqueId) uniqueIdAttribute = " id=\"" + text + "\""
+            indent()
+            depth -= 1
             if (startElement.isDefined) {
               val start = startElement.get
               startElement = None
@@ -135,15 +149,14 @@ trait RecordHandling {
 
     def showPath() = Logger.info(pathString)
 
-    def startElementString(tag: String, attrs: MetaData, isRecordRoot: Boolean) = {
+    def startElementString(tag: String, attrs: MetaData) = {
       val attrString = new mutable.StringBuilder()
       attrs.foreach {
         attr =>
           val value = "\"" + attr.value.toString() + "\""
           attrString.append(s" ${attr.prefixedKey}=$value")
       }
-      val idPlaceholder = if (isRecordRoot) ID_PLACEHOLDER else ""
-      s"<$tag$idPlaceholder$attrString>"
+      s"<$tag$attrString>"
     }
   }
 
