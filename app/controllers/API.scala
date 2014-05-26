@@ -22,13 +22,13 @@ import play.api.libs.json._
 import controllers.Application.OkFile
 import scala.Some
 
-object API extends Controller with Security with XRay {
+object API extends Controller with TreeHandling {
 
   def indexJSON(apiKey: String, email:String, fileName: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
-        val repo = Repository(email)
-        OkFile(repo.fileRepo(fileName).index)
+        val repo = Repo(email)
+        OkFile(repo.FileRepo(fileName).index)
       }
       else {
         Unauthorized
@@ -39,8 +39,8 @@ object API extends Controller with Security with XRay {
   def indexText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
-        val repo = Repository(email)
-        repo.fileRepo(fileName).indexText(path) match {
+        val repo = Repo(email)
+        repo.FileRepo(fileName).indexText(path) match {
           case None => NotFound(Json.obj("path" -> path))
           case Some(file) => OkFile(file)
         }
@@ -54,8 +54,8 @@ object API extends Controller with Security with XRay {
   def uniqueText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
-        val repo = Repository(email)
-        repo.fileRepo(fileName).uniqueText(path) match {
+        val repo = Repo(email)
+        repo.FileRepo(fileName).uniqueText(path) match {
           case None => NotFound(Json.obj("path" -> path))
           case Some(file) => OkFile(file)
         }
@@ -69,8 +69,8 @@ object API extends Controller with Security with XRay {
   def histogramText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
-        val repo = Repository(email)
-        repo.fileRepo(fileName).histogramText(path) match {
+        val repo = Repo(email)
+        repo.FileRepo(fileName).histogramText(path) match {
           case None => NotFound(Json.obj("path" -> path))
           case Some(file) => OkFile(file)
         }

@@ -44,45 +44,9 @@
                     <p class="lead">
                         This functionality is outside of the scope of the current project, but in the future this
                         panel could contain an enrichment interface tuned to the nature of the data in the field
-                        listed to the right. Imagine the following:
+                        listed to the right.  Selecting an entry on the right could also give access here to
+                        the records containing that value in that position in the XML.
                     </p>
-                    <dl class="dl-horizontal">
-                        <dt><code>SKOS Browser</code></dt>
-                        <dd>
-                            For each entry on the right, browsing a SKOS vocabulary. This would allow curators to
-                            make links from vocabularies arising from collection registration practice, pointing to
-                            shared resources which better capture the intended meaning for aggregation purposes.
-                        </dd>
-                        <dt><code>Link Checker</code></dt>
-                        <dd>
-                            A URL field pointing to external resources can have all entries checked
-                            for availability.  Periodic checks could be scheduled as well, to verify that the
-                            resources are actually available.
-                        </dd>
-                        <dt><code>Geo-converter</code></dt>
-                        <dd>
-                            If a field contains a geo-coordinate, the contents could be verified, displayed on a map,
-                            and even converted to other coordinate systems.
-                        </dd>
-                        <dt><code>Date Fixer</code></dt>
-                        <dd>
-                            Date fields are notorious for having many formats in practice, so a date fixer could look
-                            for ambiguous values according to chosen best practices and prompt for improvements.
-                        </dd>
-                        <dt><code>Syntax Normalizer</code></dt>
-                        <dd>
-                            Values internally delimited with semicolons or commas can be exploded into separate elements.
-                            First name - surname order could be switched, that kind of thing.  Corner cases. Using
-                            Javascript for this would allow live viewing of results in the browser.
-                        </dd>
-                        <dt><code>Enrichment Lookup</code></dt>
-                        <dd>
-                            Enrichment results from work performed elsewhere, such as time-consuming instance matching
-                            algorithms on people, places, and events, could be dropped here so that the values
-                            of this field can be rendered through the a translation lookup that renders the found
-                            matches.
-                        </dd>
-                    </dl>
                 </div>
             </div>
         </div>
@@ -92,7 +56,7 @@
         <div class="panel panel-default panel-lists">
             <div class="panel-heading">
                 <code class="path">Node: {{ selectedNode.path }}</code>
-                <button class="btn btn-success btn-xs" data-ng-click="setAligning(true)" data-ng-show="!aligning">Enrich</button>
+                <!--<button class="btn btn-success btn-xs" data-ng-click="setAligning(true)" data-ng-show="!aligning">Enrich</button>-->
             </div>
 
             <div class="panel-body">
@@ -107,9 +71,9 @@
                         <li data-ng-class="{ active: activeView == 'histogram' }">
                             <a href data-ng-click="fetchHistogram()">Histogram</a>
                         </li>
-                        <li data-ng-show="activeView == 'histogram' && histogramUnique">
-                            <button style="color: #000000; background: white" data-ng-click="setUniqueIdNode(selectedNode)">Use as Unique Element</button>
-                        </li>
+                        <!--<li data-ng-show="activeView == 'histogram' && histogramUnique">-->
+                            <!--<button style="color: #000000; background: white" data-ng-click="setUniqueIdNode(selectedNode)">Use as Unique Element</button>-->
+                        <!--</li>-->
                     </ul>
                     <div class="collapse navbar-collapse">
                         <ul class="nav navbar-nav navbar-right">

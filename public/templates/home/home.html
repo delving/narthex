@@ -35,16 +35,6 @@
             and they are then also available for other software to access via the REST API. The API link contains
             a key which gives permission. </p>
 
-        <h4>5) Think about the Potential</h4>
-
-        <p>
-            Once you have some experience with this program, think about what could be done with it in the future,
-            and let us know about it! (narthex@delving.eu)
-            It is an <a href="https://github.com/delving/narthex" target="_blank">open source project</a> so we can use
-            the ideas
-            and funding to take the project further. More graphical renderings will be possible using the
-            <a href="https://github.com/mbostock/d3/wiki/Gallery" target="_blank">D3 Library</a>, and be sure to
-            press the "Enrich" button to see the enrichment potentials. </p>
     </div>
     <div class="col-sm-4">
         <h2>Login</h2>
@@ -65,7 +55,8 @@
                 </div>
                 <br/>
                 <button class="btn btn-primary" data-ng-disabled="form.$invalid" data-ng-click="login(credentials)">Log In</button>
-                <button class="btn btn-info pull-right" data-ng-disabled="form.$invalid" data-ng-show="!showRepeatPassword" data-ng-click="showRepeatPassword = true">Register</button>
+                <span> : </span>
+                <input type="checkbox" data-ng-model="showRepeatPassword">First time</input>
             </fieldset>
             <div data-ng-show="errorMessage">
                 <br/>

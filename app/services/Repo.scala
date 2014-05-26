@@ -26,21 +26,34 @@ import org.mindrot.jbcrypt.BCrypt
 import org.apache.commons.io.FileUtils._
 import scala.Some
 import scala.collection.mutable.ArrayBuffer
+import org.basex.server.ClientSession
+import actors.{Saver, SaveRecords, Boss, Lingo}
 
-object Repository {
+object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "NARTHEX")
+  var baseXDir = new File(root, "basex")
+
+  lazy val baseX: BaseX = new BaseX("localhost", 6789, 6788, "admin", "admin", false)
 
   lazy val boss = Akka.system.actorOf(Props[Boss], "boss")
 
-  def apply(email: String) = new PersonalRepo(root, email)
+  def apply(email: String) = new Repo(root, email)
+
+  def startBaseX() = {
+    baseX.start(baseXDir)
+  }
+
+  def stopBaseX() = {
+    baseX.stop()
+  }
 
   def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
 
-  def acceptable(fileName: String, contentType: Option[String]) = {
+  def acceptableFile(fileName: String, contentType: Option[String]) = {
     // todo: something with content-type
-    println("content type "+contentType)
+    println("content type " + contentType)
     !SUFFIXES.filter(suffix => fileName.endsWith(suffix)).isEmpty
   }
 
@@ -57,18 +70,23 @@ object Repository {
     }
   }
 
+  def stripSuffix(fileName: String) = {
+    val suffix = SUFFIXES.filter(suf => fileName.endsWith(suf))
+    if (suffix.isEmpty) throw new RuntimeException(s"Cannot identify suffix for $fileName")
+    fileName.substring(0, fileName.length - suffix.head.length)
+  }
 }
 
-class PersonalRepo(root: File, val email: String) {
+class Repo(root: File, val email: String) {
 
-  val repo = new File(root, email.replaceAll("@", "_"))
-  val user = new File(repo, "user.json")
-  val uploaded = new File(repo, "uploaded")
-  val analyzed = new File(repo, "analyzed")
-  var baseX: Option[BaseX] = None
+  val personalRootName: String = email.replaceAll("[@.]", "_")
+  val personalRoot = new File(root, personalRootName)
+  val user = new File(personalRoot, "user.json")
+  val uploaded = new File(personalRoot, "uploaded")
+  val analyzed = new File(personalRoot, "analyzed")
 
   def create(password: String) = {
-    repo.mkdirs()
+    personalRoot.mkdirs()
     val passwordHash = BCrypt.hashpw(password, BCrypt.gensalt())
     writeStringToFile(user, Json.prettyPrint(Json.obj("passwordHash" -> passwordHash)))
   }
@@ -86,32 +104,33 @@ class PersonalRepo(root: File, val email: String) {
 
   def uploadedFile(fileName: String) = new File(uploaded, fileName)
 
-  def analyzedDir(dirName: String) = new File(analyzed, dirName)
+  def analyzedDir(fileName: String) = new File(analyzed, Repo.stripSuffix(fileName))
 
   def listUploadedFiles = listFiles(uploaded)
 
   def uploadedOnly() = listUploadedFiles.filter(file => !analyzedDir(file.getName).exists())
 
   def scanForWork() = {
-    val filesToAnalyze = uploadedOnly()
-    val dirs = filesToAnalyze.map(file => analyzedDir(file.getName))
-    val fileAnalysisDirs = dirs.map(new FileRepo(_).mkdirs)
-    Repository.boss ! Actors.AnalyzeThese(filesToAnalyze.zip(fileAnalysisDirs))
+    val files = uploadedOnly()
+    val dirs = files.map(file => analyzedDir(file.getName))
+    val pairs = files.zip(dirs)
+    val fileAnalysisDirs = pairs.map(pair => new FileRepo(this, pair._1, pair._2).mkdirs)
+    Repo.boss ! Lingo.AnalyzeThese(files.zip(fileAnalysisDirs))
+    files
   }
 
-  def storeRecords(recordRoot: String, uniqueId: String) = {
-    val b = if (baseX.isDefined) baseX.get else new BaseX("localhost", 6789, 6788, "admin", "admin", false)
-    b.start(new File(repo, "basex"))
-    b.createDatabase("narthex")
-    b.stop()
-  }
+  def FileRepo(fileName: String) = new FileRepo(this, uploadedFile(fileName), analyzedDir(fileName))
 
-  def fileRepo(fileName: String) = new FileRepo(analyzedDir(fileName))
+  def withSession[T](block: ClientSession => T): T = {
+    Repo.baseX.createDatabase(personalRootName) // todo: creating brute force for now
+    //    Repository.baseX.openDatabase(personalRootName) todo: open if it's there, otherwise create?
+    Repo.baseX.withSession(personalRootName)(block)
+  }
 
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
       directory.listFiles.filter(file =>
-        file.isFile && !Repository.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).isEmpty
+        file.isFile && !Repo.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).isEmpty
       ).toList
     }
     else {
@@ -121,7 +140,7 @@ class PersonalRepo(root: File, val email: String) {
 
 }
 
-class FileRepo(val dir: File) {
+class FileRepo(val personalRepo: Repo, val sourceFile: File, val dir: File) {
 
   def mkdirs = {
     dir.mkdirs()
@@ -133,6 +152,11 @@ class FileRepo(val dir: File) {
   def status = new File(dir, "status.json")
 
   def root = new NodeRepo(this, dir)
+
+  def saveRecords(recordRoot: String, uniqueId: String) = {
+    val saver = Akka.system.actorOf(Saver.props(this), sourceFile.getName)
+    saver ! SaveRecords(recordRoot, uniqueId)
+  }
 
   def status(path: String): Option[File] = {
     nodeRepo(path) match {
@@ -181,7 +205,7 @@ class FileRepo(val dir: File) {
   }
 
   def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, Repository.tagToDirectory(tag)))
+    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 
@@ -189,7 +213,7 @@ class FileRepo(val dir: File) {
 
 object NodeRepo {
   def apply(parent: FileRepo, parentDir: File, tag: String) = {
-    val dir = if (tag == null) parentDir else new File(parentDir, Repository.tagToDirectory(tag))
+    val dir = if (tag == null) parentDir else new File(parentDir, Repo.tagToDirectory(tag))
     dir.mkdirs()
     new NodeRepo(parent, dir)
   }
@@ -234,7 +258,7 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
     }
 
     def createFile(maximum: Int, entries: ArrayBuffer[JsArray], histogramFile: File) = {
-      Repository.updateJson(histogramFile) {
+      Repo.updateJson(histogramFile) {
         current => Json.obj(
           "uniqueCount" -> uniqueCount,
           "entries" -> entries.size,

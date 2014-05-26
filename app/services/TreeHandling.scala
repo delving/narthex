@@ -21,98 +21,89 @@ import scala.xml.pull._
 import scala.io.Source
 import java.io.{FileWriter, BufferedWriter}
 import org.apache.commons.io.FileUtils
-import scala.xml.pull.EvElemStart
 import play.api.libs.json.JsArray
-import scala.xml.pull.EvText
-import scala.xml.pull.EvElemEnd
 import scala.Some
 import scala.collection.mutable
 import scala.util.{Try, Random}
 import org.apache.commons.io.input.CountingInputStream
 
-trait XRay {
+trait TreeHandling {
 
-  class XRayNode(val directory: NodeRepo, val parent: XRayNode, val tag: String) {
-    var kids = Map.empty[String, XRayNode]
+  class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
+    val MAX_LIST = 10000
+    var kids = Map.empty[String, TreeNode]
     var count = 0
     var lengths = new LengthHistogram()
-    var valueWriter: Option[BufferedWriter] = None
-    var valueBuffer = new StringBuilder
+    var valueBuilder = new StringBuilder
+    var valueListSize = 0
+    var valueList = List.empty[String]
+    
+    def flush() = {
+      val writer = new BufferedWriter(new FileWriter(nodeRepo.values, true))
+      valueList.foreach{
+        line =>
+          writer.write(line)
+          writer.newLine()
+      }
+      valueList = List.empty[String]
+      valueListSize = 0
+      writer.close()
+    }
 
     def kid(tag: String) = {
       kids.get(tag) match {
         case Some(kid) => kid
         case None =>
-          val kid = new XRayNode(directory.child(tag), this, tag)
+          val kid = new TreeNode(nodeRepo.child(tag), this, tag)
           kids += tag -> kid
           kid
       }
     }
 
-    def start(): XRayNode = {
+    def start(): TreeNode = {
       count += 1
-      valueBuffer.clear()
+      valueBuilder.clear()
       this
     }
 
-    def value(value: String): XRayNode = {
-      val trimmed = value.trim()
-      if (!trimmed.isEmpty) {
-        addToValue(trimmed)
-      }
+    def value(value: String): TreeNode = {
+      valueBuilder.append(value)
       this
     }
 
     def end() = {
-      var value = valueBuffer.toString().trim()
+      var value = FileHandling.crunchWhitespace(valueBuilder.toString())
       if (!value.isEmpty) {
         lengths.record(value)
-        if (valueWriter == None) {
-          valueWriter = Option(new BufferedWriter(new FileWriter(directory.values)))
-        }
-        valueWriter.map {
-          writer =>
-            writer.write(stripLines(value))
-            writer.newLine()
-        }
+        valueList = value :: valueList
+        valueListSize += 1
+        if (valueListSize >= MAX_LIST) flush()
       }
     }
 
     def finish(): Unit = {
-      valueWriter.map(_.close())
-      val index = kids.values.map(kid => Repository.tagToDirectory(kid.tag)).mkString("\n")
-      FileUtils.writeStringToFile(directory.indexText, index)
+      flush()
+      val index = kids.values.map(kid => Repo.tagToDirectory(kid.tag)).mkString("\n")
+      FileUtils.writeStringToFile(nodeRepo.indexText, index)
       kids.values.foreach(_.finish())
     }
 
-    def sort(sortStarter: XRayNode => Unit): Unit = {
+    def launchSorters(sortStarter: TreeNode => Unit): Unit = {
       sortStarter(this)
-      kids.values.foreach(_.sort(sortStarter))
+      kids.values.foreach(_.launchSorters(sortStarter))
     }
 
     def path: String = {
       if (tag == null) "" else parent.path + s"/$tag"
     }
 
-    private def addToValue(value: String) = {
-      if (!valueBuffer.isEmpty) {
-        valueBuffer.append(' ') // todo: problem when entities are added
-      }
-      valueBuffer.append(value)
-    }
-
-    private def stripLines(value: String) = {
-      val noReturn = value.replaceAll("\n", " ") // todo: refine to remove double spaces
-      noReturn
-    }
-
-    override def toString = s"XRayNode($tag)"
+    override def toString = s"TreeNode($tag)"
   }
 
-  object XRayNode {
+  object TreeNode {
 
-    def apply(source: Source, length: Long, counter: CountingInputStream, directory: FileRepo, progress: Int => Unit): Try[XRayNode] = Try {
-      val base = new XRayNode(directory.root, null, null)
+    def apply(source: Source, length: Long, counter: CountingInputStream, directory: FileRepo, progress: Int => Unit): Try[TreeNode] = Try {
+      val base = new TreeNode(directory.root, null, null)
       var node = base
       var percentWas = -1
       var lastProgress = 0l
@@ -132,25 +123,18 @@ trait XRay {
         events.next() match {
 
           case EvElemStart(pre, label, attrs, scope) =>
-            node = node.kid(label).start()
+            node = node.kid(FileHandling.tag(pre, label)).start()
             attrs.foreach {
               attr =>
-                val kid = node.kid(s"@${attr.key}").start()
+                val kid = node.kid(s"@${attr.prefixedKey}").start()
                 kid.value(attr.value.toString())
                 kid.end()
             }
 
           case EvText(text) =>
-            node.value(text.trim)
+            node.value(text)
 
-          case EvEntityRef(entity) =>
-            entity match {
-              case "amp" => node.value("&")
-              case "quot" => node.value("\"")
-              case "lt" => node.value("<")
-              case "gt" => node.value(">")
-              case x => println("Entity:" + x)
-            }
+          case EvEntityRef(entity) => node.value(FileHandling.translateEntity(entity))
 
           case EvElemEnd(pre, label) =>
             sendProgress()
@@ -158,7 +142,7 @@ trait XRay {
             node = node.parent
 
           case EvComment(text) =>
-          // todo: unknown entity apos; // probably tell the parser to resolve or something
+            FileHandling.stupidParser(text, string => node.value(FileHandling.translateEntity(string)))
 
           case x =>
             println("EVENT? " + x) // todo: record these in an error file for later
@@ -227,7 +211,7 @@ trait XRay {
     def values: List[String] = queue.map(pair => pair._2).toList.sorted.distinct
   }
 
-  implicit val nodeWrites = new Writes[XRayNode] {
+  implicit val nodeWrites = new Writes[TreeNode] {
 
     def writes(counter: Counter): JsValue = Json.arr(counter.range.toString, counter.count.toString)
 
@@ -239,7 +223,7 @@ trait XRay {
       JsArray(sample.values.map(value => JsString(value)))
     }
 
-    def writes(node: XRayNode) = Json.obj(
+    def writes(node: TreeNode) = Json.obj(
       "tag" -> node.tag,
       "path" -> node.path,
       "count" -> node.count,

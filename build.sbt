@@ -37,6 +37,7 @@ libraryDependencies ++= Seq(
   "org.mindrot" % "jbcrypt" % "0.3m",
   "org.scalatest" % "scalatest_2.10" % "2.1.3" % "test",
   "org.scalautils" % "scalautils_2.10" % "2.1.3",
+//  "com.typesafe.akka" % "akka-testkit_2.10" % "2.3.2" % "test",
   "commons-io" % "commons-io" % "2.4",
   "org.basex" % "basex" % "7.3.1",
 //  "org.webjars" % "cryptojs" % "3.1.2",
