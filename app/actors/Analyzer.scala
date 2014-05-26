@@ -18,29 +18,34 @@ package actors
 
 import akka.actor.{Props, ActorRef, ActorLogging, Actor}
 import services._
-import actors.Lingo._
 import play.api.libs.json._
 import org.apache.commons.io.FileUtils
 import java.io.{File, FileReader, BufferedReader}
 import scala.collection.mutable.ArrayBuffer
-import actors.Lingo.Sort
-import actors.Lingo.Analyze
-import actors.Lingo.AnalysisComplete
 import scala.util.Failure
 import scala.Some
-import actors.Lingo.Counted
-import actors.Lingo.Sorted
-import actors.Lingo.AnalysisProgress
-import actors.Lingo.AnalysisTreeComplete
 import scala.util.Success
-import actors.Lingo.AnalysisError
-import actors.Lingo.Count
+import java.security.MessageDigest
+import Analyzer._
+import Sorter._
+import Collator._
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
 object Analyzer {
+
+  case class Analyze(file: File)
+
+  case class AnalysisProgress(percent: Int)
+
+  case class AnalysisTreeComplete(json: JsValue, digest: MessageDigest)
+
+  case class AnalysisError(file: File)
+
+  case class AnalysisComplete()
+
   def props(fileRepo: FileRepo) = Props(new Analyzer(fileRepo))
 }
 
@@ -54,8 +59,19 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
 
      case Analyze(file) =>
        log.debug(s"Analyzer on ${file.getName}")
+       Repo.updateJson(fileRepo.status) {
+         current => Json.obj("percent" -> 0)
+       }
        val (source, countingStream, digest) = FileHandling.countingSource(file)
-       def sendProgress(percent: Int) = sender ! AnalysisProgress(fileRepo, percent)
+       val progress = context.actorOf(Props(new Actor() {
+         override def receive: Receive = {
+           case AnalysisProgress(percent) =>
+             Repo.updateJson(fileRepo.status) {
+               current => Json.obj("percent" -> percent)
+             }
+         }
+       }))
+       def sendProgress(percent: Int) = progress ! AnalysisProgress(percent)
        TreeNode(source, file.length, countingStream, fileRepo, sendProgress) match {
          case Success(tree) =>
            tree.launchSorters {
@@ -66,16 +82,19 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
                  }
                }
                else {
+                 Repo.updateJson(node.nodeRepo.status) {
+                   current => Json.obj("percent" -> 0)
+                 }
                  val sorter = context.actorOf(Sorter.props(node.nodeRepo))
                  sorters = sorter :: sorters
                  sorter ! Sort(SortType.VALUE_SORT)
                }
            }
-           sender ! AnalysisTreeComplete(fileRepo, Json.toJson(tree), digest)
+           self ! AnalysisTreeComplete(Json.toJson(tree), digest)
 
          case Failure(e) =>
            log.error(e, "Problem reading the file")
-           sender ! AnalysisError(fileRepo, file)
+           self ! AnalysisError(file)
        }
        source.close()
 
@@ -118,9 +137,44 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
            }
            FileUtils.deleteQuietly(nodeRepo.counted)
            if (sorters.isEmpty && collators.isEmpty) {
-             context.parent ! AnalysisComplete(nodeRepo.parent)
+             self ! AnalysisComplete()
+           }
+           else {
+             Repo.updateJson(fileRepo.status) {
+               current =>
+                 Json.obj(
+                   "index" -> true,
+                   "workers" -> (sorters.size + collators.size)
+                 )
+             }
            }
        }
+
+     case AnalysisError(file) =>
+       log.info(s"File error at ${fileRepo.dir.getName}")
+       FileUtils.deleteQuietly(file)
+       FileUtils.deleteQuietly(fileRepo.dir)
+       context.stop(self)
+
+     case AnalysisTreeComplete(json, digest) =>
+       Repo.updateJson(fileRepo.status) {
+         current =>
+           Json.obj(
+             "index" -> true,
+             "workers" -> (sorters.size + collators.size)
+           )
+       }
+       // todo: rename the original file to include date and digest
+       log.info(s"Tree Complete at ${fileRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
+
+     case AnalysisComplete() =>
+       log.info(s"Analysis Complete, kill: ${self.toString()}")
+       Repo.updateJson(fileRepo.status) {
+         current =>
+           Json.obj("index" -> true, "complete" -> true)
+       }
+       context.stop(self)
+
    }
 
    def writeHistograms(nodeRepo: NodeRepo, uniqueCount: Int) = {

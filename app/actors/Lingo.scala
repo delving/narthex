@@ -20,7 +20,7 @@ import java.io._
 import scala.language.postfixOps
 import play.api.libs.json._
 import java.security.MessageDigest
-import services.{NodeRepo, FileRepo}
+import services.NodeRepo
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
@@ -28,36 +28,6 @@ import services.{NodeRepo, FileRepo}
 
 object Lingo {
 
-  case class AnalyzeThese(jobs: List[(File, FileRepo)])
-
-  case class Analyze(file: File)
-
-  case class AnalysisProgress(fileRepo: FileRepo, percent: Int)
-
-  case class AnalysisTreeComplete(fileRepo: FileRepo, json: JsValue, digest: MessageDigest)
-
-  case class AnalysisError(fileRepo: FileRepo, file: File)
-
-  case class AnalysisComplete(fileRepo: FileRepo)
-
-  case class SortType(ordering: Ordering[String])
-
-  object SortType {
-    val VALUE_SORT = SortType(Ordering[String])
-    val HISTOGRAM_SORT: SortType = SortType(Ordering[String].reverse)
-  }
-
-  case class Sort(sortType: SortType)
-
-  case class Sorted(nodeRepo: NodeRepo, sortedFile: File, sortType: SortType)
-
-  case class Count()
-
-  case class Counted(nodeRepo: NodeRepo, uniqueCount: Int, sampleFiles: Seq[Int])
-
-  case class Merge(inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
-
-  case class Merged(merge: Merge, fileA: File, sortType: SortType)
 
 }
 
