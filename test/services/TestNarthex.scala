@@ -3,7 +3,6 @@ package services
 import java.io.File
 import org.apache.commons.io.FileUtils._
 import play.api.test._
-import play.api.libs.json.Json
 
 class TestNarthex extends PlaySpecification with TreeHandling {
 
@@ -66,30 +65,29 @@ class TestNarthex extends PlaySpecification with TreeHandling {
           fileRepo.dir.exists() must equalTo(true)
         }
 
-        "have status complete" in {
-          waitForStatus()
-          val status = Json.parse(readFileToString(fileRepo.status))
-          (status \ "complete").as[Boolean] must equalTo(true)
-        }
-
-        var baseXDir = new File(Repo.root, "basex")
-        var databaseDir = new File(new File(baseXDir, "data"), repo.personalRootName)
-
-        "create a basex directory when told to store records" in {
-//          baseXDir.exists() must equalTo(false)  //it's actually already there, why?
-          Repo.startBaseX()
-          baseXDir.exists() must equalTo(true)
-          databaseDir.exists() must equalTo(false)
-          fileRepo.saveRecords("/delving-sip-source/input", "/delving-sip-source/input/@id")
-          Repo.stopBaseX() // cannot put this after the following line.. why?
-          databaseDir.exists() must equalTo(true)
-        }
+//        "have status complete" in {
+//          waitForStatus()
+//          val status = Json.parse(readFileToString(fileRepo.status))
+//          (status \ "complete").as[Boolean] must equalTo(true)
+//        }
+//
+//        var baseXDir = new File(Repo.root, "basex")
+//        var databaseDir = new File(new File(baseXDir, "data"), repo.personalRootName)
+//
+//        "create a basex directory when told to store records" in {
+//          Repo.startBaseX()
+//          baseXDir.exists() must equalTo(true)
+//          databaseDir.exists() must equalTo(false)
+//          fileRepo.saveRecords("/delving-sip-source/input", "/delving-sip-source/input/@id")
+//          Repo.stopBaseX() // cannot put this after the following line.. why?
+//          databaseDir.exists() must equalTo(true)
+//        }
 
       }
 
     }
 
-    Thread.sleep(4000) // must wait until the actors have had the chance to do their work
+    Thread.sleep(2000) // must wait until the actors have had the chance to do their work
     println("sleep is done")
   }
   //
