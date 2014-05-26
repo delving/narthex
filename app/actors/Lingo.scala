@@ -14,24 +14,29 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package actors
 
 import java.io._
 import scala.language.postfixOps
 import play.api.libs.json._
 import java.security.MessageDigest
+import services.{NodeRepo, FileRepo}
 
-object ActorMessages {
+/*
+ * @author Gerald de Jong <gerald@delving.eu>
+ */
+
+object Lingo {
 
   case class AnalyzeThese(jobs: List[(File, FileRepo)])
 
-  case class Analyze(file: File, fileRepo: FileRepo)
+  case class Analyze(file: File)
 
-  case class AnalysisProgress(percent: Int, fileRepo: FileRepo)
+  case class AnalysisProgress(fileRepo: FileRepo, percent: Int)
 
   case class AnalysisTreeComplete(fileRepo: FileRepo, json: JsValue, digest: MessageDigest)
 
-  case class AnalysisError(file: File, fileRepo: FileRepo)
+  case class AnalysisError(fileRepo: FileRepo, file: File)
 
   case class AnalysisComplete(fileRepo: FileRepo)
 
@@ -42,23 +47,17 @@ object ActorMessages {
     val HISTOGRAM_SORT: SortType = SortType(Ordering[String].reverse)
   }
 
-  case class Sort(nodeRepo: NodeRepo, sortType: SortType)
+  case class Sort(sortType: SortType)
 
   case class Sorted(nodeRepo: NodeRepo, sortedFile: File, sortType: SortType)
 
-  case class Count(nodeRepo: NodeRepo)
+  case class Count()
 
   case class Counted(nodeRepo: NodeRepo, uniqueCount: Int, sampleFiles: Seq[Int])
 
-  case class Merge(nodeRepo: NodeRepo, inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
+  case class Merge(inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
 
   case class Merged(merge: Merge, fileA: File, sortType: SortType)
-
-  case class SaveRecords(fileRepo: FileRepo, recordRoot: String, uniqueId: String)
-
-  case class SaveProgress(percent: Int, fileRepo: FileRepo)
-
-  case class RecordsSaved(fileRepo: FileRepo)
 
 }
 

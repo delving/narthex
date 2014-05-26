@@ -64,23 +64,28 @@ trait RecordHandling {
             startElement = None
           }
         }
+        def findUniqueId(attrs: MetaData) = {
+          attrs.foreach {
+            attr =>
+              path.push((s"@${attr.prefixedKey}", new StringBuilder()))
+              println(s"comparing $pathString to $uniqueId")
+              if (pathString == uniqueId) uniqueIdAttribute = " id=\"" + attr.value + "\""
+              path.pop()
+          }
+        }
         path.push((tag, new StringBuilder()))
         val string = pathString
         if (depth > 0) {
           flushStartElement()
           depth += 1
           startElement = Some(startElementString(tag, attrs))
-          attrs.foreach {
-            attr =>
-              path.push((tag, new StringBuilder()))
-              if (pathString == uniqueId) uniqueIdAttribute = " id=\"" + attr.value + "\""
-              path.pop()
-          }
+          findUniqueId(attrs)
         }
         else if (string == recordRoot) {
           recordText.append(s"<narthex$ID_PLACEHOLDER$scope>\n")
           depth = 1
           startElement = Some(startElementString(tag, attrs))
+          findUniqueId(attrs)
         }
       }
 

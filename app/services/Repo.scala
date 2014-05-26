@@ -27,7 +27,7 @@ import org.apache.commons.io.FileUtils._
 import scala.Some
 import scala.collection.mutable.ArrayBuffer
 import org.basex.server.ClientSession
-import services.ActorMessages.SaveRecords
+import actors.{Saver, SaveRecords, Boss, Lingo}
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
@@ -115,7 +115,7 @@ class Repo(root: File, val email: String) {
     val dirs = files.map(file => analyzedDir(file.getName))
     val pairs = files.zip(dirs)
     val fileAnalysisDirs = pairs.map(pair => new FileRepo(this, pair._1, pair._2).mkdirs)
-    Repo.boss ! ActorMessages.AnalyzeThese(files.zip(fileAnalysisDirs))
+    Repo.boss ! Lingo.AnalyzeThese(files.zip(fileAnalysisDirs))
     files
   }
 
@@ -154,7 +154,8 @@ class FileRepo(val personalRepo: Repo, val sourceFile: File, val dir: File) {
   def root = new NodeRepo(this, dir)
 
   def saveRecords(recordRoot: String, uniqueId: String) = {
-    Repo.boss ! SaveRecords(this, recordRoot, uniqueId)
+    val saver = Akka.system.actorOf(Saver.props(this), sourceFile.getName)
+    saver ! SaveRecords(recordRoot, uniqueId)
   }
 
   def status(path: String): Option[File] = {
