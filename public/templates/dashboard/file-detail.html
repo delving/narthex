@@ -71,9 +71,11 @@
                         <li data-ng-class="{ active: activeView == 'histogram' }">
                             <a href data-ng-click="fetchHistogram()">Histogram</a>
                         </li>
-                        <!--<li data-ng-show="activeView == 'histogram' && histogramUnique">-->
-                            <!--<button style="color: #000000; background: white" data-ng-click="setUniqueIdNode(selectedNode)">Use as Unique Element</button>-->
-                        <!--</li>-->
+                        <li data-ng-show="activeView == 'histogram' && histogramUnique">
+                            <form class="navbar-form">
+                                <button class="btn btn-default" data-ng-click="setUniqueIdNode(selectedNode)"><i class="fa fa-check-circle"></i> Use as Unique Element</button>
+                            </form>
+                        </li>
                     </ul>
                     <div class="collapse navbar-collapse">
                         <ul class="nav navbar-nav navbar-right">
@@ -95,7 +97,7 @@
                     </div>
                 </div>
 
-                <div ng-show="selectedNode && !(sample || histogram)" data-scrollable id="graph-list" data-offset="315" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                <div ng-show="selectedNode && !(sample || histogram)" data-scrollable id="graph-list" data-offset="270" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <div>
                         <nvd3-pie-chart
                                 data="selectedNode.lengths"
@@ -112,7 +114,7 @@
                 </div>
 
                 <div ng-show="sample">
-                    <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="315" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                    <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="270" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <ul class="list-group">
                             <li data-ng-repeat="value in sample.sample | filter:filterText" class="list-group-item">
                                 {{ value }}
@@ -123,7 +125,7 @@
                 </div>
 
                 <div ng-show="histogram">
-                    <div class="vertical-scroll" data-scrollable id="historgram-list" data-offset="315" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                    <div class="vertical-scroll" data-scrollable id="historgram-list" data-offset="270" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <ul class="list-group">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText" class="list-group-item" ng-class-odd="'odd'" ng-class-even="'even'">
                                 <span class="badge">{{ count[0] }}</span>
