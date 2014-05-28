@@ -10,19 +10,19 @@
         <div class="file-drop" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
              ng-show="dropSupported">
             <h6>Drag and drop your xml source file into this area</h6>
-            <div class="img-holder" ng-show="uploading">
+            <div class="img-holder" data-ng-show="uploading">
                 <img ng-src="/assets/images/narthex-blue.png"/>
                 <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
                 <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
-                <i class="busy3 fa fa-gear fa-spin fa-3x"></i>
+                <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
             </div>
             <div class="img-holder" data-ng-show="!uploading">
                 <img ng-src="/assets/images/narthex-blue.png"/>
             </div>
             <div data-ng-if="percent">
-                <progressbar animate="true" value="percent" max="100" type="success">
-                    <b>{{percent}}%</b>
-                </progressbar>
+                    <progressbar class="progress-striped active" animate="true" value="percent" max="100" type="success" >
+                        <b>{{percent}}%</b>
+                    </progressbar>
             </div>
         </div>
     </div>
@@ -43,7 +43,7 @@
                         </span>
                         <span data-ng-show="file.status">
                             <span data-ng-show="!file.status.index">
-                                <progressbar animate="true" value="file.status.percent" max="100" type="success">
+                                <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
                                     <b>{{file.status.percent}}%</b>
                                 </progressbar>
                             </span>
