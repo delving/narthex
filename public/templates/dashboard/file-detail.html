@@ -18,15 +18,16 @@
                     </ul>
                 </div>
             </div>
+            <div class="panel-heading" data-ng-show="recordRootNode && uniqueIdNode">
+                <button class="btn btn-xs btn-primary center-block" data-ng-click="storeRecords()" data-ng-disabled="storingRecords">
+                    <span>Store Records in XML Database</span>
+                </button>
+            </div>
             <div class="panel-body">
                 <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="170" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <ul data-ng-controller="TreeCtrl" class="list-node">
                         <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
                     </ul>
-                    <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="storeRecords()" data-ng-show="recordRootNode && uniqueIdNode" data-ng-disabled="storingRecords">
-                        Store records
-                    </button>
-                    <!--todo: show a progress bar of the storage process-->
                 </div>
             </div>
         </div>
