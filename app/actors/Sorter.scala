@@ -19,10 +19,23 @@ package actors
 import akka.actor.{Props, ActorLogging, Actor}
 import java.io._
 import scala.language.postfixOps
-import Lingo._
 import services.NodeRepo
+import Sorter._
+import Merger._
 
 object Sorter {
+
+  case class SortType(ordering: Ordering[String])
+
+  object SortType {
+    val VALUE_SORT = SortType(Ordering[String])
+    val HISTOGRAM_SORT: SortType = SortType(Ordering[String].reverse)
+  }
+
+  case class Sort(sortType: SortType)
+
+  case class Sorted(nodeRepo: NodeRepo, sortedFile: File, sortType: SortType)
+
   def props(nodeRepo: NodeRepo) = Props(new Sorter(nodeRepo))
 }
 

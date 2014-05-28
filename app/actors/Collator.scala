@@ -18,15 +18,20 @@ package actors
 
 import akka.actor.{Props, ActorLogging, Actor}
 import services.{NodeRepo, Repo, TreeHandling}
-import actors.Lingo.{Counted, Count}
 import java.io.{FileWriter, File, FileReader, BufferedReader}
 import play.api.libs.json.Json
+import Collator._
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
 object Collator {
+
+  case class Count()
+
+  case class Counted(nodeRepo: NodeRepo, uniqueCount: Int, sampleFiles: Seq[Int])
+
   def props(nodeRepo: NodeRepo) = Props(new Collator(nodeRepo))
 }
 

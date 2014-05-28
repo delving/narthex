@@ -19,15 +19,17 @@ package services
 import java.io.{FileReader, BufferedReader, File}
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
-import akka.actor.Props
 import java.util.UUID
-import play.api.libs.json.{JsObject, JsValue, JsArray, Json}
+import play.api.libs.json.{JsValue, Json}
 import org.mindrot.jbcrypt.BCrypt
 import org.apache.commons.io.FileUtils._
-import scala.Some
 import scala.collection.mutable.ArrayBuffer
 import org.basex.server.ClientSession
-import actors.{Saver, SaveRecords, Boss, Lingo}
+import actors._
+import play.api.libs.json.JsArray
+import actors.SaveRecords
+import scala.Some
+import play.api.libs.json.JsObject
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
@@ -36,8 +38,6 @@ object Repo {
   var baseXDir = new File(root, "basex")
 
   lazy val baseX: BaseX = new BaseX("localhost", 6789, 6788, "admin", "admin", false)
-
-  lazy val boss = Akka.system.actorOf(Props[Boss], "boss")
 
   def apply(email: String) = new Repo(root, email)
 
@@ -115,7 +115,12 @@ class Repo(root: File, val email: String) {
     val dirs = files.map(file => analyzedDir(file.getName))
     val pairs = files.zip(dirs)
     val fileAnalysisDirs = pairs.map(pair => new FileRepo(this, pair._1, pair._2).mkdirs)
-    Repo.boss ! Lingo.AnalyzeThese(files.zip(fileAnalysisDirs))
+    val jobs = files.zip(fileAnalysisDirs)
+    jobs.foreach {
+      job =>
+        val analyzer = Akka.system.actorOf(Analyzer.props(job._2), job._1.getName)
+        analyzer ! Analyzer.Analyze(job._1)
+    }
     files
   }
 

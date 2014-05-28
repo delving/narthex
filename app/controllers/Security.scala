@@ -43,8 +43,8 @@ trait Security { this: Controller =>
           block(token)(email)(request).withToken(token, email)
         }
       } getOrElse {
-        Logger.info("No Token!")
-        Unauthorized(Json.obj("err" -> "No Token"))
+        Logger.info("No Token Secure!")
+        Unauthorized(Json.obj("err" -> "No Token in secure action"))
       }
     }
 
@@ -55,8 +55,8 @@ trait Security { this: Controller =>
           block(token)(email)(request)
         }
       } getOrElse {
-        Logger.info("No Token!")
-        Future.successful(Unauthorized(Json.obj("err" -> "No Token")))
+        Logger.info("No Token SecureAsync!")
+        Future.successful(Unauthorized(Json.obj("err" -> "No Token in secure async action")))
       }
     }
 

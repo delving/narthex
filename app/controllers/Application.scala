@@ -74,7 +74,7 @@ object Application extends Controller with Security {
           Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
         }
         else {
-          Unauthorized(Json.obj("problem" -> "Passwords do not match"))
+          Unauthorized(Json.obj("problem" -> "Passwords do not match")).discardingToken(TOKEN)
         }
       }
       else {
@@ -82,7 +82,7 @@ object Application extends Controller with Security {
           Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
         }
         else {
-          Unauthorized(Json.obj("problem" -> "EMail - Password combination doesn't exist"))
+          Unauthorized(Json.obj("problem" -> "EMail - Password combination doesn't exist")).discardingToken(TOKEN)
         }
       }
   }
@@ -97,7 +97,7 @@ object Application extends Controller with Security {
               Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
           }
       } getOrElse {
-        Unauthorized(Json.obj("err" -> "No Token"))
+        Unauthorized(Json.obj("err" -> "No Token during check login")).discardingToken(TOKEN)
       }
   }
 
@@ -108,7 +108,7 @@ object Application extends Controller with Security {
         case Some(token) =>
           Ok.discardingToken(token)
         case None =>
-          Unauthorized(Json.obj("err" -> "No Token"))
+          Unauthorized(Json.obj("err" -> "No Token during logout attemp"))
       }
   }
 

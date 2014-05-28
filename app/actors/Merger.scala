@@ -16,17 +16,23 @@
 
 package actors
 
-import java.io.{FileWriter, FileReader, BufferedReader}
-import actors.Lingo.{Merged, Merge}
+import java.io.{File, FileWriter, FileReader, BufferedReader}
 import akka.actor.{Props, Actor, ActorLogging}
 import org.apache.commons.io.FileUtils
 import services.NodeRepo
+import Sorter._
+import Merger._
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
 object Merger {
+
+  case class Merge(inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
+
+  case class Merged(merge: Merge, fileA: File, sortType: SortType)
+
   def props(nodeRepo: NodeRepo) = Props(new Merger(nodeRepo))
 }
 

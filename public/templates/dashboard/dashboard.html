@@ -48,7 +48,7 @@
                                 </progressbar>
                             </span>
                             <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteFile(file)" data-ng-show="file.status.complete">Delete</button>
-                            <code class="process" data-ng-show="file.status.index && !file.status.complete">Sorting and Counting</code>
+                            <code class="process" data-ng-show="file.status.index && !file.status.complete">Sorting and Counting ({{file.status.workers}} workers)</code>
                         </span>
                     </li>
                 </ul>

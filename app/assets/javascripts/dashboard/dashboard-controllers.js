@@ -226,7 +226,7 @@ define(["angular"], function () {
         $scope.storeRecords = function () {
             if (!($scope.recordRootNode && $scope.uniqueIdNode)) return;
             $scope.storingRecords = true;
-            dashboardService.storeRecords($scope.fileName, $scope.recordRootNode.path, $scope.uniqueIdNode.path).then(function(data) {
+            dashboardService.storeRecords($scope.fileName, $scope.recordRootNode.path, $scope.uniqueIdNode.path).then(function (data) {
                 console.log("seems they're storing");
             });
         };
@@ -286,6 +286,10 @@ define(["angular"], function () {
         $scope.fetchHistogram = function () {
             $scope.activeView = "histogram";
             dashboardService.histogram($scope.fileName, $scope.selectedNode.path, $scope.histogramSize).then(function (data) {
+                _.forEach(data.histogram, function (entry) {
+                    var percent = (100 * entry[0])/$scope.selectedNode.count;
+                    entry.push(percent);
+                });
                 $scope.histogram = data;
                 $scope.sample = undefined;
                 $scope.histogramUnique = data.histogram[0] && data.histogram[0][0] == 1;
