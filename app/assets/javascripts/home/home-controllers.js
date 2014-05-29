@@ -69,6 +69,25 @@ define(["angular"], function (angular) {
                 console.log("unable to logout", why);
             });
         };
+
+        $scope.trySocket = function() {
+            var url = userService.getRoomWebSocketUrl("gumby");
+            console.log("try socket url="+url);
+            var socket = new WebSocket(url);
+            socket.onopen = function(event) {
+                console.log("open", event);
+            };
+            socket.onclose = function(event) {
+                console.log("close", event);
+            };
+            socket.onmessage = function(event) {
+                console.log("message", event);
+            };
+            socket.onerror = function(event) {
+                console.log("error", event);
+            };
+            console.log("socket set up");
+        };
     };
     HeaderCtrl.$inject = ["$scope", "userService", "$location"];
 
