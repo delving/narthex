@@ -23,7 +23,7 @@ import play.api.cache.Cache
 import play.api.Play.current
 import services.Repo
 import java.io.{FileNotFoundException, FileInputStream, File}
-import play.api.libs.iteratee.Enumerator
+import play.api.libs.iteratee.{Iteratee, Enumerator}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /** Application controller, handles authentication */
@@ -111,6 +111,14 @@ object Application extends Controller with Security {
           Unauthorized(Json.obj("err" -> "No Token during logout attemp"))
       }
   }
+
+  def socket = WebSocket.using[String] {
+    request =>
+      val in = Iteratee.consume[String]()
+      val out = Enumerator("Get this!", "You are kidding me!").andThen(Enumerator.eof)
+      (in, out)
+  }
+
 
   def OkFile(file: File, attempt: Int = 0): SimpleResult = {
     try {
