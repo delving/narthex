@@ -49,7 +49,7 @@ define(["angular"], function (angular) {
     HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService"];
 
     /** Controls the header */
-    var HeaderCtrl = function ($scope, userService, $location) {
+    var HeaderCtrl = function ($scope, userService, $location, $timeout) {
         // Wrap the current user from the service in a watch expression
         $scope.$watch(
             function () {
@@ -81,15 +81,23 @@ define(["angular"], function (angular) {
                 console.log("close", event);
             };
             socket.onmessage = function(event) {
-                console.log("message", event);
+                var data = JSON.parse(event.data);
+                console.log("message", data);
+                if (data.kind == "connected") {
+                    console.log("connected, sending hello");
+                    socket.send(JSON.stringify({ "msg": "hello!" }));
+                    $timeout(function() {
+                        console.log("closing");
+                        socket.close();
+                    }, 3000);
+                }
             };
             socket.onerror = function(event) {
                 console.log("error", event);
             };
-            console.log("socket set up");
         };
     };
-    HeaderCtrl.$inject = ["$scope", "userService", "$location"];
+    HeaderCtrl.$inject = ["$scope", "userService", "$location", "$timeout"];
 
     /** Controls the footer */
     var FooterCtrl = function (/*$scope*/) {

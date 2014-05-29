@@ -23,7 +23,7 @@ import play.api.cache.Cache
 import play.api.Play.current
 import services.Repo
 import java.io.{FileNotFoundException, FileInputStream, File}
-import play.api.libs.iteratee.{Iteratee, Enumerator}
+import play.api.libs.iteratee.Enumerator
 import scala.concurrent.ExecutionContext.Implicits.global
 import actors.{Broadcast, Received, Room}
 import akka.actor.Actor
@@ -49,7 +49,6 @@ object Application extends Controller with Security {
           routes.javascript.Application.login,
           routes.javascript.Application.checkLogin,
           routes.javascript.Application.logout,
-          routes.javascript.Application.socket,
           routes.javascript.Application.roomConnect,
           routes.javascript.Dashboard.list,
           routes.javascript.Dashboard.work,
@@ -118,13 +117,6 @@ object Application extends Controller with Security {
       }
   }
 
-  def socket = WebSocket.using[String] {
-    request =>
-      val in = Iteratee.consume[String]()
-      val out = Enumerator("Get this!", "You are kidding me!").andThen(Enumerator.eof)
-      (in, out)
-  }
-
   class Receiver extends Actor {
     def receive = {
       case Received(from, js: JsValue) =>
@@ -132,12 +124,12 @@ object Application extends Controller with Security {
           case None => play.Logger.error("couldn't msg in websocket event")
           case Some(s) =>
             play.Logger.info(s"received $s")
-            context.parent ! Broadcast(from, Json.obj("msg" -> s))
+            context.parent ! Broadcast(from, Json.obj("msg" -> s"$from sent Broadcast($s)"))
         }
     }
   }
 
-  def roomConnect(id: String) = room.websocket[Receiver, JsValue](id)
+  def roomConnect(id: String): WebSocket[JsValue] = room.websocket[Receiver, JsValue](id)
 
   def OkFile(file: File, attempt: Int = 0): SimpleResult = {
     try {
