@@ -16,6 +16,7 @@ GET         /checkLogin                                          controllers.App
 POST        /login                                               controllers.Application.login
 GET         /logout                                              controllers.Application.logout
 GET         /socket                                              controllers.Application.socket
+GET         /room/:id                                            controllers.Application.roomConnect(id)
 
 # File Handling
 POST        /dashboard/upload                                    controllers.Dashboard.upload

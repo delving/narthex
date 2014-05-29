@@ -25,9 +25,13 @@ import services.Repo
 import java.io.{FileNotFoundException, FileInputStream, File}
 import play.api.libs.iteratee.{Iteratee, Enumerator}
 import scala.concurrent.ExecutionContext.Implicits.global
+import actors.{Broadcast, Received, Room}
+import akka.actor.Actor
 
 /** Application controller, handles authentication */
 object Application extends Controller with Security {
+
+  val room = Room()
 
   /** Serves the index page, see views/index.scala.html */
   def index = Action {
@@ -45,6 +49,8 @@ object Application extends Controller with Security {
           routes.javascript.Application.login,
           routes.javascript.Application.checkLogin,
           routes.javascript.Application.logout,
+          routes.javascript.Application.socket,
+          routes.javascript.Application.roomConnect,
           routes.javascript.Dashboard.list,
           routes.javascript.Dashboard.work,
           routes.javascript.Dashboard.status,
@@ -119,6 +125,19 @@ object Application extends Controller with Security {
       (in, out)
   }
 
+  class Receiver extends Actor {
+    def receive = {
+      case Received(from, js: JsValue) =>
+        (js \ "msg").asOpt[String] match {
+          case None => play.Logger.error("couldn't msg in websocket event")
+          case Some(s) =>
+            play.Logger.info(s"received $s")
+            context.parent ! Broadcast(from, Json.obj("msg" -> s))
+        }
+    }
+  }
+
+  def roomConnect(id: String) = room.websocket[Receiver, JsValue](id)
 
   def OkFile(file: File, attempt: Int = 0): SimpleResult = {
     try {

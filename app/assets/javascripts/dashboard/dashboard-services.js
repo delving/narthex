@@ -19,109 +19,112 @@ define(["angular", "common"], function (angular) {
 
     var mod = angular.module("dashboard.services", ["narthex.common"]);
 
-    mod.service("dashboardService", ["$http", "$q", "playRoutes", "$location", function ($http, $q, playRoutes, $location) {
-        var dash = playRoutes.controllers.Dashboard;
+    mod.service("dashboardService", [
+        "$http", "$q", "playRoutes", "$location",
+        function ($http, $q, playRoutes, $location) {
+            var dash = playRoutes.controllers.Dashboard;
 
-        var rejection = function (problem) {
-            if (problem.status == 401) { // unauthorized
-                $location.path('/');
-            }
-            else {
-                console.log('why', problem);
-                if (problem.data.message) {
-                    alert("Processing problem " + problem.status + " (" + problem.data.message + ")");
+            var rejection = function (problem) {
+                if (problem.status == 401) { // unauthorized
+                    $location.path('/');
                 }
                 else {
-                    alert("Network problem " + problem.status);
-                }
-            }
-        };
-
-        return {
-            list: function () {
-                return dash.list().get().then(
-                    function (response) {
-                        return response.data;
-                    },
-                    rejection
-                );
-            },
-            status: function (fileName) {
-                return dash.status(fileName).get().then(
-                    function (response) {
-                        return response.data;
+                    console.log('why', problem);
+                    if (problem.data.message) {
+                        alert("Processing problem " + problem.status + " (" + problem.data.message + ")");
                     }
-                );
-            },
-            zap: function (fileName) {
-                return dash.zap(fileName).get().then(
-                    function (response) {
-                        return response.data;
-                    },
-                    rejection
-                );
-            },
-            index: function (fileName) {
-                return dash.index(fileName).get().then(
-                    function (response) {
-                        return response.data;
-                    },
-                    rejection
-                );
-            },
-            nodeStatus: function (fileName, path) {
-                return dash.nodeStatus(fileName, path).get().then(
-                    function (response) {
-                        return response.data;
-                    },
-                    rejection
-                );
-            },
-            sample: function (fileName, path, size) {
-                return dash.sample(fileName, path, size).get().then(
-                    function (response) {
-                        return response.data;
-                    },
-                    rejection
-                );
-            },
-            histogram: function (fileName, path, size) {
-                return dash.histogram(fileName, path, size).get().then(
-                    function (response) {
-                        return response.data;
-                    },
-                    rejection
-                );
-            },
-            uniqueText: function (fileName, path) {
-                return dash.uniqueText(fileName, path).get().then(
-                    function (response) {
-                        return response.data;
-                    },
-                    rejection);
-            },
-            histogramText: function (fileName, path) {
-                return dash.histogramText(fileName, path, size).get().then(
-                    function (response) {
-                        return response.data;
-                    },
-                    rejection
-                );
-            },
-            storeRecords: function (fileName, recordRoot, uniqueId) {
-                var body = {
-                    recordRoot: recordRoot,
-                    uniqueId: uniqueId
-                };
-                return dash.storeRecords(fileName).post(body).then(
-                    function (response) {
-                        return response.data;
-                    },
-                    rejection
-                );
-            }
-        };
-    }]);
+                    else {
+                        alert("Network problem " + problem.status);
+                    }
+                }
+            };
+
+            return {
+                list: function () {
+                    return dash.list().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                status: function (fileName) {
+                    return dash.status(fileName).get().then(
+                        function (response) {
+                            return response.data;
+                        }
+                    );
+                },
+                zap: function (fileName) {
+                    return dash.zap(fileName).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                index: function (fileName) {
+                    return dash.index(fileName).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                nodeStatus: function (fileName, path) {
+                    return dash.nodeStatus(fileName, path).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                sample: function (fileName, path, size) {
+                    return dash.sample(fileName, path, size).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                histogram: function (fileName, path, size) {
+                    return dash.histogram(fileName, path, size).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                uniqueText: function (fileName, path) {
+                    return dash.uniqueText(fileName, path).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection);
+                },
+                histogramText: function (fileName, path) {
+                    return dash.histogramText(fileName, path, size).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                storeRecords: function (fileName, recordRoot, uniqueId) {
+                    var body = {
+                        recordRoot: recordRoot,
+                        uniqueId: uniqueId
+                    };
+                    return dash.storeRecords(fileName).post(body).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                }
+            };
+        }
+    ]);
 
     /**
      * If the current route does not resolve, go back to the start page.

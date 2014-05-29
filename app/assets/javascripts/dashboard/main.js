@@ -8,8 +8,7 @@ define(
         "angular",
         "./dashboard-controllers",
         "./dashboard-routes",
-        "./dashboard-services",
-        "../common/directives/scrollable"
+        "./dashboard-services"
     ],
     function (angular, controllers) {
         "use strict";
@@ -20,7 +19,7 @@ define(
                 "ngRoute",
                 "dashboard.routes",
                 "dashboard.services",
-                "common.directives.scrollable"
+                "narthex.common"
             ]
         );
 
