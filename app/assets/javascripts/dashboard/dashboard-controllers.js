@@ -160,6 +160,17 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
+        function sortKids(node) {
+            if (node.kids.length) {
+                node.kids = _.sortBy(node.kids, function(kid) {
+                    return kid.tag.toLowerCase();
+                });
+                for (var index = 0; index < node.kids.length; index++) {
+                    sortKids(node.kids[index]);
+                }
+            }
+        }
+
         function selectFirstWithValues(node) {
             if (node.lengths.length) {
                 return node;
@@ -201,6 +212,7 @@ define(["angular"], function () {
         };
 
         dashboardService.index($scope.fileName).then(function (data) {
+            sortKids(data);
             $scope.tree = data;
             var first = selectFirstWithValues(data);
             if (first) $scope.selectNode(first);
