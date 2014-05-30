@@ -25,7 +25,8 @@ import services.Repo
 import java.io.{FileNotFoundException, FileInputStream, File}
 import play.api.libs.iteratee.Enumerator
 import scala.concurrent.ExecutionContext.Implicits.global
-import actors.{Broadcast, Received, Room}
+import actors.RoomChatter._
+import actors.Room
 import akka.actor.Actor
 
 /** Application controller, handles authentication */
@@ -113,7 +114,7 @@ object Application extends Controller with Security {
         case Some(token) =>
           Ok.discardingToken(token)
         case None =>
-          Unauthorized(Json.obj("err" -> "No Token during logout attemp"))
+          Unauthorized(Json.obj("err" -> "No Token during logout attempt"))
       }
   }
 
@@ -121,7 +122,7 @@ object Application extends Controller with Security {
     def receive = {
       case Received(from, js: JsValue) =>
         (js \ "msg").asOpt[String] match {
-          case None => play.Logger.error("couldn't msg in websocket event")
+          case None => play.Logger.error("couldn't find msg in websocket event")
           case Some(s) =>
             play.Logger.info(s"received $s")
             context.parent ! Broadcast(from, Json.obj("msg" -> s"$from sent Broadcast($s)"))
@@ -129,7 +130,7 @@ object Application extends Controller with Security {
     }
   }
 
-  def roomConnect(id: String): WebSocket[JsValue] = room.websocket[Receiver, JsValue](id)
+  def roomConnect(id: String): WebSocket[JsValue] = room.member[Receiver, JsValue](id)
 
   def OkFile(file: File, attempt: Int = 0): SimpleResult = {
     try {

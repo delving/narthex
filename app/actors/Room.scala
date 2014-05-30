@@ -34,60 +34,65 @@ import play.api.libs.iteratee._
 import play.api.libs.json._
 import play.api.libs.concurrent._
 import play.api.mvc.WebSocket.FrameFormatter
+import scala.reflect.ClassTag
+import RoomChatter._
 
 // Implicits
 
 import play.api.libs.concurrent.Execution.Implicits._
 
-sealed trait Message
+object RoomChatter {
 
-// public receiver messages
-case class Received[A](from: String, payload: A) extends Message
+  sealed trait Message
 
-// public sender messages
-/** Sender actor is initialized by Supervisor */
-case class Init(id: String, receiverActor: ActorRef)
+  // public receiver messages
+  case class Received[A](from: String, payload: A) extends Message
 
-/** Sends a message from a member to another member */
-case class Send[A](from: String, to: String, payload: A) extends Message
+  // public sender messages
+  /** Sender actor is initialized by Supervisor */
+  case class Init(id: String, receiverActor: ActorRef)
 
-/** Broadcasts a message from a member */
-case class Broadcast[A](from: String, payload: A) extends Message
+  /** Sends a message from a member to another member */
+  case class Send[A](from: String, to: String, payload: A) extends Message
 
-/** member with ID has connected */
-case class Connected(id: String) extends Message
+  /** Broadcasts a message from a member */
+  case class Broadcast[A](from: String, payload: A) extends Message
 
-/** member with ID has disconnected */
-case class Disconnected(id: String) extends Message
+  /** member with ID has connected */
+  case class Connected(id: String) extends Message
 
-// Administration messages...
-// They should be used only when ocerriding default mechanisms
+  /** member with ID has disconnected */
+  case class Disconnected(id: String) extends Message
 
-// Websocket specific
-case class ConnectWS[A](id: String, receiverProps: Props, senderProps: Props) extends Message
+  // Administration messages...
+  // They should be used only when ocerriding default mechanisms
 
-case class ConnectedWS[A](id: String, receiver: ActorRef, enumerator: Enumerator[A]) extends Message
+  // Websocket specific
+  case class ConnectWS[A](id: String, receiverProps: Props, senderProps: Props) extends Message
 
-// Bot specific
-case class ConnectBot(id: String, receiverProps: Props, senderProps: Props) extends Message
+  case class ConnectedWS[A](id: String, receiver: ActorRef, enumerator: Enumerator[A]) extends Message
 
-case class ConnectedBot[A](id: String, member: Member) extends Message
+  // Bot specific
+  case class ConnectBot(id: String, receiverProps: Props, senderProps: Props) extends Message
 
-case class BroadcastMessage(payload: Message) extends Message
+  case class ConnectedBot[A](id: String, member: Member) extends Message
 
-case class Forbidden(id: String, err: String) extends Message
+  case class BroadcastMessage(payload: Message) extends Message
 
-// Members
-case class Member(id: String, receiver: ActorRef, sender: ActorRef) extends Message
+  case class Forbidden(id: String, err: String) extends Message
 
-case object ListMemberIds extends Message
+  // Members
+  case class Member(id: String, receiver: ActorRef, sender: ActorRef) extends Message
 
-case class MemberIds(ids: Seq[String]) extends Message
+  case object ListMemberIds extends Message
 
-case class GetMember(id: String) extends Message
+  case class MemberIds(ids: Seq[String]) extends Message
 
-case class Unknown(id: String) extends Message
+  case class GetMember(id: String) extends Message
 
+  case class Unknown(id: String) extends Message
+  
+}
 
 /** Typeclass to format administration messages according to your payload type:
   * - connected
@@ -133,26 +138,24 @@ class Room(supervisorProps: Props)(implicit app: Application) {
 
   lazy val supervisor = Akka.system.actorOf(supervisorProps)
 
-  def websocket[Receiver <: Actor : scala.reflect.ClassTag, Payload](id: String)(
-    implicit frameFormatter: FrameFormatter[Payload],
-    msgFormatter: AdminMsgFormatter[Payload]
-    ): WebSocket[Payload] = websocket[Payload]((h: RequestHeader) => id, Props[Receiver])
+  def member[Receiver <: Actor : ClassTag, Payload](id: String)(
+    implicit frameFormatter: FrameFormatter[Payload], msgFormatter: AdminMsgFormatter[Payload]
+    ): WebSocket[Payload] = member[Payload]((h: RequestHeader) => id, Props[Receiver])
 
-  def websocket[Receiver <: Actor : scala.reflect.ClassTag, Payload](f: RequestHeader => String)(
-    implicit frameFormatter: FrameFormatter[Payload],
-    msgFormatter: AdminMsgFormatter[Payload]
-    ): WebSocket[Payload] = websocket[Payload](f, Props[Receiver])
+  def member[Receiver <: Actor : ClassTag, Payload](f: RequestHeader => String)(
+    implicit frameFormatter: FrameFormatter[Payload], msgFormatter: AdminMsgFormatter[Payload]
+    ): WebSocket[Payload] = member[Payload](f, Props[Receiver])
 
-  def websocket[Payload](f: RequestHeader => String, receiverProps: Props)(
+  def member[Payload](f: RequestHeader => String, receiverProps: Props)(
     implicit frameFormatter: FrameFormatter[Payload],
     msgFormatter: AdminMsgFormatter[Payload]
     ): WebSocket[Payload] = {
 
     val senderProps = Props(classOf[WebSocketSender[Payload]], msgFormatter)
-    websocket[Payload](f, receiverProps, senderProps)
+    member[Payload](f, receiverProps, senderProps)
   }
 
-  def websocket[Payload](f: RequestHeader => String, receiverProps: Props, senderProps: Props)(
+  def member[Payload](f: RequestHeader => String, receiverProps: Props, senderProps: Props)(
     implicit frameFormatter: FrameFormatter[Payload],
     msgFormatter: AdminMsgFormatter[Payload]
     ): WebSocket[Payload] = {
@@ -190,12 +193,12 @@ class Room(supervisorProps: Props)(implicit app: Application) {
   def bot[Payload](id: String)(
     implicit msgFormatter: AdminMsgFormatter[Payload]
     ): Future[Member] =
-    bot(id, Props[BotReceiver[Payload]])
+    bot(id, Props[DefaultBotReceiver[Payload]])
 
   def bot[Payload](id: String, senderProps: Props)(
     implicit msgFormatter: AdminMsgFormatter[Payload]
     ): Future[Member] = {
-    val receiverProps = Props(classOf[BotReceiver[Payload]], msgFormatter)
+    val receiverProps = Props(classOf[DefaultBotReceiver[Payload]], msgFormatter)
     bot(id, receiverProps, senderProps)
   }
 
@@ -209,7 +212,6 @@ class Room(supervisorProps: Props)(implicit app: Application) {
 
   def members: Future[Seq[String]] = {
     implicit val timeout = Timeout(1 second)
-
     (supervisor ? ListMemberIds).map {
       case MemberIds(ids) => ids
     }
@@ -217,12 +219,10 @@ class Room(supervisorProps: Props)(implicit app: Application) {
 
   def getMember(id: String): Future[Member] = {
     implicit val timeout = Timeout(1 second)
-
     (supervisor ? GetMember(id)).map {
       case m: Member => m
       case Unknown(unknonwnId) => throw new RuntimeException(s"unknown $unknonwnId")
     }
-
   }
 
   def broadcast[Payload](from: String, payload: Payload) = supervisor ! Broadcast(from, payload)
@@ -255,7 +255,6 @@ class WebSocketSender[Payload](implicit msgFormatter: AdminMsgFormatter[Payload]
       val me = self
       val enumerator = Concurrent.unicast[Payload] { c =>
         channel = Some(c)
-
         me ! Connected(id)
       }
       sender ! ConnectedWS[Payload](id, receiverActor, enumerator)
@@ -279,25 +278,20 @@ class WebSocketSender[Payload](implicit msgFormatter: AdminMsgFormatter[Payload]
 }
 
 /** The default actor sender for Bots */
-class BotSender[Payload](implicit msgFormatter: AdminMsgFormatter[Payload]) extends Actor {
-
+class DefaultBotSender[Payload](implicit msgFormatter: AdminMsgFormatter[Payload]) extends Actor {
   def receive = {
     case s =>
       play.Logger.info(s"Bot should have sent $s")
-
   }
-
 }
 
 /** The default actor receiver for Bots */
-class BotReceiver[Payload] extends Actor {
-
+class DefaultBotReceiver[Payload] extends Actor {
   def receive = {
     case r: Received[Payload] =>
       play.Logger.info(s"Bot ${r.from} broadcasting ${r.payload}")
       context.parent ! Broadcast[Payload](r.from, r.payload)
   }
-
 }
 
 /** The supervisor managing all members */
@@ -311,44 +305,39 @@ class Supervisor extends Actor {
         implicit val timeout = Timeout(1 second)
         val receiveActor = context.actorOf(receiverProps, id + "-receiver")
         val sendActor = context.actorOf(senderProps, id + "-sender")
-
-        val c = (sendActor ? Init(id, receiveActor)).map {
-          case c: ConnectedWS[_] =>
+        val futureConnected: Future[ConnectedWS[_]] = (sendActor ? Init(id, receiveActor)).map {
+          case connected: ConnectedWS[_] =>
             play.Logger.debug(s"Connected Member with ID:$id")
             members = members + (id -> Member(id, receiveActor, sendActor))
-            c
+            connected
         }
-
-        c pipeTo sender
+        futureConnected.pipeTo(sender)
       }
 
     case ConnectBot(id, receiverProps, senderProps) =>
-      if (members.contains(id)) sender ! Forbidden(id, "id already connected")
+      if (members.contains(id))
+        sender ! Forbidden(id, "id already connected")
       else {
         val receiveActor = context.actorOf(receiverProps, id + "-receiver")
         val sendActor = context.actorOf(senderProps, id + "-sender")
         play.Logger.debug(s"Connected Bot with ID:$id")
         members = members + (id -> Member(id, receiveActor, sendActor))
-
         self ! Connected(id)
-
         sender ! ConnectedBot(id, Member(id, receiveActor, sendActor))
       }
 
     case s: Send[_] =>
-      members.get(s.to).foreach { m => m.sender forward s}
+      members.get(s.to).foreach { m => m.sender.forward(s)}
 
     case b: Broadcast[_] =>
       members.foreach {
         case (id, m) => m.sender forward b
-
         case _ => ()
       }
 
     case b: BroadcastMessage =>
       members.foreach {
-        case (id, m) => m.sender forward b.payload
-
+        case (id, m) => m.sender.forward(b.payload)
         case _ => ()
       }
 
