@@ -68,6 +68,12 @@ A field identified to contain a URL to a digital object could have an "agent" at
 
 There may be hundreds of different datasets in Narthex and each one could have some of these agents attached to them.  All data owners could be assured that their links are intact.  It would also be possible to have Narthex agents slowly traverse a list of URLs (avoiding server crashes) and fetch all of the digital objects into a local cache.
 
+### Incremental Update Buffering
+
+The capability of a data provider to deliver only changed records from their data is not always present, in which case the best available way to access their data is in the form of a complete dump of everything.  At the same time, there are a number of motivations for only revealing changed records rather than all records, the most straightforward being that there is less work to do.  For example, in an index only the deleted records need be removed and the new ones added, which is much faster than deleting an entire (some are large!) collection from an index and then reindexing the whole thing.
+
+This problem could be solved for the time being with Narthex, if it were set up to store a [hash value](http://en.wikipedia.org/wiki/Hash_function) which freezes the content of each record individually.  It would then be possible to periodically upload entire dumps of a dataset, and have Narthex detect which records have changed and which have not, so that any other machine fetching data from Narthex could receive only the changed records rather than all of them.  With "procession",  Narthex plays the role of buffer ensuring that other systems get the incremental changes they need and compensating for data providers not yet able to deliver incremental changes from their collection registration systems.
+
 ### Terminology Mapping
 
 When Narthex has perform its analysis, the fields utilizing a limited (presumably somewhat controlled) vocabulary will be revealed.  During integration with other datasets, it may be necessary to translate these (perhaps local) vocabulary terms into choices from a shared terminology resource (thesaurus).  With the lists of values in view, it would make sense to extend the Narthex user interface to make it possible for the "translation dictionaries" to be built interactively and stored.
