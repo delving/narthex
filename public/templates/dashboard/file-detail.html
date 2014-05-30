@@ -92,7 +92,7 @@
                         </ul>
                         <form class="navbar-form navbar-right" role="search">
                             <div class="form-group">
-                                <input type="text" class="form-control" placeholder="Filter" ng-model="filterTyped">
+                                <input type="text" class="form-control" placeholder="Filter" ng-model="filterTyped">&nbsp;
                             </div>
                         </form>
                     </div>
@@ -128,7 +128,7 @@
                 <div ng-show="histogram">
                     <div class="vertical-scroll" data-scrollable id="historgram-list" data-offset="270" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <ul class="list-group">
-                            <li data-ng-repeat="count in histogram.histogram | filter:filterText" class="list-group-item" ng-class-odd="'odd'" ng-class-even="'even'">
+                            <li data-ng-repeat="count in histogram.histogram | filter:filterText" class="list-group-item">
                                 <span>{{ count[1] }}</span>
                                 <span class="badge">{{ count[0] }} <span class="small">({{ count[2] | number:0 }}%)</span></span>
                             </li>
