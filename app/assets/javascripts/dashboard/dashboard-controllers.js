@@ -36,7 +36,7 @@ define(["angular"], function () {
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
-            if ($files.length) {
+            if ($files.length && !$scope.uploading) {
                 var file = $files[0];
                 $scope.uploading = true;
                 $scope.upload = $upload.upload(
@@ -59,10 +59,14 @@ define(["angular"], function () {
                         fetchFileList();
                     }
                 ).error(
-                    function (data) {
+                    function (data, status, headers, config) {
                         $scope.uploading = false;
                         $scope.percent = null;
-                        alert(data.problem);
+                        console.log("Failure during upload: data", data);
+                        console.log("Failure during upload: status", status);
+                        console.log("Failure during upload: headers", headers);
+                        console.log("Failure during upload: config", config);
+                        alert(data);
                     }
                 );
             }
