@@ -20,7 +20,7 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
-    var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout) {
+    var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout, Pusher) {
 
         $scope.user = user;
         $scope.uploading = false;
@@ -128,7 +128,7 @@ define(["angular"], function () {
     };
 
     DashboardCtrl.$inject = [
-        "$scope", "user", "dashboardService", "fileUpload", "$location", "$upload", "$timeout"
+        "$scope", "user", "dashboardService", "fileUpload", "$location", "$upload", "$timeout", "Pusher"
     ];
 
     String.prototype.hashCode = function () {

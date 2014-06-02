@@ -35,6 +35,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "angular-file-upload" % "1.3.1-1",
   "org.webjars" % "angular-ui-bootstrap" % "0.11.0-2",
   "org.mindrot" % "jbcrypt" % "0.3m",
+  "org.webjars" % "angular-pusher" % "0.0.8",
   "org.scalatest" % "scalatest_2.10" % "2.1.3" % "test",
   "org.scalautils" % "scalautils_2.10" % "2.1.3",
 //  "com.typesafe.akka" % "akka-testkit_2.10" % "2.3.2" % "test",
