@@ -18,7 +18,7 @@ import play.Project._
 
 name := """narthex"""
 
-val versionString = "0.6.3"
+val versionString = "0.6.4"
 
 version := versionString
 
@@ -43,6 +43,7 @@ libraryDependencies ++= Seq(
   "org.basex" % "basex" % "7.3.1",
 //  "org.webjars" % "cryptojs" % "3.1.2",
 //  "org.reactivemongo" %% "reactivemongo" % "0.10.0",
+  "com.clever-age" % "play2-elasticsearch" % "1.1.0",
   cache
 )
 
