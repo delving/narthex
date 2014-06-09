@@ -31,7 +31,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
   def receive = {
 
     case SaveRecords(recordRoot, uniqueId, collection) =>
-      fileRepo.personalRepo.withBaseX {
+      fileRepo.personalRepo.createDatabase {
         session =>
           val parser = new RecordParser(recordRoot, uniqueId)
           val source = FileHandling.source(fileRepo.sourceFile)
@@ -51,11 +51,11 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
           self ! RecordsSaved()
       }
 
-    case SaveProgress(count) =>
-    // todo: record progress in an asset
+    case SaveProgress(percent) =>
+      Logger.info(s"Save progress $percent%")
 
     case RecordsSaved() =>
-      // todo: save the fact that it is finished
+      Logger.info(s"Save complete")
       context.stop(self)
 
   }

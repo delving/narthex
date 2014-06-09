@@ -46,9 +46,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging with Tree
        val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
 
        def createSampleFile(randomSample: RandomSample, sampleFile: File) = {
-         Repo.updateJson(sampleFile) {
-           current => Json.obj("sample" -> randomSample.values)
-         }
+         Repo.createJson(sampleFile, Json.obj("sample" -> randomSample.values))
        }
 
        def lineOption = {

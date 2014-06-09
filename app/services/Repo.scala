@@ -57,6 +57,10 @@ object Repo {
     !SUFFIXES.filter(suffix => fileName.endsWith(suffix)).isEmpty
   }
 
+  def createJson(file: File, content: JsObject) = {
+    writeStringToFile(file, Json.prettyPrint(content), "UTF-8")
+  }
+
   def updateJson(file: File)(xform: JsValue => JsObject) = {
     if (file.exists()) {
       val value = Json.parse(readFileToString(file))
@@ -108,10 +112,16 @@ class Repo(root: File, val email: String) {
 
   def uploadedFile(fileName: String) = {
     val suffix = Repo.getSuffix(fileName)
+
     if (suffix.isEmpty) {
-      var matchingFiles = uploaded.listFiles().filter(file => file.getName.startsWith(fileName))
-      if (matchingFiles.isEmpty) throw new RuntimeException(s"No file matching $fileName")
-      matchingFiles.head
+      val fileNameDot = s"$fileName."
+      var matchingFiles = uploaded.listFiles().filter(file => file.getName.startsWith(fileNameDot))
+      if (matchingFiles.isEmpty) {
+        new File(uploaded, "nonexistent")
+      }
+      else {
+        matchingFiles.head
+      }
     }
     else {
       new File(uploaded, fileName)
@@ -142,9 +152,8 @@ class Repo(root: File, val email: String) {
 
   def FileRepo(fileName: String) = new FileRepo(this, Repo.stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
 
-  def withBaseX[T](block: ClientSession => T): T = {
-    Repo.baseX.createDatabase(personalRootName) // todo: creating brute force for now
-    //    Repository.baseX.openDatabase(personalRootName) todo: open if it's there, otherwise create?
+  def createDatabase[T](block: ClientSession => T): T = {
+    Repo.baseX.createDatabase(personalRootName)
     Repo.baseX.withSession(personalRootName)(block)
   }
 
@@ -161,7 +170,7 @@ class Repo(root: File, val email: String) {
 
 }
 
-class FileRepo(val personalRepo: Repo, val name:String, val sourceFile: File, val dir: File) {
+class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
 
   def mkdirs = {
     dir.mkdirs()
@@ -171,6 +180,8 @@ class FileRepo(val personalRepo: Repo, val name:String, val sourceFile: File, va
   def index = new File(dir, "index.json")
 
   def status = new File(dir, "status.json")
+
+  def setStatus(content: JsObject) = Repo.createJson(status, content)
 
   def root = new NodeRepo(this, dir)
 
@@ -248,6 +259,8 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
 
   def status = f("status.json")
 
+  def setStatus(content: JsObject) = Repo.createJson(status, content)
+
   def values = f("values.txt")
 
   def tempSort = f(s"sorting-${UUID.randomUUID()}.txt")
@@ -279,15 +292,13 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
     }
 
     def createFile(maximum: Int, entries: ArrayBuffer[JsArray], histogramFile: File) = {
-      Repo.updateJson(histogramFile) {
-        current => Json.obj(
-          "uniqueCount" -> uniqueCount,
-          "entries" -> entries.size,
-          "maximum" -> maximum,
-          "complete" -> (entries.size == uniqueCount),
-          "histogram" -> entries
-        )
-      }
+      Repo.createJson(histogramFile, Json.obj(
+        "uniqueCount" -> uniqueCount,
+        "entries" -> entries.size,
+        "maximum" -> maximum,
+        "complete" -> (entries.size == uniqueCount),
+        "histogram" -> entries
+      ))
     }
 
     var activeCounters = histogramJson.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
