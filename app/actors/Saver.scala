@@ -20,6 +20,7 @@ import akka.actor.{Props, ActorLogging, Actor}
 import scala.language.postfixOps
 import play.Logger
 import services.{FileRepo, RecordHandling, FileHandling}
+import java.io.ByteArrayInputStream
 
 object Saver {
   def props(fileRepo: FileRepo) = Props(new Saver(fileRepo))
@@ -29,15 +30,26 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
 
   def receive = {
 
-    case SaveRecords(recordRoot, uniqueId) =>
-      val parser = new RecordParser(recordRoot, uniqueId)
-      val source = FileHandling.source(fileRepo.sourceFile)
-      val totalRecords = 100 // todo: get this from the JSON file
-      def sendProgress(percent: Int) = self ! SaveProgress(percent)
-      def receiveRecord(record: String) = Logger.info("\n" + record)
-      parser.parse(source, receiveRecord, totalRecords, sendProgress)
-      source.close()
-      self ! RecordsSaved()
+    case SaveRecords(recordRoot, uniqueId, collection) =>
+      fileRepo.personalRepo.withBaseX {
+        session =>
+          val parser = new RecordParser(recordRoot, uniqueId)
+          val source = FileHandling.source(fileRepo.sourceFile)
+          val totalRecords = 100 // todo: get this from the JSON file
+
+          def sendProgress(percent: Int) = self ! SaveProgress(percent)
+
+          def receiveRecord(record: String) = {
+            val hash = hashString(record)
+            val inputStream = new ByteArrayInputStream(record.getBytes("UTF-8"))
+            session.add(s"$collection/$hash.xml", inputStream)
+            Logger.info(s"stored $hash")
+          }
+
+          parser.parse(source, receiveRecord, totalRecords, sendProgress)
+          source.close()
+          self ! RecordsSaved()
+      }
 
     case SaveProgress(count) =>
     // todo: record progress in an asset
@@ -49,7 +61,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
   }
 }
 
-case class SaveRecords(recordRoot: String, uniqueId: String)
+case class SaveRecords(recordRoot: String, uniqueId: String, collection: String)
 
 case class SaveProgress(percent: Int)
 

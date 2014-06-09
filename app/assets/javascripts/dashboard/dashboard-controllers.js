@@ -240,12 +240,11 @@ define(["angular"], function () {
         };
 
         $scope.storeRecords = function () {
-            alert("Not implemented yet");
-//            if (!($scope.recordRootNode && $scope.uniqueIdNode)) return;
-//            $scope.storingRecords = true;
-//            dashboardService.storeRecords($scope.fileName, $scope.recordRootNode.path, $scope.uniqueIdNode.path).then(function (data) {
-//                console.log("seems they're storing");
-//            });
+            if (!($scope.recordRootNode && $scope.uniqueIdNode)) return;
+            $scope.storingRecords = true;
+            dashboardService.storeRecords($scope.fileName, $scope.recordRootNode.path, $scope.uniqueIdNode.path).then(function (data) {
+                console.log("seems they're storing");
+            });
         };
 
         $scope.fetchLengths = function () {

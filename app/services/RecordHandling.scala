@@ -21,6 +21,7 @@ import scala.io.Source
 import scala.collection.mutable
 import play.Logger
 import scala.xml.{MetaData, NamespaceBinding}
+import java.security.MessageDigest
 
 trait RecordHandling {
   val ID_PLACEHOLDER = "__id__"
@@ -68,7 +69,6 @@ trait RecordHandling {
           attrs.foreach {
             attr =>
               path.push((s"@${attr.prefixedKey}", new StringBuilder()))
-              println(s"comparing $pathString to $uniqueId")
               if (pathString == uniqueId) uniqueIdAttribute = " id=\"" + attr.value + "\""
               path.pop()
           }
@@ -163,6 +163,35 @@ trait RecordHandling {
       }
       s"<$tag$attrString>"
     }
+  }
+
+  val digest = MessageDigest.getInstance("MD5")
+
+  def hashString(record: String) = {
+
+    def byteToHex(b: Byte): Char = {
+      require(b >= 0 && b <= 15, "Byte " + b + " was not between 0 and 15")
+      if (b < 10) {
+        ('0'.asInstanceOf[Int] + b).asInstanceOf[Char]
+      }
+      else {
+        ('a'.asInstanceOf[Int] + (b - 10)).asInstanceOf[Char]
+      }
+    }
+
+    def toHex(bytes: Array[Byte]): String = {
+      val buffer = new StringBuilder(bytes.length * 2)
+      for (i <- 0 until bytes.length) {
+        val b = bytes(i)
+        val bi: Int = if (b < 0) b + 256 else b
+        buffer append byteToHex((bi >>> 4).asInstanceOf[Byte])
+        buffer append byteToHex((bi & 0x0F).asInstanceOf[Byte])
+      }
+      buffer.toString()
+    }
+
+    digest.reset()
+    toHex(digest.digest(record.getBytes("UTF-8")))
   }
 
 }

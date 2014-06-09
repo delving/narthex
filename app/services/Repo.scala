@@ -70,10 +70,14 @@ object Repo {
     }
   }
 
-  def stripSuffix(fileName: String) = {
+  def getSuffix(fileName: String) = {
     val suffix = SUFFIXES.filter(suf => fileName.endsWith(suf))
-    if (suffix.isEmpty) throw new RuntimeException(s"Cannot identify suffix for $fileName")
-    fileName.substring(0, fileName.length - suffix.head.length)
+    if (suffix.isEmpty) "" else suffix.head
+  }
+
+  def stripSuffix(fileName: String) = {
+    val suffix = getSuffix(fileName)
+    fileName.substring(0, fileName.length - suffix.length)
   }
 }
 
@@ -102,11 +106,23 @@ class Repo(root: File, val email: String) {
     }
   }
 
-  def uploadedFile(fileName: String) = new File(uploaded, fileName)
+  def uploadedFile(fileName: String) = {
+    val suffix = Repo.getSuffix(fileName)
+    if (suffix.isEmpty) {
+      var matchingFiles = uploaded.listFiles().filter(file => file.getName.startsWith(fileName))
+      if (matchingFiles.isEmpty) throw new RuntimeException(s"No file matching $fileName")
+      matchingFiles.head
+    }
+    else {
+      new File(uploaded, fileName)
+    }
+  }
 
   def analyzedDir(fileName: String) = new File(analyzed, Repo.stripSuffix(fileName))
 
   def listUploadedFiles = listFiles(uploaded)
+
+  def listFileRepos = listUploadedFiles.map(file => Repo.stripSuffix(file.getName))
 
   def uploadedOnly() = listUploadedFiles.filter(file => !analyzedDir(file.getName).exists())
 
@@ -114,7 +130,7 @@ class Repo(root: File, val email: String) {
     val files = uploadedOnly()
     val dirs = files.map(file => analyzedDir(file.getName))
     val pairs = files.zip(dirs)
-    val fileAnalysisDirs = pairs.map(pair => new FileRepo(this, pair._1, pair._2).mkdirs)
+    val fileAnalysisDirs = pairs.map(pair => new FileRepo(this, pair._2.getName, pair._1, pair._2).mkdirs)
     val jobs = files.zip(fileAnalysisDirs)
     jobs.foreach {
       job =>
@@ -124,9 +140,9 @@ class Repo(root: File, val email: String) {
     files
   }
 
-  def FileRepo(fileName: String) = new FileRepo(this, uploadedFile(fileName), analyzedDir(fileName))
+  def FileRepo(fileName: String) = new FileRepo(this, Repo.stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
 
-  def withSession[T](block: ClientSession => T): T = {
+  def withBaseX[T](block: ClientSession => T): T = {
     Repo.baseX.createDatabase(personalRootName) // todo: creating brute force for now
     //    Repository.baseX.openDatabase(personalRootName) todo: open if it's there, otherwise create?
     Repo.baseX.withSession(personalRootName)(block)
@@ -145,7 +161,7 @@ class Repo(root: File, val email: String) {
 
 }
 
-class FileRepo(val personalRepo: Repo, val sourceFile: File, val dir: File) {
+class FileRepo(val personalRepo: Repo, val name:String, val sourceFile: File, val dir: File) {
 
   def mkdirs = {
     dir.mkdirs()
@@ -159,8 +175,8 @@ class FileRepo(val personalRepo: Repo, val sourceFile: File, val dir: File) {
   def root = new NodeRepo(this, dir)
 
   def saveRecords(recordRoot: String, uniqueId: String) = {
-    val saver = Akka.system.actorOf(Saver.props(this), sourceFile.getName)
-    saver ! SaveRecords(recordRoot, uniqueId)
+    val saver = Akka.system.actorOf(Saver.props(this), name)
+    saver ! SaveRecords(recordRoot, uniqueId, name)
   }
 
   def status(path: String): Option[File] = {

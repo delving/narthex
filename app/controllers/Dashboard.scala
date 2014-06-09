@@ -17,7 +17,6 @@
 package controllers
 
 import play.api.mvc._
-import java.io.File
 import play.api.Logger
 import services._
 import play.api.libs.json._
@@ -52,8 +51,7 @@ object Dashboard extends Controller with Security with TreeHandling {
     token => email => implicit request => {
       val repo = Repo(email)
       repo.scanForWork()
-      val fileList: Seq[File] = repo.listUploadedFiles
-      val stringList = fileList.map(file => s"${file.getName}")
+      val stringList = repo.listFileRepos
       Ok(Json.toJson(stringList.map(string => Json.obj("name" -> string))))
     }
   }
