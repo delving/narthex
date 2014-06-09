@@ -75,12 +75,11 @@ define(["angular"], function () {
         function checkFileStatus(file) {
             dashboardService.status(file.name).then(function (data) {
                 file.status = data;
-                if (file && !file.status.complete) {
+                if (file && (file.status.percent > 0 || file.status.workers > 0)) {
                     var interval = timeSinceStatusCheck();
                     if (interval > 1000) { // don't change the scope thing too often
                         $scope.lastStatusCheck = new Date().getTime();
                     }
-                    console.log("continuing " + file.name);
                     file.checker = $timeout(
                         function () {
                             checkFileStatus(file)
@@ -242,7 +241,12 @@ define(["angular"], function () {
         $scope.storeRecords = function () {
             if (!($scope.recordRootNode && $scope.uniqueIdNode)) return;
             $scope.storingRecords = true;
-            dashboardService.storeRecords($scope.fileName, $scope.recordRootNode.path, $scope.uniqueIdNode.path).then(function (data) {
+            var body = {
+                recordRoot: $scope.recordRootNode.path,
+                uniqueId: $scope.uniqueIdNode.path,
+                recordCount: $scope.uniqueIdNode.count
+            };
+            dashboardService.storeRecords($scope.fileName, body).then(function (data) {
                 console.log("seems they're storing");
             });
         };
@@ -335,19 +339,6 @@ define(["angular"], function () {
             $scope.histogramSize = $scope.status.histograms[which + 1];
             $scope.fetchHistogram();
         };
-
-        $scope.$watch("filterTyped", function (filterTyped, oldFilterTyped) {
-            if ($scope.filterTicking) {
-                $timeout.cancel($scope.filterTicking);
-                $scope.filterTicking = undefined;
-            }
-            $scope.filterTicking = $timeout(
-                function () {
-                    $scope.filterText = filterTyped;
-                },
-                500
-            );
-        });
 
         /**
          * Scrolls up and down to a named anchor hash, or top/bottom of an element

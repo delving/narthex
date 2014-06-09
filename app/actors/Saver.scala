@@ -30,41 +30,45 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
 
   def receive = {
 
-    case SaveRecords(recordRoot, uniqueId, collection) =>
-      fileRepo.personalRepo.createDatabase {
+    case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
+      fileRepo.createDatabase {
         session =>
           val parser = new RecordParser(recordRoot, uniqueId)
           val source = FileHandling.source(fileRepo.sourceFile)
-          val totalRecords = 100 // todo: get this from the JSON file
 
-          def sendProgress(percent: Int) = self ! SaveProgress(percent)
+          val progress = context.actorOf(Props(new Actor() {
+            override def receive: Receive = {
+              case SaveProgress(percent) =>
+                fileRepo.setStatus(fileRepo.SAVING, percent, 0)
+            }
+          }))
+
+          def sendProgress(percent: Int) = progress ! SaveProgress(percent)
 
           def receiveRecord(record: String) = {
             val hash = hashString(record)
             val inputStream = new ByteArrayInputStream(record.getBytes("UTF-8"))
             session.add(s"$collection/$hash.xml", inputStream)
-            Logger.info(s"stored $hash")
           }
 
-          parser.parse(source, receiveRecord, totalRecords, sendProgress)
+          parser.parse(source, receiveRecord, recordCount, sendProgress)
           source.close()
-          self ! RecordsSaved()
+          context.stop(progress)
+          self ! SaveComplete()
       }
 
-    case SaveProgress(percent) =>
-      Logger.info(s"Save progress $percent%")
-
-    case RecordsSaved() =>
+    case SaveComplete() =>
       Logger.info(s"Save complete")
+      fileRepo.setStatus(fileRepo.SAVED, 0, 0)
       context.stop(self)
 
   }
 }
 
-case class SaveRecords(recordRoot: String, uniqueId: String, collection: String)
+case class SaveRecords(recordRoot: String, uniqueId: String, recordCount: Int, collection: String)
 
 case class SaveProgress(percent: Int)
 
-case class RecordsSaved()
+case class SaveComplete()
 
 

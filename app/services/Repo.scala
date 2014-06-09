@@ -152,11 +152,6 @@ class Repo(root: File, val email: String) {
 
   def FileRepo(fileName: String) = new FileRepo(this, Repo.stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
 
-  def createDatabase[T](block: ClientSession => T): T = {
-    Repo.baseX.createDatabase(personalRootName)
-    Repo.baseX.withSession(personalRootName)(block)
-  }
-
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
       directory.listFiles.filter(file =>
@@ -172,6 +167,8 @@ class Repo(root: File, val email: String) {
 
 class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
 
+  val databaseName = s"${personalRepo.personalRootName}___$name"
+
   def mkdirs = {
     dir.mkdirs()
     this
@@ -181,13 +178,23 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
 
   def status = new File(dir, "status.json")
 
-  def setStatus(content: JsObject) = Repo.createJson(status, content)
+  val SPLITTING = "1:splitting"
+  val ANALYZING = "2:analyzing"
+  val ANALYZED = "3:analyzed"
+  val SAVING = "4:saving"
+  val SAVED = "5:saved"
+
+  def setStatus(state: String, percent: Int, workers: Int) = Repo.createJson(status, Json.obj(
+    "state" -> state,
+    "percent" -> percent,
+    "workers" -> workers
+  ))
 
   def root = new NodeRepo(this, dir)
 
-  def saveRecords(recordRoot: String, uniqueId: String) = {
+  def saveRecords(recordRoot: String, uniqueId: String, recordCount: Int) = {
     val saver = Akka.system.actorOf(Saver.props(this), name)
-    saver ! SaveRecords(recordRoot, uniqueId, name)
+    saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
   }
 
   def status(path: String): Option[File] = {
@@ -239,6 +246,11 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   def nodeRepo(path: String): Option[NodeRepo] = {
     val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
+  }
+
+  def createDatabase[T](block: ClientSession => T): T = {
+    Repo.baseX.createDatabase(databaseName)
+    Repo.baseX.withSession(databaseName)(block)
   }
 
 }

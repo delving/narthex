@@ -110,11 +110,7 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                storeRecords: function (fileName, recordRoot, uniqueId) {
-                    var body = {
-                        recordRoot: recordRoot,
-                        uniqueId: uniqueId
-                    };
+                storeRecords: function (fileName, body) {
                     return dash.storeRecords(fileName).post(body).then(
                         function (response) {
                             return response.data;

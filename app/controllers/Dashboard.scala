@@ -121,11 +121,12 @@ object Dashboard extends Controller with Security with TreeHandling {
     token => email => implicit request => {
       var recordRoot = (request.body \ "recordRoot").as[String]
       var uniqueId = (request.body \ "uniqueId").as[String]
+      var recordCount = (request.body \ "recordCount").as[Int]
       val repo = Repo(email)
       val fileRepo = repo.FileRepo(fileName)
       // todo: check existence
-      println(s"store recordRoot=$recordRoot uniqueId=$uniqueId")
-      fileRepo.saveRecords(recordRoot, uniqueId)
+      println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
+      fileRepo.saveRecords(recordRoot, uniqueId, recordCount)
       Ok(Json.obj("message" -> "Not yet implemented"))
     }
   }

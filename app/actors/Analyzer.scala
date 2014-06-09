@@ -57,12 +57,12 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
 
     case Analyze(file) =>
       log.debug(s"Analyzer on ${file.getName}")
-      fileRepo.setStatus(Json.obj("percent" -> 0))
+      fileRepo.setStatus(fileRepo.SPLITTING, 0, 0)
       val (source, countingStream, digest) = FileHandling.countingSource(file)
       val progress = context.actorOf(Props(new Actor() {
         override def receive: Receive = {
           case AnalysisProgress(percent) =>
-            fileRepo.setStatus(Json.obj("percent" -> percent))
+            fileRepo.setStatus(fileRepo.SPLITTING, percent, 0)
         }
       }))
       def sendProgress(percent: Int) = progress ! AnalysisProgress(percent)
@@ -74,7 +74,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
                 node.nodeRepo.setStatus(Json.obj("uniqueCount" -> 0))
               }
               else {
-                node.nodeRepo.setStatus(Json.obj("percent" -> 0))
+                node.nodeRepo.setStatus(Json.obj("sorting" -> true))
                 val sorter = context.actorOf(Sorter.props(node.nodeRepo))
                 sorters = sorter :: sorters
                 sorter ! Sort(SortType.VALUE_SORT)
@@ -128,10 +128,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
             self ! AnalysisComplete()
           }
           else {
-            fileRepo.setStatus(Json.obj(
-              "index" -> true,
-              "workers" -> (sorters.size + collators.size)
-            ))
+            fileRepo.setStatus(fileRepo.ANALYZING, 0, sorters.size + collators.size)
           }
       }
 
@@ -142,16 +139,13 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
       context.stop(self)
 
     case AnalysisTreeComplete(json, digest) =>
-      fileRepo.setStatus(Json.obj(
-        "index" -> true,
-        "workers" -> (sorters.size + collators.size)
-      ))
-      // todo: rename the original file to include date and digest
+      fileRepo.setStatus(fileRepo.ANALYZING, 0, sorters.size + collators.size)
+      // todo: rename the original file to include date and digest?
       log.info(s"Tree Complete at ${fileRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
 
     case AnalysisComplete() =>
       log.info(s"Analysis Complete, kill: ${self.toString()}")
-      fileRepo.setStatus(Json.obj("index" -> true, "complete" -> true))
+      fileRepo.setStatus(fileRepo.ANALYZED, 0, 0)
       context.stop(self)
 
   }
