@@ -24,7 +24,7 @@ import play.api.libs.json.{JsValue, Json}
 import org.mindrot.jbcrypt.BCrypt
 import org.apache.commons.io.FileUtils._
 import scala.collection.mutable.ArrayBuffer
-import org.basex.server.ClientSession
+import org.basex.server.{ClientQuery, ClientSession}
 import actors._
 import play.api.libs.json.JsArray
 import actors.SaveRecords
@@ -287,6 +287,14 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   def createDatabase[T](block: ClientSession => T): T = {
     Repo.baseX.createDatabase(databaseName)
     Repo.baseX.withSession(databaseName)(block)
+  }
+
+  def queryDatabase() = {
+    Repo.baseX.withSession(databaseName) {
+      session =>
+        val query: ClientQuery = session.query("/narthex")
+        query.execute()
+    }
   }
 
 }

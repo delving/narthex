@@ -30,6 +30,7 @@ GET         /dashboard/:fileName/histogram/:size/*path           controllers.Das
 POST        /dashboard/:fileName/record/set-delimiter            controllers.Dashboard.setRecordDelimiter(fileName)
 GET         /dashboard/:fileName/record/can-save                 controllers.Dashboard.canSaveRecords(fileName)
 GET         /dashboard/:fileName/record/save                     controllers.Dashboard.saveRecords(fileName)
+GET         /dashboard/:fileName/record/query                    controllers.Dashboard.queryRecords(fileName)
 
 GET         /api/:apiKey/:email/:fileName/tree                   controllers.API.indexJSON(apiKey, email, fileName)
 GET         /api/:apiKey/:email/:fileName/index                  controllers.API.indexText(apiKey, email, fileName, path="")

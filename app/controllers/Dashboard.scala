@@ -148,4 +148,13 @@ object Dashboard extends Controller with Security with TreeHandling {
     }
   }
 
+  def queryRecords(fileName: String) = Secure() {
+    token => email => implicit request => {
+      val repo = Repo(email)
+      val fileRepo = repo.fileRepo(fileName)
+      val result: String = fileRepo.queryDatabase()
+      Logger.info(result)
+      Ok(result)
+    }
+  }
 }

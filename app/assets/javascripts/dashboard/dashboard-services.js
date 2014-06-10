@@ -133,6 +133,14 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                queryRecords: function (fileName) {
+                    return dash.queryRecords(fileName).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }

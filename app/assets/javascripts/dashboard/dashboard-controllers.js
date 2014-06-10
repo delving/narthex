@@ -144,6 +144,12 @@ define(["angular"], function () {
             });
         };
 
+        $scope.queryRecords = function (file) {
+            console.log('query', file);
+            dashboardService.queryRecords(file.name).then(function (data) {
+                console.log('query '+file.name, data);
+            });
+        };
     };
 
     DashboardCtrl.$inject = [
