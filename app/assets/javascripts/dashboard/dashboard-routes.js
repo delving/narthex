@@ -34,10 +34,10 @@ define(
                         "/dashboard/:fileName", {
                             templateUrl: "/assets/templates/dashboard/file-detail.html",
                             controller: controllers.FileDetailCtrl,
-                            resolve: userResolve
+                            resolve: userResolve,
+                            reloadOnSearch: false
                         }
                     );
-                    //.when("/admin/dashboard",  {templateUrl: "/assets/templates/dashboard/admin.html",  controller:controllers.AdminDashboardCtrl})
                 }
             ]
         );

@@ -20,7 +20,7 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
-    var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout, Pusher) {
+    var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout) {
 
         $scope.user = user;
         $scope.uploading = false;
@@ -147,13 +147,13 @@ define(["angular"], function () {
         $scope.queryRecords = function (file) {
             console.log('query', file);
             dashboardService.queryRecords(file.name).then(function (data) {
-                console.log('query '+file.name, data);
+                console.log('query ' + file.name, data);
             });
         };
     };
 
     DashboardCtrl.$inject = [
-        "$scope", "user", "dashboardService", "fileUpload", "$location", "$upload", "$timeout", "Pusher"
+        "$scope", "user", "dashboardService", "fileUpload", "$location", "$upload", "$timeout"
     ];
 
     String.prototype.hashCode = function () {
@@ -173,7 +173,7 @@ define(["angular"], function () {
         if (!userService.getUser()) $location.path("/");
 
         $scope.fileName = $routeParams.fileName;
-        $scope.columns = { left: 4, right: 8 };
+        $scope.path = $routeParams.path;
         $scope.aligning = false;
 
         var absUrl = $location.absUrl();
@@ -185,78 +185,83 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
-        function sortKids(node) {
-            if (node.kids.length) {
-                node.kids = _.sortBy(node.kids, function(kid) {
-                    return kid.tag.toLowerCase();
-                });
-                for (var index = 0; index < node.kids.length; index++) {
-                    sortKids(node.kids[index]);
+        dashboardService.index($scope.fileName).then(function (data) {
+            function sortKids(node) {
+                if (node.kids.length) {
+                    node.kids = _.sortBy(node.kids, function (kid) {
+                        return kid.tag.toLowerCase();
+                    });
+                    for (var index = 0; index < node.kids.length; index++) {
+                        sortKids(node.kids[index]);
+                    }
                 }
             }
-        }
 
-        function selectFirstWithValues(node) {
-            if (node.lengths.length) {
-                return node;
-            }
-            else {
-                for (var index = 0; index < node.kids.length; index++) {
-                    var nodeWithValues = selectFirstWithValues(node.kids[index]);
-                    if (nodeWithValues) return nodeWithValues;
+            sortKids(data);
+            $scope.tree = data;
+            function selectNode(path, node) {
+                if (!path.length) {
+                    $scope.selectNode(node);
                 }
-                return undefined;
+                else {
+                    var tag = path.shift();
+                    for (var index = 0; index < node.kids.length; index++) {
+                        if (tag == node.kids[index].tag) {
+                            selectNode(path, node.kids[index]);
+                            return;
+                        }
+                    }
+                }
             }
-        }
+            if ($scope.path) selectNode($scope.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
 
-        function selectFirstEmptyWithCount(node, count) {
-            if (!node.lengths.length && node.count == count) {
-                return node;
-            }
-            else for (var index = 0; index < node.kids.length; index++) {
-                var emptyWithCount = selectFirstEmptyWithCount(node.kids[index], count);
-                if (emptyWithCount) return emptyWithCount;
-            }
-            return undefined;
-        }
+//            function selectFirstWithValues(node) {
+//                if (node.lengths.length) {
+//                    return node;
+//                }
+//                else {
+//                    for (var index = 0; index < node.kids.length; index++) {
+//                        var nodeWithValues = selectFirstWithValues(node.kids[index]);
+//                        if (nodeWithValues) return nodeWithValues;
+//                    }
+//                    return undefined;
+//                }
+//            }
+//            var first = selectFirstWithValues(data);
+//            if (first) $scope.selectNode(first);
+        });
 
         $scope.goToDashboard = function () {
             $location.path("/dashboard");
         };
 
-        $scope.setAligning = function (on) {
-            $scope.aligning = on;
-            if (on) {
-                $scope.columns.left = 6;
-                $scope.columns.right = 6;
-            }
-            else {
-                $scope.columns.left = 4;
-                $scope.columns.right = 8;
-            }
-        };
-
-        dashboardService.index($scope.fileName).then(function (data) {
-            sortKids(data);
-            $scope.tree = data;
-            var first = selectFirstWithValues(data);
-            if (first) $scope.selectNode(first);
-        });
-
         $scope.selectNode = function (node, $event) {
             if ($event) $event.stopPropagation();
             if (!node.lengths.length) return;
             $scope.selectedNode = node;
-            $scope.apiPath = $scope.apiPrefix + node.path.replace(":", "_").replace("@", "_");
-            $scope.sampleSize = 100;
-            $scope.histogramSize = 100;
-            $scope.fetchLengths();
             dashboardService.nodeStatus($scope.fileName, node.path).then(function (data) {
                 $scope.status = data;
+                $location.search('path', node.path);
+                var filePath = node.path.replace(":", "_").replace("@", "_");
+                $scope.apiPath = $scope.apiPrefix + filePath;
+                $scope.sampleSize = 100;
+                $scope.histogramSize = 100;
+                $scope.fetchLengths();
             });
         };
 
         $scope.setUniqueIdNode = function (node) {
+            function selectFirstEmptyWithCount(node, count) {
+                if (!node.lengths.length && node.count == count) {
+                    return node;
+                }
+                else for (var index = 0; index < node.kids.length; index++) {
+                    var emptyWithCount = selectFirstEmptyWithCount(node.kids[index], count);
+                    if (emptyWithCount) return emptyWithCount;
+                }
+                return undefined;
+            }
+
             var recordRootNode = selectFirstEmptyWithCount($scope.tree, node.count);
             if (recordRootNode) {
                 $scope.recordRootNode = recordRootNode;
@@ -328,7 +333,7 @@ define(["angular"], function () {
             $scope.activeView = "histogram";
             dashboardService.histogram($scope.fileName, $scope.selectedNode.path, $scope.histogramSize).then(function (data) {
                 _.forEach(data.histogram, function (entry) {
-                    var percent = (100 * entry[0])/$scope.selectedNode.count;
+                    var percent = (100 * entry[0]) / $scope.selectedNode.count;
                     entry.push(percent);
                 });
                 $scope.histogram = data;
