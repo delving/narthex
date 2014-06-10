@@ -47,6 +47,7 @@
                             </span>
                             <span ng-switch-when="3:analyzed">
                                 <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                                <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.canSave">Save Records</button>
                                 <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteFile(file)">Delete</button>
                             </span>
                             <span ng-switch-when="4:saving">
@@ -57,6 +58,8 @@
                             </span>
                             <span ng-switch-when="5:saved">
                                 <a href data-ng-click="viewFile(file)">{{ file.name }}</a><span> Saved</span>
+                                <!--todo: the reporting of canSaveRecords is failing, and making this show initially-->
+                                <!--<button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.canSave">Save Records Again</button>-->
                                 <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteFile(file)">Delete</button>
                             </span>
                             <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>

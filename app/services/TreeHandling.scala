@@ -110,7 +110,8 @@ trait TreeHandling {
       val events = new XMLEventReader(source)
 
       def sendProgress(): Unit = {
-        val percent = ((counter.getByteCount * 100) / length).toInt
+        val percentZero = ((counter.getByteCount * 100) / length).toInt
+        val percent = if (percentZero == 0) 1 else percentZero
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
           progress(percent)
           percentWas = percent

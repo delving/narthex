@@ -98,6 +98,12 @@ define(["angular"], function () {
             })
         }
 
+        function checkSaveStatus(file) {
+            dashboardService.canSaveRecords(file.name).then(function (data) {
+                file.canSave = data.canSave;
+            });
+        }
+
         function fetchFileList() {
             dashboardService.list().then(function (data) {
                 _.forEach($scope.files, function (file) {
@@ -109,6 +115,7 @@ define(["angular"], function () {
                 });
                 $scope.files = data;
                 _.forEach($scope.files, checkFileStatus);
+                _.forEach($scope.files, checkSaveStatus);
             });
         }
 
@@ -122,7 +129,20 @@ define(["angular"], function () {
             dashboardService.zap(file.name).then(function (data) {
                 fetchFileList();
             });
-        }
+        };
+
+        $scope.saveRecords = function (file) {
+            console.log('save', file);
+            dashboardService.saveRecords(file.name).then(function (data) {
+                console.log('saving', file);
+                $timeout(
+                    function () {
+                        checkFileStatus(file)
+                    },
+                    $scope.checkDelay
+                )
+            });
+        };
 
     };
 
@@ -235,20 +255,15 @@ define(["angular"], function () {
             if (recordRootNode) {
                 $scope.recordRootNode = recordRootNode;
                 $scope.uniqueIdNode = node;
+                var body = {
+                    recordRoot: $scope.recordRootNode.path,
+                    uniqueId: $scope.uniqueIdNode.path,
+                    recordCount: $scope.uniqueIdNode.count
+                };
+                dashboardService.setRecordDelimiter($scope.fileName, body).then(function (data) {
+                    console.log("record delimiter set");
+                });
             }
-        };
-
-        $scope.storeRecords = function () {
-            if (!($scope.recordRootNode && $scope.uniqueIdNode)) return;
-            $scope.storingRecords = true;
-            var body = {
-                recordRoot: $scope.recordRootNode.path,
-                uniqueId: $scope.uniqueIdNode.path,
-                recordCount: $scope.uniqueIdNode.count
-            };
-            dashboardService.storeRecords($scope.fileName, body).then(function (data) {
-                console.log("seems they're storing");
-            });
         };
 
         $scope.fetchLengths = function () {
@@ -270,7 +285,7 @@ define(["angular"], function () {
         };
 
         $scope.getColor = function () {
-            var lengthName = ["0", "1", "2", "3", "4", "5", "6-10", "11-15", "16-20", "21-30", "31-50", "50-100", "100-*"]; // from XRay.scala lengthRanges
+            var lengthName = ["0", "1", "2", "3", "4", "5", "6-10", "11-15", "16-20", "21-30", "31-50", "50-100", "100-*"];
             var noOfColors = lengthName.length;
             var frequency = 4 / noOfColors;
 

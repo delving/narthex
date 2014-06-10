@@ -30,6 +30,7 @@ import play.api.libs.json.JsArray
 import actors.SaveRecords
 import scala.Some
 import play.api.libs.json.JsObject
+import play.api.Logger
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
@@ -57,15 +58,15 @@ object Repo {
     !SUFFIXES.filter(suffix => fileName.endsWith(suffix)).isEmpty
   }
 
-  def createJson(file: File, content: JsObject) = {
-    writeStringToFile(file, Json.prettyPrint(content), "UTF-8")
-  }
+  def readJson(file: File) = Json.parse(readFileToString(file))
+
+  def createJson(file: File, content: JsObject) = writeStringToFile(file, Json.prettyPrint(content), "UTF-8")
 
   def updateJson(file: File)(xform: JsValue => JsObject) = {
     if (file.exists()) {
-      val value = Json.parse(readFileToString(file))
+      val value = readJson(file)
       val tempFile = new File(file.getParentFile, s"${file.getName}.temp")
-      writeStringToFile(tempFile, Json.prettyPrint(xform(value)), "UTF-8")
+      createJson(tempFile, xform(value))
       deleteQuietly(file)
       moveFile(tempFile, file)
     }
@@ -136,7 +137,7 @@ class Repo(root: File, val email: String) {
 
   def uploadedOnly() = listUploadedFiles.filter(file => !analyzedDir(file.getName).exists())
 
-  def scanForWork() = {
+  def scanForAnalysisWork() = {
     val files = uploadedOnly()
     val dirs = files.map(file => analyzedDir(file.getName))
     val pairs = files.zip(dirs)
@@ -144,13 +145,16 @@ class Repo(root: File, val email: String) {
     val jobs = files.zip(fileAnalysisDirs)
     jobs.foreach {
       job =>
-        val analyzer = Akka.system.actorOf(Analyzer.props(job._2), job._1.getName)
+        val uploadedFile = job._1
+        val fileRepo = job._2
+        fileRepo.setStatus(fileRepo.SPLITTING, 1, 0)
+        val analyzer = Akka.system.actorOf(Analyzer.props(fileRepo), uploadedFile.getName)
         analyzer ! Analyzer.Analyze(job._1)
     }
     files
   }
 
-  def FileRepo(fileName: String) = new FileRepo(this, Repo.stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
+  def fileRepo(fileName: String) = new FileRepo(this, Repo.stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
 
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
@@ -178,6 +182,8 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
 
   def status = new File(dir, "status.json")
 
+  def recordDelimiter = new File(dir, "record-delimiter.json")
+
   val SPLITTING = "1:splitting"
   val ANALYZING = "2:analyzing"
   val ANALYZED = "3:analyzed"
@@ -191,11 +197,6 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   ))
 
   def root = new NodeRepo(this, dir)
-
-  def saveRecords(recordRoot: String, uniqueId: String, recordCount: Int) = {
-    val saver = Akka.system.actorOf(Saver.props(this), name)
-    saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
-  }
 
   def status(path: String): Option[File] = {
     nodeRepo(path) match {
@@ -246,6 +247,41 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   def nodeRepo(path: String): Option[NodeRepo] = {
     val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
+  }
+
+  def canSaveRecords = {
+    val delim = recordDelimiter
+    if (!delim.exists()) {
+      false
+    }
+    else {
+      val statusData = Repo.readJson(status)
+      val state = (statusData \ "state").as[String]
+      Logger.info(s"state is $state")
+      if (state == SAVED) {
+        Logger.info(s"saved state ${delim.lastModified()} greater than ${status.lastModified()}")
+        delim.lastModified() > status.lastModified() // delim has been reset
+      }
+      else {
+        state < SAVING // hasn't saved yet
+      }
+    }
+  }
+
+  def setRecordDelimiter(recordRoot: String, uniqueId: String, recordCount: Int) = Repo.createJson(recordDelimiter, Json.obj(
+    "recordRoot" -> recordRoot,
+    "uniqueId" -> uniqueId,
+    "recordCount" -> recordCount
+  ))
+
+  def saveRecords() = {
+    val delim = Repo.readJson(recordDelimiter)
+    var recordRoot = (delim \ "recordRoot").as[String]
+    var uniqueId = (delim \ "uniqueId").as[String]
+    var recordCount = (delim \ "recordCount").as[Int]
+    setStatus(SAVING, 1, 0) // do it now, so it's done before the actor starts
+    val saver = Akka.system.actorOf(Saver.props(this), name)
+    saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
   }
 
   def createDatabase[T](block: ClientSession => T): T = {

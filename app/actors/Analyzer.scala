@@ -57,7 +57,6 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
 
     case Analyze(file) =>
       log.debug(s"Analyzer on ${file.getName}")
-      fileRepo.setStatus(fileRepo.SPLITTING, 0, 0)
       val (source, countingStream, digest) = FileHandling.countingSource(file)
       val progress = context.actorOf(Props(new Actor() {
         override def receive: Receive = {

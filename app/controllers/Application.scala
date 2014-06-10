@@ -59,7 +59,9 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.index,
           routes.javascript.Dashboard.sample,
           routes.javascript.Dashboard.histogram,
-          routes.javascript.Dashboard.storeRecords
+          routes.javascript.Dashboard.setRecordDelimiter,
+          routes.javascript.Dashboard.canSaveRecords,
+          routes.javascript.Dashboard.saveRecords
         )
       ).as(JAVASCRIPT)
   }

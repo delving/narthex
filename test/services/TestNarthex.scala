@@ -37,7 +37,7 @@ class TestNarthex extends PlaySpecification with TreeHandling {
 
     "source file should be processed" in {
 
-      val filesToAnalyze = repo.scanForWork()
+      val filesToAnalyze = repo.scanForAnalysisWork()
 
       "files to analyze" should {
 
@@ -50,7 +50,7 @@ class TestNarthex extends PlaySpecification with TreeHandling {
         }
       }
 
-      val fileRepo = repo.FileRepo(fileName)
+      val fileRepo = repo.fileRepo(fileName)
 
       def waitForStatus() = {
         while (!fileRepo.status.exists()) {

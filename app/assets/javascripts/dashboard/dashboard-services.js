@@ -110,8 +110,24 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                storeRecords: function (fileName, body) {
-                    return dash.storeRecords(fileName).post(body).then(
+                setRecordDelimiter: function (fileName, body) {
+                    return dash.setRecordDelimiter(fileName).post(body).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                canSaveRecords: function (fileName) {
+                    return dash.canSaveRecords(fileName).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                saveRecords: function (fileName) {
+                    return dash.saveRecords(fileName).get().then(
                         function (response) {
                             return response.data;
                         },
