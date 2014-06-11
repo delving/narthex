@@ -117,6 +117,13 @@ object Dashboard extends Controller with Security with TreeHandling {
     }
   }
 
+  def recordDelimiter(fileName: String) = Secure() {
+    token => email => implicit request => {
+      val repo = Repo(email)
+      OkFile(repo.fileRepo(fileName).recordDelimiter)
+    }
+  }
+
   def setRecordDelimiter(fileName: String) = Secure(parse.json) {
     token => email => implicit request => {
       var recordRoot = (request.body \ "recordRoot").as[String]

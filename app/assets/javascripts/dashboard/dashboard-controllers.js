@@ -199,6 +199,9 @@ define(["angular"], function () {
             }
             sortKids(data);
             $scope.tree = data;
+            dashboardService.recordDelimiter($scope.fileName).then(function(delim) {
+                console.log('delim', delim);
+            });
             function selectNode(path, node) {
                 if (!path.length) {
                     $scope.selectNode(node);

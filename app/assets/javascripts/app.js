@@ -39,7 +39,7 @@ define(
                 "narthex.home",
                 "narthex.dashboard",
                 "angularFileUpload",
-                "doowb.angular-pusher",
+//                "doowb.angular-pusher",
                 "ui.bootstrap.tpls",
                 "ui.bootstrap",
                 "nvd3ChartDirectives"

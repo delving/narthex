@@ -118,6 +118,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                recordDelimiter: function (fileName) {
+                    return dash.recordDelimiter(fileName).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 canSaveRecords: function (fileName) {
                     return dash.canSaveRecords(fileName).get().then(
                         function (response) {
