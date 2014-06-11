@@ -120,7 +120,14 @@ object Dashboard extends Controller with Security with TreeHandling {
   def recordDelimiter(fileName: String) = Secure() {
     token => email => implicit request => {
       val repo = Repo(email)
-      OkFile(repo.fileRepo(fileName).recordDelimiter)
+      val fileRepo = repo.fileRepo(fileName)
+      val recordDelimiter = fileRepo.recordDelimiter
+      if (recordDelimiter.exists()) {
+        OkFile(recordDelimiter)
+      }
+      else {
+        Ok(Json.obj("message" -> "Not Delimited"))
+      }
     }
   }
 

@@ -170,7 +170,10 @@ define(["angular"], function () {
 
     var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, userService) {
 
-        if (!userService.getUser()) $location.path("/");
+        if (!userService.getUser()) {
+            $location.path("/");
+            return;
+        }
 
         $scope.fileName = $routeParams.fileName;
         $scope.path = $routeParams.path;
@@ -188,19 +191,30 @@ define(["angular"], function () {
 
         dashboardService.index($scope.fileName).then(function (data) {
             function sortKids(node) {
-                if (node.kids.length) {
-                    node.kids = _.sortBy(node.kids, function (kid) {
-                        return kid.tag.toLowerCase();
-                    });
-                    for (var index = 0; index < node.kids.length; index++) {
-                        sortKids(node.kids[index]);
-                    }
+                if (!node.kids.length) return;
+                node.kids = _.sortBy(node.kids, function (kid) {
+                    return kid.tag.toLowerCase();
+                });
+                for (var index = 0; index < node.kids.length; index++) {
+                    sortKids(node.kids[index]);
                 }
             }
             sortKids(data);
             $scope.tree = data;
             dashboardService.recordDelimiter($scope.fileName).then(function(delim) {
-                console.log('delim', delim);
+                function setDelim(node) {
+                    if (node.path == delim.recordRoot) {
+                        $scope.recordRootNode = node;
+                    }
+                    else if (node.path == delim.uniqueId) {
+                        $scope.uniqueIdNode = node;
+                    }
+                    if (!node.kids.length) return;
+                    for (var index = 0; index < node.kids.length; index++) {
+                        setDelim(node.kids[index]);
+                    }
+                }
+                if (delim.recordRoot) setDelim($scope.tree);
             });
             function selectNode(path, node) {
                 if (!path.length) {
