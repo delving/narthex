@@ -14,32 +14,6 @@
 //    limitations under the License.
 //===========================================================================
 
-define(
-    [
-        "angular",
-        "./home-controllers",
-        "./home-services",
-        "common"
-    ],
-    function (angular, controllers) {
-        "use strict";
-
-        var mod = angular.module("home.routes", ["narthex.common"]);
-
-        mod.config(["$routeProvider", function ($routeProvider) {
-            $routeProvider
-                .when(
-                "/",
-                {
-                    templateUrl: "/assets/templates/home.html",
-                    controller: controllers.HomeCtrl
-                }
-            ).otherwise(
-                {
-                    templateUrl: "/assets/templates/notFound.html"
-                }
-            );
-        }]);
-        return mod;
-    }
-);
+define(["angular"], function (angular) {
+    "use strict";
+});

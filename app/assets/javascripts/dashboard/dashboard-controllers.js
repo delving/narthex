@@ -122,7 +122,7 @@ define(["angular"], function () {
         fetchFileList();
 
         $scope.viewFile = function (file) {
-            $location.path("/dashboard/" + file.name);
+            $location.path("/dataset/" + file.name);
         };
 
         $scope.deleteFile = function (file) {
@@ -189,7 +189,7 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
-        dashboardService.index($scope.fileName).then(function (data) {
+        dashboardService.index($scope.fileName).then(function (tree) {
             function sortKids(node) {
                 if (!node.kids.length) return;
                 node.kids = _.sortBy(node.kids, function (kid) {
@@ -199,8 +199,7 @@ define(["angular"], function () {
                     sortKids(node.kids[index]);
                 }
             }
-            sortKids(data);
-            $scope.tree = data;
+            sortKids(tree);
             dashboardService.recordDelimiter($scope.fileName).then(function(delim) {
                 function setDelim(node) {
                     if (node.path == delim.recordRoot) {
@@ -209,12 +208,11 @@ define(["angular"], function () {
                     else if (node.path == delim.uniqueId) {
                         $scope.uniqueIdNode = node;
                     }
-                    if (!node.kids.length) return;
                     for (var index = 0; index < node.kids.length; index++) {
                         setDelim(node.kids[index]);
                     }
                 }
-                if (delim.recordRoot) setDelim($scope.tree);
+                if (delim.recordRoot) setDelim(tree);
             });
             function selectNode(path, node) {
                 if (!path.length) {
@@ -230,11 +228,13 @@ define(["angular"], function () {
                     }
                 }
             }
+            $scope.tree = tree;
             if ($scope.path) selectNode($scope.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
         });
 
         $scope.goToDashboard = function () {
             $location.path("/dashboard");
+            $location.search({});
         };
 
         $scope.selectNode = function (node, $event) {

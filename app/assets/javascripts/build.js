@@ -20,7 +20,7 @@
  * http://requirejs.org/docs/optimization.html#mainConfigFile
  */
 requirejs.config({
-    packages: ["common", "home", "dashboard"],
+    packages: ["common", "home", "dashboard", "terms"],
     paths: {
         // Make the optimizer ignore CDN assets
         "_": "empty:",

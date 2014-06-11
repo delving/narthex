@@ -26,13 +26,13 @@ define(
                 function ($routeProvider, userResolve) {
                     $routeProvider.when(
                         "/dashboard", {
-                            templateUrl: "/assets/templates/dashboard/dashboard.html",
+                            templateUrl: "/assets/templates/dashboard.html",
                             controller: controllers.DashboardCtrl,
                             resolve: userResolve
                         }
                     ).when(
-                        "/dashboard/:fileName", {
-                            templateUrl: "/assets/templates/dashboard/file-detail.html",
+                        "/dataset/:fileName", {
+                            templateUrl: "/assets/templates/file-detail.html",
                             controller: controllers.FileDetailCtrl,
                             resolve: userResolve,
                             reloadOnSearch: false

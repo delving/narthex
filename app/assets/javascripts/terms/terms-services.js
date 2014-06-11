@@ -14,32 +14,20 @@
 //    limitations under the License.
 //===========================================================================
 
-define(
-    [
-        "angular",
-        "./home-controllers",
-        "./home-services",
-        "common"
-    ],
-    function (angular, controllers) {
-        "use strict";
+define(["angular", "common"], function (angular) {
+    "use strict";
 
-        var mod = angular.module("home.routes", ["narthex.common"]);
+    var mod = angular.module("terms.services", ["narthex.common"]);
 
-        mod.config(["$routeProvider", function ($routeProvider) {
-            $routeProvider
-                .when(
-                "/",
-                {
-                    templateUrl: "/assets/templates/home.html",
-                    controller: controllers.HomeCtrl
-                }
-            ).otherwise(
-                {
-                    templateUrl: "/assets/templates/notFound.html"
-                }
-            );
-        }]);
-        return mod;
-    }
-);
+    /**
+     * If the current route does not resolve, go back to the start page.
+     */
+    var handleRouteError = function ($rootScope, $location) {
+        $rootScope.$on("$routeChangeError", function (e, next, current) {
+            $location.path("/");
+        });
+    };
+    handleRouteError.$inject = ["$rootScope", "$location"];
+    mod.run(handleRouteError);
+    return mod;
+});

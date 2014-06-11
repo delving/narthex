@@ -17,29 +17,23 @@
 define(
     [
         "angular",
-        "./home-controllers",
-        "./home-services",
+        "./terms-controllers",
+        "./terms-services",
         "common"
     ],
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("home.routes", ["narthex.common"]);
-
-        mod.config(["$routeProvider", function ($routeProvider) {
-            $routeProvider
-                .when(
-                "/",
-                {
-                    templateUrl: "/assets/templates/home.html",
-                    controller: controllers.HomeCtrl
-                }
-            ).otherwise(
-                {
-                    templateUrl: "/assets/templates/notFound.html"
-                }
-            );
-        }]);
+        var mod = angular.module("terms.routes", ["narthex.common"]);
+//        mod.config(["$routeProvider", function ($routeProvider) {
+//            $routeProvider.when(
+//                "/",
+//                {
+//                    templateUrl: "/assets/templates/terms/home.html",
+//                    controller: controllers.HomeCtrl
+//                }
+//            )
+//        }]);
         return mod;
     }
 );

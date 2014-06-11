@@ -26,7 +26,8 @@ define(
     [
         "angular",
         "home",
-        "dashboard"
+        "dashboard",
+        "terms"
     ],
     function (angular) {
         "use strict";
@@ -38,6 +39,7 @@ define(
             [
                 "narthex.home",
                 "narthex.dashboard",
+                "narthex.terms",
                 "angularFileUpload",
 //                "doowb.angular-pusher",
                 "ui.bootstrap.tpls",
