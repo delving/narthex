@@ -257,10 +257,6 @@ define(["angular"], function () {
                     default:
                         $scope.fetchLengths();
                 }
-                $location.search({
-                    path: node.path,
-                    view: $scope.activeView
-                });
             });
         };
 
@@ -291,10 +287,18 @@ define(["angular"], function () {
             }
         };
 
+        function setLocation() {
+            $location.search({
+                path: $scope.selectedNode.path,
+                view: $scope.activeView
+            });
+        }
+
         $scope.fetchLengths = function () {
             $scope.activeView = "lengths";
             $scope.sample = undefined;
             $scope.histogram = undefined;
+            setLocation();
         };
 
         $scope.fetchSample = function () {
@@ -303,6 +307,7 @@ define(["angular"], function () {
                 $scope.sample = data;
                 $scope.histogram = undefined;
             });
+            setLocation();
         };
 
         $scope.fetchHistogram = function () {
@@ -316,6 +321,7 @@ define(["angular"], function () {
                 $scope.sample = undefined;
                 $scope.histogramUnique = data.histogram[0] && data.histogram[0][0] == 1;
             });
+            setLocation();
         };
 
         $scope.isMoreSample = function () {
