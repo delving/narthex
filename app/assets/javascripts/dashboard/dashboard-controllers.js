@@ -174,6 +174,7 @@ define(["angular"], function () {
 
         $scope.fileName = $routeParams.fileName;
         $scope.path = $routeParams.path;
+        $scope.activView = $routeParams.view;
         $scope.aligning = false;
 
         var absUrl = $location.absUrl();
@@ -196,7 +197,6 @@ define(["angular"], function () {
                     }
                 }
             }
-
             sortKids(data);
             $scope.tree = data;
             function selectNode(path, node) {
@@ -214,21 +214,6 @@ define(["angular"], function () {
                 }
             }
             if ($scope.path) selectNode($scope.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
-
-//            function selectFirstWithValues(node) {
-//                if (node.lengths.length) {
-//                    return node;
-//                }
-//                else {
-//                    for (var index = 0; index < node.kids.length; index++) {
-//                        var nodeWithValues = selectFirstWithValues(node.kids[index]);
-//                        if (nodeWithValues) return nodeWithValues;
-//                    }
-//                    return undefined;
-//                }
-//            }
-//            var first = selectFirstWithValues(data);
-//            if (first) $scope.selectNode(first);
         });
 
         $scope.goToDashboard = function () {
@@ -241,12 +226,24 @@ define(["angular"], function () {
             $scope.selectedNode = node;
             dashboardService.nodeStatus($scope.fileName, node.path).then(function (data) {
                 $scope.status = data;
-                $location.search('path', node.path);
                 var filePath = node.path.replace(":", "_").replace("@", "_");
                 $scope.apiPath = $scope.apiPrefix + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
-                $scope.fetchLengths();
+                switch ($scope.activeView) {
+                    case 'sample':
+                        $scope.fetchSample();
+                        break;
+                    case 'histogram':
+                        $scope.fetchHistogram();
+                        break;
+                    default:
+                        $scope.fetchLengths();
+                }
+                $location.search({
+                    path: node.path,
+                    view: $scope.activeView
+                });
             });
         };
 
@@ -281,44 +278,6 @@ define(["angular"], function () {
             $scope.activeView = "lengths";
             $scope.sample = undefined;
             $scope.histogram = undefined;
-        };
-
-        $scope.getX = function () {
-            return function (d) {
-                return d[0];
-            }
-        };
-
-        $scope.getY = function () {
-            return function (d) {
-                return d[1];
-            }
-        };
-
-        $scope.getColor = function () {
-            var lengthName = ["0", "1", "2", "3", "4", "5", "6-10", "11-15", "16-20", "21-30", "31-50", "50-100", "100-*"];
-            var noOfColors = lengthName.length;
-            var frequency = 4 / noOfColors;
-
-            function toHex(c) {
-                var hex = c.toString(16);
-                return hex.length == 1 ? "0" + hex : hex;
-            }
-
-            function rgbToHex(r, g, b) {
-                return "#" + toHex(r) + toHex(g) + toHex(b);
-            }
-
-            var colorLookup = {};
-            for (var walk = 0; walk < noOfColors; ++walk) {
-                var r = Math.floor(Math.sin(frequency * walk + 0) * (127) + 128);
-                var g = Math.floor(Math.sin(frequency * walk + 1) * (127) + 128);
-                var b = Math.floor(Math.sin(frequency * walk + 3) * (127) + 128);
-                colorLookup[lengthName[walk]] = rgbToHex(r, g, b);
-            }
-            return function (d, i) {
-                return colorLookup[d.data[0]];
-            };
         };
 
         $scope.fetchSample = function () {
@@ -364,6 +323,44 @@ define(["angular"], function () {
             var which = _.indexOf($scope.status.histograms, $scope.histogramSize, true);
             $scope.histogramSize = $scope.status.histograms[which + 1];
             $scope.fetchHistogram();
+        };
+
+        $scope.getX = function () {
+            return function (d) {
+                return d[0];
+            }
+        };
+
+        $scope.getY = function () {
+            return function (d) {
+                return d[1];
+            }
+        };
+
+        $scope.getColor = function () {
+            var lengthName = ["0", "1", "2", "3", "4", "5", "6-10", "11-15", "16-20", "21-30", "31-50", "50-100", "100-*"];
+            var noOfColors = lengthName.length;
+            var frequency = 4 / noOfColors;
+
+            function toHex(c) {
+                var hex = c.toString(16);
+                return hex.length == 1 ? "0" + hex : hex;
+            }
+
+            function rgbToHex(r, g, b) {
+                return "#" + toHex(r) + toHex(g) + toHex(b);
+            }
+
+            var colorLookup = {};
+            for (var walk = 0; walk < noOfColors; ++walk) {
+                var r = Math.floor(Math.sin(frequency * walk + 0) * (127) + 128);
+                var g = Math.floor(Math.sin(frequency * walk + 1) * (127) + 128);
+                var b = Math.floor(Math.sin(frequency * walk + 3) * (127) + 128);
+                colorLookup[lengthName[walk]] = rgbToHex(r, g, b);
+            }
+            return function (d, i) {
+                return colorLookup[d.data[0]];
+            };
         };
 
         /**
