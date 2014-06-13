@@ -16,4 +16,22 @@
 
 define(["angular"], function (angular) {
     "use strict";
+
+    var TermsCtrl = function ($scope, $routeParams, dashboardService) {
+        $scope.fileName = $routeParams.fileName;
+        $scope.path = $routeParams.path;
+        $scope.histogramSize = 2500;
+        console.log("path", $scope.path);
+
+        dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
+            $scope.histogram = data;
+        });
+
+    };
+
+    TermsCtrl.$inject = ["$scope", "$routeParams", "dashboardService"];
+
+    return {
+        TermsCtrl: TermsCtrl
+    };
 });

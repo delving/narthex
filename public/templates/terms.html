@@ -1,0 +1,22 @@
+
+<div class="row">
+    <h1>Histogram of Terms</h1>
+    <h2>{{path}}</h2>
+
+    <div class="col-md-6">
+        <div class="vertical-scroll" data-scrollable id="historgram-list" data-offset="270" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+            <ul class="list-group">
+                <li data-ng-repeat="count in histogram.histogram | filter:filterText" class="list-group-item clearfix">
+                    <span class="node-content">{{ count[1] }}</span>
+                    <span class="node-stats badge">{{ count[0] }}</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div>
+            <h1>Vocabulary Browser here</h1>
+        </div>
+    </div>
+</div>
+

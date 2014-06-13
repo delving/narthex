@@ -135,6 +135,9 @@
                             <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="moreHistogram();scrollTo({element: '#historgram-list', direction: 'down'})" data-ng-show="isMoreHistogram()">
                                 More histogram entries
                             </button>
+                            <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="goToTerms()" data-ng-show="!isMoreHistogram()">
+                                Terminology Mapping
+                            </button>
                             <span data-ng-if="histogram.uniqueCount > 30">
                                 <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="scrollTo({element: '#historgram-list', direction: 'up'})">
                                     <i class="fa fa-hand-o-up"></i>

@@ -177,7 +177,7 @@ define(["angular"], function () {
 
         $scope.fileName = $routeParams.fileName;
         $scope.path = $routeParams.path;
-        $scope.activView = $routeParams.view;
+        $scope.activeView = $routeParams.view;
         $scope.aligning = false;
 
         var absUrl = $location.absUrl();
@@ -199,8 +199,9 @@ define(["angular"], function () {
                     sortKids(node.kids[index]);
                 }
             }
+
             sortKids(tree);
-            dashboardService.recordDelimiter($scope.fileName).then(function(delim) {
+            dashboardService.recordDelimiter($scope.fileName).then(function (delim) {
                 function setDelim(node) {
                     if (node.path == delim.recordRoot) {
                         $scope.recordRootNode = node;
@@ -212,6 +213,7 @@ define(["angular"], function () {
                         setDelim(node.kids[index]);
                     }
                 }
+
                 if (delim.recordRoot) setDelim(tree);
             });
             function selectNode(path, node) {
@@ -228,6 +230,7 @@ define(["angular"], function () {
                     }
                 }
             }
+
             $scope.tree = tree;
             if ($scope.path) selectNode($scope.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
         });
@@ -235,6 +238,11 @@ define(["angular"], function () {
         $scope.goToDashboard = function () {
             $location.path("/dashboard");
             $location.search({});
+        };
+
+        $scope.goToTerms = function () {
+            $location.path("/terms/"+$scope.fileName);
+            $location.search({path: $scope.selectedNode.path});
         };
 
         $scope.selectNode = function (node, $event) {
@@ -287,7 +295,7 @@ define(["angular"], function () {
             }
         };
 
-        function setLocation() {
+        function setSearchParams() {
             $location.search({
                 path: $scope.selectedNode.path,
                 view: $scope.activeView
@@ -298,7 +306,7 @@ define(["angular"], function () {
             $scope.activeView = "lengths";
             $scope.sample = undefined;
             $scope.histogram = undefined;
-            setLocation();
+            setSearchParams();
         };
 
         $scope.fetchSample = function () {
@@ -307,7 +315,7 @@ define(["angular"], function () {
                 $scope.sample = data;
                 $scope.histogram = undefined;
             });
-            setLocation();
+            setSearchParams();
         };
 
         $scope.fetchHistogram = function () {
@@ -321,7 +329,7 @@ define(["angular"], function () {
                 $scope.sample = undefined;
                 $scope.histogramUnique = data.histogram[0] && data.histogram[0][0] == 1;
             });
-            setLocation();
+            setSearchParams();
         };
 
         $scope.isMoreSample = function () {

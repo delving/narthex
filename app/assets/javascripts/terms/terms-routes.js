@@ -25,15 +25,15 @@ define(
         "use strict";
 
         var mod = angular.module("terms.routes", ["narthex.common"]);
-//        mod.config(["$routeProvider", function ($routeProvider) {
-//            $routeProvider.when(
-//                "/",
-//                {
-//                    templateUrl: "/assets/templates/terms/home.html",
-//                    controller: controllers.HomeCtrl
-//                }
-//            )
-//        }]);
+        mod.config(["$routeProvider", function ($routeProvider) {
+            $routeProvider.when(
+                "/terms/:fileName",
+                {
+                    templateUrl: "/assets/templates/terms.html",
+                    controller: controllers.TermsCtrl
+                }
+            )
+        }]);
         return mod;
     }
 );
