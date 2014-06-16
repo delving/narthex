@@ -178,7 +178,6 @@ define(["angular"], function () {
         $scope.fileName = $routeParams.fileName;
         $scope.path = $routeParams.path;
         $scope.activeView = $routeParams.view;
-        $scope.aligning = false;
 
         var absUrl = $location.absUrl();
         var email = userService.getUser().email.replace("@", "_");

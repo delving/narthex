@@ -5,7 +5,7 @@
 
 <div class="row" ng-show="tree">
     <div class="col-md-4">
-        <div data-ng-if="!aligning" class="panel panel-primary panel-schema">
+        <div class="panel panel-primary panel-schema">
             <div class="panel-heading">
                 <span class="panel-title">Schema: </span><span>{{ fileName }}</span>
                 <div class="btn-group pull-right">
@@ -25,33 +25,12 @@
                 </div>
             </div>
         </div>
-        <div data-ng-if="aligning" class="panel panel-primary panel-enrich-info">
-            <div class="panel-heading">
-                <span>
-                    <span class="panel-title">Enrichment</span>
-                    <span>
-                        <button class="btn btn-success btn-xs pull-right" data-ng-click="setAligning(false)">Done</button>
-                    </span>
-                </span>
-            </div>
-            <div class="panel-body">
-                <div class="vertical-scroll" data-scrollable id="skos-browser" data-offset="170" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                    <p class="lead">
-                        This functionality is outside of the scope of the current project, but in the future this
-                        panel could contain an enrichment interface tuned to the nature of the data in the field
-                        listed to the right.  Selecting an entry on the right could also give access here to
-                        the records containing that value in that position in the XML.
-                    </p>
-                </div>
-            </div>
-        </div>
     </div>
     <div class="col-md-8" data-ng-if="selectedNode">
 
         <div class="panel panel-default panel-lists">
             <div class="panel-heading">
                 <code class="path">Path: {{ selectedNode.path }}</code>
-                <!--<button class="btn btn-success btn-xs" data-ng-click="setAligning(true)" data-ng-show="!aligning">Enrich</button>-->
             </div>
 
             <div class="panel-body">
