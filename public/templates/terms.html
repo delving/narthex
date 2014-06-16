@@ -1,35 +1,37 @@
 <div class="row">
-    <div class="panel panel-primary panel-schema">
-        <div class="col-md-12">
-            <div class="panel-heading col-md-6">
-                <span class="panel-title">Histogram of Terms</span>
-                <div>{{path}}</div>
+    <div>
+        <div class="col-md-6">
+            <div class="panel panel-primary panel-lists">
+                <div class="panel-heading">
+                    <span class="panel-title">Histogram of Terms</span>
+                    <div>{{path}}</div>
+                </div>
+                <div class="panel-body">
+                    <div class="vertical-scroll panel-body panel-lists" data-scrollable id="histogram-list" data-offset="165" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                        <ul class="list-group">
+                            <li data-ng-repeat="count in histogram.histogram | filter:filterText" class="list-group-item clearfix" data-ng-click="selectValue(count)">
+                                <span class="node-content">{{ count[1] }}</span>
+                                <span class="node-stats badge">{{ count[0] }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
-            <div class="panel-heading col-md-6">
+
+
+
+        </div>
+        <div class="col-md-6">
+            <div class="panel panel-primary panel-lists">
                 <div class="panel-heading">
                     <span class="panel-title">Vocabulary Browser</span>
                 </div>
             </div>
-        </div>
-        <div>
-            <div class="col-md-6">
-                <div class="vertical-scroll panel-body panel-lists" data-scrollable id="histogram-list" data-offset="270"
-                     data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                    <ul class="list-group">
-                        <li data-ng-repeat="count in histogram.histogram | filter:filterText"
-                            class="list-group-item clearfix" data-ng-click="selectValue(count)">
-                            <span class="node-content">{{ count[1] }}</span>
-                            <span class="node-stats badge">{{ count[0] }}</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div>
-                    <h1>Soon..</h1>
-                </div>
+
+            <div class="panel-body">
+                <h1>Soon..</h1>
             </div>
         </div>
     </div>
-</div>
+</div></div>
 
