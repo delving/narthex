@@ -32,7 +32,7 @@ define(
                         }
                     ).when(
                         "/dataset/:fileName", {
-                            templateUrl: "/assets/templates/file-detail.html",
+                            templateUrl: "/assets/templates/dataset.html",
                             controller: controllers.FileDetailCtrl,
                             resolve: userResolve,
                             reloadOnSearch: false

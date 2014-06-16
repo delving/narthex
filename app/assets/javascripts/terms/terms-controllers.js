@@ -17,7 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var TermsCtrl = function ($scope, $routeParams, dashboardService) {
+    var TermsCtrl = function ($scope, $location, $routeParams, dashboardService) {
         $scope.fileName = $routeParams.fileName;
         $scope.path = $routeParams.path;
         $scope.histogramSize = parseInt($routeParams.size || "100");
@@ -27,10 +27,20 @@ define(["angular"], function (angular) {
             $scope.histogram = data;
         });
 
-        $scope.selectValue = function(count) {
+        $scope.selectValue = function (count) {
             $scope.selectedValue = count[1];
         };
+
+        $scope.goToDataset = function () {
+            $location.path("/dataset/" + $scope.fileName);
+            $location.search({
+                path: $scope.path,
+                view: "histogram"
+            });
+        };
     };
+
+    TermsCtrl.$inject = ["$scope", "$location", "$routeParams", "dashboardService"];
 
     return {
         TermsCtrl: TermsCtrl
