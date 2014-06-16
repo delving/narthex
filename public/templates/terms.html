@@ -7,15 +7,13 @@
                     <div>{{path}}</div>
                 </div>
                 <div class="panel-body">
-                    <div class="vertical-scroll panel-body panel-lists" data-scrollable
-                         id="histogram-list" data-offset="165" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                        <ul class="list-group">
+                    <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="165" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                        <ul class="list-group terminology-list">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText"
-                                class="list-group-item clearfix"  data-ng-class="{ list-selected: count[1] == selectedValue }"
+                                class="list-group-item clearfix test-class"  data-ng-class="{ 'list-item-selected': count[1] == selectedValue }"
                                 data-ng-click="selectValue(count)">
                                 <span class="node-content">{{ count[1] }}</span>
                                 <span class="node-stats badge">{{ count[0] }}</span>
-                                <span class="badge" data-ng-show="count[1] == selectedValue"> REMOVE THIS SPAN!</span>
                             </li>
                         </ul>
                     </div>

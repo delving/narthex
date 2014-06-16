@@ -249,8 +249,21 @@ body {
       background: @brand-primary;
       color: @white;
     }
-  }
 
+  }
+}
+
+ul.terminology-list {
+  .list-group-item {
+    &:hover {
+      font-weight: bold;
+      cursor: pointer !important;
+    }
+    &.list-item-selected {
+      background: @brand-warning;
+      font-weight: bold;
+    }
+  }
 }
 
 .nav-tab {
