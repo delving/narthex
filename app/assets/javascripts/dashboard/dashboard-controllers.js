@@ -242,7 +242,10 @@ define(["angular"], function () {
 
         $scope.goToTerms = function () {
             $location.path("/terms/"+$scope.fileName);
-            $location.search({path: $scope.selectedNode.path});
+            $location.search({
+                path: $scope.selectedNode.path,
+                size: $scope.histogramSize
+            });
         };
 
         $scope.selectNode = function (node, $event) {

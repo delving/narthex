@@ -30,7 +30,8 @@ define(
                 "/terms/:fileName",
                 {
                     templateUrl: "/assets/templates/terms.html",
-                    controller: controllers.TermsCtrl
+                    controller: controllers.TermsCtrl,
+                    reloadOnSearch: false
                 }
             )
         }]);

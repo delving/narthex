@@ -17,7 +17,7 @@
                      data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <ul class="list-group">
                         <li data-ng-repeat="count in histogram.histogram | filter:filterText"
-                            class="list-group-item clearfix">
+                            class="list-group-item clearfix" data-ng-click="selectValue(count)">
                             <span class="node-content">{{ count[1] }}</span>
                             <span class="node-stats badge">{{ count[0] }}</span>
                         </li>
