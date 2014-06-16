@@ -22,7 +22,6 @@ define(["angular"], function (angular) {
         $scope.path = $routeParams.path;
         $scope.histogramSize = parseInt($routeParams.size || "100");
         $scope.selectedValue = "";
-        console.log("path", $scope.path);
 
         dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
             $scope.histogram = data;
@@ -30,12 +29,8 @@ define(["angular"], function (angular) {
 
         $scope.selectValue = function(count) {
             $scope.selectedValue = count[1];
-            alert("Selected "+$scope.selectedValue);
         };
-
     };
-
-    TermsCtrl.$inject = ["$scope", "$routeParams", "dashboardService"];
 
     return {
         TermsCtrl: TermsCtrl

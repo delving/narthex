@@ -7,19 +7,20 @@
                     <div>{{path}}</div>
                 </div>
                 <div class="panel-body">
-                    <div class="vertical-scroll panel-body panel-lists" data-scrollable id="histogram-list" data-offset="165" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                    <div class="vertical-scroll panel-body panel-lists" data-scrollable
+                         id="histogram-list" data-offset="165" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <ul class="list-group">
-                            <li data-ng-repeat="count in histogram.histogram | filter:filterText" class="list-group-item clearfix" data-ng-click="selectValue(count)">
+                            <li data-ng-repeat="count in histogram.histogram | filter:filterText"
+                                class="list-group-item clearfix"  data-ng-class="{ list-selected: count[1] == selectedValue }"
+                                data-ng-click="selectValue(count)">
                                 <span class="node-content">{{ count[1] }}</span>
                                 <span class="node-stats badge">{{ count[0] }}</span>
+                                <span class="badge" data-ng-show="count[1] == selectedValue"> REMOVE THIS SPAN!</span>
                             </li>
                         </ul>
                     </div>
                 </div>
             </div>
-
-
-
         </div>
         <div class="col-md-6">
             <div class="panel panel-primary panel-lists">
@@ -27,11 +28,23 @@
                     <span class="panel-title">Vocabulary Browser</span>
                 </div>
             </div>
-
-            <div class="panel-body">
-                <h1>Soon..</h1>
+            <div class="col-md-6">
+                <div>
+                    <h1>Soon..</h1>
+                </div>
+                <p data-ng-show="!selectedValue">
+                    Here you will be able to browse a target vocabulary and choose an item
+                    to map to the one you select on the left.
+                </p>
+                <p data-ng-show="selectedValue">
+                    Here you will be able to look for a vocabulary entry to map from:
+                    <br/>
+                    <br/>
+                    <br/>
+                    <b>"{{ selectedValue }}"</b>
+                </p>
             </div>
         </div>
     </div>
-</div></div>
+</div>
 
