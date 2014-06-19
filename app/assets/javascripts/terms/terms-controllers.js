@@ -21,7 +21,7 @@ define(["angular"], function (angular) {
         $scope.fileName = $routeParams.fileName;
         $scope.path = $routeParams.path;
         $scope.histogramSize = parseInt($routeParams.size || "100");
-        $scope.selectedValue = "";
+        $scope.selectedValue = null;
 
         dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
             $scope.histogram = data;

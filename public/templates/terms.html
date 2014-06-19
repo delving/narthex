@@ -29,21 +29,31 @@
                     <span class="panel-title">Vocabulary Browser</span>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div style="background: #199195; padding: 10px;">
                 <div>
                     <h1>Soon..</h1>
                 </div>
-                <p data-ng-show="!selectedValue">
-                    Here you will be able to browse a target vocabulary and choose an item
-                    to map to the one you select on the left.
-                </p>
-                <p data-ng-show="selectedValue">
-                    Here you will be able to look for a vocabulary entry to map from:
-                    <br/>
-                    <br/>
-                    <br/>
-                    <b>"{{ selectedValue }}"</b>
-                </p>
+                <h3>Vocabulary Mapping!</h3>
+                <div  data-ng-show="!selectedValue">
+                    <p>
+                        Here you will be able to browse a target vocabulary, choosing entries to map
+                        values on the left to URIs which the community shares.  Choose an item from the
+                        histogram on the left.
+                    </p>
+                </div>
+                <div  data-ng-show="selectedValue">
+                    <p data-ng-show="selectedValue">
+                        You will be able to look up an entry in a shared vocabulary for:
+                        <br/>
+                        <br/>
+                        <br/>
+                        <b>"{{ selectedValue }}"</b>
+                        <br/>
+                        <br/>
+                        <br/>
+                        There will be a search area for you to find the right term, and you can choose broader or narrower terms.
+                    </p>
+                </div>
             </div>
         </div>
     </div>

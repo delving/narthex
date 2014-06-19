@@ -14,6 +14,10 @@
 //    limitations under the License.
 //===========================================================================
 
+String.prototype.endsWith = function(suffix) {
+    return this.indexOf(suffix, this.length - suffix.length) !== -1;
+};
+
 define(["angular"], function () {
     "use strict";
 
@@ -38,6 +42,10 @@ define(["angular"], function () {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
             if ($files.length && !$scope.uploading) {
                 var file = $files[0];
+                if (!(file.name.endsWith(".xml.gz") || file.name.endsWith(".xml"))) {
+                    alert("File must end with .xml or .xml.gz");
+                    return;
+                }
                 $scope.uploading = true;
                 $scope.upload = $upload.upload(
                     {
@@ -66,7 +74,7 @@ define(["angular"], function () {
                         console.log("Failure during upload: status", status);
                         console.log("Failure during upload: headers", headers);
                         console.log("Failure during upload: config", config);
-                        alert(data);
+                        alert(data.problem);
                     }
                 );
             }
