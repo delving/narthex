@@ -30,8 +30,23 @@ class TestSKOS extends FlatSpec with Matchers with SkosHandling {
   "A Source" should "be readable" in {
     val example = getClass.getResource("/skos-example.xml")
     val source = Source.fromInputStream(example.openStream())
-    val vocab = SkosVocabulary(source)
-    println(s"$vocab")
+    val conceptScheme = SkosVocabulary(source)
+
+    def search(sought: String) = {
+      val near = conceptScheme.search("dut", sought, 3)
+      println(s"Match [$sought]:")
+      near.foreach(println(_))
+      near
+    }
+
+    val results = List(
+      "bezoeken",
+      "bezoiken",
+      "geografische bevoegdheid",
+      "herwoorderingspolitiek",
+      "wetgevingen"
+    ).map(search)
+
 //    stack.pop() should be(1)
   }
 

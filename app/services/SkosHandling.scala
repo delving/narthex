@@ -16,6 +16,8 @@
 
 package services
 
+import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
+
 import scala.collection.mutable
 import scala.io.Source
 import scala.xml.pull._
@@ -23,9 +25,14 @@ import scala.xml.{MetaData, NamespaceBinding}
 
 trait SkosHandling {
 
-  case class ConceptScheme(about: String) {
+  class ConceptScheme(val about: String) {
     val concepts = mutable.MutableList[Concept]()
     val topConcepts = mutable.MutableList[Concept]()
+
+    def search(language: String, sought: String, count: Int) = {
+      val judged = concepts.flatMap(_.search(language, sought))
+      judged.sortBy(-1 * _._1).take(count).toList
+    }
 
     override def toString: String =
       s"""
@@ -37,14 +44,22 @@ trait SkosHandling {
        """.stripMargin
   }
 
-  case class Concept(about: String) {
-    val prefLabels = mutable.MutableList[PrefLabel]()
-    val altLabels = mutable.MutableList[AltLabel]()
+  class Concept(val about: String) {
+    val labels = mutable.MutableList[Label]()
     val definitions = mutable.MutableList[Definition]()
     val narrowerConcepts = mutable.MutableList[Concept]()
     val broaderConcepts = mutable.MutableList[Concept]()
     val narrowerResources = mutable.MutableList[String]()
     val broaderResources = mutable.MutableList[String]()
+
+    def search(language: String, sought: String) = {
+      val judged = labels.filter(_.language == language).map {
+        label =>
+          (RatcliffObershelpMetric.compare(sought, label.text), label)
+      }
+      val withAbout = judged.filter(_._1.isDefined).map(p => (p._1.get, p._2, about))
+      withAbout.sortBy(-1 * _._1).headOption
+    }
 
     def narrower(other: Concept) = {
       narrowerConcepts.find(_.about == other.about) match {
@@ -79,30 +94,23 @@ trait SkosHandling {
     override def toString: String =
       s"""
          |Concept($about)
-         |  PrefLabels: ${prefLabels.mkString(",")}
-         |   AltLabels: ${altLabels.mkString(",")}
+         |  PrefLabels: ${labels.mkString(",")}
          | Definitions: ${definitions.mkString(",")}
-         |    Narrower: ${narrowerConcepts.map(_.prefLabels.head).mkString(",")}
-         |     Broader: ${broaderConcepts.map(_.prefLabels.head).mkString(",")}
+         |    Narrower: ${narrowerConcepts.map(_.labels.head).mkString(",")}
+         |     Broader: ${broaderConcepts.map(_.labels.head).mkString(",")}
        """.stripMargin
   }
 
-  case class Definition(language: String) {
+  class Definition(val language: String) {
     var text: String = ""
 
     override def toString: String = s"""Definition[$language]("$text")"""
   }
 
-  case class PrefLabel(language: String) {
+  class Label(preferred: Boolean, val language: String) {
     var text: String = ""
 
-    override def toString: String = s"""PrefLabel[$language]("$text")"""
-  }
-
-  case class AltLabel(language: String) {
-    var text: String = ""
-
-    override def toString: String = s"""AltLabel[$language]("$text")"""
+    override def toString: String = s"""${if (preferred) "Pref" else "Alt"}Label[$language]("$text")"""
   }
 
   object SkosVocabulary {
@@ -129,8 +137,7 @@ trait SkosHandling {
 
       var activeConceptScheme: Option[ConceptScheme] = None
       var activeConcept: Option[Concept] = None
-      var activePrefLabel: Option[PrefLabel] = None
-      var activeAltLabel: Option[AltLabel] = None
+      var activeLabel: Option[Label] = None
       var activeDefinition: Option[Definition] = None
       var concepts = new mutable.HashMap[String, Concept]()
       val textBuilder = new mutable.StringBuilder()
@@ -193,23 +200,23 @@ trait SkosHandling {
           // ===============================
           case EvElemStart("skos", "prefLabel", attributes, scope) =>
             activeConcept.map(c => {
-              val prefLabel = new PrefLabel(lang(attributes, scope).get)
-              activePrefLabel = Some(prefLabel)
-              c.prefLabels += prefLabel
+              val prefLabel = new Label(true, lang(attributes, scope).get)
+              activeLabel = Some(prefLabel)
+              c.labels += prefLabel
             })
           case EvElemEnd("skos", "prefLabel") =>
-            activePrefLabel.map(d => d.text = textBuilder.toString())
+            activeLabel.map(d => d.text = textBuilder.toString())
             textBuilder.clear()
 
           // ===============================
           case EvElemStart("skos", "altLabel", attributes, scope) =>
             activeConcept.map(c => {
-              val altLabel: AltLabel = new AltLabel(lang(attributes, scope).get)
-              activeAltLabel = Some(altLabel)
-              c.altLabels += altLabel
+              val altLabel = new Label(false, lang(attributes, scope).get)
+              activeLabel = Some(altLabel)
+              c.labels += altLabel
             })
           case EvElemEnd("skos", "altLabel") =>
-            activeAltLabel.map(d => d.text = textBuilder.toString())
+            activeLabel.map(d => d.text = textBuilder.toString())
             textBuilder.clear()
 
           // ===============================
