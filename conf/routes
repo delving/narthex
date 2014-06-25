@@ -33,6 +33,9 @@ GET         /dashboard/:fileName/record/can-save                 controllers.Das
 GET         /dashboard/:fileName/record/save                     controllers.Dashboard.saveRecords(fileName)
 GET         /dashboard/:fileName/record/query                    controllers.Dashboard.queryRecords(fileName)
 
+GET         /dashboard/skos/list                                 controllers.Dashboard.listSkos
+GET         /dashboard/skos/:name/:sought                        controllers.Dashboard.searchSkos(name, sought)
+
 GET         /api/:apiKey/:email/:fileName/tree                   controllers.API.indexJSON(apiKey, email, fileName)
 GET         /api/:apiKey/:email/:fileName/index                  controllers.API.indexText(apiKey, email, fileName, path="")
 GET         /api/:apiKey/:email/:fileName/*path/index            controllers.API.indexText(apiKey, email, fileName, path)

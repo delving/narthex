@@ -18,7 +18,7 @@ package skos
 
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.Json
-import services.SkosHandling
+import services.{LabelSearch, SkosJson, SkosVocabulary}
 
 import scala.io.Source
 
@@ -26,7 +26,7 @@ import scala.io.Source
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class TestSKOS extends FlatSpec with Matchers with SkosHandling {
+class TestSKOS extends FlatSpec with Matchers with SkosJson {
 
   "A Source" should "be readable" in {
     val example = getClass.getResource("/skos-example.xml")

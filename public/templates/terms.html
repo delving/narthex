@@ -30,30 +30,63 @@
                 </div>
             </div>
             <div style="background: #199195; padding: 10px;">
-                <div>
-                    <h1>Soon..</h1>
+                <div data-ng-show="skosList && !skosName">
+                    <ul>
+                        <li data-ng-repeat="name in skosList" data-ng-click="setSkosList(name)">
+                            {{ name }}
+                        </li>
+                    </ul>
                 </div>
-                <h3>Vocabulary Mapping!</h3>
-                <div  data-ng-show="!selectedValue">
-                    <p>
-                        Here you will be able to browse a target vocabulary, choosing entries to map
-                        values on the left to URIs which the community shares.  Choose an item from the
-                        histogram on the left.
-                    </p>
+                <div data-ng-show="skosName">
+                    <h1>{{ skosName }}</h1>
+                    <div>
+                        <input type="text" ng-model="skosSought"/>
+                    </div>
+                    <div data-ng-show="skosFound">
+                        <ul>
+                            <li data-ng-repeat="result in skosFound.results">
+                                <span>{{ result.label }} ({{ result.proximity }})</span>
+                                <ul ng-show="result.narrower">
+                                    <li>NARROWER</li>
+                                    <li data-ng-repeat="n in result.narrower">
+                                        <span>{{ n.label }}</span>
+                                    </li>
+                                </ul>
+                                <ul ng-show="result.broader">
+                                    <li>BROADER</li>
+                                    <li data-ng-repeat="b in result.broader">
+                                        <span>{{ b.label }}</span>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-                <div  data-ng-show="selectedValue">
-                    <p data-ng-show="selectedValue">
-                        You will be able to look up an entry in a shared vocabulary for:
-                        <br/>
-                        <br/>
-                        <br/>
-                        <b>"{{ selectedValue }}"</b>
-                        <br/>
-                        <br/>
-                        <br/>
-                        There will be a search area for you to find the right term, and you can choose broader or narrower terms.
-                    </p>
-                </div>
+
+                <!--<div>-->
+                    <!--<h1>Soon..</h1>-->
+                <!--</div>-->
+                <!--<h3>Vocabulary Mapping!</h3>-->
+                <!--<div  data-ng-show="!selectedValue">-->
+                    <!--<p>-->
+                        <!--Here you will be able to browse a target vocabulary, choosing entries to map-->
+                        <!--values on the left to URIs which the community shares.  Choose an item from the-->
+                        <!--histogram on the left.-->
+                    <!--</p>-->
+                <!--</div>-->
+                <!--<div  data-ng-show="selectedValue">-->
+                    <!--<p data-ng-show="selectedValue">-->
+                        <!--You will be able to look up an entry in a shared vocabulary for:-->
+                        <!--<br/>-->
+                        <!--<br/>-->
+                        <!--<br/>-->
+                        <!--<b>"{{ selectedValue }}"</b>-->
+                        <!--<br/>-->
+                        <!--<br/>-->
+                        <!--<br/>-->
+                        <!--There will be a search area for you to find the right term, and you can choose broader or narrower terms.-->
+                    <!--</p>-->
+                <!--</div>-->
             </div>
         </div>
     </div>

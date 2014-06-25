@@ -16,15 +16,16 @@
 
 package controllers
 
-import play.api.mvc._
-import play.api.Logger
-import services._
-import play.api.libs.json._
 import controllers.Application.OkFile
 import org.apache.commons.io.FileUtils._
-import scala.Some
+import play.api.Logger
+import play.api.Play.current
+import play.api.cache.Cache
+import play.api.libs.json._
+import play.api.mvc._
+import services._
 
-object Dashboard extends Controller with Security with TreeHandling {
+object Dashboard extends Controller with Security with TreeHandling with SkosJson {
 
   def upload = Secure(parse.multipartFormData) {
     token => email => implicit request => {
@@ -140,7 +141,7 @@ object Dashboard extends Controller with Security with TreeHandling {
       val fileRepo = repo.fileRepo(fileName)
       fileRepo.setRecordDelimiter(recordRoot, uniqueId, recordCount)
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
-//      fileRepo.saveRecords(recordRoot, uniqueId, recordCount)
+      //      fileRepo.saveRecords(recordRoot, uniqueId, recordCount)
       Ok
     }
   }
@@ -169,6 +170,27 @@ object Dashboard extends Controller with Security with TreeHandling {
       val result: String = fileRepo.queryDatabase()
       Logger.info(result)
       Ok(result)
+    }
+  }
+
+  def listSkos = Secure() {
+    token => email => implicit request => {
+      Ok(Json.obj("list" -> SkosRepo.listFiles))
+    }
+  }
+
+  def searchSkos(name: String, sought: String) = Secure() {
+    token => email => implicit request => {
+
+      def searchConceptScheme(conceptScheme: ConceptScheme) = conceptScheme.search("dut", sought, 3)
+
+      Cache.getAs[ConceptScheme](name) map {
+        cs => Ok(Json.obj("search" -> searchConceptScheme(cs)))
+      } getOrElse {
+        val cs: ConceptScheme = SkosRepo.conceptScheme(name)
+        Cache.set(name, cs, CACHE_EXPIRATION)
+        Ok(Json.obj("search" -> searchConceptScheme(cs)))
+      }
     }
   }
 }
