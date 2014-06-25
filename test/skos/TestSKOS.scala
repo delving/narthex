@@ -31,7 +31,7 @@ class TestSKOS extends FlatSpec with Matchers with SkosHandling {
     val example = getClass.getResource("/skos-example.xml")
     val source = Source.fromInputStream(example.openStream())
     val vocab = SkosVocabulary(source)
-    println(s"VOCAB $vocab")
+    println(s"$vocab")
 //    stack.pop() should be(1)
   }
 

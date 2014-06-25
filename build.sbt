@@ -43,6 +43,7 @@ libraryDependencies ++= Seq(
   "org.basex" % "basex" % "7.3.1",
 //  "org.webjars" % "cryptojs" % "3.1.2",
 //  "org.reactivemongo" %% "reactivemongo" % "0.10.0",
+  "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
   "com.clever-age" % "play2-elasticsearch" % "1.1.0",
   cache
 )

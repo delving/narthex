@@ -40,17 +40,50 @@ trait SkosHandling {
   case class Concept(about: String) {
     val prefLabels = mutable.MutableList[PrefLabel]()
     val altLabels = mutable.MutableList[AltLabel]()
+    val definitions = mutable.MutableList[Definition]()
     val narrowerConcepts = mutable.MutableList[Concept]()
     val broaderConcepts = mutable.MutableList[Concept]()
-    val definitions = mutable.MutableList[Definition]()
+    val narrowerResources = mutable.MutableList[String]()
+    val broaderResources = mutable.MutableList[String]()
+
+    def narrower(other: Concept) = {
+      narrowerConcepts.find(_.about == other.about) match {
+        case None => narrowerConcepts += other
+        case _ =>
+      }
+      other.broaderConcepts.find(_.about == about) match {
+        case None => other.broaderConcepts += this
+        case _ =>
+      }
+    }
+
+    def resolve(concepts: mutable.HashMap[String, Concept]) = {
+      narrowerResources.foreach {
+        uri =>
+          concepts.get(uri) match {
+            case Some(concept) => this.narrower(concept)
+            case None => throw new RuntimeException(s"Cannot find concept for $uri")
+          }
+      }
+      narrowerResources.clear()
+      broaderResources.foreach {
+        uri =>
+          concepts.get(uri) match {
+            case Some(concept) => concept.narrower(this)
+            case None => throw new RuntimeException(s"Cannot find concept for $uri")
+          }
+      }
+      broaderResources.clear()
+    }
 
     override def toString: String =
       s"""
          |Concept($about)
          |  PrefLabels: ${prefLabels.mkString(",")}
          |   AltLabels: ${altLabels.mkString(",")}
-         |    Narrower:  ${narrowerConcepts.map(_.prefLabels.head).mkString(",")}
-         |   c Broader:  ${broaderConcepts.map(_.prefLabels.head).mkString(",")}
+         | Definitions: ${definitions.mkString(",")}
+         |    Narrower: ${narrowerConcepts.map(_.prefLabels.head).mkString(",")}
+         |     Broader: ${broaderConcepts.map(_.prefLabels.head).mkString(",")}
        """.stripMargin
   }
 
@@ -105,138 +138,103 @@ trait SkosHandling {
       while (events.hasNext) {
         events.next() match {
 
-
+          // ===============================
           case EvElemStart("rdf", "RDF", attributes, scope) =>
             println("starting RDF")
-
           case EvElemEnd("rdf", "RDF") =>
             textBuilder.clear()
             println("finished RDF")
 
-
+          // ===============================
           case EvElemStart("skos", "ConceptScheme", attributes, scope) =>
             activeConceptScheme = Some(new ConceptScheme(about(attributes, scope).get))
-          //            println(s"ConceptScheme about ${about(attributes, scope)}")
-
           case EvElemEnd("skos", "ConceptScheme") =>
             textBuilder.clear()
-          //            println(s"finished ConceptScheme ${activeConceptScheme.get}")
 
-
+          // ===============================
           case EvElemStart("skos", "topConceptOf", attributes, scope) =>
             val r = resource(attributes, scope)
-            val target = concepts.get(r.get)
-            activeConcept.map { c =>
-              activeConceptScheme.map { s =>
-                target.map { t =>
-                  s.topConcepts += t
-                }
-              }
+            activeConceptScheme.map {
+              s =>
+                if (s.about != r.get) throw new RuntimeException
+                s.topConcepts += activeConcept.get
             }
-          //            println(s"Top Concept resource ${resource(attributes, scope)}")
-
           case EvElemEnd("skos", "topConceptOf") =>
             textBuilder.clear()
-          //            println(s"finished TopConceptOf")
 
+          // ===============================
+          case EvElemStart("skos", "inScheme", attributes, scope) =>
+            val r = resource(attributes, scope)
+            activeConceptScheme.map(s => if (s.about != r.get) throw new RuntimeException)
+          case EvElemEnd("skos", "inScheme") =>
+            textBuilder.clear()
+
+
+          // ===============================
           case EvElemStart("skos", "Concept", attributes, scope) =>
             val concept: Concept = new Concept(about(attributes, scope).get)
             activeConcept = Some(concept)
             concepts.put(concept.about, concept)
             activeConceptScheme.map(_.concepts += concept)
-          //            println(s"Concept about ${about(attributes, scope)}")
-
           case EvElemEnd("skos", "Concept") =>
             textBuilder.clear()
-          //            println(s"finished Concept ${activeConcept.get}")
 
-
+          // ===============================
           case EvElemStart("skos", "definition", attributes, scope) =>
             activeConcept.map(c => {
               val definition: Definition = new Definition(lang(attributes, scope).get)
               activeDefinition = Some(definition)
               c.definitions += definition
             })
-          //            println(s"Definition lang ${lang(attributes, scope)}")
-
           case EvElemEnd("skos", "definition") =>
             activeDefinition.map(d => d.text = textBuilder.toString())
             textBuilder.clear()
-          //            println(s"finished Definition $activeDefinition")
 
-
+          // ===============================
           case EvElemStart("skos", "prefLabel", attributes, scope) =>
             activeConcept.map(c => {
               val prefLabel = new PrefLabel(lang(attributes, scope).get)
               activePrefLabel = Some(prefLabel)
               c.prefLabels += prefLabel
             })
-          //            println(s"Pref Label lang ${lang(attributes, scope)}")
-
           case EvElemEnd("skos", "prefLabel") =>
             activePrefLabel.map(d => d.text = textBuilder.toString())
             textBuilder.clear()
-          //            println(s"finished PrefLabel $activePrefLabel")
 
-
+          // ===============================
           case EvElemStart("skos", "altLabel", attributes, scope) =>
             activeConcept.map(c => {
               val altLabel: AltLabel = new AltLabel(lang(attributes, scope).get)
               activeAltLabel = Some(altLabel)
               c.altLabels += altLabel
             })
-          //            println(s"Alt Label lang ${lang(attributes, scope)}")
-
           case EvElemEnd("skos", "altLabel") =>
             activeAltLabel.map(d => d.text = textBuilder.toString())
             textBuilder.clear()
-          //            println(s"finished AltLabel $activeAltLabel")
 
-
-          case EvElemStart("skos", "inScheme", attributes, scope) =>
-            val r = resource(attributes, scope)
-            activeConceptScheme.map(s => if (s.about != r.get) throw new RuntimeException)
-          //            println(s"In Scheme resource ${resource(attributes, scope)}")
-
-          case EvElemEnd("skos", "inScheme") =>
-            textBuilder.clear()
-          //            println(s"finished InScheme $activeConceptScheme")
-
+          // ===============================
           case EvElemStart("skos", "broader", attributes, scope) =>
-            val r = resource(attributes, scope)
-            val target = concepts.get(r.get)
-            activeConcept.map { c =>
-              target.map(t => c.broaderConcepts += t)
-            }
-          //            println(s"Broader resource ${resource(attributes, scope)}")
-
+            activeConcept.map(c => c.broaderResources += resource(attributes, scope).get)
           case EvElemEnd("skos", "broader") =>
             textBuilder.clear()
-          //            println(s"finished Broader")
 
-
+          // ===============================
           case EvElemStart("skos", "narrower", attributes, scope) =>
-            val r = resource(attributes, scope)
-            val target = concepts.get(r.get)
-            activeConcept.map { c =>
-              target.map(t => c.narrowerConcepts += t)
-            }
-          //            println(s"Narrower resource ${resource(attributes, scope)}")
-
+            activeConcept.map(c => c.narrowerResources += resource(attributes, scope).get)
           case EvElemEnd("skos", "narrower") =>
             textBuilder.clear()
-          //            println(s"finished Narrower")
 
+          // ===============================
           case EvElemStart(pre, label, attributes, scope) =>
             println(s"!!!START $label")
             attributes.foreach {
               attr =>
                 println(s"Attribute $attr")
             }
-
           case EvElemEnd(pre, label) =>
             println(s"!!!END $label")
 
+          // ===============================
           case EvText(text) =>
             val crunched = FileHandling.crunchWhitespace(text)
             if (!crunched.isEmpty) {
@@ -255,8 +253,9 @@ trait SkosHandling {
             println("EVENT? " + x)
         }
       }
-
-      println(s"$activeConceptScheme")
+      if (activeConceptScheme.isEmpty) throw new RuntimeException("No concept scheme")
+      activeConceptScheme.get.concepts.foreach(_.resolve(concepts))
+      activeConceptScheme.get
     }
   }
 
