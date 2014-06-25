@@ -32,6 +32,8 @@ trait SkosHandling {
 
   case class LabelSearch(query: LabelQuery, results: List[ProximityResult])
 
+  case class RelatedConcept(concept: Concept, language: String)
+
   class ConceptScheme(val about: String) {
     val concepts = mutable.MutableList[Concept]()
     val topConcepts = mutable.MutableList[Concept]()
@@ -69,7 +71,7 @@ trait SkosHandling {
       searchResults.sortBy(-1 * _.proximity).headOption
     }
 
-    def narrower(other: Concept) = {
+    def assignNarrower(other: Concept) = {
       narrowerConcepts.find(_.about == other.about) match {
         case None => narrowerConcepts += other
         case _ =>
@@ -84,7 +86,7 @@ trait SkosHandling {
       narrowerResources.foreach {
         uri =>
           concepts.get(uri) match {
-            case Some(concept) => this.narrower(concept)
+            case Some(concept) => this.assignNarrower(concept)
             case None => throw new RuntimeException(s"Cannot find concept for $uri")
           }
       }
@@ -92,12 +94,18 @@ trait SkosHandling {
       broaderResources.foreach {
         uri =>
           concepts.get(uri) match {
-            case Some(concept) => concept.narrower(this)
+            case Some(concept) => concept.assignNarrower(this)
             case None => throw new RuntimeException(s"Cannot find concept for $uri")
           }
       }
       broaderResources.clear()
     }
+
+    def preferred(language: String) = labels.filter(_.preferred).find(_.language == language)
+
+    def relatedNarrower(language: String) = narrowerConcepts.map(RelatedConcept(_, language))
+
+    def relatedBroader(language: String) = broaderConcepts.map(RelatedConcept(_, language))
 
     override def toString: String =
       s"""
@@ -271,12 +279,21 @@ trait SkosHandling {
     }
   }
 
+  implicit val relatedWrites = new Writes[RelatedConcept] {
+    def writes(related: RelatedConcept) = Json.obj(
+      "label" -> related.concept.preferred(related.language).get.text,
+      "uri" -> related.concept.about
+    )
+  }
+
   implicit val resultWrites = new Writes[ProximityResult] {
     def writes(result: ProximityResult) = Json.obj(
       "proximity" -> result.proximity,
       "preferred" -> result.label.preferred,
       "label" -> result.label.text,
-      "uri" -> result.concept.about
+      "uri" -> result.concept.about,
+      "narrower" -> result.concept.relatedNarrower(result.label.language),
+      "broader" -> result.concept.relatedBroader(result.label.language)
     )
   }
 
