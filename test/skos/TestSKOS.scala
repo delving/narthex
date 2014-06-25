@@ -17,6 +17,7 @@
 package skos
 
 import org.scalatest.{FlatSpec, Matchers}
+import play.api.libs.json.Json
 import services.SkosHandling
 
 import scala.io.Source
@@ -32,20 +33,17 @@ class TestSKOS extends FlatSpec with Matchers with SkosHandling {
     val source = Source.fromInputStream(example.openStream())
     val conceptScheme = SkosVocabulary(source)
 
-    def search(sought: String) = {
-      val near = conceptScheme.search("dut", sought, 3)
-      println(s"Match [$sought]:")
-      near.foreach(println(_))
-      near
-    }
+    def searchConceptScheme(sought: String) = conceptScheme.search("dut", sought, 3)
 
-    val results = List(
+    val searches: List[LabelSearch] = List(
       "bezoeken",
       "bezoiken",
       "geografische bevoegdheid",
       "herwoorderingspolitiek",
       "wetgevingen"
-    ).map(search)
+    ).map(searchConceptScheme)
+
+    searches.foreach(s => println(Json.prettyPrint(Json.obj("search" -> s))))
 
 //    stack.pop() should be(1)
   }

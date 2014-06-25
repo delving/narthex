@@ -17,6 +17,7 @@
 package services
 
 import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
+import play.api.libs.json._
 
 import scala.collection.mutable
 import scala.io.Source
@@ -25,13 +26,20 @@ import scala.xml.{MetaData, NamespaceBinding}
 
 trait SkosHandling {
 
+  case class LabelQuery(language: String, sought: String, count: Int)
+
+  case class ProximityResult(label: Label, proximity: Double, concept: Concept)
+
+  case class LabelSearch(query: LabelQuery, results: List[ProximityResult])
+
   class ConceptScheme(val about: String) {
     val concepts = mutable.MutableList[Concept]()
     val topConcepts = mutable.MutableList[Concept]()
 
-    def search(language: String, sought: String, count: Int) = {
+    def search(language: String, sought: String, count: Int): LabelSearch = {
       val judged = concepts.flatMap(_.search(language, sought))
-      judged.sortBy(-1 * _._1).take(count).toList
+      val results = judged.sortBy(-1 * _.proximity).take(count).toList
+      LabelSearch(LabelQuery(language, sought, count), results)
     }
 
     override def toString: String =
@@ -52,13 +60,13 @@ trait SkosHandling {
     val narrowerResources = mutable.MutableList[String]()
     val broaderResources = mutable.MutableList[String]()
 
-    def search(language: String, sought: String) = {
+    def search(language: String, sought: String): Option[ProximityResult] = {
       val judged = labels.filter(_.language == language).map {
         label =>
           (RatcliffObershelpMetric.compare(sought, label.text), label)
       }
-      val withAbout = judged.filter(_._1.isDefined).map(p => (p._1.get, p._2, about))
-      withAbout.sortBy(-1 * _._1).headOption
+      val searchResults = judged.filter(_._1.isDefined).map(p => ProximityResult(p._2, p._1.get, this))
+      searchResults.sortBy(-1 * _.proximity).headOption
     }
 
     def narrower(other: Concept) = {
@@ -107,7 +115,7 @@ trait SkosHandling {
     override def toString: String = s"""Definition[$language]("$text")"""
   }
 
-  class Label(preferred: Boolean, val language: String) {
+  class Label(val preferred: Boolean, val language: String) {
     var text: String = ""
 
     override def toString: String = s"""${if (preferred) "Pref" else "Alt"}Label[$language]("$text")"""
@@ -147,10 +155,7 @@ trait SkosHandling {
 
           // ===============================
           case EvElemStart("rdf", "RDF", attributes, scope) =>
-            println("starting RDF")
           case EvElemEnd("rdf", "RDF") =>
-            textBuilder.clear()
-            println("finished RDF")
 
           // ===============================
           case EvElemStart("skos", "ConceptScheme", attributes, scope) =>
@@ -264,6 +269,30 @@ trait SkosHandling {
       activeConceptScheme.get.concepts.foreach(_.resolve(concepts))
       activeConceptScheme.get
     }
+  }
+
+  implicit val resultWrites = new Writes[ProximityResult] {
+    def writes(result: ProximityResult) = Json.obj(
+      "proximity" -> result.proximity,
+      "preferred" -> result.label.preferred,
+      "label" -> result.label.text,
+      "uri" -> result.concept.about
+    )
+  }
+
+  implicit val queryWrites = new Writes[LabelQuery] {
+    def writes(query: LabelQuery) = Json.obj(
+      "language" -> query.language,
+      "sought" -> query.sought,
+      "count" -> query.count
+    )
+  }
+
+  implicit val searchWrites = new Writes[LabelSearch] {
+    def writes(search: LabelSearch) = Json.obj(
+      "query" -> search.query,
+      "results" -> search.results
+    )
   }
 
 }
