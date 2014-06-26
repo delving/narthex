@@ -51,8 +51,12 @@ define(["angular"], function (angular) {
             $scope.skosName = name;
         };
 
+        $scope.setSkosSought = function(value) {
+            $scope.skosSought = value;
+        };
+
         $scope.$watch("skosSought", function(skosSought, old) {
-            if (!skosSought) return;
+            if (!skosSought || !$scope.skosName) return;
             dashboardService.searchSkos($scope.skosName, skosSought).then(function(data) {
                 $scope.skosFound = data.search;
             });
