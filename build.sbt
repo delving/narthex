@@ -36,13 +36,14 @@ libraryDependencies ++= Seq(
   "org.webjars" % "angular-ui-bootstrap" % "0.11.0-2",
   "org.mindrot" % "jbcrypt" % "0.3m",
 //  "org.webjars" % "angular-pusher" % "0.0.8",
-  "org.scalatest" % "scalatest_2.10" % "2.1.3" % "test",
+  "org.scalatest" % "scalatest_2.10" % "2.2.0",
   "org.scalautils" % "scalautils_2.10" % "2.1.3",
 //  "com.typesafe.akka" % "akka-testkit_2.10" % "2.3.2" % "test",
   "commons-io" % "commons-io" % "2.4",
   "org.basex" % "basex" % "7.3.1",
 //  "org.webjars" % "cryptojs" % "3.1.2",
 //  "org.reactivemongo" %% "reactivemongo" % "0.10.0",
+  "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
   "com.clever-age" % "play2-elasticsearch" % "1.1.0",
   cache
 )

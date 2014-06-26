@@ -16,21 +16,19 @@
 
 package services
 
-import java.io.{FileReader, BufferedReader, File}
+import java.io.{BufferedReader, File, FileReader}
+import java.util.UUID
+
+import actors.{SaveRecords, _}
+import org.apache.commons.io.FileUtils._
+import org.basex.server.{ClientQuery, ClientSession}
+import org.mindrot.jbcrypt.BCrypt
+import play.api.Logger
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
-import java.util.UUID
-import play.api.libs.json.{JsValue, Json}
-import org.mindrot.jbcrypt.BCrypt
-import org.apache.commons.io.FileUtils._
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
+
 import scala.collection.mutable.ArrayBuffer
-import org.basex.server.{ClientQuery, ClientSession}
-import actors._
-import play.api.libs.json.JsArray
-import actors.SaveRecords
-import scala.Some
-import play.api.libs.json.JsObject
-import play.api.Logger
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
@@ -159,7 +157,7 @@ class Repo(root: File, val email: String) {
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
       directory.listFiles.filter(file =>
-        file.isFile && !Repo.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).isEmpty
+        file.isFile && Repo.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).nonEmpty
       ).toList
     }
     else {

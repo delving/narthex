@@ -16,12 +16,14 @@
 
 package actors
 
-import akka.actor.{Props, ActorLogging, Actor}
 import java.io._
-import scala.language.postfixOps
+
+import actors.Merger._
+import actors.Sorter._
+import akka.actor.{Actor, ActorLogging, Props}
 import services.NodeRepo
-import Sorter._
-import Merger._
+
+import scala.language.postfixOps
 
 object Sorter {
 
@@ -95,7 +97,7 @@ class Sorter(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       while (count > 0) {
         val line = input.readLine()
         if (line == null) {
-          if (!lines.isEmpty) dumpSortedToFile()
+          if (lines.nonEmpty) dumpSortedToFile()
           count = 0
         }
         else {

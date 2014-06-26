@@ -15,7 +15,11 @@
 //===========================================================================
 
 define(
-    ["angular", "./dashboard-controllers", "common"],
+    [
+        "angular",
+        "./dashboard-controllers",
+        "common"
+    ],
     function (angular, controllers) {
         "use strict";
 

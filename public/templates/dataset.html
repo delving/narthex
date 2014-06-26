@@ -52,6 +52,13 @@
                                 </button>
                             </form>
                         </li>
+                        <li data-ng-show="activeView == 'histogram' && histogramVocabulary">
+                            <form class="navbar-form">
+                                <button class="btn btn-default" data-ng-click="goToTerms()">
+                                    <i class="fa fa-check-circle"></i><span> Map as Vocabulary</span>
+                                </button>
+                            </form>
+                        </li>
                     </ul>
                     <div class="collapse navbar-collapse">
                         <ul class="nav navbar-nav navbar-right">
@@ -92,7 +99,6 @@
                             </li>
                         </ul>
                     </div>
-
                 </div>
 
                 <div ng-show="histogram">
@@ -104,7 +110,6 @@
                             </li>
                         </ul>
                     </div>
-
                 </div>
 
                 <div class="navbar navbar-default">
@@ -113,9 +118,6 @@
                             <button class="btn navbar-btn count-btn">( {{histogram.entries}} / {{histogram.uniqueCount}} )</button>
                             <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="moreHistogram();scrollTo({element: '#historgram-list', direction: 'down'})" data-ng-show="isMoreHistogram()">
                                 More histogram entries
-                            </button>
-                            <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="goToTerms()" data-ng-show="!isMoreHistogram()">
-                                Terminology Mapping
                             </button>
                             <span data-ng-if="histogram.uniqueCount > 30">
                                 <button class="btn btn-primary btn-sm navbar-btn" data-ng-click="scrollTo({element: '#historgram-list', direction: 'up'})">

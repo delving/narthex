@@ -149,6 +149,22 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                listSkos: function () {
+                    return dash.listSkos().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                searchSkos: function (name, sought) {
+                    return dash.searchSkos(name, sought).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }

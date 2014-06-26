@@ -10,10 +10,12 @@
                     <div>{{path}}</div>
                 </div>
                 <div class="panel-body">
-                    <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="165" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                    <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="165"
+                         data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <ul class="list-group terminology-list">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText"
-                                class="list-group-item clearfix test-class"  data-ng-class="{ 'list-item-selected': count[1] == selectedValue }"
+                                class="list-group-item clearfix test-class"
+                                data-ng-class="{ 'list-item-selected': count[1] == selectedValue }"
                                 data-ng-click="selectValue(count)">
                                 <span class="node-content">{{ count[1] }}</span>
                                 <span class="node-stats badge">{{ count[0] }}</span>
@@ -24,26 +26,42 @@
             </div>
         </div>
         <div class="col-md-6">
-            <div class="panel panel-primary panel-lists">
+            <div class="panel panel-primary">
                 <div class="panel-heading">
                     <span class="panel-title">Vocabulary Browser</span>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div>
-                    <h1>Soon..</h1>
+            <div class="panel-lists">
+                <div data-ng-show="skosList && !skosName">
+                    <h4>Choose Vocabulary</h4>
+                    <ul>
+                        <li data-ng-repeat="name in skosList" data-ng-click="setSkosList(name)">
+                            <span class="badge">{{ name }}</span>
+                        </li>
+                    </ul>
                 </div>
-                <p data-ng-show="!selectedValue">
-                    Here you will be able to browse a target vocabulary and choose an item
-                    to map to the one you select on the left.
-                </p>
-                <p data-ng-show="selectedValue">
-                    Here you will be able to look for a vocabulary entry to map from:
-                    <br/>
-                    <br/>
-                    <br/>
-                    <b>"{{ selectedValue }}"</b>
-                </p>
+                <div data-ng-show="skosName">
+                    <h1 data-ng-click="skosName=null">{{ skosName }}</h1>
+                    <div>
+                        <input class="input-lg form-control" type="text" ng-model="skosSought"/>
+                        <hr/>
+                    </div>
+                    <div data-ng-show="skosFound" class="terminology-list">
+                        <div data-ng-repeat="result in skosFound.results" class="list-group">
+                            <progressbar value="result.proximity" max="1.0" type="info">
+                            </progressbar>
+                            <span class="fa-2x">"{{ result.label }}" </span>
+                            <span ng-show="result.broader">
+                                <span data-ng-repeat="b in result.broader" data-ng-click="setSkosSought(b.label)"
+                                        >&#8599; {{ b.label }}</span>
+                            </span>
+                            <span ng-show="result.narrower">
+                                <span data-ng-repeat="n in result.narrower" data-ng-click="setSkosSought(n.label)"
+                                        >&#8600; {{ n.label }}</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

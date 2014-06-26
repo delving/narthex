@@ -16,18 +16,20 @@
 
 package controllers
 
-import play.api._
-import play.api.mvc._
-import play.api.libs.json._
-import play.api.cache.Cache
-import play.api.Play.current
-import services.Repo
-import java.io.{FileNotFoundException, FileInputStream, File}
-import play.api.libs.iteratee.Enumerator
-import scala.concurrent.ExecutionContext.Implicits.global
-import actors.RoomChatter._
+import java.io.{File, FileInputStream, FileNotFoundException}
+
 import actors.Room
+import actors.RoomChatter._
 import akka.actor.Actor
+import play.api.Play.current
+import play.api._
+import play.api.cache.Cache
+import play.api.libs.iteratee.Enumerator
+import play.api.libs.json._
+import play.api.mvc._
+import services.Repo
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /** Application controller, handles authentication */
 object Application extends Controller with Security {
@@ -63,7 +65,9 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.recordDelimiter,
           routes.javascript.Dashboard.canSaveRecords,
           routes.javascript.Dashboard.saveRecords,
-          routes.javascript.Dashboard.queryRecords
+          routes.javascript.Dashboard.queryRecords,
+          routes.javascript.Dashboard.listSkos,
+          routes.javascript.Dashboard.searchSkos
         )
       ).as(JAVASCRIPT)
   }
