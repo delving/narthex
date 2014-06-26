@@ -80,7 +80,10 @@ object SkosVocabulary {
         // ===============================
         case EvElemStart("skos", "inScheme", attributes, scope) =>
           val r = resource(attributes, scope)
-          activeConceptScheme.map(s => if (s.about != r.get) throw new RuntimeException)
+          activeConceptScheme.map {
+            s =>
+              if (s.about != r.get) throw new RuntimeException(s"scheme.about=${s.about}, inScheme.resource=$r")
+          }
         case EvElemEnd("skos", "inScheme") =>
           textBuilder.clear()
 
@@ -137,6 +140,12 @@ object SkosVocabulary {
         case EvElemStart("skos", "narrower", attributes, scope) =>
           activeConcept.map(c => c.narrowerResources += resource(attributes, scope).get)
         case EvElemEnd("skos", "narrower") =>
+          textBuilder.clear()
+
+        // ===============================
+        case EvElemStart("skos", "hiddenLabel", attributes, scope) =>
+        //  println("Ignoring hiddenLabel")
+        case EvElemEnd("skos", "hiddenLabel") =>
           textBuilder.clear()
 
         // ===============================
@@ -272,7 +281,7 @@ class Concept(val about: String) {
       uri =>
         concepts.get(uri) match {
           case Some(concept) => this.assignNarrower(concept)
-          case None => throw new RuntimeException(s"Cannot find concept for $uri")
+          case None => println(s"SKOS ERROR! Cannot find concept for narrower: $uri")
         }
     }
     narrowerResources.clear()
@@ -280,7 +289,7 @@ class Concept(val about: String) {
       uri =>
         concepts.get(uri) match {
           case Some(concept) => concept.assignNarrower(this)
-          case None => throw new RuntimeException(s"Cannot find concept for $uri")
+          case None => println(s"SKOS ERROR! Cannot find concept for broader: $uri")
         }
     }
     broaderResources.clear()

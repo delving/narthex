@@ -177,7 +177,7 @@ define(["angular"], function () {
     };
 
     var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, userService) {
-
+        var MAX_FOR_VOCABULARY = 2000;
         if (!userService.getUser()) {
             $location.path("/");
             return;
@@ -251,7 +251,7 @@ define(["angular"], function () {
             $location.path("/terms/" + $scope.fileName);
             $location.search({
                 path: $scope.selectedNode.path,
-                size: $scope.histogramSize
+                size: $scope.status.histograms[$scope.status.histograms.length-1]
             });
         };
 
@@ -338,6 +338,7 @@ define(["angular"], function () {
                 $scope.histogram = data;
                 $scope.sample = undefined;
                 $scope.histogramUnique = data.histogram[0] && data.histogram[0][0] == 1;
+                $scope.histogramVocabulary = (!$scope.histogramUnique) && ($scope.status.uniqueCount < MAX_FOR_VOCABULARY);
             });
             setSearchParams();
         };
