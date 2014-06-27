@@ -182,7 +182,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def searchSkos(name: String, sought: String) = Secure() {
     token => email => implicit request => {
 
-      def searchConceptScheme(conceptScheme: ConceptScheme) = conceptScheme.search("dut", sought, 3)
+      def searchConceptScheme(conceptScheme: ConceptScheme) = conceptScheme.search("dut", sought, 25)
 
       Cache.getAs[ConceptScheme](name) map {
         cs => Ok(Json.obj("search" -> searchConceptScheme(cs)))
