@@ -33,7 +33,7 @@
             <div class="">
                 <div data-ng-show="vocabularyList && !vocabulary">
                     <div class="panel panel-default panel-choice">
-                        <div class="panel-heading">Choose Vocabulary</div>
+                        <div class="panel-heading fa-2x">Choose Vocabulary</div>
                         <div class="panel-body" data-ng-repeat="name in vocabularyList" data-ng-click="setVocabulary(name)">
                             {{ name }}
                         </div>
@@ -41,7 +41,7 @@
                 </div>
                 <div data-ng-show="vocabulary" >
                     <br/>
-                    <span class="fa-2x">&#8594; {{ vocabulary }}</span>
+                    <span class="fa-2x" data-ng-click="vocabulary=null">&#8594; {{ vocabulary }}</span>
                     <br/>
                     <br/>
                     <br/>
@@ -60,7 +60,7 @@
                             <progressbar value="result.proximity" max="1.0" type="success">{{ result.proximity * 100 | number : 0 }}%</progressbar>
                             <div>
                                 <span data-ng-class="{ 'gerald-alt' : !result.preferred }" class="fa-2x">{{ result.label }} </span>
-                                <span data-ng-show="!result.preferred"> &#8594; {{ result.prefLabel }} </span>
+                                <span data-ng-show="!result.preferred" data-ng-click="setSought(result.prefLabel)"> &#8594; {{ result.prefLabel }} </span>
                                 <span ng-show="result.broader">
                                     <span data-ng-repeat="b in result.broader" data-ng-click="setSought(b.label)"> &#8599; {{ b.label }}</span>
                                 </span>

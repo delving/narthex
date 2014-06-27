@@ -41,7 +41,7 @@ define(["angular"], function (angular) {
             });
         };
 
-        function updateSearch() {
+        function updateLocationSearch() {
             $location.search({
                 path: $scope.path,
                 histogramSize: $scope.histogramSize,
@@ -54,24 +54,32 @@ define(["angular"], function (angular) {
         $scope.selectValue = function (count) {
             $scope.selected = count[1];
             $scope.sought = $scope.selected;
-            updateSearch();
+            updateLocationSearch();
         };
 
         $scope.setVocabulary = function(name) {
             $scope.vocabulary = name;
-            updateSearch();
+            updateLocationSearch();
         };
 
         $scope.setSought = function(value) {
             $scope.sought = value;
-            updateSearch();
+            updateLocationSearch();
         };
 
-        $scope.$watch("sought", function(sought, old) {
+        function search(sought) {
             if (!sought || !$scope.vocabulary) return;
             dashboardService.searchSkos($scope.vocabulary, sought).then(function(data) {
                 $scope.found = data.search;
             });
+        }
+
+        $scope.$watch("sought", function(sought, old) {
+            search(sought);
+        });
+
+        $scope.$watch("vocabulary", function(vocab, old) {
+            search($scope.sought);
         });
     };
 
