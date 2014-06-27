@@ -21,23 +21,17 @@ define(["angular"], function (angular) {
         $scope.fileName = $routeParams.fileName;
         $scope.path = $routeParams.path;
         $scope.histogramSize = parseInt($routeParams.size || "100");
-        $scope.selectedValue = null;
-        $scope.skosList = null;
-        $scope.skosName = null;
-        $scope.skosSought = null;
+        $scope.selected = $routeParams.selected || "";
+        $scope.vocabulary = $routeParams.vocabulary || "";
+        $scope.sought = $routeParams.sought || "";
 
         dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
             $scope.histogram = data;
         });
 
         dashboardService.listSkos().then(function(data) {
-            $scope.skosList = data.list;
+            $scope.vocabularyList = data.list;
         });
-
-        $scope.selectValue = function (count) {
-            $scope.selectedValue = count[1];
-            $scope.skosSought = $scope.selectedValue;
-        };
 
         $scope.goToDataset = function () {
             $location.path("/dataset/" + $scope.fileName);
@@ -47,18 +41,36 @@ define(["angular"], function (angular) {
             });
         };
 
-        $scope.setSkosList = function(name) {
-            $scope.skosName = name;
+        function updateSearch() {
+            $location.search({
+                path: $scope.path,
+                histogramSize: $scope.histogramSize,
+                selected: $scope.selected,
+                vocabulary: $scope.vocabulary,
+                sought: $scope.sought
+            });
+        }
+
+        $scope.selectValue = function (count) {
+            $scope.selected = count[1];
+            $scope.sought = $scope.selected;
+            updateSearch();
         };
 
-        $scope.setSkosSought = function(value) {
-            $scope.skosSought = value;
+        $scope.setVocabulary = function(name) {
+            $scope.vocabulary = name;
+            updateSearch();
         };
 
-        $scope.$watch("skosSought", function(skosSought, old) {
-            if (!skosSought || !$scope.skosName) return;
-            dashboardService.searchSkos($scope.skosName, skosSought).then(function(data) {
-                $scope.skosFound = data.search;
+        $scope.setSought = function(value) {
+            $scope.sought = value;
+            updateSearch();
+        };
+
+        $scope.$watch("sought", function(sought, old) {
+            if (!sought || !$scope.vocabulary) return;
+            dashboardService.searchSkos($scope.vocabulary, sought).then(function(data) {
+                $scope.found = data.search;
             });
         });
     };

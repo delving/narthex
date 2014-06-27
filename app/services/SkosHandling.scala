@@ -249,6 +249,7 @@ class ConceptScheme(val about: String) {
 }
 
 class Concept(val about: String) {
+  val IGNORE_BRACKET = """ *[(].*[)]$""".r
   val labels = mutable.MutableList[Label]()
   val definitions = mutable.MutableList[Definition]()
   val narrowerConcepts = mutable.MutableList[Concept]()
@@ -259,7 +260,9 @@ class Concept(val about: String) {
   def search(language: String, sought: String): Option[ProximityResult] = {
     val judged = labels.filter(_.language == language).map {
       label =>
-        (RatcliffObershelpMetric.compare(sought, label.text), label)
+        val cleanSought = IGNORE_BRACKET.replaceFirstIn(sought, "")
+        val text = IGNORE_BRACKET.replaceFirstIn(label.text,"")
+        (RatcliffObershelpMetric.compare(cleanSought, text), label)
     }
     val searchResults = judged.filter(_._1.isDefined).map(p => ProximityResult(p._2, p._1.get, this))
     searchResults.sortBy(-1 * _.proximity).headOption

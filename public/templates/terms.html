@@ -14,7 +14,7 @@
                         <ul class="list-group terminology-list">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText"
                                 class="list-group-item clearfix test-class"
-                                data-ng-class="{ 'list-item-selected': count[1] == selectedValue }"
+                                data-ng-class="{ 'list-item-selected': count[1] == selected }"
                                 data-ng-click="selectValue(count)">
                                 <span class="node-content">{{ count[1] }}</span>
                                 <span class="node-stats badge">{{ count[0] }}</span>
@@ -31,37 +31,35 @@
                 </div>
             </div>
             <div class="">
-                <div data-ng-show="skosList && !skosName">
-                    <!--<h4>Choose Vocabulary</h4>-->
+                <div data-ng-show="vocabularyList && !vocabulary">
                     <div class="panel panel-default panel-choice">
                         <div class="panel-heading">Choose Vocabulary</div>
-                        <div class="panel-body" data-ng-repeat="name in skosList" data-ng-click="setSkosList(name)">
+                        <div class="panel-body" data-ng-repeat="name in vocabularyList" data-ng-click="setVocabulary(name)">
                             {{ name }}
                         </div>
                     </div>
                 </div>
-                <div data-ng-show="skosName" >
-                    <h1 data-ng-click="skosName=null">{{ skosName }}</h1>
-                    <div class="alert alert-warning alert-dismissible" role="alert">
+                <div data-ng-show="vocabulary" >
+                    <h1 data-ng-click="vocabulary=null">{{ vocabulary }}</h1>
+                    <div class="alert alert-dismissible" role="alert">
                         <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
                         Click on a term from the list on the left or enter a term in the input field below
                     </div>
                     <div class="input-group input-group-skos-term">
                         <label class="input-group-addon">Term</label>
-                        <input class="form-control" type="text" ng-model="skosSought"/>
+                        <input class="form-control" type="text" ng-model="sought"/>
                     </div>
-
-
-                    <div data-ng-show="skosFound" class="terminology-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="365" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                        <div data-ng-repeat="result in skosFound.results" class="list-group">
-                            <progressbar value="result.proximity" max="1.0" type="success"></progressbar>
+                    <hr/>
+                    <div data-ng-show="found" class="terminology-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="365" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                        <div data-ng-repeat="result in found.results" class="list-group">
+                            <progressbar value="result.proximity" max="1.0" type="success">{{ result.proximity * 100 | number : 0 }}%</progressbar>
                             <span class="fa-2x">"{{ result.label }}" </span>
                             <span> {{result.preferred ? '(pref)': '(alt)'}}</span>
                             <span ng-show="result.broader">
-                                <span data-ng-repeat="b in result.broader" data-ng-click="setSkosSought(b.label)">&#8599; {{ b.label }}</span>
+                                <span data-ng-repeat="b in result.broader" data-ng-click="setSought(b.label)">&#8599; {{ b.label }}</span>
                             </span>
                             <span ng-show="result.narrower">
-                                <span data-ng-repeat="n in result.narrower" data-ng-click="setSkosSought(n.label)"
+                                <span data-ng-repeat="n in result.narrower" data-ng-click="setSought(n.label)"
                                         >&#8600; {{ n.label }}</span>
                             </span>
                         </div>
