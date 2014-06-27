@@ -10,7 +10,7 @@
                     <div>{{path}}</div>
                 </div>
                 <div class="panel-body">
-                    <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="165"
+                    <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="170"
                          data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <ul class="list-group terminology-list">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText"
@@ -31,30 +31,37 @@
                     <span class="panel-title">Vocabulary Browser</span>
                 </div>
             </div>
-            <div class="panel-lists">
+            <div class="">
                 <div data-ng-show="skosList && !skosName">
-                    <h4>Choose Vocabulary</h4>
-                    <ul>
-                        <li data-ng-repeat="name in skosList" data-ng-click="setSkosList(name)">
-                            <span class="badge">{{ name }}</span>
-                        </li>
-                    </ul>
-                </div>
-                <div data-ng-show="skosName">
-                    <h1 data-ng-click="skosName=null">{{ skosName }}</h1>
-                    <div>
-                        <input class="input-lg form-control" type="text" ng-model="skosSought"/>
-                        <hr/>
+                    <!--<h4>Choose Vocabulary</h4>-->
+                    <div class="panel panel-default panel-choice">
+                        <div class="panel-heading">Choose Vocabulary</div>
+                        <div class="panel-body" data-ng-repeat="name in skosList" data-ng-click="setSkosList(name)">
+                            {{ name }}
+                        </div>
                     </div>
+                </div>
+                <div data-ng-show="skosName" >
+                    <h1 data-ng-click="skosName=null">{{ skosName }}</h1>
+                    <div class="alert alert-warning alert-dismissible" role="alert">
+                        <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                        Click on a term from the list on the left or enter a term in the input field below
+                    </div>
+                    <div class="input-group input-group-skos-term">
+                        <label class="input-group-addon">Term</label>
+                        <input class="form-control" type="text" ng-model="skosSought"/>
+                    </div>
+
+
+
+
                     <div data-ng-show="skosFound" class="terminology-list">
                         <div data-ng-repeat="result in skosFound.results" class="list-group">
-                            <progressbar value="result.proximity" max="1.0" type="info">
-                            </progressbar>
+                            <progressbar value="result.proximity" max="1.0" type="success"></progressbar>
                             <span class="fa-2x">"{{ result.label }}" </span>
                             <span> {{result.preferred ? '(pref)': '(alt)'}}</span>
                             <span ng-show="result.broader">
-                                <span data-ng-repeat="b in result.broader" data-ng-click="setSkosSought(b.label)"
-                                        >&#8599; {{ b.label }}</span>
+                                <span data-ng-repeat="b in result.broader" data-ng-click="setSkosSought(b.label)">&#8599; {{ b.label }}</span>
                             </span>
                             <span ng-show="result.narrower">
                                 <span data-ng-repeat="n in result.narrower" data-ng-click="setSkosSought(n.label)"
