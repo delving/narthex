@@ -40,28 +40,39 @@
                     </div>
                 </div>
                 <div data-ng-show="vocabulary" >
-                    <h1 data-ng-click="vocabulary=null">{{ vocabulary }}</h1>
-                    <div class="alert alert-dismissible" role="alert">
-                        <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                        Click on a term from the list on the left or enter a term in the input field below
-                    </div>
-                    <div class="input-group input-group-skos-term">
-                        <label class="input-group-addon">Term</label>
-                        <input class="form-control" type="text" ng-model="sought"/>
+                    <br/>
+                    <span class="fa-2x">&#8594; {{ vocabulary }}</span>
+                    <br/>
+                    <br/>
+                    <br/>
+                    <div style="border-width: 10px; border: solid; border-color: #dcdfdc; padding: 10px; padding-top:30px;">
+                        <div class="input-group input-group-skos-term">
+                            <label class="input-group-addon">Search:</label>
+                            <input class="form-control input-lg" type="text" ng-model="sought"/>
+                        </div>
+                        <div class="alert" role="alert" data-ng-show="!sought">
+                            Click on a term from the list on the left or enter a term in the input field below
+                        </div>
                     </div>
                     <hr/>
                     <div data-ng-show="found" class="terminology-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="365" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                        <div data-ng-repeat="result in found.results" class="list-group">
+                        <div data-ng-repeat="result in found.results" class="list-group" style="border-width: 2px; border: groove; border-color: #7e817e; padding: 10px;">
                             <progressbar value="result.proximity" max="1.0" type="success">{{ result.proximity * 100 | number : 0 }}%</progressbar>
-                            <span class="fa-2x">"{{ result.label }}" </span>
-                            <span> {{result.preferred ? '(pref)': '(alt)'}}</span>
-                            <span ng-show="result.broader">
-                                <span data-ng-repeat="b in result.broader" data-ng-click="setSought(b.label)">&#8599; {{ b.label }}</span>
-                            </span>
-                            <span ng-show="result.narrower">
-                                <span data-ng-repeat="n in result.narrower" data-ng-click="setSought(n.label)"
-                                        >&#8600; {{ n.label }}</span>
-                            </span>
+                            <div>
+                                <span data-ng-class="{ 'gerald-alt' : !result.preferred }" class="fa-2x">{{ result.label }} </span>
+                                <span data-ng-show="!result.preferred"> &#8594; {{ result.prefLabel }} </span>
+                                <span ng-show="result.broader">
+                                    <span data-ng-repeat="b in result.broader" data-ng-click="setSought(b.label)"> &#8599; {{ b.label }}</span>
+                                </span>
+                            </div>
+                            <div>
+                                <span ng-show="result.narrower">
+                                    <span data-ng-repeat="n in result.narrower" data-ng-click="setSought(n.label)"> &#8600;{{ n.label }}</span>
+                                </span>
+                            </div>
+                            <div style="text-align: right">
+                                <a  style="color: #8a8a8a; font-size-adjust: 0.5;" ng-href="{{result.uri}}" target="_blank">{{ result.uri }}</a>
+                            </div>
                         </div>
                     </div>
                 </div>

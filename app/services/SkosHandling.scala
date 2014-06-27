@@ -197,6 +197,7 @@ trait SkosJson {
       "proximity" -> result.proximity,
       "preferred" -> result.label.preferred,
       "label" -> result.label.text,
+      "prefLabel" -> result.prefLabel.text,
       "uri" -> result.concept.about,
       "narrower" -> result.concept.relatedNarrower(result.label.language),
       "broader" -> result.concept.relatedBroader(result.label.language)
@@ -222,7 +223,7 @@ trait SkosJson {
 
 case class LabelQuery(language: String, sought: String, count: Int)
 
-case class ProximityResult(label: Label, proximity: Double, concept: Concept)
+case class ProximityResult(label: Label, prefLabel: Label, proximity: Double, concept: Concept)
 
 case class LabelSearch(query: LabelQuery, results: List[ProximityResult])
 
@@ -264,7 +265,8 @@ class Concept(val about: String) {
         val text = IGNORE_BRACKET.replaceFirstIn(label.text,"")
         (RatcliffObershelpMetric.compare(cleanSought, text), label)
     }
-    val searchResults = judged.filter(_._1.isDefined).map(p => ProximityResult(p._2, p._1.get, this))
+    val prefLabel = preferred(language).getOrElse(new Label(true, language))
+    val searchResults = judged.filter(_._1.isDefined).map(p => ProximityResult(p._2, prefLabel, p._1.get, this))
     searchResults.sortBy(-1 * _.proximity).headOption
   }
 
@@ -320,8 +322,7 @@ class Definition(val language: String) {
   override def toString: String = s"""Definition[$language]("$text")"""
 }
 
-class Label(val preferred: Boolean, val language: String) {
-  var text: String = ""
+class Label(val preferred: Boolean, val language: String, var text: String = "") {
 
   override def toString: String = s"""${if (preferred) "Pref" else "Alt"}Label[$language]("$text")"""
 }
