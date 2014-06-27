@@ -51,6 +51,7 @@
                             <progressbar value="result.proximity" max="1.0" type="info">
                             </progressbar>
                             <span class="fa-2x">"{{ result.label }}" </span>
+                            <span> {{result.preferred ? '(pref)': '(alt)'}}</span>
                             <span ng-show="result.broader">
                                 <span data-ng-repeat="b in result.broader" data-ng-click="setSkosSought(b.label)"
                                         >&#8599; {{ b.label }}</span>
