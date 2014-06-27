@@ -10,8 +10,7 @@
                     <div>{{path}}</div>
                 </div>
                 <div class="panel-body">
-                    <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="170"
-                         data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                    <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="170" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <ul class="list-group terminology-list">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText"
                                 class="list-group-item clearfix test-class"
@@ -53,9 +52,7 @@
                     </div>
 
 
-
-
-                    <div data-ng-show="skosFound" class="terminology-list">
+                    <div data-ng-show="skosFound" class="terminology-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="365" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <div data-ng-repeat="result in skosFound.results" class="list-group">
                             <progressbar value="result.proximity" max="1.0" type="success"></progressbar>
                             <span class="fa-2x">"{{ result.label }}" </span>
