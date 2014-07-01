@@ -43,7 +43,9 @@ define(["angular", "common"], function (angular) {
                             user = response.data.user;
                             return user;
                         }, function(problem) {
-                            // todo: react properly
+                            console.log('check login failed', problem);
+                            user = null;
+                            return null;
                         });
                     },
                     getUser: function () {
