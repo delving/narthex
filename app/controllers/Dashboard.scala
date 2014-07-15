@@ -167,7 +167,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     token => email => implicit request => {
       val repo = Repo(email)
       val fileRepo = repo.fileRepo(fileName)
-      val result: String = fileRepo.queryDatabase()
+      val result: String = fileRepo.queryRecords("/narthex")
       Logger.info(result)
       Ok(result)
     }

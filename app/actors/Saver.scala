@@ -16,11 +16,13 @@
 
 package actors
 
-import akka.actor.{Props, ActorLogging, Actor}
-import scala.language.postfixOps
-import play.Logger
-import services.{FileRepo, RecordHandling, FileHandling}
 import java.io.ByteArrayInputStream
+
+import akka.actor.{Actor, ActorLogging, Props}
+import play.Logger
+import services.{FileHandling, FileRepo, RecordHandling}
+
+import scala.language.postfixOps
 
 object Saver {
   def props(fileRepo: FileRepo) = Props(new Saver(fileRepo))
@@ -31,7 +33,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
   def receive = {
 
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
-      fileRepo.createDatabase {
+      fileRepo.withNewRecordDatabase {
         session =>
           val parser = new RecordParser(recordRoot, uniqueId)
           val source = FileHandling.source(fileRepo.sourceFile)
