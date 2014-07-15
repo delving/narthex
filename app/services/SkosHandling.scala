@@ -116,7 +116,10 @@ object SkosVocabulary {
             c.labels += prefLabel
           })
         case EvElemEnd("skos", "prefLabel") =>
-          activeLabel.map(d => d.text = textBuilder.toString())
+          activeLabel.map(d => {
+            val text: String = textBuilder.toString()
+            d.text = if (d.language == "sys") s"$text (system language)" else text
+          })
           textBuilder.clear()
 
         // ===============================
@@ -187,7 +190,7 @@ trait SkosJson {
 
   implicit val relatedWrites = new Writes[RelatedConcept] {
     def writes(related: RelatedConcept) = Json.obj(
-      "label" -> related.concept.preferred(related.language).get.text,
+      "label" -> related.concept.preferred(related.language).text,
       "uri" -> related.concept.about
     )
   }
@@ -259,13 +262,13 @@ class Concept(val about: String) {
   val broaderResources = mutable.MutableList[String]()
 
   def search(language: String, sought: String): Option[ProximityResult] = {
-    val judged = labels.filter(_.language == language).map {
+    val judged = languageLabels(language).map {
       label =>
         val cleanSought = IGNORE_BRACKET.replaceFirstIn(sought, "")
         val text = IGNORE_BRACKET.replaceFirstIn(label.text,"")
         (RatcliffObershelpMetric.compare(cleanSought, text), label)
     }
-    val prefLabel = preferred(language).getOrElse(new Label(true, language))
+    val prefLabel = preferred(language)
     val searchResults = judged.filter(_._1.isDefined).map(p => ProximityResult(p._2, prefLabel, p._1.get, this))
     searchResults.sortBy(-1 * _.proximity).headOption
   }
@@ -300,7 +303,20 @@ class Concept(val about: String) {
     broaderResources.clear()
   }
 
-  def preferred(language: String) = labels.filter(_.preferred).find(_.language == language)
+  def preferred(language: String): Label = { // try language, default to "sys"
+    val languageFit = labels.filter(_.preferred).find(_.language == language)
+    languageFit.getOrElse(labels.filter(_.preferred).find(_.language == "sys").get)
+  }
+
+  def languageLabels(language: String) = { // try language, default to "sys"
+    val languageFit = labels.filter(_.language == language)
+    if (languageFit.isEmpty) {
+      labels.filter(_.language == "sys")
+    }
+    else {
+      languageFit
+    }
+  }
 
   def relatedNarrower(language: String) = narrowerConcepts.map(RelatedConcept(_, language))
 

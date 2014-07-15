@@ -333,7 +333,7 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
 
   val sizeFactor = 5 // relates to the lists below
 
-  def histogramJson = List(100, 500, 2500).map(size => (size, f(s"histogram-$size.json")))
+  def histogramJson = List(100, 500, 2500, 12500).map(size => (size, f(s"histogram-$size.json")))
 
   def sampleJson = List(100, 500, 2500).map(size => (size, f(s"sample-$size.json")))
 

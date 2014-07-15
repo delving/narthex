@@ -177,7 +177,7 @@ define(["angular"], function () {
     };
 
     var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, userService) {
-        var MAX_FOR_VOCABULARY = 2000;
+        var MAX_FOR_VOCABULARY = 12500;
         if (!userService.getUser()) {
             $location.path("/");
             return;
