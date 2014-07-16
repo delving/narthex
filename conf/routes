@@ -31,7 +31,7 @@ POST        /dashboard/:fileName/record/set-delimiter            controllers.Das
 GET         /dashboard/:fileName/record/delimiter                controllers.Dashboard.recordDelimiter(fileName)
 GET         /dashboard/:fileName/record/can-save                 controllers.Dashboard.canSaveRecords(fileName)
 GET         /dashboard/:fileName/record/save                     controllers.Dashboard.saveRecords(fileName)
-#GET         /dashboard/:fileName/record/query                    controllers.Dashboard.queryRecords(fileName)
+GET         /dashboard/:fileName/record/query                    controllers.Dashboard.queryRecords(fileName)
 
 GET         /dashboard/skos/list                                 controllers.Dashboard.listSkos
 GET         /dashboard/skos/:name/:sought                        controllers.Dashboard.searchSkos(name, sought)
