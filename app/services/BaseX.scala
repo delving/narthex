@@ -49,6 +49,9 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String) {
   def createDatabase(name: String) =
     withSession(_.execute(new CreateDB(name)))
 
+  def createDatabase(name: String, content:String) =
+    withSession(_.execute(new CreateDB(name, content)))
+
   def checkDatabase(name: String) =
     withSession(_.execute(new Check(name)))
 
@@ -74,11 +77,4 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String) {
 
   def delete(database: String, path: String) =
     withDbSession(database)(_.execute(new Delete(path)))
-
-  def query(database: String, query: String) =
-    withDbSession(database){
-      session =>
-        val q = session.query(query)
-        q.execute()
-    }
 }

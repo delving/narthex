@@ -163,15 +163,15 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def queryRecords(fileName: String) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
-      val fileRepo = repo.fileRepo(fileName)
-      val result: String = fileRepo.queryRecords("/narthex")
-      Logger.info(result)
-      Ok(result)
-    }
-  }
+//  def queryRecords(fileName: String) = Secure() {
+//    token => email => implicit request => {
+//      val repo = Repo(email)
+//      val fileRepo = repo.fileRepo(fileName)
+//      val result: String = fileRepo.queryRecords("/narthex")
+//      Logger.info(result)
+//      Ok(result)
+//    }
+//  }
 
   def listSkos = Secure() {
     token => email => implicit request => {

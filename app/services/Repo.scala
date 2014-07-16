@@ -21,17 +21,23 @@ import java.util.UUID
 
 import actors._
 import org.apache.commons.io.FileUtils._
+import org.basex.core.BaseXException
 import org.basex.server.ClientSession
 import org.mindrot.jbcrypt.BCrypt
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
+import services.Repo._
+import views.html.helper
 
 import scala.collection.mutable.ArrayBuffer
+import scala.xml.XML
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
+  val ANALYZED = "analyzed"
+  val UPLOADED = "uploaded"
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "NARTHEX")
   var baseXDir = new File(root, "basex")
@@ -82,6 +88,17 @@ object Repo {
     val suffix = getSuffix(fileName)
     fileName.substring(0, fileName.length - suffix.length)
   }
+
+  def quote(value: String) = {
+    value match {
+      case "" => "''"
+      case string =>
+        "'" + string.replace("'", "\'\'") + "'"
+    }
+  }
+
+  case class TermMapping(source: String, target: String)
+
 }
 
 class Repo(root: File, val email: String) {
@@ -89,8 +106,8 @@ class Repo(root: File, val email: String) {
   val personalRootName: String = email.replaceAll("[@.]", "_")
   val personalRoot = new File(root, personalRootName)
   val user = new File(personalRoot, "user.json")
-  val uploaded = new File(personalRoot, "uploaded")
-  val analyzed = new File(personalRoot, "analyzed")
+  val uploaded = new File(personalRoot, UPLOADED)
+  val analyzed = new File(personalRoot, ANALYZED)
 
   def create(password: String) = {
     personalRoot.mkdirs()
@@ -110,7 +127,7 @@ class Repo(root: File, val email: String) {
   }
 
   def uploadedFile(fileName: String) = {
-    val suffix = Repo.getSuffix(fileName)
+    val suffix = getSuffix(fileName)
 
     if (suffix.isEmpty) {
       val fileNameDot = s"$fileName."
@@ -127,11 +144,11 @@ class Repo(root: File, val email: String) {
     }
   }
 
-  def analyzedDir(fileName: String) = new File(analyzed, Repo.stripSuffix(fileName))
+  def analyzedDir(fileName: String) = new File(analyzed, stripSuffix(fileName))
 
   def listUploadedFiles = listFiles(uploaded)
 
-  def listFileRepos = listUploadedFiles.map(file => Repo.stripSuffix(file.getName))
+  def listFileRepos = listUploadedFiles.map(file => stripSuffix(file.getName))
 
   def uploadedOnly() = listUploadedFiles.filter(file => !analyzedDir(file.getName).exists())
 
@@ -152,12 +169,12 @@ class Repo(root: File, val email: String) {
     files
   }
 
-  def fileRepo(fileName: String) = new FileRepo(this, Repo.stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
+  def fileRepo(fileName: String) = new FileRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
 
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
       directory.listFiles.filter(file =>
-        file.isFile && Repo.SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).nonEmpty
+        file.isFile && SUFFIXES.filter(suffix => file.getName.endsWith(suffix)).nonEmpty
       ).toList
     }
     else {
@@ -170,8 +187,8 @@ class Repo(root: File, val email: String) {
 class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
 
   val dbName = s"${personalRepo.personalRootName}___$name"
-  val recordDatabase = s"${dbName}_records"
-  val terminologyDatabase = s"${dbName}_terminology"
+  val recordDb = s"${dbName}_records"
+  val termDb = s"${dbName}_terminology"
 
   def mkdirs = {
     dir.mkdirs()
@@ -190,7 +207,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   val SAVING = "4:saving"
   val SAVED = "5:saved"
 
-  def setStatus(state: String, percent: Int, workers: Int) = Repo.createJson(status, Json.obj(
+  def setStatus(state: String, percent: Int, workers: Int) = createJson(status, Json.obj(
     "state" -> state,
     "percent" -> percent,
     "workers" -> workers
@@ -245,7 +262,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   }
 
   def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
+    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, tagToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 
@@ -255,7 +272,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
       false
     }
     else {
-      val statusData = Repo.readJson(status)
+      val statusData = readJson(status)
       val state = (statusData \ "state").as[String]
       Logger.info(s"state is $state")
       if (state == SAVED) {
@@ -268,14 +285,14 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
     }
   }
 
-  def setRecordDelimiter(recordRoot: String, uniqueId: String, recordCount: Int) = Repo.createJson(recordDelimiter, Json.obj(
+  def setRecordDelimiter(recordRoot: String, uniqueId: String, recordCount: Int) = createJson(recordDelimiter, Json.obj(
     "recordRoot" -> recordRoot,
     "uniqueId" -> uniqueId,
     "recordCount" -> recordCount
   ))
 
   def saveRecords() = {
-    val delim = Repo.readJson(recordDelimiter)
+    val delim = readJson(recordDelimiter)
     var recordRoot = (delim \ "recordRoot").as[String]
     var uniqueId = (delim \ "uniqueId").as[String]
     var recordCount = (delim \ "recordCount").as[Int]
@@ -285,35 +302,56 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   }
 
   def withNewRecordDatabase[T](block: ClientSession => T) = {
-    Repo.baseX.createDatabase(recordDatabase) // overwrites
-    Repo.baseX.withDbSession(recordDatabase)(block)
+    baseX.createDatabase(recordDb) // overwrites
+    baseX.withDbSession(recordDb)(block)
   }
 
-  def queryRecords(queryString: String) = Repo.baseX.query(recordDatabase, queryString)
-
-  def withTerminologySessionCreate[T](block: ClientSession => T) = {
-    Repo.baseX.createDatabase(terminologyDatabase)
-    Repo.baseX.withDbSession(terminologyDatabase)(block)
+  def withTermSession[T](block: ClientSession => T): T = {
+    try {
+      baseX.withDbSession[T](termDb)(block)
+    }
+    catch {
+      case be: BaseXException =>
+        if (be.getMessage.contains("not found")) {
+          baseX.createDatabase(termDb, "<term-mappings/>")
+          baseX.withDbSession[T](termDb)(block)
+        }
+        else {
+          throw be
+        }
+    }
   }
 
-  def withTerminologySession[T](block: ClientSession => T) = {
-    Repo.baseX.withDbSession(terminologyDatabase)(block)
+  def getMapping(source: String): String = withTermSession[String] {
+    session =>
+      val q = s"""
+       |
+       |let $$mapping := doc('$termDb/$termDb.xml')/term-mappings/term-mapping[source=${quote(source)}]
+       |return $$mapping/target/text()
+       |
+       |""".stripMargin
+      session.query(q).execute()
+  }
+
+  def getMappings: Seq[TermMapping] = withTermSession[Seq[TermMapping]] {
+    session =>
+      val mappings = session.query(s"doc('$termDb/$termDb.xml')/term-mappings").execute()
+      val xml = XML.loadString(mappings)
+      (xml \ "term-mapping").map { node =>
+        TermMapping((node \ "source").text, (node \ "target").text)
+      }
   }
 }
 
 object NodeRepo {
   def apply(parent: FileRepo, parentDir: File, tag: String) = {
-    val dir = if (tag == null) parentDir else new File(parentDir, Repo.tagToDirectory(tag))
+    val dir = if (tag == null) parentDir else new File(parentDir, tagToDirectory(tag))
     dir.mkdirs()
     new NodeRepo(parent, dir)
   }
 }
 
-case class TermMapping(sourceTerm: String, targetTerm: String)
-
 class NodeRepo(val parent: FileRepo, val dir: File) {
-
-  lazy val terminologyFile = s"${dir.getAbsolutePath.substring(parent.dir.getAbsolutePath.length).replaceAll("/", "__")}.xml"
 
   def child(childTag: String) = NodeRepo(parent, dir, childTag)
 
@@ -321,7 +359,7 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
 
   def status = f("status.json")
 
-  def setStatus(content: JsObject) = Repo.createJson(status, content)
+  def setStatus(content: JsObject) = createJson(status, content)
 
   def values = f("values.txt")
 
@@ -354,7 +392,7 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
     }
 
     def createFile(maximum: Int, entries: ArrayBuffer[JsArray], histogramFile: File) = {
-      Repo.createJson(histogramFile, Json.obj(
+      createJson(histogramFile, Json.obj(
         "uniqueCount" -> uniqueCount,
         "entries" -> entries.size,
         "maximum" -> maximum,
@@ -385,99 +423,33 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
 
   }
 
-  def initMappings() = {
-    parent.withTerminologySessionCreate {
-      session =>
-        val upsert = s"""
-            | return
-            |    if (doc-available('${parent.terminologyDatabase}/$terminologyFile.xml'))
-            |    then ()
-            |    else db:add('${parent.terminologyDatabase}', <term-mappings/>, '/$terminologyFile.xml')
-          """.stripMargin
+  def addMapping(mapping: TermMapping) = parent.withTermSession {
+    session =>
+      val chop = root.getAbsolutePath.length()
+      val sourcePath = dir.getAbsolutePath.substring(chop).replace("/"+ANALYZED, "")
+      val encodedSource = helper.urlEncode(mapping.source)
+      val source = s"$sourcePath/$encodedSource"
 
-        session.execute(upsert)
-    }
-  }
+      val upsert = s"""
+      |
+      | let $$freshMapping :=
+      |   <term-mapping>
+      |     <source>$source</source>
+      |     <target>${mapping.target}</target>
+      |   </term-mapping>
+      |
+      | let $$termMappings := doc('${parent.termDb}/${parent.termDb}.xml')/term-mappings
+      |
+      | let $$termMapping := $$termMappings/term-mapping[source=${quote(source)}]
+      |
+      | return
+      |   if (exists($$termMapping))
+      |   then replace node $$termMapping with $$freshMapping
+      |   else insert node $$freshMapping into $$termMappings
+      |
+      """.stripMargin
 
-  def addMapping(mapping: TermMapping) = {
-
-
-    parent.withTerminologySession {
-      session =>
-
-        def quote(value: String) = {
-          value match {
-            case "" => "''"
-            case string =>
-              "'" + string.replace("'", "\'\'") + "'"
-          }
-        }
-
-
-        val upsert = s"""
-            |
-            | let $$freshMapping :=
-            |   <term-mapping>
-            |     <source-term>${mapping.sourceTerm}</source-term>
-            |     <target-term>${mapping.targetTerm}</target-term>
-            |   </term-mapping>
-            |
-            | let $$termMappings := doc('${parent.terminologyDatabase}/$terminologyFile.xml')
-            |
-            | let $$termMapping := $$termMappings/term-mappings/term-mapping[source-term=${quote(mapping.sourceTerm)}]
-            |
-            | return
-            |   if (db:exists($$termMapping))
-            |   then replace node $$termMapping with $$freshMapping
-            |   else insert node $$termMapping into $$termMappings
-            |
-          """.stripMargin
-
-
-        println("We ask this:")
-        val lines = upsert.split("\n").zipWithIndex.map(line => s"${line._2 + 1}: ${line._1}")
-        println(lines.mkString("\n"))
-
-        val answer = session.query(upsert).execute()
-
-        println("The answer is:")
-        println(answer);
-
-      /*
-
-        add to /term-mapping/__something.xml <term-mappings/>
-
-        for $tm in doc('test_narthex_delving_org___pretend-file/term-mapping/__something.xml')
-        return insert node <term-mapping/> into $tm/term-mappings
-
-        def vocabDocument(vocabName: String) = s"/vocabulary/$vocabName.xml"
-        def vocabPath(vocabName:String) = s"doc('$database${vocabDocument(vocabName)}')"
-        def vocabExists(vocabName: String) = s"db:exists('$database','${vocabDocument(vocabName)}')"
-        def vocabAdd(vocabName: String, xml:String) = s"db:add('$database', $xml,'${vocabDocument(vocabName)}')"
-
-        s.update('add vocab entry',
-            [
-                'if (' + s.vocabExists(vocabName) + ')',
-                'then insert node (' + entryXml + ') into ' + s.vocabPath(vocabName) + '/Entries',
-                'else '+ s.vocabAdd(vocabName, '<Entries>'+entryXml+'</Entries>')
-            ],
-            function (result) {
-                if (result) {
-                    receiver(entryXml); // use the result?
-                }
-                else {
-                    receiver(null);
-                }
-            }
-        );
-
-       */
-      //
-      //        val hash = hashString(record)
-      //        val inputStream = new ByteArrayInputStream(record.getBytes("UTF-8"))
-      //        session.add(s"$collection/$hash.xml", inputStream)
-    }
-
+      session.query(upsert).execute()
   }
 
 }

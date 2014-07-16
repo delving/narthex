@@ -4,6 +4,7 @@ import java.io.File
 
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
+import services.Repo.TermMapping
 
 class TestTermMatching extends FlatSpec with Matchers with TreeHandling {
 
@@ -22,15 +23,18 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling {
       fileRepo.nodeRepo(path).get
     }
 
-
     val nodeRepo = createNodeRepo("list/record/term")
 
     Repo.startBaseX()
 
-    nodeRepo.initMappings()
-    nodeRepo.addMapping(TermMapping("from", "to"))
+    nodeRepo.addMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink"))
+    nodeRepo.addMapping(TermMapping("b b", "http://gumby.com/pokey"))
+    nodeRepo.addMapping(TermMapping("a", "http://gumby.com/gumby"))
 
+    val prefix = "/test_narthex_delving_org/pretend-file/list/record/term"
 
+    fileRepo.getMappings.toString() should be (s"List(TermMapping($prefix/a,http://gumby.com/gumby), TermMapping($prefix/b+b,http://gumby.com/pokey))")
+    fileRepo.getMapping(s"$prefix/a") should be ("http://gumby.com/gumby")
   }
 
 }
