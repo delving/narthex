@@ -67,7 +67,8 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.saveRecords,
           routes.javascript.Dashboard.queryRecords,
           routes.javascript.Dashboard.listSkos,
-          routes.javascript.Dashboard.searchSkos
+          routes.javascript.Dashboard.searchSkos,
+          routes.javascript.Dashboard.setMapping
         )
       ).as(JAVASCRIPT)
   }

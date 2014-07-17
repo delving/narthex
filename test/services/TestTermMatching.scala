@@ -33,8 +33,8 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling {
 
     val prefix = "/test_narthex_delving_org/pretend-file/list/record/term"
 
-    fileRepo.getMappings.toString() should be (s"List(TermMapping($prefix/a,http://gumby.com/gumby), TermMapping($prefix/b+b,http://gumby.com/pokey))")
-    fileRepo.getMapping(s"$prefix/a") should be ("http://gumby.com/gumby")
+    fileRepo.getMappings.toString() should be(s"List(TermMapping($prefix/a,http://gumby.com/gumby), TermMapping($prefix/b%20b,http://gumby.com/pokey))")
+    fileRepo.getMapping(s"$prefix/a") should be("http://gumby.com/gumby")
   }
 
 }

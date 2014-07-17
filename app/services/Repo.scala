@@ -322,6 +322,30 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
     }
   }
 
+  def setMapping(mapping: TermMapping) = withTermSession {
+    session =>
+      val upsert = s"""
+      |
+      | let $$freshMapping :=
+      |   <term-mapping>
+      |     <source>${mapping.source}</source>
+      |     <target>${mapping.target}</target>
+      |   </term-mapping>
+      |
+      | let $$termMappings := doc('$termDb/$termDb.xml')/term-mappings
+      |
+      | let $$termMapping := $$termMappings/term-mapping[source=${quote(mapping.source)}]
+      |
+      | return
+      |   if (exists($$termMapping))
+      |   then replace node $$termMapping with $$freshMapping
+      |   else insert node $$freshMapping into $$termMappings
+      |
+      """.stripMargin
+
+      session.query(upsert).execute()
+  }
+
   def getMapping(source: String): String = withTermSession[String] {
     session =>
       val q = s"""
@@ -426,8 +450,8 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
   def addMapping(mapping: TermMapping) = parent.withTermSession {
     session =>
       val chop = root.getAbsolutePath.length()
-      val sourcePath = dir.getAbsolutePath.substring(chop).replace("/"+ANALYZED, "")
-      val encodedSource = helper.urlEncode(mapping.source)
+      val sourcePath = dir.getAbsolutePath.substring(chop).replace("/" + ANALYZED, "")
+      val encodedSource = helper.urlEncode(mapping.source).replaceAll("[+]", "%20")
       val source = s"$sourcePath/$encodedSource"
 
       val upsert = s"""

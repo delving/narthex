@@ -23,6 +23,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
+import services.Repo.TermMapping
 import services._
 
 object Dashboard extends Controller with Security with TreeHandling with SkosJson {
@@ -191,6 +192,17 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
         Cache.set(name, cs, CACHE_EXPIRATION)
         Ok(Json.obj("search" -> searchConceptScheme(cs)))
       }
+    }
+  }
+
+  def setMapping(fileName: String) = Secure(parse.json) {
+    token => email => implicit request => {
+      var sourceUri = (request.body \ "source").as[String]
+      var targetUri = (request.body \ "target").as[String]
+      val repo = Repo(email)
+      val fileRepo = repo.fileRepo(fileName)
+      fileRepo.setMapping(TermMapping(sourceUri, targetUri))
+      Ok("thanks man")
     }
   }
 }
