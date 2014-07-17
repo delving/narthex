@@ -21,7 +21,7 @@ define(["angular"], function (angular) {
         $scope.fileName = $routeParams.fileName;
         $scope.path = $routeParams.path;
         $scope.histogramSize = parseInt($routeParams.size || "100");
-        $scope.selected = $routeParams.selected || "";
+        $scope.target = "";
         $scope.vocabulary = $routeParams.vocabulary || "";
         $scope.sought = $routeParams.sought || "";
 
@@ -29,7 +29,7 @@ define(["angular"], function (angular) {
             $scope.histogram = data;
         });
 
-        dashboardService.listSkos().then(function(data) {
+        dashboardService.listSkos().then(function (data) {
             $scope.vocabularyList = data.list;
         });
 
@@ -45,42 +45,53 @@ define(["angular"], function (angular) {
             $location.search({
                 path: $scope.path,
                 histogramSize: $scope.histogramSize,
-                selected: $scope.selected,
+                source: $scope.source,
                 vocabulary: $scope.vocabulary,
                 sought: $scope.sought
             });
         }
 
-        $scope.selectValue = function (count) {
-            $scope.selected = count[1];
-            $scope.sought = $scope.selected;
+        $scope.selectSource = function (value) {
+            $scope.source = value;
+            $scope.sourceUri = $scope.path + "/" + encodeURIComponent($scope.source);
+            $scope.sought = $scope.source;
             updateLocationSearch();
         };
+        $scope.selectSource($routeParams.source || "");
 
-        $scope.setVocabulary = function(name) {
+        $scope.selectTarget = function (concept) {
+            $scope.target = concept;
+        };
+
+        $scope.setVocabulary = function (name) {
             $scope.vocabulary = name;
             updateLocationSearch();
         };
 
-        $scope.setSought = function(value) {
+        $scope.setSought = function (value) {
             $scope.sought = value;
             updateLocationSearch();
         };
 
         function search(sought) {
             if (!sought || !$scope.vocabulary) return;
-            dashboardService.searchSkos($scope.vocabulary, sought).then(function(data) {
+            dashboardService.searchSkos($scope.vocabulary, sought).then(function (data) {
                 $scope.found = data.search;
             });
         }
 
-        $scope.$watch("sought", function(sought, old) {
+        $scope.$watch("sought", function (sought, old) {
             search(sought);
         });
 
-        $scope.$watch("vocabulary", function(vocab, old) {
+        $scope.$watch("vocabulary", function (vocab, old) {
             search($scope.sought);
         });
+
+        $scope.setMapping = function() {
+            console.log("from", $scope.source);
+            console.log("to", $scope.target.uri);
+        };
     };
 
     TermsCtrl.$inject = ["$scope", "$location", "$routeParams", "dashboardService"];

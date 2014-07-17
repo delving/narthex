@@ -3,6 +3,28 @@
 </div>
 <div class="row">
     <div>
+        <div class="col-md-12" data-ng-show="sourceUri && target">
+            <div>
+                <h4>"{{ source }}" &#8594; "{{ target.prefLabel }}"</h4>
+            </div>
+            <div class="col-md-9">
+                <div>
+                    <span class="col-md-1">From:</span>
+                    <span>{{ sourceUri }}</span>
+                </div>
+                <div>
+                    <span class="col-md-1">To:</span>
+                    <span>{{ target.uri }}</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-success btn-xs" data-ng-click="setMapping()">
+                    Create
+                </button>
+            </div>
+            <br/>
+            <hr/>
+        </div>
         <div class="col-md-6">
             <div class="panel panel-primary panel-lists">
                 <div class="panel-heading">
@@ -14,8 +36,8 @@
                         <ul class="list-group terminology-list">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText"
                                 class="list-group-item clearfix test-class"
-                                data-ng-class="{ 'list-item-selected': count[1] == selected }"
-                                data-ng-click="selectValue(count)">
+                                data-ng-class="{ 'list-item-selected': count[1] == source }"
+                                data-ng-click="selectSource(count[1])">
                                 <span class="node-content">{{ count[1] }}</span>
                                 <span class="node-stats badge">{{ count[0] }}</span>
                             </li>
@@ -56,7 +78,8 @@
                     </div>
                     <hr/>
                     <div data-ng-show="found" class="terminology-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="365" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                        <div data-ng-repeat="result in found.results" class="list-group" style="border-width: 2px; border: groove; border-color: #7e817e; padding: 10px;">
+                        <div data-ng-repeat="result in found.results" class="list-group" style="border-width: 2px; border: groove; border-color: #7e817e; padding: 10px;"
+                             data-ng-click="selectTarget(result)">
                             <progressbar value="result.proximity" max="1.0" type="success">{{ result.proximity * 100 | number : 0 }}%</progressbar>
                             <div>
                                 <span data-ng-class="{ 'gerald-alt' : !result.preferred }" class="fa-2x">{{ result.label }} </span>
@@ -70,7 +93,7 @@
                                     <span data-ng-repeat="n in result.narrower" data-ng-click="setSought(n.label)"> &#8600;{{ n.label }}</span>
                                 </span>
                             </div>
-                            <div style="text-align: right">
+                            <div style="text-align: right"  data-ng-class="{ 'gerald-selected': result.uri == target.uri }">
                                 <a  style="color: #8a8a8a; font-size-adjust: 0.5;" ng-href="{{result.uri}}" target="_blank">{{ result.uri }}</a>
                             </div>
                         </div>
