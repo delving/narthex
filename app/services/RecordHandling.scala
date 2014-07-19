@@ -16,12 +16,14 @@
 
 package services
 
-import scala.xml.pull._
-import scala.io.Source
-import scala.collection.mutable
-import play.Logger
-import scala.xml.{MetaData, NamespaceBinding}
 import java.security.MessageDigest
+
+import play.Logger
+
+import scala.collection.mutable
+import scala.io.Source
+import scala.xml.pull._
+import scala.xml.{MetaData, NamespaceBinding}
 
 trait RecordHandling {
   val ID_PLACEHOLDER = "__id__"
@@ -48,7 +50,8 @@ trait RecordHandling {
       }
 
       def sendProgress(): Unit = {
-        val percent = ((recordCount * 100) / totalRecords).toInt
+        val realPercent = ((recordCount * 100) / totalRecords).toInt
+        val percent = if (realPercent > 0) realPercent else 1
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
           progress(percent)
           percentWas = percent

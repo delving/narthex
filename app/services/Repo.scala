@@ -189,6 +189,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   val dbName = s"${personalRepo.personalRootName}___$name"
   val recordDb = s"${dbName}_records"
   val termDb = s"${dbName}_terminology"
+  val root = new NodeRepo(this, dir)
 
   def mkdirs = {
     dir.mkdirs()
@@ -213,7 +214,10 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
     "workers" -> workers
   ))
 
-  def root = new NodeRepo(this, dir)
+  def nodeRepo(path: String): Option[NodeRepo] = {
+    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, tagToDirectory(tag)))
+    if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
+  }
 
   def status(path: String): Option[File] = {
     nodeRepo(path) match {
@@ -261,11 +265,6 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
     }
   }
 
-  def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, tagToDirectory(tag)))
-    if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
-  }
-
   def canSaveRecords = {
     val delim = recordDelimiter
     if (!delim.exists()) {
@@ -293,9 +292,9 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
 
   def saveRecords() = {
     val delim = readJson(recordDelimiter)
-    var recordRoot = (delim \ "recordRoot").as[String]
-    var uniqueId = (delim \ "uniqueId").as[String]
-    var recordCount = (delim \ "recordCount").as[Int]
+    val recordRoot = (delim \ "recordRoot").as[String]
+    val uniqueId = (delim \ "uniqueId").as[String]
+    val recordCount = (delim \ "recordCount").as[Int]
     setStatus(SAVING, 1, 0) // do it now, so it's done before the actor starts
     val saver = Akka.system.actorOf(Saver.props(this), name)
     saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
@@ -304,6 +303,38 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   def withNewRecordDatabase[T](block: ClientSession => T) = {
     baseX.createDatabase(recordDb) // overwrites
     baseX.withDbSession(recordDb)(block)
+  }
+
+  def withRecordDatabase[T](block: ClientSession => T) = {
+    baseX.withDbSession(recordDb)(block)
+  }
+
+  def queryRecords(path: String, value: String, start: Int = 1, max: Int = 10): String = {
+    val delim = readJson(recordDelimiter)
+    val recordRoot = (delim \ "recordRoot").as[String]
+    val prefix = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
+    if (!path.startsWith(prefix)) throw new RuntimeException(s"$path must start with $prefix!")
+    val queryPathField = path.substring(prefix.length)
+    val field = queryPathField.substring(queryPathField.lastIndexOf("/") + 1)
+    val queryPath = queryPathField.substring(0, queryPathField.lastIndexOf("/"))
+    nodeRepo(path) match {
+      case None => "<records/>"
+      case Some(nodeDirectory) =>
+        withRecordDatabase {
+          session =>
+            val queryForRecords = s"""
+              |
+              | let $$recordsWithValue := collection('$recordDb')/narthex$queryPath[$field=${quote(value)}]
+              | return
+              |   <records>{
+              |     subsequence($$recordsWithValue, $start, $max)
+              |   }</records>
+              |
+              """.stripMargin
+            println("asking:\n" + queryForRecords)
+            session.query(queryForRecords).execute()
+        }
+    }
   }
 
   def withTermSession[T](block: ClientSession => T): T = {
@@ -365,6 +396,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
         TermMapping((node \ "source").text, (node \ "target").text)
       }
   }
+
 }
 
 object NodeRepo {

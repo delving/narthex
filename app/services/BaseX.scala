@@ -62,7 +62,10 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String) {
     withSession {
       session =>
         session.execute(new Open(database))
-        block(session)
+        session.execute(new Set("autoflush", "false"))
+        val result = block(session)
+        session.execute(new Flush())
+        result
     }
   }
 

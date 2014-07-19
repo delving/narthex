@@ -50,7 +50,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
           def receiveRecord(record: String) = {
             val hash = hashString(record)
             val inputStream = new ByteArrayInputStream(record.getBytes("UTF-8"))
-            session.add(s"$collection/$hash.xml", inputStream)
+            session.add(s"$collection/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml", inputStream)
           }
 
           parser.parse(source, receiveRecord, recordCount, sendProgress)

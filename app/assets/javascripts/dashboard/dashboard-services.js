@@ -29,12 +29,12 @@ define(["angular", "common"], function (angular) {
                     $location.path('/');
                 }
                 else {
-                    console.log('why', problem);
+                    console.log('why', problem.statusText);
                     if (problem.data.message) {
                         alert("Processing problem " + problem.status + " (" + problem.data.message + ")");
                     }
                     else {
-                        alert("Network problem " + problem.status);
+                        alert("Network problem " + problem.statusText);
                     }
                 }
             };
@@ -142,8 +142,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                queryRecords: function (fileName) {
-                    return dash.queryRecords(fileName).get().then(
+                queryRecords: function (fileName, body) {
+                    return dash.queryRecords(fileName).post(body).then(
                         function (response) {
                             return response.data;
                         },

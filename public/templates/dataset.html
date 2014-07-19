@@ -106,7 +106,7 @@
                         <ul class="list-group">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText" class="list-group-item clearfix">
                                 <span class="node-content">{{ count[1] }}</span>
-                                <span class="node-stats badge">{{ count[0] }} <span class="small">({{ count[2] | number:0 }}%)</span></span>
+                                <span class="node-stats badge" data-ng-click="queryRecords(count)">{{ count[0] }} <span class="small">({{ count[2] | number:0 }}%)</span></span>
                             </li>
                         </ul>
                     </div>
@@ -149,8 +149,11 @@
                 <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}" class="fa pointer"></i>
             </span>
             <span>{{ node.tag }}</span>
-            <span class="badge pull-right"
-                  data-ng-class="{ 'badge-info': node.lengths.length > 0, 'badge-unique': node == uniqueIdNode, 'badge-record-root': node == recordRootNode }"> {{ node.count }} </span>
+            <span class="badge pull-right" data-ng-class="{ 'badge-info': node.lengths.length > 0, 'badge-unique': node == uniqueIdNode, 'badge-record-root': node == recordRootNode }">
+                <span data-ng-if="node == recordRootNode">Record Root: {{ node.count }}</span>
+                <span data-ng-if="node == uniqueIdNode">Unique Id: {{ node.count }}</span>
+                <span data-ng-if="!(node == recordRootNode || node == uniqueIdNode)">{{ node.count }}</span>
+            </span>
         </div>
         <ul ng-if="node.kids && !node.collapsed" class="">
             <li class="" data-ng-repeat="(nodeIndex, node) in node.kids" data-ng-controller="TreeNodeCtrl">

@@ -164,13 +164,15 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def queryRecords(fileName: String) = Secure() {
+  def queryRecords(fileName: String) = Secure(parse.json) {
     token => email => implicit request => {
-//      val repo = Repo(email)
-//      val fileRepo = repo.fileRepo(fileName)
-//      val result: String = fileRepo.queryRecords("/narthex")
-//      Logger.info(result)
-      Ok("hello there")
+      println("query records arrival")
+      val path = (request.body \ "path").as[String]
+      val value = (request.body \ "value").as[String]
+      val repo = Repo(email)
+      val fileRepo = repo.fileRepo(fileName)
+      val result: String = fileRepo.queryRecords(path, value)
+      Ok(result)
     }
   }
 
@@ -197,8 +199,8 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def setMapping(fileName: String) = Secure(parse.json) {
     token => email => implicit request => {
-      var sourceUri = (request.body \ "source").as[String]
-      var targetUri = (request.body \ "target").as[String]
+      val sourceUri = (request.body \ "source").as[String]
+      val targetUri = (request.body \ "target").as[String]
       val repo = Repo(email)
       val fileRepo = repo.fileRepo(fileName)
       fileRepo.setMapping(TermMapping(sourceUri, targetUri))

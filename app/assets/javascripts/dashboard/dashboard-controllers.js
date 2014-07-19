@@ -61,7 +61,7 @@ define(["angular"], function () {
                         if ($scope.uploading) $scope.percent = parseInt(100.0 * evt.loaded / evt.total);
                     }
                 ).success(
-                    function (data, status, headers, config) {
+                    function () {
                         $scope.uploading = false;
                         $scope.percent = null;
                         fetchFileList();
@@ -134,15 +134,13 @@ define(["angular"], function () {
         };
 
         $scope.deleteFile = function (file) {
-            dashboardService.zap(file.name).then(function (data) {
+            dashboardService.zap(file.name).then(function () {
                 fetchFileList();
             });
         };
 
         $scope.saveRecords = function (file) {
-            console.log('save', file);
-            dashboardService.saveRecords(file.name).then(function (data) {
-                console.log('saving', file);
+            dashboardService.saveRecords(file.name).then(function () {
                 $timeout(
                     function () {
                         checkFileStatus(file)
@@ -152,12 +150,6 @@ define(["angular"], function () {
             });
         };
 
-        $scope.queryRecords = function (file) {
-            console.log('query', file);
-            dashboardService.queryRecords(file.name).then(function (data) {
-                console.log('query ' + file.name, data);
-            });
-        };
     };
 
     DashboardCtrl.$inject = [
@@ -184,8 +176,6 @@ define(["angular"], function () {
         }
 
         $scope.fileName = $routeParams.fileName;
-        $scope.path = $routeParams.path;
-        $scope.activeView = $routeParams.view;
 
         var absUrl = $location.absUrl();
         var email = userService.getUser().email.replace("@", "_");
@@ -239,7 +229,7 @@ define(["angular"], function () {
             }
 
             $scope.tree = tree;
-            if ($scope.path) selectNode($scope.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
+            if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
         });
 
         $scope.goToDashboard = function () {
@@ -250,7 +240,7 @@ define(["angular"], function () {
         $scope.goToTerms = function () {
             $location.path("/terms/" + $scope.fileName);
             $location.search({
-                path: $scope.selectedNode.path,
+                path: $routeParams.path,
                 size: $scope.status.histograms[$scope.status.histograms.length-1]
             });
         };
@@ -265,7 +255,7 @@ define(["angular"], function () {
                 $scope.apiPath = $scope.apiPrefix + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
-                switch ($scope.activeView) {
+                switch ($routeParams.view) {
                     case 'sample':
                         $scope.fetchSample();
                         break;
@@ -299,38 +289,36 @@ define(["angular"], function () {
                     uniqueId: $scope.uniqueIdNode.path,
                     recordCount: $scope.uniqueIdNode.count
                 };
-                dashboardService.setRecordDelimiter($scope.fileName, body).then(function (data) {
+                dashboardService.setRecordDelimiter($scope.fileName, body).then(function () {
                     console.log("record delimiter set");
                 });
             }
         };
 
-        function setSearchParams() {
+        function setActiveView(activeView) {
+            $scope.activeView = activeView;
             $location.search({
-                path: $scope.selectedNode.path,
-                view: $scope.activeView
+                path: $routeParams.path,
+                view: activeView
             });
         }
 
         $scope.fetchLengths = function () {
-            $scope.activeView = "lengths";
             $scope.sample = undefined;
             $scope.histogram = undefined;
-            setSearchParams();
+            setActiveView("lengths");
         };
 
         $scope.fetchSample = function () {
-            $scope.activeView = "sample";
-            dashboardService.sample($scope.fileName, $scope.selectedNode.path, $scope.sampleSize).then(function (data) {
+            dashboardService.sample($scope.fileName, $routeParams.path, $scope.sampleSize).then(function (data) {
                 $scope.sample = data;
                 $scope.histogram = undefined;
             });
-            setSearchParams();
+            setActiveView("sample");
         };
 
         $scope.fetchHistogram = function () {
-            $scope.activeView = "histogram";
-            dashboardService.histogram($scope.fileName, $scope.selectedNode.path, $scope.histogramSize).then(function (data) {
+            dashboardService.histogram($scope.fileName, $routeParams.path, $scope.histogramSize).then(function (data) {
                 _.forEach(data.histogram, function (entry) {
                     var percent = (100 * entry[0]) / $scope.selectedNode.count;
                     entry.push(percent);
@@ -340,7 +328,7 @@ define(["angular"], function () {
                 $scope.histogramUnique = data.histogram[0] && data.histogram[0][0] == 1;
                 $scope.histogramVocabulary = (!$scope.histogramUnique) && ($scope.status.uniqueCount < MAX_FOR_VOCABULARY);
             });
-            setSearchParams();
+            setActiveView("histogram");
         };
 
         $scope.isMoreSample = function () {
@@ -400,14 +388,14 @@ define(["angular"], function () {
                 var b = Math.floor(Math.sin(frequency * walk + 3) * (127) + 128);
                 colorLookup[lengthName[walk]] = rgbToHex(r, g, b);
             }
-            return function (d, i) {
+            return function (d) {
                 return colorLookup[d.data[0]];
             };
         };
 
         /**
          * Scrolls up and down to a named anchor hash, or top/bottom of an element
-         * @param {Object} options: hash - named anchor, element - html element (usually a div) with id
+         * {Object} options: hash - named anchor, element - html element (usually a div) with id
          * eg. scrollTo({'hash': 'page-top'})
          * eg. scrollto({'element': '#document-list-container'})
          */
@@ -443,12 +431,24 @@ define(["angular"], function () {
                 }, 250);
             }
         };
+
+        $scope.queryRecords = function (count) {
+            console.log('query', count);
+            var body = {
+                "path": $routeParams.path,
+                "value": count[1]
+            };
+            dashboardService.queryRecords($scope.fileName, body).then(function (data) {
+                console.log('query ' + $scope.fileName, data);
+            });
+        };
+
     };
 
     FileDetailCtrl.$inject = ["$scope", "$routeParams", "$timeout", "$location", "dashboardService", "userService"];
 
     var TreeCtrl = function ($scope) {
-        $scope.$watch('tree', function (tree, oldTree) {
+        $scope.$watch('tree', function (tree) {
             if (tree) {
                 $scope.node = tree;
             }

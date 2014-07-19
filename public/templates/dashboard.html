@@ -51,15 +51,16 @@
                                 <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteFile(file)">Delete</button>
                             </span>
                             <span ng-switch-when="4:saving">
-                                <span>{{ file.name }} Saving</span>
+                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a><span> Saving</span>
                                 <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
                                     <b>{{file.status.percent}}%</b>
                                 </progressbar>
                             </span>
                             <span ng-switch-when="5:saved">
                                 <a href data-ng-click="viewFile(file)">{{ file.name }}</a><span> Saved</span>
-                                <a href data-ng-click="queryRecords(file)">test query</a>
+                                <!--<a href data-ng-click="queryRecords(file)">test query</a>-->
                                 <!--todo: the reporting of canSaveRecords is failing, and making this show initially-->
+                                <!--<button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" >Save Records Again</button>-->
                                 <!--<button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.canSave">Save Records Again</button>-->
                                 <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteFile(file)">Delete</button>
                             </span>
