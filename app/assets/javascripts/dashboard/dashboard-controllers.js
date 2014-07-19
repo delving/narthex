@@ -245,10 +245,27 @@ define(["angular"], function () {
             });
         };
 
+        function setActiveView(activeView) {
+            $scope.activeView = activeView;
+            $location.search({
+                path: $routeParams.path,
+                view: activeView
+            });
+        }
+
+        function setActivePath(activePath) {
+            $scope.activePath = activePath;
+            $location.search({
+                path: activePath,
+                view: $routeParams.view
+            });
+        }
+
         $scope.selectNode = function (node, $event) {
             if ($event) $event.stopPropagation();
             if (!node.lengths.length) return;
             $scope.selectedNode = node;
+            setActivePath(node.path);
             dashboardService.nodeStatus($scope.fileName, node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
@@ -294,14 +311,6 @@ define(["angular"], function () {
                 });
             }
         };
-
-        function setActiveView(activeView) {
-            $scope.activeView = activeView;
-            $location.search({
-                path: $routeParams.path,
-                view: activeView
-            });
-        }
 
         $scope.fetchLengths = function () {
             $scope.sample = undefined;
