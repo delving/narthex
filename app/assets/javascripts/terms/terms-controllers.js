@@ -81,12 +81,14 @@ define(["angular"], function (angular) {
 
         $scope.skosTab = function() {
             $scope.activeView = "skos";
-            searchSkos($scope.sought);
+            $scope.sought = $scope.selectedValue;
+            updateSearchParams()
         };
 
         $scope.recordTab = function() {
             $scope.activeView = "record";
             searchRecords($scope.selectedValue);
+            updateSearchParams()
         };
 
         $scope.selectVocabulary = function (name) {
