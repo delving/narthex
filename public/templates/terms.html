@@ -4,10 +4,13 @@
 <div class="row">
     <div>
         <div class="col-md-12" data-ng-show="sourceUri && targetConcept">
-            <div>
-                <h4>"{{ sourceValue }}" &#8594; "{{ targetConcept.prefLabel }}"</h4>
+            <div class="col-md-4">
+                <button type="button" class="btn-success btn-primary" style="width:100%"
+                        data-ng-click="setMapping()">
+                    <h4>"{{ sourceValue }}" &#8594; "{{ targetConcept.prefLabel }}"</h4>
+                </button>
             </div>
-            <div class="col-md-9">
+            <div class="col-md-8">
                 <div>
                     <span class="col-md-1">From:</span>
                     <span>{{ sourceUri }}</span>
@@ -17,14 +20,10 @@
                     <span>{{ targetConcept.uri }}</span>
                 </div>
             </div>
-            <div class="col-md-3">
-                <button class="btn btn-success btn-xs" data-ng-click="setMapping()">
-                    Create
-                </button>
-            </div>
-            <br/>
-            <hr/>
         </div>
+        <br/>
+        <br/>
+        <br/>
         <div class="col-md-6">
             <div class="panel panel-primary panel-lists">
                 <div class="panel-heading">
