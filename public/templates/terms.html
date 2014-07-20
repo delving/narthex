@@ -3,9 +3,9 @@
 </div>
 <div class="row">
     <div>
-        <div class="col-md-12" data-ng-show="sourceUri && concept">
+        <div class="col-md-12" data-ng-show="sourceUri && targetConcept">
             <div>
-                <h4>"{{ source }}" &#8594; "{{ target.prefLabel }}"</h4>
+                <h4>"{{ sourceValue }}" &#8594; "{{ targetConcept.prefLabel }}"</h4>
             </div>
             <div class="col-md-9">
                 <div>
@@ -14,7 +14,7 @@
                 </div>
                 <div>
                     <span class="col-md-1">To:</span>
-                    <span>{{ target.uri }}</span>
+                    <span>{{ targetConcept.uri }}</span>
                 </div>
             </div>
             <div class="col-md-3">
@@ -38,7 +38,7 @@
                         <ul class="list-group terminology-list">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText"
                                 class="list-group-item clearfix test-class"
-                                data-ng-class="{ 'list-item-selected': count[1] == selectedValue }"
+                                data-ng-class="{ 'list-item-selected': count[1] == sourceValue }"
                                 data-ng-click="selectSource(count[1])">
                                 <span class="node-content">{{ count[1] }}</span>
                                 <span class="node-stats badge">{{ count[0] }}</span>
@@ -93,7 +93,7 @@
                             >
                         <div data-ng-repeat="concept in conceptList.results" class="list-group"
                              style="border-width: 2px; border: groove; border-color: #7e817e; padding: 10px;"
-                             data-ng-click="selectTarget(concept)"
+                             data-ng-click="selectConcept(concept)"
                                 >
                             <progressbar value="concept.proximity" max="1.0" type="success">{{ concept.proximity * 100 | number : 0 }}%</progressbar>
                             <div>
@@ -108,7 +108,7 @@
                                     <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSought(n.label)"> &#8600;{{ n.label }}</span>
                                 </span>
                             </div>
-                            <div style="text-align: right"  data-ng-class="{ 'gerald-selected': concept.uri == target.uri }">
+                            <div style="text-align: right"  data-ng-class="{ 'gerald-selected': concept.uri == targetConcept.uri }">
                                 <a  style="color: #8a8a8a; font-size-adjust: 0.5;" ng-href="{{concept.uri}}" target="_blank">{{ concept.uri }}</a>
                             </div>
                         </div>

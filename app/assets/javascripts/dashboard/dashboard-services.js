@@ -165,6 +165,14 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                setMapping: function (name, body) {
+                    return dash.setMapping(name).post(body).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }

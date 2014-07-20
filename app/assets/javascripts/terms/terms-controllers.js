@@ -35,9 +35,9 @@ define(["angular"], function (angular) {
         getSearchParams();
 
         // local
-        $scope.selectedValue = ""; // list selection
+        $scope.sourceValue = ""; // list selection
         $scope.sought = ""; // the field model
-        $scope.concept = undefined;
+        $scope.targetConcept = undefined;
 
         // preparations
         dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
@@ -64,31 +64,31 @@ define(["angular"], function (angular) {
             });
         }
 
-        $scope.selectSource = function (sourceValue) {
-            $scope.selectedValue = sourceValue;
-            var userPath = user.email.replace(/[@.]/g, "_");
-            var prefix = userPath + "/" + $scope.fileName + $scope.path;
-            $scope.sourceUri = prefix + "/" + encodeURIComponent($scope.selectedValue);
-            switch($scope.activeView) {
-                case "skos":
-                    $scope.sought = $scope.selectedValue; // will trigger searchSkos
-                    break;
-                case "record":
-                    searchRecords(sourceValue);
-                    break;
-            }
-        };
-
         $scope.skosTab = function() {
             $scope.activeView = "skos";
-            $scope.sought = $scope.selectedValue;
+            $scope.sought = $scope.sourceValue;
             updateSearchParams()
         };
 
         $scope.recordTab = function() {
             $scope.activeView = "record";
-            searchRecords($scope.selectedValue);
+            searchRecords($scope.sourceValue);
             updateSearchParams()
+        };
+
+        $scope.selectSource = function (sourceValue) {
+            $scope.sourceValue = sourceValue;
+            var userPath = user.email.replace(/[@.]/g, "_");
+            var prefix = userPath + "/" + $scope.fileName + $scope.path;
+            $scope.sourceUri = prefix + "/" + encodeURIComponent($scope.sourceValue);
+            switch($scope.activeView) {
+                case "skos":
+                    $scope.sought = $scope.sourceValue; // will trigger searchSkos
+                    break;
+                case "record":
+                    searchRecords(sourceValue);
+                    break;
+            }
         };
 
         $scope.selectVocabulary = function (name) {
@@ -101,7 +101,7 @@ define(["angular"], function (angular) {
         };
 
         $scope.selectConcept = function (concept) {
-            $scope.concept = concept;
+            $scope.targetConcept = concept;
         };
 
         $scope.$watch("sought", function (sought) {
@@ -116,10 +116,10 @@ define(["angular"], function (angular) {
 
         $scope.setMapping = function () {
             console.log("from", $scope.sourceUri);
-            console.log("to", $scope.target.uri);
+            console.log("to", $scope.targetConcept.uri);
             var body = {
                 source: $scope.sourceUri,
-                target: $scope.target.uri
+                target: $scope.targetConcept.uri
             };
             dashboardService.setMapping($scope.fileName, body).then(function (data) {
                 console.log("set mapping returns", data);
