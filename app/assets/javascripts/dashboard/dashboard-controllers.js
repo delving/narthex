@@ -25,7 +25,6 @@ define(["angular"], function () {
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
     var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout) {
-
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];
@@ -168,17 +167,11 @@ define(["angular"], function () {
         return hash;
     };
 
-    var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, userService) {
+    var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, user) {
         var MAX_FOR_VOCABULARY = 12500;
-        if (!userService.getUser()) {
-            $location.path("/");
-            return;
-        }
-
         $scope.fileName = $routeParams.fileName;
-
         var absUrl = $location.absUrl();
-        var email = userService.getUser().email.replace("@", "_");
+        var email = user.email.replace("@", "_");
         var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
         var garbage = ('narthex|' + email + '|' + $scope.fileName).hashCode().toString(16).substring(1);
         $scope.apiPrefix = serverUrl + 'api/' + garbage + '/' + email + '/' + $scope.fileName;
@@ -440,21 +433,9 @@ define(["angular"], function () {
                 }, 250);
             }
         };
-
-        $scope.queryRecords = function (count) {
-            console.log('query', count);
-            var body = {
-                "path": $routeParams.path,
-                "value": count[1]
-            };
-            dashboardService.queryRecords($scope.fileName, body).then(function (data) {
-                console.log('query ' + $scope.fileName, data);
-            });
-        };
-
     };
 
-    FileDetailCtrl.$inject = ["$scope", "$routeParams", "$timeout", "$location", "dashboardService", "userService"];
+    FileDetailCtrl.$inject = ["$scope", "$routeParams", "$timeout", "$location", "dashboardService", "user"];
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree) {

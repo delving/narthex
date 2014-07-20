@@ -19,22 +19,27 @@ define(
         "angular",
         "./terms-controllers",
         "./terms-services",
+        "../home/home-services",
         "common"
     ],
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("terms.routes", ["narthex.common"]);
-        mod.config(["$routeProvider", function ($routeProvider) {
-            $routeProvider.when(
-                "/terms/:fileName",
-                {
-                    templateUrl: "/assets/templates/terms.html",
-                    controller: controllers.TermsCtrl,
-                    reloadOnSearch: false
-                }
-            )
-        }]);
+        var mod = angular.module("terms.routes", ["narthex.common", "home.services"]);
+        mod.config([
+            "$routeProvider", "userResolve",
+            function ($routeProvider, userResolve) {
+                $routeProvider.when(
+                    "/terms/:fileName",
+                    {
+                        templateUrl: "/assets/templates/terms.html",
+                        controller: controllers.TermsCtrl,
+                        resolve: userResolve,
+                        reloadOnSearch: false
+                    }
+                )
+            }
+        ]);
         return mod;
     }
 );

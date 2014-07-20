@@ -18,12 +18,13 @@ define(
     [
         "angular",
         "./dashboard-controllers",
+        "../home/home-services",
         "common"
     ],
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("dashboard.routes", ["narthex.common"]);
+        var mod = angular.module("dashboard.routes", ["narthex.common", "home.services"]);
         mod.config(
             [
                 "$routeProvider", "userResolve",

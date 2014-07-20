@@ -324,13 +324,12 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
           session =>
             val queryForRecords = s"""
               |
-              | let $$recordsWithValue := collection('$recordDb')/narthex$queryPath[$field=${quote(value)}]
-              | return
-              |   <records>{
-              |     subsequence($$recordsWithValue, $start, $max)
-              |   }</records>
+              | let $$recordsWithValue := collection('$recordDb')[/narthex$queryPath/$field=${quote(value)}]
+              | return <records>{
+              |   subsequence($$recordsWithValue, $start, $max)
+              | }</records>
               |
-              """.stripMargin
+              """.stripMargin.trim
             println("asking:\n" + queryForRecords)
             session.query(queryForRecords).execute()
         }

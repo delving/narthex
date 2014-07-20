@@ -42,7 +42,7 @@ define(["angular", "common"], function (angular) {
                         return app.checkLogin().get().then(function (response) {
                             user = response.data.user;
                             return user;
-                        }, function(problem) {
+                        }, function (problem) {
                             console.log('check login failed', problem);
                             user = null;
                             return null;
@@ -60,10 +60,10 @@ define(["angular", "common"], function (angular) {
      * Add this object to a route definition to only allow resolving the route if the user is
      * logged in. This also adds the contents of the objects as a dependency of the controller.
      */
-    mod.constant("userResolve", {
-        user: [
-            "$q", "userService",
-            function ($q, userService) {
+    mod.constant(
+        "userResolve",
+        {
+            user: function ($q, userService) {
                 var deferred = $q.defer();
                 var user = userService.getUser();
                 if (user) {
@@ -72,7 +72,7 @@ define(["angular", "common"], function (angular) {
                 else {
                     userService.checkLogin().then(
                         function (revealedUser) {
-                            deferred.resolve(user)
+                            deferred.resolve(revealedUser)
                         },
                         function (reason) {
                             deferred.reject();
@@ -81,8 +81,13 @@ define(["angular", "common"], function (angular) {
                 }
                 return deferred.promise;
             }
-        ]
-    });
+        }
+    );
+
+//    todo: the user function above is not injected properly, maybe do something like this:
+//     DashboardCtrl.$inject = [
+//        "$scope", "userResolve", "dashboardService", "fileUpload", "$location", "$upload", "$timeout"
+//    ];
 
     /**
      * If the current route does not resolve, go back to the start page.

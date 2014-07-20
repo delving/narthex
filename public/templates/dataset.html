@@ -4,7 +4,7 @@
 
 
 <div class="row" ng-show="tree">
-    <div class="col-md-4">
+    <div class="col-md-5">
         <div class="panel panel-primary panel-schema">
             <div class="panel-heading">
                 <span class="panel-title">Schema: </span><span>{{ fileName }}</span>
@@ -26,7 +26,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-8" data-ng-if="selectedNode">
+    <div class="col-md-7" data-ng-if="selectedNode">
 
         <div class="panel panel-default panel-lists">
             <div class="panel-heading">
@@ -106,7 +106,7 @@
                         <ul class="list-group">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText" class="list-group-item clearfix">
                                 <span class="node-content">{{ count[1] }}</span>
-                                <span class="node-stats badge" data-ng-click="queryRecords(count)">{{ count[0] }} <span class="small">({{ count[2] | number:0 }}%)</span></span>
+                                <span class="node-stats badge">{{ count[0] }} <span class="small">({{ count[2] | number:0 }}%)</span></span>
                             </li>
                         </ul>
                     </div>

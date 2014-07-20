@@ -19,6 +19,7 @@ package actors
 import java.io.ByteArrayInputStream
 
 import akka.actor.{Actor, ActorLogging, Props}
+import org.basex.core.cmd.Optimize
 import play.Logger
 import services.{FileHandling, FileRepo, RecordHandling}
 
@@ -33,6 +34,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
   def receive = {
 
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
+      Logger.info(s"Saving ${fileRepo.dir.getName}")
       fileRepo.withNewRecordDatabase {
         session =>
           val parser = new RecordParser(recordRoot, uniqueId)
@@ -60,7 +62,9 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
       }
 
     case SaveComplete() =>
-      Logger.info(s"Save complete")
+      Logger.info(s"Saved ${fileRepo.dir.getName}, optimizing..")
+      fileRepo.withRecordDatabase(_.execute(new Optimize()))
+      Logger.info(s"Optimized ${fileRepo.dir.getName}.")
       fileRepo.setStatus(fileRepo.SAVED, 0, 0)
       context.stop(self)
 
