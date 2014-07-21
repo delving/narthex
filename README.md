@@ -19,7 +19,7 @@ Narthex makes up part of the CultureBrokers project, co-funded by the Swedish Ar
 
 ## Development
 
-The project is quite small, with very few dependencies, and does not require any storage technology on the back-end except for file system.  As a one-page online application it consists of a front end built with [AngularJS](https://angularjs.org/), and a back-end built in Scala with the [Play Framework](http://www.playframework.com/). The analysis work is done using the [Akka](http://akka.io/) actor framework, and effectively employs all available processor cores to do the work concurrently.
+The project is quite small, with very few dependencies, and does not require any storage technology on the back-end except for file system.  As a one-page online application it consists of a front end built with [AngularJS](https://angularjs.org/), and a back-end built in Scala with the [Play Framework](http://www.playframework.com/). The analysis work is done using the [Akka](http://akka.io/) actor framework, and effectively employs all available processor cores to do the work concurrently.  Storage of status information, records, and enrichments is done using [BaseX](http://www.basex.org/)
 
 ### Distribution
 
@@ -38,7 +38,6 @@ All files related to the program are stored in a folder called **NARTHEX** in th
 Inside the user's folder here are folders for all **uploaded** XML zip files, and a corresponding folders for the result of the analysis called **analyzed**.  The sub-folders of **analyzed** have names corresponding exactly to the files which were uploaded, and each of these contains the following:
 
 * **index.json** - a full tree-shaped description of the schema of the file
-* **status.json** - an indication of the state of the analysis (while in progress)
 * **"exploded tree"** - a tree of sub-folders corresponding to the tree of the derived XML schema, each folder containing:
 	* **status.json** - a description of the field's analysis, indicating what other information is available (sample and histogram files) and the count of unique values
 	* **unique.txt** - a complete list of all values appearing in a field
@@ -46,19 +45,91 @@ Inside the user's folder here are folders for all **uploaded** XML zip files, an
 	* **sample-N.json** - a number of files of different maximum sizes (N) containing random samples of the values encountered, for display
 	* **histogram-N.json** - a number of files (N) containing partial or full histograms of the values, for display
 
-Every node of the tree contained in *index.json* also contains a *path* attribute, which leads to the directory in the *"exploded tree"*.  All of these files are created during the analysis process and are then made available via an API, served up simply as as *assets*.
+Every node of the tree contained in *index.json* also contains a *path* attribute, which leads to the directory in the *"exploded tree"*.  All of these files are created during the analysis process and are then made available via an API, served up simply as as **file system assets**.
+
+## XML Storage
+
+There is BaseX database used to store the dataset's current state and related important facts, and another database used to store records.  
+
+When viewing the histogram of a source field which contains unique values, you have the option of using that field as a unique record identifier, and once that information is available, the option to save the dataset will be available.
+
+### Dataset
+
+The document stored in BaseX for every dataset, which maintains its current state and some important facts looks like this:
+
+	<narthex-dataset>
+		<status>
+			<state>[State]</state>
+			<percent>[Percent Complete]</percent>
+			<workers>[Worker Count]</workers>
+		</status>
+		<delimiters>
+			<recordRoot>[Record Root]</recordRoot>
+			<uniqueId>[Unique Identifier]</uniqueId>
+			<recordCount>[Record Count]</recordCount>
+		</delimiters>
+	</narthex-dataset>
+	
+* **State** - a string containing one of the following values
+	* "1:splitting"
+	* "2:analyzing"
+	* "3:analyzed"
+	* "4:saving"
+	* "5:saved"
+* **Percent Complete** - when there is a process busy this number will reflect how far it is
+* **Worker Count** - when a parallel process is busy, the number of worker threads is here
+* **Record Root** - the path leading to the record element "/adlibXML/recordList/record"
+* **UniqueId** - the path to the unique identifier element within the record "/adlibXML/recordList/record/priref"
+* **Record Count** - the number of uniquely identified records
+
+**NOTE**: Later, when it becomes possible to upload multiple versions and have differences detected, there will be a list of different uploads stored here.
+
+### Records
+
+Assuming that the data files being submitted contain records in XML, the path corresponding to the unique identifier of each record can be defined.  Narthex will verify that its values are unique and use it to discover which XML element contains each record.  With record root and unique id identified, the records can be separated and stored individually in an XML database like [BaseX](http://basex.org/) where they can be efficiently queried.  
+
+With the records stored, it becomes possible to browse records together with the analysis results.  On the terminology page of the application, selecting a value from the histogram for a field fetches the records containing that value.  This way users can see how the value was used in context.
+
+Narthex stores records in the XML database under names which are generated from an MD5 hash algorithm of their textual contents.  To provide for more effective exporting of the database to the file system (a handy BaseX feature), the files are stored within three levels of hierarchy according to the first three characters of the hash:
+
+	[Dataset Name]/f/3/f/f3fd9fec17fd8e6f3278a58b9eb3591f.xml
+
+When a new version of the same dataset arrives, this hash will be used to determine if there has been a change to an existing record or not.  The idea is that only changed records will be propagated, whether or not the contributor of the source file is able to provide incremental updates.
+
+### Terminology Mapping
+
+When Narthex has perform its analysis, the fields utilizing a limited (presumably somewhat controlled) vocabulary will be revealed.  For proper integration with other datasets, it may be necessary to translate these (perhaps local) vocabulary terms into choices from a shared terminology resource, represented as a [SKOS](http://www.w3.org/2004/02/skos/) thesaurus.
+
+With the histogram of a terminology field in view, you can choose to map to a vocabulary.  The vocabularies must be made available in a directory **~/NARTHEX/skos/** in the form of XML files, appropriately named, containing SKOS XML.  Examples:
+
+	Object_Types.xml
+	Styles_and_Periods.xml
+
+These names, with underscores removed, will be presented to the user so that they can decide which vocabulary to query.
+
+Vocabularies are queried by traversing the concepts in memory and performing string comparisons on the appropriate preferred and alternate labels.  The string comparison is an algorithm from the [Stringmetic](https://rockymadden.com/stringmetric/) library called **RatcliffObershelpMetric** but any other sysem could be used.
+
+The terminology mappings are from URI to URI, and they are stored in BaseX
+
+	<term-mappings>
+	  <term-mapping>
+	    <source>[email]/[dataset]/[path]/[to]/[field]/[field-value]</source>
+	    <target>[target URI]</target>
+	  </term-mapping>
+	  ...
+	</term-mappings>
+
+A local terminology field could then be translated through a dictinary to URIs from a shared resource on-the-fly whenever another server fetches records for indexing and display. The translations should be stored as pairs of URIs (although the local URI may have to be minted for the purpose).
+
+---
 
 ## Future
 
 The functionality of Narthex suggests and leads the way to some interesting potential future developments.  This program represents the first phase of a workflow which can facilitate online publishing of metadata, but in the future it could be used for various cleaning, enriching, and transforming tasks.  It could become a kind of metadata repository where data owners keep the published version of their data available.
 
-### Record Storage
+### Record Enrichment
 
-Assuming that the data files being submitted contain records in XML, the path corresponding to the unique identifier of each record can be defined.  Narthex will verify that its values are unique and use it to discover which XML element contains each record.  With record root and unique id identified, the records can be separated and stored individually in an XML database like [BaseX](http://basex.org/) where they can be efficiently queried.  
-
-This also means that the records can be fetched at any time by another server requiring them, such as an indexing server. Any enrichments that have been recorded (see below) could be optionally used for replacements on the source data on-the-fly while records are being fetched.
-
-With the records stored, it becomes possible to browse records together with the analysis results.  In fact, selecting a value from the list of unique values for a field would imply an XQuery which could get only the records containing that value.  This way users can see how the value was used in context.
+Record storage allows for the records to be fetched at any time by another server requiring them, such as an indexing server. Any enrichments that have been recorded (see below) could be optionally used for replacements on the source data on-the-fly while records are being fetched.
 
 ### Link Checking
 
@@ -72,13 +143,7 @@ There may be hundreds of different datasets in Narthex and each one could have s
 
 The capability of a data provider to deliver only changed records from their data is not always present, in which case the best available way to access their data is in the form of a complete dump of everything.  At the same time, there are a number of motivations for only revealing changed records rather than all records, the most straightforward being that there is less work to do.  For example, in an index only the deleted records need be removed and the new ones added, which is much faster than deleting an entire (some are large!) collection from an index and then reindexing the whole thing.
 
-This problem could be solved for the time being with Narthex, if it were set up to store a [hash value](http://en.wikipedia.org/wiki/Hash_function) which freezes the content of each record individually.  It would then be possible to periodically upload entire dumps of a dataset, and have Narthex detect which records have changed and which have not, so that any other machine fetching data from Narthex could receive only the changed records rather than all of them.  With "procession",  Narthex plays the role of buffer ensuring that other systems get the incremental changes they need and compensating for data providers not yet able to deliver incremental changes from their collection registration systems.
-
-### Terminology Mapping
-
-When Narthex has perform its analysis, the fields utilizing a limited (presumably somewhat controlled) vocabulary will be revealed.  During integration with other datasets, it may be necessary to translate these (perhaps local) vocabulary terms into choices from a shared terminology resource (thesaurus).  With the lists of values in view, it would make sense to extend the Narthex user interface to make it possible for the "translation dictionaries" to be built interactively and stored.
-
-A local terminology field could then be translated through a dictinary to URIs from a shared resource on-the-fly whenever another server fetches records for indexing and display. The translations should be stored as pairs of URIs (although the local URI may have to be minted for the purpose).
+This problem could be solved for the time being with Narthex.  Using the hash-based record storage, it becomes possible to periodically upload entire dumps of a dataset, and have Narthex detect which records have changed and which have not, so that any other machine fetching data from Narthex could receive only the changed records rather than all of them.  With "procession",  Narthex plays the role of buffer ensuring that other systems get the incremental changes they need and compensating for data providers not yet able to deliver incremental changes from their collection registration systems.
 
 ### Syntax Normalization
 
