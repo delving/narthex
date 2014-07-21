@@ -63,11 +63,11 @@ The document stored in BaseX for every dataset, which maintains its current stat
 			<percent>[Percent Complete]</percent>
 			<workers>[Worker Count]</workers>
 		</status>
-		<delimiters>
+		<delimit>
 			<recordRoot>[Record Root]</recordRoot>
 			<uniqueId>[Unique Identifier]</uniqueId>
 			<recordCount>[Record Count]</recordCount>
-		</delimiters>
+		</delimit>
 	</narthex-dataset>
 	
 * **State** - a string containing one of the following values

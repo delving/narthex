@@ -26,6 +26,9 @@ import play.api.mvc._
 import services.Repo.TermMapping
 import services._
 
+import scala.collection.immutable.Seq
+import scala.xml.Elem
+
 object Dashboard extends Controller with Security with TreeHandling with SkosJson {
 
   def upload = Secure(parse.multipartFormData) {
@@ -66,10 +69,17 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def status(fileName: String) = Secure() {
+  def datasetInfo(fileName: String) = Secure() {
     token => email => implicit request => {
       val repo = Repo(email)
-      OkFile(repo.fileRepo(fileName).status)
+      val datasetInfo = repo.fileRepo(fileName).getDatasetInfo
+      // there should be a better way, but couldn't find one and got impatient
+      val status = (datasetInfo \ "status").head.child.filter(_.isInstanceOf[Elem]).map(n => n.label -> JsString(n.text))
+      val delimit = (datasetInfo \ "delimit").head.child.filter(_.isInstanceOf[Elem]).map(n => n.label -> JsString(n.text))
+      Ok(JsObject(Seq(
+        "status" -> JsObject(status),
+        "delimit" -> JsObject(delimit)
+      )))
     }
   }
 
@@ -119,20 +129,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def recordDelimiter(fileName: String) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
-      val fileRepo = repo.fileRepo(fileName)
-      val recordDelimiter = fileRepo.recordDelimiter
-      if (recordDelimiter.exists()) {
-        OkFile(recordDelimiter)
-      }
-      else {
-        Ok(Json.obj("message" -> "Not Delimited"))
-      }
-    }
-  }
-
   def setRecordDelimiter(fileName: String) = Secure(parse.json) {
     token => email => implicit request => {
       var recordRoot = (request.body \ "recordRoot").as[String]
@@ -144,14 +140,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
       //      fileRepo.saveRecords(recordRoot, uniqueId, recordCount)
       Ok
-    }
-  }
-
-  def canSaveRecords(fileName: String) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
-      val fileRepo = repo.fileRepo(fileName)
-      Ok(Json.obj("canSave" -> fileRepo.canSaveRecords))
     }
   }
 

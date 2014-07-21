@@ -80,9 +80,10 @@ define(["angular"], function () {
         };
 
         function checkFileStatus(file) {
-            dashboardService.status(file.name).then(function (data) {
-                file.status = data;
-                if (file && (file.status.percent > 0 || file.status.workers > 0)) {
+            dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
+                file.status = datasetInfo.status;
+                file.delimit = datasetInfo.delimit;
+                if (file.status.percent > 0 || file.status.workers > 0) {
                     var interval = timeSinceStatusCheck();
                     if (interval > 1000) { // don't change the scope thing too often
                         $scope.lastStatusCheck = new Date().getTime();
@@ -106,9 +107,9 @@ define(["angular"], function () {
         }
 
         function checkSaveStatus(file) {
-            dashboardService.canSaveRecords(file.name).then(function (data) {
-                file.canSave = data.canSave;
-            });
+            if (!file.datasetInfo) return false;
+            var delimit = file.datasetInfo.delimit;
+            return !!delimit.recordRoot;
         }
 
         function fetchFileList() {
@@ -179,24 +180,29 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
-        dashboardService.index($scope.fileName).then(function (tree) {
-            function sortKids(node) {
-                if (!node.kids.length) return;
-                node.kids = _.sortBy(node.kids, function (kid) {
-                    return kid.tag.toLowerCase();
-                });
-                for (var index = 0; index < node.kids.length; index++) {
-                    sortKids(node.kids[index]);
+        dashboardService.datasetInfo($scope.fileName).then(function(thing) {
+            $scope.datasetInfo = thing;
+            dashboardService.index($scope.fileName).then(function (tree) {
+                function sortKids(node) {
+                    if (!node.kids.length) return;
+                    node.kids = _.sortBy(node.kids, function (kid) {
+                        return kid.tag.toLowerCase();
+                    });
+                    for (var index = 0; index < node.kids.length; index++) {
+                        sortKids(node.kids[index]);
+                    }
                 }
-            }
 
-            sortKids(tree);
-            dashboardService.recordDelimiter($scope.fileName).then(function (delim) {
+                sortKids(tree);
+
+                var recordRoot = thing.delimit.recordRoot;
+                var uniqueId = thing.delimit.uniqueId;
+
                 function setDelim(node) {
-                    if (node.path == delim.recordRoot) {
+                    if (node.path == recordRoot) {
                         $scope.recordRootNode = node;
                     }
-                    else if (node.path == delim.uniqueId) {
+                    else if (node.path == uniqueId) {
                         $scope.uniqueIdNode = node;
                     }
                     for (var index = 0; index < node.kids.length; index++) {
@@ -204,25 +210,26 @@ define(["angular"], function () {
                     }
                 }
 
-                if (delim.recordRoot) setDelim(tree);
-            });
-            function selectNode(path, node) {
-                if (!path.length) {
-                    $scope.selectNode(node);
-                }
-                else {
-                    var tag = path.shift();
-                    for (var index = 0; index < node.kids.length; index++) {
-                        if (tag == node.kids[index].tag) {
-                            selectNode(path, node.kids[index]);
-                            return;
+                if (recordRoot) setDelim(tree);
+
+                function selectNode(path, node) {
+                    if (!path.length) {
+                        $scope.selectNode(node);
+                    }
+                    else {
+                        var tag = path.shift();
+                        for (var index = 0; index < node.kids.length; index++) {
+                            if (tag == node.kids[index].tag) {
+                                selectNode(path, node.kids[index]);
+                                return;
+                            }
                         }
                     }
                 }
-            }
 
-            $scope.tree = tree;
-            if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
+                $scope.tree = tree;
+                if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
+            });
         });
 
         $scope.goToDashboard = function () {

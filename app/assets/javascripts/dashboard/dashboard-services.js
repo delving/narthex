@@ -48,11 +48,12 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                status: function (fileName) {
-                    return dash.status(fileName).get().then(
+                datasetInfo: function (fileName) {
+                    return dash.datasetInfo(fileName).get().then(
                         function (response) {
                             return response.data;
-                        }
+                        },
+                        rejection
                     );
                 },
                 zap: function (fileName) {
@@ -112,22 +113,6 @@ define(["angular", "common"], function (angular) {
                 },
                 setRecordDelimiter: function (fileName, body) {
                     return dash.setRecordDelimiter(fileName).post(body).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                recordDelimiter: function (fileName) {
-                    return dash.recordDelimiter(fileName).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                canSaveRecords: function (fileName) {
-                    return dash.canSaveRecords(fileName).get().then(
                         function (response) {
                             return response.data;
                         },

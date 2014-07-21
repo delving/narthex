@@ -1,6 +1,7 @@
 package services
 
 import java.io.File
+
 import org.apache.commons.io.FileUtils._
 import play.api.test._
 
@@ -52,13 +53,13 @@ class TestNarthex extends PlaySpecification with TreeHandling {
 
       val fileRepo = repo.fileRepo(fileName)
 
-      def waitForStatus() = {
-        while (!fileRepo.status.exists()) {
-          println("waiting for status..")
-          Thread.sleep(10)
-        }
-      }
-
+//      def waitForStatus() = {
+//        while (!fileRepo.status.exists()) {
+//          println("waiting for status..")
+//          Thread.sleep(10)
+//        }
+//      }
+//
       "the file repository" should {
 
         "exist" in {

@@ -22,14 +22,12 @@ POST        /dashboard/upload                                    controllers.Das
 GET         /dashboard/list                                      controllers.Dashboard.list
 GET         /dashboard/work                                      controllers.Dashboard.work
 GET         /dashboard/:fileName                                 controllers.Dashboard.index(fileName)
-GET         /dashboard/:fileName/status                          controllers.Dashboard.status(fileName)
+GET         /dashboard/:fileName/dataset-info                    controllers.Dashboard.datasetInfo(fileName)
 GET         /dashboard/:fileName/zap                             controllers.Dashboard.zap(fileName)
 GET         /dashboard/:fileName/status/*path                    controllers.Dashboard.nodeStatus(fileName, path)
 GET         /dashboard/:fileName/sample/:size/*path              controllers.Dashboard.sample(fileName, path, size:Int)
 GET         /dashboard/:fileName/histogram/:size/*path           controllers.Dashboard.histogram(fileName, path, size:Int)
 POST        /dashboard/:fileName/record/set-delimiter            controllers.Dashboard.setRecordDelimiter(fileName)
-GET         /dashboard/:fileName/record/delimiter                controllers.Dashboard.recordDelimiter(fileName)
-GET         /dashboard/:fileName/record/can-save                 controllers.Dashboard.canSaveRecords(fileName)
 GET         /dashboard/:fileName/record/save                     controllers.Dashboard.saveRecords(fileName)
 POST        /dashboard/:fileName/record/query                    controllers.Dashboard.queryRecords(fileName)
 POST        /dashboard/:fileName/record/set-mapping              controllers.Dashboard.setMapping(fileName)

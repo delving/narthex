@@ -24,7 +24,6 @@ import org.apache.commons.io.FileUtils._
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
 import org.mindrot.jbcrypt.BCrypt
-import play.api.Logger
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
@@ -198,21 +197,11 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
 
   def index = new File(dir, "index.json")
 
-  def status = new File(dir, "status.json")
-
-  def recordDelimiter = new File(dir, "record-delimiter.json")
-
   val SPLITTING = "1:splitting"
   val ANALYZING = "2:analyzing"
   val ANALYZED = "3:analyzed"
   val SAVING = "4:saving"
   val SAVED = "5:saved"
-
-  def setStatus(state: String, percent: Int, workers: Int) = createJson(status, Json.obj(
-    "state" -> state,
-    "percent" -> percent,
-    "workers" -> workers
-  ))
 
   def nodeRepo(path: String): Option[NodeRepo] = {
     val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, tagToDirectory(tag)))
@@ -265,39 +254,97 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
     }
   }
 
-  def canSaveRecords = {
-    val delim = recordDelimiter
-    if (!delim.exists()) {
-      false
+  def withDatasetSession[T](block: ClientSession => T): T = {
+    try {
+      baseX.withDbSession[T](dbName)(block)
     }
-    else {
-      val statusData = readJson(status)
-      val state = (statusData \ "state").as[String]
-      Logger.info(s"state is $state")
-      if (state == SAVED) {
-        Logger.info(s"saved state ${delim.lastModified()} greater than ${status.lastModified()}")
-        delim.lastModified() > status.lastModified() // delim has been reset
-      }
-      else {
-        state < SAVING // hasn't saved yet
-      }
+    catch {
+      case be: BaseXException =>
+        if (be.getMessage.contains("not found")) {
+          baseX.createDatabase(dbName,
+            """
+              | <narthex-dataset>
+              |   <status/>
+              |   <delimit/>
+              | </narthex-dataset>
+              | """.stripMargin
+          )
+          baseX.withDbSession[T](dbName)(block)
+        }
+        else {
+          throw be
+        }
     }
   }
 
-  def setRecordDelimiter(recordRoot: String, uniqueId: String, recordCount: Int) = createJson(recordDelimiter, Json.obj(
-    "recordRoot" -> recordRoot,
-    "uniqueId" -> uniqueId,
-    "recordCount" -> recordCount
-  ))
+  def getDatasetInfo = {
+    withDatasetSession {
+      session =>
+        // try the following without doc() sometime, since the db is open
+        val statusQuery = s"doc('$dbName/$dbName.xml')/narthex-dataset"
+        println("asking:\n" + statusQuery)
+        val answer = session.query(statusQuery).execute()
+        println("got:\n" + answer)
+        XML.loadString(answer)
+    }
+  }
+
+  def setStatus(state: String, percent: Int, workers: Int) = {
+    withDatasetSession {
+      session =>
+        val update =
+          s"""
+             |
+             | let $$statusBlock := doc('$dbName/$dbName.xml')/narthex-dataset/status
+             | let $$replacement :=
+             |   <status>
+             |     <state>$state</state>
+             |     <percent>$percent</percent>
+             |     <workers>$workers</workers>
+             |   </status>
+             | return replace node $$statusBlock with $$replacement
+             |
+           """.stripMargin.trim
+        println("updating:\n" + update)
+        session.query(update).execute()
+    }
+  }
+
+  def setRecordDelimiter(recordRoot: String, uniqueId: String, recordCount: Int) = {
+    withDatasetSession {
+      session =>
+        val update =
+          s"""
+             |
+             | let $$delimitBlock := doc('$dbName/$dbName.xml')/narthex-dataset/delimit
+             | let $$replacement :=
+             |   <delimit>
+             |     <recordRoot>$recordRoot</recordRoot>
+             |     <uniqueId>$uniqueId</uniqueId>
+             |     <recordCount>$recordCount</recordCount>
+             |   </delimit>
+             | return replace node $$delimitBlock with $$replacement
+             |
+           """.stripMargin.trim
+        println("updating:\n" + update)
+        session.query(update).execute()
+    }
+  }
 
   def saveRecords() = {
-    val delim = readJson(recordDelimiter)
-    val recordRoot = (delim \ "recordRoot").as[String]
-    val uniqueId = (delim \ "uniqueId").as[String]
-    val recordCount = (delim \ "recordCount").as[Int]
-    setStatus(SAVING, 1, 0) // do it now, so it's done before the actor starts
-    val saver = Akka.system.actorOf(Saver.props(this), name)
-    saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
+    val dataset = getDatasetInfo
+    withDatasetSession {
+      session =>
+        val delim = dataset \ "delimit"
+        val recordRoot = (delim \ "recordRoot").text
+        val uniqueId = (delim \ "uniqueId").text
+        val recordCountText = (delim \ "recordCount").text
+        val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
+        // set status now so it's done before the actor starts
+        setStatus(SAVING, 1, 0)
+        val saver = Akka.system.actorOf(Saver.props(this), name)
+        saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
+    }
   }
 
   def withNewRecordDatabase[T](block: ClientSession => T) = {
@@ -310,8 +357,10 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   }
 
   def queryRecords(path: String, value: String, start: Int = 1, max: Int = 10): String = {
-    val delim = readJson(recordDelimiter)
-    val recordRoot = (delim \ "recordRoot").as[String]
+    // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
+    val dataset = getDatasetInfo
+    val delim = dataset \ "delimit"
+    val recordRoot = (delim \ "recordRoot").text
     val prefix = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
     if (!path.startsWith(prefix)) throw new RuntimeException(s"$path must start with $prefix!")
     val queryPathField = path.substring(prefix.length)
@@ -335,6 +384,8 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
         }
     }
   }
+
+  // terminology
 
   def withTermSession[T](block: ClientSession => T): T = {
     try {
