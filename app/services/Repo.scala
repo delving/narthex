@@ -31,7 +31,7 @@ import services.Repo._
 import views.html.helper
 
 import scala.collection.mutable.ArrayBuffer
-import scala.xml.XML
+import scala.xml.{Elem, XML}
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
@@ -283,9 +283,9 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
       session =>
         // try the following without doc() sometime, since the db is open
         val statusQuery = s"doc('$dbName/$dbName.xml')/narthex-dataset"
-//        println("asking:\n" + statusQuery)
+        //        println("asking:\n" + statusQuery)
         val answer = session.query(statusQuery).execute()
-//        println("got:\n" + answer)
+        //        println("got:\n" + answer)
         XML.loadString(answer)
     }
   }
@@ -306,7 +306,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
              | return replace node $$statusBlock with $$replacement
              |
            """.stripMargin.trim
-//        println("updating:\n" + update)
+        //        println("updating:\n" + update)
         session.query(update).execute()
     }
   }
@@ -327,7 +327,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
              | return replace node $$delimitBlock with $$replacement
              |
            """.stripMargin.trim
-//        println("updating:\n" + update)
+        //        println("updating:\n" + update)
         session.query(update).execute()
     }
   }
@@ -382,14 +382,17 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
     baseX.withDbSession(recordDb)(block)
   }
 
+  private def namespaceDeclarations(dataset: Elem) = {
+    val namespaces = dataset \ "namespaces" \ "namespace"
+    namespaces.map {
+      node =>
+        s"""declare namespace ${(node \ "prefix").text} = "${(node \ "uri").text}";"""
+    }.mkString("\n")
+  }
+
   def queryRecords(path: String, value: String, start: Int = 1, max: Int = 10): String = {
     // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
     val dataset = getDatasetInfo
-    val namespaces = dataset \ "namespaces" \ "namespace"
-    val namespaceDeclarations = namespaces.map {
-      node =>
-        s"""declare namespace ${ (node \ "prefix").text } = "${ (node \ "uri").text }";"""
-    }.mkString("\n")
     val delim = dataset \ "delimit"
     val recordRoot = (delim \ "recordRoot").text
     val prefix = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
@@ -404,7 +407,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
           session =>
             val queryForRecords = s"""
               |
-              | $namespaceDeclarations
+              | ${namespaceDeclarations(dataset)}
               | let $$recordsWithValue := collection('$recordDb')[/narthex$queryPath/$field=${quote(value)}]
               | return <records>{
               |   subsequence($$recordsWithValue, $start, $max)
@@ -414,6 +417,15 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
             println("asking:\n" + queryForRecords)
             session.query(queryForRecords).execute()
         }
+    }
+  }
+
+  def getRecord(id: String) = {
+    withRecordDatabase {
+      session =>
+        val queryForRecords = s"""collection('$recordDb')[/narthex/@id=${quote(id)}]"""
+        println("asking:\n" + queryForRecords)
+        XML.loadString(session.query(queryForRecords).execute())
     }
   }
 

@@ -16,15 +16,14 @@
 
 package controllers
 
+import controllers.Application.OkFile
+import play.api.libs.json._
 import play.api.mvc._
 import services._
-import play.api.libs.json._
-import controllers.Application.OkFile
-import scala.Some
 
 object API extends Controller with TreeHandling {
 
-  def indexJSON(apiKey: String, email:String, fileName: String) = Action(parse.anyContent) {
+  def indexJSON(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
@@ -36,7 +35,7 @@ object API extends Controller with TreeHandling {
     }
   }
 
-  def indexText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
+  def indexText(apiKey: String, email: String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
@@ -51,7 +50,7 @@ object API extends Controller with TreeHandling {
     }
   }
 
-  def uniqueText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
+  def uniqueText(apiKey: String, email: String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
@@ -66,7 +65,7 @@ object API extends Controller with TreeHandling {
     }
   }
 
-  def histogramText(apiKey: String, email:String, fileName: String, path: String) = Action(parse.anyContent) {
+  def histogramText(apiKey: String, email: String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
@@ -81,7 +80,22 @@ object API extends Controller with TreeHandling {
     }
   }
 
-  private def checkKey(email:String , fileName:String, apiKey:String) = { // todo: mindless so far, and do it as an action like in Security.scala
+  def record(apiKey: String, email: String, fileName: String, id: String) = Action(parse.anyContent) {
+    implicit request => {
+      if (checkKey(email, fileName, apiKey)) {
+        val repo = Repo(email)
+        val fileRepo = repo.fileRepo(fileName)
+        val record = fileRepo.getRecord(id)
+        Ok(record)
+      }
+      else {
+        Unauthorized
+      }
+    }
+  }
+
+  private def checkKey(email: String, fileName: String, apiKey: String) = {
+    // todo: mindless so far, and do it as an action like in Security.scala
     val hash = s"narthex|$email|$fileName".hashCode
     val expected: String = Integer.toString(hash, 16).substring(1)
     expected == apiKey

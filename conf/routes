@@ -40,6 +40,7 @@ GET         /api/:apiKey/:email/:fileName/index                  controllers.API
 GET         /api/:apiKey/:email/:fileName/*path/index            controllers.API.indexText(apiKey, email, fileName, path)
 GET         /api/:apiKey/:email/:fileName/*path/unique           controllers.API.uniqueText(apiKey, email, fileName, path)
 GET         /api/:apiKey/:email/:fileName/*path/histogram        controllers.API.histogramText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/record/:id             controllers.API.record(apiKey, email, fileName, id)
 
 
 #GET         /oai-pmh                                             controllers.OaiPmh.service
