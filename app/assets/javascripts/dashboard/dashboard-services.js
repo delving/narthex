@@ -56,8 +56,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                zap: function (fileName) {
-                    return dash.zap(fileName).get().then(
+                deleteDataset: function (fileName) {
+                    return dash.deleteDataset(fileName).get().then(
                         function (response) {
                             return response.data;
                         },

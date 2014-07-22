@@ -56,7 +56,7 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.list,
           routes.javascript.Dashboard.work,
           routes.javascript.Dashboard.datasetInfo,
-          routes.javascript.Dashboard.zap,
+          routes.javascript.Dashboard.deleteDataset,
           routes.javascript.Dashboard.nodeStatus,
           routes.javascript.Dashboard.index,
           routes.javascript.Dashboard.sample,

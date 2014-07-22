@@ -17,7 +17,6 @@
 package controllers
 
 import controllers.Application.OkFile
-import org.apache.commons.io.FileUtils._
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -83,11 +82,11 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def zap(fileName: String) = Secure() {
+  def deleteDataset(fileName: String) = Secure() {
     token => email => implicit request => {
       val repo = Repo(email)
-      deleteQuietly(repo.uploadedFile(fileName))
-      deleteDirectory(repo.fileRepo(fileName).dir)
+      val fileRepo = repo.fileRepo(fileName)
+      fileRepo.delete()
       Ok
     }
   }

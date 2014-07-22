@@ -447,6 +447,13 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
       }
   }
 
+  def delete() = {
+    baseX.dropDatabase(dbName)
+    baseX.dropDatabase(recordDb)
+    baseX.dropDatabase(termDb)
+    deleteQuietly(sourceFile)
+    deleteDirectory(dir)
+  }
 }
 
 object NodeRepo {

@@ -23,7 +23,7 @@ GET         /dashboard/list                                      controllers.Das
 GET         /dashboard/work                                      controllers.Dashboard.work
 GET         /dashboard/:fileName                                 controllers.Dashboard.index(fileName)
 GET         /dashboard/:fileName/dataset-info                    controllers.Dashboard.datasetInfo(fileName)
-GET         /dashboard/:fileName/zap                             controllers.Dashboard.zap(fileName)
+GET         /dashboard/:fileName/delete-dataset                  controllers.Dashboard.deleteDataset(fileName)
 GET         /dashboard/:fileName/status/*path                    controllers.Dashboard.nodeStatus(fileName, path)
 GET         /dashboard/:fileName/sample/:size/*path              controllers.Dashboard.sample(fileName, path, size:Int)
 GET         /dashboard/:fileName/histogram/:size/*path           controllers.Dashboard.histogram(fileName, path, size:Int)

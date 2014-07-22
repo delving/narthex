@@ -133,10 +133,12 @@ define(["angular"], function () {
             $location.path("/dataset/" + file.name);
         };
 
-        $scope.deleteFile = function (file) {
-            dashboardService.zap(file.name).then(function () {
-                fetchFileList();
-            });
+        $scope.deleteDataset = function (file) {
+            if (confirm("Are you sure you want to delete the dataset?")) {
+                dashboardService.deleteDataset(file.name).then(function () {
+                    fetchFileList();
+                });
+            }
         };
 
         $scope.saveRecords = function (file) {
