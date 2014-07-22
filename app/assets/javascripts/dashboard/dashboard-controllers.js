@@ -83,6 +83,10 @@ define(["angular"], function () {
             dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
                 file.status = datasetInfo.status;
                 file.delimit = datasetInfo.delimit;
+                file.namespaces = datasetInfo.namespaces;
+
+                console.log("namespaces!", file.namespaces);
+
                 if (file.status.percent > 0 || file.status.workers > 0) {
                     var interval = timeSinceStatusCheck();
                     if (interval > 1000) { // don't change the scope thing too often

@@ -266,6 +266,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
               | <narthex-dataset>
               |   <status/>
               |   <delimit/>
+              |   <namespaces/>
               | </narthex-dataset>
               | """.stripMargin
           )
@@ -282,9 +283,9 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
       session =>
         // try the following without doc() sometime, since the db is open
         val statusQuery = s"doc('$dbName/$dbName.xml')/narthex-dataset"
-        println("asking:\n" + statusQuery)
+//        println("asking:\n" + statusQuery)
         val answer = session.query(statusQuery).execute()
-        println("got:\n" + answer)
+//        println("got:\n" + answer)
         XML.loadString(answer)
     }
   }
@@ -305,7 +306,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
              | return replace node $$statusBlock with $$replacement
              |
            """.stripMargin.trim
-        println("updating:\n" + update)
+//        println("updating:\n" + update)
         session.query(update).execute()
     }
   }
@@ -326,10 +327,35 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
              | return replace node $$delimitBlock with $$replacement
              |
            """.stripMargin.trim
+//        println("updating:\n" + update)
+        session.query(update).execute()
+    }
+  }
+
+  def setNamespaceMap(namespaceMap: Map[String, String]) = {
+    println(s"SET NAMESPACE MAP: $namespaceMap")
+    withDatasetSession {
+      session =>
+        val namespaces = namespaceMap.map {
+          entry =>
+            s"    <namespace><prefix>${entry._1}</prefix><uri>${entry._2}</uri></namespace>"
+        }.mkString("\n")
+        val update =
+          s"""
+             |
+             | let $$namespacesBlock := doc('$dbName/$dbName.xml')/narthex-dataset/namespaces
+             | let $$replacement :=
+             |   <namespaces>
+             |$namespaces
+             |   </namespaces>
+             | return replace node $$namespacesBlock with $$replacement
+             |
+           """.stripMargin.trim
         println("updating:\n" + update)
         session.query(update).execute()
     }
   }
+
 
   def saveRecords() = {
     val dataset = getDatasetInfo
@@ -359,6 +385,11 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   def queryRecords(path: String, value: String, start: Int = 1, max: Int = 10): String = {
     // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
     val dataset = getDatasetInfo
+    val namespaces = dataset \ "namespaces" \ "namespace"
+    val namespaceDeclarations = namespaces.map {
+      node =>
+        s"""declare namespace ${ (node \ "prefix").text } = "${ (node \ "uri").text }";"""
+    }.mkString("\n")
     val delim = dataset \ "delimit"
     val recordRoot = (delim \ "recordRoot").text
     val prefix = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
@@ -373,6 +404,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
           session =>
             val queryForRecords = s"""
               |
+              | $namespaceDeclarations
               | let $$recordsWithValue := collection('$recordDb')[/narthex$queryPath/$field=${quote(value)}]
               | return <records>{
               |   subsequence($$recordsWithValue, $start, $max)

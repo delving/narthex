@@ -58,6 +58,22 @@
                             </span>
                             <span ng-switch-when="5:saved">
                                 <a href data-ng-click="viewFile(file)">{{ file.name }}</a><span> Saved</span>
+                                <div data-ng-show="file.namespaces">
+                                    <h4>Namespaces</h4>
+                                    <ul>
+                                        <li data-ng-repeat="namespace in file.namespaces">
+                                            <b>{{ namespace.prefix }}</b> = "{{ namespace.uri }}"
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4>Records</h4>
+                                    <ul>
+                                        <li><b>Record Root</b>: {{ file.delimit.recordRoot }}</li>
+                                        <li><b>Unique ID</b>: {{ file.delimit.uniqueId }}</li>
+                                        <li><b>Record Count</b>: {{ file.delimit.recordCount }}</li>
+                                    </ul>
+                                </div>
                                 <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordRoot">Save Records Again (for now)</button>
                                 <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteDataset(file)">Delete</button>
                             </span>

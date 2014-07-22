@@ -73,11 +73,20 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val repo = Repo(email)
       val datasetInfo = repo.fileRepo(fileName).getDatasetInfo
       // there should be a better way, but couldn't find one and got impatient
-      val status = (datasetInfo \ "status").head.child.filter(_.isInstanceOf[Elem]).map(n => n.label -> JsString(n.text))
-      val delimit = (datasetInfo \ "delimit").head.child.filter(_.isInstanceOf[Elem]).map(n => n.label -> JsString(n.text))
+      def extract(tag: String) = {
+        (datasetInfo \ tag).head.child.filter(_.isInstanceOf[Elem]).map(n => n.label -> JsString(n.text))
+      }
+      val status = extract("status")
+      val delimit = extract("delimit")
+      val namespaceNodes = datasetInfo \ "namespaces" \ "namespace"
+      val namespaceObjects = namespaceNodes.map(node => Json.obj(
+        "prefix" -> (node \ "prefix").text,
+        "uri" -> (node \ "uri").text
+      ))
       Ok(JsObject(Seq(
         "status" -> JsObject(status),
-        "delimit" -> JsObject(delimit)
+        "delimit" -> JsObject(delimit),
+        "namespaces" -> JsArray(namespaceObjects)
       )))
     }
   }

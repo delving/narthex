@@ -23,7 +23,7 @@ import play.Logger
 import scala.collection.mutable
 import scala.io.Source
 import scala.xml.pull._
-import scala.xml.{MetaData, NamespaceBinding}
+import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 trait RecordHandling {
   val ID_PLACEHOLDER = "__id__"
@@ -31,7 +31,7 @@ trait RecordHandling {
   class RecordParser(val recordRoot: String, val uniqueId: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
 
-    def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit) = {
+    def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit): Map[String,String] = {
       val events = new XMLEventReader(source)
       var percentWas = -1
       var lastProgress = 0l
@@ -40,11 +40,12 @@ trait RecordHandling {
       var recordText = new mutable.StringBuilder()
       var uniqueIdAttribute: String = null
       var startElement: Option[String] = None
+      var namespaceMap: Map[String, String] = Map.empty
 
       def indent() = {
         var countdown = depth
         while (countdown > 0) {
-          recordText.append(' ')
+          recordText.append("  ")
           countdown -= 1
         }
       }
@@ -53,7 +54,7 @@ trait RecordHandling {
         val realPercent = ((recordCount * 100) / totalRecords).toInt
         val percent = if (realPercent > 0) realPercent else 1
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
-          progress(percent)
+          if (percent < 100) progress(percent)
           percentWas = percent
           lastProgress = System.currentTimeMillis()
         }
@@ -85,6 +86,14 @@ trait RecordHandling {
           findUniqueId(attrs)
         }
         else if (string == recordRoot) {
+
+          def recordNamespace(binding: NamespaceBinding): Unit = {
+            if (binding eq TopScope) return
+            namespaceMap += binding.prefix -> binding.uri
+            recordNamespace(binding.parent)
+          }
+
+          recordNamespace(scope)
           recordText.append(s"<narthex$ID_PLACEHOLDER$scope>\n")
           depth = 1
           startElement = Some(startElementString(tag, attrs))
@@ -151,6 +160,7 @@ trait RecordHandling {
       }
 
       progress(100)
+      namespaceMap
     }
 
     def pathString = "/" + path.reverse.map(_._1).mkString("/")

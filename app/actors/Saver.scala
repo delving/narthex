@@ -43,6 +43,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
           val progress = context.actorOf(Props(new Actor() {
             override def receive: Receive = {
               case SaveProgress(percent) =>
+                if (percent == 100) context.stop(self)
                 fileRepo.setStatus(fileRepo.SAVING, percent, 0)
             }
           }))
@@ -55,9 +56,9 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
             session.add(s"$collection/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml", inputStream)
           }
 
-          parser.parse(source, receiveRecord, recordCount, sendProgress)
+          val namespaceMap = parser.parse(source, receiveRecord, recordCount, sendProgress)
           source.close()
-          context.stop(progress)
+          fileRepo.setNamespaceMap(namespaceMap)
           self ! SaveComplete()
       }
 
