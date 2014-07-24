@@ -55,13 +55,14 @@ define(["angular"], function (angular) {
             var mapped = 0;
             var unmapped = 0;
 
-            function hasMapping(value) {
-                var mapping = $scope.mappings[$scope.createSourceUri(value)];
+            function hasMapping(count) {
+                var mapping = $scope.mappings[$scope.createSourceUri(count[1])];
+                var number = parseInt(count[0]);
                 if (mapping) {
-                    mapped++;
+                    mapped += number;
                 }
                 else {
-                    unmapped++;
+                    unmapped += number;
                 }
                 return mapping;
             }
@@ -69,23 +70,24 @@ define(["angular"], function (angular) {
             switch ($scope.show) {
                 case "mapped":
                     $scope.histogramVisible = _.filter($scope.histogram, function(count){
-                        return hasMapping(count[1]);
+                        return hasMapping(count);
                     });
                     break;
                 case "unmapped":
                     $scope.histogramVisible = _.filter($scope.histogram, function(count){
-                        return !hasMapping(count[1]);
+                        return !hasMapping(count);
                     });
                     break;
                 default:
                     $scope.histogramVisible = _.filter($scope.histogram, function(count){
-                        hasMapping(count[1]);
+                        hasMapping(count);
                         return true;
                     });
                     break;
             }
             $scope.mapped = mapped;
             $scope.unmapped = unmapped;
+            $scope.all = mapped + unmapped;
         }
 
         // preparations
