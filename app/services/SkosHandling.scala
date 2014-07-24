@@ -18,6 +18,7 @@ package services
 
 import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
 import play.api.libs.json._
+import services.Repo.TermMapping
 
 import scala.collection.mutable
 import scala.io.Source
@@ -219,6 +220,13 @@ trait SkosJson {
     def writes(search: LabelSearch) = Json.obj(
       "query" -> search.query,
       "results" -> search.results
+    )
+  }
+
+  implicit val mappingWrites = new Writes[TermMapping] {
+    def writes(mapping: TermMapping) = Json.obj(
+      "source" -> mapping.source,
+      "target" -> mapping.target
     )
   }
 

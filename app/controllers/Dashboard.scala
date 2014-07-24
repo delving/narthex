@@ -193,6 +193,15 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
+  def getMappings(fileName: String) = Secure() {
+    token => email => implicit request => {
+      val repo = Repo(email)
+      val fileRepo = repo.fileRepo(fileName)
+      val mappings: scala.Seq[TermMapping] = fileRepo.getMappings
+      Ok(Json.obj("mappings" -> mappings))
+    }
+  }
+
   def setMapping(fileName: String) = Secure(parse.json) {
     token => email => implicit request => {
       val sourceUri = (request.body \ "source").as[String]

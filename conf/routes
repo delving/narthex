@@ -30,7 +30,8 @@ GET         /dashboard/:fileName/histogram/:size/*path           controllers.Das
 POST        /dashboard/:fileName/record/set-delimiter            controllers.Dashboard.setRecordDelimiter(fileName)
 GET         /dashboard/:fileName/record/save                     controllers.Dashboard.saveRecords(fileName)
 POST        /dashboard/:fileName/record/query                    controllers.Dashboard.queryRecords(fileName)
-POST        /dashboard/:fileName/record/set-mapping              controllers.Dashboard.setMapping(fileName)
+GET         /dashboard/:fileName/get-mappings                    controllers.Dashboard.getMappings(fileName)
+POST        /dashboard/:fileName/set-mapping                     controllers.Dashboard.setMapping(fileName)
 
 GET         /dashboard/skos/list                                 controllers.Dashboard.listSkos
 GET         /dashboard/skos/:name/:sought                        controllers.Dashboard.searchSkos(name, sought)

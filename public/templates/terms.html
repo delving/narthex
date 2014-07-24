@@ -3,27 +3,6 @@
 </div>
 <div class="row">
     <div>
-        <div class="col-md-12" data-ng-show="sourceUri && targetConcept">
-            <div class="col-md-4">
-                <button type="button" class="btn-success btn-primary" style="width:100%"
-                        data-ng-click="setMapping()">
-                    <h4>"{{ sourceValue }}" &#8594; "{{ targetConcept.prefLabel }}"</h4>
-                </button>
-            </div>
-            <div class="col-md-8">
-                <div>
-                    <span class="col-md-1">From:</span>
-                    <span>{{ sourceUri }}</span>
-                </div>
-                <div>
-                    <span class="col-md-1">To:</span>
-                    <span>{{ targetConcept.uri }}</span>
-                </div>
-            </div>
-        </div>
-        <br/>
-        <br/>
-        <br/>
         <div class="col-md-6">
             <div class="panel panel-primary panel-lists">
                 <div class="panel-heading">
@@ -37,7 +16,7 @@
                         <ul class="list-group terminology-list">
                             <li data-ng-repeat="count in histogram.histogram | filter:filterText"
                                 class="list-group-item clearfix test-class"
-                                data-ng-class="{ 'list-item-selected': count[1] == sourceValue }"
+                                data-ng-class="{ 'list-item-selected': count[1] == sourceValue, 'list-item-mapped' : mappings[createSourceUri(count[1])] }"
                                 data-ng-click="selectSource(count[1])">
                                 <span class="node-content">{{ count[1] }}</span>
                                 <span class="node-stats badge">{{ count[0] }}</span>
@@ -92,11 +71,14 @@
                             >
                         <div data-ng-repeat="concept in conceptList.results" class="list-group"
                              style="border-width: 2px; border: groove; border-color: #7e817e; padding: 10px;"
-                             data-ng-click="selectConcept(concept)"
                                 >
                             <progressbar value="concept.proximity" max="1.0" type="success">{{ concept.proximity * 100 | number : 0 }}%</progressbar>
                             <div>
-                                <span data-ng-class="{ 'gerald-alt' : !concept.preferred }" class="fa-2x">{{ concept.label }} </span>
+                                <a href
+                                   data-ng-class="{ 'gerald-alt' : !concept.preferred, 'gerald-selected': mappings[sourceUri] == concept.uri }"
+                                   data-ng-click="setMapping(concept)"
+                                   class="fa-2x"
+                                        >{{ concept.label }}</a>
                                 <span data-ng-show="!concept.preferred" data-ng-click="selectSought(concept.prefLabel)"> &#8594; {{ concept.prefLabel }} </span>
                                 <span ng-show="concept.broader">
                                     <span data-ng-repeat="b in concept.broader" data-ng-click="selectSought(b.label)"> &#8599; {{ b.label }}</span>
