@@ -40,6 +40,10 @@ define(["angular"], function (angular) {
         $scope.sourceValue = ""; // list selection
         $scope.sought = ""; // the field model
         $scope.mappings = {};
+        $scope.show = "all";
+        $scope.concepts = [];
+        $scope.histogram = [];
+        $scope.histogramVisible = [];
 
         $scope.createSourceUri = function(value) {
             var userPath = user.email.replace(/[@.]/g, "_");
@@ -47,10 +51,44 @@ define(["angular"], function (angular) {
             return prefix + "/" + encodeURIComponent(value);
         };
 
+        function filterHistogram() {
+            var mapped = 0;
+            var unmapped = 0;
+
+            function hasMapping(value) {
+                var mapping = $scope.mappings[$scope.createSourceUri(value)];
+                if (mapping) {
+                    mapped++;
+                }
+                else {
+                    unmapped++;
+                }
+                return mapping;
+            }
+
+            switch ($scope.show) {
+                case "mapped":
+                    $scope.histogramVisible = _.filter($scope.histogram, function(count){
+                        return hasMapping(count[1]);
+                    });
+                    break;
+                case "unmapped":
+                    $scope.histogramVisible = _.filter($scope.histogram, function(count){
+                        return !hasMapping(count[1]);
+                    });
+                    break;
+                default:
+                    $scope.histogramVisible = _.filter($scope.histogram, function(count){
+                        hasMapping(count[1]);
+                        return true;
+                    });
+                    break;
+            }
+            $scope.mapped = mapped;
+            $scope.unmapped = unmapped;
+        }
+
         // preparations
-        dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
-            $scope.histogram = data;
-        });
         dashboardService.listSkos().then(function (data) {
             $scope.vocabularyList = data.list;
         });
@@ -61,17 +99,23 @@ define(["angular"], function (angular) {
                     vocabulary: mapping.vocabulary
                 }
             });
+            dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
+                $scope.histogram = data.histogram;
+            });
         });
 
         function searchSkos(value) {
             if (!value || !$scope.vocabulary) return;
             dashboardService.searchSkos($scope.vocabulary, value).then(function (data) {
-                $scope.conceptList = data.search;
+                $scope.conceptSearch = data.search;
                 var mapping = $scope.mappings[$scope.sourceUri];
                 if (mapping) {
-                    $scope.conceptList.results = _.filter($scope.conceptList.results, function(concept) {
+                    $scope.concepts = _.filter(data.search.results, function(concept) {
                         return concept.uri === mapping.target;
                     });
+                }
+                else {
+                    $scope.concepts = data.search.results;
                 }
             });
         }
@@ -129,6 +173,14 @@ define(["angular"], function (angular) {
             if (sought) searchSkos(sought);
         });
 
+        $scope.$watch("show", function () {
+            filterHistogram();
+        });
+
+        $scope.$watch("histogram", function () {
+            filterHistogram();
+        });
+
         $scope.$watch("activeView", updateSearchParams());
 
         $scope.setMapping = function (concept) {
@@ -143,7 +195,8 @@ define(["angular"], function (angular) {
                 $scope.mappings[$scope.sourceUri] = {
                     target: concept.uri,
                     vocabulary: $scope.vocabulary
-                }
+                };
+                filterHistogram();
             });
         };
 

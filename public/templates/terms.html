@@ -6,6 +6,11 @@
         <div class="col-md-6">
             <div class="panel panel-primary panel-lists">
                 <div class="panel-heading">
+                    <div class="pull-right">
+                        <input type="radio" data-ng-model="show" value="all">All {{ histogram.length }}&nbsp;&nbsp;
+                        <input type="radio" data-ng-model="show" value="mapped">Mapped ({{ mapped }}) &nbsp;
+                        <input type="radio" data-ng-model="show" value="unmapped">Unmapped ({{ unmapped }})&nbsp;
+                    </div>
                     <span class="panel-title">Histogram of Terms</span>
                     <div>{{path}}</div>
                 </div>
@@ -14,7 +19,7 @@
                          data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }"
                             >
                         <ul class="list-group terminology-list">
-                            <li data-ng-repeat="count in histogram.histogram | filter:filterText"
+                            <li data-ng-repeat="count in histogramVisible | filter:filterText"
                                 class="list-group-item clearfix test-class"
                                 data-ng-class="{ 'list-item-selected': count[1] == sourceValue, 'list-item-mapped' : mappings[createSourceUri(count[1])] }"
                                 data-ng-click="selectSource(count[1])">
@@ -62,11 +67,11 @@
                         </div>
                     </div>
                     <hr/>
-                    <div data-ng-show="conceptList" class="terminology-list vertical-scroll"
+                    <div data-ng-show="concepts" class="terminology-list vertical-scroll"
                          data-scrollable id="skos-term-list" data-offset="365"
                          data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }"
                             >
-                        <div data-ng-repeat="concept in conceptList.results" class="list-group concept-box"
+                        <div data-ng-repeat="concept in concepts" class="list-group concept-box"
                              data-ng-class="{ 'gerald-selected': mappings[sourceUri].target == concept.uri }">
                             <progressbar value="concept.proximity" max="1.0" type="success">{{ concept.proximity * 100 | number : 0 }}%</progressbar>
                             <div>
