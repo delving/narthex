@@ -28,7 +28,6 @@ import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.Repo._
-import views.html.helper
 
 import scala.collection.mutable.ArrayBuffer
 import scala.xml.{Elem, XML}
@@ -96,7 +95,7 @@ object Repo {
     }
   }
 
-  case class TermMapping(source: String, target: String)
+  case class TermMapping(source: String, target: String, vocabulary:String)
 
 }
 
@@ -455,6 +454,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
       |   <term-mapping>
       |     <source>${mapping.source}</source>
       |     <target>${mapping.target}</target>
+      |     <vocabulary>${mapping.vocabulary}</vocabulary>
       |   </term-mapping>
       |
       | let $$termMappings := doc('$termDb/$termDb.xml')/term-mappings
@@ -487,7 +487,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
       val mappings = session.query(s"doc('$termDb/$termDb.xml')/term-mappings").execute()
       val xml = XML.loadString(mappings)
       (xml \ "term-mapping").map { node =>
-        TermMapping((node \ "source").text, (node \ "target").text)
+        TermMapping((node \ "source").text, (node \ "target").text, (node \ "vocabulary").text)
       }
   }
 
@@ -579,35 +579,5 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
     counters.map(triple => triple._1)
 
   }
-
-  def addMapping(mapping: TermMapping) = parent.withTermSession {
-    session =>
-      val chop = root.getAbsolutePath.length()
-      val sourcePath = dir.getAbsolutePath.substring(chop).replace("/" + ANALYZED, "")
-      val encodedSource = helper.urlEncode(mapping.source).replaceAll("[+]", "%20")
-      val source = s"$sourcePath/$encodedSource"
-
-      val upsert = s"""
-      |
-      | let $$freshMapping :=
-      |   <term-mapping>
-      |     <source>$source</source>
-      |     <target>${mapping.target}</target>
-      |   </term-mapping>
-      |
-      | let $$termMappings := doc('${parent.termDb}/${parent.termDb}.xml')/term-mappings
-      |
-      | let $$termMapping := $$termMappings/term-mapping[source=${quote(source)}]
-      |
-      | return
-      |   if (exists($$termMapping))
-      |   then replace node $$termMapping with $$freshMapping
-      |   else insert node $$freshMapping into $$termMappings
-      |
-      """.stripMargin
-
-      session.query(upsert).execute()
-  }
-
 }
 

@@ -24,12 +24,14 @@ define(["angular"], function (angular) {
             $scope.path = $routeParams.path;
             $scope.histogramSize = parseInt($routeParams.size || "100");
             $scope.activeView = $routeParams.view || "skos";
+            $scope.vocabulary = $routeParams.vocabulary;
         }
         function updateSearchParams() {
             $location.search({
                 path: $scope.path,
                 histogramSize: $scope.histogramSize,
-                view: $scope.activeView
+                view: $scope.activeView,
+                vocabulary: $scope.vocabulary
             });
         }
         getSearchParams();
@@ -54,7 +56,10 @@ define(["angular"], function (angular) {
         });
         dashboardService.getMappings($scope.fileName).then(function (data) {
             _.forEach(data.mappings, function(mapping) {
-                $scope.mappings[mapping.source] = mapping.target;
+                $scope.mappings[mapping.source] = {
+                    target: mapping.target,
+                    vocabulary: mapping.vocabulary
+                }
             });
         });
 
@@ -62,6 +67,12 @@ define(["angular"], function (angular) {
             if (!value || !$scope.vocabulary) return;
             dashboardService.searchSkos($scope.vocabulary, value).then(function (data) {
                 $scope.conceptList = data.search;
+                var mapping = $scope.mappings[$scope.sourceUri];
+                if (mapping) {
+                    $scope.conceptList.results = _.filter($scope.conceptList.results, function(concept) {
+                        return concept.uri === mapping.target;
+                    });
+                }
             });
         }
 
@@ -78,18 +89,22 @@ define(["angular"], function (angular) {
         $scope.skosTab = function() {
             $scope.activeView = "skos";
             $scope.sought = $scope.sourceValue;
-            updateSearchParams()
+            updateSearchParams();
         };
 
         $scope.recordTab = function() {
             $scope.activeView = "record";
             searchRecords($scope.sourceValue);
-            updateSearchParams()
+            updateSearchParams();
         };
 
         $scope.selectSource = function (sourceValue) {
             $scope.sourceValue = sourceValue;
             $scope.sourceUri = $scope.createSourceUri($scope.sourceValue);
+            var mapping = $scope.mappings[$scope.sourceUri];
+            if (mapping && mapping.vocabulary != $scope.vocabulary) {
+                $scope.selectVocabulary(mapping.vocabulary);
+            }
             switch($scope.activeView) {
                 case "skos":
                     $scope.sought = $scope.sourceValue; // will trigger searchSkos
@@ -102,6 +117,7 @@ define(["angular"], function (angular) {
 
         $scope.selectVocabulary = function (name) {
             $scope.vocabulary = name;
+            updateSearchParams();
             searchSkos($scope.sought);
         };
 
@@ -110,24 +126,24 @@ define(["angular"], function (angular) {
         };
 
         $scope.$watch("sought", function (sought) {
-            searchSkos(sought);
-        });
-
-        $scope.$watch("vocabulary", function () {
-            searchSkos($scope.sought);
+            if (sought) searchSkos(sought);
         });
 
         $scope.$watch("activeView", updateSearchParams());
 
         $scope.setMapping = function (concept) {
-            if (!$scope.sourceUri) return;
+            if (!($scope.sourceUri && $scope.vocabulary)) return;
             var body = {
                 source: $scope.sourceUri,
+                vocabulary: $scope.vocabulary,
                 target: concept.uri
             };
             dashboardService.setMapping($scope.fileName, body).then(function (data) {
                 console.log("set mapping returns", data);
-                $scope.mappings[$scope.sourceUri] = concept.uri;
+                $scope.mappings[$scope.sourceUri] = {
+                    target: concept.uri,
+                    vocabulary: $scope.vocabulary
+                }
             });
         };
 

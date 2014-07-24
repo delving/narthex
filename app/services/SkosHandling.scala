@@ -226,7 +226,8 @@ trait SkosJson {
   implicit val mappingWrites = new Writes[TermMapping] {
     def writes(mapping: TermMapping) = Json.obj(
       "source" -> mapping.source,
-      "target" -> mapping.target
+      "target" -> mapping.target,
+      "vocabulary" -> mapping.vocabulary
     )
   }
 
@@ -243,6 +244,8 @@ case class RelatedConcept(concept: Concept, language: String)
 class ConceptScheme(val about: String) {
   val concepts = mutable.MutableList[Concept]()
   val topConcepts = mutable.MutableList[Concept]()
+
+  def get(uri: String): Option[Concept] = concepts.find(_.about == uri)
 
   def search(language: String, sought: String, count: Int): LabelSearch = {
     val judged = concepts.flatMap(_.search(language, sought))

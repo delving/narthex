@@ -23,18 +23,15 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling {
       fileRepo.nodeRepo(path).get
     }
 
-    val nodeRepo = createNodeRepo("list/record/term")
-
     Repo.startBaseX()
 
-    nodeRepo.addMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink"))
-    nodeRepo.addMapping(TermMapping("b b", "http://gumby.com/pokey"))
-    nodeRepo.addMapping(TermMapping("a", "http://gumby.com/gumby"))
+    fileRepo.setMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink", "cusses"))
+    fileRepo.setMapping(TermMapping("bb", "http://gumby.com/pokey", "cusses"))
+    fileRepo.setMapping(TermMapping("a", "http://gumby.com/gumby", "cusses"))
 
-    val prefix = "/test_narthex_delving_org/pretend-file/list/record/term"
-
-    fileRepo.getMappings.toString() should be(s"List(TermMapping($prefix/a,http://gumby.com/gumby), TermMapping($prefix/b%20b,http://gumby.com/pokey))")
-    fileRepo.getMapping(s"$prefix/a") should be("http://gumby.com/gumby")
+    println(fileRepo.getMappings.toString())
+    fileRepo.getMappings.toString() should be("List(TermMapping(a,http://gumby.com/gumby,cusses), TermMapping(bb,http://gumby.com/pokey,cusses))")
+    fileRepo.getMapping("a") should be("http://gumby.com/gumby")
   }
 
 }

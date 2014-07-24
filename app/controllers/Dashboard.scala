@@ -206,9 +206,10 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     token => email => implicit request => {
       val sourceUri = (request.body \ "source").as[String]
       val targetUri = (request.body \ "target").as[String]
+      val vocabulary = (request.body \ "vocabulary").as[String]
       val repo = Repo(email)
       val fileRepo = repo.fileRepo(fileName)
-      fileRepo.setMapping(TermMapping(sourceUri, targetUri))
+      fileRepo.setMapping(TermMapping(sourceUri, targetUri, vocabulary))
       Ok("thanks man")
     }
   }
