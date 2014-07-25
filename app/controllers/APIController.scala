@@ -21,9 +21,7 @@ import play.api.libs.json._
 import play.api.mvc._
 import services._
 
-import scala.xml.Elem
-
-object API extends Controller with TreeHandling {
+object APIController extends Controller with TreeHandling with RecordHandling {
 
   def indexJSON(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
     implicit request => {
@@ -82,13 +80,34 @@ object API extends Controller with TreeHandling {
     }
   }
 
-  def record(apiKey: String, email: String, fileName: String, id: String) = Action(parse.anyContent) {
+  def rawRecord(apiKey: String, email: String, fileName: String, id: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
         val fileRepo = repo.fileRepo(fileName)
-        val record: Elem = fileRepo.getRecord(id)
-        Ok(record)
+        val storedRecord: String = fileRepo.getRecord(id)
+        Ok(scala.xml.XML.loadString(storedRecord))
+      }
+      else {
+        Unauthorized
+      }
+    }
+  }
+
+  def enrichedRecord(apiKey: String, email: String, fileName: String, id: String) = Action(parse.anyContent) {
+    implicit request => {
+      if (checkKey(email, fileName, apiKey)) {
+        val repo = Repo(email)
+        val fileRepo = repo.fileRepo(fileName)
+        val filePrefix: String = s"${email.replaceAllLiterally(".", "_")}/$fileName"
+        // todo: cache the mappings for a few minutes
+        val mappings = fileRepo.getMappings.map(m => (m.source, m.target)).toMap
+        val storedRecord: String = fileRepo.getRecord(id)
+        if (storedRecord.isEmpty) throw new RuntimeException("Hey no record!")
+        val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text
+        val parser = new StoredRecordParser(filePrefix, recordRoot, mappings)
+        val record = parser.parse(storedRecord)
+        Ok(scala.xml.XML.loadString(record.text.toString()))
       }
       else {
         Unauthorized
@@ -103,14 +122,18 @@ object API extends Controller with TreeHandling {
         val fileRepo = repo.fileRepo(fileName)
         val mappings = fileRepo.getMappings
         val reply =
-<mappings>
-  { mappings.map { m =>
-  <mapping>
-    <source>{m.source}</source>
-    <target>{m.target}</target>
-  </mapping>
-} }
-</mappings>
+          <mappings>
+            {mappings.map { m =>
+            <mapping>
+              <source>
+                {m.source}
+              </source>
+              <target>
+                {m.target}
+              </target>
+            </mapping>
+          }}
+          </mappings>
         Ok(reply)
       }
       else {

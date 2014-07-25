@@ -51,6 +51,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
         |      <content.subject>Glas in loodraam</content.subject>
         |    </inner>
         |    <other>Ignore</other>
+        |    <empty/>
         |  </record>
         |</narthex>
       """.stripMargin.trim
@@ -62,6 +63,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
         |    <content.subject enrichment="got it">Glas in loodraam</content.subject>
         |  </inner>
         |  <other>Ignore</other>
+        |  <empty/>
         |</record>
       """.stripMargin.trim
 

@@ -36,13 +36,14 @@ POST        /dashboard/:fileName/set-mapping                     controllers.Das
 GET         /dashboard/skos/list                                 controllers.Dashboard.listSkos
 GET         /dashboard/skos/:name/:sought                        controllers.Dashboard.searchSkos(name, sought)
 
-GET         /api/:apiKey/:email/:fileName/tree                   controllers.API.indexJSON(apiKey, email, fileName)
-GET         /api/:apiKey/:email/:fileName/index                  controllers.API.indexText(apiKey, email, fileName, path="")
-GET         /api/:apiKey/:email/:fileName/mappings               controllers.API.mappings(apiKey, email, fileName)
-GET         /api/:apiKey/:email/:fileName/record/:id             controllers.API.record(apiKey, email, fileName, id)
-GET         /api/:apiKey/:email/:fileName/index/*path            controllers.API.indexText(apiKey, email, fileName, path)
-GET         /api/:apiKey/:email/:fileName/unique/*path           controllers.API.uniqueText(apiKey, email, fileName, path)
-GET         /api/:apiKey/:email/:fileName/histogram/*path        controllers.API.histogramText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/tree                   controllers.APIController.indexJSON(apiKey, email, fileName)
+GET         /api/:apiKey/:email/:fileName/index                  controllers.APIController.indexText(apiKey, email, fileName, path="")
+GET         /api/:apiKey/:email/:fileName/mappings               controllers.APIController.mappings(apiKey, email, fileName)
+GET         /api/:apiKey/:email/:fileName/record/:id             controllers.APIController.rawRecord(apiKey, email, fileName, id)
+GET         /api/:apiKey/:email/:fileName/record/:id/enriched    controllers.APIController.enrichedRecord(apiKey, email, fileName, id)
+GET         /api/:apiKey/:email/:fileName/index/*path            controllers.APIController.indexText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/unique/*path           controllers.APIController.uniqueText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/histogram/*path        controllers.APIController.histogramText(apiKey, email, fileName, path)
 
 
 #GET         /oai-pmh                                             controllers.OaiPmh.service

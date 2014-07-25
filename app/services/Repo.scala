@@ -427,7 +427,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
       session =>
         val queryForRecords = s"""collection('$recordDb')[/narthex/@id=${quote(id)}]"""
         println("asking:\n" + queryForRecords)
-        XML.loadString(session.query(queryForRecords).execute())
+        session.query(queryForRecords).execute()
     }
   }
 

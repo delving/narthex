@@ -258,6 +258,7 @@ trait RecordHandling {
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
             val path = s"$filePrefix${frame.path}/${value(text)}"
+            println(s"looking for $path")
             val mapping = mappings.get(path)
             val startString = mapping match {
               case Some(uri) =>
@@ -268,8 +269,12 @@ trait RecordHandling {
             record.get.text.append(s"$indent$startString${frame.text}</$tag>\n")
             start = None
           }
-          else {
-            record.get.text.append(s"$indent</$tag>\n")
+          else start match {
+            case Some(startString) =>
+              record.get.text.append(s"$indent${startString.replace(">","/>")}\n")
+              start = None
+            case None =>
+              record.get.text.append(s"$indent</$tag>\n")
           }
           stack.pop()
 
