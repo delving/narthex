@@ -205,7 +205,7 @@ trait RecordHandling {
 
   case class Record(id:String, text: mutable.StringBuilder = new mutable.StringBuilder())
 
-  class StoredRecordParser(recordRoot: String, mappings: Map[String,String]) {
+  class StoredRecordParser(filePrefix: String, recordRoot: String, mappings: Map[String,String]) {
 
     val recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
 
@@ -257,7 +257,7 @@ trait RecordHandling {
           val tag = frame.tag
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
-            val path = s"${frame.path}/${value(text)}"
+            val path = s"$filePrefix${frame.path}/${value(text)}"
             val mapping = mappings.get(path)
             val startString = mapping match {
               case Some(uri) =>

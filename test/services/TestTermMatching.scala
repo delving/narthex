@@ -35,11 +35,12 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
 
   "A transformer" should "insert an enrichment" in {
 
-    val recordRoot = "gerald_delving_eu/RCE_Beeldbank/adlibXML/recordList/record"
+    val filePrefix = "gerald_delving_eu/RCE_Beeldbank"
+    val recordRoot = "/adlibXML/recordList/record"
 
     val mappings = Map(
-      s"$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> "got it",
-      s"$recordRoot/inner/content.subject" -> "close but no cigar"
+      s"$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> "got it",
+      s"$filePrefix$recordRoot/inner/content.subject" -> "close but no cigar"
     )
 
     val storedString =
@@ -64,7 +65,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
         |</record>
       """.stripMargin.trim
 
-    val parser = new StoredRecordParser(recordRoot, mappings)
+    val parser = new StoredRecordParser(filePrefix, recordRoot, mappings)
     val record = parser.parse(storedString)
     val recordText = record.text.toString().trim
     recordText should be(expectedString)
