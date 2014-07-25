@@ -37,7 +37,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
       Logger.info(s"Saving ${fileRepo.dir.getName}")
       fileRepo.withNewRecordDatabase {
         session =>
-          val parser = new RecordParser(recordRoot, uniqueId)
+          val parser = new RawRecordParser(recordRoot, uniqueId)
           val source = FileHandling.source(fileRepo.sourceFile)
 
           val progress = context.actorOf(Props(new Actor() {

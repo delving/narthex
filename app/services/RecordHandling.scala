@@ -16,6 +16,7 @@
 
 package services
 
+import java.net.URLEncoder
 import java.security.MessageDigest
 
 import play.Logger
@@ -28,7 +29,7 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 trait RecordHandling {
   val ID_PLACEHOLDER = "__id__"
 
-  class RecordParser(val recordRoot: String, val uniqueId: String) {
+  class RawRecordParser(recordRoot: String, uniqueId: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
 
     def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit): Map[String,String] = {
@@ -121,6 +122,7 @@ trait RecordHandling {
             indent()
             recordText.append(s"</$tag>\n")
             val recordWithId = recordText.toString().replace(ID_PLACEHOLDER, uniqueIdAttribute)
+            // todo: timestamp it too
             output(s"$recordWithId</narthex>\n")
             recordText.clear()
             depth = 0
@@ -141,21 +143,13 @@ trait RecordHandling {
       }
 
       while (events.hasNext) {
-
         events.next() match {
-
           case EvElemStart(pre, label, attrs, scope) => push(FileHandling.tag(pre, label), attrs, scope)
-
           case EvText(text) => addFieldText(text)
-
           case EvEntityRef(entity) => addFieldText(s"&$entity;")
-
           case EvElemEnd(pre, label) => pop(FileHandling.tag(pre, label))
-
           case EvComment(text) => FileHandling.stupidParser(text, entity => addFieldText(s"&$entity;"))
-
-          case x =>
-            Logger.warn("EVENT? " + x) // todo: record these in an error file for later
+          case x => Logger.warn("EVENT? " + x) // todo: record these in an error file for later
         }
       }
 
@@ -207,4 +201,88 @@ trait RecordHandling {
     toHex(digest.digest(record.getBytes("UTF-8")))
   }
 
+  case class Frame(tag: String, path: String, text: mutable.StringBuilder = new mutable.StringBuilder())
+
+  case class Record(id:String, text: mutable.StringBuilder = new mutable.StringBuilder())
+
+  class StoredRecordParser(recordRoot: String, mappings: Map[String,String]) {
+
+    val recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
+
+    def parse(xmlString: String): Record = {
+
+      val events = new XMLEventReader(Source.fromString(xmlString))
+      val stack = new mutable.Stack[Frame]()
+      var start: Option[String] = None
+      var record: Option[Record] = None
+
+      def startElement(tag: String, attrs: MetaData) = {
+        val attrString = new mutable.StringBuilder()
+        attrs.foreach { attr =>
+          val value = "\"" + attr.value.toString() + "\""
+          attrString.append(s" ${attr.prefixedKey}=$value")
+        }
+        Some(s"<$tag$attrString>")
+      }
+
+      def pushText(text: String) = if (stack.nonEmpty) stack.head.text.append(text)
+      def indent = "  " * (stack.size - 1)
+      def value(unencoded: String) = URLEncoder.encode(unencoded,"utf-8").replaceAll("[+]","%20")
+
+      while (events.hasNext) events.next() match {
+
+        case EvElemStart(pre, label, attrs, scope) =>
+          val tag = FileHandling.tag(pre, label)
+          if (tag == "narthex") {
+            record = Some(Record(attrs.get("id").head.text))
+          }
+          else {
+            val parentPath: String = stack.reverse.map(_.tag).mkString("/")
+            val path = s"$recordContainer/$parentPath/$tag"
+            start match {
+              case Some(startString) =>
+                record.get.text.append(s"$indent$startString\n")
+              case None =>
+            }
+            start = startElement(tag, attrs)
+            stack.push(Frame(tag, path))
+          }
+
+        case EvText(text) => pushText(text)
+
+        case EvEntityRef(entity) => pushText(s"&$entity;")
+
+        case EvElemEnd(pre, label) => if (stack.nonEmpty) {
+          val frame = stack.head
+          val tag = frame.tag
+          val text = frame.text.toString().trim
+          if (text.nonEmpty) {
+            val path = s"${frame.path}/${value(text)}"
+            val mapping = mappings.get(path)
+            val startString = mapping match {
+              case Some(uri) =>
+                start.get.replaceFirst(tag, s"""$tag enrichment="$uri" """.trim)
+              case None =>
+                start.get
+            }
+            record.get.text.append(s"$indent$startString${frame.text}</$tag>\n")
+            start = None
+          }
+          else {
+            record.get.text.append(s"$indent</$tag>\n")
+          }
+          stack.pop()
+
+        }
+
+        case EvComment(text) =>
+          FileHandling.stupidParser(text, entity => pushText(s"&$entity;"))
+
+        case x =>
+          Logger.warn("EVENT? " + x) // todo: record these in an error file for later
+      }
+
+      record.getOrElse(throw new RuntimeException("No record"))
+    }
+  }
 }

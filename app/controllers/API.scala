@@ -21,6 +21,8 @@ import play.api.libs.json._
 import play.api.mvc._
 import services._
 
+import scala.xml.Elem
+
 object API extends Controller with TreeHandling {
 
   def indexJSON(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
@@ -85,7 +87,7 @@ object API extends Controller with TreeHandling {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
         val fileRepo = repo.fileRepo(fileName)
-        val record = fileRepo.getRecord(id)
+        val record: Elem = fileRepo.getRecord(id)
         Ok(record)
       }
       else {

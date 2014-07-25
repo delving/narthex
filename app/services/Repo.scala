@@ -24,12 +24,15 @@ import org.apache.commons.io.FileUtils._
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
 import org.mindrot.jbcrypt.BCrypt
+import play.Logger
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.Repo._
 
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable
+import scala.io.Source
+import scala.xml.pull._
 import scala.xml.{Elem, XML}
 
 object Repo {
@@ -95,7 +98,7 @@ object Repo {
     }
   }
 
-  case class TermMapping(source: String, target: String, vocabulary:String)
+  case class TermMapping(source: String, target: String, vocabulary: String)
 
 }
 
@@ -428,6 +431,35 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
     }
   }
 
+  def getEnrichedRecord(id: String, getTargetUri: String => Option[String]) = {
+    withRecordDatabase {
+      session =>
+        val queryForRecords = s"""collection('$recordDb')[/narthex/@id=${quote(id)}]"""
+        println("asking:\n" + queryForRecords)
+        val xml = session.query(queryForRecords).execute()
+        val events = new XMLEventReader(Source.fromString(xml))
+        val stack = new mutable.Stack[String]
+
+        def push(tag: String) = {
+          stack.push(tag)
+        }
+
+        def pop(tag: String) = {
+          stack.pop()
+        }
+
+        while (events.hasNext) events.next() match {
+          case EvElemStart(pre, label, attrs, scope) => push(FileHandling.tag(pre, label))
+//          case EvText(text) => addFieldText(text)
+//          case EvEntityRef(entity) => addFieldText(s"&$entity;")
+          case EvElemEnd(pre, label) => pop(FileHandling.tag(pre, label))
+//          case EvComment(text) => FileHandling.stupidParser(text, entity => addFieldText(s"&$entity;"))
+          case x => Logger.warn("EVENT? " + x) // todo: record these in an error file for later
+        }
+        <crap/>
+    }
+  }
+
   // terminology
 
   def withTermSession[T](block: ClientSession => T): T = {
@@ -548,7 +580,7 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
       if (string != null) Some(string) else None
     }
 
-    def createFile(maximum: Int, entries: ArrayBuffer[JsArray], histogramFile: File) = {
+    def createFile(maximum: Int, entries: mutable.ArrayBuffer[JsArray], histogramFile: File) = {
       createJson(histogramFile, Json.obj(
         "uniqueCount" -> uniqueCount,
         "entries" -> entries.size,
@@ -558,7 +590,7 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
       ))
     }
 
-    var activeCounters = histogramJson.map(pair => (pair._1, new ArrayBuffer[JsArray], pair._2))
+    var activeCounters = histogramJson.map(pair => (pair._1, new mutable.ArrayBuffer[JsArray], pair._2))
     activeCounters = activeCounters.filter(pair => pair._1 == activeCounters.head._1 || uniqueCount > pair._1 / sizeFactor)
     val counters = activeCounters
     var line = lineOption
