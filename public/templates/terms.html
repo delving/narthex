@@ -7,9 +7,11 @@
             <div class="panel panel-primary panel-lists">
                 <div class="panel-heading">
                     <div class="pull-right">
-                        <input type="radio" data-ng-model="show" value="all">All ({{ all }})&nbsp;&nbsp;
-                        <input type="radio" data-ng-model="show" value="mapped">Mapped ({{ mapped }}) &nbsp;
-                        <input type="radio" data-ng-model="show" value="unmapped">Unmapped ({{ unmapped }})&nbsp;
+                        <div>
+                            <input type="radio" data-ng-model="show" value="all">All ({{ all }})&nbsp;&nbsp;
+                            <input type="radio" data-ng-model="show" value="mapped">Mapped ({{ mapped }}) &nbsp;
+                            <input type="radio" data-ng-model="show" value="unmapped">Unmapped ({{ unmapped }})&nbsp;
+                        </div>
                     </div>
                     <span class="panel-title">Terms</span>
                     <div>{{path}}</div>

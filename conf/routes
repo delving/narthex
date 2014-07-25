@@ -38,10 +38,11 @@ GET         /dashboard/skos/:name/:sought                        controllers.Das
 
 GET         /api/:apiKey/:email/:fileName/tree                   controllers.API.indexJSON(apiKey, email, fileName)
 GET         /api/:apiKey/:email/:fileName/index                  controllers.API.indexText(apiKey, email, fileName, path="")
-GET         /api/:apiKey/:email/:fileName/*path/index            controllers.API.indexText(apiKey, email, fileName, path)
-GET         /api/:apiKey/:email/:fileName/*path/unique           controllers.API.uniqueText(apiKey, email, fileName, path)
-GET         /api/:apiKey/:email/:fileName/*path/histogram        controllers.API.histogramText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/mappings               controllers.API.mappings(apiKey, email, fileName)
 GET         /api/:apiKey/:email/:fileName/record/:id             controllers.API.record(apiKey, email, fileName, id)
+GET         /api/:apiKey/:email/:fileName/index/*path            controllers.API.indexText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/unique/*path           controllers.API.uniqueText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/histogram/*path        controllers.API.histogramText(apiKey, email, fileName, path)
 
 
 #GET         /oai-pmh                                             controllers.OaiPmh.service

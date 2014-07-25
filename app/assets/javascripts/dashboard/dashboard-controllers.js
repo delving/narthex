@@ -18,6 +18,11 @@ String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
 };
 
+function apiHash(email, fileName) {
+    var toHash = 'narthex|' + email + '|' + fileName;
+    return toHash.hashCode().toString(16).substring(1);
+}
+
 define(["angular"], function () {
     "use strict";
 
@@ -31,6 +36,13 @@ define(["angular"], function () {
         $scope.checkDelay = 1000;
         $scope.lastStatusCheck = 0;
         $scope.percent = null;
+
+        function apiPrefix(fileName) {
+            var absUrl = $location.absUrl();
+            var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
+            var email = user.email.replace("@", "_");
+            return serverUrl + 'api/' + apiHash(email, fileName) + '/' + email;
+        }
 
         function timeSinceStatusCheck() {
             var now = new Date().getTime();
@@ -126,6 +138,9 @@ define(["angular"], function () {
                 $scope.files = data;
                 _.forEach($scope.files, checkFileStatus);
                 _.forEach($scope.files, checkSaveStatus);
+                _.forEach($scope.files, function(file) {
+                    file.apiMappings = apiPrefix(file.name) + '/' + file.name + '/mappings'
+                })
             });
         }
 
@@ -175,11 +190,14 @@ define(["angular"], function () {
     var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, user) {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.fileName = $routeParams.fileName;
-        var absUrl = $location.absUrl();
-        var email = user.email.replace("@", "_");
-        var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-        var garbage = ('narthex|' + email + '|' + $scope.fileName).hashCode().toString(16).substring(1);
-        $scope.apiPrefix = serverUrl + 'api/' + garbage + '/' + email + '/' + $scope.fileName;
+
+        function apiPrefix() {
+            var absUrl = $location.absUrl();
+            var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
+            var email = user.email.replace("@", "_");
+            return serverUrl + 'api/' + apiHash(email, $scope.fileName) + '/' + email;
+        }
+
         $scope.selectedNode = null;
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
@@ -273,7 +291,7 @@ define(["angular"], function () {
             dashboardService.nodeStatus($scope.fileName, node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
-                $scope.apiPath = $scope.apiPrefix + filePath;
+                $scope.apiPath = apiPrefix() + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
                 switch ($routeParams.view) {

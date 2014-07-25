@@ -94,10 +94,39 @@ object API extends Controller with TreeHandling {
     }
   }
 
+  def mappings(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
+    implicit request => {
+      if (checkKey(email, fileName, apiKey)) {
+        val repo = Repo(email)
+        val fileRepo = repo.fileRepo(fileName)
+        val mappings = fileRepo.getMappings
+        val reply =
+          <mappings>
+            {
+            for (m <- mappings) yield
+              <mapping>
+                <source>{ m.source }</source>
+                <target>{ m.target }</target>
+              </mapping>
+            }
+          </mappings>
+        Ok(reply)
+      }
+      else {
+        Unauthorized("Unauthorized")
+      }
+    }
+  }
+
   private def checkKey(email: String, fileName: String, apiKey: String) = {
     // todo: mindless so far, and do it as an action like in Security.scala
-    val hash = s"narthex|$email|$fileName".hashCode
+    val toHash: String = s"narthex|$email|$fileName"
+    val hash = toHash.hashCode
     val expected: String = Integer.toString(hash, 16).substring(1)
-    expected == apiKey
+    val correct = expected == apiKey
+    if (!correct) {
+      println(s"expected[$expected] got[$apiKey] toHash[$toHash]")
+    }
+    correct
   }
 }
