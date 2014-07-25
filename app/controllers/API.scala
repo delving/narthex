@@ -101,15 +101,14 @@ object API extends Controller with TreeHandling {
         val fileRepo = repo.fileRepo(fileName)
         val mappings = fileRepo.getMappings
         val reply =
-          <mappings>
-            {
-            for (m <- mappings) yield
-              <mapping>
-                <source>{ m.source }</source>
-                <target>{ m.target }</target>
-              </mapping>
-            }
-          </mappings>
+<mappings>
+  { mappings.map { m =>
+  <mapping>
+    <source>{m.source}</source>
+    <target>{m.target}</target>
+  </mapping>
+} }
+</mappings>
         Ok(reply)
       }
       else {
