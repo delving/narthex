@@ -32,7 +32,7 @@ trait RecordHandling {
   class RawRecordParser(recordRoot: String, uniqueId: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
 
-    def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit): Map[String,String] = {
+    def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit): Map[String, String] = {
       val events = new XMLEventReader(source)
       var percentWas = -1
       var lastProgress = 0l
@@ -203,9 +203,9 @@ trait RecordHandling {
 
   case class Frame(tag: String, path: String, text: mutable.StringBuilder = new mutable.StringBuilder())
 
-  case class Record(id:String, text: mutable.StringBuilder = new mutable.StringBuilder())
+  case class Record(id: String, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
 
-  class StoredRecordParser(filePrefix: String, recordRoot: String, mappings: Map[String,String]) {
+  class StoredRecordParser(filePrefix: String, recordRoot: String, mappings: Map[String, String]) {
 
     val recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
 
@@ -215,6 +215,7 @@ trait RecordHandling {
       val stack = new mutable.Stack[Frame]()
       var start: Option[String] = None
       var record: Option[Record] = None
+      var recordStart = true
 
       def startElement(tag: String, attrs: MetaData) = {
         val attrString = new mutable.StringBuilder()
@@ -222,19 +223,25 @@ trait RecordHandling {
           val value = "\"" + attr.value.toString() + "\""
           attrString.append(s" ${attr.prefixedKey}=$value")
         }
-        Some(s"<$tag$attrString>")
+        if (recordStart) {
+          recordStart = false
+          Some(s"<$tag$attrString${record.get.scope}>")
+        }
+        else {
+          Some(s"<$tag$attrString>")
+        }
       }
 
       def pushText(text: String) = if (stack.nonEmpty) stack.head.text.append(text)
       def indent = "  " * (stack.size - 1)
-      def value(unencoded: String) = URLEncoder.encode(unencoded,"utf-8").replaceAll("[+]","%20")
+      def value(unencoded: String) = URLEncoder.encode(unencoded, "utf-8").replaceAll("[+]", "%20")
 
       while (events.hasNext) events.next() match {
 
         case EvElemStart(pre, label, attrs, scope) =>
           val tag = FileHandling.tag(pre, label)
           if (tag == "narthex") {
-            record = Some(Record(attrs.get("id").head.text))
+            record = Some(Record(attrs.get("id").head.text, scope))
           }
           else {
             val parentPath: String = stack.reverse.map(_.tag).mkString("/")
@@ -258,7 +265,6 @@ trait RecordHandling {
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
             val path = s"$filePrefix${frame.path}/${value(text)}"
-            println(s"looking for $path")
             val mapping = mappings.get(path)
             val startString = mapping match {
               case Some(uri) =>
@@ -271,7 +277,7 @@ trait RecordHandling {
           }
           else start match {
             case Some(startString) =>
-              record.get.text.append(s"$indent${startString.replace(">","/>")}\n")
+              record.get.text.append(s"$indent${startString.replace(">", "/>")}\n")
               start = None
             case None =>
               record.get.text.append(s"$indent</$tag>\n")
@@ -290,4 +296,5 @@ trait RecordHandling {
       record.getOrElse(throw new RuntimeException("No record"))
     }
   }
+
 }
