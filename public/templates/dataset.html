@@ -4,10 +4,13 @@
 
 
 <div class="row" ng-show="tree">
+    <div class="col-md-12 label">
+        <p style="width:100%; font-size: 15pt" class="text-center">{{fileName}}{{activePath}}</p>
+    </div>
     <div class="col-md-5">
         <div class="panel panel-primary panel-schema">
             <div class="panel-heading">
-                <span class="panel-title">Schema: </span><span>{{ fileName }}</span>
+                <span class="panel-title">Schema</span>
                 <div class="btn-group pull-right">
                     <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
                         API <span class="caret"></span>
@@ -29,10 +32,6 @@
     <div class="col-md-7" data-ng-if="selectedNode">
 
         <div class="panel panel-default panel-lists">
-            <div class="panel-heading">
-                <code class="activePath">Path: {{ activePath }}</code>
-            </div>
-
             <div class="panel-body">
                 <div class="navbar navbar-inverse list-controls">
                     <ul class="nav navbar-nav">
