@@ -93,6 +93,9 @@ define(["angular"], function (angular) {
         // preparations
         dashboardService.listSkos().then(function (data) {
             $scope.vocabularyList = data.list;
+            if ($scope.vocabularyList.length == 1) {
+                $scope.selectVocabulary($scope.vocabularyList[0])
+            }
         });
         dashboardService.getMappings($scope.fileName).then(function (data) {
             _.forEach(data.mappings, function(mapping) {

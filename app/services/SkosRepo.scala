@@ -32,6 +32,6 @@ object SkosRepo {
 
   def file(name: String) = new File(skos, name.replaceAll(" ", "_") + SUFFIX)
 
-  def conceptScheme(name: String) = SkosVocabulary(Source.fromFile(file(name)))
+  def vocabulary(name: String) = SkosVocabulary(Source.fromFile(file(name)))
 
 }

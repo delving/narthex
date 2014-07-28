@@ -91,8 +91,9 @@
                                     <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSought(n.label)"> &#8600;{{ n.label }}</span>
                                 </span>
                             </div>
-                            <div style="text-align: right">
-                                <a  style="color: #8a8a8a; font-size-adjust: 0.5;" ng-href="{{concept.uri}}" target="_blank">{{ concept.uri }}</a>
+                            <div>
+                                <span class="pull-right"><a  style="color: #8a8a8a; font-size-adjust: 0.5;" ng-href="{{concept.uri}}" target="_blank">{{ concept.uri }}</a></span>
+                                <span>"{{ concept.conceptScheme }}"</span>
                             </div>
                         </div>
                     </div>

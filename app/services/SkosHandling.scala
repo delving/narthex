@@ -47,11 +47,12 @@ object SkosVocabulary {
     def lang(attributes: MetaData, scope: NamespaceBinding) = attribute(XML, "lang", attributes, scope)
     def resource(attributes: MetaData, scope: NamespaceBinding) = attribute(RDF, "resource", attributes, scope)
 
-    var activeConceptScheme: Option[ConceptScheme] = None
-    var activeConcept: Option[Concept] = None
-    var activeLabel: Option[Label] = None
-    var activeDefinition: Option[Definition] = None
-    var concepts = new mutable.HashMap[String, Concept]()
+    val vocabulary = new SkosVocabulary()
+    var withinScheme: Option[ConceptScheme] = None
+    var withinConcept: Option[Concept] = None
+    var withinLabel: Option[Label] = None
+    var withinDefinition: Option[Definition] = None
+    var allConcepts = new mutable.HashMap[String, Concept]()
     val textBuilder = new mutable.StringBuilder()
 
     while (events.hasNext) {
@@ -63,17 +64,20 @@ object SkosVocabulary {
 
         // ===============================
         case EvElemStart("skos", "ConceptScheme", attributes, scope) =>
-          activeConceptScheme = Some(new ConceptScheme(about(attributes, scope).get))
+          val scheme: ConceptScheme = new ConceptScheme(about(attributes, scope).get)
+          vocabulary.conceptSchemes += scheme
+          withinScheme = Some(scheme)
         case EvElemEnd("skos", "ConceptScheme") =>
+          withinScheme = None
           textBuilder.clear()
 
         // ===============================
         case EvElemStart("skos", "topConceptOf", attributes, scope) =>
           val r = resource(attributes, scope)
-          activeConceptScheme.map {
+          vocabulary.conceptScheme(r.get).map {
             s =>
               if (s.about != r.get) throw new RuntimeException
-              s.topConcepts += activeConcept.get
+              s.topConcepts += withinConcept.get
           }
         case EvElemEnd("skos", "topConceptOf") =>
           textBuilder.clear()
@@ -81,68 +85,78 @@ object SkosVocabulary {
         // ===============================
         case EvElemStart("skos", "inScheme", attributes, scope) =>
           val r = resource(attributes, scope)
-          activeConceptScheme.map {
-            s =>
-              if (s.about != r.get) throw new RuntimeException(s"scheme.about=${s.about}, inScheme.resource=$r")
-          }
+          val scheme: Option[ConceptScheme] = vocabulary.conceptScheme(r.get)
+          scheme.map(s => withinConcept.map { concept =>
+            concept.conceptScheme = scheme
+            s.concepts += concept
+          })
         case EvElemEnd("skos", "inScheme") =>
           textBuilder.clear()
-
 
         // ===============================
         case EvElemStart("skos", "Concept", attributes, scope) =>
           val concept: Concept = new Concept(about(attributes, scope).get)
-          activeConcept = Some(concept)
-          concepts.put(concept.about, concept)
-          activeConceptScheme.map(_.concepts += concept)
+          withinConcept = Some(concept)
+          allConcepts.put(concept.about, concept)
         case EvElemEnd("skos", "Concept") =>
+          withinConcept = None
           textBuilder.clear()
 
         // ===============================
         case EvElemStart("skos", "definition", attributes, scope) =>
-          activeConcept.map(c => {
+          withinConcept.map(c => {
             val definition: Definition = new Definition(lang(attributes, scope).get)
-            activeDefinition = Some(definition)
+            withinDefinition = Some(definition)
             c.definitions += definition
           })
         case EvElemEnd("skos", "definition") =>
-          activeDefinition.map(d => d.text = textBuilder.toString())
+          withinDefinition.map(d => d.text = textBuilder.toString())
+          withinDefinition = None
           textBuilder.clear()
 
         // ===============================
         case EvElemStart("skos", "prefLabel", attributes, scope) =>
-          activeConcept.map(c => {
+          withinConcept.map(c => {
             val prefLabel = new Label(true, lang(attributes, scope).get)
-            activeLabel = Some(prefLabel)
+            withinLabel = Some(prefLabel)
             c.labels += prefLabel
           })
-        case EvElemEnd("skos", "prefLabel") =>
-          activeLabel.map(d => {
-            val text: String = textBuilder.toString()
-            d.text = if (d.language == "sys") s"$text (system language)" else text
+          withinScheme.map(s => {
+            val prefLabel = new Label(true, lang(attributes, scope).get)
+            withinLabel = Some(prefLabel)
+            s.labels += prefLabel
           })
+        case EvElemEnd("skos", "prefLabel") =>
+          withinLabel.map(_.text = textBuilder.toString())
+          withinLabel = None
           textBuilder.clear()
 
         // ===============================
         case EvElemStart("skos", "altLabel", attributes, scope) =>
-          activeConcept.map(c => {
+          withinConcept.map(c => {
             val altLabel = new Label(false, lang(attributes, scope).get)
-            activeLabel = Some(altLabel)
+            withinLabel = Some(altLabel)
             c.labels += altLabel
           })
+          withinScheme.map(s => {
+            val prefLabel = new Label(true, lang(attributes, scope).get)
+            withinLabel = Some(prefLabel)
+            s.labels += prefLabel
+          })
         case EvElemEnd("skos", "altLabel") =>
-          activeLabel.map(d => d.text = textBuilder.toString())
+          withinLabel.map(d => d.text = textBuilder.toString())
+          withinLabel = None
           textBuilder.clear()
 
         // ===============================
         case EvElemStart("skos", "broader", attributes, scope) =>
-          activeConcept.map(c => c.broaderResources += resource(attributes, scope).get)
+          withinConcept.map(c => c.broaderResources += resource(attributes, scope).get)
         case EvElemEnd("skos", "broader") =>
           textBuilder.clear()
 
         // ===============================
         case EvElemStart("skos", "narrower", attributes, scope) =>
-          activeConcept.map(c => c.narrowerResources += resource(attributes, scope).get)
+          withinConcept.map(c => c.narrowerResources += resource(attributes, scope).get)
         case EvElemEnd("skos", "narrower") =>
           textBuilder.clear()
 
@@ -181,9 +195,7 @@ object SkosVocabulary {
           println("EVENT? " + x)
       }
     }
-    if (activeConceptScheme.isEmpty) throw new RuntimeException("No concept scheme")
-    activeConceptScheme.get.concepts.foreach(_.resolve(concepts))
-    activeConceptScheme.get
+    vocabulary
   }
 }
 
@@ -203,6 +215,7 @@ trait SkosJson {
       "label" -> result.label.text,
       "prefLabel" -> result.prefLabel.text,
       "uri" -> result.concept.about,
+      "conceptScheme" -> result.concept.conceptScheme.get.preferred("dut").text,
       "narrower" -> result.concept.relatedNarrower(result.label.language),
       "broader" -> result.concept.relatedBroader(result.label.language)
     )
@@ -241,16 +254,33 @@ case class LabelSearch(query: LabelQuery, results: List[ProximityResult])
 
 case class RelatedConcept(concept: Concept, language: String)
 
+class SkosVocabulary() {
+  val conceptSchemes = mutable.MutableList[ConceptScheme]()
+
+  def conceptScheme(uri: String): Option[ConceptScheme] = {
+    conceptSchemes.find(_.about == uri)
+  }
+
+  def search(language: String, sought: String, count: Int): LabelSearch = {
+    val concepts = conceptSchemes.flatMap(_.concepts)
+    val judged = concepts.flatMap(_.search(language, sought))
+    val results = judged.sortBy(-1 * _.proximity).take(count).toList
+    LabelSearch(LabelQuery(language, sought, count), results)
+  }
+
+}
+
 class ConceptScheme(val about: String) {
+  val labels = mutable.MutableList[Label]()
   val concepts = mutable.MutableList[Concept]()
   val topConcepts = mutable.MutableList[Concept]()
 
   def get(uri: String): Option[Concept] = concepts.find(_.about == uri)
 
-  def search(language: String, sought: String, count: Int): LabelSearch = {
-    val judged = concepts.flatMap(_.search(language, sought))
-    val results = judged.sortBy(-1 * _.proximity).take(count).toList
-    LabelSearch(LabelQuery(language, sought, count), results)
+  def preferred(language: String): Label = {
+    // try language, default to "sys"
+    val languageFit = labels.filter(_.preferred).find(_.language == language)
+    languageFit.getOrElse(labels.filter(_.preferred).find(_.language == "sys").get)
   }
 
   override def toString: String =
@@ -271,12 +301,13 @@ class Concept(val about: String) {
   val broaderConcepts = mutable.MutableList[Concept]()
   val narrowerResources = mutable.MutableList[String]()
   val broaderResources = mutable.MutableList[String]()
+  var conceptScheme: Option[ConceptScheme] = None
 
   def search(language: String, sought: String): Option[ProximityResult] = {
     val judged = languageLabels(language).map {
       label =>
         val cleanSought = IGNORE_BRACKET.replaceFirstIn(sought, "")
-        val text = IGNORE_BRACKET.replaceFirstIn(label.text,"")
+        val text = IGNORE_BRACKET.replaceFirstIn(label.text, "")
         (RatcliffObershelpMetric.compare(cleanSought, text), label)
     }
     val prefLabel = preferred(language)
@@ -314,12 +345,14 @@ class Concept(val about: String) {
     broaderResources.clear()
   }
 
-  def preferred(language: String): Label = { // try language, default to "sys"
+  def preferred(language: String): Label = {
+    // try language, default to "sys"
     val languageFit = labels.filter(_.preferred).find(_.language == language)
     languageFit.getOrElse(labels.filter(_.preferred).find(_.language == "sys").get)
   }
 
-  def languageLabels(language: String) = { // try language, default to "sys"
+  def languageLabels(language: String) = {
+    // try language, default to "sys"
     val languageFit = labels.filter(_.language == language)
     if (languageFit.isEmpty) {
       labels.filter(_.language == "sys")
