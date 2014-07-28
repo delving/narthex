@@ -192,14 +192,16 @@ define(["angular"], function (angular) {
             if (!($scope.sourceUri && $scope.vocabulary)) return;
             var body = {
                 source: $scope.sourceUri,
+                target: concept.uri,
                 vocabulary: $scope.vocabulary,
-                target: concept.uri
+                prefLabel: concept.prefLabel
             };
             dashboardService.setMapping($scope.fileName, body).then(function (data) {
                 console.log("set mapping returns", data);
                 $scope.mappings[$scope.sourceUri] = {
                     target: concept.uri,
-                    vocabulary: $scope.vocabulary
+                    vocabulary: $scope.vocabulary,
+                    prefLabel: concept.prefLabel
                 };
                 filterHistogram();
             });

@@ -207,9 +207,10 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val sourceUri = (request.body \ "source").as[String]
       val targetUri = (request.body \ "target").as[String]
       val vocabulary = (request.body \ "vocabulary").as[String]
+      val prefLabel = (request.body \ "prefLabel").as[String]
       val repo = Repo(email)
       val fileRepo = repo.fileRepo(fileName)
-      fileRepo.setMapping(TermMapping(sourceUri, targetUri, vocabulary))
+      fileRepo.setMapping(TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
       Ok("thanks man")
     }
   }

@@ -240,7 +240,8 @@ trait SkosJson {
     def writes(mapping: TermMapping) = Json.obj(
       "source" -> mapping.source,
       "target" -> mapping.target,
-      "vocabulary" -> mapping.vocabulary
+      "vocabulary" -> mapping.vocabulary,
+      "prefLabel" -> mapping.prefLabel
     )
   }
 

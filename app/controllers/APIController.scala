@@ -101,7 +101,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         val fileRepo = repo.fileRepo(fileName)
         val filePrefix: String = s"${email.replaceAllLiterally(".", "_")}/$fileName"
         // todo: cache the mappings for a few minutes
-        val mappings = fileRepo.getMappings.map(m => (m.source, m.target)).toMap
+        val mappings = fileRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
         val storedRecord: String = fileRepo.getRecord(id)
         if (storedRecord.isEmpty) throw new RuntimeException("Hey no record!")
         val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text

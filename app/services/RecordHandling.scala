@@ -205,7 +205,9 @@ trait RecordHandling {
 
   case class Record(id: String, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
 
-  class StoredRecordParser(filePrefix: String, recordRoot: String, mappings: Map[String, String]) {
+  case class TargetConcept(uri: String, vocabulary:String, prefLabel: String)
+
+  class StoredRecordParser(filePrefix: String, recordRoot: String, mappings: Map[String, TargetConcept]) {
 
     val recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
 
@@ -267,8 +269,8 @@ trait RecordHandling {
             val path = s"$filePrefix${frame.path}/${value(text)}"
             val mapping = mappings.get(path)
             val startString = mapping match {
-              case Some(uri) =>
-                start.get.replaceFirst(tag, s"""$tag enrichment="$uri" """.trim)
+              case Some(TargetConcept(uri, vocabulary, prefLabel)) =>
+                start.get.replaceFirst(tag, s"""$tag enrichmentUri="$uri" enrichmentVocabulary="$vocabulary" enrichmentPrefLabel="$prefLabel" """.trim)
               case None =>
                 start.get
             }

@@ -98,7 +98,7 @@ object Repo {
     }
   }
 
-  case class TermMapping(source: String, target: String, vocabulary: String)
+  case class TermMapping(source: String, target: String, vocabulary: String, prefLabel: String)
 
 }
 
@@ -487,6 +487,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
       |     <source>${mapping.source}</source>
       |     <target>${mapping.target}</target>
       |     <vocabulary>${mapping.vocabulary}</vocabulary>
+      |     <prefLabel>${mapping.prefLabel}</prefLabel>
       |   </term-mapping>
       |
       | let $$termMappings := doc('$termDb/$termDb.xml')/term-mappings
@@ -519,7 +520,12 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
       val mappings = session.query(s"doc('$termDb/$termDb.xml')/term-mappings").execute()
       val xml = XML.loadString(mappings)
       (xml \ "term-mapping").map { node =>
-        TermMapping((node \ "source").text, (node \ "target").text, (node \ "vocabulary").text)
+        TermMapping(
+          (node \ "source").text,
+          (node \ "target").text,
+          (node \ "vocabulary").text,
+          (node \ "prefLabel").text
+        )
       }
   }
 
