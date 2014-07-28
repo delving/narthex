@@ -17,6 +17,8 @@
 package controllers
 
 import controllers.Application.OkFile
+import play.api.Play.current
+import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
 import services._
@@ -99,9 +101,12 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
         val fileRepo = repo.fileRepo(fileName)
-        val filePrefix: String = s"${email.replaceAllLiterally(".", "_")}/$fileName"
-        // todo: cache the mappings for a few minutes
-        val mappings = fileRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
+        val filePrefix = s"${email.replaceAllLiterally(".", "_")}/$fileName"
+        val mappings = Cache.getAs[Map[String, TargetConcept]](filePrefix).getOrElse {
+          val freshMap = fileRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
+          Cache.set(filePrefix, freshMap, 60 * 5)
+          freshMap
+        }
         val storedRecord: String = fileRepo.getRecord(id)
         if (storedRecord.isEmpty) throw new RuntimeException("Hey no record!")
         val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text
