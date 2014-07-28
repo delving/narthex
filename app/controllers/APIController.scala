@@ -19,7 +19,6 @@ package controllers
 import controllers.Application.OkFile
 import play.api.Play.current
 import play.api.cache.Cache
-import play.api.libs.json._
 import play.api.mvc._
 import services._
 
@@ -28,8 +27,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def indexJSON(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
-        val repo = Repo(email)
-        OkFile(repo.fileRepo(fileName).index)
+        OkFile(Repo(email).fileRepo(fileName).index)
       }
       else {
         Unauthorized
@@ -42,8 +40,10 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
         repo.fileRepo(fileName).indexText(path) match {
-          case None => NotFound(Json.obj("path" -> path))
-          case Some(file) => OkFile(file)
+          case None =>
+            NotFound(s"No index found for $path")
+          case Some(file) =>
+            OkFile(file)
         }
       }
       else {
@@ -57,8 +57,10 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
         repo.fileRepo(fileName).uniqueText(path) match {
-          case None => NotFound(Json.obj("path" -> path))
-          case Some(file) => OkFile(file)
+          case None =>
+            NotFound(s"No list found for $path")
+          case Some(file) =>
+            OkFile(file)
         }
       }
       else {
@@ -72,8 +74,10 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
         repo.fileRepo(fileName).histogramText(path) match {
-          case None => NotFound(Json.obj("path" -> path))
-          case Some(file) => OkFile(file)
+          case None =>
+            NotFound(s"No list found for $path")
+          case Some(file) =>
+            OkFile(file)
         }
       }
       else {
@@ -88,7 +92,12 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         val repo = Repo(email)
         val fileRepo = repo.fileRepo(fileName)
         val storedRecord: String = fileRepo.getRecord(id)
-        Ok(scala.xml.XML.loadString(storedRecord))
+        if (storedRecord.nonEmpty) {
+          Ok(scala.xml.XML.loadString(storedRecord))
+        }
+        else {
+          NotFound(s"No record found for $id")
+        }
       }
       else {
         Unauthorized
@@ -108,11 +117,15 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           freshMap
         }
         val storedRecord: String = fileRepo.getRecord(id)
-        if (storedRecord.isEmpty) throw new RuntimeException("Hey no record!")
-        val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text
-        val parser = new StoredRecordParser(filePrefix, recordRoot, mappings)
-        val record = parser.parse(storedRecord)
-        Ok(scala.xml.XML.loadString(record.text.toString()))
+        if (storedRecord.nonEmpty) {
+          val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text
+          val parser = new StoredRecordParser(filePrefix, recordRoot, mappings)
+          val record = parser.parse(storedRecord)
+          Ok(scala.xml.XML.loadString(record.text.toString()))
+        }
+        else {
+          NotFound(s"No record found for $id")
+        }
       }
       else {
         Unauthorized
@@ -124,22 +137,26 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {
         val repo = Repo(email)
-        val fileRepo = repo.fileRepo(fileName)
-        val mappings = fileRepo.getMappings
-        val reply =
-          <mappings>
-            {mappings.map { m =>
-            <mapping>
-              <source>
-                {m.source}
-              </source>
-              <target>
-                {m.target}
-              </target>
-            </mapping>
-          }}
-          </mappings>
-        Ok(reply)
+        repo.fileRepoOption(fileName) match {
+          case Some(fileRepo) =>
+            val mappings = fileRepo.getMappings
+            val reply =
+              <mappings>
+                {mappings.map { m =>
+                <mapping>
+                  <source>
+                    {m.source}
+                  </source>
+                  <target>
+                    {m.target}
+                  </target>
+                </mapping>
+              }}
+              </mappings>
+            Ok(reply)
+          case None =>
+            NotFound(s"No mappings for $fileName")
+        }
       }
       else {
         Unauthorized("Unauthorized")

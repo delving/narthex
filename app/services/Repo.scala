@@ -170,7 +170,13 @@ class Repo(root: File, val email: String) {
     files
   }
 
-  def fileRepo(fileName: String) = new FileRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
+  def fileRepo(fileName: String): FileRepo = {
+    new FileRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
+  }
+
+  def fileRepoOption(fileName: String): Option[FileRepo] = {
+    if (analyzedDir(fileName).exists()) Some(fileRepo(fileName)) else None
+  }
 
   private def listFiles(directory: File): List[File] = {
     if (directory.exists()) {
