@@ -264,7 +264,7 @@ class SkosVocabulary() {
 
   def search(language: String, sought: String, count: Int): LabelSearch = {
     val concepts = conceptSchemes.flatMap(_.concepts)
-    val judged = concepts.flatMap(_.search(language, sought))
+    val judged = concepts.flatMap(_.search(language, sought.toLowerCase))
     val results = judged.sortBy(-1 * _.proximity).take(count).toList
     LabelSearch(LabelQuery(language, sought, count), results)
   }

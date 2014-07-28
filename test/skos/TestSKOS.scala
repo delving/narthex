@@ -36,10 +36,11 @@ class TestSKOS extends FlatSpec with Matchers with SkosJson {
     def searchConceptScheme(sought: String) = conceptScheme.search("dut", sought, 3)
 
     val searches: List[LabelSearch] = List(
+      "Europese wetgeving",
       "bezoeken",
-      "bezoiken",
-      "geografische bevoegdheid",
-      "herwoorderingspolitiek",
+//      "bezoiken",
+//      "geografische bevoegdheid",
+//      "herwoorderingspolitiek",
       "wetgevingen"
     ).map(searchConceptScheme)
 

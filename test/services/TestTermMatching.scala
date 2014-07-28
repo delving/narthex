@@ -25,11 +25,11 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
 
       Repo.startBaseX()
 
-      fileRepo.setMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink", "cusses"))
-      fileRepo.setMapping(TermMapping("bb", "http://gumby.com/pokey", "cusses"))
-      fileRepo.setMapping(TermMapping("a", "http://gumby.com/gumby", "cusses"))
+      fileRepo.setMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink", "cusses", "finky"))
+      fileRepo.setMapping(TermMapping("bb", "http://gumby.com/pokey", "cusses", "horsey"))
+      fileRepo.setMapping(TermMapping("a", "http://gumby.com/gumby", "cusses", "clayman"))
 
-      fileRepo.getMappings.toString() should be("List(TermMapping(a,http://gumby.com/gumby,cusses), TermMapping(bb,http://gumby.com/pokey,cusses))")
+      fileRepo.getMappings.toString() should be("List(TermMapping(a,http://gumby.com/gumby,cusses,clayman), TermMapping(bb,http://gumby.com/pokey,cusses,horsey))")
       fileRepo.getMapping("a") should be("http://gumby.com/gumby")
     }
 
@@ -39,8 +39,8 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
     val recordRoot = "/adlibXML/recordList/record"
 
     val mappings = Map(
-      s"$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> "got it",
-      s"$filePrefix$recordRoot/inner/content.subject" -> "close but no cigar"
+      s"$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> TargetConcept("uri", "vocab", "glasinloody"),
+      s"$filePrefix$recordRoot/inner/content.subject" -> TargetConcept("uri", "vocab", "close but no cigar")
     )
 
     val storedString =
@@ -60,7 +60,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
       """
         |<record xmlns:very="http://veryother.org/#">
         |  <inner>
-        |    <content.subject enrichment="got it">Glas in loodraam</content.subject>
+        |    <content.subject enrichmentUri="uri" enrichmentVocabulary="vocab" enrichmentPrefLabel="glasinloody">Glas in loodraam</content.subject>
         |  </inner>
         |  <very:other>Ignore</very:other>
         |  <empty/>
