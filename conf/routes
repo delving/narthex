@@ -39,6 +39,7 @@ GET         /dashboard/skos/:name/:sought                        controllers.Das
 GET         /api/:apiKey/:email/:fileName/tree                   controllers.APIController.indexJSON(apiKey, email, fileName)
 GET         /api/:apiKey/:email/:fileName/index                  controllers.APIController.indexText(apiKey, email, fileName, path="")
 GET         /api/:apiKey/:email/:fileName/mappings               controllers.APIController.mappings(apiKey, email, fileName)
+GET         /api/:apiKey/:email/:fileName/ids/:since             controllers.APIController.ids(apiKey, email, fileName, since)
 GET         /api/:apiKey/:email/:fileName/record/:id             controllers.APIController.rawRecord(apiKey, email, fileName, id)
 GET         /api/:apiKey/:email/:fileName/record/:id/enriched    controllers.APIController.enrichedRecord(apiKey, email, fileName, id)
 GET         /api/:apiKey/:email/:fileName/index/*path            controllers.APIController.indexText(apiKey, email, fileName, path)

@@ -80,12 +80,14 @@
                                 </div>
                                 <div>
                                     <h4>Extra</h4>
-                                    <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordRoot">Save Records Again (for now)</button>
                                 </div>
                                 <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteDataset(file)">Delete</button>
                             </span>
                             <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
                         </span>
+
+                        <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordRoot">Save Records Again (for now)</button>
+
                     </li>
                 </ul>
             </div>

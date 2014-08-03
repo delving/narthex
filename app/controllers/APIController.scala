@@ -133,6 +133,20 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
+  def ids(apiKey: String, email: String, fileName: String, since: String) = Action(parse.anyContent) {
+    implicit request => {
+      if (checkKey(email, fileName, apiKey)) {
+        val repo = Repo(email)
+        val fileRepo = repo.fileRepo(fileName)
+        val ids = fileRepo.getIds(since)
+        Ok(scala.xml.XML.loadString(ids))
+      }
+      else {
+        Unauthorized
+      }
+    }
+  }
+
   def mappings(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(email, fileName, apiKey)) {

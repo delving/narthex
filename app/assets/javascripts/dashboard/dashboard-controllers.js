@@ -191,12 +191,12 @@ define(["angular"], function () {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.fileName = $routeParams.fileName;
 
-        function apiPrefix() {
+        $scope.apiPrefix = function () {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
             var email = user.email.replace("@", "_");
             return serverUrl + 'api/' + apiHash(email, $scope.fileName) + '/' + email;
-        }
+        };
 
         $scope.selectedNode = null;
         $scope.uniqueIdNode = null;
@@ -291,7 +291,7 @@ define(["angular"], function () {
             dashboardService.nodeStatus($scope.fileName, node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
-                $scope.apiPath = apiPrefix() + filePath;
+                $scope.apiPath = $scope.apiPrefix() + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
                 switch ($routeParams.view) {

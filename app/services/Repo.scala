@@ -24,15 +24,12 @@ import org.apache.commons.io.FileUtils._
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
 import org.mindrot.jbcrypt.BCrypt
-import play.Logger
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.Repo._
 
 import scala.collection.mutable
-import scala.io.Source
-import scala.xml.pull._
 import scala.xml.{Elem, XML}
 
 object Repo {
@@ -437,33 +434,22 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
     }
   }
 
-  def getEnrichedRecord(id: String, getTargetUri: String => Option[String]) = {
-    withRecordDatabase {
-      session =>
-        val queryForRecords = s"""collection('$recordDb')[/narthex/@id=${quote(id)}]"""
-        println("asking:\n" + queryForRecords)
-        val xml = session.query(queryForRecords).execute()
-        val events = new XMLEventReader(Source.fromString(xml))
-        val stack = new mutable.Stack[String]
-
-        def push(tag: String) = {
-          stack.push(tag)
-        }
-
-        def pop(tag: String) = {
-          stack.pop()
-        }
-
-        while (events.hasNext) events.next() match {
-          case EvElemStart(pre, label, attrs, scope) => push(FileHandling.tag(pre, label))
-//          case EvText(text) => addFieldText(text)
-//          case EvEntityRef(entity) => addFieldText(s"&$entity;")
-          case EvElemEnd(pre, label) => pop(FileHandling.tag(pre, label))
-//          case EvComment(text) => FileHandling.stupidParser(text, entity => addFieldText(s"&$entity;"))
-          case x => Logger.warn("EVENT? " + x) // todo: record these in an error file for later
-        }
-        <crap/>
-    }
+  def getIds(since: String): String = withRecordDatabase {
+    session =>
+      val q = s"""
+       |
+       |let $$records := collection('$recordDb')/narthex
+       |return
+       |    <ids>{
+       |       for $$narthex in $$records
+       |       where $$narthex/@mod >= ${ quote(since) }
+       |       order by $$narthex/@mod descending
+       |       return
+       |          <id>{$$narthex/@mod}{string($$narthex/@id)}</id>
+       |    }</ids>
+       |
+       |""".stripMargin.trim
+      session.query(q).execute()
   }
 
   // terminology

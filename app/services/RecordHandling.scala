@@ -19,6 +19,8 @@ package services
 import java.net.URLEncoder
 import java.security.MessageDigest
 
+import org.joda.time.DateTime
+import org.joda.time.format.ISODateTimeFormat
 import play.Logger
 
 import scala.collection.mutable
@@ -27,9 +29,14 @@ import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 trait RecordHandling {
-  val ID_PLACEHOLDER = "__id__"
+  val SUBSTITUTE = "__substitute__"
+  val FORMATTER = ISODateTimeFormat.dateTime()
 
-  class RawRecordParser(recordRoot: String, uniqueId: String) {
+  def toXSDString(dateTime : DateTime) = FORMATTER.print(dateTime)
+
+  def fromXSDDateTime(dateString : String) = FORMATTER.parseDateTime(dateString)
+
+  class RawRecordParser(recordRootPath: String, uniqueIdPath: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
 
     def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit): Map[String, String] = {
@@ -39,7 +46,7 @@ trait RecordHandling {
       var recordCount = 0L
       var depth = 0
       var recordText = new mutable.StringBuilder()
-      var uniqueIdAttribute: String = null
+      var uniqueId: Option[String] = None
       var startElement: Option[String] = None
       var namespaceMap: Map[String, String] = Map.empty
 
@@ -74,7 +81,7 @@ trait RecordHandling {
           attrs.foreach {
             attr =>
               path.push((s"@${attr.prefixedKey}", new StringBuilder()))
-              if (pathString == uniqueId) uniqueIdAttribute = " id=\"" + attr.value + "\""
+              if (pathString == uniqueIdPath) uniqueId = Some(attr.value.toString())
               path.pop()
           }
         }
@@ -86,7 +93,7 @@ trait RecordHandling {
           startElement = Some(startElementString(tag, attrs))
           findUniqueId(attrs)
         }
-        else if (string == recordRoot) {
+        else if (string == recordRootPath) {
 
           def recordNamespace(binding: NamespaceBinding): Unit = {
             if (binding eq TopScope) return
@@ -95,7 +102,7 @@ trait RecordHandling {
           }
 
           recordNamespace(scope)
-          recordText.append(s"<narthex$ID_PLACEHOLDER$scope>\n")
+          recordText.append(s"<narthex$SUBSTITUTE$scope>\n")
           depth = 1
           startElement = Some(startElementString(tag, attrs))
           findUniqueId(attrs)
@@ -116,19 +123,23 @@ trait RecordHandling {
         fieldText.clear()
         path.pop()
         if (depth > 0) {
-          if (string == recordRoot) {
+          if (string == recordRootPath) {
             recordCount += 1
             sendProgress()
             indent()
-            recordText.append(s"</$tag>\n")
-            val recordWithId = recordText.toString().replace(ID_PLACEHOLDER, uniqueIdAttribute)
-            // todo: timestamp it too
-            output(s"$recordWithId</narthex>\n")
+            recordText.append(s"</$tag>\n</narthex>\n")
+            val mod = toXSDString(new DateTime())
+            val record = uniqueId.map{ id =>
+              recordText.toString().replace(SUBSTITUTE, s""" id="$id" mod="$mod" """)
+            } getOrElse {
+              throw new RuntimeException("Missing id")
+            }
+            output(record)
             recordText.clear()
             depth = 0
           }
           else {
-            if (string == uniqueId) uniqueIdAttribute = " id=\"" + text + "\""
+            if (string == uniqueIdPath) uniqueId = Some(text)
             indent()
             depth -= 1
             if (startElement.isDefined) {
