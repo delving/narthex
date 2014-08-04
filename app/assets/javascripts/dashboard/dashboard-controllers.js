@@ -217,23 +217,6 @@ define(["angular"], function () {
 
                 sortKids(tree);
 
-                var recordRoot = thing.delimit.recordRoot;
-                var uniqueId = thing.delimit.uniqueId;
-
-                function setDelim(node) {
-                    if (node.path == recordRoot) {
-                        $scope.recordRootNode = node;
-                    }
-                    else if (node.path == uniqueId) {
-                        $scope.uniqueIdNode = node;
-                    }
-                    for (var index = 0; index < node.kids.length; index++) {
-                        setDelim(node.kids[index]);
-                    }
-                }
-
-                if (recordRoot) setDelim(tree);
-
                 function selectNode(path, node) {
                     if (!path.length) {
                         $scope.selectNode(node);
@@ -251,6 +234,29 @@ define(["angular"], function () {
 
                 $scope.tree = tree;
                 if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
+
+                var recordRoot = thing.delimit.recordRoot;
+                var uniqueId = thing.delimit.uniqueId;
+
+                function setDelim(node) {
+                    if (node.path == recordRoot) {
+                        $scope.recordRootNode = node;
+                    }
+                    else if (node.path == uniqueId) {
+                        $scope.uniqueIdNode = node;
+                    }
+                    for (var index = 0; index < node.kids.length; index++) {
+                        setDelim(node.kids[index]);
+                    }
+                }
+
+                if (recordRoot) {
+                    setDelim(tree);
+                    if (parseInt(thing.delimit.recordCount) < 0) {
+                        $scope.setUniqueIdNode($scope.uniqueIdNode); // trigger setting record count
+                    }
+                }
+
             });
         });
 

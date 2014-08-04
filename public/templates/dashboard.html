@@ -6,7 +6,7 @@
 </div>
 
 <div class="row">
-    <div class="col-sm-2">
+    <div class="col-sm-3">
         <div class="file-drop" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
              ng-show="dropSupported">
             <h6>Drag and drop your xml source file into this area</h6>
@@ -26,7 +26,7 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-10">
+    <div class="col-sm-9">
         <div class="panel panel-primary">
             <div class="panel-heading">
                 <h3 class="panel-title">Your files:</h3>
@@ -47,7 +47,7 @@
                             </span>
                             <span ng-switch-when="3:analyzed">
                                 <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
-                                <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordRoot">Save Records</button>
+                                <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records</button>
                                 <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteDataset(file)">Delete</button>
                             </span>
                             <span ng-switch-when="4:saving">
@@ -86,7 +86,7 @@
                             <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
                         </span>
 
-                        <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordRoot">Save Records Again (for now)</button>
+                        <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records Again (for now)</button>
 
                     </li>
                 </ul>

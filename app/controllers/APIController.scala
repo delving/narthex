@@ -178,6 +178,21 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
+  def upload(apiKey: String, email: String, fileName: String) = Action(parse.temporaryFile) {
+    implicit request => {
+      val repo = Repo(email)
+      request.body.moveTo(repo.uploadedFile(fileName))
+      repo.scanForAnalysisWork()
+      val fileRepo = repo.fileRepo(fileName)
+      fileRepo.setRecordDelimiter(
+        "/delving-sip-target/output",
+        "/delving-sip-target/output/@id",
+        -1
+      )
+      Ok
+    }
+  }
+
   private def checkKey(email: String, fileName: String, apiKey: String) = {
     // todo: mindless so far, and do it as an action like in Security.scala
     val toHash: String = s"narthex|$email|$fileName"

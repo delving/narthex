@@ -3,48 +3,50 @@
 # ~~~~
 
 # Home page
-GET         /                                                    controllers.Application.index
+GET         /                                                        controllers.Application.index
 
 # JavaScript routes object
-GET         /jsroutes.js                                         controllers.Application.jsRoutes()
+GET         /jsroutes.js                                             controllers.Application.jsRoutes()
 
 # Routes used by Angular
 # ~~~~
 
 # Authentication
-GET         /checkLogin                                          controllers.Application.checkLogin
-POST        /login                                               controllers.Application.login
-GET         /logout                                              controllers.Application.logout
-GET         /room/:id                                            controllers.Application.roomConnect(id)
+GET         /checkLogin                                              controllers.Application.checkLogin
+POST        /login                                                   controllers.Application.login
+GET         /logout                                                  controllers.Application.logout
+GET         /room/:id                                                controllers.Application.roomConnect(id)
 
 # File Handling
-POST        /dashboard/upload                                    controllers.Dashboard.upload
-GET         /dashboard/list                                      controllers.Dashboard.list
-GET         /dashboard/work                                      controllers.Dashboard.work
-GET         /dashboard/:fileName                                 controllers.Dashboard.index(fileName)
-GET         /dashboard/:fileName/dataset-info                    controllers.Dashboard.datasetInfo(fileName)
-GET         /dashboard/:fileName/delete-dataset                  controllers.Dashboard.deleteDataset(fileName)
-GET         /dashboard/:fileName/status/*path                    controllers.Dashboard.nodeStatus(fileName, path)
-GET         /dashboard/:fileName/sample/:size/*path              controllers.Dashboard.sample(fileName, path, size:Int)
-GET         /dashboard/:fileName/histogram/:size/*path           controllers.Dashboard.histogram(fileName, path, size:Int)
-POST        /dashboard/:fileName/record/set-delimiter            controllers.Dashboard.setRecordDelimiter(fileName)
-GET         /dashboard/:fileName/record/save                     controllers.Dashboard.saveRecords(fileName)
-POST        /dashboard/:fileName/record/query                    controllers.Dashboard.queryRecords(fileName)
-GET         /dashboard/:fileName/get-mappings                    controllers.Dashboard.getMappings(fileName)
-POST        /dashboard/:fileName/set-mapping                     controllers.Dashboard.setMapping(fileName)
+POST        /dashboard/upload                                        controllers.Dashboard.upload
+GET         /dashboard/list                                          controllers.Dashboard.list
+GET         /dashboard/work                                          controllers.Dashboard.work
+GET         /dashboard/:fileName                                     controllers.Dashboard.index(fileName)
+GET         /dashboard/:fileName/dataset-info                        controllers.Dashboard.datasetInfo(fileName)
+GET         /dashboard/:fileName/delete-dataset                      controllers.Dashboard.deleteDataset(fileName)
+GET         /dashboard/:fileName/status/*path                        controllers.Dashboard.nodeStatus(fileName, path)
+GET         /dashboard/:fileName/sample/:size/*path                  controllers.Dashboard.sample(fileName, path, size:Int)
+GET         /dashboard/:fileName/histogram/:size/*path               controllers.Dashboard.histogram(fileName, path, size:Int)
+POST        /dashboard/:fileName/record/set-delimiter                controllers.Dashboard.setRecordDelimiter(fileName)
+GET         /dashboard/:fileName/record/save                         controllers.Dashboard.saveRecords(fileName)
+POST        /dashboard/:fileName/record/query                        controllers.Dashboard.queryRecords(fileName)
+GET         /dashboard/:fileName/get-mappings                        controllers.Dashboard.getMappings(fileName)
+POST        /dashboard/:fileName/set-mapping                         controllers.Dashboard.setMapping(fileName)
 
-GET         /dashboard/skos/list                                 controllers.Dashboard.listSkos
-GET         /dashboard/skos/:name/:sought                        controllers.Dashboard.searchSkos(name, sought)
+GET         /dashboard/skos/list                                     controllers.Dashboard.listSkos
+GET         /dashboard/skos/:name/:sought                            controllers.Dashboard.searchSkos(name, sought)
 
-GET         /api/:apiKey/:email/:fileName/tree                   controllers.APIController.indexJSON(apiKey, email, fileName)
-GET         /api/:apiKey/:email/:fileName/index                  controllers.APIController.indexText(apiKey, email, fileName, path="")
-GET         /api/:apiKey/:email/:fileName/mappings               controllers.APIController.mappings(apiKey, email, fileName)
-GET         /api/:apiKey/:email/:fileName/ids/:since             controllers.APIController.ids(apiKey, email, fileName, since)
-GET         /api/:apiKey/:email/:fileName/record/:id             controllers.APIController.rawRecord(apiKey, email, fileName, id)
-GET         /api/:apiKey/:email/:fileName/record/:id/enriched    controllers.APIController.enrichedRecord(apiKey, email, fileName, id)
-GET         /api/:apiKey/:email/:fileName/index/*path            controllers.APIController.indexText(apiKey, email, fileName, path)
-GET         /api/:apiKey/:email/:fileName/unique/*path           controllers.APIController.uniqueText(apiKey, email, fileName, path)
-GET         /api/:apiKey/:email/:fileName/histogram/*path        controllers.APIController.histogramText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/tree                       controllers.APIController.indexJSON(apiKey, email, fileName)
+GET         /api/:apiKey/:email/:fileName/index                      controllers.APIController.indexText(apiKey, email, fileName, path="")
+GET         /api/:apiKey/:email/:fileName/mappings                   controllers.APIController.mappings(apiKey, email, fileName)
+GET         /api/:apiKey/:email/:fileName/ids/:since                 controllers.APIController.ids(apiKey, email, fileName, since)
+GET         /api/:apiKey/:email/:fileName/record/:id                 controllers.APIController.rawRecord(apiKey, email, fileName, id)
+GET         /api/:apiKey/:email/:fileName/record/:id/enriched        controllers.APIController.enrichedRecord(apiKey, email, fileName, id)
+GET         /api/:apiKey/:email/:fileName/index/*path                controllers.APIController.indexText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/unique/*path               controllers.APIController.uniqueText(apiKey, email, fileName, path)
+GET         /api/:apiKey/:email/:fileName/histogram/*path            controllers.APIController.histogramText(apiKey, email, fileName, path)
+
+POST        /api/:apiKey/:email/sip-creator-upload/:fileName         controllers.APIController.upload(apiKey, email, fileName)
 
 
 #GET         /oai-pmh                                             controllers.OaiPmh.service
@@ -55,6 +57,6 @@ GET         /api/:apiKey/:email/:fileName/histogram/*path        controllers.API
 # Map static resources from the /public folder to the /assets URL path
 #GET     /lib/require.js         controllers.WebJarAssets.requirejs
 ### Enable www.WebJars.org based resources to be returned
-GET         /webjars/*file                                       controllers.CdnWebJarAssets.at(file)
+GET         /webjars/*file                                           controllers.CdnWebJarAssets.at(file)
 # Map static resources from the /public folder to the /assets URL path
-GET         /assets/*file                                        controllers.Assets.at(path="/public", file)
+GET         /assets/*file                                            controllers.Assets.at(path="/public", file)
