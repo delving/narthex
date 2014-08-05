@@ -146,6 +146,14 @@ define(["angular"], function () {
 
         fetchFileList();
 
+        function fetchSipFileList() {
+            dashboardService.listSipFiles().then(function (data) {
+                $scope.sipFiles = data.list;
+            });
+        }
+
+        fetchSipFileList();
+
         $scope.viewFile = function (file) {
             $location.path("/dataset/" + file.name);
         };

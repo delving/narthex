@@ -166,6 +166,14 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                listSipFiles: function () {
+                    return dash.listSipFiles().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }

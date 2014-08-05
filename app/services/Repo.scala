@@ -145,7 +145,15 @@ class Repo(root: File, val email: String) {
 
   def sipZipFile(fileName: String) = new File(sipZip, fileName)
 
-  def listSipZipFiles = listFiles(sipZip)
+  def listSipZipFiles = {
+    if (sipZip.exists()) {
+      sipZip.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
+    }
+    else {
+      List.empty
+    }
+
+  }
 
   def analyzedDir(fileName: String) = new File(analyzed, stripSuffix(fileName))
 
@@ -528,6 +536,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
 
   def delete() = {
     setStatus(SPLITTING, 0, 0)
+    setRecordDelimiter("", "", 0)
     baseX.dropDatabase(recordDb)
     deleteQuietly(sourceFile)
     deleteDirectory(dir)
