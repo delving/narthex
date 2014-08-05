@@ -30,6 +30,7 @@ import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.Repo._
 
 import scala.collection.mutable
+import scala.io.Source
 import scala.xml.{Elem, XML}
 
 object Repo {
@@ -130,7 +131,7 @@ class Repo(root: File, val email: String) {
     val suffix = getSuffix(fileName)
     if (suffix.isEmpty) {
       val fileNameDot = s"$fileName."
-      var matchingFiles = uploaded.listFiles().filter(file => file.getName.startsWith(fileNameDot))
+      val matchingFiles = uploaded.listFiles().filter(file => file.getName.startsWith(fileNameDot))
       if (matchingFiles.isEmpty) {
         new File(uploaded, "nonexistent")
       }
@@ -145,9 +146,20 @@ class Repo(root: File, val email: String) {
 
   def sipZipFile(fileName: String) = new File(sipZip, fileName)
 
-  def listSipZipFiles = {
+  def listSipZip = {
     if (sipZip.exists()) {
-      sipZip.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
+      val fileList = sipZip.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
+      fileList.map {
+        file =>
+          val factsFile = new File(file.getParentFile, s"${file.getName}.facts")
+          val lines = Source.fromFile(factsFile).getLines()
+          val facts = lines.map {
+            line =>
+              val equals = line.indexOf("=")
+              (line.substring(0, equals), line.substring(equals + 1))
+          }.toMap
+          (file, facts)
+      }
     }
     else {
       List.empty
@@ -455,7 +467,7 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
        |return
        |    <ids>{
        |       for $$narthex in $$records
-       |       where $$narthex/@mod >= ${ quote(since) }
+       |       where $$narthex/@mod >= ${quote(since)}
        |       order by $$narthex/@mod descending
        |       return
        |          <id>{$$narthex/@mod}{string($$narthex/@id)}</id>

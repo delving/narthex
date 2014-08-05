@@ -17,8 +17,10 @@
 package controllers
 
 import java.io.File
+import java.util.zip.ZipFile
 
 import controllers.Application.OkFile
+import org.apache.commons.io.FileUtils
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.mvc._
@@ -210,20 +212,65 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       val repo = Repo(email)
       val file = repo.sipZipFile(fileName)
       request.body.moveTo(file, replace = true)
+      val zip = new ZipFile(file)
+      val datasetFacts = zip.getEntry("dataset_facts.txt")
+      val inputStream = zip.getInputStream(datasetFacts)
+      val factsFile = new File(file.getParentFile, s"${file.getName}.facts")
+      FileUtils.copyInputStreamToFile(inputStream, factsFile)
       Ok
   }
 
-  def listSipZips(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
+  def listSipZips(apiKey: String, email: String) = Action(parse.anyContent) {
+    // todo: add security
     implicit request =>
       val repo = Repo(email)
       def reply =
-        <sip-zip-list>
-          {
-            for (file <- repo.listSipZipFiles) yield <file>{file.getName}</file>
-          }
-        </sip-zip-list>
+        <sip-list>
+          {for ((file, facts) <- repo.listSipZip)
+        yield
+          <sip>
+            <file>
+              {file.getName}
+            </file>
+            <facts>
+              <name>
+                {facts("name")}
+              </name>
+              <dataProvider>
+                {facts("dataProvider")}
+              </dataProvider>
+              <country>
+                {facts("dataProvider")}
+              </country>
+              <orgId>
+                {facts("orgId")}
+              </orgId>
+              <versions>
+                {for (sv <- facts("schemaVersions").split(", *"))
+              yield
+                <version>
+                  {sv}
+                </version>}
+              </versions>
+            </facts>
+          </sip>}
+        </sip-list>
       Ok(reply)
   }
+
+  /*
+  ame=Afrika Museum
+provider=Rijksdienst voor het Cultureelerfgoed
+country=Netherlands
+dataProvider=Afrika Museum
+language=nl
+rights=http://creativecommons.org/publicdomain/zero/1.0/
+type=IMAGE
+dataProviderUri=http://id.musip.nl/crm_e39/8
+spec=afrikamuseum
+orgId=dimcon
+schemaVersions=icn_1.0.3, ese_3.4.0
+   */
 
   private def checkKey(email: String, fileName: String, apiKey: String) = {
     // todo: mindless so far, and do it as an action like in Security.scala
