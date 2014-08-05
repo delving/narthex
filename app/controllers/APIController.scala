@@ -245,13 +245,14 @@ object APIController extends Controller with TreeHandling with RecordHandling {
               <orgId>
                 {facts("orgId")}
               </orgId>
-              <versions>
+              <schemaVersions>
                 {for (sv <- facts("schemaVersions").split(", *"))
               yield
-                <version>
-                  {sv}
-                </version>}
-              </versions>
+                <schemaVersion>
+                  <prefix>{sv.split("_")(0)}</prefix>
+                  <version>{sv.split("_")(1)}</version>
+                </schemaVersion>}
+              </schemaVersions>
             </facts>
           </sip>}
         </sip-list>

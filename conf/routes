@@ -49,7 +49,7 @@ GET         /api/:apiKey/:email/:fileName/histogram/*path            controllers
 GET         /dashboard/sip-creator/list                              controllers.Dashboard.listSipFiles
 POST        /sip-creator/:apiKey/:email/upload/:fileName             controllers.APIController.uploadOutput(apiKey, email, fileName)
 POST        /sip-creator/:apiKey/:email/sip-zip/:fileName            controllers.APIController.uploadSipZip(apiKey, email, fileName)
-GET         /sip-creator/:apiKey/:email/sip-zip                      controllers.APIController.listSipZips(apiKey, email, fileName)
+GET         /sip-creator/:apiKey/:email/sip-zip                      controllers.APIController.listSipZips(apiKey, email)
 
 #GET         /oai-pmh                                             controllers.OaiPmh.service
 
