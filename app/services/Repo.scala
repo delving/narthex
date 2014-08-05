@@ -34,8 +34,9 @@ import scala.xml.{Elem, XML}
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
-  val ANALYZED = "analyzed"
   val UPLOADED = "uploaded"
+  val ANALYZED = "analyzed"
+  val SIP_ZIP = "sip-zip"
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "NARTHEX")
   var baseXDir = new File(root, "basex")
@@ -106,6 +107,7 @@ class Repo(root: File, val email: String) {
   val user = new File(personalRoot, "user.json")
   val uploaded = new File(personalRoot, UPLOADED)
   val analyzed = new File(personalRoot, ANALYZED)
+  val sipZip = new File(personalRoot, SIP_ZIP)
 
   def create(password: String) = {
     personalRoot.mkdirs()
@@ -126,7 +128,6 @@ class Repo(root: File, val email: String) {
 
   def uploadedFile(fileName: String) = {
     val suffix = getSuffix(fileName)
-
     if (suffix.isEmpty) {
       val fileNameDot = s"$fileName."
       var matchingFiles = uploaded.listFiles().filter(file => file.getName.startsWith(fileNameDot))
@@ -141,6 +142,10 @@ class Repo(root: File, val email: String) {
       new File(uploaded, fileName)
     }
   }
+
+  def sipZipFile(fileName: String) = new File(sipZip, fileName)
+
+  def listSipZipFiles = listFiles(sipZip)
 
   def analyzedDir(fileName: String) = new File(analyzed, stripSuffix(fileName))
 
@@ -522,9 +527,8 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   }
 
   def delete() = {
-    baseX.dropDatabase(dbName)
+    setStatus(SPLITTING, 0, 0)
     baseX.dropDatabase(recordDb)
-    baseX.dropDatabase(termDb)
     deleteQuietly(sourceFile)
     deleteDirectory(dir)
   }

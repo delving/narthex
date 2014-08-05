@@ -16,6 +16,8 @@
 
 package controllers
 
+import java.io.File
+
 import controllers.Application.OkFile
 import play.api.Play.current
 import play.api.cache.Cache
@@ -178,19 +180,49 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def upload(apiKey: String, email: String, fileName: String) = Action(parse.temporaryFile) {
+  def uploadOutput(apiKey: String, email: String, fileName: String) = Action(parse.temporaryFile) {
+    // todo: add security
     implicit request => {
       val repo = Repo(email)
-      request.body.moveTo(repo.uploadedFile(fileName))
+      val uploaded: File = repo.uploadedFile(fileName)
+      if (uploaded.exists()) {
+        val fileRepo = repo.fileRepo(fileName)
+        fileRepo.delete()
+        request.body.moveTo(uploaded)
+      }
+      else {
+        request.body.moveTo(uploaded)
+        val fileRepo = repo.fileRepo(fileName)
+        fileRepo.setRecordDelimiter(
+          "/delving-sip-target/output",
+          "/delving-sip-target/output/@id",
+          -1
+        )
+      }
       repo.scanForAnalysisWork()
-      val fileRepo = repo.fileRepo(fileName)
-      fileRepo.setRecordDelimiter(
-        "/delving-sip-target/output",
-        "/delving-sip-target/output/@id",
-        -1
-      )
       Ok
     }
+  }
+
+  def uploadSipZip(apiKey: String, email: String, fileName: String) = Action(parse.temporaryFile) {
+    // todo: add security
+    implicit request =>
+      val repo = Repo(email)
+      val file = repo.sipZipFile(fileName)
+      request.body.moveTo(file, replace = true)
+      Ok
+  }
+
+  def listSipZips(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
+    implicit request =>
+      val repo = Repo(email)
+      def reply =
+        <sip-zip-list>
+          {
+            for (file <- repo.listSipZipFiles) yield <file>{file.getName}</file>
+          }
+        </sip-zip-list>
+      Ok(reply)
   }
 
   private def checkKey(email: String, fileName: String, apiKey: String) = {

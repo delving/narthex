@@ -46,8 +46,9 @@ GET         /api/:apiKey/:email/:fileName/index/*path                controllers
 GET         /api/:apiKey/:email/:fileName/unique/*path               controllers.APIController.uniqueText(apiKey, email, fileName, path)
 GET         /api/:apiKey/:email/:fileName/histogram/*path            controllers.APIController.histogramText(apiKey, email, fileName, path)
 
-POST        /api/:apiKey/:email/sip-creator-upload/:fileName         controllers.APIController.upload(apiKey, email, fileName)
-
+POST        /sip-creator/:apiKey/:email/upload/:fileName             controllers.APIController.uploadOutput(apiKey, email, fileName)
+POST        /sip-creator/:apiKey/:email/sip-zip/:fileName            controllers.APIController.uploadSipZip(apiKey, email, fileName)
+GET         /sip-creator/:apiKey/:email/sip-zip                      controllers.APIController.listSipZips(apiKey, email, fileName)
 
 #GET         /oai-pmh                                             controllers.OaiPmh.service
 
