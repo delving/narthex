@@ -26,8 +26,10 @@ define(["angular"], function (angular) {
             email: $cookies[EMAIL_COOKIE]
         };
         $scope.login = function (credentials) {
+            console.log('login with credentials', credentials);
             userService.loginUser(credentials).then(
                 function (/*user*/) {
+                    console.log('login successful', credentials);
                     $cookies[EMAIL_COOKIE] = credentials.email;
                     $location.path("/dashboard");
                 },

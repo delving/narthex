@@ -24,12 +24,16 @@ import akka.actor.Actor
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
+import play.api.libs.Crypto
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
+import play.api.libs.ws.{Response, WS}
 import play.api.mvc._
-import services.Repo
+import play.mvc.Http
+import services.{MissingLibs, Repo}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /** Application controller, handles authentication */
 object Application extends Controller with Security {
@@ -47,7 +51,7 @@ object Application extends Controller with Security {
    */
   def jsRoutes(varName: String = "jsRoutes") = Action {
     implicit request =>
-      Ok(
+      Ok( // IntelliJ Idea shows errors here but it compiles:
         Routes.javascriptRouter(varName)(
           routes.javascript.Application.login,
           routes.javascript.Application.checkLogin,
@@ -73,11 +77,52 @@ object Application extends Controller with Security {
       ).as(JAVASCRIPT)
   }
 
+  def commonsRequest(path: String): Future[Response] = {
+    val url: String = s"https://5.9.156.137$path"
+    Logger.info("request:" + url)
+    WS.url(url).withQueryString(
+        ("apiToken", "6f941a84-cbed-4140-b0c4-2c6d88a581dd"),
+        ("apiOrgId", "delving"),
+        ("apiNode", "playground") // todo: change to Narthex
+      ).get()
+  }
+
+  def getOrCreateUser(username: String, profile: JsValue) = {
+    println("get or create " + username + " " + profile)
+//    val isPublic = (profile \ "isPublic").as[Boolean]
+//    val firstName = (profile \ "firstName").as[String]
+//    val lastName = (profile \ "lastName").as[String]
+//    val email = (profile \ "email").as[String]
+    // todo: put the user in the database
+    Ok
+  }
+
+  def login = Action.async(parse.json) {
+    request =>
+      var username = (request.body \ "email").as[String] // todo should be username
+      var password = (request.body \ "password").as[String]
+      val hashedPassword = MissingLibs.passwordHash(password, MissingLibs.HashType.SHA512)
+      val hash = Crypto.sign(hashedPassword, username.getBytes("utf-8"))
+
+      println("authenticating with commons")
+
+      commonsRequest(s"/user/authenticate/$hash").flatMap {
+        response =>
+          response.status match {
+            case Http.Status.OK =>
+              println("authenticated!")
+              commonsRequest(s"/user/profile/$username").map(profile => getOrCreateUser(username, profile.json))
+            case _ =>
+              Future(Unauthorized("Username password didn't work")) // todo: give them something they can react to
+          }
+      }
+  }
+
   /**
    * Log-in a user. Pass the credentials as JSON body.
    * @return The token needed for subsequent requests
    */
-  def login = Action(parse.json) {
+  def old_login = Action(parse.json) {
     implicit request =>
       val token = java.util.UUID.randomUUID().toString
       val email = (request.body \ "email").as[String]
