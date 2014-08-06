@@ -24,7 +24,7 @@ object SkosRepo {
   val skos = new File(Repo.root, "skos")
 
   def listFiles = {
-    val files = skos.listFiles.filter(file => file.getName.endsWith(SUFFIX))
+    val files = if (skos.exists()) skos.listFiles.filter(file => file.getName.endsWith(SUFFIX)) else Array[File]()
     files.map(file => file.getName.substring(0, file.getName.length - SUFFIX.length)).map(_.replaceAll("_", " "))
   }
 
