@@ -30,9 +30,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object Application extends Controller with Security {
 
+  val maybeOrgId: Option[String] = Play.current.configuration.getString("commons.orgId")
+
   def index = Action {
-    val orgId = "dimcon"
-    Ok(views.html.index(orgId))
+    val orgId = maybeOrgId.getOrElse(throw new RuntimeException("Missing config: commons.orgId"))
+    val services: CommonsServices = CommonsServices.services
+    val orgName = services.getName(orgId, "en").getOrElse(orgId)
+    Ok(views.html.index(orgName))
   }
 
   def login = Action(parse.json) {
@@ -40,7 +44,7 @@ object Application extends Controller with Security {
 
       def getOrCreateUser(username: String, profileMaybe: Option[UserProfile]): SimpleResult = {
         val profile = profileMaybe.getOrElse(throw new RuntimeException(s"no profile for $username"))
-        println("get or create " + username + " " + profile)
+        Logger.warn("get or create " + username + " " + profile)
         val token = java.util.UUID.randomUUID().toString
         // todo: put the user in the database
         Ok(Json.obj(
@@ -54,11 +58,16 @@ object Application extends Controller with Security {
       var username = (request.body \ "username").as[String]
       var password = (request.body \ "password").as[String]
 
-      println(s"connecting with $username/$password")
+      Logger.info(s"connecting user $username")
       if (services.connect(username, password)) {
-        val profile = services.getUserProfile(username)
-        println("authenticated: " + profile)
-        getOrCreateUser(username, profile)
+        val orgId: String = maybeOrgId.get
+        if (services.isAdmin(orgId, username)) {
+          Logger.info(s"Logged in $username of $orgId")
+          getOrCreateUser(username, services.getUserProfile(username))
+        }
+        else {
+          Unauthorized(s"User $username is not an admin of organization $orgId")
+        }
       }
       else {
         Unauthorized("Username password combination failed")
@@ -143,56 +152,4 @@ object Application extends Controller with Security {
         )
       ).as(JAVASCRIPT)
   }
-
-//  def loginX = Action.async(parse.json) {
-//    request =>
-//
-//      def commonsRequest(path: String): Future[Response] = {
-//        def string(name: String) = Play.current.configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
-//        val host: String = string("commons.host")
-//        val token: String = string("commons.token")
-//        val orgId: String = string("commons.orgId")
-//        val node: String = string("commons.node")
-//        val url: String = s"$host$path"
-//        WS.url(url).withQueryString("apiToken" -> token, "apiOrgId" -> orgId, "apiNode" -> node).get()
-//      }
-//
-//      def getOrCreateUser(username: String, profile: JsValue): SimpleResult = {
-//        println("get or create " + username + " " + profile)
-//        val isPublic = (profile \ "isPublic").as[Boolean]
-//        val firstName = (profile \ "firstName").as[String]
-//        val lastName = (profile \ "lastName").as[String]
-//        val email = (profile \ "email").as[String]
-//        val token = java.util.UUID.randomUUID().toString
-//        // todo: put the user in the database
-//        Ok(Json.obj(
-//          "firstName" -> firstName,
-//          "lastName" -> lastName,
-//          "email" -> email
-//        )).withToken(token, email)
-//      }
-//
-//      var username = (request.body \ "username").as[String]
-//      var password = (request.body \ "password").as[String]
-//      val hashedPassword = MissingLibs.passwordHash(password, MissingLibs.HashType.SHA512)
-//      val hash = Crypto.sign(hashedPassword, username.getBytes("utf-8"))
-//
-//      println("authenticating with commons")
-//
-//      commonsRequest(s"/user/authenticate/$hash").flatMap {
-//        response =>
-//          response.status match {
-//            case Http.Status.OK =>
-//              println("authenticated!")
-//              commonsRequest(s"/user/profile/$username").flatMap {
-//                profile =>
-//                  Future(getOrCreateUser(username, profile.json))
-//              }
-//            case _ =>
-//              Future(Unauthorized(Json.obj("problem" -> "Username/Password combination is invalid.")))
-//          }
-//      }
-//  }
-//
-
 }

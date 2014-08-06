@@ -85,7 +85,6 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
 
   private def call[T <: JsValue](path: String, body: Option[T], method: String = "GET", queryParams: Seq[(String, String)], retry: Int = 0): Option[Response] = {
     val wsCall = WS.url(host + path).withQueryString(queryParams ++ apiQueryParams: _*)
-    println(s"wsCall[$wsCall]")
     val callInvocation = method match {
       case "GET" => wsCall.get()
       case "POST" if body.isDefined => wsCall.post(body.get)
@@ -411,16 +410,19 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
 
 }
 
-case class UserProfile(isPublic: Boolean = false,
-                       firstName: String,
-                       lastName: String,
-                       email: String,
-                       fixedPhone: Option[String] = None,
-                       description: Option[String] = None,
-                       funFact: Option[String] = None,
-                       websites: List[String] = List.empty,
-                       twitter: Option[String] = None,
-                       linkedIn: Option[String] = None)
+case class UserProfile
+(
+  isPublic: Boolean = false,
+  firstName: String,
+  lastName: String,
+  email: String,
+  fixedPhone: Option[String] = None,
+  description: Option[String] = None,
+  funFact: Option[String] = None,
+  websites: List[String] = List.empty,
+  twitter: Option[String] = None,
+  linkedIn: Option[String] = None
+  )
 
 case class OrganizationProfile(orgId: String, name: Map[String, String])
 
