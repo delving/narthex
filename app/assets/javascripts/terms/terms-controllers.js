@@ -46,8 +46,7 @@ define(["angular"], function (angular) {
         $scope.histogramVisible = [];
 
         $scope.createSourceUri = function(value) {
-            var userPath = user.email.replace(/[@.]/g, "_");
-            var prefix = userPath + "/" + $scope.fileName + $scope.path;
+            var prefix = $scope.fileName + $scope.path;
             return prefix + "/" + encodeURIComponent(value);
         };
 

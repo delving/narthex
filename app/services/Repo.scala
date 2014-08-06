@@ -23,6 +23,7 @@ import actors._
 import org.apache.commons.io.FileUtils._
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
+import play.api.Play
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
@@ -37,12 +38,13 @@ object Repo {
   val UPLOADED = "uploaded"
   val ANALYZED = "analyzed"
   val SIP_ZIP = "sip-zip"
-  val home = new File(System.getProperty("user.home"))
-  val root = new File(home, "NARTHEX")
+  val userHome = new File(System.getProperty("user.home"))
+  val root = new File(userHome, "NarthexFiles")
+  val orgId = Play.current.configuration.getString("commons.orgId").getOrElse(throw new RuntimeException("Missing config: commons.orgId"))
 
   lazy val baseX: BaseX = new BaseX("localhost", 1984, "admin", "admin")
 
-  def apply(email: String) = new Repo(root, email)
+  lazy val repo = new Repo(root, orgId)
 
   def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
 
@@ -91,17 +93,15 @@ object Repo {
 
 }
 
-class Repo(root: File, val email: String) {
+class Repo(root: File, val orgId: String) {
 
-  val personalRootName: String = email.replaceAll("[@.]", "_")
-  val personalRoot = new File(root, personalRootName)
-  val user = new File(personalRoot, "user.json")
-  val uploaded = new File(personalRoot, UPLOADED)
-  val analyzed = new File(personalRoot, ANALYZED)
-  val sipZip = new File(personalRoot, SIP_ZIP)
+  val orgRoot = new File(root, orgId)
+  val uploaded = new File(orgRoot, UPLOADED)
+  val analyzed = new File(orgRoot, ANALYZED)
+  val sipZip = new File(orgRoot, SIP_ZIP)
 
   def create(password: String) = {
-    personalRoot.mkdirs()
+    orgRoot.mkdirs()
   }
 
   def uploadedFile(fileName: String) = {
@@ -190,9 +190,9 @@ class Repo(root: File, val email: String) {
 
 }
 
-class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
+class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
 
-  val dbName = s"${personalRepo.personalRootName}___$name"
+  val dbName = s"${orgRepo.orgId}___$name"
   val recordDb = s"${dbName}_records"
   val termDb = s"${dbName}_terminology"
   val root = new NodeRepo(this, dir)
@@ -225,8 +225,8 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   def sample(path: String, size: Int): Option[File] = {
     nodeRepo(path) match {
       case None => None
-      case Some(repo) =>
-        val fileList = repo.sampleJson.filter(pair => pair._1 == size)
+      case Some(nodeRepo) =>
+        val fileList = nodeRepo.sampleJson.filter(pair => pair._1 == size)
         if (fileList.isEmpty) None else Some(fileList.head._2)
     }
   }
@@ -234,8 +234,8 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   def histogram(path: String, size: Int): Option[File] = {
     nodeRepo(path) match {
       case None => None
-      case Some(repo) =>
-        val fileList = repo.histogramJson.filter(pair => pair._1 == size)
+      case Some(nodeRepo) =>
+        val fileList = nodeRepo.histogramJson.filter(pair => pair._1 == size)
         if (fileList.isEmpty) None else Some(fileList.head._2)
     }
   }
@@ -243,21 +243,21 @@ class FileRepo(val personalRepo: Repo, val name: String, val sourceFile: File, v
   def indexText(path: String): Option[File] = {
     nodeRepo(path) match {
       case None => None
-      case Some(repo) => Some(repo.indexText)
+      case Some(nodeRepo) => Some(nodeRepo.indexText)
     }
   }
 
   def uniqueText(path: String): Option[File] = {
     nodeRepo(path) match {
       case None => None
-      case Some(repo) => Some(repo.uniqueText)
+      case Some(nodeRepo) => Some(nodeRepo.uniqueText)
     }
   }
 
   def histogramText(path: String): Option[File] = {
     nodeRepo(path) match {
       case None => None
-      case Some(repo) => Some(repo.histogramText)
+      case Some(nodeRepo) => Some(nodeRepo.histogramText)
     }
   }
 

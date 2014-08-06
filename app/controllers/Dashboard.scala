@@ -22,7 +22,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
-import services.Repo.TermMapping
+import services.Repo.{TermMapping, repo}
 import services._
 
 import scala.collection.immutable.Seq
@@ -31,13 +31,12 @@ import scala.xml.Elem
 object Dashboard extends Controller with Security with TreeHandling with SkosJson {
 
   def upload = Secure(parse.multipartFormData) {
-    token => email => implicit request => {
+    token => implicit request => {
       request.body.file("file") match {
         case Some(file) =>
-          Logger.info(s"upload ${file.filename} (${file.contentType}) to $email")
+          Logger.info(s"upload ${file.filename} (${file.contentType})")
           if (Repo.acceptableFile(file.filename, file.contentType)) {
             println(s"Acceptable ${file.filename}")
-            val repo = Repo(email)
             file.ref.moveTo(repo.uploadedFile(file.filename), replace = true)
             Ok(file.filename)
           }
@@ -52,8 +51,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def list = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       repo.scanForAnalysisWork()
       val stringList = repo.listFileRepos
       Ok(Json.toJson(stringList.map(string => Json.obj("name" -> string))))
@@ -61,16 +59,14 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def work = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       repo.scanForAnalysisWork()
       Ok
     }
   }
 
   def datasetInfo(fileName: String) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       val datasetInfo = repo.fileRepo(fileName).getDatasetInfo
       // there should be a better way, but couldn't find one and got impatient
       def extract(tag: String) = {
@@ -92,8 +88,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def deleteDataset(fileName: String) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       val fileRepo = repo.fileRepo(fileName)
       fileRepo.delete()
       Ok
@@ -101,15 +96,13 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def index(fileName: String) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       OkFile(repo.fileRepo(fileName).index)
     }
   }
 
   def nodeStatus(fileName: String, path: String) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       repo.fileRepo(fileName).status(path) match {
         case None => NotFound(Json.obj("path" -> path))
         case Some(file) => OkFile(file)
@@ -118,8 +111,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def sample(fileName: String, path: String, size: Int) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       repo.fileRepo(fileName).sample(path, size) match {
         case None => NotFound(Json.obj("path" -> path, "size" -> size))
         case Some(file) => OkFile(file)
@@ -128,8 +120,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def histogram(fileName: String, path: String, size: Int) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       repo.fileRepo(fileName).histogram(path, size) match {
         case None => NotFound(Json.obj("path" -> path, "size" -> size))
         case Some(file) => OkFile(file)
@@ -138,11 +129,10 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def setRecordDelimiter(fileName: String) = Secure(parse.json) {
-    token => email => implicit request => {
+    token => implicit request => {
       var recordRoot = (request.body \ "recordRoot").as[String]
       var uniqueId = (request.body \ "uniqueId").as[String]
       var recordCount = (request.body \ "recordCount").as[Int]
-      val repo = Repo(email)
       val fileRepo = repo.fileRepo(fileName)
       fileRepo.setRecordDelimiter(recordRoot, uniqueId, recordCount)
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
@@ -152,8 +142,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def saveRecords(fileName: String) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       val fileRepo = repo.fileRepo(fileName)
       fileRepo.saveRecords()
       Ok
@@ -161,11 +150,10 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def queryRecords(fileName: String) = Secure(parse.json) {
-    token => email => implicit request => {
+    token => implicit request => {
       println("query records arrival")
       val path = (request.body \ "path").as[String]
       val value = (request.body \ "value").as[String]
-      val repo = Repo(email)
       val fileRepo = repo.fileRepo(fileName)
       val result: String = fileRepo.queryRecords(path, value)
       Ok(result)
@@ -173,13 +161,13 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def listSkos = Secure() {
-    token => email => implicit request => {
+    token => implicit request => {
       Ok(Json.obj("list" -> SkosRepo.listFiles))
     }
   }
 
   def searchSkos(name: String, sought: String) = Secure() {
-    token => email => implicit request => {
+    token => implicit request => {
 
       def searchVocabulary(vocabulary: SkosVocabulary) = vocabulary.search("dut", sought, 25)
 
@@ -194,8 +182,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def getMappings(fileName: String) = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       val fileRepo = repo.fileRepo(fileName)
       val mappings: scala.Seq[TermMapping] = fileRepo.getMappings
       Ok(Json.obj("mappings" -> mappings))
@@ -203,12 +190,11 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def setMapping(fileName: String) = Secure(parse.json) {
-    token => email => implicit request => {
+    token => implicit request => {
       val sourceUri = (request.body \ "source").as[String]
       val targetUri = (request.body \ "target").as[String]
       val vocabulary = (request.body \ "vocabulary").as[String]
       val prefLabel = (request.body \ "prefLabel").as[String]
-      val repo = Repo(email)
       val fileRepo = repo.fileRepo(fileName)
       fileRepo.setMapping(TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
       Ok("thanks man")
@@ -216,8 +202,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def listSipFiles = Secure() {
-    token => email => implicit request => {
-      val repo = Repo(email)
+    token => implicit request => {
       val fileNames = repo.listSipZip.map(_._1.getName)
       Ok(Json.obj("list" -> fileNames))
     }

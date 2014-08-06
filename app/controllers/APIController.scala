@@ -24,14 +24,15 @@ import org.apache.commons.io.FileUtils
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.mvc._
+import services.Repo.repo
 import services._
 
 object APIController extends Controller with TreeHandling with RecordHandling {
 
-  def indexJSON(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
+  def indexJSON(apiKey: String, fileName: String) = Action(parse.anyContent) {
     implicit request => {
-      if (checkKey(email, fileName, apiKey)) {
-        OkFile(Repo(email).fileRepo(fileName).index)
+      if (checkKey(fileName, apiKey)) {
+        OkFile(repo.fileRepo(fileName).index)
       }
       else {
         Unauthorized
@@ -39,10 +40,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def indexText(apiKey: String, email: String, fileName: String, path: String) = Action(parse.anyContent) {
+  def indexText(apiKey: String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
-      if (checkKey(email, fileName, apiKey)) {
-        val repo = Repo(email)
+      if (checkKey(fileName, apiKey)) {
         repo.fileRepo(fileName).indexText(path) match {
           case None =>
             NotFound(s"No index found for $path")
@@ -56,10 +56,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def uniqueText(apiKey: String, email: String, fileName: String, path: String) = Action(parse.anyContent) {
+  def uniqueText(apiKey: String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
-      if (checkKey(email, fileName, apiKey)) {
-        val repo = Repo(email)
+      if (checkKey(fileName, apiKey)) {
         repo.fileRepo(fileName).uniqueText(path) match {
           case None =>
             NotFound(s"No list found for $path")
@@ -73,10 +72,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def histogramText(apiKey: String, email: String, fileName: String, path: String) = Action(parse.anyContent) {
+  def histogramText(apiKey: String, fileName: String, path: String) = Action(parse.anyContent) {
     implicit request => {
-      if (checkKey(email, fileName, apiKey)) {
-        val repo = Repo(email)
+      if (checkKey(fileName, apiKey)) {
         repo.fileRepo(fileName).histogramText(path) match {
           case None =>
             NotFound(s"No list found for $path")
@@ -90,10 +88,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def rawRecord(apiKey: String, email: String, fileName: String, id: String) = Action(parse.anyContent) {
+  def rawRecord(apiKey: String, fileName: String, id: String) = Action(parse.anyContent) {
     implicit request => {
-      if (checkKey(email, fileName, apiKey)) {
-        val repo = Repo(email)
+      if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
         val storedRecord: String = fileRepo.getRecord(id)
         if (storedRecord.nonEmpty) {
@@ -109,21 +106,19 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def enrichedRecord(apiKey: String, email: String, fileName: String, id: String) = Action(parse.anyContent) {
+  def enrichedRecord(apiKey: String, fileName: String, id: String) = Action(parse.anyContent) {
     implicit request => {
-      if (checkKey(email, fileName, apiKey)) {
-        val repo = Repo(email)
+      if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
-        val filePrefix = s"${email.replaceAllLiterally(".", "_")}/$fileName"
-        val mappings = Cache.getAs[Map[String, TargetConcept]](filePrefix).getOrElse {
+        val mappings = Cache.getAs[Map[String, TargetConcept]](fileName).getOrElse {
           val freshMap = fileRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
-          Cache.set(filePrefix, freshMap, 60 * 5)
+          Cache.set(fileName, freshMap, 60 * 5)
           freshMap
         }
         val storedRecord: String = fileRepo.getRecord(id)
         if (storedRecord.nonEmpty) {
           val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text
-          val parser = new StoredRecordParser(filePrefix, recordRoot, mappings)
+          val parser = new StoredRecordParser(fileName, recordRoot, mappings)
           val record = parser.parse(storedRecord)
           Ok(scala.xml.XML.loadString(record.text.toString()))
         }
@@ -137,10 +132,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def ids(apiKey: String, email: String, fileName: String, since: String) = Action(parse.anyContent) {
+  def ids(apiKey: String, fileName: String, since: String) = Action(parse.anyContent) {
     implicit request => {
-      if (checkKey(email, fileName, apiKey)) {
-        val repo = Repo(email)
+      if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
         val ids = fileRepo.getIds(since)
         Ok(scala.xml.XML.loadString(ids))
@@ -151,10 +145,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def mappings(apiKey: String, email: String, fileName: String) = Action(parse.anyContent) {
+  def mappings(apiKey: String, fileName: String) = Action(parse.anyContent) {
     implicit request => {
-      if (checkKey(email, fileName, apiKey)) {
-        val repo = Repo(email)
+      if (checkKey(fileName, apiKey)) {
         repo.fileRepoOption(fileName) match {
           case Some(fileRepo) =>
             val mappings = fileRepo.getMappings
@@ -182,10 +175,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def uploadOutput(apiKey: String, email: String, fileName: String) = Action(parse.temporaryFile) {
+  def uploadOutput(apiKey: String, fileName: String) = Action(parse.temporaryFile) {
     // todo: add security
     implicit request => {
-      val repo = Repo(email)
       val uploaded: File = repo.uploadedFile(fileName)
       if (uploaded.exists()) {
         val fileRepo = repo.fileRepo(fileName)
@@ -206,10 +198,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def uploadSipZip(apiKey: String, email: String, fileName: String) = Action(parse.temporaryFile) {
+  def uploadSipZip(apiKey: String, fileName: String) = Action(parse.temporaryFile) {
     // todo: add security
     implicit request =>
-      val repo = Repo(email)
       val file = repo.sipZipFile(fileName)
       request.body.moveTo(file, replace = true)
       val zip = new ZipFile(file)
@@ -220,10 +211,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       Ok
   }
 
-  def listSipZips(apiKey: String, email: String) = Action(parse.anyContent) {
+  def listSipZips(apiKey: String) = Action(parse.anyContent) {
     // todo: add security
     implicit request =>
-      val repo = Repo(email)
       def reply =
         <sip-list>
           {for ((file, facts) <- repo.listSipZip)
@@ -259,23 +249,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       Ok(reply)
   }
 
-  /*
-  ame=Afrika Museum
-provider=Rijksdienst voor het Cultureelerfgoed
-country=Netherlands
-dataProvider=Afrika Museum
-language=nl
-rights=http://creativecommons.org/publicdomain/zero/1.0/
-type=IMAGE
-dataProviderUri=http://id.musip.nl/crm_e39/8
-spec=afrikamuseum
-orgId=dimcon
-schemaVersions=icn_1.0.3, ese_3.4.0
-   */
-
-  private def checkKey(email: String, fileName: String, apiKey: String) = {
+  private def checkKey(fileName: String, apiKey: String) = {
     // todo: mindless so far, and do it as an action like in Security.scala
-    val toHash: String = s"narthex|$email|$fileName"
+    val toHash: String = s"narthex|$fileName"
     val hash = toHash.hashCode
     val expected: String = Integer.toString(hash, 16).substring(1)
     val correct = expected == apiKey

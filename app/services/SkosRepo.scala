@@ -21,9 +21,7 @@ import scala.io.Source
 
 object SkosRepo {
   val SUFFIX = ".xml"
-  val home = new File(System.getProperty("user.home"))
-  val root = new File(home, "NARTHEX")
-  val skos = new File(root, "skos")
+  val skos = new File(Repo.root, "skos")
 
   def listFiles = {
     val files = skos.listFiles.filter(file => file.getName.endsWith(SUFFIX))

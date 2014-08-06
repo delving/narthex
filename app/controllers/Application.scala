@@ -81,7 +81,7 @@ object Application extends Controller with Security {
         token =>
           Cache.getAs[String](token) map {
             email =>
-              Ok(Json.obj("email" -> email)).withToken(token, email)
+              Ok(Json.obj("email" -> email)).withToken(token, email) // todo: there's more in the profile
           }
       } getOrElse {
         Unauthorized(Json.obj("err" -> "No Token during check login")).discardingToken(TOKEN)

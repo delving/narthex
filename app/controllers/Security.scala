@@ -36,12 +36,12 @@ trait Security { this: Controller =>
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => SimpleResult): Action[A] =
+  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => Request[A] => SimpleResult): Action[A] =
     Action(p) { implicit request =>
       val maybeToken = request.headers.get(TOKEN)
       maybeToken flatMap { token =>
         Cache.getAs[String](token) map { email =>
-          block(token)(email)(request).withToken(token, email)
+          block(token)(request).withToken(token, email)
         }
       } getOrElse {
         Logger.info("No Token Secure!")

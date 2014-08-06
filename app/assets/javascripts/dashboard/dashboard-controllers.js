@@ -18,8 +18,8 @@ String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
 };
 
-function apiHash(email, fileName) {
-    var toHash = 'narthex|' + email + '|' + fileName;
+function apiHash(fileName) {
+    var toHash = 'narthex|' + fileName;
     return toHash.hashCode().toString(16).substring(1);
 }
 
@@ -40,8 +40,7 @@ define(["angular"], function () {
         function apiPrefix(fileName) {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-            var email = user.email.replace("@", "_");
-            return serverUrl + 'api/' + apiHash(email, fileName) + '/' + email;
+            return serverUrl + 'api/' + apiHash(fileName);
         }
 
         function timeSinceStatusCheck() {
@@ -202,8 +201,7 @@ define(["angular"], function () {
         $scope.apiPrefix = function () {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-            var email = user.email.replace("@", "_");
-            return serverUrl + 'api/' + apiHash(email, $scope.fileName) + '/' + email;
+            return serverUrl + 'api/' + apiHash($scope.fileName);
         };
 
         $scope.selectedNode = null;
