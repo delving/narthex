@@ -18,9 +18,6 @@ package controllers
 
 import java.io.{File, FileInputStream, FileNotFoundException}
 
-import actors.Room
-import actors.RoomChatter._
-import akka.actor.Actor
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
@@ -30,76 +27,41 @@ import play.api.libs.json._
 import play.api.libs.ws.{Response, WS}
 import play.api.mvc._
 import play.mvc.Http
-import services.{MissingLibs, Repo}
+import services.MissingLibs
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-/** Application controller, handles authentication */
 object Application extends Controller with Security {
 
-  val room = Room()
-
-  /** Serves the index page, see views/index.scala.html */
   def index = Action {
     Ok(views.html.index())
   }
 
-  /**
-   * Returns the JavaScript router that the client can use for "type-safe" routes.
-   * @param varName The name of the global variable, defaults to `jsRoutes`
-   */
-  def jsRoutes(varName: String = "jsRoutes") = Action {
-    implicit request =>
-      Ok( // IntelliJ Idea shows errors here but it compiles:
-        Routes.javascriptRouter(varName)(
-          routes.javascript.Application.login,
-          routes.javascript.Application.checkLogin,
-          routes.javascript.Application.logout,
-          routes.javascript.Application.roomConnect,
-          routes.javascript.Dashboard.list,
-          routes.javascript.Dashboard.work,
-          routes.javascript.Dashboard.datasetInfo,
-          routes.javascript.Dashboard.deleteDataset,
-          routes.javascript.Dashboard.nodeStatus,
-          routes.javascript.Dashboard.index,
-          routes.javascript.Dashboard.sample,
-          routes.javascript.Dashboard.histogram,
-          routes.javascript.Dashboard.setRecordDelimiter,
-          routes.javascript.Dashboard.saveRecords,
-          routes.javascript.Dashboard.queryRecords,
-          routes.javascript.Dashboard.listSkos,
-          routes.javascript.Dashboard.searchSkos,
-          routes.javascript.Dashboard.getMappings,
-          routes.javascript.Dashboard.setMapping,
-          routes.javascript.Dashboard.listSipFiles
-        )
-      ).as(JAVASCRIPT)
+  def getOrCreateUser(username: String, profile: JsValue): Future[SimpleResult] = {
+    println("get or create " + username + " " + profile)
+    val isPublic = (profile \ "isPublic").as[Boolean]
+    val firstName = (profile \ "firstName").as[String]
+    val lastName = (profile \ "lastName").as[String]
+    val email = (profile \ "email").as[String]
+    val token = java.util.UUID.randomUUID().toString
+    // todo: put the user in the database
+    Future(Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email))
   }
 
   def commonsRequest(path: String): Future[Response] = {
-    val url: String = s"https://5.9.156.137$path"
-    Logger.info("request:" + url)
-    WS.url(url).withQueryString(
-        ("apiToken", "6f941a84-cbed-4140-b0c4-2c6d88a581dd"),
-        ("apiOrgId", "delving"),
-        ("apiNode", "playground") // todo: change to Narthex
-      ).get()
-  }
-
-  def getOrCreateUser(username: String, profile: JsValue) = {
-    println("get or create " + username + " " + profile)
-//    val isPublic = (profile \ "isPublic").as[Boolean]
-//    val firstName = (profile \ "firstName").as[String]
-//    val lastName = (profile \ "lastName").as[String]
-//    val email = (profile \ "email").as[String]
-    // todo: put the user in the database
-    Ok
+    def string(name: String) = Play.current.configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
+    val host: String = string("commons.host")
+    val apiToken: String = string("commons.apiToken")
+    val orgId: String = string("commons.orgId")
+    val node: String = string("commons.node")
+    val url: String = s"$host$path"
+    WS.url(url).withQueryString("apiToken" -> apiToken, "apiOrgId" -> orgId, "apiNode" -> node).get()
   }
 
   def login = Action.async(parse.json) {
     request =>
-      var username = (request.body \ "email").as[String] // todo should be username
+      var username = (request.body \ "username").as[String]
       var password = (request.body \ "password").as[String]
       val hashedPassword = MissingLibs.passwordHash(password, MissingLibs.HashType.SHA512)
       val hash = Crypto.sign(hashedPassword, username.getBytes("utf-8"))
@@ -111,39 +73,10 @@ object Application extends Controller with Security {
           response.status match {
             case Http.Status.OK =>
               println("authenticated!")
-              commonsRequest(s"/user/profile/$username").map(profile => getOrCreateUser(username, profile.json))
+              commonsRequest(s"/user/profile/$username").flatMap(profile => getOrCreateUser(username, profile.json))
             case _ =>
-              Future(Unauthorized("Username password didn't work")) // todo: give them something they can react to
+              Future(Unauthorized("Username password didn't work"))
           }
-      }
-  }
-
-  /**
-   * Log-in a user. Pass the credentials as JSON body.
-   * @return The token needed for subsequent requests
-   */
-  def old_login = Action(parse.json) {
-    implicit request =>
-      val token = java.util.UUID.randomUUID().toString
-      val email = (request.body \ "email").as[String]
-      val password = (request.body \ "password").as[String]
-      val repeatPassword = (request.body \ "repeatPassword").asOpt[String]
-      if (repeatPassword.isDefined) {
-        if (password == repeatPassword.get) {
-          Repo(email).create(password)
-          Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
-        }
-        else {
-          Unauthorized(Json.obj("problem" -> "Passwords do not match")).discardingToken(TOKEN)
-        }
-      }
-      else {
-        if (Repo(email).authenticate(password)) {
-          Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
-        }
-        else {
-          Unauthorized(Json.obj("problem" -> "EMail - Password combination doesn't exist")).discardingToken(TOKEN)
-        }
       }
   }
 
@@ -172,20 +105,6 @@ object Application extends Controller with Security {
       }
   }
 
-  class Receiver extends Actor {
-    def receive = {
-      case Received(from, js: JsValue) =>
-        (js \ "msg").asOpt[String] match {
-          case None => play.Logger.error("couldn't find msg in websocket event")
-          case Some(s) =>
-            play.Logger.info(s"received $s")
-            context.parent ! Broadcast(from, Json.obj("msg" -> s"$from sent Broadcast($s)"))
-        }
-    }
-  }
-
-  def roomConnect(id: String): WebSocket[JsValue] = room.member[Receiver, JsValue](id)
-
   def OkFile(file: File, attempt: Int = 0): SimpleResult = {
     try {
       val input = new FileInputStream(file)
@@ -207,5 +126,81 @@ object Application extends Controller with Security {
         NotFound(Json.obj("file" -> file.getName, "message" -> x.getMessage))
     }
   }
+
+
+  /**
+   * Returns the JavaScript router that the client can use for "type-safe" routes.
+   * @param varName The name of the global variable, defaults to `jsRoutes`
+   */
+  def jsRoutes(varName: String = "jsRoutes") = Action {
+    implicit request =>
+      Ok(// IntelliJ Idea shows errors here but it compiles:
+        Routes.javascriptRouter(varName)(
+          routes.javascript.Application.login,
+          routes.javascript.Application.checkLogin,
+          routes.javascript.Application.logout,
+          routes.javascript.Dashboard.list,
+          routes.javascript.Dashboard.work,
+          routes.javascript.Dashboard.datasetInfo,
+          routes.javascript.Dashboard.deleteDataset,
+          routes.javascript.Dashboard.nodeStatus,
+          routes.javascript.Dashboard.index,
+          routes.javascript.Dashboard.sample,
+          routes.javascript.Dashboard.histogram,
+          routes.javascript.Dashboard.setRecordDelimiter,
+          routes.javascript.Dashboard.saveRecords,
+          routes.javascript.Dashboard.queryRecords,
+          routes.javascript.Dashboard.listSkos,
+          routes.javascript.Dashboard.searchSkos,
+          routes.javascript.Dashboard.getMappings,
+          routes.javascript.Dashboard.setMapping,
+          routes.javascript.Dashboard.listSipFiles
+        )
+      ).as(JAVASCRIPT)
+  }
+
+  //  def login = Action(parse.json) {
+  //    request =>
+  //
+  //      val services: CommonsServices = CommonsServices.services
+  //      var username = (request.body \ "username").as[String]
+  //      var password = (request.body \ "password").as[String]
+  //
+  //      println(s"connecting with $username/$password")
+  //      if (services.connect(username, password)) {
+  //        val profile = services.getUserProfile(username)
+  //        println("authenticated: " + profile)
+  //        Ok("authenticated")
+  //      }
+  //      else {
+  //        Unauthorized("Username password combination failed")
+  //      }
+  //  }
+
+  //  def old_login = Action(parse.json) {
+  //    implicit request =>
+  //      val token = java.util.UUID.randomUUID().toString
+  //      val email = (request.body \ "email").as[String]
+  //      val password = (request.body \ "password").as[String]
+  //      val repeatPassword = (request.body \ "repeatPassword").asOpt[String]
+  //      if (repeatPassword.isDefined) {
+  //        if (password == repeatPassword.get) {
+  //          Repo(email).create(password)
+  //          Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
+  //        }
+  //        else {
+  //          Unauthorized(Json.obj("problem" -> "Passwords do not match")).discardingToken(TOKEN)
+  //        }
+  //      }
+  //      else {
+  //        if (Repo(email).authenticate(password)) {
+  //          Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
+  //        }
+  //        else {
+  //          Unauthorized(Json.obj("problem" -> "EMail - Password combination doesn't exist")).discardingToken(TOKEN)
+  //        }
+  //      }
+  //  }
+
 
 }

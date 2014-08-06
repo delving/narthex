@@ -16,11 +16,12 @@
 
 package controllers
 
-import play.api.mvc._
-import play.api.libs.json._
-import play.api.cache.Cache
 import play.Logger
 import play.api.Play.current
+import play.api.cache.Cache
+import play.api.libs.json._
+import play.api.mvc._
+
 import scala.concurrent.Future
 
 trait Security { this: Controller =>
@@ -35,7 +36,7 @@ trait Security { this: Controller =>
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Result): Action[A] =
+  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => SimpleResult): Action[A] =
     Action(p) { implicit request =>
       val maybeToken = request.headers.get(TOKEN)
       maybeToken flatMap { token =>
@@ -60,13 +61,13 @@ trait Security { this: Controller =>
       }
     }
 
-  implicit class ResultWithToken(result: Result) {
-    def withToken(token:String, email: String): Result = {
+  implicit class ResultWithToken(result: SimpleResult) {
+    def withToken(token:String, email: String): SimpleResult = {
       Cache.set(token, email, CACHE_EXPIRATION)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, token, None, httpOnly = false))
     }
 
-    def discardingToken(token: String): Result = {
+    def discardingToken(token: String): SimpleResult = {
       Logger.info(s"discarding token $token")
       Cache.remove(token)
       result.discardingCookies(DiscardingCookie(name = TOKEN_COOKIE_KEY))

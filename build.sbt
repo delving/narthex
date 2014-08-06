@@ -34,7 +34,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "angularjs-nvd3-directives" % "0.0.7-1",
   "org.webjars" % "angular-file-upload" % "1.3.1-1",
   "org.webjars" % "angular-ui-bootstrap" % "0.11.0-2",
-  "org.mindrot" % "jbcrypt" % "0.3m",
+//  "org.mindrot" % "jbcrypt" % "0.3m",
 //  "org.webjars" % "angular-pusher" % "0.0.8",
   "org.scalatest" % "scalatest_2.10" % "2.2.0",
   "org.scalautils" % "scalautils_2.10" % "2.1.3",
@@ -44,7 +44,7 @@ libraryDependencies ++= Seq(
 //  "org.webjars" % "cryptojs" % "3.1.2",
 //  "org.reactivemongo" %% "reactivemongo" % "0.10.0",
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
-  "com.clever-age" % "play2-elasticsearch" % "1.1.0",
+//  "com.clever-age" % "play2-elasticsearch" % "1.1.0",
   cache
 )
 

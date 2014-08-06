@@ -17,20 +17,20 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var EMAIL_COOKIE = "NARTHEX-EMail";
+    var USERNAME_COOKIE = "NARTHEX-User";
 
     /** Controls the index page */
     var HomeCtrl = function ($scope, $rootScope, $cookies, $location, userService) {
 
         $scope.credentials = {
-            email: $cookies[EMAIL_COOKIE]
+            username: $cookies[USERNAME_COOKIE]
         };
         $scope.login = function (credentials) {
             console.log('login with credentials', credentials);
             userService.loginUser(credentials).then(
                 function (/*user*/) {
                     console.log('login successful', credentials);
-                    $cookies[EMAIL_COOKIE] = credentials.email;
+                    $cookies[USERNAME_COOKIE] = credentials.username;
                     $location.path("/dashboard");
                 },
                 function (rejection) {
@@ -70,33 +70,6 @@ define(["angular"], function (angular) {
             }, function (why) {
                 console.log("unable to logout", why);
             });
-        };
-
-        $scope.trySocket = function() {
-            var url = userService.getRoomWebSocketUrl("gumby");
-            console.log("try socket url="+url);
-            var socket = new WebSocket(url);
-            socket.onopen = function(event) {
-                console.log("open", event);
-            };
-            socket.onclose = function(event) {
-                console.log("close", event);
-            };
-            socket.onmessage = function(event) {
-                var data = JSON.parse(event.data);
-                console.log("message", data);
-                if (data.kind == "connected") {
-                    console.log("connected, sending hello");
-                    socket.send(JSON.stringify({ "msg": "hello!" }));
-                    $timeout(function() {
-                        console.log("closing");
-                        socket.close();
-                    }, 3000);
-                }
-            };
-            socket.onerror = function(event) {
-                console.log("error", event);
-            };
         };
     };
     HeaderCtrl.$inject = ["$scope", "userService", "$location", "$timeout"];

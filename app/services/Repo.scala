@@ -23,7 +23,6 @@ import actors._
 import org.apache.commons.io.FileUtils._
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
-import org.mindrot.jbcrypt.BCrypt
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
@@ -40,19 +39,10 @@ object Repo {
   val SIP_ZIP = "sip-zip"
   val home = new File(System.getProperty("user.home"))
   val root = new File(home, "NARTHEX")
-  var baseXDir = new File(root, "basex")
 
-  lazy val baseX: BaseX = new BaseX("localhost", 6789, 6788, "admin", "admin")
+  lazy val baseX: BaseX = new BaseX("localhost", 1984, "admin", "admin")
 
   def apply(email: String) = new Repo(root, email)
-
-  def startBaseX() = {
-    baseX.startServer(Some(baseXDir))
-  }
-
-  def stopBaseX() = {
-    baseX.stopServer()
-  }
 
   def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
 
@@ -112,19 +102,6 @@ class Repo(root: File, val email: String) {
 
   def create(password: String) = {
     personalRoot.mkdirs()
-    val passwordHash = BCrypt.hashpw(password, BCrypt.gensalt())
-    writeStringToFile(user, Json.prettyPrint(Json.obj("passwordHash" -> passwordHash)))
-  }
-
-  def authenticate(password: String) = {
-    if (user.exists()) {
-      val userObject = Json.parse(readFileToString(user))
-      val passwordHash = (userObject \ "passwordHash").as[String]
-      BCrypt.checkpw(password, passwordHash)
-    }
-    else {
-      false
-    }
   }
 
   def uploadedFile(fileName: String) = {

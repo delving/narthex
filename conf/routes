@@ -15,7 +15,6 @@ GET         /jsroutes.js                                             controllers
 GET         /checkLogin                                              controllers.Application.checkLogin
 POST        /login                                                   controllers.Application.login
 GET         /logout                                                  controllers.Application.logout
-GET         /room/:id                                                controllers.Application.roomConnect(id)
 
 # File Handling
 POST        /dashboard/upload                                        controllers.Dashboard.upload

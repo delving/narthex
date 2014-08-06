@@ -1,8 +1,7 @@
 package services
 
-import java.io.{ByteArrayInputStream, File}
+import java.io.ByteArrayInputStream
 
-import org.basex.BaseXServer
 import org.basex.core.cmd._
 import org.basex.server.ClientSession
 
@@ -14,27 +13,8 @@ import org.basex.server.ClientSession
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class BaseX(host: String, port: Int, eport: Int, user: String, pass: String) {
 
-  private var server: BaseXServer = null
-
-  def startServer(dataDirectory: Option[File]) {
-    dataDirectory match {
-      case Some(dir) =>
-        if (!dir.exists()) {
-          if (!dir.mkdirs()) {
-            throw new RuntimeException("Failed to create data directory for BaseX " + dataDirectory)
-          }
-        }
-        System.setProperty("org.basex.path", dir.getAbsolutePath)
-      case None =>
-    }
-    server = new BaseXServer(s"-e$eport", s"-p$port")
-  }
-
-  def stopServer() {
-    BaseXServer.stop(port, eport)
-  }
+class BaseX(host: String, port: Int, user: String, pass: String) {
 
   def withSession[T](block: ClientSession => T): T = {
     val session = new ClientSession(host, port, user, pass)
@@ -81,3 +61,26 @@ class BaseX(host: String, port: Int, eport: Int, user: String, pass: String) {
   def delete(database: String, path: String) =
     withDbSession(database)(_.execute(new Delete(path)))
 }
+
+//object BaseX {
+//  private var server: BaseXServer = null
+//
+//  def startServer(dataDirectory: Option[File], port: Int, eport: Int) {
+//    dataDirectory match {
+//      case Some(dir) =>
+//        if (!dir.exists()) {
+//          if (!dir.mkdirs()) {
+//            throw new RuntimeException("Failed to create data directory for BaseX " + dataDirectory)
+//          }
+//        }
+//        System.setProperty("org.basex.path", dir.getAbsolutePath)
+//      case None =>
+//    }
+//    BaseXServer.start(port, s"-e$eport")
+//  }
+//
+//  def stopServer(port: Int, eport: Int) {
+//    BaseXServer.stop(port, eport)
+//  }
+//}
+
