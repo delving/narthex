@@ -21,16 +21,12 @@ import java.io.{File, FileInputStream, FileNotFoundException}
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
-import play.api.libs.Crypto
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
-import play.api.libs.ws.{Response, WS}
 import play.api.mvc._
-import play.mvc.Http
-import services.MissingLibs
+import services.{CommonsServices, UserProfile}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 object Application extends Controller with Security {
 
@@ -39,52 +35,33 @@ object Application extends Controller with Security {
     Ok(views.html.index(orgId))
   }
 
-  def getOrCreateUser(username: String, profile: JsValue): Future[SimpleResult] = {
-    println("get or create " + username + " " + profile)
-    val isPublic = (profile \ "isPublic").as[Boolean]
-    val firstName = (profile \ "firstName").as[String]
-    val lastName = (profile \ "lastName").as[String]
-    val email = (profile \ "email").as[String]
-    val token = java.util.UUID.randomUUID().toString
-    // todo: put the user in the database
-    Future(Ok(Json.obj(
-      "firstName" -> firstName,
-      "lastName" -> lastName,
-      "email" -> email
-    )).withToken(token, email))
-  }
-
-  def commonsRequest(path: String): Future[Response] = {
-    def string(name: String) = Play.current.configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
-    val host: String = string("commons.host")
-    val token: String = string("commons.token")
-    val orgId: String = string("commons.orgId")
-    val node: String = string("commons.node")
-    val url: String = s"$host$path"
-    WS.url(url).withQueryString("apiToken" -> token, "apiOrgId" -> orgId, "apiNode" -> node).get()
-  }
-
-  def login = Action.async(parse.json) {
+  def login = Action(parse.json) {
     request =>
+
+      def getOrCreateUser(username: String, profileMaybe: Option[UserProfile]): SimpleResult = {
+        val profile = profileMaybe.getOrElse(throw new RuntimeException(s"no profile for $username"))
+        println("get or create " + username + " " + profile)
+        val token = java.util.UUID.randomUUID().toString
+        // todo: put the user in the database
+        Ok(Json.obj(
+          "firstName" -> profile.firstName,
+          "lastName" -> profile.lastName,
+          "email" -> profile.email
+        )).withToken(token, profile.email)
+      }
+
+      val services: CommonsServices = CommonsServices.services
       var username = (request.body \ "username").as[String]
       var password = (request.body \ "password").as[String]
-      val hashedPassword = MissingLibs.passwordHash(password, MissingLibs.HashType.SHA512)
-      val hash = Crypto.sign(hashedPassword, username.getBytes("utf-8"))
 
-      println("authenticating with commons")
-
-      commonsRequest(s"/user/authenticate/$hash").flatMap {
-        response =>
-          response.status match {
-            case Http.Status.OK =>
-              println("authenticated!")
-              commonsRequest(s"/user/profile/$username").flatMap {
-                profile =>
-                  getOrCreateUser(username, profile.json)
-              }
-            case _ =>
-              Future(Unauthorized(Json.obj("problem" -> "Username/Password combination is invalid.")))
-          }
+      println(s"connecting with $username/$password")
+      if (services.connect(username, password)) {
+        val profile = services.getUserProfile(username)
+        println("authenticated: " + profile)
+        getOrCreateUser(username, profile)
+      }
+      else {
+        Unauthorized("Username password combination failed")
       }
   }
 
@@ -167,48 +144,55 @@ object Application extends Controller with Security {
       ).as(JAVASCRIPT)
   }
 
-  //  def login = Action(parse.json) {
-  //    request =>
-  //
-  //      val services: CommonsServices = CommonsServices.services
-  //      var username = (request.body \ "username").as[String]
-  //      var password = (request.body \ "password").as[String]
-  //
-  //      println(s"connecting with $username/$password")
-  //      if (services.connect(username, password)) {
-  //        val profile = services.getUserProfile(username)
-  //        println("authenticated: " + profile)
-  //        Ok("authenticated")
-  //      }
-  //      else {
-  //        Unauthorized("Username password combination failed")
-  //      }
-  //  }
-
-  //  def old_login = Action(parse.json) {
-  //    implicit request =>
-  //      val token = java.util.UUID.randomUUID().toString
-  //      val email = (request.body \ "email").as[String]
-  //      val password = (request.body \ "password").as[String]
-  //      val repeatPassword = (request.body \ "repeatPassword").asOpt[String]
-  //      if (repeatPassword.isDefined) {
-  //        if (password == repeatPassword.get) {
-  //          Repo(email).create(password)
-  //          Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
-  //        }
-  //        else {
-  //          Unauthorized(Json.obj("problem" -> "Passwords do not match")).discardingToken(TOKEN)
-  //        }
-  //      }
-  //      else {
-  //        if (Repo(email).authenticate(password)) {
-  //          Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
-  //        }
-  //        else {
-  //          Unauthorized(Json.obj("problem" -> "EMail - Password combination doesn't exist")).discardingToken(TOKEN)
-  //        }
-  //      }
-  //  }
-
+//  def loginX = Action.async(parse.json) {
+//    request =>
+//
+//      def commonsRequest(path: String): Future[Response] = {
+//        def string(name: String) = Play.current.configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
+//        val host: String = string("commons.host")
+//        val token: String = string("commons.token")
+//        val orgId: String = string("commons.orgId")
+//        val node: String = string("commons.node")
+//        val url: String = s"$host$path"
+//        WS.url(url).withQueryString("apiToken" -> token, "apiOrgId" -> orgId, "apiNode" -> node).get()
+//      }
+//
+//      def getOrCreateUser(username: String, profile: JsValue): SimpleResult = {
+//        println("get or create " + username + " " + profile)
+//        val isPublic = (profile \ "isPublic").as[Boolean]
+//        val firstName = (profile \ "firstName").as[String]
+//        val lastName = (profile \ "lastName").as[String]
+//        val email = (profile \ "email").as[String]
+//        val token = java.util.UUID.randomUUID().toString
+//        // todo: put the user in the database
+//        Ok(Json.obj(
+//          "firstName" -> firstName,
+//          "lastName" -> lastName,
+//          "email" -> email
+//        )).withToken(token, email)
+//      }
+//
+//      var username = (request.body \ "username").as[String]
+//      var password = (request.body \ "password").as[String]
+//      val hashedPassword = MissingLibs.passwordHash(password, MissingLibs.HashType.SHA512)
+//      val hash = Crypto.sign(hashedPassword, username.getBytes("utf-8"))
+//
+//      println("authenticating with commons")
+//
+//      commonsRequest(s"/user/authenticate/$hash").flatMap {
+//        response =>
+//          response.status match {
+//            case Http.Status.OK =>
+//              println("authenticated!")
+//              commonsRequest(s"/user/profile/$username").flatMap {
+//                profile =>
+//                  Future(getOrCreateUser(username, profile.json))
+//              }
+//            case _ =>
+//              Future(Unauthorized(Json.obj("problem" -> "Username/Password combination is invalid.")))
+//          }
+//      }
+//  }
+//
 
 }

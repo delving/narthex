@@ -26,7 +26,7 @@ object CommonsServices {
   lazy val services = new CommonsServices(
     string("commons.host"),
     string("commons.orgId"),
-    string("commons.apiToken"),
+    string("commons.token"),
     string("commons.node")
   )
 }
