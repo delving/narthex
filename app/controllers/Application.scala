@@ -46,17 +46,21 @@ object Application extends Controller with Security {
     val email = (profile \ "email").as[String]
     val token = java.util.UUID.randomUUID().toString
     // todo: put the user in the database
-    Future(Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email))
+    Future(Ok(Json.obj(
+      "firstName" -> firstName,
+      "lastName" -> lastName,
+      "email" -> email
+    )).withToken(token, email))
   }
 
   def commonsRequest(path: String): Future[Response] = {
     def string(name: String) = Play.current.configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
     val host: String = string("commons.host")
-    val apiToken: String = string("commons.apiToken")
+    val token: String = string("commons.token")
     val orgId: String = string("commons.orgId")
     val node: String = string("commons.node")
     val url: String = s"$host$path"
-    WS.url(url).withQueryString("apiToken" -> apiToken, "apiOrgId" -> orgId, "apiNode" -> node).get()
+    WS.url(url).withQueryString("apiToken" -> token, "apiOrgId" -> orgId, "apiNode" -> node).get()
   }
 
   def login = Action.async(parse.json) {
@@ -73,9 +77,12 @@ object Application extends Controller with Security {
           response.status match {
             case Http.Status.OK =>
               println("authenticated!")
-              commonsRequest(s"/user/profile/$username").flatMap(profile => getOrCreateUser(username, profile.json))
+              commonsRequest(s"/user/profile/$username").flatMap {
+                profile =>
+                  getOrCreateUser(username, profile.json)
+              }
             case _ =>
-              Future(Unauthorized("Username password didn't work"))
+              Future(Unauthorized(Json.obj("problem" -> "Username/Password combination is invalid.")))
           }
       }
   }
@@ -87,7 +94,7 @@ object Application extends Controller with Security {
         token =>
           Cache.getAs[String](token) map {
             email =>
-              Ok(Json.obj("user" -> Json.obj("email" -> email))).withToken(token, email)
+              Ok(Json.obj("email" -> email)).withToken(token, email)
           }
       } getOrElse {
         Unauthorized(Json.obj("err" -> "No Token during check login")).discardingToken(TOKEN)

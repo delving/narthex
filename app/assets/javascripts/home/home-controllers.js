@@ -20,23 +20,22 @@ define(["angular"], function (angular) {
     var USERNAME_COOKIE = "NARTHEX-User";
 
     /** Controls the index page */
-    var HomeCtrl = function ($scope, $rootScope, $cookies, $location, userService) {
+    var HomeCtrl = function ($scope, $rootScope, $cookies, $location, userService, $timeout) {
 
         $scope.credentials = {
             username: $cookies[USERNAME_COOKIE]
         };
         $scope.login = function (credentials) {
-            console.log('login with credentials', credentials);
             userService.loginUser(credentials).then(
-                function (/*user*/) {
-                    console.log('login successful', credentials);
-                    $cookies[USERNAME_COOKIE] = credentials.username;
-                    $location.path("/dashboard");
-                },
-                function (rejection) {
-                    if (rejection.status == 401) {
-                        $scope.errorMessage = rejection.data.problem;
+                function (response) {
+                    if (response.profile) {
+                        console.log('login successful', response.user);
+                        $cookies[USERNAME_COOKIE] = credentials.username;
+                        $location.path("/dashboard");
+                    }
+                    else {
                         $scope.credentials.password = "";
+                        $scope.errorMessage = response.problem;
                     }
                 }
             );
@@ -48,10 +47,10 @@ define(["angular"], function (angular) {
             }
         }
     };
-    HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService"];
+    HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
 
     /** Controls the header */
-    var HeaderCtrl = function ($scope, userService, $location, $timeout) {
+    var HeaderCtrl = function ($scope, userService, $location) {
         // Wrap the current user from the service in a watch expression
         $scope.$watch(
             function () {
@@ -72,7 +71,7 @@ define(["angular"], function (angular) {
             });
         };
     };
-    HeaderCtrl.$inject = ["$scope", "userService", "$location", "$timeout"];
+    HeaderCtrl.$inject = ["$scope", "userService", "$location"];
 
     /** Controls the footer */
     var FooterCtrl = function (/*$scope*/) {

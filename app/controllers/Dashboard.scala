@@ -219,7 +219,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     token => email => implicit request => {
       val repo = Repo(email)
       val fileNames = repo.listSipZip.map(_._1.getName)
-      println("FILES: " + fileNames)
       Ok(Json.obj("list" -> fileNames))
     }
   }
