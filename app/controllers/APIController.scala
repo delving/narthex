@@ -188,9 +188,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         request.body.moveTo(uploaded)
         val fileRepo = repo.fileRepo(fileName)
         fileRepo.setRecordDelimiter(
-          "/delving-sip-target/output",
-          "/delving-sip-target/output/@id",
-          -1
+          recordRoot = "/delving-sip-target/output",
+          uniqueId = "/delving-sip-target/output/@id",
+          recordCount = -1
         )
       }
       repo.scanForAnalysisWork()

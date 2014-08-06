@@ -27,6 +27,7 @@ import play.api.Play
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
+import services.Repo.State._
 import services.Repo._
 
 import scala.collection.mutable
@@ -35,12 +36,21 @@ import scala.xml.{Elem, XML}
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
-  val UPLOADED = "uploaded"
-  val ANALYZED = "analyzed"
+  val UPLOADED_DIR = "uploaded"
+  val ANALYZED_DIR = "analyzed"
   val SIP_ZIP = "sip-zip"
   val userHome = new File(System.getProperty("user.home"))
   val root = new File(userHome, "NarthexFiles")
   val orgId = Play.current.configuration.getString("commons.orgId").getOrElse(throw new RuntimeException("Missing config: commons.orgId"))
+
+  object State {
+    val SPLITTING = "1:splitting"
+    val ANALYZING = "2:analyzing"
+    val ANALYZED = "3:analyzed"
+    val SAVING = "4:saving"
+    val SAVED = "5:saved"
+    val PUBLISHED = "6:published"
+  }
 
   lazy val baseX: BaseX = new BaseX("localhost", 1984, "admin", "admin")
 
@@ -96,8 +106,8 @@ object Repo {
 class Repo(root: File, val orgId: String) {
 
   val orgRoot = new File(root, orgId)
-  val uploaded = new File(orgRoot, UPLOADED)
-  val analyzed = new File(orgRoot, ANALYZED)
+  val uploaded = new File(orgRoot, UPLOADED_DIR)
+  val analyzed = new File(orgRoot, ANALYZED_DIR)
   val sipZip = new File(orgRoot, SIP_ZIP)
 
   def create(password: String) = {
@@ -162,7 +172,7 @@ class Repo(root: File, val orgId: String) {
       job =>
         val uploadedFile = job._1
         val fileRepo = job._2
-        fileRepo.setStatus(fileRepo.SPLITTING, 1, 0)
+        fileRepo.setStatus(SPLITTING, percent=1)
         val analyzer = Akka.system.actorOf(Analyzer.props(fileRepo), uploadedFile.getName)
         analyzer ! Analyzer.Analyze(job._1)
     }
@@ -190,9 +200,13 @@ class Repo(root: File, val orgId: String) {
 
 }
 
+object FileRepo {
+
+}
+
 class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
 
-  val dbName = s"${orgRepo.orgId}___$name"
+  val dbName = s"narthex_${orgRepo.orgId}___$name"
   val recordDb = s"${dbName}_records"
   val termDb = s"${dbName}_terminology"
   val root = new NodeRepo(this, dir)
@@ -203,12 +217,6 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
   }
 
   def index = new File(dir, "index.json")
-
-  val SPLITTING = "1:splitting"
-  val ANALYZING = "2:analyzing"
-  val ANALYZED = "3:analyzed"
-  val SAVING = "4:saving"
-  val SAVED = "5:saved"
 
   def nodeRepo(path: String): Option[NodeRepo] = {
     val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, tagToDirectory(tag)))
@@ -297,7 +305,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     }
   }
 
-  def setStatus(state: String, percent: Int, workers: Int) = {
+  def setStatus(state: String, percent: Int = 0, workers: Int = 0) = {
     withDatasetSession {
       session =>
         val update =
@@ -318,7 +326,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     }
   }
 
-  def setRecordDelimiter(recordRoot: String, uniqueId: String, recordCount: Int) = {
+  def setRecordDelimiter(recordRoot: String = "", uniqueId: String = "", recordCount: Int = 0) = {
     withDatasetSession {
       session =>
         val update =
@@ -374,7 +382,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
         val recordCountText = (delim \ "recordCount").text
         val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
         // set status now so it's done before the actor starts
-        setStatus(SAVING, 1, 0)
+        setStatus(SAVING, percent = 1)
         val saver = Akka.system.actorOf(Saver.props(this), name)
         saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
     }
@@ -524,8 +532,8 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
   }
 
   def delete() = {
-    setStatus(SPLITTING, 0, 0)
-    setRecordDelimiter("", "", 0)
+    setStatus(SPLITTING)
+    setRecordDelimiter()
     baseX.dropDatabase(recordDb)
     deleteQuietly(sourceFile)
     deleteDirectory(dir)

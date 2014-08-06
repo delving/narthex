@@ -16,17 +16,19 @@
 
 package actors
 
-import akka.actor.{Props, ActorRef, ActorLogging, Actor}
-import services._
-import play.api.libs.json._
-import org.apache.commons.io.FileUtils
 import java.io.File
-import scala.util.Failure
-import scala.util.Success
 import java.security.MessageDigest
-import Analyzer._
-import Sorter._
-import Collator._
+
+import actors.Analyzer._
+import actors.Collator._
+import actors.Sorter._
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import org.apache.commons.io.FileUtils
+import play.api.libs.json._
+import services.Repo.State._
+import services._
+
+import scala.util.{Failure, Success}
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
@@ -61,7 +63,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
       val progress = context.actorOf(Props(new Actor() {
         override def receive: Receive = {
           case AnalysisProgress(percent) =>
-            fileRepo.setStatus(fileRepo.SPLITTING, percent, 0)
+            fileRepo.setStatus(SPLITTING, percent = percent)
         }
       }))
       def sendProgress(percent: Int) = progress ! AnalysisProgress(percent)
@@ -127,7 +129,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
             self ! AnalysisComplete()
           }
           else {
-            fileRepo.setStatus(fileRepo.ANALYZING, 0, sorters.size + collators.size)
+            fileRepo.setStatus(ANALYZING, workers = sorters.size + collators.size)
           }
       }
 
@@ -138,13 +140,13 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
       context.stop(self)
 
     case AnalysisTreeComplete(json, digest) =>
-      fileRepo.setStatus(fileRepo.ANALYZING, 0, sorters.size + collators.size)
+      fileRepo.setStatus(ANALYZING, workers = sorters.size + collators.size)
       // todo: rename the original file to include date and digest?
       log.info(s"Tree Complete at ${fileRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
 
     case AnalysisComplete() =>
       log.info(s"Analysis Complete, kill: ${self.toString()}")
-      fileRepo.setStatus(fileRepo.ANALYZED, 0, 0)
+      fileRepo.setStatus(ANALYZED)
       context.stop(self)
 
   }

@@ -46,6 +46,7 @@ define(["angular"], function (angular) {
         $scope.histogramVisible = [];
 
         $scope.createSourceUri = function(value) {
+            // todo: start with orgId, get it from... well it's in index.html
             var prefix = $scope.fileName + $scope.path;
             return prefix + "/" + encodeURIComponent(value);
         };

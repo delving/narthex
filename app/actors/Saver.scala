@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream
 import akka.actor.{Actor, ActorLogging, Props}
 import org.basex.core.cmd.Optimize
 import play.Logger
+import services.Repo.State._
 import services.{FileHandling, FileRepo, RecordHandling}
 
 import scala.language.postfixOps
@@ -44,7 +45,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
             override def receive: Receive = {
               case SaveProgress(percent) =>
                 if (percent == 100) context.stop(self)
-                fileRepo.setStatus(fileRepo.SAVING, percent, 0)
+                fileRepo.setStatus(SAVING, percent = percent)
             }
           }))
 
@@ -66,7 +67,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
       Logger.info(s"Saved ${fileRepo.dir.getName}, optimizing..")
       fileRepo.withRecordDatabase(_.execute(new Optimize()))
       Logger.info(s"Optimized ${fileRepo.dir.getName}.")
-      fileRepo.setStatus(fileRepo.SAVED, 0, 0)
+      fileRepo.setStatus(SAVED)
       context.stop(self)
 
   }
