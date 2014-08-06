@@ -36,13 +36,13 @@
                     <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.status">
                         <span ng-switch="file.status.state">
                             <span ng-switch-when="1:splitting">
-                                <span>{{ file.name }} Splitting</span>
+                                {{ file.name }} <span class="label label-warning">Splitting</span>
                                 <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
                                     <b>{{file.status.percent}}%</b>
                                 </progressbar>
                             </span>
                             <span ng-switch-when="2:analyzing">
-                                <span>{{ file.name }} Analyzing</span>
+                                {{ file.name }} <span class="label label-success">Analyzing</span>
                                 <code class="process">({{file.status.workers}} workers)</code>
                             </span>
                             <span ng-switch-when="3:analyzed">

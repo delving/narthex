@@ -208,6 +208,7 @@ body {
   }
   .navbar {
     margin: 0 0 0 0;
+//    max-height: 32px;
     .count-btn {
       background: transparent;
       color: @gray;
@@ -216,6 +217,13 @@ body {
         background: transparent;
         color: @gray;
       }
+    }
+  }
+  .list-controls {
+//    background: @brand-primary;
+    .btn.active {
+       background: @brand-info;
+        bordern: none;
     }
   }
   .sub-controls {
@@ -362,6 +370,14 @@ code {
   }
   code {
     color: @brand-success;
+  }
+}
+
+.file-path-info {
+  margin-bottom: 20px;
+  code {
+    border: 1px solid @gray-darker;
+    color: @gray-dark;
   }
 }
 
