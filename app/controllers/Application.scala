@@ -35,7 +35,8 @@ import scala.concurrent.Future
 object Application extends Controller with Security {
 
   def index = Action {
-    Ok(views.html.index())
+    val orgId = "dimcon"
+    Ok(views.html.index(orgId))
   }
 
   def getOrCreateUser(username: String, profile: JsValue): Future[SimpleResult] = {
