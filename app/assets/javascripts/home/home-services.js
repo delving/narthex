@@ -26,10 +26,16 @@ define(["angular", "common"], function (angular) {
                 var app = playRoutes.controllers.Application;
                 return {
                     loginUser: function (credentials) {
-                        return app.login().post(credentials).then(function (response) {
-                            user = response.data.user;
-                            return user;
-                        });
+                        return app.login().post(credentials).then(
+                            function (response) {
+                                user = response.data;
+                                return { profile : user };
+                            },
+                            function (response) {
+                                user = null;
+                                return { problem: response.data.problem };
+                            }
+                        );
                     },
                     logout: function () {
                         console.log("notifying the server of logout");
@@ -39,14 +45,16 @@ define(["angular", "common"], function (angular) {
                         });
                     },
                     checkLogin: function () {
-                        return app.checkLogin().get().then(function (response) {
-                            user = response.data.user;
-                            return user;
-                        }, function (problem) {
-                            console.log('check login failed', problem);
-                            user = null;
-                            return null;
-                        });
+                        return app.checkLogin().get().then(
+                            function (response) {
+                                user = response.data;
+                                return user;
+                            },
+                            function (problem) {
+                                console.log('check login failed', problem);
+                                user = null;
+                                return null;
+                            });
                     },
                     getUser: function () {
                         return user;
