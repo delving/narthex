@@ -318,6 +318,7 @@ ul.terminology-list {
 .input-group-skos-term {
   margin-bottom: 20px;
   .input-group-addon {
+      background: @brand-primary;
       color: @gray-light;
   }
 }
@@ -352,10 +353,11 @@ code {
 }
 
 .concept-box {
-  border-width: 2px;
-  border: solid;
-  border-color: #7e817e;
+  background: @gray-dark;
   padding: 10px;
+  .progress {
+    margin-bottom: 4px !important;
+  }
 }
 
 .gerald-selected {

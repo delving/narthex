@@ -2,56 +2,57 @@
     <a href data-ng-click="goToDataset()">Return to Dataset</a>
 </div>
 <div class="row">
-    <div>
-        <div class="col-md-12 label">
-            <p style="width:100%; font-size: 15pt" class="text-center">{{fileName}}{{path}}</p>
+
+    <div class="col-md-12">
+        <div class="file-path-info">
+            <code>
+                {{fileName}}{{path}}
+            </code>
         </div>
-        <div class="col-md-5">
-            <div class="panel panel-primary panel-lists">
-                <div class="panel-heading">
-                    <div class="pull-right">
-                        <div>
-                            <input type="radio" data-ng-model="show" value="all">All ({{ all }})&nbsp;&nbsp;
-                            <input type="radio" data-ng-model="show" value="mapped">Mapped ({{ mapped }}) &nbsp;
-                            <input type="radio" data-ng-model="show" value="unmapped">Unmapped ({{ unmapped }})&nbsp;
-                        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="panel panel-primary panel-lists">
+            <div class="panel-heading">
+                <div class="pull-right">
+                    <div>
+                        <input type="radio" data-ng-model="show" value="all">All ({{ all }})&nbsp;&nbsp;
+                        <input type="radio" data-ng-model="show" value="mapped">Mapped ({{ mapped }}) &nbsp;
+                        <input type="radio" data-ng-model="show" value="unmapped">Unmapped ({{ unmapped }})&nbsp;
                     </div>
-                    <span class="panel-title">Terms</span>
                 </div>
-                <div class="panel-body">
-                    <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="170"
-                         data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }"
-                            >
-                        <ul class="list-group terminology-list">
-                            <li data-ng-repeat="count in histogramVisible | filter:filterText"
-                                class="list-group-item clearfix test-class"
-                                data-ng-class="{ 'list-item-selected': count[1] == sourceValue, 'list-item-mapped' : mappings[createSourceUri(count[1])] }"
-                                data-ng-click="selectSource(count[1])">
-                                <span class="node-content">{{ count[1] }}</span>
-                                <span class="node-stats badge">{{ count[0] }}</span>
-                            </li>
-                        </ul>
-                    </div>
+                <span class="panel-title">Terms</span>
+            </div>
+            <div class="panel-body">
+                <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="200" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                    <ul class="list-group terminology-list">
+                        <li data-ng-repeat="count in histogramVisible | filter:filterText" class="list-group-item clearfix test-class" data-ng-class="{ 'list-item-selected': count[1] == sourceValue, 'list-item-mapped' : mappings[createSourceUri(count[1])] }" data-ng-click="selectSource(count[1])">
+                            <span class="node-content">{{ count[1] }}</span>
+                            <span class="node-stats badge">{{ count[0] }}</span>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
-        <div class="col-md-7">
-
-            <div class="navbar navbar-inverse list-controls">
-                <ul class="nav navbar-nav">
-                    <li data-ng-class="{ active: activeView == 'skos' }">
-                        <a href data-ng-click="skosTab()">Concepts</a>
-                    </li>
-                    <li data-ng-class="{ active: activeView == 'record' }">
-                        <a href data-ng-click="recordTab()">Records</a>
-                    </li>
-                </ul>
+    </div>
+    <div class="col-md-7">
+        <div class="panel panel-primary panel-schema">
+            <div class="panel-heading list-controls">
+                <!-- CONCEPTS BTN -->
+                <button class="btn btn-xs btn-primary" data-ng-class="{ active: activeView == 'skos' }" data-ng-click="skosTab()">
+                    Concepts
+                </button>
+                <!-- RECORDS BTN -->
+                <button class="btn btn-xs btn-primary" data-ng-class="{ active: activeView == 'record' }" data-ng-click="recordTab()">
+                    Records
+                </button>
             </div>
 
-            <div class="">
+            <div class="panel-body">
+                <!-- SHOW RECORD -->
                 <div data-ng-show="activeView == 'record'">
                     <textarea class="form-control" style="font-family: monospace; font-size: 8pt; width:100%; height:100%;">{{ records }}</textarea>
                 </div>
+                <!-- SHOW SKOS (CONCEPT) -->
                 <div data-ng-show="vocabularyList && !vocabulary && activeView == 'skos'">
                     <div class="panel panel-default panel-choice">
                         <div class="panel-body" data-ng-repeat="name in vocabularyList" data-ng-click="selectVocabulary(name)">
@@ -59,7 +60,7 @@
                         </div>
                     </div>
                 </div>
-                <div data-ng-show="vocabulary && activeView == 'skos'" >
+                <div data-ng-show="vocabulary && activeView == 'skos'">
                     <h3 data-ng-click="vocabulary=null">&#8594; {{ vocabulary }}</h3>
                     <div>
                         <div class="input-group input-group-skos-term">
@@ -70,30 +71,41 @@
                             Click on a term from the list on the left or enter a term in the input field below
                         </div>
                     </div>
-                    <hr/>
-                    <div data-ng-show="concepts" class="terminology-list vertical-scroll"
-                         data-scrollable id="skos-term-list" data-offset="365"
-                         data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }"
-                            >
-                        <div data-ng-repeat="concept in concepts" class="list-group concept-box"
-                             data-ng-class="{ 'gerald-selected': mappings[sourceUri].target == concept.uri }">
-                            <progressbar value="concept.proximity" max="1.0" type="success">{{ concept.proximity * 100 | number : 0 }}%</progressbar>
+
+                    <div data-ng-show="concepts" class="terminology-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="365" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                        <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{ 'gerald-selected': mappings[sourceUri].target == concept.uri }">
+                            <progressbar value="concept.proximity" max="1.0" type="success">
+                                {{ concept.proximity * 100 | number : 0 }}%
+                            </progressbar>
                             <div>
-                                <a href data-ng-class="{ 'gerald-alt' : !concept.preferred, }"
-                                   data-ng-click="setMapping(concept)" class="fa-2x">{{ concept.label }}</a>
-                                <span data-ng-show="!concept.preferred" data-ng-click="selectSought(concept.prefLabel)"> &#8594; {{ concept.prefLabel }} </span>
+                                <a href data-ng-class="{ 'gerald-alt' : !concept.preferred, }" data-ng-click="setMapping(concept)" class="btn btn-primary">
+                                    {{ concept.label }}
+                                </a>
+                                <span data-ng-show="!concept.preferred" data-ng-click="selectSought(concept.prefLabel)">
+                                    &#8594; {{ concept.prefLabel }}
+                                </span>
                                 <span ng-show="concept.broader">
-                                    <span data-ng-repeat="b in concept.broader" data-ng-click="selectSought(b.label)"> &#8599; {{ b.label }}</span>
+                                    <span data-ng-repeat="b in concept.broader" data-ng-click="selectSought(b.label)">
+                                        &#8599; {{ b.label }}
+                                    </span>
                                 </span>
                             </div>
                             <div>
                                 <span ng-show="concept.narrower">
-                                    <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSought(n.label)"> &#8600;{{ n.label }}</span>
+                                    <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSought(n.label)">
+                                        &#8600;{{ n.label }}
+                                    </span>
                                 </span>
                             </div>
                             <div>
-                                <span class="pull-right"><a  style="color: #8a8a8a; font-size-adjust: 0.5;" ng-href="{{concept.uri}}" target="_blank">{{ concept.uri }}</a></span>
-                                <span>"{{ concept.conceptScheme }}"</span>
+                                <span class="pull-right">
+                                    <a style="color: #8a8a8a; font-size-adjust: 0.5;" ng-href="{{concept.uri}}" target="_blank">
+                                        {{ concept.uri }}
+                                    </a>
+                                </span>
+                                <span>
+                                    "{{ concept.conceptScheme }}"
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -101,5 +113,6 @@
             </div>
         </div>
     </div>
+
 </div>
 
