@@ -50,7 +50,7 @@ POST        /sip-creator/:apiKey/upload/:fileName             controllers.APICon
 POST        /sip-creator/:apiKey/sip-zip/:fileName            controllers.APIController.uploadSipZip(apiKey, fileName)
 GET         /sip-creator/:apiKey/sip-zip                      controllers.APIController.listSipZips(apiKey)
 
-#GET         /oai-pmh                                             controllers.OaiPmh.service
+GET         /oai-pmh/:accessKey                               controllers.OaiPmh.service(accessKey)
 
 # Static
 # ~~~~

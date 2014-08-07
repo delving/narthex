@@ -23,7 +23,6 @@ import actors._
 import org.apache.commons.io.FileUtils._
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
-import play.api.Play
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
@@ -41,7 +40,6 @@ object Repo {
   val SIP_ZIP = "sip-zip"
   val userHome = new File(System.getProperty("user.home"))
   val root = new File(userHome, "NarthexFiles")
-  val orgId = Play.current.configuration.getString("commons.orgId").getOrElse("NoOrgId")
 
   object State {
     val SPLITTING = "1:splitting"
@@ -54,7 +52,7 @@ object Repo {
 
   lazy val baseX: BaseX = new BaseX("localhost", 1984, "admin", "admin")
 
-  lazy val repo = new Repo(root, orgId)
+  lazy val repo = new Repo(root, NarthexConfig.ORG_ID)
 
   def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
 

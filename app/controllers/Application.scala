@@ -24,18 +24,16 @@ import play.api.cache.Cache
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
 import play.api.mvc._
+import services.NarthexConfig.ORG_ID
 import services.{CommonsServices, UserProfile}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Application extends Controller with Security {
 
-  val maybeOrgId: Option[String] = Play.current.configuration.getString("commons.orgId")
-
   def index = Action {
-    val orgId = maybeOrgId.getOrElse(throw new RuntimeException("Missing config: commons.orgId"))
     val services: CommonsServices = CommonsServices.services
-    val orgName = services.getName(orgId, "en").getOrElse(orgId)
+    val orgName = services.getName(ORG_ID, "en").getOrElse(ORG_ID)
     Ok(views.html.index(orgName))
   }
 
@@ -60,13 +58,12 @@ object Application extends Controller with Security {
 
       Logger.info(s"connecting user $username")
       if (services.connect(username, password)) {
-        val orgId: String = maybeOrgId.get
-        if (services.isAdmin(orgId, username)) {
-          Logger.info(s"Logged in $username of $orgId")
+        if (services.isAdmin(ORG_ID, username)) {
+          Logger.info(s"Logged in $username of $ORG_ID")
           getOrCreateUser(username, services.getUserProfile(username))
         }
         else {
-          Unauthorized(s"User $username is not an admin of organization $orgId")
+          Unauthorized(s"User $username is not an admin of organization $ORG_ID")
         }
       }
       else {

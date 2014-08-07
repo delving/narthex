@@ -16,139 +16,200 @@
 
 package controllers
 
-import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
 
-import controllers.OaiPmh.PmhVerbType.PmhVerb
+import controllers.OaiPmh.Service.{QueryKey, Verb}
 import play.api.Logger
 import play.api.mvc._
+import services.NarthexConfig._
 
-import scala.collection.mutable.ArrayBuffer
-import scala.xml.{Elem, NamespaceBinding, PrettyPrinter, TopScope}
+import scala.xml.{Elem, NodeSeq}
 
 object OaiPmh extends Controller {
 
-  def service = Action(parse.anyContent) {
+  val LOG = Logger("OAI_PMH")
+//  val PRETTY = new PrettyPrinter(300, 5)
+
+  def service(accessKey: String) = Action(parse.anyContent) {
     implicit request =>
-      Ok
+      LOG.info(s"Request arrived, not yet checking access key [$accessKey]")
+      Ok(Service(request.queryString, request.uri))
   }
 
-  class OaiPmhService(queryString: Map[String, Seq[String]], requestURL: String, orgId: String, format: Option[String], accessKey: Option[String]) {
+  object Service {
 
-    private val log = Logger("CultureHub")
-    val prettyPrinter = new PrettyPrinter(300, 5)
+    val context = null
 
-    private val VERB = "verb"
-    private val legalParameterKeys = List("verb", "identifier", "metadataPrefix", "set", "from", "until", "resumptionToken", "accessKey", "body")
-
-    /**
-     * receive an HttpServletRequest with the OAI-PMH parameters and return the correctly formatted xml as a string.
-     */
-
-    def parseRequest: String = {
-
-      if (!isLegalPmhRequest(queryString)) return createErrorResponse("badArgument").toString()
-
-      def pmhRequest(verb: PmhVerb): PmhRequestEntry = createPmhRequest(queryString, verb)
-
-      val response: Elem = try {
-        queryString.get(VERB).map(_.head).getOrElse("error") match {
-          case "Identify" => processIdentify(pmhRequest(PmhVerbType.IDENTIFY))
-          case "ListMetadataFormats" => processListMetadataFormats(pmhRequest(PmhVerbType.List_METADATA_FORMATS))
-          case "ListSets" => processListSets(pmhRequest(PmhVerbType.LIST_SETS))
-          case "ListRecords" => processListRecords(pmhRequest(PmhVerbType.LIST_RECORDS))
-          case "ListIdentifiers" => processListRecords(pmhRequest(PmhVerbType.LIST_IDENTIFIERS), true)
-          case "GetRecord" => processGetRecord(pmhRequest(PmhVerbType.GET_RECORD))
-          case _ => createErrorResponse("badVerb")
-        }
-      } catch {
-        case ace: AccessKeyException => createErrorResponse("cannotDisseminateFormat", ace)
-        case bae: BadArgumentException => createErrorResponse("badArgument", bae)
-        case dsnf: DataSetNotFoundException => createErrorResponse("noRecordsMatch", dsnf)
-        case rpe: RecordParseException => createErrorResponse("cannotDisseminateFormat", rpe)
-        case rtnf: ResumptionTokenNotFoundException => createErrorResponse("badResumptionToken", rtnf)
-        case nrm: RecordNotFoundException => createErrorResponse("noRecordsMatch")
-        case ii: InvalidIdentifierException => createErrorResponse("idDoesNotExist")
-        case e: Exception => createErrorResponse("badArgument", e)
-      }
-      //    prettyPrinter.format(response) // todo enable pretty printing later again
-      response.toString()
+    def apply(queryString: Map[String, Seq[String]], requestURL: String) = {
+      val oaiPmhService = new Service(context, queryString, requestURL)
+      oaiPmhService.handleRequest
     }
 
-    def isLegalPmhRequest(params: Map[String, Seq[String]]): Boolean = {
+    object QueryKey {
+      val VERB = "verb"
+      val IDENTIFIER = "identifier"
+      val METADATA_PREFIX = "metadataPrefix"
+      val SET = "set"
+      val FROM = "from"
+      val UNTIL = "until"
+      val RESUMPTION_TOKEN = "resumptionToken"
+      val BODY = "body"
+      val ALL_QUERY_KEYS = List(VERB, IDENTIFIER, METADATA_PREFIX, SET, FROM, UNTIL, RESUMPTION_TOKEN, BODY)
+    }
 
-      // request must contain the verb parameter
-      if (!params.contains(VERB)) return false
+    object Verb {
+      val LIST_SETS = "ListSets"
+      val LIST_METADATA_FORMATS = "ListMetadataFormats"
+      val LIST_IDENTIFIERS = "ListIdentifiers"
+      val LIST_RECORDS = "ListRecords"
+      val GET_RECORD = "GetRecord"
+      val IDENTIFY = "Identify"
+    }
 
-      // no repeat queryParameters are allowed
-      if (params.values.exists(value => value.length > 1)) return false
+  }
 
-      // check for illegal queryParameter keys
-      if (!(params.keys filterNot (legalParameterKeys contains)).isEmpty) return false
+  class Service(context: RecordRepo, queryParams: Map[String, Seq[String]], requestURL: String) {
 
-      // check for validity of dates
-      Seq(params.get("from").headOption, params.get("until").headOption).filterNot(_.isEmpty).foreach { date =>
-        try {
-          OaiPmhService.dateFormat.parse(date.get.head)
-        } catch {
-          case t: Throwable => {
-            try {
-              OaiPmhService.utcFormat.parse(date.get.head)
-            } catch {
-              case t: Throwable => return false
-            }
-          }
+    object VerbHandling {
+
+      def apply(verb: String) = {
+        VERB_FUNCTIONS.find(_.verb.equalsIgnoreCase(verb)) match {
+          case Some(verbFunction) =>
+            verbFunction.handlerFunction.apply(pmhRequest(verb))
+          case None =>
+            errorResponse("badVerb")
         }
       }
 
+      case class VerbHandler(verb: String, handlerFunction: PmhRequest => Elem)
+
+      val VERB_FUNCTIONS = List(
+        VerbHandler(Verb.LIST_SETS, listSets),
+        VerbHandler(Verb.LIST_METADATA_FORMATS, listMetadataFormats),
+        VerbHandler(Verb.LIST_IDENTIFIERS, listIdentifiers),
+        VerbHandler(Verb.LIST_RECORDS, listRecords),
+        VerbHandler(Verb.GET_RECORD, getRecord),
+        VerbHandler(Verb.IDENTIFY, identify)
+      )
+    }
+
+    def handleRequest: Elem = {
+      if (requestOk) {
+        val response: Elem = try {
+          queryParams.get(QueryKey.VERB).map(_.head) match {
+            case Some(verb) =>
+              VerbHandling(verb)
+            case None =>
+              errorResponse("badVerb")
+          }
+        }
+        catch {
+          case ope: OaiPmhException =>
+            errorResponse(ope.error, Some(ope))
+          case e: Exception =>
+            errorResponse("badArgument", Some(e))
+        }
+        response
+      }
+      else {
+        errorResponse("badArgument")
+      }
+    }
+
+    def pmhRequest(verb: String): PmhRequest = {
+      def paramString(key: String) = queryParams.get(key).map(_.headOption.getOrElse(""))
+      def parseDate(dateString: String): Option[Date] = {
+        try {
+          Some(DATE_FORMAT.parse(dateString))
+        }
+        catch {
+          case t: Throwable =>
+            try {
+              Some(UTC_FORMAT.parse(dateString))
+            }
+            catch {
+              case t: Throwable =>
+                LOG.warn("Trying to parse invalid date " + dateString)
+                None
+            }
+        }
+      }
+      def paramDate(key: String) = paramString(key).map(parseDate).getOrElse(None)
+      def paramResumptionToken(key: String): Option[ResumptionToken] = paramString(key).map(ResumptionToken(_))
+      PmhRequest(
+        verb,
+        paramString("set"),
+        paramDate("from"), paramDate("until"),
+        paramString("metadataPrefix"),
+        paramString("identifier"),
+        paramResumptionToken("resumptionToken")
+      )
+    }
+
+    def requestOk: Boolean = {
+      if (!queryParams.contains(QueryKey.VERB)) return false
+      if (queryParams.values.exists(value => value.length > 1)) return false
+      if (queryParams.keys.filterNot(QueryKey.ALL_QUERY_KEYS.contains).nonEmpty) return false
+      Seq(queryParams.get("from").headOption, queryParams.get("until").headOption).filterNot(_.isEmpty).foreach { date =>
+        try {
+          DATE_FORMAT.parse(date.get.head)
+        }
+        catch {
+          case t: Throwable =>
+            try {
+              UTC_FORMAT.parse(date.get.head)
+            }
+            catch {
+              case t: Throwable => return false
+            }
+        }
+      }
       true
     }
 
-    val repositoryName = "fred"
+    // handlers ====
 
-    val adminEmail = "fred@home"
-
-    val earliestDateStamp = "sometime"
-
-    val repositoryIdentifier = "repo"
-
-    val sampleIdentifier = "1"
-
-    def processIdentify(pmhRequestEntry: PmhRequestEntry): Elem = {
-      <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
+    def identify(request: PmhRequest): Elem = {
+      <OAI-PMH
+      xmlns="http://www.openarchives.org/OAI/2.0/"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
         <responseDate>
-          {OaiPmhService.currentDate}
+          {currentDate}
         </responseDate>
         <request verb="Identify">
           {requestURL}
         </request>
         <Identify>
           <repositoryName>
-            {repositoryName}
+            {OAI_PMH_REPOSITORY_NAME}
           </repositoryName>
           <baseURL>
             {requestURL}
           </baseURL>
           <protocolVersion>2.0</protocolVersion>
           <adminEmail>
-            {adminEmail}
+            {OAI_PMH_ADMIN_EMAIL}
           </adminEmail>
           <earliestDatestamp>
-            {earliestDateStamp}
+            {OAI_PMH_EARLIEST_DATE_STAMP}
           </earliestDatestamp>
           <deletedRecord>no</deletedRecord>
           <granularity>YYYY-MM-DDThh:mm:ssZ</granularity>
           <compression>deflate</compression>
           <description>
-            <oai-identifier xmlns="http://www.openarchives.org/OAI/2.0/oai-identifier" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/oai-identifier http://www.openarchives.org/OAI/2.0/oai-identifier.xsd">
+            <oai-identifier
+            xmlns="http://www.openarchives.org/OAI/2.0/oai-identifier"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/oai-identifier http://www.openarchives.org/OAI/2.0/oai-identifier.xsd">
               <scheme>oai</scheme>
               <repositoryIdentifier>
-                {repositoryIdentifier}
+                {OAI_PMH_REPOSITORY_IDENTIFIER}
               </repositoryIdentifier>
               <delimiter>:</delimiter>
               <sampleIdentifier>
-                {sampleIdentifier}
+                {OAI_PMH_SAMPLE_IDENTIFIER}
               </sampleIdentifier>
             </oai-identifier>
           </description>
@@ -156,87 +217,67 @@ object OaiPmh extends Controller {
       </OAI-PMH>
     }
 
-    case class DSet(spec: String, name: String, description: String, totalRecords: Int, dataProvider: String)
+    def listSets(request: PmhRequest): Elem = {
+      val dataSets = context.getDataSets
+      if (dataSets.isEmpty) return errorResponse("noSetHierarchy")
+      <OAI-PMH
+      xmlns="http://www.openarchives.org/OAI/2.0/"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
+        <responseDate>
+          {currentDate}
+        </responseDate>
+        <request verb="ListSets">
+          {requestURL}
+        </request>
+        <ListSets>
+          {for (set <- dataSets) yield
+          <set>
+            <setSpec>
+              {set.spec}
+            </setSpec>
+            <setName>
+              {set.name}
+            </setName>
+            <setDescription>
+              <description>
+                {set.description}
+              </description>
+              <totalRecords>
+                {set.totalRecords}
+              </totalRecords>
+              <dataProvider>
+                {set.dataProvider}
+              </dataProvider>
+            </setDescription>
+          </set>}
+        </ListSets>
+      </OAI-PMH>
+    }
 
-    def processListSets(pmhRequestEntry: PmhRequestEntry): Elem = {
+    def listMetadataFormats(request: PmhRequest): Elem = {
 
-      val collections = List.empty[DSet]
-
-      // when there are no collections throw "noSetHierarchy" ErrorResponse
-      if (collections.size == 0) return createErrorResponse("noSetHierarchy")
+      val maybeIdentifier = request.identifier
 
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
         <responseDate>
-          {OaiPmhService.currentDate}
-        </responseDate>
-        <request verb="ListSets">
-          {requestURL}
-        </request>
-        <ListSets>
-          {for (set <- collections) yield <set>
-          <setSpec>
-            {set.spec}
-          </setSpec>
-          <setName>
-            {set.name}
-          </setName>
-          <setDescription>
-            <description>
-              {set.description}
-            </description>
-            <totalRecords>
-              {set.totalRecords}
-            </totalRecords>
-            <dataProvider>
-              {set.dataProvider}
-            </dataProvider>
-          </setDescription>
-        </set>}
-        </ListSets>
-      </OAI-PMH>
-    }
-
-    /**
-     * This method can give back the following Error and Exception conditions: idDoesNotExist, noMetadataFormats.
-     */
-
-    case class Format(prefix: String, schema: String, namespace: String)
-
-    def processListMetadataFormats(pmhRequestEntry: PmhRequestEntry): Elem = {
-
-      val identifier = pmhRequestEntry.pmhRequestItem.identifier
-      val identifierSpec = identifier.split("_").head
-
-      // if no identifier present list all formats
-      // otherwise only list the formats available for the identifier
-      val allMetadataFormats = List.empty[Format]
-
-      // apply format filter
-      val metadataFormats = if (format.isDefined) allMetadataFormats.filter(_.prefix == format.get) else allMetadataFormats
-
-      def formatRequest: Elem = if (!identifier.isEmpty) {
-        <request verb="ListMetadataFormats" identifier={identifier}>
-          {requestURL}
-        </request>
-      }
-      else {
-        <request verb="ListMetadataFormats">
-          {requestURL}
-        </request>
-      }
-
-      <OAI-PMH
-      xmlns="http://www.openarchives.org/OAI/2.0/"
-      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd"
-      >
-        <responseDate>
-          {OaiPmhService.currentDate}
-        </responseDate>{formatRequest}<ListMetadataFormats>
-        {for (format <- metadataFormats) yield <metadataFormat>
+          {currentDate}
+        </responseDate>{
+          maybeIdentifier match {
+            case Some(identifier) =>
+              <request verb="ListMetadataFormats" identifier={identifier}>
+                {requestURL}
+              </request>
+            case None =>
+              <request verb="ListMetadataFormats">
+                {requestURL}
+              </request>
+          }
+        }<ListMetadataFormats>
+        {for (format <- context.getFormats(maybeIdentifier)) yield <metadataFormat>
           <metadataPrefix>
             {format.prefix}
           </metadataPrefix>
@@ -251,84 +292,83 @@ object OaiPmh extends Controller {
       </OAI-PMH>
     }
 
-    def processListRecords(pmhRequestEntry: PmhRequestEntry, idsOnly: Boolean = false): Elem = {
+    def listIdentifiers(request: PmhRequest): Elem = {
 
-      val setName = pmhRequestEntry.getSet
-      if (setName.isEmpty) throw new BadArgumentException("No set provided")
-      val metadataFormat = pmhRequestEntry.getMetadataFormat
+      val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
+      if (!context.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
 
-      if (format.isDefined && metadataFormat != format.get) throw new MappingNotFoundException("Invalid format provided for this URL")
-
-      val collection : Harvestable = null
-//      val collection = harvestCollectionLookupService.findBySpecAndOrgId(setName, orgId).getOrElse {
-//        throw new DataSetNotFoundException("unable to find set: " + setName)
-//      }
-
-      val schema: Option[RecordDefinition] = None
-      if (!schema.isDefined) {
-        throw new MappingNotFoundException("Format %s unknown".format(metadataFormat))
-      }
-      val (records, totalValidRecords) =
-        collection.getRecords(
-          metadataFormat,
-          pmhRequestEntry.getLastTransferIdx,
-          pmhRequestEntry.recordsReturned,
-          pmhRequestEntry.pmhRequestItem.from,
-          pmhRequestEntry.pmhRequestItem.until
-        )
-
-      val recordList = records.toList
-
-      if (recordList.size == 0) throw new RecordNotFoundException(requestURL)
-
-      val from = OaiPmhService.printDate(recordList.head.modified)
-      val to = OaiPmhService.printDate(recordList.last.modified)
-
-      val elem: Elem = if (!idsOnly) {
-        <OAI-PMH
-        xmlns="http://www.openarchives.org/OAI/2.0/"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd"
-        >
-          <responseDate>
-            {OaiPmhService.currentDate}
-          </responseDate>
-          <request verb="ListRecords" from={from} until={to} metadataPrefix={metadataFormat}>
-            {requestURL}
-          </request>
-          <ListRecords>
-            {for (record <- recordList) yield renderRecord(record, metadataFormat, setName)}{pmhRequestEntry.renderResumptionToken(recordList, totalValidRecords)}
-          </ListRecords>
-        </OAI-PMH>
-      } else {
-        <OAI-PMH
-        xmlns="http://www.openarchives.org/OAI/2.0/"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd"
-        >
-          <responseDate>
-            {OaiPmhService.currentDate}
-          </responseDate>
-          <request verb="ListIdentifiers" from={from} until={to} metadataPrefix={metadataFormat} set={setName}>
-            {requestURL}
-          </request>
-          <ListIdentifiers>
-            {for (record <- recordList) yield <header status={recordStatus(record)}>
-            <identifier>
-              {OaiPmhService.toPmhId(record.itemId)}
-            </identifier>
-            <datestamp>
-              {record.modified}
-            </datestamp>
-            <setSpec>
-              {setName}
-            </setSpec>
-          </header>}{pmhRequestEntry.renderResumptionToken(recordList, totalValidRecords)}
-          </ListIdentifiers>
-        </OAI-PMH>
+      val (firstToken: Option[ResumptionToken], headers: NodeSeq) = request.resumptionToken match {
+        case Some(previousToken) =>
+          (None, context.getHeaders(previousToken))
+        case None =>
+          val firstToken = context.getFirstIdentifierToken(set, request.metadataPrefix, request.from, request.until)
+          (firstToken, context.getHeaders(firstToken))
       }
 
-      prependNamespaces(metadataFormat, schema.get.schemaVersion, collection, elem)
+      val resumptionToken: ResumptionToken = request.resumptionToken match {
+        case Some(previousToken) =>
+          previousToken.next
+        case None =>
+          if (firstToken.isEmpty) throw new ResumptionTokenNotFoundException("Missing first token")
+          firstToken.get
+      }
+
+      <OAI-PMH
+      xmlns="http://www.openarchives.org/OAI/2.0/"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
+        <responseDate>
+          {currentDate}
+        </responseDate>
+        <request verb="{request.verb}" from={emptyOrDate(request.from)} until={emptyOrDate(request.until)} metadataPrefix={emptyOrString(request.metadataPrefix)}>
+          {requestURL}
+        </request>
+        <ListIdentifiers>
+          {headers}
+          <resumptionToken>
+            {resumptionToken}
+          </resumptionToken>
+        </ListIdentifiers>
+      </OAI-PMH>
+    }
+
+    def listRecords(request: PmhRequest): Elem = {
+
+      val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
+      if (!context.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
+      val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException("No metadataPrefix provided"))
+
+      val (firstToken: Option[ResumptionToken], records: NodeSeq) = request.resumptionToken match {
+        case Some(previousToken) =>
+          (None, context.getRecords(previousToken))
+        case None =>
+          val firstToken = context.getFirstRecordToken(set, request.metadataPrefix, request.from, request.until)
+          (firstToken, context.getRecords(firstToken))
+      }
+
+      val resumptionToken: ResumptionToken = request.resumptionToken match {
+        case Some(previousToken) =>
+          previousToken.next
+        case None =>
+          if (firstToken.isEmpty) throw new ResumptionTokenNotFoundException("Missing first token")
+          firstToken.get
+      }
+
+      <OAI-PMH
+      xmlns="http://www.openarchives.org/OAI/2.0/"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
+        <responseDate>
+          {currentDate}
+        </responseDate>
+        <request verb="ListRecords" from={emptyOrDate(request.from)} until={emptyOrDate(request.until)} metadataPrefix={emptyOrString(request.metadataPrefix)}>
+          {requestURL}
+        </request>
+        <ListRecords>
+          {records}
+          {resumptionToken}
+        </ListRecords>
+      </OAI-PMH>
     }
 
     def fromPmhIdToHubId(pmhId: String): String = {
@@ -337,176 +377,38 @@ object OaiPmh extends Controller {
       "%s_%s_%s".format(orgId, spec, localId)
     }
 
-    def processGetRecord(pmhRequestEntry: PmhRequestEntry): Elem = {
-      val pmhRequest = pmhRequestEntry.pmhRequestItem
-      // get identifier and format from map else throw BadArgument Error
-      if (pmhRequest.identifier.isEmpty || pmhRequest.metadataPrefix.isEmpty) return createErrorResponse("badArgument")
-      if (pmhRequest.identifier.split(":").length < 2) return createErrorResponse("idDoesNotExist")
+    def getRecord(request: PmhRequest): Elem = {
 
-      val identifier = fromPmhIdToHubId(pmhRequest.identifier)
-      val metadataFormat = pmhRequest.metadataPrefix
+      val identifier = request.identifier.getOrElse(throw new BadArgumentException("No identifier provided"))
+      val maybeRecord: Option[NodeSeq] = context.getRecord(identifier)
+      val record = maybeRecord.getOrElse(throw new RecordNotFoundException(s"No record for identifier: [$identifier]"))
 
-      if (format.isDefined && metadataFormat != format.get) throw new MappingNotFoundException("Invalid format provided for this URL")
-
-      val hubId = HubId(identifier)
-      // check access rights
-      val c : Option[Harvestable] = None
-      if (c == None) return createErrorResponse("noRecordsMatch")
-      if (!c.get.getVisibleMetadataSchemas(accessKey).exists(_.prefix == metadataFormat)) {
-        return createErrorResponse("idDoesNotExist")
-      }
-
-      class MetadataCache {
-        def findOne(identifier:String) :Option[MetadataItem] = None
-      }
-
-      object MetadataCache {
-        def get(orgId: String, spec: String, itemType: ItemType) = new MetadataCache()
-      }
-
-      val record: MetadataItem = {
-        val cache = MetadataCache.get(orgId, hubId.spec, c.get.itemType)
-        val mdRecord = cache.findOne(identifier)
-        if (mdRecord == None) return createErrorResponse("noRecordsMatch")
-        else mdRecord.get
-      }
-
-      val collection :Harvestable = null
-//      val collection = harvestCollectionLookupService.findBySpecAndOrgId(identifier.split("_")(1), identifier.split("_")(0)).get
-
-      val elem: Elem =
-        <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
-          <responseDate>
-            {OaiPmhService.currentDate}
-          </responseDate>
-          <request verb="GetRecord" identifier={OaiPmhService.toPmhId(record.itemId)} metadataPrefix={metadataFormat}>
-            {requestURL}
-          </request>
-          <GetRecord>
-            {renderRecord(record, metadataFormat, identifier.split("_")(1))}
-          </GetRecord>
-        </OAI-PMH>
-
-      prependNamespaces(metadataFormat, record.schemaVersions.getOrElse(metadataFormat, "1.0.0"), collection, elem)
-    }
-
-    // todo find a way to not show status namespace when not deleted
-    private def recordStatus(record: MetadataItem): String = "" // todo what is the sense of deleted here? do we need to keep deleted references?
-
-    private def renderRecord(record: MetadataItem, metadataPrefix: String, set: String): Elem = {
-
-      val cachedString: String = record.xml.getOrElse(metadataPrefix, throw new RecordNotFoundException(OaiPmhService.toPmhId(record.itemId)))
-
-      // cached records may contain the default namespace, however in our situation that one is already defined in the top scope
-      val cleanString = cachedString.replaceFirst("xmlns=\"http://www.w3.org/2000/xmlns/\"", "")
-
-      val response = try {
-        val elem: Elem = scala.xml.XML.loadString(cleanString)
-        <record>
-          <header>
-            <identifier>
-              {URLEncoder.encode(OaiPmhService.toPmhId(record.itemId), "utf-8").replaceAll("%3A", ":")}
-            </identifier>
-            <datestamp>
-              {OaiPmhService.printDate(record.modified)}
-            </datestamp>
-            <setSpec>
-              {set}
-            </setSpec>
-          </header>
-          <metadata>
-            {elem}
-          </metadata>
-        </record>
-      } catch {
-        case e: Throwable =>
-          log.error("Unable to render record %s with format %s because of %s".format(OaiPmhService.toPmhId(record.itemId), metadataPrefix, e.getMessage), e)
-            <record/>
-      }
-      response
-    }
-
-    private def prependNamespaces(metadataFormat: String, schemaVersion: String, collection: Harvestable, elem: Elem): Elem = {
-      var mutableElem = elem
-
-      val recordDefinition : RecordDefinition = null
-      val formatNamespaces = recordDefinition.allNamespaces
-      val globalNamespaces = collection.getNamespaces.map(ns => Namespace(ns._1, ns._2, ""))
-      val namespaces = (formatNamespaces ++ globalNamespaces).distinct.filterNot(_.prefix == "xsi")
-
-      def collectNamespaces(ns: NamespaceBinding, namespaces: ArrayBuffer[(String, String)]): ArrayBuffer[(String, String)] = {
-        if (ns == TopScope) {
-          namespaces += (ns.prefix -> ns.uri)
-        } else {
-          namespaces += (ns.prefix -> ns.uri)
-          collectNamespaces(ns.parent, namespaces)
-        }
-        namespaces
-      }
-
-      val existingNs = collectNamespaces(elem.scope, new ArrayBuffer[(String, String)])
-
-      for (ns <- namespaces) {
-        import scala.xml.{Null, UnprefixedAttribute}
-        if (ns.prefix == null || ns.prefix.isEmpty) {
-          if (!existingNs.exists(p => p._1 == null || p._1.isEmpty)) {
-            mutableElem = mutableElem % new UnprefixedAttribute("xmlns", ns.uri, Null)
-          }
-        } else {
-          if (!existingNs.exists(_._1 == ns.prefix)) {
-            mutableElem = mutableElem % new UnprefixedAttribute("xmlns:" + ns.prefix, ns.uri, Null)
-          }
-        }
-      }
-      mutableElem
-    }
-
-    def createPmhRequest(params: Map[String, Seq[String]], verb: PmhVerb): PmhRequestEntry = {
-
-      def getParam(key: String) = params.get(key).map(_.headOption.getOrElse("")).getOrElse("")
-
-      def parseDate(date: String) = try {
-        OaiPmhService.dateFormat.parse(date)
-      } catch {
-        case t: Throwable => {
-          try {
-            OaiPmhService.utcFormat.parse(date)
-          } catch {
-            case t: Throwable =>
-              log.warn("Trying to parse invalid date " + date)
-              new Date()
-          }
-        }
-      }
-
-      val pmh = PmhRequestItem(
-        verb,
-        getParam("set"),
-        params.get("from").map(_.headOption.getOrElse("")).map(parseDate),
-        params.get("until").map(_.headOption.getOrElse("")).map(parseDate),
-        getParam("metadataPrefix"),
-        getParam("identifier")
-      )
-      PmhRequestEntry(pmh, getParam("resumptionToken"))
-    }
-
-    /**
-     * This method is used to create all the OAI-PMH error responses to a given OAI-PMH request. The error descriptions have
-     * been taken directly from the specifications document for v.2.0.
-     */
-    def createErrorResponse(errorCode: String, exception: Exception): Elem = {
-      log.error(errorCode, exception)
-      createErrorResponse(errorCode)
-    }
-
-    def createErrorResponse(errorCode: String): Elem = {
       <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
         <responseDate>
-          {OaiPmhService.currentDate}
+          {currentDate}
+        </responseDate>
+        <request verb="{request.verb}" identifier={identifier} metadataPrefix={emptyOrString(request.metadataPrefix)}>
+          {requestURL}
+        </request>
+        <GetRecord>
+          {record}
+        </GetRecord>
+      </OAI-PMH>
+    }
+
+    def errorResponse(errorCode: String, exception: Option[Exception] = None): Elem = {
+      exception.map(LOG.error(errorCode, _))
+      <OAI-PMH
+      xmlns="http://www.openarchives.org/OAI/2.0/"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
+        <responseDate>
+          {currentDate}
         </responseDate>
         <request>
           {requestURL}
-        </request>{errorCode match {
+        </request>
+          {errorCode match {
 
         case "badArgument" =>
           <error code="badArgument">
@@ -556,235 +458,129 @@ object OaiPmh extends Controller {
       </OAI-PMH>
     }
 
-    case class PmhRequestItem(verb: PmhVerb, set: String, from: Option[Date], until: Option[Date], metadataPrefix: String, identifier: String)
 
-    case class PmhRequestEntry(pmhRequestItem: PmhRequestItem, resumptionToken: String) {
+    def emptyOrDate(value: Option[Date]) = value.map(_.toString).getOrElse("")
 
-      val recordsReturned = 666 // todo: i don't know
-
-      private val ResumptionTokenExtractor = """(.+?):(.+?):(.+?):(.+?):(.+)""".r
-
-      lazy val ResumptionTokenExtractor(set, metadataFormat, recordInt, pageNumber, originalSize) = resumptionToken // set:medataFormat:lastTransferIdx:numberSeen
-
-      def getSet = if (resumptionToken.isEmpty) pmhRequestItem.set else set
-
-      def getMetadataFormat = if (resumptionToken.isEmpty) pmhRequestItem.metadataPrefix else metadataFormat
-
-      def getPagenumber = if (resumptionToken.isEmpty) 1 else pageNumber.toInt
-
-      def getLastTransferIdx = if (resumptionToken.isEmpty) 0 else recordInt.toInt
-
-      def getOriginalListSize = if (resumptionToken.isEmpty) 0 else originalSize.toInt
-
-      def renderResumptionToken(recordList: List[MetadataItem], totalListSize: Long) = {
-
-        val originalListSize = if (getOriginalListSize == 0) totalListSize else getOriginalListSize
-
-        val currentPageNr = if (resumptionToken.isEmpty) getPagenumber else getPagenumber + 1
-
-        val nextIndex = currentPageNr * recordsReturned
-
-        val nextResumptionToken = "%s:%s:%s:%s:%s".format(getSet, getMetadataFormat, nextIndex, currentPageNr, originalListSize)
-
-        val cursor = currentPageNr * recordsReturned
-        if (cursor < originalListSize) {
-          <resumptionToken expirationDate={OaiPmhService.printDate(new Date())} completeListSize={originalListSize.toString} cursor={cursor.toString}>
-            {nextResumptionToken}
-          </resumptionToken>
-        } else
-            <resumptionToken/>
-      }
-
-    }
-
-  }
-
-  object OaiPmhService {
-
-    val utcFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-    val dateFormat = new SimpleDateFormat("yyyy-MM-dd")
-    utcFormat.setLenient(false)
-    dateFormat.setLenient(false)
-
-    def toUtcDateTime(date: Date): String = utcFormat.format(date)
+    def emptyOrString(value: Option[String]) = value.getOrElse("")
 
     def currentDate = toUtcDateTime(new Date())
 
-    def printDate(date: Date): String = if (date != null) toUtcDateTime(date) else ""
+    def toUtcDateTime(date: Date): String = UTC_FORMAT.format(date)
 
-    /**
-     * Turns a hubId (orgId_spec_localId) into a pmhId of the kind oai:kulturnett_kulturit.no:NOMF-00455Q
-     */
-    def toPmhId(hubId: String) = HubId(hubId).pmhId
+    def dateString(date: Date): String = if (date != null) toUtcDateTime(date) else ""
+
+    val UTC_FORMAT: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+    UTC_FORMAT.setLenient(false)
+
+    val DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd")
+    DATE_FORMAT.setLenient(false)
+
 
   }
 
-  object PmhVerbType extends Enumeration {
-
-    case class PmhVerb(command: String) extends Val(command)
-
-    val LIST_SETS = PmhVerb("ListSets")
-    val List_METADATA_FORMATS = PmhVerb("ListMetadataFormats")
-    val LIST_IDENTIFIERS = PmhVerb("ListIdentifiers")
-    val LIST_RECORDS = PmhVerb("ListRecords")
-    val GET_RECORD = PmhVerb("GetRecord")
-    val IDENTIFY = PmhVerb("Identify")
+  abstract class OaiPmhException(s: String, t: Throwable) extends Exception(s, t) {
+    val error: String
   }
 
-  class AccessKeyException(s: String, throwable: Throwable) extends Exception(s, throwable) {
+  class AccessKeyException(s: String, t: Throwable) extends OaiPmhException(s, t) {
     def this(s: String) = this(s, null)
+
+    val error = "cannotDisseminateFormat"
   }
 
-  class BadArgumentException(s: String, throwable: Throwable) extends Exception(s, throwable) {
+  class BadArgumentException(s: String, throwable: Throwable) extends OaiPmhException(s, throwable) {
     def this(s: String) = this(s, null)
+
+    val error = "badArgument"
   }
 
-  class DataSetNotFoundException(s: String, throwable: Throwable) extends Exception(s, throwable) {
+  class DataSetNotFoundException(s: String, throwable: Throwable) extends OaiPmhException(s, throwable) {
     def this(s: String) = this(s, null)
+
+    val error = "noRecordsMatch"
   }
 
-  class RecordNotFoundException(s: String, throwable: Throwable) extends Exception(s, throwable) {
+  class RecordNotFoundException(s: String, throwable: Throwable) extends OaiPmhException(s, throwable) {
     def this(s: String) = this(s, null)
+
+    val error = "noRecordsMatch"
   }
 
-  class MetaRepoSystemException(s: String, throwable: Throwable) extends Exception(s, throwable) {
+  class RecordParseException(s: String, throwable: Throwable) extends OaiPmhException(s, throwable) {
     def this(s: String) = this(s, null)
+
+    val error = "cannotDisseminateFormat"
   }
 
-  class RecordParseException(s: String, throwable: Throwable) extends Exception(s, throwable) {
+  class ResumptionTokenNotFoundException(s: String, throwable: Throwable) extends OaiPmhException(s, throwable) {
     def this(s: String) = this(s, null)
+
+    val error = "badResumptionToken"
   }
 
-  class ResumptionTokenNotFoundException(s: String, throwable: Throwable) extends Exception(s, throwable) {
+  class InvalidIdentifierException(s: String, throwable: Throwable) extends OaiPmhException(s, throwable) {
     def this(s: String) = this(s, null)
+
+    val error = "idDoesNotExist"
   }
 
-  class InvalidIdentifierException(s: String, throwable: Throwable) extends Exception(s, throwable) {
-    def this(s: String) = this(s, null)
+  //  class MappingNotFoundException(s: String, throwable: Throwable) extends OaiPmhException(s, throwable) {
+  //    def this(s: String) = this(s, null)
+  //  }
+
+  trait RecordRepo {
+
+    case class DataSet(spec: String, name: String, description: String, totalRecords: Int, dataProvider: String)
+    case class Format(prefix: String, schema: String, namespace: String)
+
+    def getRecord(identifier: String): Option[NodeSeq]
+
+    def getFirstIdentifierToken(set: String, format: Option[String], from: Option[Date], until: Option[Date]): ResumptionToken
+
+    def getHeaders(resumptionToken: ResumptionToken): NodeSeq
+
+    def getFirstRecordToken(set: String, format: Option[String], from: Option[Date], until: Option[Date]): ResumptionToken
+
+    def getRecords(resumptionToken: ResumptionToken): NodeSeq
+
+    def setExists(set: String): Boolean
+
+    def getDataSets : Seq[DataSet]
+
+    // if no identifier present list all formats
+    // otherwise only list the formats available for the identifier
+    def getFormats(identifier: Option[String]) : Seq[Format]
   }
 
-  class MappingNotFoundException(s: String, throwable: Throwable) extends Exception(s, throwable) {
-    def this(s: String) = this(s, null)
-  }
-
-  case class MetadataItem
+  case class PmhRequest
   (
-    modified: Date = new Date(),
-    collection: String,
-    itemType: String,
-    itemId: String,
-    xml: Map[String, String], // schemaPrefix -> raw XML string
-    schemaVersions: Map[String, String], // schemaPrefix -> schemaVersion
-    index: Int,
-    invalidTargetSchemas: Seq[String] = Seq.empty,
-    systemFields: Map[String, List[String]] = Map.empty
-    )
+    verb: String,
+    set: Option[String],
+    from: Option[Date],
+    until: Option[Date],
+    metadataPrefix: Option[String],
+    identifier: Option[String],
+    resumptionToken: Option[ResumptionToken])
 
-  case class RecordDefinition
-  (
-    prefix: String,
-    schema: String,
-    schemaVersion: String,
-    namespace: String, // the namespace of the format
-    allNamespaces: List[Namespace], // all the namespaces occurring in this format (prefix, schema)
-    isFlat: Boolean // is this a flat record definition, i.e. can it be flat?
-    ) {
-    def getNamespaces = allNamespaces.map(ns => (ns.prefix, ns.uri)).toMap[String, String]
-  }
 
-  case class Namespace(prefix: String, uri: String, schema: String)
+  object ResumptionToken {
+    private val ResumptionTokenExtractor = """(.+?)::(.+?)::(.+?)::(.+?)::(.+)""".r
+    
+    def apply(string: String): ResumptionToken = {
 
-  case class HubId(orgId: String, spec: String, localId: String) {
+      def stringToDate(string: String) = new Date() // todo
 
-    val id = "%s_%s_%s".format(orgId, spec, localId)
-
-    val pmhId = "oai:%s_%s:%s".format(orgId, spec, localId)
-
-    override def toString: String = id
-  }
-
-  object HubId {
-
-    val HubIdExtractor = """^(.*?)_(.*?)_(.*)$""".r
-
-    def apply(id: String): HubId = {
-      val HubIdExtractor(orgId, spec, localId) = id
-      HubId(orgId, spec, localId)
+      lazy val ResumptionTokenExtractor(set, expiry, totalRecords, pageSize, page) = string
+      new ResumptionToken(set, stringToDate(expiry), totalRecords.toInt, pageSize.toInt, page.toInt)
     }
 
   }
-  trait CollectionMetadata {
 
-    /**
-     * Name of the collection
-     */
-    def getName: String
+  class ResumptionToken(set: String, expiry: Date, totalRecords:Int, pageSize: Int, page: Int) {
+    def next: ResumptionToken = new ResumptionToken(set, expiry, totalRecords, pageSize, page + 1)
 
-    /**
-     * The total records in a collection
-     */
-    def getTotalRecords: Long
-
-    /**
-     * Optional textual description for a collection
-     */
-    def getDescription: Option[String]
-
+    override def toString = s"$set::$expiry::$totalRecords::$pageSize::$page"
   }
 
-  trait Harvestable extends Collection with CollectionMetadata {
-
-    /**
-     * The namespaces that the XML records in this collection make use of
-     * @return
-     */
-    def getNamespaces: Map[String, String]
-
-    /**
-     * Fetches the records of the collection
-     * @param metadataFormat the metadata format in which to get the records
-     * @param position the index at which to start serving the records
-     * @param limit the maximum number of records to return
-     * @param from optional start date
-     * @param until optional until date
-     *
-     * @return a tuple containing the list of [[ models.MetadataItem ]] as well as the total number of items to be expected
-     */
-    def getRecords(metadataFormat: String, position: Int, limit: Int, from: Option[Date] = None, until: Option[Date] = None): (List[MetadataItem], Long)
-
-    /**
-     * The metadata formats visible for this request
-     * @param accessKey an optional accessKey that may give access to more formats
-     * @return the set of formats represented by a [[ models.RecordDefinition ]]
-     */
-    def getVisibleMetadataSchemas(accessKey: Option[String]): Seq[RecordDefinition]
-
-  }
-  case class ItemType(itemType: String)
-
-  abstract class Collection {
-
-    // the identifier of this collection. may only contain alphanumericals and dashes
-    val spec: String
-
-    // the type of owner
-    val ownerType: OwnerType.OwnerType
-
-    // the kind of items in this collection
-    val itemType: ItemType
-
-    // the userName of the creator of this collection
-    def getCreator: String
-
-    // the owner of this collection. This may be an orgId or userName
-    def getOwner: String
-
-  }
-
-  object OwnerType extends Enumeration {
-    type OwnerType = Value
-    val USER = Value("USER")
-    val ORGANIZATION = Value("ORGANIZATION")
-  }
 }
 

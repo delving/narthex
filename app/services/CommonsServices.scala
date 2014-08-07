@@ -3,12 +3,13 @@ package services
 import java.net.URLEncoder
 import java.util.concurrent.TimeoutException
 
+import play.api.Logger
 import play.api.http.Status
 import play.api.libs.Crypto
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.libs.ws.{Response, WS}
-import play.api.{Logger, Play}
+import services.NarthexConfig._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -21,13 +22,11 @@ import scala.concurrent.duration._
  */
 
 object CommonsServices {
-  def string(name: String) = Play.current.configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
-
   lazy val services = new CommonsServices(
-    string("commons.host"),
-    string("commons.orgId"),
-    string("commons.token"),
-    string("commons.node")
+    COMMONS_HOST,
+    ORG_ID,
+    COMMONS_TOKEN,
+    COMMONS_NODE
   )
 }
 
