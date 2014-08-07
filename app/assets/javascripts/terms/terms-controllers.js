@@ -111,13 +111,14 @@ define(["angular"], function (angular) {
 
         function searchSkos(value) {
             if (!value || !$scope.vocabulary) return;
+            // todo: should somehow scroll to the top of the concept list
             dashboardService.searchSkos($scope.vocabulary, value).then(function (data) {
                 $scope.conceptSearch = data.search;
                 var mapping = $scope.mappings[$scope.sourceUri];
                 if (mapping) {
-                    $scope.concepts = _.filter(data.search.results, function(concept) {
+                    $scope.concepts = _.flatten(_.partition(data.search.results, function(concept) {
                         return concept.uri === mapping.target;
-                    });
+                    }));
                 }
                 else {
                     $scope.concepts = data.search.results;

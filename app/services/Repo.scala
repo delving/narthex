@@ -41,7 +41,7 @@ object Repo {
   val SIP_ZIP = "sip-zip"
   val userHome = new File(System.getProperty("user.home"))
   val root = new File(userHome, "NarthexFiles")
-  val orgId = Play.current.configuration.getString("commons.orgId").getOrElse(throw new RuntimeException("Missing config: commons.orgId"))
+  val orgId = Play.current.configuration.getString("commons.orgId").getOrElse("NoOrgId")
 
   object State {
     val SPLITTING = "1:splitting"

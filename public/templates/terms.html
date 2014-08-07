@@ -73,12 +73,13 @@
                     </div>
 
                     <div data-ng-show="concepts" class="terminology-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="365" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                        <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{ 'gerald-selected': mappings[sourceUri].target == concept.uri }">
+                        <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{ 'gerald-selected-concept': mappings[sourceUri].target == concept.uri }">
                             <progressbar value="concept.proximity" max="1.0" type="success">
                                 {{ concept.proximity * 100 | number : 0 }}%
                             </progressbar>
                             <div>
-                                <a href data-ng-class="{ 'gerald-alt' : !concept.preferred, }" data-ng-click="setMapping(concept)" class="btn btn-primary">
+                                <!--<a href data-ng-class="{ 'gerald-alt' : !concept.preferred, }" data-ng-click="setMapping(concept)" class="btn btn-primary">-->
+                                <a href data-ng-class="{ 'gerald-alt' : !concept.preferred, }" data-ng-click="setMapping(concept)" class="gerald-found-term">
                                     {{ concept.label }}
                                 </a>
                                 <span data-ng-show="!concept.preferred" data-ng-click="selectSought(concept.prefLabel)">
@@ -89,15 +90,13 @@
                                         &#8599; {{ b.label }}
                                     </span>
                                 </span>
-                            </div>
-                            <div>
                                 <span ng-show="concept.narrower">
                                     <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSought(n.label)">
                                         &#8600;{{ n.label }}
                                     </span>
                                 </span>
                             </div>
-                            <div>
+                            <div class="gerald-concept-bottom">
                                 <span class="pull-right">
                                     <a style="color: #8a8a8a; font-size-adjust: 0.5;" ng-href="{{concept.uri}}" target="_blank">
                                         {{ concept.uri }}

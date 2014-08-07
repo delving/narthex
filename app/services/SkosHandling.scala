@@ -195,6 +195,7 @@ object SkosVocabulary {
           println("EVENT? " + x)
       }
     }
+    allConcepts.values.foreach(_.resolve(allConcepts))
     vocabulary
   }
 }
