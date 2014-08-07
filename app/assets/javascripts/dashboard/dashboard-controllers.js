@@ -29,7 +29,7 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
-    var DashboardCtrl = function ($scope, user, dashboardService, fileUpload, $location, $upload, $timeout) {
+    var DashboardCtrl = function ($scope, user, dashboardService, $location, $upload, $timeout) {
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];
@@ -179,7 +179,7 @@ define(["angular"], function () {
     };
 
     DashboardCtrl.$inject = [
-        "$scope", "user", "dashboardService", "fileUpload", "$location", "$upload", "$timeout"
+        "$scope", "user", "dashboardService", "$location", "$upload", "$timeout"
     ];
 
     String.prototype.hashCode = function () {
@@ -194,7 +194,7 @@ define(["angular"], function () {
         return hash;
     };
 
-    var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, user) {
+    var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, pageScroll) {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.fileName = $routeParams.fileName;
 
@@ -202,6 +202,10 @@ define(["angular"], function () {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
             return serverUrl + 'api/' + apiHash($scope.fileName);
+        };
+
+        $scope.scrollTo = function(options){
+            pageScroll.scrollTo(options);
         };
 
         $scope.selectedNode = null;
@@ -436,47 +440,9 @@ define(["angular"], function () {
             };
         };
 
-        /**
-         * Scrolls up and down to a named anchor hash, or top/bottom of an element
-         * {Object} options: hash - named anchor, element - html element (usually a div) with id
-         * eg. scrollTo({'hash': 'page-top'})
-         * eg. scrollto({'element': '#document-list-container'})
-         */
-        $scope.scrollTo = function (options) {
-            options = options || {};
-            var hash = options.hash || undefined,
-                element = options.element || undefined,
-                direction = options.direction || 'up';
-            // navigate to hash
-            if (hash) {
-                var old = $location.hash();
-                $location.hash(hash);
-                $anchorScroll();
-                $location.hash(old);//reset to old location in order to maintain routing logic (no hash in the url)
-            }
-            // scroll the provided dom element if it exists
-            if (element && $(options.element).length) {
-                var scrollElement = $(options.element);
-                // get the height from the actual content, not the container
-                var scrollHeight = scrollElement[0].scrollHeight;
-                var distance = '';
-                if (!direction || direction == 'up') {
-                    distance = -scrollHeight;
-                }
-                else {
-                    distance = scrollHeight;
-                }
-                $timeout(function () {
-                    scrollElement.stop().animate({
-                        scrollLeft: '+=' + 0,
-                        scrollTop: '+=' + distance
-                    });
-                }, 250);
-            }
-        };
     };
 
-    FileDetailCtrl.$inject = ["$scope", "$routeParams", "$timeout", "$location", "dashboardService", "user"];
+    FileDetailCtrl.$inject = ["$scope", "$routeParams", "$timeout", "$location", "dashboardService", "pageScroll"];
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree) {

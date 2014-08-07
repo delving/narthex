@@ -25,7 +25,10 @@
             <div class="panel-body">
                 <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="200" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <ul class="list-group terminology-list">
-                        <li data-ng-repeat="count in histogramVisible | filter:filterText" class="list-group-item clearfix test-class" data-ng-class="{ 'list-item-selected': count[1] == sourceValue, 'list-item-mapped' : mappings[createSourceUri(count[1])] }" data-ng-click="selectSource(count[1])">
+                        <li data-ng-repeat="count in histogramVisible | filter:filterText"
+                            class="list-group-item clearfix test-class"
+                            data-ng-class="{ 'list-item-selected': count[1] == sourceValue, 'list-item-mapped' : mappings[createSourceUri(count[1])] }"
+                            data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectSource(count[1]);">
                             <span class="node-content">{{ count[1] }}</span>
                             <span class="node-stats badge">{{ count[0] }}</span>
                         </li>

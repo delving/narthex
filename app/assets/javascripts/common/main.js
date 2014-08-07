@@ -4,7 +4,7 @@
 define(
     [
         "angular",
-        "./services/fileUpload",
+        "./services/pageScroll",
         "./services/playRoutes",
         "./filters",
         "./directives/scrollable",
@@ -16,7 +16,7 @@ define(
         return angular.module(
             "narthex.common",
             [
-                "common.fileUpload",
+                "common.pageScroll",
                 "common.playRoutes",
                 "common.filters",
                 "common.directives.scrollable",

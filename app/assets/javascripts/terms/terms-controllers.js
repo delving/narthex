@@ -17,7 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var TermsCtrl = function ($scope, $location, $routeParams, dashboardService, user) {
+    var TermsCtrl = function ($scope, $location, $routeParams, dashboardService, $timeout, pageScroll ) {
 
         function getSearchParams() {
             $scope.fileName = $routeParams.fileName;
@@ -44,6 +44,10 @@ define(["angular"], function (angular) {
         $scope.concepts = [];
         $scope.histogram = [];
         $scope.histogramVisible = [];
+
+        $scope.scrollTo = function(options){
+            pageScroll.scrollTo(options);
+        };
 
         $scope.createSourceUri = function(value) {
             // todo: start with orgId, get it from... well it's in index.html
@@ -215,9 +219,10 @@ define(["angular"], function (angular) {
                 view: "histogram"
             });
         };
+
     };
 
-    TermsCtrl.$inject = ["$scope", "$location", "$routeParams", "dashboardService", "user"];
+    TermsCtrl.$inject = ["$scope", "$location", "$routeParams", "dashboardService", "$timeout", "pageScroll"];
 
     return {
         TermsCtrl: TermsCtrl
