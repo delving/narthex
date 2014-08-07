@@ -23,13 +23,14 @@ import controllers.OaiPmh.Service.{QueryKey, Verb}
 import play.api.Logger
 import play.api.mvc._
 import services.NarthexConfig._
+import services.Repo
 
-import scala.xml.{Elem, NodeSeq}
+import scala.xml.{Elem, NodeSeq, PrettyPrinter}
 
 object OaiPmh extends Controller {
 
   val LOG = Logger("OAI_PMH")
-//  val PRETTY = new PrettyPrinter(300, 5)
+  val PRETTY = new PrettyPrinter(300, 5)
 
   def service(accessKey: String) = Action(parse.anyContent) {
     implicit request =>
@@ -37,12 +38,53 @@ object OaiPmh extends Controller {
       Ok(Service(request.queryString, request.uri))
   }
 
+  object RepoBridge extends RecordRepo {
+
+    override def getFirstRecordToken(set: String, format: Option[String], from: Option[Date], until: Option[Date]): ResumptionToken = {
+
+      null
+    }
+
+    override def setExists(set: String): Boolean = {
+      true
+    }
+
+    override def getFirstIdentifierToken(set: String, format: Option[String], from: Option[Date], until: Option[Date]): ResumptionToken = {
+      null
+    }
+
+    override def getRecords(resumptionToken: ResumptionToken): NodeSeq = {
+      null
+    }
+
+    override def getHeaders(resumptionToken: ResumptionToken): NodeSeq = {
+      null
+    }
+
+    // if no identifier present list all formats
+    override def getFormats(identifier: Option[String]): Seq[RepoBridge.Format] = {
+      null
+    }
+
+    override def getDataSets: Seq[RepoBridge.DataSet] = {
+      null
+    }
+
+    override def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
+      val fileName = s"${set}__$format"
+      Repo.repo.fileRepoOption(fileName) match {
+        case Some(fileRepo) =>
+          Some(fileRepo.getRecordPmh(identifier))
+        case None =>
+          None
+      }
+    }
+  }
+
   object Service {
 
-    val context = null
-
     def apply(queryString: Map[String, Seq[String]], requestURL: String) = {
-      val oaiPmhService = new Service(context, queryString, requestURL)
+      val oaiPmhService = new Service(queryString, requestURL)
       oaiPmhService.handleRequest
     }
 
@@ -69,17 +111,19 @@ object OaiPmh extends Controller {
 
   }
 
-  class Service(context: RecordRepo, queryParams: Map[String, Seq[String]], requestURL: String) {
+  class Service(queryParams: Map[String, Seq[String]], requestURL: String) {
 
     object VerbHandling {
 
-      def apply(verb: String) = {
-        VERB_FUNCTIONS.find(_.verb.equalsIgnoreCase(verb)) match {
+      def apply(verb: String): Elem = {
+        val elem = VERB_FUNCTIONS.find(_.verb.equalsIgnoreCase(verb)) match {
           case Some(verbFunction) =>
             verbFunction.handlerFunction.apply(pmhRequest(verb))
           case None =>
             errorResponse("badVerb")
         }
+        // todo: overkill!
+        scala.xml.XML.loadString(PRETTY.format(elem))
       }
 
       case class VerbHandler(verb: String, handlerFunction: PmhRequest => Elem)
@@ -175,26 +219,14 @@ object OaiPmh extends Controller {
       xmlns="http://www.openarchives.org/OAI/2.0/"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
-        <responseDate>
-          {currentDate}
-        </responseDate>
-        <request verb="Identify">
-          {requestURL}
-        </request>
+        <responseDate>{currentDate}</responseDate>
+        <request verb="Identify">{requestURL}</request>
         <Identify>
-          <repositoryName>
-            {OAI_PMH_REPOSITORY_NAME}
-          </repositoryName>
-          <baseURL>
-            {requestURL}
-          </baseURL>
+          <repositoryName>{OAI_PMH_REPOSITORY_NAME}</repositoryName>
+          <baseURL>{requestURL}</baseURL>
           <protocolVersion>2.0</protocolVersion>
-          <adminEmail>
-            {OAI_PMH_ADMIN_EMAIL}
-          </adminEmail>
-          <earliestDatestamp>
-            {OAI_PMH_EARLIEST_DATE_STAMP}
-          </earliestDatestamp>
+          <adminEmail>{OAI_PMH_ADMIN_EMAIL}</adminEmail>
+          <earliestDatestamp>{OAI_PMH_EARLIEST_DATE_STAMP}</earliestDatestamp>
           <deletedRecord>no</deletedRecord>
           <granularity>YYYY-MM-DDThh:mm:ssZ</granularity>
           <compression>deflate</compression>
@@ -204,13 +236,9 @@ object OaiPmh extends Controller {
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/oai-identifier http://www.openarchives.org/OAI/2.0/oai-identifier.xsd">
               <scheme>oai</scheme>
-              <repositoryIdentifier>
-                {OAI_PMH_REPOSITORY_IDENTIFIER}
-              </repositoryIdentifier>
+              <repositoryIdentifier>{OAI_PMH_REPOSITORY_IDENTIFIER}</repositoryIdentifier>
               <delimiter>:</delimiter>
-              <sampleIdentifier>
-                {OAI_PMH_SAMPLE_IDENTIFIER}
-              </sampleIdentifier>
+              <sampleIdentifier>{OAI_PMH_SAMPLE_IDENTIFIER}</sampleIdentifier>
             </oai-identifier>
           </description>
         </Identify>
@@ -218,37 +246,23 @@ object OaiPmh extends Controller {
     }
 
     def listSets(request: PmhRequest): Elem = {
-      val dataSets = context.getDataSets
+      val dataSets = RepoBridge.getDataSets
       if (dataSets.isEmpty) return errorResponse("noSetHierarchy")
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
-        <responseDate>
-          {currentDate}
-        </responseDate>
-        <request verb="ListSets">
-          {requestURL}
-        </request>
+        <responseDate>{currentDate}</responseDate>
+        <request verb="ListSets">{requestURL}</request>
         <ListSets>
           {for (set <- dataSets) yield
           <set>
-            <setSpec>
-              {set.spec}
-            </setSpec>
-            <setName>
-              {set.name}
-            </setName>
+            <setSpec>{set.spec}</setSpec>
+            <setName>{set.name}</setName>
             <setDescription>
-              <description>
-                {set.description}
-              </description>
-              <totalRecords>
-                {set.totalRecords}
-              </totalRecords>
-              <dataProvider>
-                {set.dataProvider}
-              </dataProvider>
+              <description>{set.description}</description>
+              <totalRecords>{set.totalRecords}</totalRecords>
+              <dataProvider>{set.dataProvider}</dataProvider>
             </setDescription>
           </set>}
         </ListSets>
@@ -256,37 +270,20 @@ object OaiPmh extends Controller {
     }
 
     def listMetadataFormats(request: PmhRequest): Elem = {
-
-      val maybeIdentifier = request.identifier
-
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
-        <responseDate>
-          {currentDate}
-        </responseDate>{
-          maybeIdentifier match {
-            case Some(identifier) =>
-              <request verb="ListMetadataFormats" identifier={identifier}>
-                {requestURL}
-              </request>
-            case None =>
-              <request verb="ListMetadataFormats">
-                {requestURL}
-              </request>
-          }
-        }<ListMetadataFormats>
-        {for (format <- context.getFormats(maybeIdentifier)) yield <metadataFormat>
-          <metadataPrefix>
-            {format.prefix}
-          </metadataPrefix>
-          <schema>
-            {format.schema}
-          </schema>
-          <metadataNamespace>
-            {format.namespace}
-          </metadataNamespace>
+        <responseDate>{currentDate}</responseDate>{request.identifier match {
+        case Some(identifier) =>
+          <request verb="ListMetadataFormats" identifier={identifier}>{requestURL}</request>
+        case None =>
+          <request verb="ListMetadataFormats">{requestURL}</request>
+      }}<ListMetadataFormats>
+        {for (format <- RepoBridge.getFormats(request.identifier)) yield <metadataFormat>
+          <metadataPrefix>{format.prefix}</metadataPrefix>
+          <schema>{format.schema}</schema>
+          <metadataNamespace>{format.namespace}</metadataNamespace>
         </metadataFormat>}
       </ListMetadataFormats>
       </OAI-PMH>
@@ -295,14 +292,14 @@ object OaiPmh extends Controller {
     def listIdentifiers(request: PmhRequest): Elem = {
 
       val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
-      if (!context.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
+      if (!RepoBridge.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
 
       val (firstToken: Option[ResumptionToken], headers: NodeSeq) = request.resumptionToken match {
         case Some(previousToken) =>
-          (None, context.getHeaders(previousToken))
+          (None, RepoBridge.getHeaders(previousToken))
         case None =>
-          val firstToken = context.getFirstIdentifierToken(set, request.metadataPrefix, request.from, request.until)
-          (firstToken, context.getHeaders(firstToken))
+          val firstToken = RepoBridge.getFirstIdentifierToken(set, request.metadataPrefix, request.from, request.until)
+          (firstToken, RepoBridge.getHeaders(firstToken))
       }
 
       val resumptionToken: ResumptionToken = request.resumptionToken match {
@@ -317,17 +314,16 @@ object OaiPmh extends Controller {
       xmlns="http://www.openarchives.org/OAI/2.0/"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
-        <responseDate>
-          {currentDate}
-        </responseDate>
-        <request verb="{request.verb}" from={emptyOrDate(request.from)} until={emptyOrDate(request.until)} metadataPrefix={emptyOrString(request.metadataPrefix)}>
-          {requestURL}
-        </request>
+        <responseDate>{currentDate}</responseDate>
+        <request
+          verb={request.verb}
+          from={emptyOrDate(request.from)}
+          until={emptyOrDate(request.until)}
+          metadataPrefix={emptyOrString(request.metadataPrefix)}
+        >{requestURL}</request>
         <ListIdentifiers>
           {headers}
-          <resumptionToken>
-            {resumptionToken}
-          </resumptionToken>
+          <resumptionToken>{resumptionToken}</resumptionToken>
         </ListIdentifiers>
       </OAI-PMH>
     }
@@ -335,15 +331,15 @@ object OaiPmh extends Controller {
     def listRecords(request: PmhRequest): Elem = {
 
       val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
-      if (!context.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
+      if (!RepoBridge.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
       val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException("No metadataPrefix provided"))
 
       val (firstToken: Option[ResumptionToken], records: NodeSeq) = request.resumptionToken match {
         case Some(previousToken) =>
-          (None, context.getRecords(previousToken))
+          (None, RepoBridge.getRecords(previousToken))
         case None =>
-          val firstToken = context.getFirstRecordToken(set, request.metadataPrefix, request.from, request.until)
-          (firstToken, context.getRecords(firstToken))
+          val firstToken = RepoBridge.getFirstRecordToken(set, request.metadataPrefix, request.from, request.until)
+          (firstToken, RepoBridge.getRecords(firstToken))
       }
 
       val resumptionToken: ResumptionToken = request.resumptionToken match {
@@ -358,12 +354,13 @@ object OaiPmh extends Controller {
       xmlns="http://www.openarchives.org/OAI/2.0/"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
-        <responseDate>
-          {currentDate}
-        </responseDate>
-        <request verb="ListRecords" from={emptyOrDate(request.from)} until={emptyOrDate(request.until)} metadataPrefix={emptyOrString(request.metadataPrefix)}>
-          {requestURL}
-        </request>
+        <responseDate>{currentDate}</responseDate>
+        <request
+        verb={request.verb}
+        from={emptyOrDate(request.from)}
+        until={emptyOrDate(request.until)}
+        metadataPrefix={emptyOrString(request.metadataPrefix)}
+        >{requestURL}</request>
         <ListRecords>
           {records}
           {resumptionToken}
@@ -379,17 +376,19 @@ object OaiPmh extends Controller {
 
     def getRecord(request: PmhRequest): Elem = {
 
+      val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
+      if (!RepoBridge.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
       val identifier = request.identifier.getOrElse(throw new BadArgumentException("No identifier provided"))
-      val maybeRecord: Option[NodeSeq] = context.getRecord(identifier)
+      val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException("No metadataPrefix provided"))
+      val maybeRecord: Option[NodeSeq] = RepoBridge.getRecord(set, prefix, identifier)
       val record = maybeRecord.getOrElse(throw new RecordNotFoundException(s"No record for identifier: [$identifier]"))
 
-      <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
-        <responseDate>
-          {currentDate}
-        </responseDate>
-        <request verb="{request.verb}" identifier={identifier} metadataPrefix={emptyOrString(request.metadataPrefix)}>
-          {requestURL}
-        </request>
+      <OAI-PMH
+      xmlns="http://www.openarchives.org/OAI/2.0/"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
+        <responseDate>{currentDate}</responseDate>
+        <request verb={request.verb} identifier={identifier} metadataPrefix={emptyOrString(request.metadataPrefix)}>{requestURL}</request>
         <GetRecord>
           {record}
         </GetRecord>
@@ -398,63 +397,46 @@ object OaiPmh extends Controller {
 
     def errorResponse(errorCode: String, exception: Option[Exception] = None): Elem = {
       exception.map(LOG.error(errorCode, _))
+
+      def error(message: String): NodeSeq = <error code={errorCode}>{message}</error>
+
+      val errorElement = errorCode match {
+        case "badArgument" => error(
+          "The request includes illegal arguments, is missing required arguments, includes a repeated argument, or values for arguments have an illegal syntax."
+        )
+        case "badResumptionToken" => error(
+          "The value of the resumptionToken argument is invalid or expired."
+        )
+        case "badVerb" => error(
+          "Value of the verb argument is not a legal OAI-PMH verb, the verb argument is missing, or the verb argument is repeated."
+        )
+        case "cannotDisseminateFormat" => error(
+          "The metadata format identified by the value given for the metadataPrefix argument is not supported by the item or by the repository."
+        )
+        case "idDoesNotExist" => error(
+          "The value of the identifier argument is unknown or illegal in this repository."
+        )
+        case "noMetadataFormats" => error(
+          "There are no metadata formats available for the specified item."
+        )
+        case "noRecordsMatch" => error(
+          "The combination of the values of the from, until, set and metadataPrefix arguments results in an empty list."
+        )
+        case "noSetHierarchy" => error(
+          "This repository does not support sets or no sets are publicly available for this repository."
+        )
+        case _ => error(
+          "Unknown Error Code"
+        )
+      }
+
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
-        <responseDate>
-          {currentDate}
-        </responseDate>
-        <request>
-          {requestURL}
-        </request>
-          {errorCode match {
-
-        case "badArgument" =>
-          <error code="badArgument">
-            The request includes illegal arguments, is missing required arguments, includes a repeated argument, or values for arguments have an illegal syntax.
-          </error>
-
-        case "badResumptionToken" =>
-          <error code="badResumptionToken">
-            The value of the resumptionToken argument is invalid or expired.
-          </error>
-
-        case "badVerb" =>
-          <error code="badVerb">
-            Value of the verb argument is not a legal OAI-PMH verb, the verb argument is missing, or the verb argument is repeated.
-          </error>
-
-        case "cannotDisseminateFormat" =>
-          <error code="cannotDisseminateFormat">
-            The metadata format identified by the value given for the metadataPrefix argument is not supported by the item or by the repository.
-          </error>
-
-        case "idDoesNotExist" =>
-          <error code="idDoesNotExist">
-            The value of the identifier argument is unknown or illegal in this repository.
-          </error>
-
-        case "noMetadataFormats" =>
-          <error code="noMetadataFormats">
-            There are no metadata formats available for the specified item.
-          </error>
-
-        case "noRecordsMatch" =>
-          <error code="noRecordsMatch">
-            The combination of the values of the from, until, set and metadataPrefix arguments results in an empty list.
-          </error>
-
-        case "noSetHierarchy" =>
-          <error code="noSetHierarchy">
-            This repository does not support sets or no sets are publicly available for this repository.
-          </error> // Should never be used. We only use sets
-
-        case _ =>
-          <error code="unknown">
-            Unknown Error Code
-          </error>
-      }}
+        <responseDate>{currentDate}</responseDate>
+        <request>{requestURL}</request>
+        {errorElement}
       </OAI-PMH>
     }
 
@@ -531,9 +513,10 @@ object OaiPmh extends Controller {
   trait RecordRepo {
 
     case class DataSet(spec: String, name: String, description: String, totalRecords: Int, dataProvider: String)
+
     case class Format(prefix: String, schema: String, namespace: String)
 
-    def getRecord(identifier: String): Option[NodeSeq]
+    def getRecord(set: String, format: String, identifier: String): Option[NodeSeq]
 
     def getFirstIdentifierToken(set: String, format: Option[String], from: Option[Date], until: Option[Date]): ResumptionToken
 
@@ -545,11 +528,11 @@ object OaiPmh extends Controller {
 
     def setExists(set: String): Boolean
 
-    def getDataSets : Seq[DataSet]
+    def getDataSets: Seq[DataSet]
 
     // if no identifier present list all formats
     // otherwise only list the formats available for the identifier
-    def getFormats(identifier: Option[String]) : Seq[Format]
+    def getFormats(identifier: Option[String]): Seq[Format]
   }
 
   case class PmhRequest
@@ -565,7 +548,7 @@ object OaiPmh extends Controller {
 
   object ResumptionToken {
     private val ResumptionTokenExtractor = """(.+?)::(.+?)::(.+?)::(.+?)::(.+)""".r
-    
+
     def apply(string: String): ResumptionToken = {
 
       def stringToDate(string: String) = new Date() // todo
@@ -576,7 +559,7 @@ object OaiPmh extends Controller {
 
   }
 
-  class ResumptionToken(set: String, expiry: Date, totalRecords:Int, pageSize: Int, page: Int) {
+  class ResumptionToken(set: String, expiry: Date, totalRecords: Int, pageSize: Int, page: Int) {
     def next: ResumptionToken = new ResumptionToken(set, expiry, totalRecords, pageSize, page + 1)
 
     override def toString = s"$set::$expiry::$totalRecords::$pageSize::$page"

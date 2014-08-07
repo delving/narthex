@@ -27,6 +27,9 @@ import play.api.mvc._
 import services.Repo.repo
 import services._
 
+import scala.xml.transform.{RewriteRule, RuleTransformer}
+import scala.xml.{Elem, Node}
+
 object APIController extends Controller with TreeHandling with RecordHandling {
 
   def indexJSON(apiKey: String, fileName: String) = Action(parse.anyContent) {
@@ -92,9 +95,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
-        val storedRecord: String = fileRepo.getRecord(id)
+        val storedRecord: Elem = fileRepo.getRecord(id)
         if (storedRecord.nonEmpty) {
-          Ok(scala.xml.XML.loadString(storedRecord))
+          Ok(storedRecord)
         }
         else {
           NotFound(s"No record found for $id")
@@ -106,6 +109,15 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
+  class Stamp(prefix: String, localName: String) extends RewriteRule {
+    override def transform(node : Node):Node = node match {
+      case elem: Elem if elem.label == "Identifier" =>
+        <hello>helllo</hello>
+      case remainder => remainder
+    }
+  }
+  class Stamper(prefix: String, localName: String) extends RuleTransformer(new Stamp(prefix,localName))
+
   def enrichedRecord(apiKey: String, fileName: String, id: String) = Action(parse.anyContent) {
     implicit request => {
       if (checkKey(fileName, apiKey)) {
@@ -115,11 +127,12 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           Cache.set(fileName, freshMap, 60 * 5)
           freshMap
         }
-        val storedRecord: String = fileRepo.getRecord(id)
+        val storedRecord: Elem = fileRepo.getRecord(id)
         if (storedRecord.nonEmpty) {
           val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text
           val parser = new StoredRecordParser(fileName, recordRoot, mappings)
-          val record = parser.parse(storedRecord)
+          // find a way to iterate through the elem instead
+          val record = parser.parse(storedRecord.toString())
           Ok(scala.xml.XML.loadString(record.text.toString()))
         }
         else {
@@ -155,12 +168,8 @@ object APIController extends Controller with TreeHandling with RecordHandling {
               <mappings>
                 {mappings.map { m =>
                 <mapping>
-                  <source>
-                    {m.source}
-                  </source>
-                  <target>
-                    {m.target}
-                  </target>
+                  <source>{m.source}</source>
+                  <target>{m.target}</target>
                 </mapping>
               }}
               </mappings>
@@ -219,22 +228,12 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           {for ((file, facts) <- repo.listSipZip)
         yield
           <sip>
-            <file>
-              {file.getName}
-            </file>
+            <file>{file.getName}</file>
             <facts>
-              <name>
-                {facts("name")}
-              </name>
-              <dataProvider>
-                {facts("dataProvider")}
-              </dataProvider>
-              <country>
-                {facts("dataProvider")}
-              </country>
-              <orgId>
-                {facts("orgId")}
-              </orgId>
+              <name>{facts("name")}</name>
+              <dataProvider>{facts("dataProvider")}</dataProvider>
+              <country>{facts("dataProvider")}</country>
+              <orgId>{facts("orgId")}</orgId>
               <schemaVersions>
                 {for (sv <- facts("schemaVersions").split(", *"))
               yield

@@ -433,12 +433,47 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     }
   }
 
-  def getRecord(id: String) = {
+  def getRecord(identifier: String): Elem = {
     withRecordDatabase {
       session =>
-        val queryForRecords = s"""collection('$recordDb')[/narthex/@id=${quote(id)}]"""
-        println("asking:\n" + queryForRecords)
-        session.query(queryForRecords).execute()
+        val dataset = getDatasetInfo
+        val queryForRecord = s"""
+              |
+              | ${namespaceDeclarations(dataset)}
+              | let $$recordWithId := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
+              | return <record>{
+              |   $$recordWithId
+              | }</record>
+              |
+              """.stripMargin.trim
+        println("asking:\n" + queryForRecord)
+        XML.loadString(session.query(queryForRecord).execute())
+    }
+  }
+
+  def getRecordPmh(identifier: String): Elem = {
+    withRecordDatabase {
+      session =>
+        val dataset = getDatasetInfo
+        val queryForRecord = s"""
+              |
+              | ${namespaceDeclarations(dataset)}
+              | let $$rec := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
+              | return
+              |   <record>
+              |     <header>
+              |       <identifier>{$$rec/narthex/@id}</identifier>
+              |       <datestamp>{$$rec/narthex/@mod}</datestamp>
+              |       <setSpec>to-do!</setSpec>
+              |     </header>
+              |     <metadata>
+              |      {$$rec/narthex/*}
+              |     </metadata>
+              |   </record>
+              |
+              """.stripMargin.trim
+        println("asking:\n" + queryForRecord)
+        XML.loadString(session.query(queryForRecord).execute())
     }
   }
 
