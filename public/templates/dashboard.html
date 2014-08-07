@@ -54,7 +54,7 @@
                             <span ng-switch-when="3:analyzed">
                                 <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
                                 <div class="btn-toolbar pull-right">
-                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Edit</button>
+                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Open</button>
                                 <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records</button>
                                 <button class="btn btn-danger btn-xs" data-ng-click="deleteDataset(file)">Delete</button>
                                 </div>
@@ -70,11 +70,10 @@
 
                             <!-- 5:SAVED -->
                             <span ng-switch-when="5:saved">
-                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span class="label label-info">Saved</span>
+                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
                                 <div class="btn-toolbar pull-right">
-                                    <button class="btn btn-info btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo">Show more info</button>
-                                    <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records Again (for now)</button>
-                                    <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Edit</button>
+                                    <button class="btn btn-default btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"><i class="fa fa-info"></i> info</button>
+                                    <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Open</button>
                                     <button class="btn btn-danger btn-xs" data-ng-click="deleteDataset(file)">Delete</button>
                                 </div>
                                 <div class="file-extended-info" data-ng-show="file.showExtendedInfo">
