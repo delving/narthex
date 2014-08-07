@@ -1,6 +1,6 @@
 @import "variables";
 @import "elements";
-@import "font-awesome";
+
 
 .fa-spin-left {
   -webkit-animation: spin-left 2s infinite linear;
@@ -151,6 +151,9 @@ body {
       background: @brand-primary;
       color: @white;
     }
+    .progress {
+      margin-top: 8px;
+    }
   }
 }
 
@@ -219,13 +222,6 @@ body {
       }
     }
   }
-  .list-controls {
-//    background: @brand-primary;
-    .btn.active {
-       background: @brand-info;
-        bordern: none;
-    }
-  }
   .sub-controls {
     margin-left: 10px;
   }
@@ -239,7 +235,7 @@ body {
   .list-group-item {
     margin: 0 0 0 0;
     padding: 0 0 0 0;
-//    border: none;
+    border: none;
     background: @gray-lighter;
     color: @gray-dark;
     padding: 2px 14px;
@@ -258,6 +254,13 @@ body {
       color: @white;
     }
 
+  }
+}
+
+.list-controls {
+  .btn.active {
+    background: @brand-info;
+    bordern: none;
   }
 }
 
@@ -348,37 +351,43 @@ code {
   overflow-y: auto;
 }
 
-// todo: change name
-.gerald-alt {
-  font-style: italic;
-}
+/* CONCEPT LIST */
 
-// todo: change name
-.gerald-found-term {
-  font-size: 18pt;
-}
-
-// todo: change name
-.gerald-concept-bottom {
-  color: @gray-lighter;
-  background: #000000;
-  padding: 4px;
-}
-
-.concept-box {
-  background: @gray-dark;
-  padding: 10px;
-  .progress {
-    margin-bottom: 4px !important;
+.concepts-list {
+  .alt-term {
+    font-style: italic;
+  }
+  .concept-bottom {
+    font-size: 85%;
+  }
+  .concept-box {
+    background: @gray-darker;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed @gray;
+    .progress {
+      margin-bottom: 4px !important;
+    }
+  }
+  .concept-selected {
+    background: @gray;
+    padding: 4px;
+  }
+  .label {
+    font-size: 85%;
+    display: inline-block;
+    margin-bottom: 4px;
+    &:hover {
+      cursor: pointer;
+    }
   }
 }
 
-// todo: change name
-.gerald-selected-concept {
-  border-style: solid;
-  border-width: 2px;
-  border-color: #aeaeae
-}
+
+
+
+
+
+
 
 .panel-enrich-info {
   background: @brand-primary;

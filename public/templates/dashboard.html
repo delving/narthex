@@ -34,28 +34,41 @@
             <div class="panel-body file-list">
                 <ul class="list-group">
                     <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.status">
-                        <span ng-switch="file.status.state">
+                        <div ng-switch="file.status.state">
+
+                            <!-- 1:SPLITTING -->
                             <span ng-switch-when="1:splitting">
-                                {{ file.name }} <span class="label label-warning">Splitting</span>
+                                <i class="fa fa-file-code-o"> </i> {{ file.name }} <span class="label label-warning">Splitting</span>
                                 <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
-                                    <b>{{file.status.percent}}%</b>
+                                    {{file.status.percent}}%
                                 </progressbar>
                             </span>
+
+                            <!-- 2:ANALYSING -->
                             <span ng-switch-when="2:analyzing">
-                                {{ file.name }} <span class="label label-success">Analyzing</span>
+                                <p>{{ file.name }} <span class="label label-success">Analyzing</span></p>
                                 <code class="process">({{file.status.workers}} workers)</code>
                             </span>
+
+                            <!-- 3:ANALYZED -->
                             <span ng-switch-when="3:analyzed">
-                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                                <i class="fa fa-file-code-o"> </i> <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                                <div class="btn-toolbar pull-right">
+                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">View</button>
                                 <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records</button>
-                                <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteDataset(file)">Delete</button>
+                                <button class="btn btn-danger btn-xs" data-ng-click="deleteDataset(file)">Delete</button>
+                                </div>
                             </span>
+
+                            <!-- 4:SAVING -->
                             <span ng-switch-when="4:saving">
                                 <a href data-ng-click="viewFile(file)">{{ file.name }}</a><span> Saving</span>
                                 <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
-                                    <b>{{file.status.percent}}%</b>
+                                    {{file.status.percent}}%
                                 </progressbar>
                             </span>
+
+                            <!-- 5:SAVED -->
                             <span ng-switch-when="5:saved">
                                 <a href data-ng-click="viewFile(file)">{{ file.name }}</a><span> Saved</span>
                                 <div data-ng-show="file.namespaces">
@@ -83,10 +96,14 @@
                                 </div>
                                 <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteDataset(file)">Delete</button>
                             </span>
-                            <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
-                        </span>
 
+                            <!-- UNKNOWN STATE -->
+                            <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
+                        </div>
+
+                        <!-- SAVE RECORD -->
                         <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records Again (for now)</button>
+
 
                     </li>
                 </ul>

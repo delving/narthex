@@ -6,6 +6,7 @@
     @*<link rel='stylesheet' media='screen' href='@CdnWebJarAssets.getUrl(CdnWebJarAssets.locate("bootstrap.min.css"))' />*@
     @*-- Add More CSS here -- *@
     <link rel='stylesheet' media='screen' href='@routes.Assets.at("stylesheets/bootstrap.min.css")'>
+    <link rel='stylesheet' media='screen' href='@routes.Assets.at("css/font-awesome.min.css")'>
     <link rel='stylesheet' media='screen' href='@routes.Assets.at("stylesheets/main.css")'>
     <script>@Html(org.webjars.RequireJS.getSetupJavaScript(routes.CdnWebJarAssets.at("").url))</script>
     <script data-main='@routes.Assets.at(helper.mainScriptSrc(scriptName = "main"))' src='@CdnWebJarAssets.getUrl(CdnWebJarAssets.locate("require.js"))'></script>
