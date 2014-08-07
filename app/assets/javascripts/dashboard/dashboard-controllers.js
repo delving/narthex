@@ -48,6 +48,8 @@ define(["angular"], function () {
             return now - $scope.lastStatusCheck;
         }
 
+
+
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
             if ($files.length && !$scope.uploading) {

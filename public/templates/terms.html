@@ -88,12 +88,14 @@
                                 {{ concept.proximity * 100 | number : 0 }}%
                             </progressbar>
                             <div>
-                                <!--<a href data-ng-class="{ 'gerald-alt' : !concept.preferred, }" data-ng-click="setMapping(concept)" class="btn btn-primary">-->
+                                <!-- ALT TERM: FOUND BUT NOT PREFERRED -->
                                 <span data-ng-class="{ 'alt-term' : !concept.preferred, }"
                                       data-ng-click="setMapping(concept)"
                                       class="found-term">
                                     <span class="label label-primary">{{ concept.label }}</span>
                                 </span>
+
+
                                 <span data-ng-show="!concept.preferred"
                                       data-ng-click="selectSought(concept.prefLabel)"
                                       class="preferred-term">

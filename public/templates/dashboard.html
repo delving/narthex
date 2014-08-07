@@ -38,7 +38,7 @@
 
                             <!-- 1:SPLITTING -->
                             <span ng-switch-when="1:splitting">
-                                <i class="fa fa-file-code-o"> </i> {{ file.name }} <span class="label label-warning">Splitting</span>
+                                {{ file.name }} <span class="label label-warning">Splitting</span>
                                 <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
                                     {{file.status.percent}}%
                                 </progressbar>
@@ -52,9 +52,9 @@
 
                             <!-- 3:ANALYZED -->
                             <span ng-switch-when="3:analyzed">
-                                <i class="fa fa-file-code-o"> </i> <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
                                 <div class="btn-toolbar pull-right">
-                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">View</button>
+                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Edit</button>
                                 <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records</button>
                                 <button class="btn btn-danger btn-xs" data-ng-click="deleteDataset(file)">Delete</button>
                                 </div>
@@ -62,7 +62,7 @@
 
                             <!-- 4:SAVING -->
                             <span ng-switch-when="4:saving">
-                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a><span> Saving</span>
+                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span class="label label-info">Saving...</span>
                                 <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
                                     {{file.status.percent}}%
                                 </progressbar>
@@ -70,39 +70,46 @@
 
                             <!-- 5:SAVED -->
                             <span ng-switch-when="5:saved">
-                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a><span> Saved</span>
-                                <div data-ng-show="file.namespaces">
-                                    <h4>Namespaces</h4>
-                                    <ul>
-                                        <li data-ng-repeat="namespace in file.namespaces">
-                                            <b>{{ namespace.prefix }}</b> = "{{ namespace.uri }}"
-                                        </li>
-                                    </ul>
+                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span class="label label-info">Saved</span>
+                                <div class="btn-toolbar pull-right">
+                                    <button class="btn btn-info btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo">Show more info</button>
+                                    <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records Again (for now)</button>
+                                    <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Edit</button>
+                                    <button class="btn btn-danger btn-xs" data-ng-click="deleteDataset(file)">Delete</button>
                                 </div>
-                                <div>
-                                    <h4>Records</h4>
-                                    <ul>
-                                        <li><b>Record Root</b>: {{ file.delimit.recordRoot }}</li>
-                                        <li><b>Unique ID</b>: {{ file.delimit.uniqueId }}</li>
-                                        <li><b>Record Count</b>: {{ file.delimit.recordCount }}</li>
-                                    </ul>
+                                <div class="file-extended-info" data-ng-show="file.showExtendedInfo">
+                                    <div data-ng-show="file.namespaces">
+                                        <h4>Namespaces</h4>
+                                        <ul>
+                                            <li data-ng-repeat="namespace in file.namespaces">
+                                                <b>{{ namespace.prefix }}</b> = "{{ namespace.uri }}"
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4>Records</h4>
+                                        <ul>
+                                            <li><b>Record Root</b>: {{ file.delimit.recordRoot }}</li>
+                                            <li><b>Unique ID</b>: {{ file.delimit.uniqueId }}</li>
+                                            <li><b>Record Count</b>: {{ file.delimit.recordCount }}</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4>Mappings</h4>
+                                        <a ng-href="{{file.apiMappings}}" target="_blank">Download Mappings</a>
+                                    </div>
+                                    <div>
+                                        <h4>Extra</h4>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h4>Mappings</h4>
-                                    <a ng-href="{{file.apiMappings}}" target="_blank">Download Mappings</a>
-                                </div>
-                                <div>
-                                    <h4>Extra</h4>
-                                </div>
-                                <button class="btn btn-danger btn-xs pull-right" data-ng-click="deleteDataset(file)">Delete</button>
                             </span>
 
                             <!-- UNKNOWN STATE -->
                             <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
                         </div>
 
-                        <!-- SAVE RECORD -->
-                        <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records Again (for now)</button>
+
+
 
 
                     </li>
