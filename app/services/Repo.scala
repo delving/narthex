@@ -673,7 +673,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |       </record>
               |
               | return
-              |   <records count="{count($$selection)}" start="$start" pageSize="$pageSize">
+              |   <records start="$start" pageSize="$pageSize">
               |     {subsequence($$records, $start, $pageSize)}
               |   </records>
               |
