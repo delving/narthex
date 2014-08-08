@@ -10,6 +10,7 @@
         <div class="file-drop" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
              ng-show="dropSupported">
             <h6>Drag and drop your xml source file into this area</h6>
+
             <div class="img-holder" data-ng-show="uploading">
                 <img ng-src="/assets/images/narthex-blue.png"/>
                 <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
@@ -20,108 +21,129 @@
                 <img ng-src="/assets/images/narthex-blue.png"/>
             </div>
             <div data-ng-if="percent">
-                <progressbar class="progress-striped active" animate="true" value="percent" max="100" type="success" >
+                <progressbar class="progress-striped active" animate="true" value="percent" max="100" type="success">
                     <b>{{percent}}%</b>
                 </progressbar>
             </div>
         </div>
     </div>
     <div class="col-sm-9">
-        <div class="panel panel-primary">
-            <div class="panel-heading">
-                <h3 class="panel-title">Published files:</h3>
-            </div>
-            <div class="panel-body file-list">
-                <ul class="list-group">
-                    <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.status">
-                        <div ng-switch="file.status.state">
 
-                            <!-- 1:SPLITTING -->
-                            <span ng-switch-when="1:splitting">
-                                {{ file.name }} <span class="label label-warning">Splitting</span>
-                                <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
-                                    {{file.status.percent}}%
-                                </progressbar>
-                            </span>
-
-                            <!-- 2:ANALYSING -->
-                            <span ng-switch-when="2:analyzing">
-                                <p>{{ file.name }} <span class="label label-success">Analyzing</span></p>
-                                <code class="process">({{file.status.workers}} workers)</code>
-                            </span>
-
-                            <!-- 3:ANALYZED -->
-                            <span ng-switch-when="3:analyzed">
-                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
-                                <div class="btn-toolbar pull-right">
-                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Open</button>
-                                <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records</button>
-                                <button class="btn btn-danger btn-xs btn-isolate" data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;</button>
-                                </div>
-                            </span>
-
-                            <!-- 4:SAVING -->
-                            <span ng-switch-when="4:saving">
-                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span class="label label-info">Saving...</span>
-                                <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
-                                    {{file.status.percent}}%
-                                </progressbar>
-                            </span>
-
-                            <!-- 5:SAVED -->
-                            <span ng-switch-when="5:saved">
-                                <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
-                                <div class="btn-toolbar pull-right">
-                                    <button class="btn btn-default btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"><i class="fa fa-info"></i> info</button>
-                                    <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Open</button>
-                                    <button class="btn btn-danger btn-xs btn-isolate" data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;</button>
-                                </div>
-                                <div class="file-extended-info" data-ng-show="file.showExtendedInfo">
-                                    <div data-ng-show="file.namespaces">
-                                        <h4>Namespaces</h4>
-                                        <ul>
-                                            <li data-ng-repeat="namespace in file.namespaces">
-                                                <b>{{ namespace.prefix }}</b> = "{{ namespace.uri }}"
-                                            </li>
-                                        </ul>
-                                    </div>
-                                    <div>
-                                        <h4>Records</h4>
-                                        <ul>
-                                            <li><b>Record Root</b>: {{ file.delimit.recordRoot }}</li>
-                                            <li><b>Unique ID</b>: {{ file.delimit.uniqueId }}</li>
-                                            <li><b>Record Count</b>: {{ file.delimit.recordCount }}</li>
-                                        </ul>
-                                    </div>
-                                    <div>
-                                        <h4>Mappings</h4>
-                                        <a ng-href="{{file.apiMappings}}" target="_blank">Download Mappings</a>
-                                    </div>
-                                    <div>
-                                        <h4>Extra</h4>
-                                    </div>
-                                </div>
-                            </span>
-
-                            <!-- UNKNOWN STATE -->
-                            <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
-                        </div>
-
-
-
-
-
-                    </li>
-                </ul>
-            </div>
-        </div>
-        <div data-ng-show="sipFiles">
-            <h3>SIP Files</h3>
-            <ul>
-                <li data-ng-repeat="file in sipFiles">
-                    {{ file }}
+        <div class="tabbable">
+            <!-- Nav tabs -->
+            <ul class="nav nav-pills" role="tablist" ng-init="list.active.tab = 'files'">
+                <li ng-class="{'active':list.active.tab === 'files'}">
+                    <a href role="tab" data-ng-click="list.active.tab = 'files'">Analyzed files</a>
+                </li>
+                <li ng-class="{'active':list.active.tab === 'sips'}">
+                    <a href role="tab" data-ng-click="list.active.tab = 'sips'">SIPfiles</a>
                 </li>
             </ul>
+            <!-- Tab panes -->
+            <div class="tab-content">
+                <div ng-switch="list.active.tab">
+                    <div ng-switch-when="files" class="file-list">
+                        <div>
+                            <ul class="list-group">
+                                <li ng-repeat="file in files" class="list-group-item clearfix"
+                                    data-ng-show="file.status">
+                                    <div ng-switch="file.status.state">
+
+                                        <!-- 1:SPLITTING -->
+                                        <span ng-switch-when="1:splitting">
+                                            {{ file.name }} <span class="label label-warning">Splitting</span>
+                                            <progressbar class="progress-striped active" animate="true" value="file.status.percent"
+                                                         max="100" type="success">
+                                                {{file.status.percent}}%
+                                            </progressbar>
+                                        </span>
+
+                                        <!-- 2:ANALYSING -->
+                                        <span ng-switch-when="2:analyzing">
+                                            <p>{{ file.name }} <span class="label label-success">Analyzing</span></p>
+                                            <code class="process">({{file.status.workers}} workers)</code>
+                                        </span>
+
+                                        <!-- 3:ANALYZED -->
+                                        <span ng-switch-when="3:analyzed">
+                                            <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                                            <div class="btn-toolbar pull-right">
+                                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Open</button>
+                                                <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)"
+                                                        data-ng-show="file.delimit.recordCount > 0">Save Records
+                                                </button>
+                                                <button class="btn btn-danger btn-xs btn-isolate"
+                                                        data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                                </button>
+                                            </div>
+                                        </span>
+
+                                        <!-- 4:SAVING -->
+                                        <span ng-switch-when="4:saving">
+                                            <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span
+                                                class="label label-info">Saving...</span>
+                                            <progressbar class="progress-striped active" animate="true" value="file.status.percent"
+                                                         max="100" type="success">
+                                                {{file.status.percent}}%
+                                            </progressbar>
+                                        </span>
+
+                                        <!-- 5:SAVED -->
+                                        <span ng-switch-when="5:saved">
+                                            <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                                            <div class="btn-toolbar pull-right">
+                                                <button class="btn btn-default btn-xs"
+                                                        data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"><i
+                                                        class="fa fa-info"></i> info
+                                                </button>
+                                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Open</button>
+                                                <button class="btn btn-danger btn-xs btn-isolate"
+                                                        data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                                </button>
+                                            </div>
+                                            <div class="file-extended-info" data-ng-show="file.showExtendedInfo">
+                                                <!-- todo: move delete button in here and create a placeholder button for 'publish'-->
+                                                <div data-ng-show="file.namespaces">
+                                                    <h4>Namespaces</h4>
+                                                    <ul>
+                                                        <li data-ng-repeat="namespace in file.namespaces">
+                                                            <b>{{ namespace.prefix }}</b> = "{{ namespace.uri }}"
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <div>
+                                                    <h4>Records</h4>
+                                                    <ul>
+                                                        <li><b>Record Root</b>: {{ file.delimit.recordRoot }}</li>
+                                                        <li><b>Unique ID</b>: {{ file.delimit.uniqueId }}</li>
+                                                        <li><b>Record Count</b>: {{ file.delimit.recordCount }}</li>
+                                                    </ul>
+                                                </div>
+                                                <div>
+                                                    <h4>Mappings</h4>
+                                                    <a ng-href="{{file.apiMappings}}" target="_blank">Download Mappings</a>
+                                                </div>
+                                                <div>
+                                                    <h4>Extra</h4>
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <!-- UNKNOWN STATE -->
+                                         <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div ng-switch-when="sips" class="file-list">
+                        <ul class="list-group">
+                            <li class="list-group-item" data-ng-repeat="file in sipFiles">
+                                {{ file }}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
