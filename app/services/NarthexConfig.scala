@@ -33,5 +33,4 @@ object NarthexConfig {
   lazy val OAI_PMH_EARLIEST_DATE_STAMP = configString("oai_pmh.earliestDateStamp")
   lazy val OAI_PMH_SAMPLE_IDENTIFIER = configString("oai_pmh.sampleIdentifier")
   lazy val OAI_PMH_PAGE_SIZE = configInt("oai_pmh.pageSize")
-  lazy val OAI_PMH_MINUTES_TO_EXPIRY = configInt("oai_pmh.minutesToExpiry")
 }

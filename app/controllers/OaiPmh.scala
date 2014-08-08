@@ -16,8 +16,6 @@
 
 package controllers
 
-import java.util.Date
-
 import controllers.OaiPmh.Service.{QueryKey, Verb}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -40,8 +38,6 @@ object OaiPmh extends Controller {
   object RepoBridge {
 
     case class Format(prefix: String, schema: String, namespace: String)
-
-    def expiry = new Date(System.currentTimeMillis() + NarthexConfig.OAI_PMH_MINUTES_TO_EXPIRY * 1000 * 60)
 
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
 

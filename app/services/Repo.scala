@@ -604,8 +604,6 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
   def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[String] = {
     val now = new DateTime()
     println(s"createHarvest: $name, $from, $until")
-    val expiryDate = now.plusMinutes(NarthexConfig.OAI_PMH_MINUTES_TO_EXPIRY)
-    val expiry = toXSDString(expiryDate)
     val dataset = getDatasetInfo
     val countString = withRecordDatabase {
       session =>
@@ -615,7 +613,6 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     }
     val count = countString.toInt
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
-    println(s"!!! count=$count")
     val pages = if (count % pageSize == 0) count / pageSize else count / pageSize + 1
     val harvest = Harvest(name, headersOnly, from, until, pages)
     Cache.set(harvest.resumptionToken, harvest, 2 minutes)
@@ -643,7 +640,6 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |   </record>
               |
               """.stripMargin.trim
-        println("asking:\n" + queryForRecord)
         XML.loadString(session.query(queryForRecord).execute())
     }
   }
@@ -660,7 +656,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               | let $$selection := collection('$recordDb')/narthex${dateSelector(from, until)}
               |
               | let $$records :=
-              |   for $$narthex in $$selection
+              |   for $$narthex in subsequence($$selection, $start, $pageSize)
               |   order by $$narthex/@mod descending
               |     return
               |       <record>
@@ -674,11 +670,10 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |
               | return
               |   <records start="$start" pageSize="$pageSize">
-              |     {subsequence($$records, $start, $pageSize)}
+              |     {$$records}
               |   </records>
               |
               """.stripMargin.trim
-        println("asking:\n" + query)
         val wrappedRecords: Elem = XML.loadString(session.query(query).execute())
         wrappedRecords \ "record"
     }
