@@ -56,12 +56,6 @@
 
 /* global utilitly classes */
 
-.group:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
 .pointer {
   cursor: pointer;
 }
@@ -103,8 +97,8 @@ body {
 
 .file-drop {
 //  background: @black;
-  border: 2px dashed @gray;
-  padding: @padding-base-vertical @padding-base-horizontal;
+//  border: 2px dashed @gray;
+//  padding: @padding-base-vertical @padding-base-horizontal;
   text-align: center;
 
   .img-holder {
@@ -374,9 +368,6 @@ code {
 /* CONCEPT LIST */
 
 .concepts-list {
-  .alt-term {
-    font-style: italic;
-  }
   .concept-bottom {
     font-size: 85%;
   }
@@ -401,6 +392,26 @@ code {
   }
 }
 
+.term-matched {
+  background: @brand-primary;
+}
+
+.term-alt {
+  background: @brand-info;
+}
+
+.term-preferred {
+  background: @brand-success;
+}
+
+.term-broader {
+  background: @gray-light;
+}
+
+.term-narrower {
+  background: @gray-light;
+}
+
 
 
 
@@ -423,6 +434,7 @@ code {
   code {
     border: 1px solid @gray-darker;
     color: @gray-dark;
+    display: block;
   }
 }
 

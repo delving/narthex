@@ -7,7 +7,7 @@
 
 <div class="row">
     <div class="col-sm-3">
-        <div class="file-drop" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
+        <div class="file-drop well" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
              ng-show="dropSupported">
             <h6>Drag and drop your xml source file into this area</h6>
 
@@ -33,10 +33,10 @@
             <!-- Nav tabs -->
             <ul class="nav nav-pills" role="tablist" ng-init="list.active.tab = 'files'">
                 <li ng-class="{'active':list.active.tab === 'files'}">
-                    <a href role="tab" data-ng-click="list.active.tab = 'files'">Analyzed files</a>
+                    <a href role="tab" data-ng-click="list.active.tab = 'files'">Files</a>
                 </li>
                 <li ng-class="{'active':list.active.tab === 'sips'}">
-                    <a href role="tab" data-ng-click="list.active.tab = 'sips'">SIPfiles</a>
+                    <a href role="tab" data-ng-click="list.active.tab = 'sips'">SIPs</a>
                 </li>
             </ul>
             <!-- Tab panes -->
@@ -67,10 +67,9 @@
                                         <div ng-switch-when="3:analyzed">
                                             <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
                                             <div class="btn-toolbar pull-right">
-                                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Open</button>
-                                                <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)"
-                                                        data-ng-show="file.delimit.recordCount > 0">Save Records
+                                                <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">Save Records
                                                 </button>
+                                                <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Open</button>
                                                 <button class="btn btn-danger btn-xs btn-isolate"
                                                         data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                                 </button>

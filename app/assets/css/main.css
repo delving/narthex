@@ -45,11 +45,6 @@
   }
 }
 /* global utilitly classes */
-.group:after {
-  content: "";
-  display: table;
-  clear: both;
-}
 .pointer {
   cursor: pointer;
 }
@@ -79,8 +74,6 @@ body {
   margin-right: 10px;
 }
 .file-drop {
-  border: 2px dashed #555555;
-  padding: 8px 16px;
   text-align: center;
 }
 .file-drop .img-holder {
@@ -320,9 +313,6 @@ code.path span {
   overflow-y: auto;
 }
 /* CONCEPT LIST */
-.concepts-list .alt-term {
-  font-style: italic;
-}
 .concepts-list .concept-bottom {
   font-size: 85%;
 }
@@ -342,6 +332,21 @@ code.path span {
 .concepts-list .label:hover {
   cursor: pointer;
 }
+.term-matched {
+  background: #0072b2;
+}
+.term-alt {
+  background: #5bc0de;
+}
+.term-preferred {
+  background: #5cb85c;
+}
+.term-broader {
+  background: #999999;
+}
+.term-narrower {
+  background: #999999;
+}
 .panel-enrich-info {
   background: #0072b2;
 }
@@ -358,6 +363,7 @@ code.path span {
 .file-path-info code {
   border: 1px solid #222222;
   color: #333333;
+  display: block;
 }
 /* AngularJS */
 [ng\:cloak],

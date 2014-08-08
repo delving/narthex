@@ -49,10 +49,11 @@
                     Records
                 </button>
                 <p data-ng-show="sought" class="pull-right">
-                    <span class="label label-primary">found term</span>
-                    <span class="label label-success"><i class="fa fa-star"></i> preferred term</span>
-                    <span class="label label-warning"><i class="fa fa-expand"></i> broader term</span>
-                    <span class="label label-info"><i class="fa fa-compress"></i> narrower term</span>
+                    <span class="label term-matched">matched term</span>
+                    <span class="label term-alt">alt term</span>
+                    <span class="label term-preferred"><i class="fa fa-star"></i> preferred term</span>
+                    <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> broader term</span>
+                    <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>-->  narrower term</span>
                 </p>
             </div>
 
@@ -89,30 +90,29 @@
                             </progressbar>
                             <div>
                                 <!-- ALT TERM: FOUND BUT NOT PREFERRED -->
-                                <span data-ng-class="{ 'alt-term' : !concept.preferred, }"
+                                <span
                                       data-ng-click="setMapping(concept)"
                                       class="found-term">
-                                    <span class="label label-primary">{{ concept.label }}</span>
+                                    <span class="label term-matched" data-ng-class="{ 'term-alt' : !concept.preferred }">{{ concept.label }}</span>
                                 </span>
 
 
                                 <span data-ng-show="!concept.preferred"
-                                      data-ng-click="selectSought(concept.prefLabel)"
-                                      class="preferred-term">
-                                    <span class="label label-success"><i class="fa fa-star"></i> {{ concept.prefLabel }}</span>
+                                      data-ng-click="selectSought(concept.prefLabel)">
+                                    <span class="label term-preferred"><!--&#8594;--><i class="fa fa-star"></i> {{ concept.prefLabel }}</span>
                                 </span>
                                 <span ng-show="concept.broader">
                                     <span data-ng-repeat="b in concept.broader"
                                           data-ng-click="selectSought(b.label)"
                                           class="broader-term">
-                                         <span class="label label-warning"><i class="fa fa-expand"></i> {{ b.label }}</span>
+                                         <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b.label }}</span>
                                     </span>
                                 </span>
                                 <span ng-show="concept.narrower">
                                     <span data-ng-repeat="n in concept.narrower"
                                           data-ng-click="selectSought(n.label)"
                                           class="narrower-term">
-                                        <span class="label label-info"><i class="fa fa-compress"></i> {{ n.label }}</span>
+                                        <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>--> {{ n.label }}</span>
                                     </span>
                                 </span>
                             </div>
