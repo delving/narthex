@@ -84,6 +84,30 @@ body {
   margin-left: 32px !important;
 }
 
+.btn-default {
+  &.active {
+    background: #ddd;
+    color: @gray;
+  }
+}
+
+.alert-explain {
+  background:@gray-light;
+  border: darken(@gray-light, 10%);
+  color: @white;
+}
+
+code {
+  &.path {
+    color: @gray;
+    white-space: pre-line;
+    word-wrap: break-word;
+    span {
+      color: @brand-success;
+    }
+  }
+}
+
 .instructions {
   font-size: 14px;
 }
@@ -273,12 +297,12 @@ body {
   }
 }
 
-.list-controls {
-  .btn.active {
-    background: @brand-info;
-    bordern: none;
-  }
-}
+//.list-controls {
+//  .btn.active {
+//    background: @brand-info;
+//    bordern: none;
+//  }
+//}
 
 ul.terminology-list {
   .list-group-item {
@@ -338,20 +362,7 @@ ul.terminology-list {
   margin-bottom: 20px;
   .input-group-addon {
       background: @brand-primary;
-      color: @gray-light;
-  }
-}
-
-
-
-code {
-  &.path {
-    color: @gray;
-    white-space: pre-line;
-    word-wrap: break-word;
-    span {
-      color: @brand-success;
-    }
+      color: @gray-lighter;
   }
 }
 

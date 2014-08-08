@@ -66,6 +66,23 @@ body {
 .btn-isolate {
   margin-left: 32px !important;
 }
+.btn-default.active {
+  background: #ddd;
+  color: #555555;
+}
+.alert-explain {
+  background: #999999;
+  border: #808080;
+  color: #ffffff;
+}
+code.path {
+  color: #555555;
+  white-space: pre-line;
+  word-wrap: break-word;
+}
+code.path span {
+  color: #5cb85c;
+}
 .instructions {
   font-size: 14px;
 }
@@ -235,10 +252,6 @@ body {
   background: #0072b2;
   color: #ffffff;
 }
-.list-controls .btn.active {
-  background: #5bc0de;
-  bordern: none;
-}
 ul.terminology-list .list-group-item:hover {
   font-weight: bold;
   cursor: pointer !important;
@@ -295,15 +308,7 @@ ul.terminology-list .list-group-item.list-item-mapped {
 }
 .input-group-skos-term .input-group-addon {
   background: #0072b2;
-  color: #999999;
-}
-code.path {
-  color: #555555;
-  white-space: pre-line;
-  word-wrap: break-word;
-}
-code.path span {
-  color: #5cb85c;
+  color: #eeeeee;
 }
 .dropdown-menu {
   background: #555555;
