@@ -20,7 +20,6 @@ import java.net.URLEncoder
 import java.security.MessageDigest
 
 import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
 import play.Logger
 
 import scala.collection.mutable
@@ -30,12 +29,6 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 trait RecordHandling {
   val SUBSTITUTE = "__substitute__"
-  val FORMATTER = ISODateTimeFormat.dateTime()
-
-  def toXSDString(dateTime : DateTime) = FORMATTER.print(dateTime)
-
-  def fromXSDDateTime(dateString : String) = FORMATTER.parseDateTime(dateString)
-
   class RawRecordParser(recordRootPath: String, uniqueIdPath: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
 
@@ -128,7 +121,7 @@ trait RecordHandling {
             sendProgress()
             indent()
             recordText.append(s"</$tag>\n</narthex>\n")
-            val mod = toXSDString(new DateTime())
+            val mod = Repo.toXSDString(new DateTime())
             val record = uniqueId.map{ id =>
               recordText.toString().replace(SUBSTITUTE, s""" id="$id" mod="$mod" """)
             } getOrElse {

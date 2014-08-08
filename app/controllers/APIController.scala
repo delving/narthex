@@ -95,7 +95,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
-        val storedRecord: Elem = fileRepo.getRecord(id)
+        val storedRecord: Elem = fileRepo.record(id)
         if (storedRecord.nonEmpty) {
           Ok(storedRecord)
         }
@@ -127,7 +127,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           Cache.set(fileName, freshMap, 60 * 5)
           freshMap
         }
-        val storedRecord: Elem = fileRepo.getRecord(id)
+        val storedRecord: Elem = fileRepo.record(id)
         if (storedRecord.nonEmpty) {
           val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text
           val parser = new StoredRecordParser(fileName, recordRoot, mappings)
