@@ -26,13 +26,16 @@ import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
 import play.api.Play.current
+import play.api.cache.Cache
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.Repo.State._
 import services.Repo._
 
 import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.io.Source
+import scala.util.Random
 import scala.xml.{Elem, NodeSeq, XML}
 
 object Repo {
@@ -223,6 +226,24 @@ class Repo(root: File, val orgId: String) {
     }
   }
 
+  def getHarvest(resumptionToken: String): (Option[NodeSeq], Option[String]) = {
+    Cache.getAs[Harvest](resumptionToken).map { harvest =>
+      val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
+      val start = harvest.page * pageSize
+      val fr = fileRepo(harvest.repoName)
+      def records = Some(fr.recordsPmh(harvest.from, harvest.until, start, pageSize, harvest.headersOnly))
+      harvest.next.map { next =>
+        Cache.set(next.resumptionToken, next, 2 minutes)
+        (records, Some(next.resumptionToken))
+      } getOrElse {
+        (records, None)
+      }
+    } getOrElse {
+      (None, None)
+    }
+  }
+
+
 }
 
 object FileRepo {
@@ -307,7 +328,6 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |   <status/>
               |   <delimit/>
               |   <namespaces/>
-              |   <harvests/>
               | </narthex-dataset>
               | """.stripMargin
           )
@@ -581,13 +601,9 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
       ""
   }
 
-  def createHarvest(set: String, prefix: String, from: Option[DateTime], until: Option[DateTime]) = {
-    println(s"createHarvest: $set, $prefix, $from, $until")
-    // todo: store harvest under UUID (token): "record", set, format, expiry, recordCount and dates
+  def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[String] = {
     val now = new DateTime()
-    val expiryDate = now.plusMinutes(NarthexConfig.OAI_PMH_MINUTES_TO_EXPIRY)
-    val harvestName = toXSDString(now)
-    val expiry = toXSDString(expiryDate)
+    println(s"createHarvest: $name, $from, $until")
     val dataset = getDatasetInfo
     val countString = withRecordDatabase {
       session =>
@@ -596,24 +612,11 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
         session.query(queryForRecords).execute()
     }
     val count = countString.toInt
-    println(s"!!! count=$count")
-    //
-    //    withDatasetSession {
-    //      session =>
-    //        val update =
-    //          s"""
-    //             |
-    //             | let $$namespacesBlock := doc('$dbName/$dbName.xml')/narthex-dataset/namespaces
-    //             | let $$replacement :=
-    //             |   <namespaces>
-    //             |   </namespaces>
-    //             | return replace node $$namespacesBlock with $$replacement
-    //             |
-    //           """.stripMargin.trim
-    //        println("updating:\n" + update)
-    //        session.query(update).execute()
-    //    }
-    harvestName
+    val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
+    val pages = if (count % pageSize == 0) count / pageSize else count / pageSize + 1
+    val harvest = Harvest(name, headersOnly, from, until, pages)
+    Cache.set(harvest.resumptionToken, harvest, 2 minutes)
+    Some(harvest.resumptionToken)
   }
 
   def recordPmh(identifier: String): Elem = {
@@ -637,7 +640,6 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |   </record>
               |
               """.stripMargin.trim
-        println("asking:\n" + queryForRecord)
         XML.loadString(session.query(queryForRecord).execute())
     }
   }
@@ -654,7 +656,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               | let $$selection := collection('$recordDb')/narthex${dateSelector(from, until)}
               |
               | let $$records :=
-              |   for $$narthex in $$selection
+              |   for $$narthex in subsequence($$selection, $start, $pageSize)
               |   order by $$narthex/@mod descending
               |     return
               |       <record>
@@ -667,12 +669,11 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |       </record>
               |
               | return
-              |   <records count="{count($$selection)}" start="$start" pageSize="$pageSize">
-              |     {subsequence($$records, $start, $pageSize)}
+              |   <records start="$start" pageSize="$pageSize">
+              |     {$$records}
               |   </records>
               |
               """.stripMargin.trim
-        println("asking:\n" + query)
         val wrappedRecords: Elem = XML.loadString(session.query(query).execute())
         wrappedRecords \ "record"
     }
@@ -761,5 +762,20 @@ class NodeRepo(val parent: FileRepo, val dir: File) {
     counters.map(triple => triple._1)
 
   }
+}
+
+case class Harvest
+(
+  repoName: String,
+  headersOnly: Boolean,
+  from: Option[DateTime],
+  until: Option[DateTime],
+  totalPages: Int,
+  token:String = Random.alphanumeric.take(10).mkString(""),
+  page: Int = 1) {
+
+  def resumptionToken = s"$token-$totalPages-$page"
+
+  def next = if (page >= totalPages) None else Some(this.copy(page = page + 1))
 }
 
