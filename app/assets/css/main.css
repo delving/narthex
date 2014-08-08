@@ -45,6 +45,11 @@
   }
 }
 /* global utilitly classes */
+.group:after {
+  content: "";
+  display: table;
+  clear: both;
+}
 .pointer {
   cursor: pointer;
 }
@@ -130,6 +135,18 @@ body {
 }
 .file-list .list-group-item .progress {
   margin-top: 8px;
+}
+.file-list .file-extended-info {
+  background: #ffffff;
+  font-size: 85%;
+  margin-top: 8px;
+  padding: 8px;
+}
+.file-list .file-extended-info .heading {
+  color: #999999;
+  padding: 0px;
+  font-size: 21px;
+  font-weight: bold;
 }
 .panel-schema {
   margin-bottom: 0px;
@@ -286,10 +303,6 @@ ul.terminology-list .list-group-item.list-item-mapped {
 .input-group-skos-term .input-group-addon {
   background: #0072b2;
   color: #999999;
-}
-code {
-  background: #eeeeee;
-  display: block;
 }
 code.path {
   color: #555555;

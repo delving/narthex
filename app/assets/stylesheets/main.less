@@ -56,6 +56,12 @@
 
 /* global utilitly classes */
 
+.group:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
 .pointer {
   cursor: pointer;
 }
@@ -160,10 +166,16 @@ body {
     }
   }
   .file-extended-info {
-//    display: none;
-//    &.open {
-//      display: block;
-//    }
+      background: @white;
+    font-size: 85%;
+      margin-top: 8px;
+      padding: 8px;
+      .heading {
+        color: @gray-light;
+        padding: 0px;
+        font-size: @font-size-base*1.5;
+        font-weight: bold;
+      }
   }
 }
 
@@ -339,8 +351,6 @@ ul.terminology-list {
 
 
 code {
-  background: @gray-lighter;
-  display: block;
   &.path {
     color: @gray;
     white-space: pre-line;

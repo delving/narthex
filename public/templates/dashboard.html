@@ -43,29 +43,28 @@
             <div class="tab-content">
                 <div ng-switch="list.active.tab">
                     <div ng-switch-when="files" class="file-list">
-                        <div>
-                            <ul class="list-group">
+                        <ul class="list-group">
                                 <li ng-repeat="file in files" class="list-group-item clearfix"
                                     data-ng-show="file.status">
                                     <div ng-switch="file.status.state">
 
                                         <!-- 1:SPLITTING -->
-                                        <span ng-switch-when="1:splitting">
+                                        <div ng-switch-when="1:splitting">
                                             {{ file.name }} <span class="label label-warning">Splitting</span>
                                             <progressbar class="progress-striped active" animate="true" value="file.status.percent"
                                                          max="100" type="success">
                                                 {{file.status.percent}}%
                                             </progressbar>
-                                        </span>
+                                        </div>
 
                                         <!-- 2:ANALYSING -->
-                                        <span ng-switch-when="2:analyzing">
+                                        <div ng-switch-when="2:analyzing">
                                             <p>{{ file.name }} <span class="label label-success">Analyzing</span></p>
                                             <code class="process">({{file.status.workers}} workers)</code>
-                                        </span>
+                                        </div>
 
                                         <!-- 3:ANALYZED -->
-                                        <span ng-switch-when="3:analyzed">
+                                        <div ng-switch-when="3:analyzed">
                                             <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
                                             <div class="btn-toolbar pull-right">
                                                 <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)">Open</button>
@@ -76,21 +75,21 @@
                                                         data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                                 </button>
                                             </div>
-                                        </span>
+                                        </div>
 
                                         <!-- 4:SAVING -->
-                                        <span ng-switch-when="4:saving">
+                                        <div ng-switch-when="4:saving">
                                             <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span
                                                 class="label label-info">Saving...</span>
                                             <progressbar class="progress-striped active" animate="true" value="file.status.percent"
                                                          max="100" type="success">
                                                 {{file.status.percent}}%
                                             </progressbar>
-                                        </span>
+                                        </div>
 
                                         <!-- 5:SAVED -->
-                                        <span ng-switch-when="5:saved">
-                                            <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                                        <div ng-switch-when="5:saved">
+                                            <a href class=pull-left" data-ng-click="viewFile(file)">{{ file.name }}</a>
                                             <div class="btn-toolbar pull-right">
                                                 <button class="btn btn-default btn-xs"
                                                         data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"><i
@@ -104,36 +103,35 @@
                                             <div class="file-extended-info" data-ng-show="file.showExtendedInfo">
                                                 <!-- todo: move delete button in here and create a placeholder button for 'publish'-->
                                                 <div data-ng-show="file.namespaces">
-                                                    <h4>Namespaces</h4>
-                                                    <ul>
+                                                    <h4 class="heading">Namespaces</h4>
+                                                    <ul class="list-unstyled">
                                                         <li data-ng-repeat="namespace in file.namespaces">
                                                             <b>{{ namespace.prefix }}</b> = "{{ namespace.uri }}"
                                                         </li>
                                                     </ul>
                                                 </div>
-                                                <div>
-                                                    <h4>Records</h4>
-                                                    <ul>
-                                                        <li><b>Record Root</b>: {{ file.delimit.recordRoot }}</li>
-                                                        <li><b>Unique ID</b>: {{ file.delimit.uniqueId }}</li>
+
+                                                    <h4 class="heading">Records</h4>
+                                                    <ul class="list-unstyled">
+                                                        <li><b>Record Root</b>:<code class="path">{{ file.delimit.recordRoot }}</code></li>
+                                                        <li><b>Unique ID</b>: <code class="path">{{ file.delimit.uniqueId }}</code></li>
                                                         <li><b>Record Count</b>: {{ file.delimit.recordCount }}</li>
                                                     </ul>
-                                                </div>
-                                                <div>
-                                                    <h4>Mappings</h4>
-                                                    <a ng-href="{{file.apiMappings}}" target="_blank">Download Mappings</a>
-                                                </div>
-                                                <div>
-                                                    <h4>Extra</h4>
-                                                </div>
+
+                                                    <h4 class="heading">Mappings</h4>
+                                                    <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
+                                                       <i class="fa fa-download"></i> Download Mappings
+                                                    </a>
+
+                                                    <h4 class="heading">Extra</h4>
+
                                             </div>
-                                        </span>
+                                        </div>
                                         <!-- UNKNOWN STATE -->
                                          <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
                                     </div>
                                 </li>
                             </ul>
-                        </div>
                     </div>
                     <div ng-switch-when="sips" class="file-list">
                         <ul class="list-group">
