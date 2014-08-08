@@ -14,7 +14,7 @@
 //    limitations under the License.
 //===========================================================================
 
-String.prototype.endsWith = function(suffix) {
+String.prototype.endsWith = function (suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
 };
 
@@ -43,11 +43,18 @@ define(["angular"], function () {
             return serverUrl + 'api/' + apiHash(fileName);
         }
 
+        function oaiPmhListRecords(fileName) {
+            var absUrl = $location.absUrl();
+            var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
+            var fileNameParts = fileName.split("__");
+            //                    http://localhost:9000/oai-pmh/acesskeythingy?verb=ListRecords&set=RCE_Monuments&metadataPrefix=car&from=2014-08-08T09%3A43%3A44.400%2B02%3A00
+            return serverUrl + 'oai-pmh/' + 'access-key-thing?verb=ListRecords&set=' + fileNameParts[0] + "&metadataPrefix=" + fileNameParts[1];
+        }
+
         function timeSinceStatusCheck() {
             var now = new Date().getTime();
             return now - $scope.lastStatusCheck;
         }
-
 
 
         $scope.onFileSelect = function ($files) {
@@ -139,8 +146,9 @@ define(["angular"], function () {
                 $scope.files = data;
                 _.forEach($scope.files, checkFileStatus);
                 _.forEach($scope.files, checkSaveStatus);
-                _.forEach($scope.files, function(file) {
+                _.forEach($scope.files, function (file) {
                     file.apiMappings = apiPrefix(file.name) + '/' + file.name + '/mappings'
+                    file.oaiPmhListRecords = oaiPmhListRecords(file.name);
                 })
             });
         }
@@ -206,7 +214,7 @@ define(["angular"], function () {
             return serverUrl + 'api/' + apiHash($scope.fileName);
         };
 
-        $scope.scrollTo = function(options){
+        $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
         };
 
@@ -214,7 +222,7 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
-        dashboardService.datasetInfo($scope.fileName).then(function(thing) {
+        dashboardService.datasetInfo($scope.fileName).then(function (thing) {
             $scope.datasetInfo = thing;
             dashboardService.index($scope.fileName).then(function (tree) {
                 function sortKids(node) {
@@ -281,7 +289,7 @@ define(["angular"], function () {
             $location.path("/terms/" + $scope.fileName);
             $location.search({
                 path: $routeParams.path,
-                size: $scope.status.histograms[$scope.status.histograms.length-1]
+                size: $scope.status.histograms[$scope.status.histograms.length - 1]
             });
         };
 
