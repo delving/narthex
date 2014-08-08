@@ -19,16 +19,19 @@ package services
 import play.api.Play
 
 object NarthexConfig {
-  def string(name: String) = Play.current.configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
+  def configString(name: String) = Play.current.configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
+  def configInt(name: String) = Play.current.configuration.getInt(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
 
-  lazy val ORG_ID = string("commons.orgId")
-  lazy val COMMONS_HOST = string("commons.host")
-  lazy val COMMONS_TOKEN = string("commons.token")
-  lazy val COMMONS_NODE = string("commons.node")
+  lazy val ORG_ID = configString("commons.orgId")
+  lazy val COMMONS_HOST = configString("commons.host")
+  lazy val COMMONS_TOKEN = configString("commons.token")
+  lazy val COMMONS_NODE = configString("commons.node")
 
-  lazy val OAI_PMH_REPOSITORY_IDENTIFIER = string("oai_pmh.repositoryIdentifier")
-  lazy val OAI_PMH_REPOSITORY_NAME = string("oai_pmh.repositoryName")
-  lazy val OAI_PMH_ADMIN_EMAIL = string("oai_pmh.adminEmail")
-  lazy val OAI_PMH_EARLIEST_DATE_STAMP = string("oai_pmh.earliestDateStamp")
-  lazy val OAI_PMH_SAMPLE_IDENTIFIER = string("oai_pmh.sampleIdentifier")
+  lazy val OAI_PMH_REPOSITORY_IDENTIFIER = configString("oai_pmh.repositoryIdentifier")
+  lazy val OAI_PMH_REPOSITORY_NAME = configString("oai_pmh.repositoryName")
+  lazy val OAI_PMH_ADMIN_EMAIL = configString("oai_pmh.adminEmail")
+  lazy val OAI_PMH_EARLIEST_DATE_STAMP = configString("oai_pmh.earliestDateStamp")
+  lazy val OAI_PMH_SAMPLE_IDENTIFIER = configString("oai_pmh.sampleIdentifier")
+  lazy val OAI_PMH_PAGE_SIZE = configInt("oai_pmh.pageSize")
+  lazy val OAI_PMH_MINUTES_TO_EXPIRY = configInt("oai_pmh.minutesToExpiry")
 }

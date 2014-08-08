@@ -16,65 +16,78 @@
 
 package controllers
 
-import java.text.SimpleDateFormat
 import java.util.Date
 
 import controllers.OaiPmh.Service.{QueryKey, Verb}
+import org.joda.time.DateTime
 import play.api.Logger
 import play.api.mvc._
 import services.NarthexConfig._
-import services.Repo
+import services.{NarthexConfig, Repo, RepoDataSet}
 
 import scala.xml.{Elem, NodeSeq, PrettyPrinter}
 
 object OaiPmh extends Controller {
 
-  val LOG = Logger("OAI_PMH")
   val PRETTY = new PrettyPrinter(300, 5)
 
   def service(accessKey: String) = Action(parse.anyContent) {
     implicit request =>
-      LOG.info(s"Request arrived, not yet checking access key [$accessKey]")
+      Logger.info(s"Request arrived, not yet checking access key [$accessKey]")
       Ok(Service(request.queryString, request.uri))
   }
 
-  object RepoBridge extends RecordRepo {
+  object RepoBridge {
 
-    override def getFirstRecordToken(set: String, format: Option[String], from: Option[Date], until: Option[Date]): ResumptionToken = {
+    case class Format(prefix: String, schema: String, namespace: String)
 
+    def expiry = new Date(System.currentTimeMillis() + NarthexConfig.OAI_PMH_MINUTES_TO_EXPIRY * 1000 * 60)
+
+    val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
+
+    def getFormats(identifier: Option[String]): Seq[RepoBridge.Format] = {
+      throw new RuntimeException("Not implemented")
+    }
+
+    def getDataSets: Seq[RepoDataSet] = {
+      Repo.repo.getDataSets
+    }
+
+    def exists(set: String, prefix: String): Boolean = {
+      getDataSets.exists(ds => ds.spec == set && ds.prefix == prefix)
+    }
+
+    def getFirstHeaderToken(set: String, prefix: String, from: Option[DateTime], until: Option[DateTime]): Token = {
+      // todo: store harvest under UUID (token): "header", set, format, expiry, recordCount and dates
+      Token()
+    }
+
+    def getHeaders(token: Token): (NodeSeq, Option[Token]) = {
+      val fileRepo = Repo.repo.fileRepo("RCE_Monuments__car")
+      val nodeSeq: NodeSeq = fileRepo.recordsPmh(
+        Some(Repo.fromXSDDateTime("2014-08-08T09:43:44.400+02:00")),
+        Some(Repo.fromXSDDateTime("2014-08-08T09:43:44.410+02:00")),
+        1, 5, headersOnly = false
+      )
+      (nodeSeq, None)
+    }
+
+    def getFirstRecordToken(set: String, prefix: String, from: Option[DateTime], until: Option[DateTime]): Token = {
+      val fileRepo = Repo.repo.fileRepo("RCE_Monuments__car")
+      val tokenString = fileRepo.createHarvest("RCE_Monuments", "car", from, until)
+      Token(tokenString)
+    }
+
+    def getRecords(token: Token): (NodeSeq, Token) = {
+      // todo: get harvest using token, check expiry, create next token
       null
     }
 
-    override def setExists(set: String): Boolean = {
-      true
-    }
-
-    override def getFirstIdentifierToken(set: String, format: Option[String], from: Option[Date], until: Option[Date]): ResumptionToken = {
-      null
-    }
-
-    override def getRecords(resumptionToken: ResumptionToken): NodeSeq = {
-      null
-    }
-
-    override def getHeaders(resumptionToken: ResumptionToken): NodeSeq = {
-      null
-    }
-
-    // if no identifier present list all formats
-    override def getFormats(identifier: Option[String]): Seq[RepoBridge.Format] = {
-      null
-    }
-
-    override def getDataSets: Seq[RepoBridge.DataSet] = {
-      null
-    }
-
-    override def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
+    def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
       val fileName = s"${set}__$format"
       Repo.repo.fileRepoOption(fileName) match {
         case Some(fileRepo) =>
-          Some(fileRepo.getRecordPmh(identifier))
+          Some(fileRepo.recordPmh(identifier))
         case None =>
           None
       }
@@ -141,7 +154,8 @@ object OaiPmh extends Controller {
     def handleRequest: Elem = {
       if (requestOk) {
         val response: Elem = try {
-          queryParams.get(QueryKey.VERB).map(_.head) match {
+          val maybeVerb: Option[String] = queryParams.get(QueryKey.VERB).map(_.head)
+          maybeVerb match {
             case Some(verb) =>
               VerbHandling(verb)
             case None =>
@@ -163,24 +177,18 @@ object OaiPmh extends Controller {
 
     def pmhRequest(verb: String): PmhRequest = {
       def paramString(key: String) = queryParams.get(key).map(_.headOption.getOrElse(""))
-      def parseDate(dateString: String): Option[Date] = {
+      def parseDate(dateString: String): Option[DateTime] = {
         try {
-          Some(DATE_FORMAT.parse(dateString))
+          Some(Repo.fromXSDDateTime(dateString))
         }
         catch {
           case t: Throwable =>
-            try {
-              Some(UTC_FORMAT.parse(dateString))
-            }
-            catch {
-              case t: Throwable =>
-                LOG.warn("Trying to parse invalid date " + dateString)
-                None
-            }
+            Logger.error("Bad date", t)
+            None
         }
       }
       def paramDate(key: String) = paramString(key).map(parseDate).getOrElse(None)
-      def paramResumptionToken(key: String): Option[ResumptionToken] = paramString(key).map(ResumptionToken(_))
+      def paramResumptionToken(key: String): Option[Token] = paramString(key).map(Token(_))
       PmhRequest(
         verb,
         paramString("set"),
@@ -195,19 +203,16 @@ object OaiPmh extends Controller {
       if (!queryParams.contains(QueryKey.VERB)) return false
       if (queryParams.values.exists(value => value.length > 1)) return false
       if (queryParams.keys.filterNot(QueryKey.ALL_QUERY_KEYS.contains).nonEmpty) return false
-      Seq(queryParams.get("from").headOption, queryParams.get("until").headOption).filterNot(_.isEmpty).foreach { date =>
-        try {
-          DATE_FORMAT.parse(date.get.head)
-        }
-        catch {
-          case t: Throwable =>
-            try {
-              UTC_FORMAT.parse(date.get.head)
-            }
-            catch {
-              case t: Throwable => return false
-            }
-        }
+      Seq(queryParams.get("from").headOption, queryParams.get("until").headOption).filterNot(_.isEmpty).foreach {
+        dateString =>
+          try {
+            Repo.fromXSDDateTime(dateString.get.head)
+          }
+          catch {
+            case t: Throwable =>
+              Logger.error("Bad date", t)
+              return false
+          }
       }
       true
     }
@@ -260,7 +265,7 @@ object OaiPmh extends Controller {
             <setSpec>{set.spec}</setSpec>
             <setName>{set.name}</setName>
             <setDescription>
-              <description>{set.description}</description>
+              <description>to do</description>
               <totalRecords>{set.totalRecords}</totalRecords>
               <dataProvider>{set.dataProvider}</dataProvider>
             </setDescription>
@@ -291,23 +296,15 @@ object OaiPmh extends Controller {
 
     def listIdentifiers(request: PmhRequest): Elem = {
 
-      val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
-      if (!RepoBridge.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
-
-      val (firstToken: Option[ResumptionToken], headers: NodeSeq) = request.resumptionToken match {
+      val (headers: NodeSeq, token: Option[Token]) = request.resumptionToken match {
         case Some(previousToken) =>
-          (None, RepoBridge.getHeaders(previousToken))
-        case None =>
-          val firstToken = RepoBridge.getFirstIdentifierToken(set, request.metadataPrefix, request.from, request.until)
-          (firstToken, RepoBridge.getHeaders(firstToken))
-      }
-
-      val resumptionToken: ResumptionToken = request.resumptionToken match {
-        case Some(previousToken) =>
-          previousToken.next
-        case None =>
-          if (firstToken.isEmpty) throw new ResumptionTokenNotFoundException("Missing first token")
-          firstToken.get
+          RepoBridge.getHeaders(previousToken)
+        case None => // todo: what if it's the end?
+          val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
+          val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException("No metadataPrefix provided"))
+          if (!RepoBridge.exists(set, prefix)) throw new DataSetNotFoundException(s"Set not found: [$set] [$prefix]")
+          val firstToken = RepoBridge.getFirstHeaderToken(set, prefix, request.from, request.until)
+          RepoBridge.getHeaders(firstToken)
       }
 
       <OAI-PMH
@@ -323,31 +320,28 @@ object OaiPmh extends Controller {
         >{requestURL}</request>
         <ListIdentifiers>
           {headers}
-          <resumptionToken>{resumptionToken}</resumptionToken>
+          {
+            token match {
+              case Some(tok) =>
+                <resumptionToken>{tok}</resumptionToken>
+              case None =>
+            }
+          }
         </ListIdentifiers>
       </OAI-PMH>
     }
 
     def listRecords(request: PmhRequest): Elem = {
 
-      val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
-      if (!RepoBridge.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
-      val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException("No metadataPrefix provided"))
-
-      val (firstToken: Option[ResumptionToken], records: NodeSeq) = request.resumptionToken match {
+      val (records: NodeSeq, token: Option[Token]) = request.resumptionToken match {
         case Some(previousToken) =>
-          (None, RepoBridge.getRecords(previousToken))
-        case None =>
-          val firstToken = RepoBridge.getFirstRecordToken(set, request.metadataPrefix, request.from, request.until)
-          (firstToken, RepoBridge.getRecords(firstToken))
-      }
-
-      val resumptionToken: ResumptionToken = request.resumptionToken match {
-        case Some(previousToken) =>
-          previousToken.next
-        case None =>
-          if (firstToken.isEmpty) throw new ResumptionTokenNotFoundException("Missing first token")
-          firstToken.get
+          RepoBridge.getHeaders(previousToken)
+        case None => // todo: what if it's the end?
+          val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
+          val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException("No metadataPrefix provided"))
+          if (!RepoBridge.exists(set, prefix)) throw new DataSetNotFoundException(s"Set not found: [$set] [$prefix]")
+          val firstToken = RepoBridge.getFirstHeaderToken(set, prefix, request.from, request.until)
+          RepoBridge.getHeaders(firstToken)
       }
 
       <OAI-PMH
@@ -363,7 +357,13 @@ object OaiPmh extends Controller {
         >{requestURL}</request>
         <ListRecords>
           {records}
-          {resumptionToken}
+          {
+            token match {
+              case Some(tok) =>
+                <resumptionToken>{tok}</resumptionToken>
+              case None =>
+            }
+          }
         </ListRecords>
       </OAI-PMH>
     }
@@ -377,9 +377,9 @@ object OaiPmh extends Controller {
     def getRecord(request: PmhRequest): Elem = {
 
       val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
-      if (!RepoBridge.setExists(set)) throw new DataSetNotFoundException(s"Set not found: [$set]")
-      val identifier = request.identifier.getOrElse(throw new BadArgumentException("No identifier provided"))
       val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException("No metadataPrefix provided"))
+      if (!RepoBridge.exists(set, prefix)) throw new DataSetNotFoundException(s"Set not found: [$set] [$prefix]")
+      val identifier = request.identifier.getOrElse(throw new BadArgumentException("No identifier provided"))
       val maybeRecord: Option[NodeSeq] = RepoBridge.getRecord(set, prefix, identifier)
       val record = maybeRecord.getOrElse(throw new RecordNotFoundException(s"No record for identifier: [$identifier]"))
 
@@ -396,7 +396,7 @@ object OaiPmh extends Controller {
     }
 
     def errorResponse(errorCode: String, exception: Option[Exception] = None): Elem = {
-      exception.map(LOG.error(errorCode, _))
+      exception.map(Logger.error(errorCode, _))
 
       def error(message: String): NodeSeq = <error code={errorCode}>{message}</error>
 
@@ -441,22 +441,13 @@ object OaiPmh extends Controller {
     }
 
 
-    def emptyOrDate(value: Option[Date]) = value.map(_.toString).getOrElse("")
+    def emptyOrDate(value: Option[DateTime]) = value.map(Repo.toXSDString(_)).getOrElse("")
 
     def emptyOrString(value: Option[String]) = value.getOrElse("")
 
-    def currentDate = toUtcDateTime(new Date())
+    def currentDate = Repo.toXSDString(new DateTime())
 
-    def toUtcDateTime(date: Date): String = UTC_FORMAT.format(date)
-
-    def dateString(date: Date): String = if (date != null) toUtcDateTime(date) else ""
-
-    val UTC_FORMAT: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-    UTC_FORMAT.setLenient(false)
-
-    val DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd")
-    DATE_FORMAT.setLenient(false)
-
+    def dateString(date: DateTime): String = if (date != null) Repo.toXSDString(date) else ""
 
   }
 
@@ -506,63 +497,22 @@ object OaiPmh extends Controller {
     val error = "idDoesNotExist"
   }
 
-  //  class MappingNotFoundException(s: String, throwable: Throwable) extends OaiPmhException(s, throwable) {
-  //    def this(s: String) = this(s, null)
-  //  }
-
-  trait RecordRepo {
-
-    case class DataSet(spec: String, name: String, description: String, totalRecords: Int, dataProvider: String)
-
-    case class Format(prefix: String, schema: String, namespace: String)
-
-    def getRecord(set: String, format: String, identifier: String): Option[NodeSeq]
-
-    def getFirstIdentifierToken(set: String, format: Option[String], from: Option[Date], until: Option[Date]): ResumptionToken
-
-    def getHeaders(resumptionToken: ResumptionToken): NodeSeq
-
-    def getFirstRecordToken(set: String, format: Option[String], from: Option[Date], until: Option[Date]): ResumptionToken
-
-    def getRecords(resumptionToken: ResumptionToken): NodeSeq
-
-    def setExists(set: String): Boolean
-
-    def getDataSets: Seq[DataSet]
-
-    // if no identifier present list all formats
-    // otherwise only list the formats available for the identifier
-    def getFormats(identifier: Option[String]): Seq[Format]
-  }
-
   case class PmhRequest
   (
     verb: String,
     set: Option[String],
-    from: Option[Date],
-    until: Option[Date],
+    from: Option[DateTime],
+    until: Option[DateTime],
     metadataPrefix: Option[String],
     identifier: Option[String],
-    resumptionToken: Option[ResumptionToken])
+    resumptionToken: Option[Token])
 
-
-  object ResumptionToken {
-    private val ResumptionTokenExtractor = """(.+?)::(.+?)::(.+?)::(.+?)::(.+)""".r
-
-    def apply(string: String): ResumptionToken = {
-
-      def stringToDate(string: String) = new Date() // todo
-
-      lazy val ResumptionTokenExtractor(set, expiry, totalRecords, pageSize, page) = string
-      new ResumptionToken(set, stringToDate(expiry), totalRecords.toInt, pageSize.toInt, page.toInt)
-    }
-
+  case class Token(uuid: String) {
+    def isEmpty = uuid.isEmpty
   }
 
-  class ResumptionToken(set: String, expiry: Date, totalRecords: Int, pageSize: Int, page: Int) {
-    def next: ResumptionToken = new ResumptionToken(set, expiry, totalRecords, pageSize, page + 1)
-
-    override def toString = s"$set::$expiry::$totalRecords::$pageSize::$page"
+  object Token {
+    def apply(): Token = new Token(java.util.UUID.randomUUID().toString)
   }
 
 }

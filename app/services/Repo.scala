@@ -23,6 +23,8 @@ import actors._
 import org.apache.commons.io.FileUtils._
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
+import org.joda.time.DateTime
+import org.joda.time.format.ISODateTimeFormat
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
@@ -31,7 +33,7 @@ import services.Repo._
 
 import scala.collection.mutable
 import scala.io.Source
-import scala.xml.{Elem, XML}
+import scala.xml.{Elem, NodeSeq, XML}
 
 object Repo {
   val SUFFIXES = List(".xml.gz", ".xml")
@@ -40,6 +42,7 @@ object Repo {
   val SIP_ZIP = "sip-zip"
   val userHome = new File(System.getProperty("user.home"))
   val root = new File(userHome, "NarthexFiles")
+  val FORMATTER = ISODateTimeFormat.dateTime()
 
   object State {
     val SPLITTING = "1:splitting"
@@ -99,6 +102,11 @@ object Repo {
 
   case class TermMapping(source: String, target: String, vocabulary: String, prefLabel: String)
 
+  def toXSDString(dateTime: DateTime) = FORMATTER.print(dateTime)
+
+  def fromXSDDateTime(dateString: String) = FORMATTER.parseDateTime(dateString)
+
+
 }
 
 class Repo(root: File, val orgId: String) {
@@ -141,13 +149,13 @@ class Repo(root: File, val orgId: String) {
           val facts = lines.map {
             line =>
               val equals = line.indexOf("=")
-              (line.substring(0, equals), line.substring(equals + 1))
+              (line.substring(0, equals).trim, line.substring(equals + 1).trim)
           }.toMap
           (file, facts)
       }
     }
     else {
-      List.empty
+      Seq.empty
     }
 
   }
@@ -170,7 +178,7 @@ class Repo(root: File, val orgId: String) {
       job =>
         val uploadedFile = job._1
         val fileRepo = job._2
-        fileRepo.setStatus(SPLITTING, percent=1)
+        fileRepo.setStatus(SPLITTING, percent = 1)
         val analyzer = Akka.system.actorOf(Analyzer.props(fileRepo), uploadedFile.getName)
         analyzer ! Analyzer.Analyze(job._1)
     }
@@ -193,6 +201,25 @@ class Repo(root: File, val orgId: String) {
     }
     else {
       List.empty
+    }
+  }
+
+  def getDataSets: Seq[RepoDataSet] = {
+    val FileName = "(.*)__(.*)".r
+    baseX.withSession {
+      session =>
+        val ENDING = ".xml.gz"
+        val properSets = listFileRepos.filter(_.contains("__"))
+        properSets.flatMap {
+          name =>
+            val fr = fileRepo(name)
+            val FileName(spec, prefix) = name
+            val dataset = fr.getDatasetInfo
+            val state = (dataset \ "status" \ "state").text
+            val totalRecords = (dataset \ "delimit" \ "recordCount").text
+            val shouldBe_PUBLISHED = SAVED
+            if (state == shouldBe_PUBLISHED) Some(RepoDataSet(spec, prefix, "name", "dataProvider", totalRecords.toInt)) else None
+        }
     }
   }
 
@@ -280,6 +307,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |   <status/>
               |   <delimit/>
               |   <namespaces/>
+              |   <harvests/>
               | </narthex-dataset>
               | """.stripMargin
           )
@@ -296,9 +324,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
       session =>
         // try the following without doc() sometime, since the db is open
         val statusQuery = s"doc('$dbName/$dbName.xml')/narthex-dataset"
-        //        println("asking:\n" + statusQuery)
         val answer = session.query(statusQuery).execute()
-        //        println("got:\n" + answer)
         XML.loadString(answer)
     }
   }
@@ -346,7 +372,6 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
   }
 
   def setNamespaceMap(namespaceMap: Map[String, String]) = {
-    println(s"SET NAMESPACE MAP: $namespaceMap")
     withDatasetSession {
       session =>
         val namespaces = namespaceMap.map {
@@ -368,7 +393,6 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
         session.query(update).execute()
     }
   }
-
 
   def saveRecords() = {
     val dataset = getDatasetInfo
@@ -403,7 +427,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     }.mkString("\n")
   }
 
-  def queryRecords(path: String, value: String, start: Int = 1, max: Int = 10): String = {
+  def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = {
     // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
     val dataset = getDatasetInfo
     val delim = dataset \ "delimit"
@@ -433,7 +457,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     }
   }
 
-  def getRecord(identifier: String): Elem = {
+  def record(identifier: String): Elem = {
     withRecordDatabase {
       session =>
         val dataset = getDatasetInfo
@@ -444,32 +468,6 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               | return <record>{
               |   $$recordWithId
               | }</record>
-              |
-              """.stripMargin.trim
-        println("asking:\n" + queryForRecord)
-        XML.loadString(session.query(queryForRecord).execute())
-    }
-  }
-
-  def getRecordPmh(identifier: String): Elem = {
-    withRecordDatabase {
-      session =>
-        val dataset = getDatasetInfo
-        val queryForRecord = s"""
-              |
-              | ${namespaceDeclarations(dataset)}
-              | let $$rec := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
-              | return
-              |   <record>
-              |     <header>
-              |       <identifier>{$$rec/narthex/@id}</identifier>
-              |       <datestamp>{$$rec/narthex/@mod}</datestamp>
-              |       <setSpec>to-do!</setSpec>
-              |     </header>
-              |     <metadata>
-              |      {$$rec/narthex/*}
-              |     </metadata>
-              |   </record>
               |
               """.stripMargin.trim
         println("asking:\n" + queryForRecord)
@@ -571,7 +569,118 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     deleteQuietly(sourceFile)
     deleteDirectory(dir)
   }
+
+  def dateSelector(from: Option[DateTime], until: Option[DateTime]) = (from, until) match {
+    case (Some(fromDate), Some(untilDate)) =>
+      s"[@mod >= '${toXSDString(fromDate)}' and @mod < '${toXSDString(untilDate)}']"
+    case (Some(fromDate), None) =>
+      s"[@mod >= '${toXSDString(fromDate)}']"
+    case (None, Some(untilDate)) =>
+      s"[@mod < '${toXSDString(untilDate)}']"
+    case (None, None) =>
+      ""
+  }
+
+  def createHarvest(set: String, prefix: String, from: Option[DateTime], until: Option[DateTime]) = {
+    println(s"createHarvest: $set, $prefix, $from, $until")
+    // todo: store harvest under UUID (token): "record", set, format, expiry, recordCount and dates
+    val now = new DateTime()
+    val expiryDate = now.plusMinutes(NarthexConfig.OAI_PMH_MINUTES_TO_EXPIRY)
+    val harvestName = toXSDString(now)
+    val expiry = toXSDString(expiryDate)
+    val dataset = getDatasetInfo
+    val countString = withRecordDatabase {
+      session =>
+        val queryForRecords = s"count(collection('$recordDb')/narthex${dateSelector(from, until)})"
+        println("asking:\n" + queryForRecords)
+        session.query(queryForRecords).execute()
+    }
+    val count = countString.toInt
+    println(s"!!! count=$count")
+    //
+    //    withDatasetSession {
+    //      session =>
+    //        val update =
+    //          s"""
+    //             |
+    //             | let $$namespacesBlock := doc('$dbName/$dbName.xml')/narthex-dataset/namespaces
+    //             | let $$replacement :=
+    //             |   <namespaces>
+    //             |   </namespaces>
+    //             | return replace node $$namespacesBlock with $$replacement
+    //             |
+    //           """.stripMargin.trim
+    //        println("updating:\n" + update)
+    //        session.query(update).execute()
+    //    }
+    harvestName
+  }
+
+  def recordPmh(identifier: String): Elem = {
+    withRecordDatabase {
+      session =>
+        val dataset = getDatasetInfo
+        val queryForRecord = s"""
+              |
+              | ${namespaceDeclarations(dataset)}
+              | let $$rec := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
+              | return
+              |   <record>
+              |     <header>
+              |       <identifier>{$$rec/narthex/@id}</identifier>
+              |       <datestamp>{$$rec/narthex/@mod}</datestamp>
+              |       <setSpec>to-do!</setSpec>
+              |     </header>
+              |     <metadata>
+              |      {$$rec/narthex/*}
+              |     </metadata>
+              |   </record>
+              |
+              """.stripMargin.trim
+        println("asking:\n" + queryForRecord)
+        XML.loadString(session.query(queryForRecord).execute())
+    }
+  }
+
+  def recordsPmh(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int, headersOnly: Boolean = true): NodeSeq = {
+    withRecordDatabase {
+      session =>
+        val metadata = if (headersOnly) "" else "<metadata>{$narthex/*}</metadata>"
+        val dataset = getDatasetInfo
+        val query = s"""
+              |
+              | ${namespaceDeclarations(dataset)}
+              |
+              | let $$selection := collection('$recordDb')/narthex${dateSelector(from, until)}
+              |
+              | let $$records :=
+              |   for $$narthex in $$selection
+              |   order by $$narthex/@mod descending
+              |     return
+              |       <record>
+              |         <header>
+              |           <identifier>{$$narthex/@id}</identifier>
+              |           <datestamp>{$$narthex/@mod}</datestamp>
+              |           <setSpec>to-do!</setSpec>
+              |         </header>
+              |         $metadata
+              |       </record>
+              |
+              | return
+              |   <records count="{count($$selection)}" start="$start" pageSize="$pageSize">
+              |     {subsequence($$records, $start, $pageSize)}
+              |   </records>
+              |
+              """.stripMargin.trim
+        println("asking:\n" + query)
+        val wrappedRecords: Elem = XML.loadString(session.query(query).execute())
+        wrappedRecords \ "record"
+    }
+  }
+
 }
+
+case class RepoDataSet(spec: String, prefix: String, name: String, dataProvider: String, totalRecords: Int)
 
 object NodeRepo {
   def apply(parent: FileRepo, parentDir: File, tag: String) = {

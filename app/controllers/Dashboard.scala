@@ -155,7 +155,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val path = (request.body \ "path").as[String]
       val value = (request.body \ "value").as[String]
       val fileRepo = repo.fileRepo(fileName)
-      val result: String = fileRepo.queryRecords(path, value)
+      val result: String = fileRepo.recordsWithValue(path, value)
       Ok(result)
     }
   }
