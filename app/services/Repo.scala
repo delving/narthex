@@ -447,9 +447,15 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
 
   private def namespaceDeclarations(dataset: Elem) = {
     val namespaces = dataset \ "namespaces" \ "namespace"
-    namespaces.map {
+    namespaces.flatMap {
       node =>
-        s"""declare namespace ${(node \ "prefix").text} = "${(node \ "uri").text}";"""
+        val prefix = (node \ "prefix").text
+        val uri = (node \ "uri").text
+        if (prefix != "xml") {
+          Some( s"""declare namespace $prefix = "$uri";""")
+        }
+        else
+          None
     }.mkString("\n")
   }
 
@@ -478,6 +484,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               """.stripMargin.trim
             println("asking:\n" + queryForRecords)
             session.query(queryForRecords).execute()
+            // todo: ENRICH!
         }
     }
   }
