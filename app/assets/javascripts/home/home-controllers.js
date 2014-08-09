@@ -29,7 +29,6 @@ define(["angular"], function (angular) {
             userService.loginUser(credentials).then(
                 function (response) {
                     if (response.profile) {
-                        console.log('login successful', response.user);
                         $cookies[USERNAME_COOKIE] = credentials.username;
                         $location.path("/dashboard");
                     }
@@ -50,7 +49,13 @@ define(["angular"], function (angular) {
     HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
 
     /** Controls the header */
-    var HeaderCtrl = function ($scope, userService, $location) {
+    var HeaderCtrl = function ($rootScope, $scope, userService, $location) {
+
+        $scope.setOrg = function(orgId, orgName) {
+            $rootScope.orgId = orgId;
+            $rootScope.orgName = orgName;
+        };
+
         // Wrap the current user from the service in a watch expression
         $scope.$watch(
             function () {
@@ -71,7 +76,7 @@ define(["angular"], function (angular) {
             });
         };
     };
-    HeaderCtrl.$inject = ["$scope", "userService", "$location"];
+    HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
 
     /** Controls the footer */
     var FooterCtrl = function (/*$scope*/) {

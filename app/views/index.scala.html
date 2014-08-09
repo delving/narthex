@@ -1,7 +1,7 @@
-@(orgId: String)
+@(orgId: String, orgName: String)
 <html>
   <head>
-    <title>Narthex (@orgId)</title>
+    <title>Narthex (@orgName)</title>
     <link rel='shortcut icon' type='image/png' href='@routes.Assets.at("images/favicon.png")'>
     @*<link rel='stylesheet' media='screen' href='@CdnWebJarAssets.getUrl(CdnWebJarAssets.locate("bootstrap.min.css"))' />*@
     @*-- Add More CSS here -- *@
@@ -13,10 +13,10 @@
   </head>
   <body>
     @*-- Header -- *@
-    <header class="navbar navbar-default navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl" data-ng-cloak>
+    <header class="navbar navbar-inverse navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl" data-ng-init="setOrg('@orgId', '@orgName')" data-ng-cloak>
       <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
         <a href="#/" class="navbar-brand"><img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
-            <span>Narthex (@orgId)</span> <span style="font-size: 10pt;">Your metadata fit for integration.</span>
+            <span>Narthex (@orgName)</span> <span style="font-size: 10pt;">Your metadata fit for integration.</span>
         </a>
         <div data-ng-switch-when="true">
           <ul class="nav navbar-nav navbar-right">

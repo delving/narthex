@@ -244,7 +244,7 @@ object OaiPmh extends Controller {
             <setSpec>{set.spec}</setSpec>
             <setName>{set.name}</setName>
             <setDescription>
-              <description>to do</description>
+              <description></description>
               <totalRecords>{set.totalRecords}</totalRecords>
               <dataProvider>{set.dataProvider}</dataProvider>
             </setDescription>

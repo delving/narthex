@@ -229,7 +229,7 @@ class Repo(root: File, val orgId: String) {
   def getHarvest(resumptionToken: String): (Option[NodeSeq], Option[String]) = {
     Cache.getAs[Harvest](resumptionToken).map { harvest =>
       val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
-      val start = harvest.page * pageSize
+      val start = 1 + (harvest.page - 1) * pageSize
       val fr = fileRepo(harvest.repoName)
       def records = Some(fr.recordsPmh(harvest.from, harvest.until, start, pageSize, harvest.headersOnly))
       harvest.next.map { next =>

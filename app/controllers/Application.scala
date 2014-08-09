@@ -34,7 +34,7 @@ object Application extends Controller with Security {
   def index = Action {
     val services: CommonsServices = CommonsServices.services
     val orgName = services.getName(ORG_ID, "en").getOrElse(ORG_ID)
-    Ok(views.html.index(orgName))
+    Ok(views.html.index(ORG_ID, orgName))
   }
 
   def login = Action(parse.json) {

@@ -33,7 +33,7 @@ define(["angular", "common"], function (angular) {
                             },
                             function (response) {
                                 user = null;
-                                return { problem: response.data.problem };
+                                return { problem: response.data };
                             }
                         );
                     },

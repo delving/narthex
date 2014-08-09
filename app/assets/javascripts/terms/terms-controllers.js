@@ -17,7 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var TermsCtrl = function ($scope, $location, $routeParams, dashboardService, $timeout, pageScroll ) {
+    var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, dashboardService, $timeout, pageScroll ) {
 
         function getSearchParams() {
             $scope.fileName = $routeParams.fileName;
@@ -50,9 +50,7 @@ define(["angular"], function (angular) {
         };
 
         $scope.createSourceUri = function(value) {
-            // todo: start with orgId, get it from... well it's in index.html
-            var prefix = $scope.fileName + $scope.path;
-            return prefix + "/" + encodeURIComponent(value);
+            return $rootScope.orgId + "/" + $scope.fileName + $scope.path + "/" + encodeURIComponent(value);
         };
 
         function filterHistogram() {
@@ -222,7 +220,7 @@ define(["angular"], function (angular) {
 
     };
 
-    TermsCtrl.$inject = ["$scope", "$location", "$routeParams", "dashboardService", "$timeout", "pageScroll"];
+    TermsCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "dashboardService", "$timeout", "pageScroll"];
 
     return {
         TermsCtrl: TermsCtrl
