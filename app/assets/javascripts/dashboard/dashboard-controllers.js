@@ -29,13 +29,14 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
-    var DashboardCtrl = function ($scope, user, dashboardService, $location, $upload, $timeout) {
+    var DashboardCtrl = function ($scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];
         $scope.checkDelay = 1000;
         $scope.lastStatusCheck = 0;
         $scope.percent = null;
+        $scope.activeTab = $routeParams.tab || "files";
 
         function apiPrefix(fileName) {
             var absUrl = $location.absUrl();
@@ -55,7 +56,6 @@ define(["angular"], function () {
             var now = new Date().getTime();
             return now - $scope.lastStatusCheck;
         }
-
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
@@ -155,6 +155,11 @@ define(["angular"], function () {
 
         fetchFileList();
 
+        $scope.setActiveTab = function (tab) {
+            $scope.activeTab = tab;
+            $location.search({ tab: tab });
+        };
+
         function fetchSipFileList() {
             dashboardService.listSipFiles().then(function (data) {
                 $scope.sipFiles = _.map(data.list, function (sipFile) {
@@ -182,6 +187,7 @@ define(["angular"], function () {
 
         $scope.viewFile = function (file) {
             $location.path("/dataset/" + file.name);
+            $location.search({})
         };
 
         $scope.deleteDataset = function (file) {
@@ -206,7 +212,7 @@ define(["angular"], function () {
     };
 
     DashboardCtrl.$inject = [
-        "$scope", "user", "dashboardService", "$location", "$upload", "$timeout"
+        "$scope", "user", "dashboardService", "$location", "$upload", "$timeout", "$routeParams"
     ];
 
     String.prototype.hashCode = function () {
