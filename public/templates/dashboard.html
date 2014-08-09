@@ -140,7 +140,7 @@
                                 <i class="fa fa-cube"></i>
                                 <span data-ng-show="file.details">
                                   <b>{{ file.details.spec }}</b>
-                                    <span class="pull-right">Uploaded by <b>{{ file.details.uploadedBy }}</b> on {{ file.details.date | date:"yyyy-MM-dd HH:mm:ss" }}</span>
+                                    <span class="pull-right"><i class="fa fa-cloud-upload"></i> - <i class="fa fa-male"></i> <b>{{ file.details.uploadedBy }}</b> <i class="fa fa-clock-o"></i> {{ file.details.date | date:"yyyy-MM-dd HH:mm:ss" }}</span>
                                 </span>
                                 <span data-ng-show="!file.details">
                                   <b>{{ file.fileName }}</b>
