@@ -40,7 +40,7 @@
     <div class="col-md-7">
         <div class="panel panel-primary">
             <div class="panel-heading list-controls">
-                <button class="btn btn-xs btn-default" data-ng-class="{ active: vocabulary == null }" data-ng-click="vocabulary=null;">
+                <button class="btn btn-xs btn-default" data-ng-class="{ active: activeView == 'vocabulary' }" data-ng-click="vocabularyTab()">
                     Vocabularies
                 </button>
                 <!-- CONCEPTS BTN -->
@@ -51,7 +51,7 @@
                 <button class="btn btn-xs btn-default" data-ng-class="{ active: activeView == 'record' }" data-ng-click="recordTab()">
                     Records
                 </button>
-                <p data-ng-show="sought" class="pull-right">
+                <p data-ng-show="activeView == 'skos'" class="pull-right">
                     <span class="label term-matched">matched term</span>
                     <span class="label term-alt">alt term</span>
                     <span class="label term-preferred"><i class="fa fa-star"></i> preferred term</span>
@@ -68,10 +68,10 @@
             <div class="panel-body">
 
                 <!-- SHOW SKOS (CONCEPT) -->
-                <div data-ng-show="vocabularyList && !vocabulary && activeView == 'skos'">
+                <div data-ng-show="vocabularyList && activeView == 'vocabulary'">
                     <div class="panel panel-default panel-choice">
                         <div class="panel-body" data-ng-repeat="name in vocabularyList" data-ng-click="selectVocabulary(name)">
-                            <i class="fa fa-search"></i> {{ name }}
+                            <i data-ng-show="name == vocabulary" class="fa fa-search"></i> <span>{{ name }}</span>
                         </div>
                     </div>
                 </div>
@@ -82,7 +82,7 @@
                             <input class="form-control" type="text" data-ng-model="sought"/>
                         </div>
                         <div class="alert alert-explain" role="alert" data-ng-show="!sought">
-                            Click on a term from the list on the left OR enter a term in the input field below
+                            <b>Click</b> on a term from the list on the left or <b>enter</b> a term in the search field above
                         </div>
                     </div>
 

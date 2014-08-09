@@ -23,7 +23,7 @@ define(["angular"], function (angular) {
             $scope.fileName = $routeParams.fileName;
             $scope.path = $routeParams.path;
             $scope.histogramSize = parseInt($routeParams.size || "100");
-            $scope.activeView = $routeParams.view || "skos";
+            $scope.activeView = $routeParams.view || "vocabulary";
             $scope.vocabulary = $routeParams.vocabulary;
         }
         function updateSearchParams() {
@@ -138,10 +138,20 @@ define(["angular"], function (angular) {
             });
         }
 
-        $scope.skosTab = function() {
-            $scope.activeView = "skos";
-            $scope.sought = $scope.sourceValue;
+        $scope.vocabularyTab = function() {
+            $scope.activeView = "vocabulary";
             updateSearchParams();
+        };
+
+        $scope.skosTab = function() {
+            if ($scope.vocabulary) {
+                $scope.activeView = "skos";
+                $scope.sought = $scope.sourceValue;
+                updateSearchParams();
+            }
+            else {
+                $scope.vocabularyTab();
+            }
         };
 
         $scope.recordTab = function() {
@@ -169,8 +179,7 @@ define(["angular"], function (angular) {
 
         $scope.selectVocabulary = function (name) {
             $scope.vocabulary = name;
-            updateSearchParams();
-            searchSkos($scope.sought);
+            $scope.skosTab();
         };
 
         $scope.selectSought = function (value) {

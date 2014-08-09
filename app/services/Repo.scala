@@ -466,9 +466,8 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |
               | ${namespaceDeclarations(dataset)}
               | let $$recordsWithValue := collection('$recordDb')[/narthex$queryPath/$field=${quote(value)}]
-              | return <records>{
-              |   subsequence($$recordsWithValue, $start, $max)
-              | }</records>
+              | let $$selected := subsequence($$recordsWithValue, $start, $max)
+              | return <records>{ for $$rec in $$selected return $$rec/narthex/* }</records>
               |
               """.stripMargin.trim
             println("asking:\n" + queryForRecords)
