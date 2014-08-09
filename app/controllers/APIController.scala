@@ -170,6 +170,8 @@ object APIController extends Controller with TreeHandling with RecordHandling {
                 <mapping>
                   <source>{m.source}</source>
                   <target>{m.target}</target>
+                  <prefLabel>{m.prefLabel}</prefLabel>
+                  <vocabulary>{m.vocabulary}</vocabulary>
                 </mapping>
               }}
               </mappings>
