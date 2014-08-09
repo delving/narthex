@@ -139,7 +139,8 @@
                             <li class="list-group-item" data-ng-repeat="file in sipFiles">
                                 <i class="fa fa-cube"></i>
                                 <span data-ng-show="file.details">
-                                  <b>{{ file.details.spec }}</b> <span class="pull-right">Uploaded {{ file.details.date | date:"yyyy-MM-dd HH:mm:ss" }}</span>
+                                  <b>{{ file.details.spec }}</b>
+                                    <span class="pull-right">Uploaded by <b>{{ file.details.uploadedBy }}</b> on {{ file.details.date | date:"yyyy-MM-dd HH:mm:ss" }}</span>
                                 </span>
                                 <span data-ng-show="!file.details">
                                   <b>{{ file.fileName }}</b>
