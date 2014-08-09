@@ -145,7 +145,13 @@ class Repo(root: File, val orgId: String) {
   def listSipZip = {
     if (sipZip.exists()) {
       val fileList = sipZip.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
-      fileList.map {
+      val ordered = fileList.sortBy {
+        f =>
+          val n = f.getName
+          val parts = n.split("__")
+          if (parts.length == 2) parts(1) else parts(0)
+      }
+      ordered.reverse.map {
         file =>
           val factsFile = new File(file.getParentFile, s"${file.getName}.facts")
           val lines = Source.fromFile(factsFile).getLines()
@@ -770,7 +776,7 @@ case class Harvest
   from: Option[DateTime],
   until: Option[DateTime],
   totalPages: Int,
-  token:String = Random.alphanumeric.take(10).mkString(""),
+  token: String = Random.alphanumeric.take(10).mkString(""),
   page: Int = 1) {
 
   def resumptionToken = s"$token-$totalPages-$page"

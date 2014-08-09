@@ -51,12 +51,18 @@
                 <button class="btn btn-xs btn-default" data-ng-class="{ active: activeView == 'record' }" data-ng-click="recordTab()">
                     Records
                 </button>
+                <p data-ng-show="activeView == 'vocabulary'" class="pull-right">
+                    <span class="label term-broader">Available SKOS Vocabularies</span>
+                </p>
                 <p data-ng-show="activeView == 'skos'" class="pull-right">
                     <span class="label term-matched">matched term</span>
                     <span class="label term-alt">alt term</span>
                     <span class="label term-preferred"><i class="fa fa-star"></i> preferred term</span>
                     <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> broader term</span>
                     <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>-->  narrower term</span>
+                </p>
+                <p data-ng-show="activeView == 'record'" class="pull-right">
+                    <span class="label term-broader">Records containing "{{ sourceValue }}"</span>
                 </p>
             </div>
 

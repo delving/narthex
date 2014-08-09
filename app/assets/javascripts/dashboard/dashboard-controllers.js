@@ -147,7 +147,7 @@ define(["angular"], function () {
                 _.forEach($scope.files, checkFileStatus);
                 _.forEach($scope.files, checkSaveStatus);
                 _.forEach($scope.files, function (file) {
-                    file.apiMappings = apiPrefix(file.name) + '/' + file.name + '/mappings'
+                    file.apiMappings = apiPrefix(file.name) + '/' + file.name + '/mappings';
                     file.oaiPmhListRecords = oaiPmhListRecords(file.name);
                 })
             });
@@ -157,7 +157,24 @@ define(["angular"], function () {
 
         function fetchSipFileList() {
             dashboardService.listSipFiles().then(function (data) {
-                $scope.sipFiles = data.list;
+                var entries = _.map(data.list, function(sipFile) {
+                    var entry = { fileName: sipFile };
+                    var part = sipFile.match(/sip_(.+)__(\d+)_(\d+)_(\d+)_(\d+)_(\d+).zip/);
+                    if (part) {
+                        entry.details = {
+                            spec: part[1],
+                            date: new Date(
+                                parseInt(part[2]), parseInt(part[3]), parseInt(part[4]),
+                                parseInt(part[5]), parseInt(part[6]), 0)
+                        }
+                    }
+                    return entry;
+                });
+//                $scope.sipFiles = _.groupBy(entries, function(entry) {
+//                    if (!entry.details) return entry.fileName;
+//                    return entry.details.spec;
+//                });
+                $scope.sipFiles = entries;
             });
         }
 
