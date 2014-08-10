@@ -141,7 +141,6 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
 
     case AnalysisTreeComplete(json, digest) =>
       fileRepo.setStatus(ANALYZING, workers = sorters.size + collators.size)
-      // todo: rename the original file to include date and digest?
       log.info(s"Tree Complete at ${fileRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
 
     case AnalysisComplete() =>

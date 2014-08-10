@@ -109,6 +109,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
+  // todo: use something like this for enrichment
   class Stamp(prefix: String, localName: String) extends RewriteRule {
     override def transform(node : Node):Node = node match {
       case elem: Elem if elem.label == "Identifier" =>
@@ -129,6 +130,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         }
         val storedRecord: Elem = fileRepo.record(id)
         if (storedRecord.nonEmpty) {
+          // todo: when mapping paths are from record root, remove this:
           val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text
           val parser = new StoredRecordParser(fileName, recordRoot, mappings)
           // find a way to iterate through the elem instead

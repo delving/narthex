@@ -21,14 +21,14 @@
                         API <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" role="menu">
-                        <li><a ng-href="{{ apiPrefix() }}/{{ fileName }}/tree" target="_blank">JSON Tree</a></li>
+                        <li><a data-ng-href="{{ apiPrefix() }}/{{ fileName }}/tree" target="_blank">JSON Tree</a></li>
                     </ul>
                 </div>
             </div>
             <div class="panel-body">
                 <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="222" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <ul data-ng-controller="TreeCtrl" class="list-node">
-                        <div ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
+                        <div data-ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
                     </ul>
                 </div>
             </div>
@@ -56,17 +56,18 @@
                         Histogram
                     </button>
                     <!-- USE AS UNIQUE ELEMENT -->
-                        <span data-ng-show="activeView == 'histogram' && histogramUnique">
-                            <button class="btn btn-primary btn-xs" data-ng-click="setUniqueIdNode(selectedNode)" data-ng-disabled="uniqueIdNode == selectedNode">
-                                <i class="fa fa-check-circle"></i><span> Use as Unique Element</span>
-                            </button>
-                        </span>
+                    <span data-ng-show="activeView == 'histogram' && histogramUnique">
+                        <button class="btn btn-primary btn-xs" data-ng-click="setUniqueIdNode(selectedNode)" data-ng-disabled="uniqueIdNode == selectedNode">
+                            <i class="fa fa-check-circle"></i><span> Use as Unique Element</span>
+                        </button>
+                    </span>
                     <!-- MAP AS VOCABULARY -->
-                        <span data-ng-show="activeView == 'histogram' && histogramVocabulary">
-                            <button class="btn btn-primary btn-xs" data-ng-click="goToTerms()">
-                                <i class="fa fa-check-circle"></i><span> Map as Vocabulary</span>
-                            </button>
-                        </span>
+                    <!--todo: also don't show this if there is no recordRoot-->
+                    <span data-ng-show="activeView == 'histogram' && histogramVocabulary">
+                        <button class="btn btn-primary btn-xs" data-ng-click="goToTerms()">
+                            <i class="fa fa-check-circle"></i><span> Map as Vocabulary</span>
+                        </button>
+                    </span>
                     <!-- API DOWNLOADS -->
                     <div class="btn-group pull-right">
                         <button type="button" class="btn btn-primary btn-xs dropdown-toggle" data-toggle="dropdown">
@@ -79,7 +80,7 @@
                     </div>
                 </div>
             <div class="panel-body">
-                <div ng-show="selectedNode && !(sample || histogram)" data-scrollable id="graph-list" data-offset="255" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                <div data-ng-show="selectedNode && !(sample || histogram)" data-scrollable id="graph-list" data-offset="255" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <div>
                         <nvd3-pie-chart
                                 data="selectedNode.lengths"
@@ -132,7 +133,7 @@
                                 </button>
                             </span>
                         </span>
-                        <span ng-if="sample">
+                        <span data-ng-if="sample">
                             <button class="btn btn-primary btn-sm navbar-btn" data-ng-show="isMoreSample()" data-ng-click="moreSample();scrollTo({element: '#sample-list', direction: 'down'})">
                                 <i class="fa fa-plus-circle"></i> More samples
                             </button>
@@ -145,11 +146,11 @@
     </div>
 </div>
 
-
+<!--todo: highlight nodes which have terminology mappings-->
 <script type="text/ng-template" id="node.html">
     <li data-ng-click="selectNode(node, $event)">
         <div class="node" data-ng-class="{ 'chosen': node.chosen, 'active': node.lengths.length != 0 }">
-            <span  ng-show="!node.lengths.length > 0" data-ng-click="node.collapsed = !node.collapsed">
+            <span  data-ng-show="!node.lengths.length > 0" data-ng-click="node.collapsed = !node.collapsed">
                 <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}" class="fa pointer"></i>
             </span>
             <span>{{ node.tag }}</span>
@@ -159,9 +160,9 @@
                 <span data-ng-if="!(node == recordRootNode || node == uniqueIdNode)">{{ node.count }}</span>
             </span>
         </div>
-        <ul ng-if="node.kids && !node.collapsed" class="">
+        <ul data-ng-if="node.kids && !node.collapsed" class="">
             <li class="" data-ng-repeat="(nodeIndex, node) in node.kids" data-ng-controller="TreeNodeCtrl">
-                <div ng-include="'node.html'">node</div>
+                <div data-ng-include="'node.html'">node</div>
             </li>
         </ul>
     </li>

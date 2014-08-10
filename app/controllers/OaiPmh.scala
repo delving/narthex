@@ -41,6 +41,7 @@ object OaiPmh extends Controller {
 
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
 
+    // todo: implement this!
     def getFormats(identifier: Option[String]): Seq[RepoBridge.Format] = {
       throw new RuntimeException("Not implemented")
     }

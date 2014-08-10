@@ -213,6 +213,8 @@ class Repo(root: File, val orgId: String) {
     }
   }
 
+  // todo: whenever there are enriched datasets, add new spec s"${spec}_enriched" for them
+
   def getDataSets: Seq[RepoDataSet] = {
     val FileName = "(.*)__(.*)".r
     baseX.withSession {
@@ -635,6 +637,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     withRecordDatabase {
       session =>
         val dataset = getDatasetInfo
+        // todo: the setSpec is missing here!
         val queryForRecord = s"""
               |
               | ${namespaceDeclarations(dataset)}
@@ -644,7 +647,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |     <header>
               |       <identifier>{$$rec/narthex/@id}</identifier>
               |       <datestamp>{$$rec/narthex/@mod}</datestamp>
-              |       <setSpec>to-do!</setSpec>
+              |       <setSpec>?</setSpec>
               |     </header>
               |     <metadata>
               |      {$$rec/narthex/*}
@@ -661,6 +664,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
       session =>
         val metadata = if (headersOnly) "" else "<metadata>{$narthex/*}</metadata>"
         val dataset = getDatasetInfo
+        // todo: the setSpec is missing here!
         val query = s"""
               |
               | ${namespaceDeclarations(dataset)}
@@ -675,7 +679,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
               |         <header>
               |           <identifier>{$$narthex/@id}</identifier>
               |           <datestamp>{$$narthex/@mod}</datestamp>
-              |           <setSpec>to-do!</setSpec>
+              |           <setSpec>?</setSpec>
               |         </header>
               |         $metadata
               |       </record>

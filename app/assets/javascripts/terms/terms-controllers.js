@@ -50,6 +50,7 @@ define(["angular"], function (angular) {
         };
 
         $scope.createSourceUri = function(value) {
+            // todo: use recordRoot
             return $rootScope.orgId + "/" + $scope.fileName + $scope.path + "/" + encodeURIComponent(value);
         };
 
@@ -200,6 +201,7 @@ define(["angular"], function (angular) {
 
         $scope.$watch("activeView", updateSearchParams());
 
+        // todo: we need a way of removing  mapping
         $scope.setMapping = function (concept) {
             if (!($scope.sourceUri && $scope.vocabulary)) return;
             var body = {

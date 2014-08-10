@@ -19,8 +19,9 @@ GET         /logout                                           controllers.Applic
 # File Handling
 POST        /dashboard/upload                                 controllers.Dashboard.upload
 GET         /dashboard/list                                   controllers.Dashboard.list
+GET         /dashboard/sip-list                               controllers.Dashboard.listSipFiles
 GET         /dashboard/work                                   controllers.Dashboard.work
-GET         /dashboard/:fileName                              controllers.Dashboard.index(fileName)
+GET         /dashboard/:fileName/index                        controllers.Dashboard.index(fileName)
 GET         /dashboard/:fileName/dataset-info                 controllers.Dashboard.datasetInfo(fileName)
 GET         /dashboard/:fileName/delete-dataset               controllers.Dashboard.deleteDataset(fileName)
 GET         /dashboard/:fileName/status/*path                 controllers.Dashboard.nodeStatus(fileName, path)
@@ -45,7 +46,7 @@ GET         /api/:apiKey/:fileName/index/*path                controllers.APICon
 GET         /api/:apiKey/:fileName/unique/*path               controllers.APIController.uniqueText(apiKey, fileName, path)
 GET         /api/:apiKey/:fileName/histogram/*path            controllers.APIController.histogramText(apiKey, fileName, path)
 
-GET         /dashboard/sip-creator/list                       controllers.Dashboard.listSipFiles
+# todo: these should use OAuth
 POST        /sip-creator/:apiKey/upload/:fileName             controllers.APIController.uploadOutput(apiKey, fileName)
 POST        /sip-creator/:apiKey/sip-zip/:fileName            controllers.APIController.uploadSipZip(apiKey, fileName)
 GET         /sip-creator/:apiKey/sip-zip                      controllers.APIController.listSipZips(apiKey)
