@@ -29,100 +29,92 @@ class DatasetDb(dbName: String) {
 
   def db[T](block: ClientSession => T): T = {
     try {
-      Repo.baseX.withDbSession[T](dbName)(block)
+      BaseX.withDbSession[T](dbName)(block)
     }
     catch {
       case be: BaseXException =>
-        if (be.getMessage.contains("not found")) {
-          Repo.baseX.createDatabase(dbName,
-            """
-              | <narthex-dataset>
-              |   <status/>
-              |   <delimit/>
-              |   <namespaces/>
-              | </narthex-dataset>
-              | """.stripMargin
-          )
-          Repo.baseX.withDbSession[T](dbName)(block)
-        }
-        else {
-          throw be
-        }
+      if (be.getMessage.contains("not found")) {
+        val initialDataset = """
+          |
+          | <narthex-dataset>
+          |   <status/>
+          |   <delimit/>
+          |   <namespaces/>
+          | </narthex-dataset>
+          |
+          |""".stripMargin.trim
+        BaseX.createDatabase(dbName,initialDataset)
+        BaseX.withDbSession[T](dbName)(block)
+      }
+      else {
+        throw be
+      }
     }
   }
 
-  def getDatasetInfo: Elem = {
-    db {
-      session =>
-        // try the following without doc() sometime, since the db is open
-        val statusQuery = s"doc('$dbName/$dbName.xml')/narthex-dataset"
-        val answer = session.query(statusQuery).execute()
-        XML.loadString(answer)
-    }
+  def getDatasetInfo: Elem = db {
+    session =>
+      // try the following without doc() sometime, since the db is open
+      val statusQuery = s"doc('$dbName/$dbName.xml')/narthex-dataset"
+      val answer = session.query(statusQuery).execute()
+      XML.loadString(answer)
   }
 
-  def setStatus(state: String, percent: Int = 0, workers: Int = 0) = {
-    db {
-      session =>
-        val update =
-          s"""
-             |
-             | let $$statusBlock := doc('$dbName/$dbName.xml')/narthex-dataset/status
-             | let $$replacement :=
-             |   <status>
-             |     <state>$state</state>
-             |     <percent>$percent</percent>
-             |     <workers>$workers</workers>
-             |   </status>
-             | return replace node $$statusBlock with $$replacement
-             |
-           """.stripMargin.trim
-        //        println("updating:\n" + update)
-        session.query(update).execute()
-    }
+  def setStatus(state: String, percent: Int = 0, workers: Int = 0) = db {
+    session =>
+      val update =
+        s"""
+          |
+          | let $$statusBlock := doc('$dbName/$dbName.xml')/narthex-dataset/status
+          | let $$replacement :=
+          |   <status>
+          |     <state>$state</state>
+          |     <percent>$percent</percent>
+          |     <workers>$workers</workers>
+          |   </status>
+          | return replace node $$statusBlock with $$replacement
+          |
+          """.stripMargin.trim
+      //        println("updating:\n" + update)
+      session.query(update).execute()
   }
 
-  def setRecordDelimiter(recordRoot: String = "", uniqueId: String = "", recordCount: Int = 0) = {
-    db {
-      session =>
-        val update =
-          s"""
-             |
-             | let $$delimitBlock := doc('$dbName/$dbName.xml')/narthex-dataset/delimit
-             | let $$replacement :=
-             |   <delimit>
-             |     <recordRoot>$recordRoot</recordRoot>
-             |     <uniqueId>$uniqueId</uniqueId>
-             |     <recordCount>$recordCount</recordCount>
-             |   </delimit>
-             | return replace node $$delimitBlock with $$replacement
-             |
-           """.stripMargin.trim
-        //        println("updating:\n" + update)
-        session.query(update).execute()
-    }
+  def setRecordDelimiter(recordRoot: String = "", uniqueId: String = "", recordCount: Int = 0) = db {
+    session =>
+      val update =
+        s"""
+          |
+          | let $$delimitBlock := doc('$dbName/$dbName.xml')/narthex-dataset/delimit
+          | let $$replacement :=
+          |   <delimit>
+          |     <recordRoot>$recordRoot</recordRoot>
+          |     <uniqueId>$uniqueId</uniqueId>
+          |     <recordCount>$recordCount</recordCount>
+          |   </delimit>
+          | return replace node $$delimitBlock with $$replacement
+          |
+          """.stripMargin.trim
+      //        println("updating:\n" + update)
+      session.query(update).execute()
   }
 
-  def setNamespaceMap(namespaceMap: Map[String, String]) = {
-    db {
-      session =>
-        val namespaces = namespaceMap.map {
-          entry =>
-            s"    <namespace><prefix>${entry._1}</prefix><uri>${entry._2}</uri></namespace>"
-        }.mkString("\n")
-        val update =
-          s"""
-             |
-             | let $$namespacesBlock := doc('$dbName/$dbName.xml')/narthex-dataset/namespaces
-             | let $$replacement :=
-             |   <namespaces>
-             |$namespaces
-             |   </namespaces>
-             | return replace node $$namespacesBlock with $$replacement
-             |
-           """.stripMargin.trim
-        println("updating:\n" + update)
-        session.query(update).execute()
-    }
+  def setNamespaceMap(namespaceMap: Map[String, String]) = db {
+    session =>
+      val namespaces = namespaceMap.map(entry =>
+          s"    <namespace><prefix>${entry._1}</prefix><uri>${entry._2}</uri></namespace>"
+      ).mkString("\n")
+      val update =
+        s"""
+          |
+          | let $$namespacesBlock := doc('$dbName/$dbName.xml')/narthex-dataset/namespaces
+          | let $$replacement :=
+          |   <namespaces>
+          |$namespaces
+          |   </namespaces>
+          | return replace node $$namespacesBlock with $$replacement
+          |
+          """.stripMargin.trim
+      println("updating:\n" + update)
+      session.query(update).execute()
   }
 }

@@ -27,7 +27,7 @@ import scala.io.Source
 import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
-trait RecordHandling {
+trait RecordHandling extends BaseXTools {
   val SUBSTITUTE = "__substitute__"
   class RawRecordParser(recordRootPath: String, uniqueIdPath: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
@@ -121,7 +121,7 @@ trait RecordHandling {
             sendProgress()
             indent()
             recordText.append(s"</$tag>\n</narthex>\n")
-            val mod = Repo.toXSDString(new DateTime())
+            val mod = toXSDString(new DateTime())
             val record = uniqueId.map{ id =>
               recordText.toString().replace(SUBSTITUTE, s""" id="$id" mod="$mod" """)
             } getOrElse {

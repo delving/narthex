@@ -4,6 +4,8 @@ import java.io.ByteArrayInputStream
 
 import org.basex.core.cmd._
 import org.basex.server.ClientSession
+import org.joda.time.DateTime
+import org.joda.time.format.ISODateTimeFormat
 
 /**
  * Minimal connection with BaseX, wrapping the Java API
@@ -13,6 +15,23 @@ import org.basex.server.ClientSession
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
+object BaseX {
+
+  lazy val baseX: BaseX = new BaseX("localhost", 1984, "admin", "admin")
+
+  def withSession[T](block: ClientSession => T): T = baseX.withSession(block)
+
+  def withDbSession[T](database:String)(block: ClientSession => T): T = baseX.withDbSession(database)(block)
+
+  def createDatabase(name: String) = withSession(_.execute(new CreateDB(name)))
+
+  def createDatabase(name: String, content:String) = withSession(_.execute(new CreateDB(name, content)))
+
+  def checkDatabase(name: String) = withSession(_.execute(new Check(name)))
+
+  def dropDatabase(name: String) = withSession(_.execute(new DropDB(name)))
+
+}
 
 class BaseX(host: String, port: Int, user: String, pass: String) {
 
@@ -25,18 +44,6 @@ class BaseX(host: String, port: Int, user: String, pass: String) {
       session.close()
     }
   }
-
-  def createDatabase(name: String) =
-    withSession(_.execute(new CreateDB(name)))
-
-  def createDatabase(name: String, content:String) =
-    withSession(_.execute(new CreateDB(name, content)))
-
-  def checkDatabase(name: String) =
-    withSession(_.execute(new Check(name)))
-
-  def dropDatabase(name: String) =
-    withSession(_.execute(new DropDB(name)))
 
   def withDbSession[T](database: String)(block: ClientSession => T): T = {
     withSession {
@@ -62,25 +69,19 @@ class BaseX(host: String, port: Int, user: String, pass: String) {
     withDbSession(database)(_.execute(new Delete(path)))
 }
 
-//object BaseX {
-//  private var server: BaseXServer = null
-//
-//  def startServer(dataDirectory: Option[File], port: Int, eport: Int) {
-//    dataDirectory match {
-//      case Some(dir) =>
-//        if (!dir.exists()) {
-//          if (!dir.mkdirs()) {
-//            throw new RuntimeException("Failed to create data directory for BaseX " + dataDirectory)
-//          }
-//        }
-//        System.setProperty("org.basex.path", dir.getAbsolutePath)
-//      case None =>
-//    }
-//    BaseXServer.start(port, s"-e$eport")
-//  }
-//
-//  def stopServer(port: Int, eport: Int) {
-//    BaseXServer.stop(port, eport)
-//  }
-//}
+trait BaseXTools {
 
+  val FORMATTER = ISODateTimeFormat.dateTime()
+
+  def toXSDString(dateTime: DateTime) = FORMATTER.print(dateTime)
+
+  def fromXSDDateTime(dateString: String) = FORMATTER.parseDateTime(dateString)
+
+  def quote(value: String) = {
+    value match {
+      case "" => "''"
+      case string =>
+        "'" + string.replace("'", "\'\'") + "'"
+    }
+  }
+}

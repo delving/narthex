@@ -22,7 +22,6 @@ import java.util.UUID
 import actors._
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.concurrent.Akka
@@ -44,7 +43,6 @@ object Repo {
   val SIP_ZIP = "sip-zip"
   val USER_HOME = new File(System.getProperty("user.home"))
   val NARTHEX_FILES = new File(USER_HOME, "NarthexFiles")
-  val FORMATTER = ISODateTimeFormat.dateTime()
 
   object State {
     val SPLITTING = "1:splitting"
@@ -54,8 +52,6 @@ object Repo {
     val SAVED = "5:saved"
     val PUBLISHED = "6:published"
   }
-
-  lazy val baseX: BaseX = new BaseX("localhost", 1984, "admin", "admin")
 
   lazy val repo = new Repo(NARTHEX_FILES, NarthexConfig.ORG_ID)
 
@@ -94,20 +90,6 @@ object Repo {
     val suffix = getSuffix(fileName)
     fileName.substring(0, fileName.length - suffix.length)
   }
-
-  def quote(value: String) = {
-    value match {
-      case "" => "''"
-      case string =>
-        "'" + string.replace("'", "\'\'") + "'"
-    }
-  }
-
-  case class TermMapping(source: String, target: String, vocabulary: String, prefLabel: String)
-
-  def toXSDString(dateTime: DateTime) = FORMATTER.print(dateTime)
-
-  def fromXSDDateTime(dateString: String) = FORMATTER.parseDateTime(dateString)
 
 }
 
@@ -171,7 +153,7 @@ class Repo(root: File, val orgId: String) {
 
   def getDataSets: Seq[RepoDataSet] = {
     val FileName = "(.*)__(.*)".r
-    baseX.withSession {
+    BaseX.withSession {
       session =>
         val ENDING = ".xml.gz"
         val properSets = listFileRepos.filter(_.contains("__"))

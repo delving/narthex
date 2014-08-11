@@ -30,21 +30,21 @@ import scala.xml.{Elem, NodeSeq, XML}
  * @author Gerald de Jong <gerald@delving.eu
  */
 
-class RecordDb(fileRepo: FileRepo, dbName: String) {
+class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
 
   val recordDb = s"${dbName}_records"
 
   def freshDb[T](block: ClientSession => T) = {
-    Repo.baseX.createDatabase(recordDb) // overwrites
-    Repo.baseX.withDbSession(recordDb)(block)
+    BaseX.createDatabase(recordDb) // overwrites
+    BaseX.withDbSession(recordDb)(block)
   }
 
   def db[T](block: ClientSession => T) = {
-    Repo.baseX.withDbSession(recordDb)(block)
+    BaseX.withDbSession(recordDb)(block)
   }
 
   def dropDatabase() = {
-    Repo.baseX.dropDatabase(recordDb)
+    BaseX.dropDatabase(recordDb)
   }
 
   def saveRecords() = {
@@ -88,7 +88,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) {
         val queryForRecords = s"""
           |
           | ${namespaceDeclarations(datasetInfo)}
-          | let $$recordsWithValue := collection('$recordDb')[/narthex$queryPath/$field=${Repo.quote(value)}]
+          | let $$recordsWithValue := collection('$recordDb')[/narthex$queryPath/$field=${quote(value)}]
           | let $$selected := subsequence($$recordsWithValue, $start, $max)
           | return <records>{ for $$rec in $$selected return $$rec/narthex/* }</records>
           |
@@ -104,7 +104,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) {
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(fileRepo.datasetDb.getDatasetInfo)}
-        | let $$recordWithId := collection('$recordDb')[/narthex/@id=${Repo.quote(identifier)}]
+        | let $$recordWithId := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
         | return <record>{
         |   $$recordWithId
         | }</record>
@@ -122,7 +122,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) {
         | return
         |    <ids>{
         |       for $$narthex in $$records
-        |       where $$narthex/@mod >= ${Repo.quote(since)}
+        |       where $$narthex/@mod >= ${quote(since)}
         |       order by $$narthex/@mod descending
         |       return
         |          <id>{$$narthex/@mod}{string($$narthex/@id)}</id>
@@ -134,11 +134,11 @@ class RecordDb(fileRepo: FileRepo, dbName: String) {
 
   def dateSelector(from: Option[DateTime], until: Option[DateTime]) = (from, until) match {
     case (Some(fromDate), Some(untilDate)) =>
-      s"[@mod >= '${Repo.toXSDString(fromDate)}' and @mod < '${Repo.toXSDString(untilDate)}']"
+      s"[@mod >= '${toXSDString(fromDate)}' and @mod < '${toXSDString(untilDate)}']"
     case (Some(fromDate), None) =>
-      s"[@mod >= '${Repo.toXSDString(fromDate)}']"
+      s"[@mod >= '${toXSDString(fromDate)}']"
     case (None, Some(untilDate)) =>
-      s"[@mod < '${Repo.toXSDString(untilDate)}']"
+      s"[@mod < '${toXSDString(untilDate)}']"
     case (None, None) =>
       ""
   }
@@ -167,7 +167,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) {
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(fileRepo.datasetDb.getDatasetInfo)}
-        | let $$rec := collection('$recordDb')[/narthex/@id=${Repo.quote(identifier)}]
+        | let $$rec := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
         | return
         |   <record>
         |     <header>

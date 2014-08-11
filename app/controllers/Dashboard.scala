@@ -22,7 +22,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
-import services.Repo.{TermMapping, repo}
+import services.Repo.repo
 import services._
 
 import scala.collection.immutable.Seq
@@ -169,7 +169,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def searchSkos(name: String, sought: String) = Secure() {
     token => implicit request => {
 
-      def searchVocabulary(vocabulary: SkosVocabulary) = vocabulary.search("dut", sought, 25)
+      def searchVocabulary(vocabulary: SkosVocabulary): LabelSearch = vocabulary.search("dut", sought, 25)
 
       Cache.getAs[SkosVocabulary](name) map {
         vocabulary => Ok(Json.obj("search" -> searchVocabulary(vocabulary)))
@@ -184,7 +184,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def getMappings(fileName: String) = Secure() {
     token => implicit request => {
       val fileRepo = repo.fileRepo(fileName)
-      val mappings: scala.Seq[TermMapping] = fileRepo.termRepo.getMappings
+      val mappings: scala.Seq[TermDb.TermMapping] = fileRepo.termRepo.getMappings
       Ok(Json.obj("mappings" -> mappings))
     }
   }
@@ -196,7 +196,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val vocabulary = (request.body \ "vocabulary").as[String]
       val prefLabel = (request.body \ "prefLabel").as[String]
       val fileRepo = repo.fileRepo(fileName)
-      fileRepo.termRepo.setMapping(TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
+      fileRepo.termRepo.setMapping(TermDb.TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
       Ok("thanks man")
     }
   }

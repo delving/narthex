@@ -21,11 +21,11 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.mvc._
 import services.NarthexConfig._
-import services.{NarthexConfig, Repo, RepoDataSet}
+import services.{BaseXTools, NarthexConfig, Repo, RepoDataSet}
 
 import scala.xml.{Elem, NodeSeq, PrettyPrinter}
 
-object OaiPmh extends Controller {
+object OaiPmh extends Controller with BaseXTools {
 
   val PRETTY = new PrettyPrinter(300, 5)
 
@@ -159,7 +159,7 @@ object OaiPmh extends Controller {
       def paramString(key: String) = queryParams.get(key).map(_.headOption.getOrElse(""))
       def parseDate(dateString: String): Option[DateTime] = {
         try {
-          Some(Repo.fromXSDDateTime(dateString))
+          Some(fromXSDDateTime(dateString))
         }
         catch {
           case t: Throwable =>
@@ -186,7 +186,7 @@ object OaiPmh extends Controller {
       Seq(queryParams.get("from").headOption, queryParams.get("until").headOption).filterNot(_.isEmpty).foreach {
         dateString =>
           try {
-            Repo.fromXSDDateTime(dateString.get.head)
+            fromXSDDateTime(dateString.get.head)
           }
           catch {
             case t: Throwable =>
@@ -416,13 +416,13 @@ object OaiPmh extends Controller {
     }
 
 
-    def emptyOrDate(value: Option[DateTime]) = value.map(Repo.toXSDString).getOrElse("")
+    def emptyOrDate(value: Option[DateTime]) = value.map(toXSDString).getOrElse("")
 
     def emptyOrString(value: Option[String]) = value.getOrElse("")
 
-    def currentDate = Repo.toXSDString(new DateTime())
+    def currentDate = toXSDString(new DateTime())
 
-    def dateString(date: DateTime): String = if (date != null) Repo.toXSDString(date) else ""
+    def dateString(date: DateTime): String = if (date != null) toXSDString(date) else ""
 
   }
 

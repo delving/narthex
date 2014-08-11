@@ -18,7 +18,7 @@ package services
 
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
-import services.Repo.TermMapping
+import services.TermDb.TermMapping
 
 import scala.xml.XML
 
@@ -26,19 +26,25 @@ import scala.xml.XML
  * @author Gerald de Jong <gerald@delving.eu
  */
 
-class TermDb(dbName: String) {
+object TermDb {
+
+  case class TermMapping(source: String, target: String, vocabulary: String, prefLabel: String)
+
+}
+
+class TermDb(dbName: String) extends BaseXTools {
 
   val termDb = s"${dbName}_terminology"
 
   def db[T](block: ClientSession => T): T = {
     try {
-      Repo.baseX.withDbSession[T](termDb)(block)
+      BaseX.withDbSession[T](termDb)(block)
     }
     catch {
       case be: BaseXException =>
         if (be.getMessage.contains("not found")) {
-          Repo.baseX.createDatabase(termDb, "<term-mappings/>")
-          Repo.baseX.withDbSession[T](termDb)(block)
+          BaseX.createDatabase(termDb, "<term-mappings/>")
+          BaseX.withDbSession[T](termDb)(block)
         }
         else {
           throw be
@@ -60,7 +66,7 @@ class TermDb(dbName: String) {
       |
       | let $$termMappings := doc('$termDb/$termDb.xml')/term-mappings
       |
-      | let $$termMapping := $$termMappings/term-mapping[source=${Repo.quote(mapping.source)}]
+      | let $$termMapping := $$termMappings/term-mapping[source=${quote(mapping.source)}]
       |
       | return
       |   if (exists($$termMapping))
@@ -75,7 +81,7 @@ class TermDb(dbName: String) {
     session =>
       val q = s"""
         |
-        |let $$mapping := doc('$termDb/$termDb.xml')/term-mappings/term-mapping[source=${Repo.quote(source)}]
+        |let $$mapping := doc('$termDb/$termDb.xml')/term-mappings/term-mapping[source=${quote(source)}]
         |return $$mapping/target/text()
         |
         |""".stripMargin

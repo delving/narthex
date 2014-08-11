@@ -18,7 +18,7 @@ package services
 
 import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
 import play.api.libs.json._
-import services.Repo.TermMapping
+import services.TermDb.TermMapping
 
 import scala.collection.mutable
 import scala.io.Source
