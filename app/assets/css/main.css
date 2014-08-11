@@ -278,8 +278,7 @@ ul.terminology-list .list-group-item.list-item-selected {
   font-weight: bold;
 }
 ul.terminology-list .list-group-item.list-item-mapped {
-  background: #f8e7bb;
-  font-weight: bold;
+  background: #5cb85c;
 }
 ul.terminology-list .list-group-item .term-mapped {
   font-weight: normal;
