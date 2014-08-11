@@ -95,7 +95,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
-        val storedRecord: Elem = fileRepo.record(id)
+        val storedRecord: Elem = fileRepo.recordRepo.record(id)
         if (storedRecord.nonEmpty) {
           Ok(storedRecord)
         }
@@ -123,15 +123,16 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
+        val termRepo = fileRepo.termRepo
         val mappings = Cache.getAs[Map[String, TargetConcept]](fileName).getOrElse {
-          val freshMap = fileRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
+          val freshMap = termRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
           Cache.set(fileName, freshMap, 60 * 5)
           freshMap
         }
-        val storedRecord: Elem = fileRepo.record(id)
+        val storedRecord: Elem = fileRepo.recordRepo.record(id)
         if (storedRecord.nonEmpty) {
           // todo: when mapping paths are from record root, remove this:
-          val recordRoot = (fileRepo.getDatasetInfo \ "delimit" \ "recordRoot").text
+          val recordRoot = (fileRepo.datasetDb.getDatasetInfo \ "delimit" \ "recordRoot").text
           val parser = new StoredRecordParser(fileName, recordRoot, mappings)
           // find a way to iterate through the elem instead
           val record = parser.parse(storedRecord.toString())
@@ -151,7 +152,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
-        val ids = fileRepo.getIds(since)
+        val ids = fileRepo.recordRepo.getIds(since)
         Ok(scala.xml.XML.loadString(ids))
       }
       else {
@@ -165,7 +166,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       if (checkKey(fileName, apiKey)) {
         repo.fileRepoOption(fileName) match {
           case Some(fileRepo) =>
-            val mappings = fileRepo.getMappings
+            val mappings = fileRepo.termRepo.getMappings
             val reply =
               <mappings>
                 {mappings.map { m =>
@@ -200,7 +201,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       else {
         request.body.moveTo(uploaded)
         val fileRepo = repo.fileRepo(fileName)
-        fileRepo.setRecordDelimiter(
+        fileRepo.datasetDb.setRecordDelimiter(
           recordRoot = "/delving-sip-target/output",
           uniqueId = "/delving-sip-target/output/@id",
           recordCount = -1

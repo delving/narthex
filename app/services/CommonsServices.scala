@@ -13,6 +13,7 @@ import services.NarthexConfig._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 /**
  * TODO harden this, error handling, logging... for now we always return the worst case scenario in case of an error. however we should make the clients

@@ -36,7 +36,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
 
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
       Logger.info(s"Saving ${fileRepo.dir.getName}")
-      fileRepo.withNewRecordDatabase {
+      fileRepo.recordRepo.freshDb {
         session =>
           val parser = new RawRecordParser(recordRoot, uniqueId)
           val source = FileHandling.source(fileRepo.sourceFile)
@@ -45,7 +45,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
             override def receive: Receive = {
               case SaveProgress(percent) =>
                 if (percent == 100) context.stop(self)
-                fileRepo.setStatus(SAVING, percent = percent)
+                fileRepo.datasetDb.setStatus(SAVING, percent = percent)
             }
           }))
 
@@ -59,15 +59,15 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
 
           val namespaceMap = parser.parse(source, receiveRecord, recordCount, sendProgress)
           source.close()
-          fileRepo.setNamespaceMap(namespaceMap)
+          fileRepo.datasetDb.setNamespaceMap(namespaceMap)
           self ! SaveComplete()
       }
 
     case SaveComplete() =>
       Logger.info(s"Saved ${fileRepo.dir.getName}, optimizing..")
-      fileRepo.withRecordDatabase(_.execute(new Optimize()))
+      fileRepo.recordRepo.db(_.execute(new Optimize()))
       Logger.info(s"Optimized ${fileRepo.dir.getName}.")
-      fileRepo.setStatus(SAVED)
+      fileRepo.datasetDb.setStatus(SAVED)
       context.stop(self)
 
   }

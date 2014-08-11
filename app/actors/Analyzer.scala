@@ -63,7 +63,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
       val progress = context.actorOf(Props(new Actor() {
         override def receive: Receive = {
           case AnalysisProgress(percent) =>
-            fileRepo.setStatus(SPLITTING, percent = percent)
+            fileRepo.datasetDb.setStatus(SPLITTING, percent = percent)
         }
       }))
       def sendProgress(percent: Int) = progress ! AnalysisProgress(percent)
@@ -129,7 +129,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
             self ! AnalysisComplete()
           }
           else {
-            fileRepo.setStatus(ANALYZING, workers = sorters.size + collators.size)
+            fileRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
           }
       }
 
@@ -140,12 +140,12 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
       context.stop(self)
 
     case AnalysisTreeComplete(json, digest) =>
-      fileRepo.setStatus(ANALYZING, workers = sorters.size + collators.size)
+      fileRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
       log.info(s"Tree Complete at ${fileRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
 
     case AnalysisComplete() =>
       log.info(s"Analysis Complete, kill: ${self.toString()}")
-      fileRepo.setStatus(ANALYZED)
+      fileRepo.datasetDb.setStatus(ANALYZED)
       context.stop(self)
 
   }

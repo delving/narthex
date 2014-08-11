@@ -56,7 +56,7 @@ object OaiPmh extends Controller {
 
     def getFirstToken(set: String, prefix: String, headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[String] = {
       val fileRepo = Repo.repo.fileRepo(s"${set}__$prefix")
-      fileRepo.createHarvest(headersOnly, from, until)
+      fileRepo.recordRepo.createHarvest(headersOnly, from, until)
     }
 
     def getHarvestValues(token: String): (Option[NodeSeq], Option[String]) = {
@@ -67,7 +67,7 @@ object OaiPmh extends Controller {
       val fileName = s"${set}__$format"
       Repo.repo.fileRepoOption(fileName) match {
         case Some(fileRepo) =>
-          Some(fileRepo.recordPmh(identifier))
+          Some(fileRepo.recordRepo.recordPmh(identifier))
         case None =>
           None
       }

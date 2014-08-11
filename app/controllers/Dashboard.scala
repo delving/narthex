@@ -67,7 +67,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def datasetInfo(fileName: String) = Secure() {
     token => implicit request => {
-      val datasetInfo = repo.fileRepo(fileName).getDatasetInfo
+      val datasetInfo = repo.fileRepo(fileName).datasetDb.getDatasetInfo
       // there should be a better way, but couldn't find one and got impatient
       def extract(tag: String) = {
         (datasetInfo \ tag).head.child.filter(_.isInstanceOf[Elem]).map(n => n.label -> JsString(n.text))
@@ -134,7 +134,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       var uniqueId = (request.body \ "uniqueId").as[String]
       var recordCount = (request.body \ "recordCount").as[Int]
       val fileRepo = repo.fileRepo(fileName)
-      fileRepo.setRecordDelimiter(recordRoot, uniqueId, recordCount)
+      fileRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
       //      fileRepo.saveRecords(recordRoot, uniqueId, recordCount)
       Ok
@@ -144,7 +144,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def saveRecords(fileName: String) = Secure() {
     token => implicit request => {
       val fileRepo = repo.fileRepo(fileName)
-      fileRepo.saveRecords()
+      fileRepo.recordRepo.saveRecords()
       Ok
     }
   }
@@ -155,7 +155,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val path = (request.body \ "path").as[String]
       val value = (request.body \ "value").as[String]
       val fileRepo = repo.fileRepo(fileName)
-      val result: String = fileRepo.recordsWithValue(path, value)
+      val result: String = fileRepo.recordRepo.recordsWithValue(path, value)
       Ok(result)
     }
   }
@@ -184,7 +184,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def getMappings(fileName: String) = Secure() {
     token => implicit request => {
       val fileRepo = repo.fileRepo(fileName)
-      val mappings: scala.Seq[TermMapping] = fileRepo.getMappings
+      val mappings: scala.Seq[TermMapping] = fileRepo.termRepo.getMappings
       Ok(Json.obj("mappings" -> mappings))
     }
   }
@@ -196,7 +196,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val vocabulary = (request.body \ "vocabulary").as[String]
       val prefLabel = (request.body \ "prefLabel").as[String]
       val fileRepo = repo.fileRepo(fileName)
-      fileRepo.setMapping(TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
+      fileRepo.termRepo.setMapping(TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
       Ok("thanks man")
     }
   }

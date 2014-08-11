@@ -21,7 +21,7 @@ import scala.io.Source
 
 object SkosRepo {
   val SUFFIX = ".xml"
-  val skos = new File(Repo.root, "skos")
+  val skos = new File(Repo.NARTHEX_FILES, "skos")
 
   def listFiles = {
     val files = if (skos.exists()) skos.listFiles.filter(file => file.getName.endsWith(SUFFIX)) else Array[File]()
