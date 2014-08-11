@@ -77,6 +77,13 @@ body {
 .btn-inverse:hover {
   color: #999999;
 }
+.label-clear {
+  background: #ffffff;
+  border: 1px solid #333333;
+  color: #333333;
+  font-weight: normal;
+  display: inline-block;
+}
 .alert-explain {
   background: #999999;
   border: #808080;
@@ -267,12 +274,19 @@ ul.terminology-list .list-group-item:hover {
   cursor: pointer !important;
 }
 ul.terminology-list .list-group-item.list-item-selected {
-  background: #f0ad4e;
+  background: #5bc0de !important;
   font-weight: bold;
 }
 ul.terminology-list .list-group-item.list-item-mapped {
   background: #f8e7bb;
   font-weight: bold;
+}
+ul.terminology-list .list-group-item .term-mapped {
+  font-weight: normal;
+  font-style: italic;
+}
+ul.terminology-list .list-group-item .term-mapped i {
+  margin: 0 10px;
 }
 .nav-tab {
   background: #555555;
@@ -326,6 +340,7 @@ ul.terminology-list .list-group-item.list-item-mapped {
 .vertical-scroll {
   overflow-x: hidden;
   overflow-y: auto;
+  position: relative;
 }
 /* CONCEPT LIST */
 .concepts-list .concept-bottom {
@@ -335,18 +350,16 @@ ul.terminology-list .list-group-item.list-item-mapped {
   background: #222222;
   padding-bottom: 10px;
   border-bottom: 1px dashed #555555;
-  position: relative;
 }
 .concepts-list .concept-box .progress {
   margin-bottom: 4px !important;
 }
 .concepts-list .concept-selected {
-  background: #555555;
+  background: #ffffff;
   padding: 8px;
-  position: absolute;
-  top: 10px;
-  left: -20px;
-  z-index: 10000;
+}
+.concepts-list .concept-selected .concept-bottom {
+  color: #333333;
 }
 .concepts-list .label {
   font-size: 85%;

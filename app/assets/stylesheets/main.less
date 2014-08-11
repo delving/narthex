@@ -100,6 +100,13 @@ body {
   }
 }
 
+.label-clear {
+  background: @white;
+  border: 1px solid @gray-dark;
+  color: @gray-dark;
+  font-weight: normal;
+  display: inline-block;
+}
 
 .alert-explain {
   background:@gray-light;
@@ -324,12 +331,19 @@ ul.terminology-list {
       cursor: pointer !important;
     }
     &.list-item-selected {
-      background: @brand-warning;
+      background: @brand-info !important;
       font-weight: bold;
     }
     &.list-item-mapped {
       background: #f8e7bb;
       font-weight: bold;
+    }
+    .term-mapped {
+      font-weight: normal;
+      font-style: italic;
+      i {
+        margin: 0 10px;
+      }
     }
   }
 }
@@ -387,6 +401,7 @@ ul.terminology-list {
 .vertical-scroll {
   overflow-x: hidden;
   overflow-y: auto;
+  position: relative;
 }
 
 /* CONCEPT LIST */
@@ -399,18 +414,17 @@ ul.terminology-list {
     background: @gray-darker;
     padding-bottom: 10px;
     border-bottom: 1px dashed @gray;
-    position: relative;
+//    position: relative;
     .progress {
       margin-bottom: 4px !important;
     }
   }
   .concept-selected {
-    background: @gray;
+    background: @white;
     padding: 8px;
-    position: absolute;
-    top: 10px;
-    left: -20px;
-    z-index: 10000;
+    .concept-bottom {
+      color: @gray-dark;
+    }
   }
   .label {
     font-size: 85%;
