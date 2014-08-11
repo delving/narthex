@@ -191,6 +191,7 @@ class Repo(root: File, val orgId: String) {
 
   def sipZipFile(fileName: String) = new File(sipZip, fileName)
 
+  // todo: add hints, to get record count
   def listSipZip: Seq[(File, Map[String, String])] = {
     if (!sipZip.exists()) return Seq.empty
     val fileList = sipZip.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
@@ -198,7 +199,7 @@ class Repo(root: File, val orgId: String) {
       f =>
         val n = f.getName
         val parts = n.split("__")
-        if (parts.length == 2) parts(1) else parts(0)
+        if (parts.length >= 2) parts(1) else parts(0)
     }
     ordered.reverse.map {
       file =>

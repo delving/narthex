@@ -235,6 +235,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           <sip>
             <file>{file.getName}</file>
             <facts>
+              <spec>{facts("spec")}</spec>
               <name>{facts("name")}</name>
               <dataProvider>{facts("dataProvider")}</dataProvider>
               <country>{facts("dataProvider")}</country>
@@ -251,6 +252,11 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           </sip>}
         </sip-list>
       Ok(reply)
+  }
+
+  def downloadSipZip(apiKey: String, fileName: String) = Action(parse.anyContent) {
+    implicit request =>
+      OkFile(repo.sipZipFile(fileName))
   }
 
   private def checkKey(fileName: String, apiKey: String) = {
