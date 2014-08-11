@@ -68,7 +68,7 @@
                                         <i class="fa fa-folder-open"></i> <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
                                         <div class="btn-toolbar pull-right">
                                             <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">
-                                                <span><i class="fa fa-database"></i> Save Records
+                                                <i class="fa fa-database"></i> Save Records
                                             </button>
                                             <button class="btn btn-danger btn-xs btn-isolate"
                                                     data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
@@ -88,44 +88,41 @@
 
                                     <!-- 5:SAVED -->
                                     <div ng-switch-when="5:saved">
-                                        <span><i class="fa fa-database"></i> <a href data-ng-click="file.showExtendedInfo = !file.showExtendedInfo">{{ file.name }}</a> ({{ file.delimit.recordCount }})</span>
-                                        <span>&nbsp;&nbsp;&nbsp;</span>
-                                        <button class="btn btn-info btn-xs" data-ng-click="viewFile(file)" data-ng-show="file.showExtendedInfo">
+                                        <i class="fa fa-database fa-fw"></i>
+                                        <span class="badge">{{ file.delimit.recordCount }}</span>
+                                        <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"> <span class="caret"></span> {{ file.name }}</a>
+                                        <button class="btn btn-info btn-xs pull-right" data-ng-click="viewFile(file)">
                                             View Schema <i class="fa fa-folder-open"></i>
                                         </button>
-                                        <span class="btn-toolbar pull-right" data-ng-show="file.showExtendedInfo">
-                                            <button class="btn btn-danger btn-xs"
-                                                    data-ng-click="deleteDataset(file)">Delete File <i class="fa fa-trash-o"></i>&nbsp;
-                                            </button>
-                                        </span>
-                                        <div class="file-extended-info" data-ng-show="file.showExtendedInfo">
+
+                                        <div class="file-extended-info clearfix" data-ng-show="file.showExtendedInfo">
                                             <!-- todo: create a placeholder button for 'publish'-->
-                                            <div class="col-sm-12">
-                                                <div class="col-md-6">
-                                                    <h4 class="heading">Records</h4>
+                                                    <h4 class="heading">Record info</h4>
                                                     <ul class="list-unstyled">
                                                         <li><b>Record Root</b>:<code class="path">{{ file.delimit.recordRoot }}</code></li>
                                                         <li><b>Unique ID</b>: <code class="path">{{ file.delimit.uniqueId }}</code></li>
                                                     </ul>
-                                                </div>
-                                                <div class="col-sm-6" data-ng-show="file.namespaces">
-                                                    <h4 class="heading">Namespaces</h4>
+
+                                                <div class="" data-ng-show="file.namespaces">
+                                                    <h4 class="heading">Namespace(s)</h4>
                                                     <ul class="list-unstyled">
                                                         <li data-ng-repeat="namespace in file.namespaces">
                                                             <b>{{ namespace.prefix }}</b> = "{{ namespace.uri }}"
                                                         </li>
                                                     </ul>
                                                 </div>
-                                            </div>
-                                            <div class="col-sm-9"  style="padding-bottom: 20px; padding-top: 20px;">
+
+                                            <div class="btn-toolbar">
                                                 <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
                                                     <i class="fa fa-download"></i> Download Terminology Mappings
                                                 </a>
                                                 <a ng-href="{{file.oaiPmhListRecords}}" target="_blank" class="btn btn-primary">
                                                     <i class="fa fa-download"></i> Download Records via OAI-PMH
                                                 </a>
+                                                <button class="btn btn-danger btn-isolate"
+                                                        data-ng-click="deleteDataset(file)">Delete File <i class="fa fa-trash-o"></i>&nbsp;
+                                                </button>
                                             </div>
-
                                         </div>
                                     </div>
                                     <!-- UNKNOWN STATE -->

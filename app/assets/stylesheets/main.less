@@ -80,16 +80,26 @@ body {
   }
 }
 
-.btn-isolate {
-  margin-left: 32px !important;
-}
-
 .btn-default {
   &.active {
     background: #ddd;
     color: @gray;
   }
 }
+
+.btn-isolate {
+  margin-left: 32px !important;
+}
+
+
+.btn-inverse {
+  background: @white;
+  color: @gray-dark;
+  &:hover {
+    color: @gray-light;
+  }
+}
+
 
 .alert-explain {
   background:@gray-light;
@@ -194,6 +204,9 @@ code {
         font-size: @font-size-base*1.5;
         font-weight: bold;
       }
+  }
+  .btn-toolbar {
+    margin-top: 20px;
   }
 }
 
@@ -386,12 +399,18 @@ ul.terminology-list {
     background: @gray-darker;
     padding-bottom: 10px;
     border-bottom: 1px dashed @gray;
+    position: relative;
     .progress {
       margin-bottom: 4px !important;
     }
   }
   .concept-selected {
-
+    background: @gray;
+    padding: 8px;
+    position: absolute;
+    top: 10px;
+    left: -20px;
+    z-index: 10000;
   }
   .label {
     font-size: 85%;

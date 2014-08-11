@@ -63,12 +63,19 @@ body {
   max-width: 100%;
   height: auto;
 }
-.btn-isolate {
-  margin-left: 32px !important;
-}
 .btn-default.active {
   background: #ddd;
   color: #555555;
+}
+.btn-isolate {
+  margin-left: 32px !important;
+}
+.btn-inverse {
+  background: #ffffff;
+  color: #333333;
+}
+.btn-inverse:hover {
+  color: #999999;
 }
 .alert-explain {
   background: #999999;
@@ -157,6 +164,9 @@ code.path span {
   padding: 0px;
   font-size: 21px;
   font-weight: bold;
+}
+.file-list .btn-toolbar {
+  margin-top: 20px;
 }
 .panel-schema {
   margin-bottom: 0px;
@@ -325,9 +335,18 @@ ul.terminology-list .list-group-item.list-item-mapped {
   background: #222222;
   padding-bottom: 10px;
   border-bottom: 1px dashed #555555;
+  position: relative;
 }
 .concepts-list .concept-box .progress {
   margin-bottom: 4px !important;
+}
+.concepts-list .concept-selected {
+  background: #555555;
+  padding: 8px;
+  position: absolute;
+  top: 10px;
+  left: -20px;
+  z-index: 10000;
 }
 .concepts-list .label {
   font-size: 85%;
