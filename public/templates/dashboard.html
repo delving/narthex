@@ -89,8 +89,7 @@
                                     <!-- 5:SAVED -->
                                     <div ng-switch-when="5:saved">
                                         <i class="fa fa-database fa-fw"></i>
-                                        <span class="badge">{{ file.delimit.recordCount }}</span>
-                                        <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"> <span class="caret"></span> {{ file.name }}</a>
+                                        <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"> <span class="caret"></span> {{ file.name }} ({{ file.delimit.recordCount }})</a>
                                         <button class="btn btn-info btn-xs pull-right" data-ng-click="viewFile(file)">
                                             View Schema <i class="fa fa-folder-open"></i>
                                         </button>
