@@ -25,7 +25,7 @@
                     <ul class="list-group terminology-list">
                         <li data-ng-repeat="entry in histogramVisible | filter:filterText"
                             class="list-group-item clearfix test-class"
-                            data-ng-class="{ 'list-item-selected': entry.value == sourceValue, 'list-item-mapped' : mappings[entry.sourceUri] }"
+                            data-ng-class="{ 'list-item-selected': entry.value ==  sourceEntry.value, 'list-item-mapped' : mappings[entry.sourceUri] }"
                             data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectSource(entry);">
                             <span class="term">{{ entry.value }}</span>
                             <span  class="term-mapped" data-ng-show="mappings[entry.sourceUri].prefLabel">
