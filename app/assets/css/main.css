@@ -108,6 +108,9 @@ code.path span {
   margin-top: -5px;
   margin-right: 10px;
 }
+.navbar-brand span {
+  color: #999999;
+}
 .file-drop {
   text-align: center;
 }
