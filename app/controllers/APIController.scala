@@ -131,10 +131,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         }
         val storedRecord: Elem = fileRepo.recordRepo.record(id)
         if (storedRecord.nonEmpty) {
-          // todo: when mapping paths are from record root, remove this:
-          val recordRoot = (fileRepo.datasetDb.getDatasetInfo \ "delimit" \ "recordRoot").text
-          val parser = new StoredRecordParser(fileName, recordRoot, mappings)
-          // find a way to iterate through the elem instead
+          val filePrefix = s"${NarthexConfig.ORG_ID}/$fileName"
+          val parser = new StoredRecordParser(filePrefix, mappings)
+          // todo: use something like Stamper above to find a way to iterate through the elem instead
           val record = parser.parse(storedRecord.toString())
           Ok(scala.xml.XML.loadString(record.text.toString()))
         }

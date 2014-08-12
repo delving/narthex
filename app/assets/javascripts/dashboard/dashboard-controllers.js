@@ -248,8 +248,8 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
-        dashboardService.datasetInfo($scope.fileName).then(function (thing) {
-            $scope.datasetInfo = thing;
+        dashboardService.datasetInfo($scope.fileName).then(function (datasetInfo) {
+            $scope.datasetInfo = datasetInfo;
             dashboardService.index($scope.fileName).then(function (tree) {
                 function sortKids(node) {
                     if (!node.kids.length) return;
@@ -281,8 +281,8 @@ define(["angular"], function () {
                 $scope.tree = tree;
                 if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
 
-                var recordRoot = thing.delimit.recordRoot;
-                var uniqueId = thing.delimit.uniqueId;
+                var recordRoot = datasetInfo.delimit.recordRoot;
+                var uniqueId = datasetInfo.delimit.uniqueId;
 
                 function setDelim(node) {
                     if (node.path == recordRoot) {
@@ -298,7 +298,7 @@ define(["angular"], function () {
 
                 if (recordRoot) {
                     setDelim(tree);
-                    if (parseInt(thing.delimit.recordCount) < 0) {
+                    if (parseInt(datasetInfo.delimit.recordCount) < 0) {
                         $scope.setUniqueIdNode($scope.uniqueIdNode); // trigger setting record count
                     }
                 }

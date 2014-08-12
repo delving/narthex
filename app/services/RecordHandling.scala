@@ -211,9 +211,7 @@ trait RecordHandling extends BaseXTools {
 
   case class TargetConcept(uri: String, vocabulary:String, prefLabel: String)
 
-  class StoredRecordParser(filePrefix: String, recordRoot: String, mappings: Map[String, TargetConcept]) {
-
-    val recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
+  class StoredRecordParser(filePrefix: String, mappings: Map[String, TargetConcept]) {
 
     def parse(xmlString: String): Record = {
 
@@ -249,16 +247,19 @@ trait RecordHandling extends BaseXTools {
           if (tag == "narthex") {
             record = Some(Record(attrs.get("id").head.text, scope))
           }
-          else {
-            val parentPath: String = stack.reverse.map(_.tag).mkString("/")
-            val path = s"$recordContainer/$parentPath/$tag"
-            start match {
-              case Some(startString) =>
-                record.get.text.append(s"$indent$startString\n")
-              case None =>
-            }
-            start = startElement(tag, attrs)
-            stack.push(Frame(tag, path))
+          else record match {
+            case Some(r) =>
+              val parentPath: String = stack.reverse.map(_.tag).mkString("/")
+              val path = s"/$parentPath/$tag"
+              start match {
+                case Some(startString) =>
+                  record.get.text.append(s"$indent$startString\n")
+                case None =>
+              }
+              start = startElement(tag, attrs)
+              stack.push(Frame(tag, path))
+            case None =>
+              // not in the record yet
           }
 
         case EvText(text) => pushText(text)

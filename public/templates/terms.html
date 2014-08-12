@@ -23,18 +23,17 @@
             <div class="panel-body">
                 <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="200" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <ul class="list-group terminology-list">
-                        <li data-ng-repeat="count in histogramVisible | filter:filterText"
+                        <li data-ng-repeat="entry in histogramVisible | filter:filterText"
                             class="list-group-item clearfix test-class"
-                            data-ng-class="{ 'list-item-selected': count[1] == sourceValue, 'list-item-mapped' : mappings[createSourceUri(count[1])] }"
-                            data-ng-click="selectSource(count[1]);">
-                            <span class="term">{{ count[1] }}</span>
-                            <span  class="term-mapped" data-ng-show="mappings[createSourceUri(count[1])].prefLabel">
-                                <i class="fa fa-link"></i> {{ mappings[createSourceUri(count[1])].prefLabel }}
+                            data-ng-class="{ 'list-item-selected': entry.value == sourceValue, 'list-item-mapped' : mappings[entry.sourceUri] }"
+                            data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectSource(entry);">
+                            <span class="term">{{ entry.value }}</span>
+                            <span  class="term-mapped" data-ng-show="mappings[entry.sourceUri].prefLabel">
+                                <i class="fa fa-link"></i> {{ mappings[entry.sourceUri].prefLabel }}
                                 <!-- todo: functionality to delete the term mapping -->
                                 <!--<button class="btn btn-danger btn-xs"><i class="fa fa-unlink"></i></button>-->
                             </span>
-                            <span class="node-stats badge">{{ count[0] }}</span>
-
+                            <span class="node-stats badge">{{ entry.count }}</span>
                         </li>
                     </ul>
                 </div>
@@ -96,7 +95,7 @@
 
 
                     <div data-ng-show="concepts" class="concepts-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="289" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
-                        <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceUri].target == concept.uri }">
+                        <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceEntry.sourceUri].target == concept.uri }">
 
                             <progressbar value="concept.proximity" max="1.0" type="success">
                                 {{ concept.proximity * 100 | number : 0 }}%

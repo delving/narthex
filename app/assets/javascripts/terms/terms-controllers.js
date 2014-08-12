@@ -17,7 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, dashboardService, $timeout, pageScroll ) {
+    var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, dashboardService, $timeout, pageScroll) {
 
         $rootScope.currentLocation = "TERMS";
 
@@ -28,6 +28,7 @@ define(["angular"], function (angular) {
             $scope.activeView = $routeParams.view || "vocabulary";
             $scope.vocabulary = $routeParams.vocabulary;
         }
+
         function updateSearchParams() {
             $location.search({
                 path: $scope.path,
@@ -36,10 +37,11 @@ define(["angular"], function (angular) {
                 vocabulary: $scope.vocabulary
             });
         }
+
         getSearchParams();
 
         // local
-        $scope.sourceValue = ""; // list selection
+        $scope.sourceEntry = undefined; // list selection
         $scope.sought = ""; // the field model
         $scope.mappings = {};
         $scope.show = "all";
@@ -47,22 +49,33 @@ define(["angular"], function (angular) {
         $scope.histogram = [];
         $scope.histogramVisible = [];
 
-        $scope.scrollTo = function(options){
+        $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
         };
 
-        $scope.createSourceUri = function(value) {
-            // todo: use recordRoot
-            return $rootScope.orgId + "/" + $scope.fileName + $scope.path + "/" + encodeURIComponent(value);
-        };
+        dashboardService.datasetInfo($scope.fileName).then(function (datasetInfo) {
+            $scope.datasetInfo = datasetInfo;
+            var recordRoot = datasetInfo.delimit.recordRoot;
+            var lastSlash = recordRoot.lastIndexOf('/');
+            $scope.recordContainer = recordRoot.substring(0, lastSlash);
+            console.log("rootContainer", $scope.recordContainer);
+            $scope.sourceUriPath = $scope.path.substring($scope.recordContainer.length);
+            console.log("sourceUriPath", $scope.sourceUriPath);
+        });
+
+        function createSourceUri(value) {
+//            console.log('$scope.path', $scope.path);
+//            console.log('$scope.datasetInfo', $scope.datasetInfo);
+            return $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(value);
+        }
 
         function filterHistogram() {
             var mapped = 0;
             var unmapped = 0;
 
-            function hasMapping(count) {
-                var mapping = $scope.mappings[$scope.createSourceUri(count[1])];
-                var number = parseInt(count[0]);
+            function hasMapping(entry) {
+                var mapping = $scope.mappings[entry.sourceUri];
+                var number = parseInt(entry.count);
                 if (mapping) {
                     mapped += number;
                 }
@@ -74,18 +87,18 @@ define(["angular"], function (angular) {
 
             switch ($scope.show) {
                 case "mapped":
-                    $scope.histogramVisible = _.filter($scope.histogram, function(count){
-                        return hasMapping(count);
+                    $scope.histogramVisible = _.filter($scope.histogram, function (entry) {
+                        return hasMapping(entry);
                     });
                     break;
                 case "unmapped":
-                    $scope.histogramVisible = _.filter($scope.histogram, function(count){
-                        return !hasMapping(count);
+                    $scope.histogramVisible = _.filter($scope.histogram, function (entry) {
+                        return !hasMapping(entry);
                     });
                     break;
                 default:
-                    $scope.histogramVisible = _.filter($scope.histogram, function(count){
-                        hasMapping(count);
+                    $scope.histogramVisible = _.filter($scope.histogram, function (entry) {
+                        hasMapping(entry);
                         return true;
                     });
                     break;
@@ -103,7 +116,7 @@ define(["angular"], function (angular) {
             }
         });
         dashboardService.getMappings($scope.fileName).then(function (data) {
-            _.forEach(data.mappings, function(mapping) {
+            _.forEach(data.mappings, function (mapping) {
                 $scope.mappings[mapping.source] = {
                     target: mapping.target,
                     vocabulary: mapping.vocabulary,
@@ -111,7 +124,13 @@ define(["angular"], function (angular) {
                 }
             });
             dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
-                $scope.histogram = data.histogram;
+                $scope.histogram = _.map(data.histogram, function (count) {
+                    return {
+                        value: count[1],
+                        count: count[0],
+                        sourceUri: createSourceUri(count[1])
+                    }
+                });
             });
         });
 
@@ -122,7 +141,7 @@ define(["angular"], function (angular) {
                 $scope.conceptSearch = data.search;
                 var mapping = $scope.mappings[$scope.sourceUri];
                 if (mapping) {
-                    $scope.concepts = _.flatten(_.partition(data.search.results, function(concept) {
+                    $scope.concepts = _.flatten(_.partition(data.search.results, function (concept) {
                         return concept.uri === mapping.target;
                     }));
                 }
@@ -142,15 +161,17 @@ define(["angular"], function (angular) {
             });
         }
 
-        $scope.vocabularyTab = function() {
+        $scope.vocabularyTab = function () {
             $scope.activeView = "vocabulary";
             updateSearchParams();
         };
 
-        $scope.skosTab = function() {
+        $scope.skosTab = function () {
             if ($scope.vocabulary) {
                 $scope.activeView = "skos";
-                $scope.sought = $scope.sourceValue;
+                if ($scope.sourceEntry) {
+                    $scope.sought = $scope.sourceEntry.value;
+                }
                 updateSearchParams();
             }
             else {
@@ -158,25 +179,26 @@ define(["angular"], function (angular) {
             }
         };
 
-        $scope.recordTab = function() {
+        $scope.recordTab = function () {
             $scope.activeView = "record";
-            searchRecords($scope.sourceValue);
+            if ($scope.sourceEntry) {
+                searchRecords($scope.sourceEntry.value);
+            }
             updateSearchParams();
         };
 
-        $scope.selectSource = function (sourceValue) {
-            $scope.sourceValue = sourceValue;
-            $scope.sourceUri = $scope.createSourceUri($scope.sourceValue);
-            var mapping = $scope.mappings[$scope.sourceUri];
+        $scope.selectSource = function (entry) {
+            $scope.sourceEntry = entry;
+            var mapping = $scope.mappings[entry.sourceUri];
             if (mapping && mapping.vocabulary != $scope.vocabulary) {
                 $scope.selectVocabulary(mapping.vocabulary);
             }
-            switch($scope.activeView) {
+            switch ($scope.activeView) {
                 case "skos":
-                    $scope.sought = $scope.sourceValue; // will trigger searchSkos
+                    $scope.sought = entry.value; // will trigger searchSkos
                     break;
                 case "record":
-                    searchRecords(sourceValue);
+                    searchRecords(entry.value);
                     break;
             }
         };
@@ -206,16 +228,16 @@ define(["angular"], function (angular) {
 
         // todo: we need a way of removing  mapping
         $scope.setMapping = function (concept) {
-            if (!($scope.sourceUri && $scope.vocabulary)) return;
+            if (!($scope.sourceEntry && $scope.vocabulary)) return;
             var body = {
-                source: $scope.sourceUri,
+                source: $scope.sourceEntry.sourceUri,
                 target: concept.uri,
                 vocabulary: $scope.vocabulary,
                 prefLabel: concept.prefLabel
             };
             dashboardService.setMapping($scope.fileName, body).then(function (data) {
                 console.log("set mapping returns", data);
-                $scope.mappings[$scope.sourceUri] = {
+                $scope.mappings[$scope.sourceEntry.sourceUri] = {
                     target: concept.uri,
                     vocabulary: $scope.vocabulary,
                     prefLabel: concept.prefLabel
