@@ -29,7 +29,7 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
-    var DashboardCtrl = function ($scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
+    var DashboardCtrl = function ($rootScope, $scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];
@@ -37,6 +37,7 @@ define(["angular"], function () {
         $scope.lastStatusCheck = 0;
         $scope.percent = null;
         $scope.activeTab = $routeParams.tab || "files";
+        $rootScope.currentLocation = "DASHBOARD";
 
         function apiPrefix(fileName) {
             var absUrl = $location.absUrl();
@@ -212,7 +213,7 @@ define(["angular"], function () {
     };
 
     DashboardCtrl.$inject = [
-        "$scope", "user", "dashboardService", "$location", "$upload", "$timeout", "$routeParams"
+        "$rootScope", "$scope", "user", "dashboardService", "$location", "$upload", "$timeout", "$routeParams"
     ];
 
     String.prototype.hashCode = function () {
@@ -227,9 +228,11 @@ define(["angular"], function () {
         return hash;
     };
 
-    var FileDetailCtrl = function ($scope, $routeParams, $timeout, $location, dashboardService, pageScroll) {
+    var FileDetailCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, dashboardService, pageScroll) {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.fileName = $routeParams.fileName;
+
+        $rootScope.currentLocation = "DATASET";
 
         $scope.apiPrefix = function () {
             var absUrl = $location.absUrl();
@@ -475,7 +478,8 @@ define(["angular"], function () {
 
     };
 
-    FileDetailCtrl.$inject = ["$scope", "$routeParams", "$timeout", "$location", "dashboardService", "pageScroll"];
+    FileDetailCtrl.$inject = ["$rootScope", "$scope", "$routeParams", "$timeout", "$location", "dashboardService", "pageScroll"];
+
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree) {
