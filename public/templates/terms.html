@@ -12,15 +12,13 @@
     </div>
     <div class="col-md-5">
         <div class="panel panel-primary panel-lists">
-            <div class="panel-heading clearfix">
+            <div class="panel-heading  list-controls">
                 <span class="panel-title">Terms</span>
-                <div class="pull-right">
-                    <ul class="nav nav-tabs tabs-small" data-ng-init="show='all'">
-                        <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'"><a href >All ({{ all }})</a></li>
-                        <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'"><a href >Mapped ({{ mapped }})</a></li>
-                        <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'"><a href >Unmapped ({{ unmapped }})</a></li>
-                    </ul>
-                </div>
+                <ul class="nav nav-tabs tabs-small pull-right" data-ng-init="show='all'">
+                    <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'"><a href >All ({{ all }})</a></li>
+                    <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'"><a href >Mapped ({{ mapped }})</a></li>
+                    <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'"><a href >Unmapped ({{ unmapped }})</a></li>
+                </ul>
             </div>
             <div class="panel-body">
                 <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="200" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
@@ -45,8 +43,8 @@
     </div>
     <div class="col-md-7">
         <div class="panel panel-primary">
-            <div class="panel-heading list-controls clearfix">
-                <ul class="nav nav-tabs tabs-small pull-left" data-ng-init="show='all'">
+            <div class="panel-heading list-controls">
+                <ul class="nav nav-tabs tabs-small pull-left" >
                     <li data-ng-class="{ active: activeView == 'vocabulary' }"><a href data-ng-click="vocabularyTab()">Vocabularies</a></li>
                     <li data-ng-class="{ active: activeView == 'skos' }"><a href data-ng-click="skosTab()">Concepts</a></li>
                     <li data-ng-class="{ active: activeView == 'record' }"><a href data-ng-click="recordTab()">Records</a></li>

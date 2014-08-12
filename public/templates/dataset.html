@@ -26,7 +26,7 @@
                 </div>
             </div>
             <div class="panel-body">
-                <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="222" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="220" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <ul data-ng-controller="TreeCtrl" class="list-node">
                         <div data-ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</div>
                     </ul>
@@ -43,18 +43,12 @@
 
         <div class="panel panel-default panel-lists">
                 <div class="panel-heading list-controls">
-                    <!-- LENGTHS -->
-                    <button class="btn btn-default btn-xs" data-ng-class="{ active: activeView == 'lengths' }" data-ng-click="fetchLengths()">
-                        Lengths
-                    </button>
-                    <!-- SAMPLES -->
-                    <button class="btn btn-default btn-xs" data-ng-class="{ active: activeView == 'sample' }" data-ng-click="fetchSample()">
-                        Sample
-                    </button>
-                    <!-- HISTORGRAM -->
-                    <button class="btn btn-default btn-xs" data-ng-class="{ active: activeView == 'histogram' }" data-ng-click="fetchHistogram()">
-                        Histogram
-                    </button>
+                    <ul class="nav nav-tabs tabs-small pull-left">
+                        <li data-ng-class="{ active: activeView == 'lengths' }" ><a href data-ng-click="fetchLengths()">Lengths</a></li>
+                        <li data-ng-class="{ active: activeView == 'sample' }" ><a href data-ng-click="fetchSample()">Samples</a></li>
+                        <li data-ng-class="{ active: activeView == 'histogram' }" ><a href data-ng-click="fetchHistogram()">Histogram</a></li>
+                    </ul>
+
                     <!-- USE AS UNIQUE ELEMENT -->
                     <span data-ng-show="activeView == 'histogram' && histogramUnique">
                         <button class="btn btn-primary btn-xs" data-ng-click="setUniqueIdNode(selectedNode)" data-ng-disabled="uniqueIdNode == selectedNode">
@@ -63,7 +57,7 @@
                     </span>
                     <!-- MAP AS VOCABULARY -->
                     <!--todo: also don't show this if there is no recordRoot-->
-                    <span data-ng-show="activeView == 'histogram' && histogramVocabulary">
+                    <span data-ng-show="activeView == 'histogram' && histogramVocabulary" class="pull-left">
                         <button class="btn btn-primary btn-xs" data-ng-click="goToTerms()">
                             <i class="fa fa-check-circle"></i><span> Map as Vocabulary</span>
                         </button>

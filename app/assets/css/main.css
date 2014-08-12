@@ -229,18 +229,6 @@ code.path span {
   display: inline-block;
   margin-top: 10px;
 }
-.panel-lists .navbar {
-  margin: 0 0 0 0;
-}
-.panel-lists .navbar .count-btn {
-  background: transparent;
-  color: #555555;
-  cursor: default;
-}
-.panel-lists .navbar .count-btn:hover {
-  background: transparent;
-  color: #555555;
-}
 .panel-lists .sub-controls {
   margin-left: 10px;
 }
@@ -272,6 +260,28 @@ code.path span {
   right: 4px;
   background: #0072b2;
   color: #ffffff;
+}
+.panel-lists .navbar {
+  margin: 0 0 0 0;
+}
+.panel-lists .navbar .count-btn {
+  background: transparent;
+  color: #555555;
+  cursor: default;
+}
+.panel-lists .navbar .count-btn:hover {
+  background: transparent;
+  color: #555555;
+}
+.list-controls:before,
+.list-controls:after {
+  content: " ";
+  /* 1 */
+  display: table;
+  /* 2 */
+}
+.list-controls:after {
+  clear: both;
 }
 ul.terminology-list .list-group-item:hover {
   font-weight: bold;

@@ -56,6 +56,17 @@
 
 /* global utilitly classes */
 
+.clearfix() {
+  &:before,
+  &:after {
+    content: " "; /* 1 */
+    display: table; /* 2 */
+  }
+  &:after {
+    clear: both;
+  }
+}
+
 .pointer {
   cursor: pointer;
 }
@@ -274,19 +285,6 @@ code {
       margin-top: 10px;
     }
   }
-  .navbar {
-    margin: 0 0 0 0;
-//    max-height: 32px;
-    .count-btn {
-      background: transparent;
-      color: @gray;
-      cursor: default;
-      &:hover {
-        background: transparent;
-        color: @gray;
-      }
-    }
-  }
   .sub-controls {
     margin-left: 10px;
   }
@@ -320,14 +318,24 @@ code {
     }
 
   }
+  .navbar {
+    margin: 0 0 0 0;
+    //    max-height: 32px;
+    .count-btn {
+      background: transparent;
+      color: @gray;
+      cursor: default;
+      &:hover {
+        background: transparent;
+        color: @gray;
+      }
+    }
+  }
 }
 
-//.list-controls {
-//  .btn.active {
-//    background: @brand-info;
-//    bordern: none;
-//  }
-//}
+.list-controls {
+  .clearfix();
+}
 
 ul.terminology-list {
   .list-group-item {
