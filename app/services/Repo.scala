@@ -166,7 +166,7 @@ class Repo(root: File, val orgId: String) {
             val state = (dataset \ "status" \ "state").text
             val totalRecords = (dataset \ "delimit" \ "recordCount").text
             val shouldBe_PUBLISHED = SAVED
-            if (state == shouldBe_PUBLISHED) Some(RepoDataSet(spec, prefix, "name", "dataProvider", totalRecords.toInt)) else None
+            if (state == shouldBe_PUBLISHED) Some(RepoDataSet(name, prefix, "name", "dataProvider", totalRecords.toInt)) else None
         }
     }
   }

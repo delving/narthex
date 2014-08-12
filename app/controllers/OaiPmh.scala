@@ -59,7 +59,7 @@ object OaiPmh extends Controller with BaseXTools {
     }
 
     def getFirstToken(set: String, prefix: String, headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[String] = {
-      val fileRepo = Repo.repo.fileRepo(s"${set}__$prefix")
+      val fileRepo = Repo.repo.fileRepo(set)
       fileRepo.recordRepo.createHarvest(headersOnly, from, until)
     }
 
@@ -68,8 +68,8 @@ object OaiPmh extends Controller with BaseXTools {
     }
 
     def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
-      val fileName = s"${set}__$format"
-      Repo.repo.fileRepoOption(fileName) match {
+//      val fileName = s"${set}__$format"
+      Repo.repo.fileRepoOption(set) match {
         case Some(fileRepo) =>
           Some(fileRepo.recordRepo.recordPmh(identifier))
         case None =>
