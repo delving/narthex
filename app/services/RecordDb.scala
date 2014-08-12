@@ -31,7 +31,6 @@ import scala.xml.{Elem, NodeSeq, XML}
  */
 
 class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
-
   val recordDb = s"${dbName}_records"
 
   def freshDb[T](block: ClientSession => T) = {
@@ -173,7 +172,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
         |     <header>
         |       <identifier>{$$rec/narthex/@id}</identifier>
         |       <datestamp>{$$rec/narthex/@mod}</datestamp>
-        |       <setSpec>?</setSpec>
+        |       <setSpec>${fileRepo.name}</setSpec>
         |     </header>
         |     <metadata>
         |      {$$rec/narthex/*}
@@ -202,7 +201,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
         |         <header>
         |           <identifier>{$$narthex/@id}</identifier>
         |           <datestamp>{$$narthex/@mod}</datestamp>
-        |           <setSpec>?</setSpec>
+        |           <setSpec>${fileRepo.name}</setSpec>
         |         </header>
         |         $metadata
         |       </record>
