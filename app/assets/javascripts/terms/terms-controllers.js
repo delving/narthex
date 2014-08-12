@@ -30,6 +30,7 @@ define(["angular"], function (angular) {
         }
 
         function updateSearchParams() {
+            $scope.sourceUriPath = $scope.path.substring($scope.recordContainer.length);
             $location.search({
                 path: $scope.path,
                 histogramSize: $scope.histogramSize,
@@ -58,16 +59,7 @@ define(["angular"], function (angular) {
             var recordRoot = datasetInfo.delimit.recordRoot;
             var lastSlash = recordRoot.lastIndexOf('/');
             $scope.recordContainer = recordRoot.substring(0, lastSlash);
-            console.log("rootContainer", $scope.recordContainer);
-            $scope.sourceUriPath = $scope.path.substring($scope.recordContainer.length);
-            console.log("sourceUriPath", $scope.sourceUriPath);
         });
-
-        function createSourceUri(value) {
-//            console.log('$scope.path', $scope.path);
-//            console.log('$scope.datasetInfo', $scope.datasetInfo);
-            return $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(value);
-        }
 
         function filterHistogram() {
             var mapped = 0;
@@ -125,10 +117,11 @@ define(["angular"], function (angular) {
             });
             dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
                 $scope.histogram = _.map(data.histogram, function (count) {
+                    var sourceUri = $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(count[1]);
                     return {
                         value: count[1],
                         count: count[0],
-                        sourceUri: createSourceUri(count[1])
+                        sourceUri: sourceUri
                     }
                 });
             });
