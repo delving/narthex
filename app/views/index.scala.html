@@ -13,11 +13,16 @@
   </head>
   <body>
     @*-- Header -- *@
-    <header class="navbar navbar-inverse navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl" data-ng-init="setOrg('@orgId', '@orgName')" data-ng-cloak>
+    <header class="navbar navbar-default navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl" data-ng-init="setOrg('@orgId', '@orgName')" data-ng-cloak>
       <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
         <a href="#/" class="navbar-brand"><img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
-            <span>Narthex (@orgName)</span> <span style="font-size: 10pt;">Your metadata fit for integration.</span>
+            <span>Narthex (@orgName)</span>
         </a>
+          @*<ul class="nav nav-pills">*@
+              @*<li class="active"><a href="#">Dashboard</a></li>*@
+              @*<li class="disabled"><a href="#">Dataset</a></li>*@
+              @*<li><a href="#">Terminology mapping</a></li>*@
+          @*</ul>*@
         <div data-ng-switch-when="true">
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">
