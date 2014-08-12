@@ -270,23 +270,29 @@ define(["angular"], function () {
                 $scope.tree = tree;
                 if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
 
-                var recordRoot = datasetInfo.delimit.recordRoot;
-                var uniqueId = datasetInfo.delimit.uniqueId;
-
-                function setDelim(node) {
+                function setDelim(node, recordRoot, recordContainer, uniqueId) {
                     if (node.path == recordRoot) {
                         $scope.recordRootNode = node;
                     }
                     else if (node.path == uniqueId) {
                         $scope.uniqueIdNode = node;
                     }
+                    else {
+                        var rootPart = node.path.substring(0, recordContainer.length);
+                        if (rootPart != recordContainer) {
+                            node.path = "";
+                        }
+                    }
                     for (var index = 0; index < node.kids.length; index++) {
-                        setDelim(node.kids[index]);
+                        setDelim(node.kids[index], recordRoot, recordContainer, uniqueId);
                     }
                 }
 
+                var recordRoot = datasetInfo.delimit.recordRoot;
                 if (recordRoot) {
-                    setDelim(tree);
+                    var recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
+                    var uniqueId = datasetInfo.delimit.uniqueId;
+                    setDelim(tree, recordRoot, recordContainer, uniqueId);
                     if (parseInt(datasetInfo.delimit.recordCount) < 0) {
                         $scope.setUniqueIdNode($scope.uniqueIdNode); // trigger setting record count
                     }
@@ -326,7 +332,7 @@ define(["angular"], function () {
 
         $scope.selectNode = function (node, $event) {
             if ($event) $event.stopPropagation();
-            if (!node.lengths.length) return;
+            if (node.lengths.length == 0 || node.path.length == 0) return;
             $scope.selectedNode = node;
             setActivePath(node.path);
             dashboardService.nodeStatus($scope.fileName, node.path).then(function (data) {
