@@ -30,7 +30,6 @@ define(["angular"], function (angular) {
         }
 
         function updateSearchParams() {
-            $scope.sourceUriPath = $scope.path.substring($scope.recordContainer.length);
             $location.search({
                 path: $scope.path,
                 histogramSize: $scope.histogramSize,
@@ -59,6 +58,7 @@ define(["angular"], function (angular) {
             var recordRoot = datasetInfo.delimit.recordRoot;
             var lastSlash = recordRoot.lastIndexOf('/');
             $scope.recordContainer = recordRoot.substring(0, lastSlash);
+            $scope.sourceUriPath = $scope.path.substring($scope.recordContainer.length);
         });
 
         function filterHistogram() {
