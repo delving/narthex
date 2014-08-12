@@ -18,10 +18,7 @@ String.prototype.endsWith = function (suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
 };
 
-function apiHash(fileName) {
-    var toHash = 'narthex|' + fileName;
-    return toHash.hashCode().toString(16).substring(1);
-}
+var API_ACCESS_KEY = "secret";
 
 define(["angular"], function () {
     "use strict";
@@ -30,6 +27,7 @@ define(["angular"], function () {
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
     var DashboardCtrl = function ($rootScope, $scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
+        $rootScope.currentLocation = "DASHBOARD";
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];
@@ -37,20 +35,15 @@ define(["angular"], function () {
         $scope.lastStatusCheck = 0;
         $scope.percent = null;
         $scope.activeTab = $routeParams.tab || "files";
-        $rootScope.currentLocation = "DASHBOARD";
-
-        function apiPrefix(fileName) {
-            var absUrl = $location.absUrl();
-            var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-            return serverUrl + 'api/' + apiHash(fileName);
-        }
+        var absUrl = $location.absUrl();
+        $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
 
         function oaiPmhListRecords(fileName) {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
             var fileNameParts = fileName.split("__");
             //                    http://localhost:9000/oai-pmh/acesskeythingy?verb=ListRecords&set=RCE_Monuments&metadataPrefix=car&from=2014-08-08T09%3A43%3A44.400%2B02%3A00
-            return serverUrl + 'oai-pmh/' + 'access-key-thing?verb=ListRecords&set=' + fileNameParts[0] + "&metadataPrefix=" + fileNameParts[1];
+            return serverUrl + 'oai-pmh/' + accessKey + '?verb=ListRecords&set=' + fileName + "&metadataPrefix=" + fileNameParts[1];
         }
 
         function timeSinceStatusCheck() {
@@ -148,7 +141,7 @@ define(["angular"], function () {
                 _.forEach($scope.files, checkFileStatus);
                 _.forEach($scope.files, checkSaveStatus);
                 _.forEach($scope.files, function (file) {
-                    file.apiMappings = apiPrefix(file.name) + '/' + file.name + '/mappings';
+                    file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
                     file.oaiPmhListRecords = oaiPmhListRecords(file.name);
                 })
             });
@@ -233,12 +226,8 @@ define(["angular"], function () {
         $scope.fileName = $routeParams.fileName;
 
         $rootScope.currentLocation = "DATASET";
-
-        $scope.apiPrefix = function () {
-            var absUrl = $location.absUrl();
-            var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-            return serverUrl + 'api/' + apiHash($scope.fileName);
-        };
+        var absUrl = $location.absUrl();
+        $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
@@ -343,7 +332,8 @@ define(["angular"], function () {
             dashboardService.nodeStatus($scope.fileName, node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
-                $scope.apiPath = $scope.apiPrefix() + filePath;
+                $scope.apiPathUnique = $scope.apiPrefix + "/" + $scope.fileName + "/unique" + filePath;
+                $scope.apiPathHistogram = $scope.apiPrefix + "/" + $scope.fileName + "/histogram" + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
                 switch ($routeParams.view) {

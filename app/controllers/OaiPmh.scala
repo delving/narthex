@@ -31,7 +31,7 @@ object OaiPmh extends Controller with BaseXTools {
 
   def service(accessKey: String) = Action(parse.anyContent) {
     implicit request =>
-      if (NarthexConfig.keyFits(accessKey)) {
+      if (NarthexConfig.oaiPmhKeyFits(accessKey)) {
         Ok(Service(request.queryString, request.uri))
       }
       else {

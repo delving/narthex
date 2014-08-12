@@ -20,6 +20,9 @@ import java.util
 
 import play.api.Play
 
+import scala.collection.JavaConversions._
+
+
 object NarthexConfig {
   val config = Play.current.configuration
 
@@ -29,13 +32,14 @@ object NarthexConfig {
   def configInt(name: String) = config.getInt(name).getOrElse(
     throw new RuntimeException(s"Missing config int: $name")
   )
-  def configList(name: String): util.List[String] = config.getStringList(name).getOrElse(
-    throw new RuntimeException(s"Missing config string list: $name"))
+  def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List[String]("secret"))
 
   lazy val ORG_ID = configString("commons.orgId")
   lazy val COMMONS_HOST = configString("commons.host")
   lazy val COMMONS_TOKEN = configString("commons.token")
   lazy val COMMONS_NODE = configString("commons.node")
+
+  lazy val API_ACCESS_KEYS = secretList("api.accessKeys")
 
   lazy val OAI_PMH_REPOSITORY_IDENTIFIER = configString("oai_pmh.repositoryIdentifier")
   lazy val OAI_PMH_REPOSITORY_NAME = configString("oai_pmh.repositoryName")
@@ -43,7 +47,8 @@ object NarthexConfig {
   lazy val OAI_PMH_EARLIEST_DATE_STAMP = configString("oai_pmh.earliestDateStamp")
   lazy val OAI_PMH_SAMPLE_IDENTIFIER = configString("oai_pmh.sampleIdentifier")
   lazy val OAI_PMH_PAGE_SIZE = configInt("oai_pmh.pageSize")
-  lazy val OAI_PMH_ACCESS_KEYS = configList("oai_pmh.accessKeys")
+  lazy val OAI_PMH_ACCESS_KEYS = secretList("oai_pmh.accessKeys")
 
-  def keyFits(accessKey: String) = OAI_PMH_ACCESS_KEYS.contains(accessKey)
+  def oaiPmhKeyFits(accessKey: String) = OAI_PMH_ACCESS_KEYS.contains(accessKey)
+  def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
 }

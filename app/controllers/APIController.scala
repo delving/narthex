@@ -23,6 +23,7 @@ import controllers.Application.OkFile
 import org.apache.commons.io.FileUtils
 import play.api.Play.current
 import play.api.cache.Cache
+import play.api.libs.json.Json
 import play.api.mvc._
 import services.Repo.repo
 import services._
@@ -32,68 +33,47 @@ import scala.xml.{Elem, Node}
 
 object APIController extends Controller with TreeHandling with RecordHandling {
 
-  def indexJSON(apiKey: String, fileName: String) = Action(parse.anyContent) {
+  def indexJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-      if (checkKey(fileName, apiKey)) {
-        OkFile(repo.fileRepo(fileName).index)
-      }
-      else {
-        Unauthorized
-      }
+      OkFile(repo.fileRepo(fileName).index)
     }
   }
 
-  def indexText(apiKey: String, fileName: String, path: String) = Action(parse.anyContent) {
+  def indexText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-      if (checkKey(fileName, apiKey)) {
         repo.fileRepo(fileName).indexText(path) match {
           case None =>
             NotFound(s"No index found for $path")
           case Some(file) =>
             OkFile(file)
         }
-      }
-      else {
-        Unauthorized
-      }
     }
   }
 
-  def uniqueText(apiKey: String, fileName: String, path: String) = Action(parse.anyContent) {
+  def uniqueText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-      if (checkKey(fileName, apiKey)) {
         repo.fileRepo(fileName).uniqueText(path) match {
           case None =>
             NotFound(s"No list found for $path")
           case Some(file) =>
             OkFile(file)
         }
-      }
-      else {
-        Unauthorized
-      }
     }
   }
 
-  def histogramText(apiKey: String, fileName: String, path: String) = Action(parse.anyContent) {
+  def histogramText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-      if (checkKey(fileName, apiKey)) {
         repo.fileRepo(fileName).histogramText(path) match {
           case None =>
             NotFound(s"No list found for $path")
           case Some(file) =>
             OkFile(file)
         }
-      }
-      else {
-        Unauthorized
-      }
     }
   }
 
-  def rawRecord(apiKey: String, fileName: String, id: String) = Action(parse.anyContent) {
+  def rawRecord(apiKey: String, fileName: String, id: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-      if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
         val storedRecord: Elem = fileRepo.recordRepo.record(id)
         if (storedRecord.nonEmpty) {
@@ -102,26 +82,22 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         else {
           NotFound(s"No record found for $id")
         }
-      }
-      else {
-        Unauthorized
-      }
     }
   }
 
   // todo: use something like this for enrichment
   class Stamp(prefix: String, localName: String) extends RewriteRule {
-    override def transform(node : Node):Node = node match {
+    override def transform(node: Node): Node = node match {
       case elem: Elem if elem.label == "Identifier" =>
         <hello>helllo</hello>
       case remainder => remainder
     }
   }
-  class Stamper(prefix: String, localName: String) extends RuleTransformer(new Stamp(prefix,localName))
 
-  def enrichedRecord(apiKey: String, fileName: String, id: String) = Action(parse.anyContent) {
+  class Stamper(prefix: String, localName: String) extends RuleTransformer(new Stamp(prefix, localName))
+
+  def enrichedRecord(apiKey: String, fileName: String, id: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-      if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
         val termRepo = fileRepo.termRepo
         val mappings = Cache.getAs[Map[String, TargetConcept]](fileName).getOrElse {
@@ -140,29 +116,19 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         else {
           NotFound(s"No record found for $id")
         }
-      }
-      else {
-        Unauthorized
-      }
     }
   }
 
-  def ids(apiKey: String, fileName: String, since: String) = Action(parse.anyContent) {
+  def ids(apiKey: String, fileName: String, since: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-      if (checkKey(fileName, apiKey)) {
         val fileRepo = repo.fileRepo(fileName)
         val ids = fileRepo.recordRepo.getIds(since)
         Ok(scala.xml.XML.loadString(ids))
-      }
-      else {
-        Unauthorized
-      }
     }
   }
 
-  def mappings(apiKey: String, fileName: String) = Action(parse.anyContent) {
+  def mappings(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-      if (checkKey(fileName, apiKey)) {
         repo.fileRepoOption(fileName) match {
           case Some(fileRepo) =>
             val mappings = fileRepo.termRepo.getMappings
@@ -181,15 +147,10 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           case None =>
             NotFound(s"No mappings for $fileName")
         }
-      }
-      else {
-        Unauthorized("Unauthorized")
-      }
     }
   }
 
-  def uploadOutput(apiKey: String, fileName: String) = Action(parse.temporaryFile) {
-    // todo: add security
+  def uploadOutput(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request => {
       val uploaded: File = repo.uploadedFile(fileName)
       if (uploaded.exists()) {
@@ -211,8 +172,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def uploadSipZip(apiKey: String, fileName: String) = Action(parse.temporaryFile) {
-    // todo: add security
+  def uploadSipZip(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request =>
       val file = repo.sipZipFile(fileName)
       request.body.moveTo(file, replace = true)
@@ -224,8 +184,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       Ok
   }
 
-  def listSipZips(apiKey: String) = Action(parse.anyContent) {
-    // todo: add security
+  def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request =>
       def reply =
         <sip-list>
@@ -261,15 +220,13 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       OkFile(repo.sipZipFile(fileName))
   }
 
-  private def checkKey(fileName: String, apiKey: String) = {
-    // todo: mindless so far, and do it as an action like in Security.scala
-    val toHash: String = s"narthex|$fileName"
-    val hash = toHash.hashCode
-    val expected: String = Integer.toString(hash, 16).substring(1)
-    val correct = expected == apiKey
-    if (!correct) {
-      println(s"expected[$expected] got[$apiKey] toHash[$toHash]")
-    }
-    correct
+  def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => SimpleResult): Action[A] = Action(p) {
+    implicit request =>
+      if (NarthexConfig.apiKeyFits(apiKey)) {
+        block(request)
+      }
+      else {
+        Unauthorized(Json.obj("err" -> "Invalid API Access key"))
+      }
   }
 }
