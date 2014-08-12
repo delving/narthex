@@ -22,6 +22,7 @@ import java.util.UUID
 import actors._
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
+import org.joda.time.format.ISODateTimeFormat
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.concurrent.Akka
@@ -191,6 +192,10 @@ class Repo(root: File, val orgId: String) {
 
   def sipZipFile(fileName: String) = new File(sipZip, fileName)
 
+  val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
+  val FORMATTER = ISODateTimeFormat.dateTime()
+
+  // todo: add hints, to get record count
   def listSipZip: Seq[(File, Map[String, String])] = {
     if (!sipZip.exists()) return Seq.empty
     val fileList = sipZip.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
@@ -198,7 +203,7 @@ class Repo(root: File, val orgId: String) {
       f =>
         val n = f.getName
         val parts = n.split("__")
-        if (parts.length == 2) parts(1) else parts(0)
+        if (parts.length >= 2) parts(1) else parts(0)
     }
     ordered.reverse.map {
       file =>
@@ -209,7 +214,10 @@ class Repo(root: File, val orgId: String) {
             val equals = line.indexOf("=")
             (line.substring(0, equals).trim, line.substring(equals + 1).trim)
         }.toMap
-        (file, facts)
+        val SipZipName(spec, year, month, day, hour, minute, uploadedBy) = file.getName
+        val dateTime = new DateTime(year.toInt, month.toInt, day.toInt, hour.toInt, minute.toInt)
+        val factsPlus = facts + ("uploadedBy" -> uploadedBy) + ("uploadedOn" -> FORMATTER.print(dateTime))
+        (file, factsPlus)
     }
   }
 }

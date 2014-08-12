@@ -49,6 +49,7 @@ GET         /api/:apiKey/:fileName/histogram/*path            controllers.APICon
 # todo: these should use OAuth
 POST        /sip-creator/:apiKey/upload/:fileName             controllers.APIController.uploadOutput(apiKey, fileName)
 POST        /sip-creator/:apiKey/sip-zip/:fileName            controllers.APIController.uploadSipZip(apiKey, fileName)
+GET         /sip-creator/:apiKey/sip-zip/:fileName            controllers.APIController.downloadSipZip(apiKey, fileName)
 GET         /sip-creator/:apiKey/sip-zip                      controllers.APIController.listSipZips(apiKey)
 
 GET         /oai-pmh/:accessKey                               controllers.OaiPmh.service(accessKey)
