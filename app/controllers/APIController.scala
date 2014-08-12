@@ -237,9 +237,12 @@ object APIController extends Controller with TreeHandling with RecordHandling {
             <facts>
               <spec>{facts("spec")}</spec>
               <name>{facts("name")}</name>
+              <provider>{facts("provider")}</provider>
               <dataProvider>{facts("dataProvider")}</dataProvider>
-              <country>{facts("dataProvider")}</country>
+              <country>{facts("country")}</country>
               <orgId>{facts("orgId")}</orgId>
+              <uploadedBy>{facts("uploadedBy")}</uploadedBy>
+              <uploadedOn>{facts("uploadedOn")}</uploadedOn>
               <schemaVersions>
                 {for (sv <- facts("schemaVersions").split(", *"))
               yield
