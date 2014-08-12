@@ -42,8 +42,7 @@ define(["angular"], function () {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
             var fileNameParts = fileName.split("__");
-            //                    http://localhost:9000/oai-pmh/acesskeythingy?verb=ListRecords&set=RCE_Monuments&metadataPrefix=car&from=2014-08-08T09%3A43%3A44.400%2B02%3A00
-            return serverUrl + 'oai-pmh/' + accessKey + '?verb=ListRecords&set=' + fileName + "&metadataPrefix=" + fileNameParts[1];
+            return serverUrl + 'oai-pmh/' + API_ACCESS_KEY + '?verb=ListRecords&set=' + fileName + "&metadataPrefix=" + fileNameParts[1];
         }
 
         function timeSinceStatusCheck() {
@@ -55,8 +54,9 @@ define(["angular"], function () {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
             if ($files.length && !$scope.uploading) {
                 var file = $files[0];
-                if (!(file.name.endsWith(".xml.gz") || file.name.endsWith(".xml"))) {
-                    alert("File must end with .xml or .xml.gz");
+                var part = file.name.match(/(.+)__(.+).xml.gz/);
+                if (!part) {
+                    alert("Sorry, the file must be named SPEC__PREFIX.xml.gz");
                     return;
                 }
                 $scope.uploading = true;
