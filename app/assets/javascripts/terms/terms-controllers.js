@@ -19,6 +19,8 @@ define(["angular"], function (angular) {
 
     var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, dashboardService, $timeout, pageScroll ) {
 
+        $rootScope.currentLocation = "TERMS";
+
         function getSearchParams() {
             $scope.fileName = $routeParams.fileName;
             $scope.path = $routeParams.path;
@@ -104,7 +106,8 @@ define(["angular"], function (angular) {
             _.forEach(data.mappings, function(mapping) {
                 $scope.mappings[mapping.source] = {
                     target: mapping.target,
-                    vocabulary: mapping.vocabulary
+                    vocabulary: mapping.vocabulary,
+                    prefLabel: mapping.prefLabel
                 }
             });
             dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
@@ -114,7 +117,7 @@ define(["angular"], function (angular) {
 
         function searchSkos(value) {
             if (!value || !$scope.vocabulary) return;
-            // todo: should somehow scroll to the top of the concept list
+            $scope.scrollTo({element: '#skos-term-list', direction: 'up'});
             dashboardService.searchSkos($scope.vocabulary, value).then(function (data) {
                 $scope.conceptSearch = data.search;
                 var mapping = $scope.mappings[$scope.sourceUri];
