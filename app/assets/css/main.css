@@ -97,6 +97,10 @@ code.path {
 code.path span {
   color: #5cb85c;
 }
+.tabs-small > li > a {
+  padding: 2px 4px;
+  font-size: 85%;
+}
 .instructions {
   font-size: 14px;
 }
