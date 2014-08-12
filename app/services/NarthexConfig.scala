@@ -16,11 +16,21 @@
 
 package services
 
+import java.util
+
 import play.api.Play
 
 object NarthexConfig {
-  def configString(name: String) = Play.current.configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
-  def configInt(name: String) = Play.current.configuration.getInt(name).getOrElse(throw new RuntimeException(s"Missing config: $name"))
+  val config = Play.current.configuration
+
+  def configString(name: String) = config.getString(name).getOrElse(
+    throw new RuntimeException(s"Missing config string: $name")
+  )
+  def configInt(name: String) = config.getInt(name).getOrElse(
+    throw new RuntimeException(s"Missing config int: $name")
+  )
+  def configList(name: String): util.List[String] = config.getStringList(name).getOrElse(
+    throw new RuntimeException(s"Missing config string list: $name"))
 
   lazy val ORG_ID = configString("commons.orgId")
   lazy val COMMONS_HOST = configString("commons.host")
@@ -33,4 +43,7 @@ object NarthexConfig {
   lazy val OAI_PMH_EARLIEST_DATE_STAMP = configString("oai_pmh.earliestDateStamp")
   lazy val OAI_PMH_SAMPLE_IDENTIFIER = configString("oai_pmh.sampleIdentifier")
   lazy val OAI_PMH_PAGE_SIZE = configInt("oai_pmh.pageSize")
+  lazy val OAI_PMH_ACCESS_KEYS = configList("oai_pmh.accessKeys")
+
+  def keyFits(accessKey: String) = OAI_PMH_ACCESS_KEYS.contains(accessKey)
 }

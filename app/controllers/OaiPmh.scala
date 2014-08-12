@@ -31,8 +31,12 @@ object OaiPmh extends Controller with BaseXTools {
 
   def service(accessKey: String) = Action(parse.anyContent) {
     implicit request =>
-      Logger.info(s"Request arrived, not yet checking access key [$accessKey]")
-      Ok(Service(request.queryString, request.uri))
+      if (NarthexConfig.keyFits(accessKey)) {
+        Ok(Service(request.queryString, request.uri))
+      }
+      else {
+        Unauthorized("Access key not accepted")
+      }
   }
 
   object RepoBridge {
