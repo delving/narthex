@@ -219,7 +219,6 @@ define(["angular"], function (angular) {
 
         $scope.$watch("activeView", updateSearchParams());
 
-        // todo: we need a way of removing  mapping
         $scope.setMapping = function (concept) {
             if (!($scope.sourceEntry && $scope.vocabulary)) return;
             var body = {
@@ -228,13 +227,21 @@ define(["angular"], function (angular) {
                 vocabulary: $scope.vocabulary,
                 prefLabel: concept.prefLabel
             };
+            if ($scope.mappings[$scope.sourceEntry.sourceUri]) { // it already exists
+                body.remove = "yes";
+            }
             dashboardService.setMapping($scope.fileName, body).then(function (data) {
                 console.log("set mapping returns", data);
-                $scope.mappings[$scope.sourceEntry.sourceUri] = {
-                    target: concept.uri,
-                    vocabulary: $scope.vocabulary,
-                    prefLabel: concept.prefLabel
-                };
+                if (body.remove) {
+                    delete $scope.mappings[$scope.sourceEntry.sourceUri]
+                }
+                else {
+                    $scope.mappings[$scope.sourceEntry.sourceUri] = {
+                        target: concept.uri,
+                        vocabulary: $scope.vocabulary,
+                        prefLabel: concept.prefLabel
+                    };
+                }
                 filterHistogram();
             });
         };

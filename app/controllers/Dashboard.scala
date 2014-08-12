@@ -191,13 +191,20 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def setMapping(fileName: String) = Secure(parse.json) {
     token => implicit request => {
-      val sourceUri = (request.body \ "source").as[String]
-      val targetUri = (request.body \ "target").as[String]
-      val vocabulary = (request.body \ "vocabulary").as[String]
-      val prefLabel = (request.body \ "prefLabel").as[String]
       val fileRepo = repo.fileRepo(fileName)
-      fileRepo.termRepo.setMapping(TermDb.TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
-      Ok("thanks man")
+      if ((request.body \ "remove").asOpt[String].isDefined) {
+        val sourceUri = (request.body \ "source").as[String]
+        fileRepo.termRepo.removeMapping(sourceUri)
+        Ok("Mapping removed")
+      }
+      else {
+        val sourceUri = (request.body \ "source").as[String]
+        val targetUri = (request.body \ "target").as[String]
+        val vocabulary = (request.body \ "vocabulary").as[String]
+        val prefLabel = (request.body \ "prefLabel").as[String]
+        fileRepo.termRepo.addMapping(TermDb.TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
+        Ok("Mapping added")
+      }
     }
   }
 

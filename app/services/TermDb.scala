@@ -52,7 +52,7 @@ class TermDb(dbName: String) extends BaseXTools {
     }
   }
 
-  def setMapping(mapping: TermMapping) = db {
+  def addMapping(mapping: TermMapping) = db {
     session =>
       val upsert = s"""
       |
@@ -72,6 +72,22 @@ class TermDb(dbName: String) extends BaseXTools {
       |   if (exists($$termMapping))
       |   then replace node $$termMapping with $$freshMapping
       |   else insert node $$freshMapping into $$termMappings
+      |
+      """.stripMargin
+      session.query(upsert).execute()
+  }
+
+  def removeMapping(sourceUri: String) = db {
+    session =>
+      val upsert = s"""
+      |
+      | let $$termMappings := doc('$termDb/$termDb.xml')/term-mappings
+      | let $$termMapping := $$termMappings/term-mapping[source=${quote(sourceUri)}]
+      |
+      | return
+      |   if (exists($$termMapping))
+      |   then delete node $$termMapping
+      |   else ()
       |
       """.stripMargin
       session.query(upsert).execute()
