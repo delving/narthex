@@ -96,6 +96,13 @@
 
                                         <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"> <span class="caret"></span> {{ file.name }} ({{ file.delimit.recordCount }})</a>
 
+                                        <button type="button" class="btn btn-xs  pull-right"
+                                              data-ng-class="{ 'btn-success': isPublished(file), 'btn-warning': !isPublished(file) }"
+                                              data-ng-click="togglePublished(file)">
+                                              <span ng-show="!isPublished(file)">Publish</span>
+                                              <span ng-show="isPublished(file)">Published</span>
+                                        </button>
+
                                         <div class="file-extended-info clearfix" data-ng-show="file.showExtendedInfo">
                                             <h4 class="heading">Record info</h4>
                                             <ul class="list-unstyled">
@@ -123,13 +130,6 @@
                                                         data-ng-click="deleteDataset(file)">Delete File <i class="fa fa-trash-o"></i>&nbsp;
                                                 </button>
                                             </div>
-                                        </div>
-                                        <div class="pull-right">
-                                            <span class="label"
-                                                  data-ng-class="{ 'label-success': isPublished(file), 'label-info': !isPublished(file) }"
-                                                  data-ng-click="togglePublished(file)">
-                                                Published
-                                            </span>
                                         </div>
                                     </div>
 
