@@ -55,24 +55,6 @@ define(["angular"], function (angular) {
             $rootScope.orgId = orgId;
             $rootScope.orgName = orgName;
         };
-        
-        $rootScope.currentLocation = "HOME";
-
-        $rootScope.$watch("currentLocation", function (currentLocation) {
-            console.log($rootScope.currentLocation);
-            switch ($rootScope.currentLocation) {
-                case "HOME":
-                    break;
-                case "DASHBOARD":
-                    //...
-                    break;
-                case "DATASET":
-                    break;
-                case "TERMS":
-                    break;
-
-            }
-        });
 
         // Wrap the current user from the service in a watch expression
         $scope.$watch(

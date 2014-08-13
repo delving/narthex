@@ -27,7 +27,6 @@ define(["angular"], function () {
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
     var DashboardCtrl = function ($rootScope, $scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
-        $rootScope.currentLocation = "DASHBOARD";
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];
@@ -225,7 +224,6 @@ define(["angular"], function () {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.fileName = $routeParams.fileName;
 
-        $rootScope.currentLocation = "DATASET";
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
 

@@ -89,10 +89,12 @@
                                     <!-- 5:SAVED -->
                                     <div ng-switch-when="5:saved">
                                         <i class="fa fa-database fa-fw"></i>
-                                        <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"> <span class="caret"></span> {{ file.name }} ({{ file.delimit.recordCount }})</a>
-                                        <button class="btn btn-info btn-xs pull-right" data-ng-click="viewFile(file)">
-                                            View Schema <i class="fa fa-folder-open"></i>
+                                        <button class="btn btn-info btn-xs left" data-ng-click="viewFile(file)">
+                                            View Dataset <i class="fa fa-folder-open"></i>
                                         </button>
+
+                                        <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"> <span class="caret"></span> {{ file.name }} ({{ file.delimit.recordCount }})</a>
+
 
                                         <div class="file-extended-info clearfix" data-ng-show="file.showExtendedInfo">
                                             <!-- todo: create a placeholder button for 'publish'-->

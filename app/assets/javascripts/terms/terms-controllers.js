@@ -19,8 +19,6 @@ define(["angular"], function (angular) {
 
     var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, dashboardService, $timeout, pageScroll) {
 
-        $rootScope.currentLocation = "TERMS";
-
         function getSearchParams() {
             $scope.fileName = $routeParams.fileName;
             $scope.path = $routeParams.path;
