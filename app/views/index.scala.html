@@ -18,7 +18,32 @@
         <a href="#/" class="navbar-brand"><img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
             <span>Narthex (@orgName)</span>
         </a>
+
         <div data-ng-switch-when="true">
+            <div class="navbar-left">
+                <a href="/#/dashboard" class="btn btn-default">Dashboard</a>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-ng-show="recent.dataset.length > 0">
+                        Active datasets <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu" >
+                        <li data-ng-repeat="r in recent.dataset">
+                            <a href="{{ r.url }}">{{ r.show }}</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-ng-show="recent.terms.length > 0">
+                        Active terminologies <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu" >
+                        <li data-ng-repeat="r in recent.terms">
+                            <a href="{{ r.url }}">{{ r.show }}</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">
               <a href="" class="dropdown-toggle" data-toggle="dropdown">
@@ -42,36 +67,7 @@
     </header>
     @* -- Main Content -- *@
     <div class="container-fluid" data-ng-cloak>
-        <div class="row">
-
-            <div class="col-md-2 sidebar" data-ng-controller="SidebarCtrl">
-
-                <ul class="nav nav-sidebar">
-                    <li>
-                        <a href="">Dashboard</a>
-                    </li>
-                    <li>
-                        <a href="">Dataset</a>
-                        <ul>
-                            <li data-ng-repeat="r in recent.dataset">
-                                {{ r.show }}
-                            </li>
-                        </ul>
-                    </li>
-                    <li>
-                        <a href="">Terminology</a>
-                        <ul>
-                            <li data-ng-repeat="r in recent.terms">
-                                {{ r.show }}
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-            <div class="col-md-10 main" data-ng-view></div>
-
-        </div>
-
+           <div class="main" data-ng-view></div>
     </div>
   </body>
 </html>
