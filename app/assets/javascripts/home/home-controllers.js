@@ -103,42 +103,9 @@ define(["angular"], function (angular) {
     };
     HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
 
-    /** Controls the sidebar */
-    var SidebarCtrl = function ($rootScope, $scope, $location) {
-
-        $scope.showSidebar = function () {
-
-        };
-
-//        $rootScope.recent = {
-//            dataset: [],
-//            terms: []
-//        };
-//
-//        $rootScope.addRecentDataset = function (show, url) {
-//            if (!_.find($rootScope.recent.dataset, function (entry) {
-//                return entry.show == show;
-//            })) {
-//                $rootScope.recent.dataset.push({ show: show, url: url });
-//            }
-//            console.log("recent:\n" + JSON.stringify($rootScope.recent,null,2));
-//        };
-//
-//        $rootScope.addRecentTerms = function (show, url) {
-//            if (!_.find($rootScope.recent.terms, function (entry) {
-//                return entry.show == show;
-//            })) {
-//                $rootScope.recent.terms.push({ show: show, url: url });
-//            }
-//            console.log("recent:\n" + JSON.stringify($rootScope.recent,null,2));
-//        };
-    };
-
-    SidebarCtrl.$inject = ["$rootScope", "$scope", "$location"];
 
     return {
         HeaderCtrl: HeaderCtrl,
-        SidebarCtrl: SidebarCtrl,
         HomeCtrl: HomeCtrl
     };
 

@@ -328,7 +328,7 @@ define(["angular"], function () {
                 size: $scope.status.histograms[$scope.status.histograms.length - 1]
             });
             var lastPath = $routeParams.path.substring($routeParams.path.lastIndexOf("/"));
-            $rootScope.addRecentTerms($scope.fileName + "(" +lastPath + ")", $location.absUrl())
+            $rootScope.addRecentTerms($scope.fileName + " (" +lastPath + ")", $location.absUrl())
         };
 
         function setActiveView(activeView) {

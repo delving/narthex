@@ -158,6 +158,19 @@ code {
 
 .nav-app {
    margin-top: 12px;
+  .btn {
+    background: @gray;
+  }
+  .dropdown-menu {
+    background: @white;
+    &> li > a {
+      color: @gray-darker;
+      &:hover {
+        background: transparent;
+        text-decoration: underline;
+      }
+    }
+  }
 }
 
 .file-drop {

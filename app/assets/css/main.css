@@ -114,6 +114,19 @@ code.path span {
 .nav-app {
   margin-top: 12px;
 }
+.nav-app .btn {
+  background: #555555;
+}
+.nav-app .dropdown-menu {
+  background: #ffffff;
+}
+.nav-app .dropdown-menu > li > a {
+  color: #222222;
+}
+.nav-app .dropdown-menu > li > a:hover {
+  background: transparent;
+  text-decoration: underline;
+}
 .file-drop {
   text-align: center;
 }
