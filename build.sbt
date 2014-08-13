@@ -34,6 +34,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "angularjs-nvd3-directives" % "0.0.7-1",
   "org.webjars" % "angular-file-upload" % "1.3.1-1",
   "org.webjars" % "angular-ui-bootstrap" % "0.11.0-2",
+  "org.webjars" % "ngStorage" % "0.3.0",
 //  "org.mindrot" % "jbcrypt" % "0.3m",
 //  "org.webjars" % "angular-pusher" % "0.0.8",
   "org.scalatest" % "scalatest_2.10" % "2.2.0",

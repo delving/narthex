@@ -53,6 +53,7 @@
                 "angular-file-upload",
                 "angularjs-nvd3-directives",
 //                "angular-pusher",
+                "ngStorage",
                 "jquery",
                 "underscorejs",
                 "bootstrap",

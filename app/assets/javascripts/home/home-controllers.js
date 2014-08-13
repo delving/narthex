@@ -49,7 +49,7 @@ define(["angular"], function (angular) {
     HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
 
     /** Controls the header */
-    var HeaderCtrl = function ($rootScope, $scope, userService, $location) {
+    var HeaderCtrl = function ($rootScope, $scope, userService, $location, $localStorage, $sessionStorage) {
 
         $scope.setOrg = function (orgId, orgName) {
             $rootScope.orgId = orgId;
@@ -76,6 +76,8 @@ define(["angular"], function (angular) {
             });
         };
 
+        $rootScope.recent = $localStorage.recent;
+
         $rootScope.recent = {
             dataset: [],
             terms: []
@@ -101,7 +103,7 @@ define(["angular"], function (angular) {
         };
 
     };
-    HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
+    HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location", "$localStorage", "$sessionStorage"];
 
 
     return {

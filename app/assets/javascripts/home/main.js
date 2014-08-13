@@ -18,6 +18,7 @@ define(
             [
                 "ngCookies",
                 "ngRoute",
+                "ngStorage",
                 "home.routes",
                 "home.services"
             ]
