@@ -170,8 +170,7 @@ class Repo(root: File, val orgId: String) {
               case Some(ns) => RepoMetadataFormat(prefix, (ns \ "uri").text)
               case None => RepoMetadataFormat(prefix)
             }
-            val shouldBe_PUBLISHED = SAVED
-            if (state == shouldBe_PUBLISHED) {
+            if (state == PUBLISHED) {
               Some(RepoDataSet(name, prefix, "name", "dataProvider", totalRecords.toInt, metadataFormat))
             }
             else

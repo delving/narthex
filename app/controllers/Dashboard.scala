@@ -87,6 +87,14 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
+  def setPublished(fileName: String, published: String) = Secure() {
+    token => implicit request => {
+      val state = if (published == "true") Repo.State.PUBLISHED else Repo.State.SAVED
+      val datasetInfo = repo.fileRepo(fileName).datasetDb.setStatus(state, 0, 0)
+      Ok(Json.obj("state" -> state))
+    }
+  }
+
   def deleteDataset(fileName: String) = Secure() {
     token => implicit request => {
       val fileRepo = repo.fileRepo(fileName)

@@ -88,7 +88,6 @@ define(["angular"], function (angular) {
             })) {
                 $rootScope.recent.dataset.push({ show: show, url: url });
             }
-            console.log("recent:\n" + JSON.stringify($rootScope.recent,null,2));
         };
 
         $rootScope.addRecentTerms = function (show, url) {
@@ -97,7 +96,6 @@ define(["angular"], function (angular) {
             })) {
                 $rootScope.recent.terms.push({ show: show, url: url });
             }
-            console.log("recent:\n" + JSON.stringify($rootScope.recent,null,2));
         };
 
     };
