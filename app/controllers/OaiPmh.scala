@@ -41,7 +41,6 @@ object OaiPmh extends Controller with BaseXTools {
 
   object RepoBridge {
 
-
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
 
     // todo: implement this!
@@ -69,12 +68,7 @@ object OaiPmh extends Controller with BaseXTools {
     def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
       Repo.repo.fileRepoOption(set) match {
         case Some(fileRepo) =>
-          fileRepo.recordRepo.recordPmh(identifier) match {
-            case Some(elem) =>
-              Some(elem)
-            case None =>
-              None
-          }
+          fileRepo.recordRepo.recordPmh(identifier)
         case None =>
           None
       }
