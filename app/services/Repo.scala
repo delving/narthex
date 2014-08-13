@@ -165,10 +165,23 @@ class Repo(root: File, val orgId: String) {
             val dataset = fr.datasetDb.getDatasetInfo
             val state = (dataset \ "status" \ "state").text
             val totalRecords = (dataset \ "delimit" \ "recordCount").text
+            val namespace = (dataset \ "namespaces" \ "namespace").find(n => (n \ "prefix").text == prefix)
+            val metadataFormat = namespace match {
+              case Some(ns) => RepoMetadataFormat(prefix, (ns \ "uri").text)
+              case None => RepoMetadataFormat(prefix)
+            }
             val shouldBe_PUBLISHED = SAVED
-            if (state == shouldBe_PUBLISHED) Some(RepoDataSet(name, prefix, "name", "dataProvider", totalRecords.toInt)) else None
+            if (state == shouldBe_PUBLISHED) {
+              Some(RepoDataSet(name, prefix, "name", "dataProvider", totalRecords.toInt, metadataFormat))
+            }
+            else
+              None
         }
     }
+  }
+
+  def getMetadataFormats: Seq[RepoMetadataFormat] = {
+    getDataSets.sortBy(_.metadataFormat.namespace).map(d => (d.prefix, d.metadataFormat)).toMap.values.toSeq
   }
 
   def getHarvest(resumptionToken: String): (Option[NodeSeq], Option[String]) = {
@@ -303,7 +316,12 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
   }
 }
 
-case class RepoDataSet(spec: String, prefix: String, name: String, dataProvider: String, totalRecords: Int)
+case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
+
+case class RepoDataSet
+(
+  spec: String, prefix: String, name: String, dataProvider: String, totalRecords: Int,
+  metadataFormat: RepoMetadataFormat)
 
 object NodeRepo {
   def apply(parent: FileRepo, parentDir: File, tag: String) = {
