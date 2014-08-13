@@ -48,13 +48,9 @@
 .pointer {
   cursor: pointer;
 }
-html {
-  height: 100%;
-}
 body {
-  margin-top: 60px;
+  margin-top: 80px;
   font-family: Arial, Helvetica Neue, Helvetica;
-  height: 100%;
 }
 .home.row {
   margin-top: -20px;
@@ -66,13 +62,6 @@ body {
 .home.row .img img {
   max-width: 100%;
   height: auto;
-}
-.sidebar {
-  background: #000000;
-  height: 100%;
-}
-.main {
-  margin-top: 20px;
 }
 .btn-default.active {
   background: #ddd;
