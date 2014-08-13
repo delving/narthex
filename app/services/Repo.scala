@@ -46,6 +46,7 @@ object Repo {
   val NARTHEX_FILES = new File(USER_HOME, "NarthexFiles")
 
   object State {
+    val FRESH = "0:fresh"
     val SPLITTING = "1:splitting"
     val ANALYZING = "2:analyzing"
     val ANALYZED = "3:analyzed"
@@ -307,8 +308,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
   }
 
   def delete() = {
-    datasetDb.setStatus(SPLITTING)
-    datasetDb.setRecordDelimiter()
+    datasetDb.setStatus(FRESH)
     recordRepo.dropDatabase()
     deleteQuietly(sourceFile)
     deleteDirectory(dir)

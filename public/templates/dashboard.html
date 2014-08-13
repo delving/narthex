@@ -48,6 +48,11 @@
                                 data-ng-show="file.status">
                                 <div>
 
+                                    <!-- 0:FRESH -->
+                                    <div ng-if="file.status.state == '0:fresh'">
+                                        {{ file.name }} <span class="label label-warning">Fresh</span>
+                                    </div>
+
                                     <!-- 1:SPLITTING -->
                                     <div ng-if="file.status.state == '1:splitting'">
                                         {{ file.name }} <span class="label label-warning">Splitting</span>
@@ -65,15 +70,13 @@
 
                                     <!-- 3:ANALYZED -->
                                     <div ng-if="file.status.state == '3:analyzed'">
-                                        <i class="fa fa-folder-open"></i> <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
-                                        <div class="btn-toolbar pull-right">
-                                            <button class="btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">
-                                                <i class="fa fa-database"></i> Save Records
-                                            </button>
-                                            <button class="btn btn-danger btn-xs btn-isolate"
-                                                    data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
-                                            </button>
-                                        </div>
+                                        <span><i class="fa fa-folder-open"></i> <a href data-ng-click="viewFile(file)">{{ file.name }}</a></span>
+                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
+                                                data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                        </button>
+                                        <button typ="button" class="pull-right btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">
+                                            <i class="fa fa-database"></i> Save Records
+                                        </button>
                                     </div>
 
                                     <!-- 4:SAVING -->
