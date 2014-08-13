@@ -78,14 +78,25 @@ define(["angular"], function (angular) {
     };
     HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
 
-    /** Controls the footer */
-    var FooterCtrl = function (/*$scope*/) {
+    /** Controls the sidebar */
+    var SidebarCtrl = function ($rootScope, $scope) {
+
+        $scope.showSidebar = function () {
+
+        };
+
+        $rootScope.recent = {
+            dataset: [
+                { show: "Dataset Name 1", url: "http://pagepath.yes" }
+            ],
+            terms: [
+            ]
+        };
     };
-    //FooterCtrl.$inject = ["$scope"];
 
     return {
         HeaderCtrl: HeaderCtrl,
-        FooterCtrl: FooterCtrl,
+        SidebarCtrl: SidebarCtrl,
         HomeCtrl: HomeCtrl
     };
 

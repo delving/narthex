@@ -42,10 +42,26 @@
     </header>
     @* -- Main Content -- *@
     <div class="container-fluid" data-ng-cloak>
-      <div data-ng-view></div>
+        <div class="row">
+
+            <div class="col-md-2 sidebar" data-ng-controller="SidebarCtrl">
+
+                <ul class="nav nav-sidebar">
+                    <li>
+                        <a href="">Dashboard</a>
+                    </li>
+                    <li>
+                        <a href="">Dataset</a>
+                    </li>
+                    <li>
+                        <a href="">Terminology mapping</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-10 main" data-ng-view></div>
+
+        </div>
+
     </div>
-    @*-- Footer -- *@
-    <footer data-ng-controller="FooterCtrl">
-    </footer>
   </body>
 </html>

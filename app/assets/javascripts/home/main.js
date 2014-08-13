@@ -23,7 +23,7 @@ define(
             ]
         );
         mod.controller("HeaderCtrl", controllers.HeaderCtrl);
-        mod.controller("FooterCtrl", controllers.FooterCtrl);
+        mod.controller("SidebarCtrl", controllers.SidebarCtrl);
         return mod;
     }
 );
