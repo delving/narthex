@@ -44,9 +44,9 @@
         <div class="panel panel-default panel-lists">
                 <div class="panel-heading list-controls">
                     <ul class="nav nav-tabs tabs-small pull-left">
-                        <li data-ng-class="{ active: activeView == 'lengths' }" ><a href data-ng-click="fetchLengths()">Lengths</a></li>
-                        <li data-ng-class="{ active: activeView == 'sample' }" ><a href data-ng-click="fetchSample()">Samples</a></li>
                         <li data-ng-class="{ active: activeView == 'histogram' }" ><a href data-ng-click="fetchHistogram()">Histogram</a></li>
+                        <li data-ng-class="{ active: activeView == 'sample' }" ><a href data-ng-click="fetchSample()">Samples</a></li>
+                        <li data-ng-class="{ active: activeView == 'lengths' }" ><a href data-ng-click="fetchLengths()">Lengths</a></li>
                     </ul>
 
                     <!-- USE AS UNIQUE ELEMENT -->
@@ -59,7 +59,7 @@
                     <!--todo: also don't show this if there is no recordRoot-->
                     <span data-ng-show="activeView == 'histogram' && histogramVocabulary" class="pull-left">
                         <button class="btn btn-primary btn-xs" data-ng-click="goToTerms()">
-                            <i class="fa fa-check-circle"></i><span> Map as Vocabulary</span>
+                            <i class="fa fa-arrow-circle-right"></i><span> Terminology Mapping</span>
                         </button>
                     </span>
                     <!-- API DOWNLOADS -->
@@ -148,10 +148,11 @@
                 <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}" class="fa pointer"></i>
             </span>
             <span>{{ node.tag }}</span>
-            <span class="badge pull-right" data-ng-class="{ 'badge-info': node.lengths.length > 0, 'badge-unique': node == uniqueIdNode, 'badge-record-root': node == recordRootNode }">
-                <span data-ng-if="node == recordRootNode">Record Root: {{ node.count }}</span>
-                <span data-ng-if="node == uniqueIdNode">Unique Id: {{ node.count }}</span>
-                <span data-ng-if="!(node == recordRootNode || node == uniqueIdNode)">{{ node.count }}</span>
+            <span class="pull-right">
+                <span data-ng-if="node == recordRootNode" class="badge badge-record-root">Record Root: {{ node.count }}</span>
+                <span data-ng-if="node == uniqueIdNode" class="badge badge-unique">Unique Id: {{ node.count }}</span>
+                <span data-ng-if="node.sourcePath" class="badge badge-mapped">Terminology: {{ node.count }}</span>
+                <span data-ng-if="!(node == recordRootNode || node == uniqueIdNode || node.sourcePath)" class="badge badge-info">{{ node.count }}</span>
             </span>
         </div>
         <ul data-ng-if="node.kids && !node.collapsed" class="">

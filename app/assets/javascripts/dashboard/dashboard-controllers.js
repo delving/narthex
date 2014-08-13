@@ -282,6 +282,10 @@ define(["angular"], function () {
                         if (rootPart != recordContainer) {
                             node.path = "";
                         }
+                        else {
+                            var recPath = node.path.substring(recordContainer.length);
+                            node.sourcePath = $rootScope.orgId + "/" + $scope.fileName + recPath;
+                        }
                     }
                     for (var index = 0; index < node.kids.length; index++) {
                         setDelim(node.kids[index], recordRoot, recordContainer, uniqueId);
@@ -298,6 +302,18 @@ define(["angular"], function () {
                     }
                 }
 
+                function filterSourcePath(node, sourcePaths) {
+                    if (node.sourcePath && sourcePaths.indexOf(node.sourcePath) < 0) {
+                        delete node.sourcePath
+                    }
+                    for (var index = 0; index < node.kids.length; index++) {
+                        filterSourcePath(node.kids[index], sourcePaths);
+                    }
+                }
+
+                dashboardService.getSourcePaths($scope.fileName).then(function (data) {
+                    filterSourcePath(tree, data.sourcePaths);
+                });
             });
         });
 
@@ -346,11 +362,12 @@ define(["angular"], function () {
                     case 'sample':
                         $scope.fetchSample();
                         break;
-                    case 'histogram':
-                        $scope.fetchHistogram();
+                    case 'lengths':
+                        $scope.fetchLengths();
                         break;
                     default:
-                        $scope.fetchLengths();
+                        $scope.fetchHistogram();
+                        break;
                 }
             });
         };

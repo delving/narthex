@@ -159,6 +159,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                getSourcePaths: function (fileName) {
+                    return dash.getSourcePaths(fileName).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 setMapping: function (name, body) {
                     return dash.setMapping(name).post(body).then(
                         function (response) {

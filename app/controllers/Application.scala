@@ -144,6 +144,7 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.listSkos,
           routes.javascript.Dashboard.searchSkos,
           routes.javascript.Dashboard.getMappings,
+          routes.javascript.Dashboard.getSourcePaths,
           routes.javascript.Dashboard.setMapping,
           routes.javascript.Dashboard.listSipFiles
         )

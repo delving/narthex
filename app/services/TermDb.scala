@@ -93,15 +93,22 @@ class TermDb(dbName: String) extends BaseXTools {
       session.query(upsert).execute()
   }
 
-  def getMapping(source: String): String = db[String] {
+  def getSourcePaths: Seq[String] = db[Seq[String]] {
     session =>
       val q = s"""
-        |
-        |let $$mapping := doc('$termDb/$termDb.xml')/term-mappings/term-mapping[source=${quote(source)}]
-        |return $$mapping/target/text()
-        |
-        |""".stripMargin
-      session.query(q).execute()
+      |
+      | let $$sources := doc('$termDb/$termDb.xml')/term-mappings/term-mapping/source
+      |
+      | return
+      |   <sources>{
+      |     for $$s in $$sources
+      |       return <source>{$$s/text()}</source>
+      |   }</sources>
+      |
+      | """.stripMargin
+      val result = session.query(q).execute()
+      val xml = XML.loadString(result)
+      (xml \ "source").map(n => n.text.substring(0, n.text.lastIndexOf("/"))).distinct
   }
 
   def getMappings: Seq[TermMapping] = db[Seq[TermMapping]] {

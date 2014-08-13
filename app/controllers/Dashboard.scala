@@ -189,6 +189,14 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
+  def getSourcePaths(fileName: String) = Secure() {
+    token => implicit request => {
+      val fileRepo = repo.fileRepo(fileName)
+      val sourcePaths = fileRepo.termRepo.getSourcePaths
+      Ok(Json.obj("sourcePaths" -> sourcePaths))
+    }
+  }
+
   def setMapping(fileName: String) = Secure(parse.json) {
     token => implicit request => {
       val fileRepo = repo.fileRepo(fileName)
