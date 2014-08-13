@@ -146,6 +146,9 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
     val now = new DateTime()
     val name = fileRepo.name
     println(s"createHarvest: $name, $from, $until")
+    val datasetInfo = fileRepo.datasetDb.getDatasetInfo
+    val state = (datasetInfo \ "status" \ "state").text
+    if (state != Repo.State.PUBLISHED) return None
     val countString = db {
       session =>
         val queryForRecords = s"count(collection('$recordDb')/narthex${dateSelector(from, until)})"
@@ -160,9 +163,11 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
     Some(harvest.resumptionToken)
   }
 
-  def recordPmh(identifier: String): Elem = db {
+  def recordPmh(identifier: String): Option[Elem] = db {
     session =>
-      // todo: the setSpec is missing here!
+      val datasetInfo = fileRepo.datasetDb.getDatasetInfo
+      val state = (datasetInfo \ "status" \ "state").text
+      if (state != Repo.State.PUBLISHED) return None
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(fileRepo.datasetDb.getDatasetInfo)}
@@ -180,13 +185,12 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
         |   </record>
         |
         """.stripMargin.trim
-      XML.loadString(session.query(queryForRecord).execute())
+      Some(XML.loadString(session.query(queryForRecord).execute()))
   }
 
   def recordsPmh(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int, headersOnly: Boolean = true): NodeSeq = db {
     session =>
       val metadata = if (headersOnly) "" else "<metadata>{$narthex/*}</metadata>"
-      // todo: the setSpec is missing here!
       val query = s"""
         |
         | ${namespaceDeclarations(fileRepo.datasetDb.getDatasetInfo)}

@@ -67,10 +67,14 @@ object OaiPmh extends Controller with BaseXTools {
     }
 
     def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
-//      val fileName = s"${set}__$format"
       Repo.repo.fileRepoOption(set) match {
         case Some(fileRepo) =>
-          Some(fileRepo.recordRepo.recordPmh(identifier))
+          fileRepo.recordRepo.recordPmh(identifier) match {
+            case Some(elem) =>
+              Some(elem)
+            case None =>
+              None
+          }
         case None =>
           None
       }
