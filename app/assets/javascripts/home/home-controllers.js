@@ -51,7 +51,7 @@ define(["angular"], function (angular) {
     /** Controls the header */
     var HeaderCtrl = function ($rootScope, $scope, userService, $location) {
 
-        $scope.setOrg = function(orgId, orgName) {
+        $scope.setOrg = function (orgId, orgName) {
             $rootScope.orgId = orgId;
             $rootScope.orgName = orgName;
         };
@@ -79,20 +79,41 @@ define(["angular"], function (angular) {
     HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
 
     /** Controls the sidebar */
-    var SidebarCtrl = function ($rootScope, $scope) {
+    var SidebarCtrl = function ($rootScope, $scope, $location) {
 
         $scope.showSidebar = function () {
 
         };
 
         $rootScope.recent = {
-            dataset: [
-                { show: "Dataset Name 1", url: "http://pagepath.yes" }
-            ],
-            terms: [
-            ]
+            dataset: [],
+            terms: []
+        };
+
+//        $scope.chooseRecent = function(url) {
+//            $location.
+//        };
+
+        $rootScope.addRecentDataset = function (show, url) {
+            if (!_.find($rootScope.recent.dataset, function (entry) {
+                return entry.show == show;
+            })) {
+                $rootScope.recent.dataset.push({ show: show, url: url });
+            }
+            console.log("recent:\n" + JSON.stringify($rootScope.recent,null,2));
+        };
+
+        $rootScope.addRecentTerms = function (show, url) {
+            if (!_.find($rootScope.recent.terms, function (entry) {
+                return entry.show == show;
+            })) {
+                $rootScope.recent.terms.push({ show: show, url: url });
+            }
+            console.log("recent:\n" + JSON.stringify($rootScope.recent,null,2));
         };
     };
+
+    SidebarCtrl.$inject = ["$rootScope", "$scope", "$location"];
 
     return {
         HeaderCtrl: HeaderCtrl,

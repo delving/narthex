@@ -52,9 +52,19 @@
                     </li>
                     <li>
                         <a href="">Dataset</a>
+                        <ul>
+                            <li data-ng-repeat="r in recent.dataset">
+                                {{ r.show }}
+                            </li>
+                        </ul>
                     </li>
                     <li>
-                        <a href="">Terminology mapping</a>
+                        <a href="">Terminology</a>
+                        <ul>
+                            <li data-ng-repeat="r in recent.terms">
+                                {{ r.show }}
+                            </li>
+                        </ul>
                     </li>
                 </ul>
             </div>

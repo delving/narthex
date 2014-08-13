@@ -180,7 +180,8 @@ define(["angular"], function () {
 
         $scope.viewFile = function (file) {
             $location.path("/dataset/" + file.name);
-            $location.search({})
+            $location.search({});
+            $rootScope.addRecentDataset(file.name, $location.absUrl())
         };
 
         $scope.deleteDataset = function (file) {
@@ -326,6 +327,8 @@ define(["angular"], function () {
                 path: $routeParams.path,
                 size: $scope.status.histograms[$scope.status.histograms.length - 1]
             });
+            var lastPath = $routeParams.path.substring($routeParams.path.lastIndexOf("/"));
+            $rootScope.addRecentTerms($scope.fileName + "(" +lastPath + ")", $location.absUrl())
         };
 
         function setActiveView(activeView) {
