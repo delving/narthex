@@ -146,6 +146,23 @@ define(["angular"], function () {
             });
         }
 
+        $scope.isStored = function(file) {
+            if (!file.status) return false;
+            return (file.status.state == '5:saved') || (file.status.state == '6:published');
+        };
+
+        $scope.isPublished = function(file) {
+            return file.status.state == '6:published';
+        };
+
+        $scope.togglePublished = function(file) {
+            if (!$scope.isStored(file)) return;
+            var published = !$scope.isPublished(file);
+            dashboardService.setPublished(file.name, published).then(function (data) {
+                file.status.state = data.state;
+            });
+        };
+
         fetchFileList();
 
         $scope.setActiveTab = function (tab) {
