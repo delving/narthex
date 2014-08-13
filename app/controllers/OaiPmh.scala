@@ -21,7 +21,7 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.mvc._
 import services.NarthexConfig._
-import services.{BaseXTools, NarthexConfig, Repo, RepoDataSet}
+import services._
 
 import scala.xml.{Elem, NodeSeq, PrettyPrinter}
 
@@ -41,13 +41,12 @@ object OaiPmh extends Controller with BaseXTools {
 
   object RepoBridge {
 
-    case class Format(prefix: String, schema: String, namespace: String)
 
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
 
     // todo: implement this!
-    def getFormats(identifier: Option[String]): Seq[RepoBridge.Format] = {
-      throw new RuntimeException("Not implemented")
+    def getFormats(identifier: Option[String]): Seq[RepoMetadataFormat] = {
+      Repo.repo.getMetadataFormats
     }
 
     def getDataSets: Seq[RepoDataSet] = {
@@ -271,7 +270,6 @@ object OaiPmh extends Controller with BaseXTools {
       }}<ListMetadataFormats>
         {for (format <- RepoBridge.getFormats(request.identifier)) yield <metadataFormat>
           <metadataPrefix>{format.prefix}</metadataPrefix>
-          <schema>{format.schema}</schema>
           <metadataNamespace>{format.namespace}</metadataNamespace>
         </metadataFormat>}
       </ListMetadataFormats>
