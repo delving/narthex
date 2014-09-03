@@ -66,7 +66,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
         |</record>
       """.stripMargin.trim
 
-    val parser = new StoredRecordParser(filePrefix, recordRoot, mappings)
+    val parser = new StoredRecordParser(filePrefix, mappings)
     val record = parser.parse(storedString)
     val recordText = record.text.toString().trim
     recordText should be(expectedString)
