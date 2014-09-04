@@ -76,5 +76,3 @@ case class SaveRecords(recordRoot: String, uniqueId: String, recordCount: Int, c
 case class SaveProgress(percent: Int)
 
 case class SaveComplete()
-
-

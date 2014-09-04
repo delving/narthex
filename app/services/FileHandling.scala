@@ -16,14 +16,17 @@
 
 package services
 
-import java.io.{InputStream, FileInputStream, File}
-import java.util.zip.GZIPInputStream
-import org.apache.commons.io.input.{BOMInputStream, CountingInputStream}
-import scala.io.Source
+import java.io.{File, FileInputStream, InputStream}
 import java.security.{DigestInputStream, MessageDigest}
+import java.util.zip.GZIPInputStream
+
+import org.apache.commons.io.input.{BOMInputStream, CountingInputStream}
+
+import scala.io.Source
 
 object FileHandling {
 
+  // todo: prepare for zip file containing many xml files
   def source(file: File): Source = Source.fromInputStream(unzipXML(file, new FileInputStream(file)))
 
   def countingSource(file: File): (Source, CountingInputStream, MessageDigest) = {

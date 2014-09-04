@@ -2,7 +2,7 @@ package services
 
 import java.io.File
 
-import actors.{HarvestAdLib, HarvestPMH, Harvester}
+import actors.{HarvestAdLib, HarvestComplete, HarvestPMH, Harvester}
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
 import org.apache.commons.io.FileUtils._
@@ -14,41 +14,44 @@ import scala.concurrent.duration._
 class TestHarvesting(_system: ActorSystem) extends TestKit(_system)
 with ImplicitSender with FlatSpecLike with BeforeAndAfterAll with Matchers with Harvesting with ScalaFutures {
 
+  val userHome = "/tmp/narthex-user"
+  var repo = new Repo(userHome, "test-harvesting")
+  repo.create("passwhat?")
+
   def this() = this(ActorSystem("TestHarvesting"))
 
-  override def afterAll() = TestKit.shutdownActorSystem(system)
+  override def beforeAll() = {
+    deleteQuietly(new File(userHome))
+  }
+
+  override def afterAll() = {
+    TestKit.shutdownActorSystem(system)
+  }
 
   "The AdLib Harvester" should "fetch pages" in {
 
-    val testUrl = "http://umu.adlibhosting.com/api/wwwopac.ashx"
-    val testDatabase = "collect"
-    val userHome = "/tmp/narthex-user"
-    deleteQuietly(new File(userHome))
-    val repo = new Repo(userHome, "umu")
-    repo.create("passwhat?")
-    val fileRepo = repo.fileRepo("umu-test__adlib")
+    val fileRepo = repo.fileRepo("umu-test__adlib.zip")
     val harvester = system.actorOf(Props(new Harvester(fileRepo)))
 
-    harvester ! HarvestAdLib(testUrl, testDatabase)
+    harvester ! HarvestAdLib(
+      url = "http://umu.adlibhosting.com/api/wwwopac.ashx",
+      database = "collect"
+    )
 
-    awaitCond((fileRepo.datasetDb.getDatasetInfo \ "status" \ "state").text == RepoUtil.State.SAVED, 10.minutes, 10.seconds)
+    expectMsg(15.minutes, HarvestComplete())
   }
 
   "The PMH Harvester" should "fetch pages" in {
 
-    val testUrl = "http://62.221.199.184:7829/oai"
-    val testSet = ""
-    val testPrefix = "oai_dc"
-    val userHome = "/tmp/narthex-user"
-    deleteQuietly(new File(userHome))
-    val repo = new Repo(userHome, "umu")
-    repo.create("passwhat?")
-
-    val fileRepo = repo.fileRepo("pmh-test__oai_dc")
+    val fileRepo = repo.fileRepo("pmh-test__oai_dc.zip")
     val harvester = system.actorOf(Props(new Harvester(fileRepo)))
 
-    harvester ! HarvestPMH(testUrl, testSet, testPrefix)
+    harvester ! HarvestPMH(
+      url = "http://62.221.199.184:7829/oai",
+      set = "",
+      metadataPrefix = "oai_dc"
+    )
 
-    awaitCond((fileRepo.datasetDb.getDatasetInfo \ "status" \ "state").text == RepoUtil.State.SAVED, 10.minutes, 10.seconds)
+    expectMsg(10.minutes, HarvestComplete())
   }
 }

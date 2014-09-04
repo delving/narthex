@@ -16,15 +16,15 @@
 
 package actors
 
-import akka.actor.{Actor, ActorLogging, Props}
+import java.io.{File, FileOutputStream}
+import java.util.zip.{ZipEntry, ZipOutputStream}
+
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.pipe
-import org.basex.core.cmd.Optimize
-import services.RepoUtil.State
+import org.apache.commons.io.FileUtils
 import services.{FileRepo, Harvesting, RecordHandling}
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.io.Source
 import scala.language.postfixOps
 
 object Harvester {
@@ -34,35 +34,36 @@ object Harvester {
 
 class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with Harvesting with ActorLogging {
 
-  var parser: RawRecordParser = null
-  val progress = context.actorOf(Props(new Actor() {
-    override def receive: Receive = {
-      case HarvestProgress(percent) =>
-        println(s"Progress $percent") // todo
-        if (percent == 100) context.stop(self)
-        fileRepo.datasetDb.setStatus(State.SAVING, percent = percent)
-    }
-  }))
+  var tempFile = File.createTempFile("narthex","harvest")
+  val zip = new ZipOutputStream(new FileOutputStream(tempFile))
+  var pageCount = 0
 
-  def sendProgress(percent: Int) = progress ! HarvestProgress(percent)
+  def addPage(page: String) = {
+    pageCount = pageCount + 1
+    val fileName = s"harvest_$pageCount.xml"
+    zip.putNextEntry(new ZipEntry(fileName))
+    zip.write(page.getBytes("UTF-8"))
+    zip.closeEntry()
+    fileName
+  }
+
+  def renameFile() = {
+    zip.close()
+    FileUtils.moveFile(tempFile, fileRepo.sourceFile)
+  }
+
+  var boss : ActorRef = null
 
   def receive = {
 
     case HarvestAdLib(url, database) =>
-      println(s"Harvesting $url $database to ${fileRepo.dir.getName}")
-      fileRepo.recordRepo.createDb
-      parser = new RawRecordParser(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
-      fetchAdLibPage(url, database).pipeTo(self)
+      println(s"Harvesting $url $database to $fileRepo")
+      boss = sender
+      fetchAdLibPage(url, database) pipeTo self
 
     case AdLibHarvestPage(records, url, database, diagnostic) =>
-      println(s"Page $url $database to ${fileRepo.dir.getName}: $diagnostic")
-      fileRepo.recordRepo.db {
-        session =>
-          def receiveRecord(record: String) = session.add(hashRecordFileName(fileRepo.name, record), bytesOf(record))
-          val source = Source.fromString(records)
-          parser.parse(source, receiveRecord, diagnostic.totalItems, sendProgress)
-          source.close()
-      }
+      val pageName = addPage(records)
+      println(s"Page: $pageName - $url $database to $fileRepo: $diagnostic")
       if (diagnostic.isLast) {
         self ! HarvestComplete()
       }
@@ -71,23 +72,13 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
       }
 
     case HarvestPMH(url, set, metadataPrefix) =>
-      println(s"Harvesting $url $set $metadataPrefix to ${fileRepo.dir.getName}")
-      fileRepo.recordRepo.createDb
-      parser = new RawRecordParser(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
+      println(s"Harvesting $url $set $metadataPrefix to $fileRepo")
+      boss = sender
       fetchPMHPage(url, set, metadataPrefix) pipeTo self
 
     case PMHHarvestPage(records, url, set, prefix, total, resumptionToken) =>
-      println(s"Page to ${fileRepo.dir.getName}: $resumptionToken")
-      fileRepo.recordRepo.db {
-        session =>
-          val source = Source.fromString(records)
-          def receiveRecord(record: String) = {
-//            println(s"receive $record")
-            session.add(hashRecordFileName(fileRepo.name, record), bytesOf(record))
-          }
-          parser.parse(source, receiveRecord, total, sendProgress)
-          source.close()
-      }
+      val pageName = addPage(records)
+      println(s"Page $pageName to $fileRepo: $resumptionToken")
       resumptionToken match {
         case None =>
           self ! HarvestComplete()
@@ -96,12 +87,9 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
       }
 
     case HarvestComplete() =>
-      println(s"Saved ${fileRepo.dir.getName}, optimizing..")
-      sendProgress(100)
-      fileRepo.recordRepo.db(_.execute(new Optimize()))
-      println(s"Optimized ${fileRepo.dir.getName}.")
-      fileRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
-      fileRepo.datasetDb.setStatus(State.SAVED)
+      println(s"Harvested $fileRepo")
+      renameFile()
+      boss ! HarvestComplete()
       context.stop(self)
 
   }

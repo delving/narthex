@@ -106,24 +106,7 @@ class Repo(userHome: String, val orgId: String) {
     orgRoot.mkdirs()
   }
 
-  def uploadedFile(fileName: String) = {
-    val suffix = getSuffix(fileName)
-    if (suffix.isEmpty) {
-      val fileNameDot = s"$fileName."
-      val fileList: Array[File] = uploaded.listFiles()
-      val nonemptyList = if (fileList == null) Array[File]() else fileList
-      val matchingFiles = nonemptyList.filter(file => file.getName.startsWith(fileNameDot))
-      if (matchingFiles.isEmpty) {
-        new File(uploaded, "nonexistent")
-      }
-      else {
-        matchingFiles.head
-      }
-    }
-    else {
-      new File(uploaded, fileName)
-    }
-  }
+  def uploadedFile(fileName: String) = new File(uploaded, fileName)
 
   def analyzedDir(fileName: String) = new File(analyzed, stripSuffix(fileName))
 
@@ -244,6 +227,8 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
   lazy val datasetDb = new DatasetDb(dbName)
   lazy val termRepo = new TermDb(dbName)
   lazy val recordRepo = new RecordDb(this, dbName)
+
+  override def toString = sourceFile.getCanonicalPath
 
   def mkdirs = {
     dir.mkdirs()
