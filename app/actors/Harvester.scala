@@ -22,11 +22,14 @@ import org.basex.core.cmd.Optimize
 import services.RepoUtil.State
 import services.{FileRepo, Harvesting, RecordHandling}
 
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
 import scala.language.postfixOps
 
 object Harvester {
   def props(fileRepo: FileRepo) = Props(new Harvester(fileRepo))
+  global.getClass // to avoid optimizing the import away
 }
 
 class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with Harvesting with ActorLogging {
@@ -78,7 +81,10 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
       fileRepo.recordRepo.db {
         session =>
           val source = Source.fromString(records)
-          def receiveRecord(record: String) = session.add(hashRecordFileName(fileRepo.name, record), bytesOf(record))
+          def receiveRecord(record: String) = {
+//            println(s"receive $record")
+            session.add(hashRecordFileName(fileRepo.name, record), bytesOf(record))
+          }
           parser.parse(source, receiveRecord, total, sendProgress)
           source.close()
       }
@@ -86,7 +92,7 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
         case None =>
           self ! HarvestComplete()
         case Some(token) =>
-          fetchPMHPage(url, set, prefix, Some(token))
+          fetchPMHPage(url, set, prefix, Some(token)) pipeTo self
       }
 
     case HarvestComplete() =>

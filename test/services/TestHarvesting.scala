@@ -2,7 +2,7 @@ package services
 
 import java.io.File
 
-import actors.{HarvestAdLib, Harvester}
+import actors.{HarvestAdLib, HarvestPMH, Harvester}
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
 import org.apache.commons.io.FileUtils._
@@ -24,7 +24,6 @@ with ImplicitSender with FlatSpecLike with BeforeAndAfterAll with Matchers with 
     val testDatabase = "collect"
     val userHome = "/tmp/narthex-user"
     deleteQuietly(new File(userHome))
-
     val repo = new Repo(userHome, "umu")
     repo.create("passwhat?")
     val fileRepo = repo.fileRepo("umu-test__adlib")
@@ -35,25 +34,21 @@ with ImplicitSender with FlatSpecLike with BeforeAndAfterAll with Matchers with 
     awaitCond((fileRepo.datasetDb.getDatasetInfo \ "status" \ "state").text == RepoUtil.State.SAVED, 10.minutes, 10.seconds)
   }
 
-//  "The PMH Harvester" should "fetch pages" in {
-//
-//    val testUrl = "http://62.221.199.184:7829/oai"
-//    val testSet = ""
-//    val testPrefix = "oai_dc"
-//
-//    var count = 0
-//
-//    whenReady(fetchPMHPage(testUrl, testSet, testPrefix, None), timeout(30 seconds)) {
-//      p =>
-//        println(s"page $count: ${p.records.length}")
-//        println(s"Resumption: ${p.resumptionToken}")
-//
-//        p.resumptionToken match {
-//          case Some(token) =>
-//            println(s"second: ${p.records}")
-//          case None =>
-//            println("FINISHED RIGHT AWAY")
-//        }
-//    }
-//  }
+  "The PMH Harvester" should "fetch pages" in {
+
+    val testUrl = "http://62.221.199.184:7829/oai"
+    val testSet = ""
+    val testPrefix = "oai_dc"
+    val userHome = "/tmp/narthex-user"
+    deleteQuietly(new File(userHome))
+    val repo = new Repo(userHome, "umu")
+    repo.create("passwhat?")
+
+    val fileRepo = repo.fileRepo("pmh-test__oai_dc")
+    val harvester = system.actorOf(Props(new Harvester(fileRepo)))
+
+    harvester ! HarvestPMH(testUrl, testSet, testPrefix)
+
+    awaitCond((fileRepo.datasetDb.getDatasetInfo \ "status" \ "state").text == RepoUtil.State.SAVED, 10.minutes, 10.seconds)
+  }
 }
