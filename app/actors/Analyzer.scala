@@ -25,7 +25,7 @@ import actors.Sorter._
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import org.apache.commons.io.FileUtils
 import play.api.libs.json._
-import services.Repo.State._
+import services.RepoUtil.State._
 import services._
 
 import scala.util.{Failure, Success}
@@ -113,7 +113,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
 
         case SortType.HISTOGRAM_SORT =>
           log.debug(s"writing histograms : ${fileRepo.dir.getAbsolutePath}")
-          Repo.updateJson(nodeRepo.status) {
+          RepoUtil.updateJson(nodeRepo.status) {
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]
               val samples = current \ "samples"

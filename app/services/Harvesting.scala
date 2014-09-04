@@ -23,64 +23,77 @@ import scala.concurrent.Future
 
 trait Harvesting extends BaseXTools {
 
-  case class AdLibDiagnostic(totalItems: Int, firstItem: Int, itemCount: Int) {
-    def isLast = firstItem + itemCount >= totalItems
+  val ADLIB_RECORD_ROOT = "/adlibXML/recordList/record"
+  val ADLIB_UNIQUE_ID = "/adlibXML/recordList/record/@priref"
+
+  case class AdLibDiagnostic(totalItems: Int, current: Int, pageItems: Int) {
+    def isLast = current + pageItems >= totalItems
   }
 
-  case class AdLibHarvestPage(records: String, diagnostic: AdLibDiagnostic)
+  case class AdLibHarvestPage(records: String, url: String, database: String, diagnostic: AdLibDiagnostic)
 
   def fetchAdLibPage(url: String, database: String, diagnostic: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
-    val startFrom = diagnostic.map(d => d.firstItem + d.itemCount).getOrElse(1)
+    val startFrom = diagnostic.map(d => d.current + d.pageItems).getOrElse(1)
     WS.url(url).withQueryString(
       "database" -> database,
       "search" -> "all",
       "xmltype" -> "grouped",
-      "limit" -> "2",
+      "limit" -> "100",
       "startFrom" -> startFrom.toString
     ).get().map {
       response =>
-        val recordList = response.xml \ "recordList" \ "record"
         val diagnostic = response.xml \ "diagnostic"
         val hits = (diagnostic \ "hits").text
         val firstItem = (diagnostic \ "first_item").text
         val hitsOnDisplay = (diagnostic \ "hits_on_display").text
         AdLibHarvestPage(
-          recordList.toString(),
+          response.xml.toString(),
+          url,
+          database,
           AdLibDiagnostic(
             totalItems = hits.toInt,
-            firstItem = firstItem.toInt,
-            itemCount = hitsOnDisplay.toInt
+            current = firstItem.toInt,
+            pageItems = hitsOnDisplay.toInt
           )
         )
     }
   }
 
-  case class PMHResumptionToken(value: String)
+  val PMH_RECORD_ROOT = "/OAI-PMH/ListRecords/record"
+  val PMH_UNIQUE_ID = "/OAI-PMH/ListRecords/record/header/identifier"
 
-  case class PMHHarvestPage(records: String, resumptionToken: Option[PMHResumptionToken])
+  case class PMHResumptionToken(value: String, current: Int, total:Int)
 
-  def fetchPMHPage(url: String, set: String, metadataPrefix: String, resumption: Option[PMHResumptionToken]) = {
-    val holder = WS.url(url)
-    val responseFuture = resumption match {
+  case class PMHHarvestPage(records: String, url: String, set: String, metadataPrefix: String, total: Int, resumptionToken: Option[PMHResumptionToken])
+
+  def fetchPMHPage(url: String, set: String, metadataPrefix: String, resumption: Option[PMHResumptionToken] = None) = {
+    val requestUrl = WS.url(url)
+    val request = resumption match {
       case None =>
-        holder.withQueryString(
+        requestUrl.withQueryString(
           "verb" -> "ListRecords",
           "set" -> set,
           "metadataPrefix" -> metadataPrefix
-        ).get()
+        )
       case Some(token) =>
-        holder.withQueryString(
+        requestUrl.withQueryString(
           "verb" -> "ListRecords",
           "resumptionToken" -> token.value
-        ).get()
+        )
     }
-    responseFuture.map {
+    request.get().map {
       response =>
-        val recordList = response.xml \ "ListRecords" \ "record"
-        val resumptionToken = response.xml \ "ListRecords" \ "resumptionToken"
-        // could maybe use resumptionToken \ "@completeListSize", resumptionToken \ "@cursor"
-        val resumption = if (resumptionToken.nonEmpty && resumptionToken.text.nonEmpty) Some(PMHResumptionToken(resumptionToken.text)) else None
-        PMHHarvestPage(recordList.toString(), resumption)
+        val tokenNode = response.xml \ "ListRecords" \ "resumptionToken"
+        val newToken = if (tokenNode.nonEmpty && tokenNode.text.nonEmpty) {
+          val completeListSize = tokenNode \ "@completeListSize"
+          val cursor = tokenNode \ "@cursor"
+          Some(PMHResumptionToken(tokenNode.text, cursor.text.toInt, completeListSize.text.toInt))
+        }
+        else {
+          None
+        }
+        val total = if (newToken.isDefined) newToken.get.total else resumption.get.total
+        PMHHarvestPage(response.xml.toString(), url, set, metadataPrefix, total, newToken)
     }
   }
 

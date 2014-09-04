@@ -16,16 +16,16 @@
 
 package services
 
-import play.api.libs.json._
-import scala.xml.pull._
-import scala.io.Source
-import java.io.{FileWriter, BufferedWriter}
+import java.io.{BufferedWriter, FileWriter}
+
 import org.apache.commons.io.FileUtils
-import play.api.libs.json.JsArray
-import scala.Some
-import scala.collection.mutable
-import scala.util.{Try, Random}
 import org.apache.commons.io.input.CountingInputStream
+import play.api.libs.json.{JsArray, _}
+
+import scala.collection.mutable
+import scala.io.Source
+import scala.util.{Random, Try}
+import scala.xml.pull._
 
 trait TreeHandling {
 
@@ -83,7 +83,7 @@ trait TreeHandling {
 
     def finish(): Unit = {
       flush()
-      val index = kids.values.map(kid => Repo.tagToDirectory(kid.tag)).mkString("\n")
+      val index = kids.values.map(kid => RepoUtil.tagToDirectory(kid.tag)).mkString("\n")
       FileUtils.writeStringToFile(nodeRepo.indexText, index)
       kids.values.foreach(_.finish())
     }

@@ -16,12 +16,10 @@
 
 package actors
 
-import java.io.ByteArrayInputStream
-
 import akka.actor.{Actor, ActorLogging, Props}
 import org.basex.core.cmd.Optimize
 import play.Logger
-import services.Repo.State._
+import services.RepoUtil.State
 import services.{FileHandling, FileRepo, RecordHandling}
 
 import scala.language.postfixOps
@@ -32,34 +30,33 @@ object Saver {
 
 class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with ActorLogging {
 
+  var parser: RawRecordParser = null
+
   def receive = {
 
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
       Logger.info(s"Saving ${fileRepo.dir.getName}")
-      fileRepo.recordRepo.freshDb {
+      fileRepo.recordRepo.createDb
+      fileRepo.recordRepo.db {
         session =>
-          val parser = new RawRecordParser(recordRoot, uniqueId)
+          parser = new RawRecordParser(recordRoot, uniqueId)
           val source = FileHandling.source(fileRepo.sourceFile)
 
           val progress = context.actorOf(Props(new Actor() {
             override def receive: Receive = {
               case SaveProgress(percent) =>
                 if (percent == 100) context.stop(self)
-                fileRepo.datasetDb.setStatus(SAVING, percent = percent)
+                fileRepo.datasetDb.setStatus(State.SAVING, percent = percent)
             }
           }))
 
           def sendProgress(percent: Int) = progress ! SaveProgress(percent)
 
-          def receiveRecord(record: String) = {
-            val hash =  hashString(record)
-            val inputStream = new ByteArrayInputStream(record.getBytes("UTF-8"))
-            session.add(s"$collection/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml", inputStream)
-          }
+          def receiveRecord(record: String) = session.add(hashRecordFileName(collection, record), bytesOf(record))
 
-          val namespaceMap = parser.parse(source, receiveRecord, recordCount, sendProgress)
+          parser.parse(source, receiveRecord, recordCount, sendProgress)
+          sendProgress(100)
           source.close()
-          fileRepo.datasetDb.setNamespaceMap(namespaceMap)
           self ! SaveComplete()
       }
 
@@ -67,7 +64,8 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
       Logger.info(s"Saved ${fileRepo.dir.getName}, optimizing..")
       fileRepo.recordRepo.db(_.execute(new Optimize()))
       Logger.info(s"Optimized ${fileRepo.dir.getName}.")
-      fileRepo.datasetDb.setStatus(SAVED)
+      fileRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
+      fileRepo.datasetDb.setStatus(State.SAVED)
       context.stop(self)
 
   }

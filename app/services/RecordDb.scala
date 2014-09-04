@@ -21,6 +21,7 @@ import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
 import play.libs.Akka
+import services.RepoUtil.State
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -33,18 +34,11 @@ import scala.xml.{Elem, NodeSeq, XML}
 class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
   val recordDb = s"${dbName}_records"
 
-  def freshDb[T](block: ClientSession => T) = {
-    BaseX.createDatabase(recordDb) // overwrites
-    BaseX.withDbSession(recordDb)(block)
-  }
+  def createDb = BaseX.createDatabase(recordDb)
 
-  def db[T](block: ClientSession => T) = {
-    BaseX.withDbSession(recordDb)(block)
-  }
+  def dropDb() = BaseX.dropDatabase(recordDb)
 
-  def dropDatabase() = {
-    BaseX.dropDatabase(recordDb)
-  }
+  def db[T](block: ClientSession => T) = BaseX.withDbSession(recordDb)(block)
 
   def saveRecords() = {
     val delim = fileRepo.datasetDb.getDatasetInfo \ "delimit"
@@ -53,7 +47,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
     val recordCountText = (delim \ "recordCount").text
     val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
     // set status now so it's done before the actor starts
-    fileRepo.datasetDb.setStatus(Repo.State.SAVING, percent = 1)
+    fileRepo.datasetDb.setStatus(State.SAVING, percent = 1)
     val saver = Akka.system.actorOf(Saver.props(fileRepo), fileRepo.name)
     saver ! SaveRecords(recordRoot, uniqueId, recordCount, fileRepo.name)
   }
@@ -148,7 +142,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
     println(s"createHarvest: $name, $from, $until")
     val datasetInfo = fileRepo.datasetDb.getDatasetInfo
     val state = (datasetInfo \ "status" \ "state").text
-    if (state != Repo.State.PUBLISHED) return None
+    if (state != State.PUBLISHED) return None
     val countString = db {
       session =>
         val queryForRecords = s"count(collection('$recordDb')/narthex${dateSelector(from, until)})"
@@ -167,7 +161,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
     session =>
       val datasetInfo = fileRepo.datasetDb.getDatasetInfo
       val state = (datasetInfo \ "status" \ "state").text
-      if (state != Repo.State.PUBLISHED) return None
+      if (state != State.PUBLISHED) return None
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(fileRepo.datasetDb.getDatasetInfo)}

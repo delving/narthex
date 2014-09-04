@@ -23,6 +23,7 @@ import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
 import services.Repo.repo
+import services.RepoUtil.State
 import services._
 
 import scala.collection.immutable.Seq
@@ -35,7 +36,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       request.body.file("file") match {
         case Some(file) =>
           Logger.info(s"upload ${file.filename} (${file.contentType})")
-          if (Repo.acceptableFile(file.filename, file.contentType)) {
+          if (RepoUtil.acceptableFile(file.filename, file.contentType)) {
             println(s"Acceptable ${file.filename}")
             file.ref.moveTo(repo.uploadedFile(file.filename), replace = true)
             Ok(file.filename)
@@ -89,7 +90,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def setPublished(fileName: String, published: String) = Secure() {
     token => implicit request => {
-      val state = if (published == "true") Repo.State.PUBLISHED else Repo.State.SAVED
+      val state = if (published == "true") State.PUBLISHED else State.SAVED
       val datasetInfo = repo.fileRepo(fileName).datasetDb.setStatus(state, 0, 0)
       Ok(Json.obj("state" -> state))
     }
@@ -170,7 +171,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def listSkos = Secure() {
     token => implicit request => {
-      Ok(Json.obj("list" -> SkosRepo.listFiles))
+      Ok(Json.obj("list" -> SkosRepo.repo.listFiles))
     }
   }
 
@@ -182,7 +183,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       Cache.getAs[SkosVocabulary](name) map {
         vocabulary => Ok(Json.obj("search" -> searchVocabulary(vocabulary)))
       } getOrElse {
-        val vocabulary = SkosRepo.vocabulary(name)
+        val vocabulary = SkosRepo.repo.vocabulary(name)
         Cache.set(name, vocabulary, CACHE_EXPIRATION)
         Ok(Json.obj("search" -> searchVocabulary(vocabulary)))
       }

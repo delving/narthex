@@ -16,11 +16,12 @@
 
 package actors
 
-import akka.actor.{Props, ActorLogging, Actor}
-import services.{NodeRepo, Repo, TreeHandling}
-import java.io.{FileWriter, File, FileReader, BufferedReader}
+import java.io.{BufferedReader, File, FileReader, FileWriter}
+
+import actors.Collator._
+import akka.actor.{Actor, ActorLogging, Props}
 import play.api.libs.json.Json
-import Collator._
+import services.{NodeRepo, RepoUtil, TreeHandling}
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
@@ -46,7 +47,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging with Tree
        val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
 
        def createSampleFile(randomSample: RandomSample, sampleFile: File) = {
-         Repo.createJson(sampleFile, Json.obj("sample" -> randomSample.values))
+         RepoUtil.createJson(sampleFile, Json.obj("sample" -> randomSample.values))
        }
 
        def lineOption = {

@@ -27,8 +27,8 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
-import services.Repo.State._
-import services.Repo._
+import services.RepoUtil.State._
+import services.RepoUtil._
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -38,12 +38,14 @@ import scala.util.Random
 import scala.xml.NodeSeq
 
 object Repo {
+  lazy val repo = new Repo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
+}
+
+object RepoUtil {
   val SUFFIXES = List(".xml.gz", ".xml")
   val UPLOADED_DIR = "uploaded"
   val ANALYZED_DIR = "analyzed"
   val SIP_ZIP = "sip-zip"
-  val USER_HOME = new File(System.getProperty("user.home"))
-  val NARTHEX_FILES = new File(USER_HOME, "NarthexFiles")
 
   object State {
     val FRESH = "0:fresh"
@@ -54,8 +56,6 @@ object Repo {
     val SAVED = "5:saved"
     val PUBLISHED = "6:published"
   }
-
-  lazy val repo = new Repo(NARTHEX_FILES, NarthexConfig.ORG_ID)
 
   def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
 
@@ -95,8 +95,8 @@ object Repo {
 
 }
 
-class Repo(root: File, val orgId: String) {
-
+class Repo(userHome: String, val orgId: String) {
+  val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
   val uploaded = new File(orgRoot, UPLOADED_DIR)
   val analyzed = new File(orgRoot, ANALYZED_DIR)
@@ -110,7 +110,9 @@ class Repo(root: File, val orgId: String) {
     val suffix = getSuffix(fileName)
     if (suffix.isEmpty) {
       val fileNameDot = s"$fileName."
-      val matchingFiles = uploaded.listFiles().filter(file => file.getName.startsWith(fileNameDot))
+      val fileList: Array[File] = uploaded.listFiles()
+      val nonemptyList = if (fileList == null) Array[File]() else fileList
+      val matchingFiles = nonemptyList.filter(file => file.getName.startsWith(fileNameDot))
       if (matchingFiles.isEmpty) {
         new File(uploaded, "nonexistent")
       }
@@ -309,7 +311,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
 
   def delete() = {
     datasetDb.setStatus(FRESH)
-    recordRepo.dropDatabase()
+    recordRepo.dropDb()
     deleteQuietly(sourceFile)
     deleteDirectory(dir)
   }

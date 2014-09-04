@@ -34,6 +34,7 @@ object NarthexConfig {
   )
   def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List[String]("secret"))
 
+  lazy val USER_HOME = System.getProperty("user.home")
   lazy val ORG_ID = configString("commons.orgId")
   lazy val COMMONS_HOST = configString("commons.host")
   lazy val COMMONS_TOKEN = configString("commons.token")

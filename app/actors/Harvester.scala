@@ -16,63 +16,86 @@
 
 package actors
 
-import java.io.ByteArrayInputStream
-
 import akka.actor.{Actor, ActorLogging, Props}
+import akka.pattern.pipe
 import org.basex.core.cmd.Optimize
-import play.Logger
-import services.{FileHandling, FileRepo, Harvesting, RecordHandling}
+import services.RepoUtil.State
+import services.{FileRepo, Harvesting, RecordHandling}
 
+import scala.io.Source
 import scala.language.postfixOps
 
+object Harvester {
+  def props(fileRepo: FileRepo) = Props(new Harvester(fileRepo))
+}
 
 class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with Harvesting with ActorLogging {
+
+  var parser: RawRecordParser = null
+  val progress = context.actorOf(Props(new Actor() {
+    override def receive: Receive = {
+      case HarvestProgress(percent) =>
+        println(s"Progress $percent") // todo
+        if (percent == 100) context.stop(self)
+        fileRepo.datasetDb.setStatus(State.SAVING, percent = percent)
+    }
+  }))
+
+  def sendProgress(percent: Int) = progress ! HarvestProgress(percent)
 
   def receive = {
 
     case HarvestAdLib(url, database) =>
-      Logger.info(s"Harvesting $url $database to ${fileRepo.dir.getName}")
+      println(s"Harvesting $url $database to ${fileRepo.dir.getName}")
+      fileRepo.recordRepo.createDb
+      parser = new RawRecordParser(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
+      fetchAdLibPage(url, database).pipeTo(self)
 
+    case AdLibHarvestPage(records, url, database, diagnostic) =>
+      println(s"Page $url $database to ${fileRepo.dir.getName}: $diagnostic")
+      fileRepo.recordRepo.db {
+        session =>
+          def receiveRecord(record: String) = session.add(hashRecordFileName(fileRepo.name, record), bytesOf(record))
+          val source = Source.fromString(records)
+          parser.parse(source, receiveRecord, diagnostic.totalItems, sendProgress)
+          source.close()
+      }
+      if (diagnostic.isLast) {
+        self ! HarvestComplete()
+      }
+      else {
+        fetchAdLibPage(url, database, Some(diagnostic)) pipeTo self
+      }
 
     case HarvestPMH(url, set, metadataPrefix) =>
-      Logger.info(s"Harvesting $url $set $metadataPrefix to ${fileRepo.dir.getName}")
+      println(s"Harvesting $url $set $metadataPrefix to ${fileRepo.dir.getName}")
+      fileRepo.recordRepo.createDb
+      parser = new RawRecordParser(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
+      fetchPMHPage(url, set, metadataPrefix) pipeTo self
 
-
-      // the below stuff is still from the saver:
-    case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
-      Logger.info(s"Saving ${fileRepo.dir.getName}")
-      fileRepo.recordRepo.freshDb {
+    case PMHHarvestPage(records, url, set, prefix, total, resumptionToken) =>
+      println(s"Page to ${fileRepo.dir.getName}: $resumptionToken")
+      fileRepo.recordRepo.db {
         session =>
-          val parser = new RawRecordParser(recordRoot, uniqueId)
-          val source = FileHandling.source(fileRepo.sourceFile)
-
-          val progress = context.actorOf(Props(new Actor() {
-            override def receive: Receive = {
-              case SaveProgress(percent) =>
-                if (percent == 100) context.stop(self)
-//                fileRepo.datasetDb.setStatus(SAVING, percent = percent)
-            }
-          }))
-
-          def sendProgress(percent: Int) = progress ! SaveProgress(percent)
-
-          def receiveRecord(record: String) = {
-            val hash =  hashString(record)
-            val inputStream = new ByteArrayInputStream(record.getBytes("UTF-8"))
-            session.add(s"$collection/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml", inputStream)
-          }
-
-          val namespaceMap = parser.parse(source, receiveRecord, recordCount, sendProgress)
+          val source = Source.fromString(records)
+          def receiveRecord(record: String) = session.add(hashRecordFileName(fileRepo.name, record), bytesOf(record))
+          parser.parse(source, receiveRecord, total, sendProgress)
           source.close()
-          fileRepo.datasetDb.setNamespaceMap(namespaceMap)
-          self ! SaveComplete()
+      }
+      resumptionToken match {
+        case None =>
+          self ! HarvestComplete()
+        case Some(token) =>
+          fetchPMHPage(url, set, prefix, Some(token))
       }
 
     case HarvestComplete() =>
-      Logger.info(s"Saved ${fileRepo.dir.getName}, optimizing..")
+      println(s"Saved ${fileRepo.dir.getName}, optimizing..")
+      sendProgress(100)
       fileRepo.recordRepo.db(_.execute(new Optimize()))
-      Logger.info(s"Optimized ${fileRepo.dir.getName}.")
-//      fileRepo.datasetDb.setStatus(SAVED)
+      println(s"Optimized ${fileRepo.dir.getName}.")
+      fileRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
+      fileRepo.datasetDb.setStatus(State.SAVED)
       context.stop(self)
 
   }
@@ -83,7 +106,7 @@ case class HarvestAdLib(url: String, database: String)
 
 case class HarvestPMH(url: String, set: String, metadataPrefix: String)
 
-case class HarvestProgress(recordCount: Int)
+case class HarvestProgress(percent: Int)
 
 case class HarvestComplete()
 

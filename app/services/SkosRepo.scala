@@ -20,8 +20,14 @@ import java.io.File
 import scala.io.Source
 
 object SkosRepo {
+  lazy val repo: SkosRepo = new SkosRepo(NarthexConfig.USER_HOME)
+}
+
+class SkosRepo(userHome: String) {
+
   val SUFFIX = ".xml"
-  val skos = new File(Repo.NARTHEX_FILES, "skos")
+  val root = new File(NarthexConfig.USER_HOME, "NarthexFiles")
+  val skos = new File(root, "skos")
 
   def listFiles = {
     val files = if (skos.exists()) skos.listFiles.filter(file => file.getName.endsWith(SUFFIX)) else Array[File]()

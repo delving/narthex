@@ -16,6 +16,7 @@
 
 package services
 
+import java.io.ByteArrayInputStream
 import java.net.URLEncoder
 import java.security.MessageDigest
 
@@ -28,20 +29,22 @@ import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 trait RecordHandling extends BaseXTools {
+
   val SUBSTITUTE = "__substitute__"
+
   class RawRecordParser(recordRootPath: String, uniqueIdPath: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
+    var percentWas = -1
+    var lastProgress = 0l
+    var recordCount = 0L
+    var namespaceMap: Map[String, String] = Map.empty
 
-    def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit): Map[String, String] = {
+    def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit): Unit = {
       val events = new XMLEventReader(source)
-      var percentWas = -1
-      var lastProgress = 0l
-      var recordCount = 0L
       var depth = 0
       var recordText = new mutable.StringBuilder()
       var uniqueId: Option[String] = None
       var startElement: Option[String] = None
-      var namespaceMap: Map[String, String] = Map.empty
 
       def indent() = {
         var countdown = depth
@@ -55,6 +58,7 @@ trait RecordHandling extends BaseXTools {
         val realPercent = ((recordCount * 100) / totalRecords).toInt
         val percent = if (realPercent > 0) realPercent else 1
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
+//          println(s"progress $recordCount / $totalRecords : $percent / $percentWas")
           if (percent < 100) progress(percent)
           percentWas = percent
           lastProgress = System.currentTimeMillis()
@@ -156,9 +160,6 @@ trait RecordHandling extends BaseXTools {
           case x => Logger.warn("EVENT? " + x) // todo: record these in an error file for later
         }
       }
-
-      progress(100)
-      namespaceMap
     }
 
     def pathString = "/" + path.reverse.map(_._1).mkString("/")
@@ -177,6 +178,13 @@ trait RecordHandling extends BaseXTools {
   }
 
   val digest = MessageDigest.getInstance("MD5")
+
+  def bytesOf(record: String) = new ByteArrayInputStream(record.getBytes("UTF-8"))
+
+  def hashRecordFileName(name:String, record: String) = {
+    val hash = hashString(record)
+    s"$name/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
+  }
 
   def hashString(record: String) = {
 
