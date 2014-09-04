@@ -48,6 +48,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                startHarvest: function (harvestInfo) {
+                    return dash.startHarvest().post(harvestInfo).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 datasetInfo: function (fileName) {
                     return dash.datasetInfo(fileName).get().then(
                         function (response) {

@@ -7,31 +7,85 @@
 
 <div class="row">
     <div class="col-sm-3">
-        <div class="file-drop well" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
-             ng-show="dropSupported">
-            <h6>Drag and drop your xml source file into this area</h6>
 
-            <div class="img-holder" data-ng-show="uploading">
-                <img ng-src="/assets/images/narthex-blue.png"/>
-                <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
-                <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
-                <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
-            </div>
-            <div class="img-holder" data-ng-show="!uploading">
-                <img ng-src="/assets/images/narthex-blue.png"/>
-            </div>
-            <div data-ng-if="percent">
-                <progressbar class="progress-striped active" animate="true" value="percent" max="100" type="success">
-                    <b>{{percent}}%</b>
-                </progressbar>
+        <div class="tabbable">
+
+            <ul class="nav nav-pills" role="tablist" ng-init="inputTab = 'drop'">
+                <li ng-class="{'active':inputTab === 'drop'}">
+                    <a href role="tab" data-ng-click="inputTab = 'drop'">Drag and Drop Files</a>
+                </li>
+                <li ng-class="{'active':inputTab === 'harvest'}">
+                    <a href role="tab" data-ng-click="inputTab = 'harvest'">Harvest from Server</a>
+                </li>
+            </ul>
+            <!-- Tab panes -->
+            <div class="tab-content">
+                <div ng-switch="inputTab">
+                    <div ng-switch-when="drop">
+                        <div class="file-drop well" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
+                             ng-show="dropSupported">
+                            <h6>Drag and drop your xml source file into this area</h6>
+
+                            <div class="img-holder" data-ng-show="uploading">
+                                <img ng-src="/assets/images/narthex-blue.png"/>
+                                <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
+                                <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
+                                <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
+                            </div>
+                            <div class="img-holder" data-ng-show="!uploading">
+                                <img ng-src="/assets/images/narthex-blue.png"/>
+                            </div>
+                            <div data-ng-if="percent">
+                                <progressbar class="progress-striped active" animate="true" value="percent" max="100" type="success">
+                                    <b>{{percent}}%</b>
+                                </progressbar>
+                            </div>
+                        </div>
+                    </div>
+                    <div ng-switch-when="harvest">
+                        <h3>Server Information</h3>
+                        <form name="form" class="form well">
+                            <fieldset>
+                                <div class="form-group">
+                                    <label for="pmh_name">Harvest Server Type</label>
+                                    <div id="harvest_type" class="form-control">
+                                        <input type="radio" ng-model="harvest.harvestType" value="pmh"> <span>OAI-PMH</span>
+                                        <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                                        <input type="radio" ng-model="harvest.harvestType" value="adlib"> <span>AdLib</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pmh_name">New Dataset Name</label>
+                                    <input id="pmh_name" class="form-control" data-ng-model="harvest.name" placeholder="name" required autofocus/>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pmh_prefix">Metadata Prefix</label>
+                                    <input id="pmh_prefix" class="form-control" data-ng-model="harvest.prefix" placeholder="prefix" required/>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pmh_url">Server URL</label>
+                                    <input id="pmh_url" class="form-control" data-ng-model="harvest.url" placeholder="http://..." required/>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pmh_set">Server Dataset</label>
+                                    <input id="pmh_set" class="form-control" data-ng-model="harvest.dataset" placeholder="dataset" required/>
+                                </div>
+                                <button typ="button" class="pull-right btn btn-success btn-xs" data-ng-click="startHarvest()">
+                                    <i class="fa fa-refresh"></i> Start Harvest
+                                </button>
+                            </fieldset>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
+
     </div>
     <div class="col-sm-9">
 
         <div class="tabbable">
             <!-- Nav tabs -->
-            <ul class="nav nav-pills" role="tablist" ng-init="list.active.tab = 'files'">
+            <ul class="nav nav-pills" role="tablist">
                 <li ng-class="{'active':activeTab === 'files'}">
                     <a href role="tab" data-ng-click="setActiveTab('files')">Files</a>
                 </li>

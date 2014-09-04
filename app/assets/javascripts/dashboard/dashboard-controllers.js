@@ -36,6 +36,7 @@ define(["angular"], function () {
         $scope.activeTab = $routeParams.tab || "files";
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
+        $scope.harvest = { harvestType: "pmh" };
 
         function oaiPmhListRecords(fileName) {
             var absUrl = $location.absUrl();
@@ -92,6 +93,12 @@ define(["angular"], function () {
             }
         };
 
+        $scope.startHarvest = function() {
+            dashboardService.startHarvest($scope.harvest).then(function () {
+                // todo: start watching like checkFileStatus does
+            });
+        };
+
         function checkFileStatus(file) {
             dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
                 file.status = datasetInfo.status;
@@ -146,16 +153,16 @@ define(["angular"], function () {
             });
         }
 
-        $scope.isStored = function(file) {
+        $scope.isStored = function (file) {
             if (!file.status) return false;
             return (file.status.state == '5:saved') || (file.status.state == '6:published');
         };
 
-        $scope.isPublished = function(file) {
+        $scope.isPublished = function (file) {
             return file.status.state == '6:published';
         };
 
-        $scope.togglePublished = function(file) {
+        $scope.togglePublished = function (file) {
             if (!$scope.isStored(file)) return;
             var published = !$scope.isPublished(file);
             dashboardService.setPublished(file.name, published).then(function (data) {
@@ -345,7 +352,7 @@ define(["angular"], function () {
                 size: $scope.status.histograms[$scope.status.histograms.length - 1]
             });
             var lastPath = $routeParams.path.substring($routeParams.path.lastIndexOf("/"));
-            $rootScope.addRecentTerms($scope.fileName + " (" +lastPath + ")", $location.absUrl())
+            $rootScope.addRecentTerms($scope.fileName + " (" + lastPath + ")", $location.absUrl())
         };
 
         function setActiveView(activeView) {

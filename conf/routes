@@ -18,6 +18,7 @@ GET         /logout                                           controllers.Applic
 
 # File Handling
 POST        /dashboard/upload                                 controllers.Dashboard.upload
+POST        /dashboard/start-harvest                          controllers.Dashboard.startHarvest
 GET         /dashboard/list                                   controllers.Dashboard.list
 GET         /dashboard/sip-list                               controllers.Dashboard.listSipFiles
 GET         /dashboard/work                                   controllers.Dashboard.work

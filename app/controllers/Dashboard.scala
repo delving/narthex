@@ -51,6 +51,20 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
+  def startHarvest = Secure(parse.json) {
+    token => implicit request => {
+      var name = (request.body \ "name").as[String]
+      var fileRepo = repo.fileRepo(name)
+      fileRepo.startHarvest(
+        harvestType = (request.body \ "harvestType").as[String],
+        url = (request.body \ "url").as[String],
+        dataset = (request.body \ "dataset").as[String],
+        prefix = (request.body \ "prefix").as[String]
+      )
+      Ok
+    }
+  }
+
   def list = Secure() {
     token => implicit request => {
       repo.scanForAnalysisWork()

@@ -106,7 +106,22 @@ class Repo(userHome: String, val orgId: String) {
     orgRoot.mkdirs()
   }
 
-  def uploadedFile(fileName: String) = new File(uploaded, fileName)
+  def uploadedFile(fileName: String) = {
+    val suffix = getSuffix(fileName)
+    if (suffix.isEmpty) {
+      val fileNameDot = s"$fileName."
+      val matchingFiles = uploaded.listFiles().filter(file => file.getName.startsWith(fileNameDot))
+      if (matchingFiles.isEmpty) {
+        new File(uploaded, s"$fileName.zip")
+      }
+      else {
+        matchingFiles.head
+      }
+    }
+    else {
+      new File(uploaded, fileName)
+    }
+  }
 
   def analyzedDir(fileName: String) = new File(analyzed, stripSuffix(fileName))
 
@@ -221,7 +236,6 @@ class Repo(userHome: String, val orgId: String) {
 }
 
 class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
-
   val root = new NodeRepo(this, dir)
   val dbName = s"narthex_${orgRepo.orgId}___$name"
   lazy val datasetDb = new DatasetDb(dbName)
@@ -237,8 +251,18 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
 
   def startAnalysis() = {
     datasetDb.setStatus(SPLITTING, percent = 1)
-    val analyzer = Akka.system.actorOf(Analyzer.props(this), sourceFile.getName)
+    val analyzer = Akka.system.actorOf(Analyzer.props(this), s"analyze-${sourceFile.getName}")
     analyzer ! Analyzer.Analyze(sourceFile)
+  }
+
+  def startHarvest(harvestType: String, url: String, dataset: String, prefix: String) = {
+    val harvester = Akka.system.actorOf(Harvester.props(this), s"harvest-${sourceFile.getName}")
+    harvestType match {
+      case "pmh" =>
+        harvester ! HarvestPMH(url, dataset, prefix)
+      case "adlib" =>
+        harvester ! HarvestAdLib(url, dataset)
+    }
   }
 
   def index = new File(dir, "index.json")

@@ -35,7 +35,7 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
   def receive = {
 
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
-      Logger.info(s"Saving ${fileRepo.dir.getName}")
+      Logger.info(s"Saving $fileRepo")
       fileRepo.recordRepo.createDb
       fileRepo.recordRepo.db {
         session =>
