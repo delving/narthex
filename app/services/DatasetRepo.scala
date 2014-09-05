@@ -22,7 +22,7 @@ import actors.{Analyzer, Harvester}
 import org.apache.commons.io.FileUtils.{deleteDirectory, deleteQuietly}
 import play.api.Logger
 import play.libs.Akka
-import services.DatasetState.SPLITTING
+import services.DatasetState.{HARVESTING, SPLITTING}
 import services.RepoUtil.tagToDirectory
 
 class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
@@ -40,17 +40,55 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
   }
 
   def startPmhHarvest(url: String, dataset: String, prefix: String) = {
-    val harvester = Akka.system.actorOf(Harvester.props(this), s"pmh-${sourceFile.getName}")
-    val kickoff = HarvestPMH(url, dataset, prefix)
-    Logger.info(s"Harvest $kickoff")
-    harvester ! kickoff
+
+    def startActor() = {
+      val harvester = Akka.system.actorOf(Harvester.props(this), s"pmh-${sourceFile.getName}")
+      val kickoff = HarvestPMH(url, dataset, prefix)
+      Logger.info(s"Harvest $kickoff")
+      harvester ! kickoff
+    }
+
+    datasetDb.getDatasetInfoOption map {
+      datasetInfo =>
+        val state = (datasetInfo \ "status" \ "state").text
+        if (!HARVESTING.matches(state)) {
+          datasetDb.setStatus(HARVESTING)
+          startActor()
+        }
+        else {
+          Logger.info("Harvest busy already")
+        }
+    } getOrElse {
+      Logger.info("Fresh database")
+      datasetDb.createDataset(HARVESTING)
+      startActor()
+    }
   }
 
   def startAdLibHarvest(url: String, dataset: String) = {
-    val harvester = Akka.system.actorOf(Harvester.props(this), s"adlib-${sourceFile.getName}")
-    val kickoff = HarvestAdLib(url, dataset)
-    Logger.info(s"Harvest $kickoff")
-    harvester ! kickoff
+
+    def startActor() = {
+      val harvester = Akka.system.actorOf(Harvester.props(this), s"adlib-${sourceFile.getName}")
+      val kickoff = HarvestAdLib(url, dataset)
+      Logger.info(s"Harvest $kickoff")
+      harvester ! kickoff
+    }
+
+    datasetDb.getDatasetInfoOption map {
+      datasetInfo =>
+        val state = (datasetInfo \ "status" \ "state").text
+        if (!HARVESTING.matches(state)) {
+          datasetDb.setStatus(HARVESTING)
+          startActor()
+        }
+        else {
+          Logger.info("Harvest busy already")
+        }
+    } getOrElse {
+      Logger.info("Fresh database")
+      datasetDb.createDataset(HARVESTING)
+      startActor()
+    }
   }
 
   def startAnalysis() = {

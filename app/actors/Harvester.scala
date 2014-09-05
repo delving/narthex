@@ -20,10 +20,10 @@ import java.io.{File, FileOutputStream}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import actors.Harvester._
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.pipe
-import org.apache.commons.io.FileUtils
-import services.{DatasetRepo, Harvesting, RecordHandling}
+import org.apache.commons.io.FileUtils._
+import services.{DatasetRepo, DatasetState, Harvesting, RecordHandling}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
@@ -60,16 +60,15 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
 
   def renameFile() = {
     zip.close()
-    FileUtils.moveFile(tempFile, datasetRepo.sourceFile)
+    deleteQuietly(datasetRepo.sourceFile)
+    moveFile(tempFile, datasetRepo.sourceFile)
+    datasetRepo.datasetDb.setStatus(DatasetState.READY)
   }
-
-  var boss : ActorRef = null
 
   def receive = {
 
     case HarvestAdLib(url, database) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
-      boss = sender
       fetchAdLibPage(url, database) pipeTo self
 
     case AdLibHarvestPage(records, url, database, diagnostic) =>
@@ -84,7 +83,6 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
 
     case HarvestPMH(url, set, metadataPrefix) =>
       log.info(s"Harvesting $url $set $metadataPrefix to $datasetRepo")
-      boss = sender
       fetchPMHPage(url, set, metadataPrefix) pipeTo self
 
     case PMHHarvestPage(records, url, set, prefix, total, resumptionToken) =>
@@ -100,7 +98,6 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
     case HarvestComplete() =>
       log.info(s"Harvested $datasetRepo")
       renameFile()
-      boss ! HarvestComplete()
       context.stop(self)
 
   }
