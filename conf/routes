@@ -18,10 +18,10 @@ GET         /logout                                           controllers.Applic
 
 # File Handling
 POST        /dashboard/upload                                 controllers.Dashboard.upload
-POST        /dashboard/start-harvest                          controllers.Dashboard.startHarvest
+POST        /dashboard/harvest                                controllers.Dashboard.harvest
 GET         /dashboard/list                                   controllers.Dashboard.list
 GET         /dashboard/sip-list                               controllers.Dashboard.listSipFiles
-GET         /dashboard/work                                   controllers.Dashboard.work
+GET         /dashboard/:fileName/analyze                      controllers.Dashboard.analyze(fileName)
 GET         /dashboard/:fileName/index                        controllers.Dashboard.index(fileName)
 GET         /dashboard/:fileName/dataset-info                 controllers.Dashboard.datasetInfo(fileName)
 GET         /dashboard/:fileName/set-published/:pub           controllers.Dashboard.setPublished(fileName, pub)

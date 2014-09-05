@@ -166,8 +166,8 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           uniqueId = "/delving-sip-target/output/@id",
           recordCount = -1
         )
+        fileRepo.startAnalysis()
       }
-      repo.scanForAnalysisWork()
       Ok
     }
   }

@@ -102,8 +102,15 @@
                                 data-ng-show="file.status">
                                 <div ng-switch="file.status.state">
 
-                                    <div ng-switch-when="state-fresh">
-                                        {{ file.name }} <span class="label label-warning">Fresh</span>
+                                    <div ng-switch-when="state-harvesting">
+                                        {{ file.name }} <span class="label label-warning">Harvesting</span>
+                                        <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
+                                            {{file.status.percent}}%
+                                        </progressbar>
+                                    </div>
+
+                                    <div ng-switch-when="state-ready">
+                                        {{ file.name }} <span class="label label-success" data-ng-click="startAnalysis(file)">Ready: Split and Analyze</span>
                                     </div>
 
                                     <div ng-switch-when="state-splitting">
@@ -157,7 +164,21 @@
                                         <div data-ng-include="'dataset-extended.html'" data-ng-show="file.showExtendedInfo">-extended-</div>
                                     </div>
 
-                                    <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
+                                    <div ng-switch-when="state-error">
+                                        {{ file.name }} <span class="label label-danger">Error!</span>
+                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
+                                                data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                        </button>
+                                        <div>
+                                            Error Message: {{ file.status.error }}
+                                        </div>
+                                    </div>
+
+                                    <div ng-switch-when="state-deleted">
+                                        {{ file.name }} <span class="label label-info">Deleted</span>
+                                    </div>
+
+                                    <span ng-switch-default>{{ file.name }}:UNKNOWN STATE {{ file.status }}!</span>
                                 </div>
                             </li>
                         </ul>

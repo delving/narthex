@@ -85,6 +85,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
 
         case Failure(e) =>
           log.error(e, "Problem reading the file")
+          fileRepo.datasetDb.setStatus(ERROR, error = s"Unable to read ${file.getName}: $e")
           self ! AnalysisError(file)
       }
       source.close()

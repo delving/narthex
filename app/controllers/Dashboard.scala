@@ -39,7 +39,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
             println(s"Acceptable ${file.filename}")
             val fileRepo = repo.fileRepo(file.filename)
             file.ref.moveTo(fileRepo.sourceFile, replace = true)
-            fileRepo.datasetDb.createDataset()
+            fileRepo.datasetDb.createDataset(DatasetState.READY)
             Ok(file.filename)
           }
           else {
@@ -52,7 +52,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def startHarvest = Secure(parse.json) {
+  def harvest = Secure(parse.json) {
     token => implicit request => {
       def string(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
       try {
@@ -75,16 +75,21 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def list = Secure() {
     token => implicit request => {
-      repo.scanForAnalysisWork()
       val stringList = repo.listFileRepos
       Ok(Json.toJson(stringList.map(string => Json.obj("name" -> string))))
     }
   }
 
-  def work = Secure() {
+  def analyze(fileName: String) = Secure() {
     token => implicit request => {
-      repo.scanForAnalysisWork()
-      Ok
+      repo.fileRepoOption(fileName) match {
+        case Some(fileRepo) =>
+          fileRepo.startAnalysis()
+          Ok
+        case None =>
+          Logger.warn(s"No such file found: $fileName")
+          NotFound(Json.obj("problem" -> s"No such file to analyze"))
+      }
     }
   }
 

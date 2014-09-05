@@ -68,13 +68,13 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
   def receive = {
 
     case HarvestAdLib(url, database) =>
-      println(s"Harvesting $url $database to $fileRepo")
+      log.info(s"Harvesting $url $database to $fileRepo")
       boss = sender
       fetchAdLibPage(url, database) pipeTo self
 
     case AdLibHarvestPage(records, url, database, diagnostic) =>
       val pageName = addPage(records)
-      println(s"Page: $pageName - $url $database to $fileRepo: $diagnostic")
+      log.info(s"Page: $pageName - $url $database to $fileRepo: $diagnostic")
       if (diagnostic.isLast) {
         self ! HarvestComplete()
       }
@@ -83,13 +83,13 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
       }
 
     case HarvestPMH(url, set, metadataPrefix) =>
-      println(s"Harvesting $url $set $metadataPrefix to $fileRepo")
+      log.info(s"Harvesting $url $set $metadataPrefix to $fileRepo")
       boss = sender
       fetchPMHPage(url, set, metadataPrefix) pipeTo self
 
     case PMHHarvestPage(records, url, set, prefix, total, resumptionToken) =>
       val pageName = addPage(records)
-      println(s"Page $pageName to $fileRepo: $resumptionToken")
+      log.info(s"Page $pageName to $fileRepo: $resumptionToken")
       resumptionToken match {
         case None =>
           self ! HarvestComplete()
@@ -98,7 +98,7 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
       }
 
     case HarvestComplete() =>
-      println(s"Harvested $fileRepo")
+      log.info(s"Harvested $fileRepo")
       renameFile()
       boss ! HarvestComplete()
       context.stop(self)

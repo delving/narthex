@@ -49,18 +49,21 @@ class DatasetDb(dbName: String) extends BaseXTools {
     }
   }
 
-  def createDataset() = db {
+  def createDataset(state: DatasetState) = db {
     session =>
       val update = s"""
           |
           | let $$dataset :=
           |   <dataset name="$dbName">
-          |     <status/>
+          |     <status><state>$state</state></status>
           |     <delimit/>
           |     <namespaces/>
           |     <harvest/>
           |   </dataset>
-          | return insert node $$dataset into $datasetsElement
+          | return
+          |   if (exists($datasetElement))
+          |   then replace value of node $datasetElement/status/state with ${quote(state.toString)}
+          |   else insert node $$dataset into $datasetsElement
           |
           """.stripMargin.trim
       println("updating:\n" + update)
@@ -100,13 +103,12 @@ class DatasetDb(dbName: String) extends BaseXTools {
       session.query(update).execute()
   }
 
-  def setNamespaceMap(namespaceMap: Map[String, String]) = setProperties("namespaces",namespaceMap.toSeq :_*)
-
-  def setStatus(state: DatasetState, percent: Int = 0, workers: Int = 0) = setProperties(
+  def setStatus(state: DatasetState, percent: Int = 0, workers: Int = 0, error: String = "") = setProperties(
     "status",
     "state" -> state,
     "percent" -> percent,
-    "workers" -> workers
+    "workers" -> workers,
+    "error" -> error
   )
 
   def setRecordDelimiter(recordRoot: String = "", uniqueId: String = "", recordCount: Int = 0) = setProperties(
@@ -114,6 +116,17 @@ class DatasetDb(dbName: String) extends BaseXTools {
     "recordRoot" -> recordRoot,
     "uniqueId" -> uniqueId,
     "recordCount" -> recordCount
+  )
+
+  def setNamespaceMap(namespaceMap: Map[String, String]) = setProperties(
+    "namespaces", namespaceMap.toSeq: _*
+  )
+
+  def setHarvestInfo(harvestType: String, url: String, dataset: String, prefix: String) = setProperties(
+    "harvest",
+    "url" -> url,
+    "dataset" -> dataset,
+    "prefix" -> prefix
   )
 
 }

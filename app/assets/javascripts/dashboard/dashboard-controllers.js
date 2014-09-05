@@ -93,17 +93,12 @@ define(["angular"], function () {
             }
         };
 
-        $scope.startHarvest = function() {
-            dashboardService.startHarvest($scope.harvest).then(function () {
-                // todo: start watching like checkFileStatus does
-            });
-        };
-
         function checkFileStatus(file) {
             dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
                 file.status = datasetInfo.status;
                 file.delimit = datasetInfo.delimit;
                 file.namespaces = datasetInfo.namespaces;
+                file.harvest = datasetInfo.harvest;
 
                 if (file.status.percent > 0 || file.status.workers > 0) {
                     var interval = timeSinceStatusCheck();
@@ -152,6 +147,18 @@ define(["angular"], function () {
                 })
             });
         }
+
+        $scope.startHarvest = function() {
+            dashboardService.harvest($scope.harvest).then(function () {
+                fetchFileList();
+            });
+        };
+
+        $scope.startAnalysis = function(file) {
+            dashboardService.analyze(file.name).then(function () {
+                fetchFileList();
+            });
+        };
 
         $scope.togglePublished = function (file) {
             var published = file.status.state != 'state-published';

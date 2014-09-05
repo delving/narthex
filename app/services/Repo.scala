@@ -49,15 +49,16 @@ case class DatasetState(name: String) {
 }
 
 object DatasetState {
-  val FRESH = DatasetState("state-fresh")
+  val HARVESTING = DatasetState("state-harvesting")
+  val READY = DatasetState("state-ready")
   val SPLITTING = DatasetState("state-splitting")
   val ANALYZING = DatasetState("state-analyzing")
   val ANALYZED = DatasetState("state-analyzed")
   val SAVING = DatasetState("state-saving")
   val SAVED = DatasetState("state-saved")
   val PUBLISHED = DatasetState("state-published")
-
-  val all = List(FRESH, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED, PUBLISHED)
+  val DELETED = DatasetState("state-deleted")
+  val ERROR = DatasetState("state-error")
 }
 
 object RepoUtil {
@@ -134,6 +135,11 @@ class Repo(userHome: String, val orgId: String) {
 
   def analyzedDir(fileName: String) = new File(analyzed, stripSuffix(fileName))
 
+  private def listFiles(directory: File): List[File] = {
+    if (!directory.exists()) return List.empty
+    directory.listFiles.filter(f => f.isFile && SUFFIXES.filter(end => f.getName.endsWith(end)).nonEmpty).toList
+  }
+
   def listUploadedFiles = listFiles(uploaded)
 
   def listFileRepos = listUploadedFiles.map(file => stripSuffix(file.getName))
@@ -143,21 +149,8 @@ class Repo(userHome: String, val orgId: String) {
   }
 
   def fileRepoOption(fileName: String): Option[FileRepo] = {
-    if (analyzedDir(fileName).exists()) Some(fileRepo(fileName)) else None
-  }
-
-  def scanForAnalysisWork() = {
-    val files = listUploadedFiles.filter(file => !analyzedDir(file.getName).exists())
-    val dirs = files.map(file => analyzedDir(file.getName))
-    val pairs = files.zip(dirs)
-    val fileRepos = pairs.map(pair => new FileRepo(this, pair._2.getName, pair._1, pair._2).mkdirs)
-    fileRepos.foreach(_.startAnalysis())
-    files
-  }
-
-  private def listFiles(directory: File): List[File] = {
-    if (!directory.exists()) return List.empty
-    directory.listFiles.filter(f => f.isFile && SUFFIXES.filter(end => f.getName.endsWith(end)).nonEmpty).toList
+    val fr = fileRepo(fileName)
+    if (fr.datasetDb.getDatasetInfo.nonEmpty) Some(fr) else None
   }
 
   // todo: whenever there are enriched datasets, add new spec s"${spec}_enriched" for them
@@ -258,24 +251,25 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     this
   }
 
-  def startAnalysis() = {
-    datasetDb.setStatus(SPLITTING, percent = 1)
-    val analyzer = Akka.system.actorOf(Analyzer.props(this), s"analyze-${sourceFile.getName}")
-    analyzer ! Analyzer.Analyze(sourceFile)
-  }
-
   def startPmhHarvest(url: String, dataset: String, prefix: String) = {
-    val harvester = Akka.system.actorOf(Harvester.props(this), s"harvest-${sourceFile.getName}")
+    val harvester = Akka.system.actorOf(Harvester.props(this), s"pmh-${sourceFile.getName}")
     val kickoff = HarvestPMH(url, dataset, prefix)
     Logger.info(s"Harvest $kickoff")
     harvester ! kickoff
   }
 
   def startAdLibHarvest(url: String, dataset: String) = {
-    val harvester = Akka.system.actorOf(Harvester.props(this), s"harvest-${sourceFile.getName}")
+    val harvester = Akka.system.actorOf(Harvester.props(this), s"adlib-${sourceFile.getName}")
     val kickoff = HarvestAdLib(url, dataset)
     Logger.info(s"Harvest $kickoff")
     harvester ! kickoff
+  }
+
+  def startAnalysis() = {
+    deleteDirectory(dir)
+    datasetDb.setStatus(SPLITTING, percent = 1)
+    val analyzer = Akka.system.actorOf(Analyzer.props(this), s"analyze-${sourceFile.getName}")
+    analyzer ! Analyzer.Analyze(sourceFile)
   }
 
   def index = new File(dir, "index.json")
@@ -332,7 +326,7 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
   }
 
   def delete() = {
-    datasetDb.setStatus(FRESH)
+    datasetDb.setStatus(DELETED)
     recordRepo.dropDb()
     deleteQuietly(sourceFile)
     deleteDirectory(dir)
