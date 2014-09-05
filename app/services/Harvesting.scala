@@ -28,6 +28,10 @@ trait Harvesting extends BaseXTools {
 
   case class AdLibDiagnostic(totalItems: Int, current: Int, pageItems: Int) {
     def isLast = current + pageItems >= totalItems
+    def percentComplete: Int = {
+      val pc = (100 * current) / totalItems
+      if (pc < 1) 1 else pc
+    }
   }
 
   case class AdLibHarvestPage(records: String, url: String, database: String, diagnostic: AdLibDiagnostic)
@@ -38,7 +42,7 @@ trait Harvesting extends BaseXTools {
       "database" -> database,
       "search" -> "all",
       "xmltype" -> "grouped",
-      "limit" -> "100",
+      "limit" -> "50",
       "startFrom" -> startFrom.toString
     ).get().map {
       response =>
@@ -62,7 +66,12 @@ trait Harvesting extends BaseXTools {
   val PMH_RECORD_ROOT = "/OAI-PMH/ListRecords/record"
   val PMH_UNIQUE_ID = "/OAI-PMH/ListRecords/record/header/identifier"
 
-  case class PMHResumptionToken(value: String, current: Int, total:Int)
+  case class PMHResumptionToken(value: String, current: Int, total:Int) {
+    def percentComplete: Int = {
+      val pc = (100 * current) / total
+      if (pc < 1) 1 else pc
+    }
+  }
 
   case class PMHHarvestPage(records: String, url: String, set: String, metadataPrefix: String, total: Int, resumptionToken: Option[PMHResumptionToken])
 

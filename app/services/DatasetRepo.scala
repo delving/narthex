@@ -52,7 +52,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
       datasetInfo =>
         val state = (datasetInfo \ "status" \ "state").text
         if (!HARVESTING.matches(state)) {
-          datasetDb.setStatus(HARVESTING)
+          datasetDb.setStatus(HARVESTING, percent = 1)
           startActor()
         }
         else {
@@ -60,7 +60,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
         }
     } getOrElse {
       Logger.info("Fresh database")
-      datasetDb.createDataset(HARVESTING)
+      datasetDb.createDataset(HARVESTING, percent = 1)
       startActor()
     }
   }
@@ -78,7 +78,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
       datasetInfo =>
         val state = (datasetInfo \ "status" \ "state").text
         if (!HARVESTING.matches(state)) {
-          datasetDb.setStatus(HARVESTING)
+          datasetDb.setStatus(HARVESTING, percent = 1)
           startActor()
         }
         else {
@@ -86,7 +86,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
         }
     } getOrElse {
       Logger.info("Fresh database")
-      datasetDb.createDataset(HARVESTING)
+      datasetDb.createDataset(HARVESTING, percent = 1)
       startActor()
     }
   }

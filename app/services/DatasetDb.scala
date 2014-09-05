@@ -26,13 +26,13 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
 
   def datasetElement = s"${repoDb.allDatasets}/dataset[@name=${quote(fileName)}]"
 
-  def createDataset(state: DatasetState) = db {
+  def createDataset(state: DatasetState, percent: Int = 0, workers: Int = 0) = db {
     session =>
       val update = s"""
           |
           | let $$dataset :=
           |   <dataset name="$fileName">
-          |     <status><state>$state</state></status>
+          |     <status><state>$state</state><percent>$percent</percent><workers>$workers</workers></status>
           |     <delimit/>
           |     <namespaces/>
           |     <harvest/>

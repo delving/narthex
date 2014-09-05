@@ -23,7 +23,8 @@ import actors.Harvester._
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.pipe
 import org.apache.commons.io.FileUtils._
-import services.{DatasetRepo, DatasetState, Harvesting, RecordHandling}
+import services.DatasetState._
+import services.{DatasetRepo, Harvesting, RecordHandling}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
@@ -62,13 +63,13 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
     zip.close()
     deleteQuietly(datasetRepo.sourceFile)
     moveFile(tempFile, datasetRepo.sourceFile)
-    datasetRepo.datasetDb.setStatus(DatasetState.READY)
   }
 
   def receive = {
 
     case HarvestAdLib(url, database) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
+      datasetRepo.datasetDb.setHarvestInfo("adlib", url, database, "adlib")
       fetchAdLibPage(url, database) pipeTo self
 
     case AdLibHarvestPage(records, url, database, diagnostic) =>
@@ -78,12 +79,14 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
         self ! HarvestComplete()
       }
       else {
+        datasetRepo.datasetDb.setStatus(HARVESTING, percent = diagnostic.percentComplete)
         fetchAdLibPage(url, database, Some(diagnostic)) pipeTo self
       }
 
-    case HarvestPMH(url, set, metadataPrefix) =>
-      log.info(s"Harvesting $url $set $metadataPrefix to $datasetRepo")
-      fetchPMHPage(url, set, metadataPrefix) pipeTo self
+    case HarvestPMH(url, set, prefix) =>
+      log.info(s"Harvesting $url $set $prefix to $datasetRepo")
+      datasetRepo.datasetDb.setHarvestInfo("pmh", url, set, prefix)
+      fetchPMHPage(url, set, prefix) pipeTo self
 
     case PMHHarvestPage(records, url, set, prefix, total, resumptionToken) =>
       val pageName = addPage(records)
@@ -92,12 +95,14 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
         case None =>
           self ! HarvestComplete()
         case Some(token) =>
+          datasetRepo.datasetDb.setStatus(HARVESTING, percent = token.percentComplete)
           fetchPMHPage(url, set, prefix, Some(token)) pipeTo self
       }
 
     case HarvestComplete() =>
       log.info(s"Harvested $datasetRepo")
       renameFile()
+      datasetRepo.datasetDb.setStatus(READY)
       context.stop(self)
 
   }
