@@ -19,6 +19,7 @@ package services
 import java.io.{BufferedReader, File, FileReader}
 import java.util.UUID
 
+import actors.Harvester.{HarvestAdLib, HarvestPMH}
 import actors._
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime

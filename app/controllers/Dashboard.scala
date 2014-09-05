@@ -38,7 +38,9 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
           Logger.info(s"upload ${file.filename} (${file.contentType})")
           if (RepoUtil.acceptableFile(file.filename, file.contentType)) {
             println(s"Acceptable ${file.filename}")
-            file.ref.moveTo(repo.uploadedFile(file.filename), replace = true)
+            val fileRepo = repo.fileRepo(file.filename)
+            file.ref.moveTo(fileRepo.sourceFile, replace = true)
+            fileRepo.datasetDb.createDataset()
             Ok(file.filename)
           }
           else {

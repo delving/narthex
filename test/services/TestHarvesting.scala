@@ -2,7 +2,8 @@ package services
 
 import java.io.File
 
-import actors.{HarvestAdLib, HarvestComplete, HarvestPMH, Harvester}
+import actors.Harvester
+import actors.Harvester._
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
 import org.apache.commons.io.FileUtils._

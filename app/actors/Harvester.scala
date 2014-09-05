@@ -19,6 +19,7 @@ package actors
 import java.io.{File, FileOutputStream}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
+import actors.Harvester._
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.pipe
 import org.apache.commons.io.FileUtils
@@ -28,7 +29,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 
 object Harvester {
+
+  case class HarvestAdLib(url: String, database: String)
+
+  case class HarvestPMH(url: String, set: String, metadataPrefix: String)
+
+  case class HarvestProgress(percent: Int)
+
+  case class HarvestComplete()
+
   def props(fileRepo: FileRepo) = Props(new Harvester(fileRepo))
+
   global.getClass // to avoid optimizing the import away
 }
 
@@ -95,14 +106,6 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
   }
 }
 
-
-case class HarvestAdLib(url: String, database: String)
-
-case class HarvestPMH(url: String, set: String, metadataPrefix: String)
-
-case class HarvestProgress(percent: Int)
-
-case class HarvestComplete()
 
 
 
