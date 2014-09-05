@@ -53,15 +53,22 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def startHarvest = Secure(parse.json) {
     token => implicit request => {
-      var name = (request.body \ "name").as[String]
-      var fileRepo = repo.fileRepo(name)
-      fileRepo.startHarvest(
-        harvestType = (request.body \ "harvestType").as[String],
-        url = (request.body \ "url").as[String],
-        dataset = (request.body \ "dataset").as[String],
-        prefix = (request.body \ "prefix").as[String]
-      )
-      Ok
+      def string(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
+      try {
+        val fileRepo = repo.fileRepo(string("name"))
+        string("harvestType") match {
+          case "pmh" =>
+            fileRepo.startPmhHarvest(string("url"), string("dataset"), string("prefix"))
+          case "adlib" =>
+            fileRepo.startAdLibHarvest(string("url"), string("dataset"))
+          case _ =>
+            throw new IllegalArgumentException("Missing harvestType=[pmh,adlib]")
+        }
+        Ok
+      } catch {
+        case e: IllegalArgumentException =>
+          NotAcceptable(Json.obj("problem" -> e.getMessage))
+      }
     }
   }
 

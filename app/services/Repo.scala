@@ -23,6 +23,7 @@ import actors._
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
+import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.concurrent.Akka
@@ -255,14 +256,18 @@ class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val di
     analyzer ! Analyzer.Analyze(sourceFile)
   }
 
-  def startHarvest(harvestType: String, url: String, dataset: String, prefix: String) = {
+  def startPmhHarvest(url: String, dataset: String, prefix: String) = {
     val harvester = Akka.system.actorOf(Harvester.props(this), s"harvest-${sourceFile.getName}")
-    harvestType match {
-      case "pmh" =>
-        harvester ! HarvestPMH(url, dataset, prefix)
-      case "adlib" =>
-        harvester ! HarvestAdLib(url, dataset)
-    }
+    val kickoff = HarvestPMH(url, dataset, prefix)
+    Logger.info(s"Harvest $kickoff")
+    harvester ! kickoff
+  }
+
+  def startAdLibHarvest(url: String, dataset: String) = {
+    val harvester = Akka.system.actorOf(Harvester.props(this), s"harvest-${sourceFile.getName}")
+    val kickoff = HarvestAdLib(url, dataset)
+    Logger.info(s"Harvest $kickoff")
+    harvester ! kickoff
   }
 
   def index = new File(dir, "index.json")
