@@ -22,11 +22,10 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
+import services.DatasetState._
 import services.Repo.repo
-import services.RepoUtil.State
 import services._
 
-import scala.collection.immutable.Seq
 import scala.xml.Elem
 
 object Dashboard extends Controller with Security with TreeHandling with SkosJson {
@@ -92,30 +91,19 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def datasetInfo(fileName: String) = Secure() {
     token => implicit request => {
       val datasetInfo = repo.fileRepo(fileName).datasetDb.getDatasetInfo
-      // there should be a better way, but couldn't find one and got impatient
-      def extract(tag: String) = {
-        (datasetInfo \ tag).head.child.filter(_.isInstanceOf[Elem]).map(n => n.label -> JsString(n.text))
-      }
-      val status = extract("status")
-      val delimit = extract("delimit")
-      val namespaceNodes = datasetInfo \ "namespaces" \ "namespace"
-      val namespaceObjects = namespaceNodes.map(node => Json.obj(
-        "prefix" -> (node \ "prefix").text,
-        "uri" -> (node \ "uri").text
-      ))
-      Ok(JsObject(Seq(
-        "status" -> JsObject(status),
-        "delimit" -> JsObject(delimit),
-        "namespaces" -> JsArray(namespaceObjects)
-      )))
+      def extract(tag: String) = (datasetInfo \ tag).head.child.filter(_.isInstanceOf[Elem]).map(
+        n => n.label -> JsString(n.text)
+      )
+      val lists = List("status", "delimit", "namespaces", "harvest").map(name => name -> JsObject(extract(name)))
+      Ok(JsObject(lists))
     }
   }
 
   def setPublished(fileName: String, published: String) = Secure() {
     token => implicit request => {
-      val state = if (published == "true") State.PUBLISHED else State.SAVED
+      val state = if (published == "true") PUBLISHED else SAVED
       val datasetInfo = repo.fileRepo(fileName).datasetDb.setStatus(state, 0, 0)
-      Ok(Json.obj("state" -> state))
+      Ok(Json.obj("state" -> state.toString))
     }
   }
 

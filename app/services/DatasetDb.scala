@@ -80,7 +80,7 @@ class DatasetDb(dbName: String) extends BaseXTools {
       session.query(update).execute()
   }
 
-  def setProperties(listName: String, entries: (String, Any)*) = db {
+  def setProperties(listName: String, entries: (String, Any)*): Unit = db {
     session =>
       val replacementLines = List(
         List(s"  <$listName>"),
@@ -100,27 +100,9 @@ class DatasetDb(dbName: String) extends BaseXTools {
       session.query(update).execute()
   }
 
-  def setNamespaceMap(namespaceMap: Map[String, String]) = db {
-    session =>
-      val namespaces = namespaceMap.map(entry =>
-        s"    <namespace><prefix>${entry._1}</prefix><uri>${entry._2}</uri></namespace>"
-      ).mkString("\n")
-      val update =
-        s"""
-          |
-          | let $$namespacesBlock := doc('$dbName/$dbName.xml')/narthex-dataset/namespaces
-          | let $$replacement :=
-          |   <namespaces>
-          |$namespaces
-          |   </namespaces>
-          | return replace node $$namespacesBlock with $$replacement
-          |
-          """.stripMargin.trim
-      //      println("updating:\n" + update)
-      session.query(update).execute()
-  }
+  def setNamespaceMap(namespaceMap: Map[String, String]) = setProperties("namespaces",namespaceMap.toSeq :_*)
 
-  def setStatus(state: String, percent: Int = 0, workers: Int = 0) = setProperties(
+  def setStatus(state: DatasetState, percent: Int = 0, workers: Int = 0) = setProperties(
     "status",
     "state" -> state,
     "percent" -> percent,

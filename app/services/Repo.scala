@@ -29,7 +29,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
-import services.RepoUtil.State._
+import services.DatasetState._
 import services.RepoUtil._
 
 import scala.collection.mutable
@@ -43,21 +43,28 @@ object Repo {
   lazy val repo = new Repo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
 }
 
+case class DatasetState(name: String) {
+  override def toString = name
+  def matches(otherName: String) = name == otherName
+}
+
+object DatasetState {
+  val FRESH = DatasetState("state-fresh")
+  val SPLITTING = DatasetState("state-splitting")
+  val ANALYZING = DatasetState("state-analyzing")
+  val ANALYZED = DatasetState("state-analyzed")
+  val SAVING = DatasetState("state-saving")
+  val SAVED = DatasetState("state-saved")
+  val PUBLISHED = DatasetState("state-published")
+
+  val all = List(FRESH, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED, PUBLISHED)
+}
+
 object RepoUtil {
   val SUFFIXES = List(".xml.gz", ".xml")
   val UPLOADED_DIR = "uploaded"
   val ANALYZED_DIR = "analyzed"
   val SIP_ZIP = "sip-zip"
-
-  object State {
-    val FRESH = "0:fresh"
-    val SPLITTING = "1:splitting"
-    val ANALYZING = "2:analyzing"
-    val ANALYZED = "3:analyzed"
-    val SAVING = "4:saving"
-    val SAVED = "5:saved"
-    val PUBLISHED = "6:published"
-  }
 
   def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
 
@@ -173,7 +180,7 @@ class Repo(userHome: String, val orgId: String) {
               case Some(ns) => RepoMetadataFormat(prefix, (ns \ "uri").text)
               case None => RepoMetadataFormat(prefix)
             }
-            if (state == PUBLISHED) {
+            if (PUBLISHED.matches(state)) {
               Some(RepoDataSet(name, prefix, "name", "dataProvider", totalRecords.toInt, metadataFormat))
             }
             else

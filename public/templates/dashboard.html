@@ -100,98 +100,64 @@
                         <ul class="list-group">
                             <li ng-repeat="file in files" class="list-group-item clearfix"
                                 data-ng-show="file.status">
-                                <div>
+                                <div ng-switch="file.status.state">
 
-                                    <!-- 0:FRESH -->
-                                    <div ng-if="file.status.state == '0:fresh'">
+                                    <div ng-switch-when="state-fresh">
                                         {{ file.name }} <span class="label label-warning">Fresh</span>
                                     </div>
 
-                                    <!-- 1:SPLITTING -->
-                                    <div ng-if="file.status.state == '1:splitting'">
+                                    <div ng-switch-when="state-splitting">
                                         {{ file.name }} <span class="label label-warning">Splitting</span>
-                                        <progressbar class="progress-striped active" animate="true" value="file.status.percent"
-                                                     max="100" type="success">
+                                        <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
                                             {{file.status.percent}}%
                                         </progressbar>
                                     </div>
 
-                                    <!-- 2:ANALYSING -->
-                                    <div ng-if="file.status.state == '2:analyzing'">
+                                    <div ng-switch-when="state-analyzing">
                                         <p>{{ file.name }} <span class="label label-success">Analyzing</span></p>
                                         <code class="process">({{file.status.workers}} workers)</code>
                                     </div>
 
-                                    <!-- 3:ANALYZED -->
-                                    <div ng-if="file.status.state == '3:analyzed'">
+                                    <div ng-switch-when="state-analyzed">
                                         <span><i class="fa fa-folder-open"></i> <a href data-ng-click="viewFile(file)">{{ file.name }}</a></span>
                                         <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
                                                 data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
-                                        <button typ="button" class="pull-right btn btn-success btn-xs" data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">
+                                        <button typ="button" class="btn btn-success btn-xs"
+                                                data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">
                                             <i class="fa fa-database"></i> Save Records
                                         </button>
                                     </div>
 
-                                    <!-- 4:SAVING -->
-                                    <div ng-if="file.status.state == '4:saving'">
+                                    <div ng-switch-when="state-saving">
                                         <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span
                                             class="label label-info">Saving...</span>
-                                        <progressbar class="progress-striped active" animate="true" value="file.status.percent"
-                                                     max="100" type="success">
+                                        <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
                                             {{file.status.percent}}%
                                         </progressbar>
                                     </div>
 
-                                    <!-- 5:SAVED or 6:PUBLISHED -->
-                                    <div ng-if="isStored(file)">
-
+                                    <div ng-switch-when="state-saved">
                                         <i class="fa fa-database fa-fw"></i>
-                                        <button class="btn btn-info btn-xs left" data-ng-click="viewFile(file)">
-                                            View Dataset <i class="fa fa-folder-open"></i>
+                                        <span><a href data-ng-click="viewFile(file)">{{ file.name }} ({{ file.delimit.recordCount }})</a></span>
+                                        <span data-ng-include="'dataset-extend-button.html'">button</span>
+                                        <button type="button" class="btn btn-xs pull-right btn-warning" data-ng-click="togglePublished(file)">
+                                              <span>Publish</span>
                                         </button>
-
-                                        <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo"> <span class="caret"></span> {{ file.name }} ({{ file.delimit.recordCount }})</a>
-
-                                        <button type="button" class="btn btn-xs  pull-right"
-                                              data-ng-class="{ 'btn-success': isPublished(file), 'btn-warning': !isPublished(file) }"
-                                              data-ng-click="togglePublished(file)">
-                                              <span ng-show="!isPublished(file)">Publish</span>
-                                              <span ng-show="isPublished(file)">Published</span>
-                                        </button>
-
-                                        <div class="file-extended-info clearfix" data-ng-show="file.showExtendedInfo">
-                                            <h4 class="heading">Record info</h4>
-                                            <ul class="list-unstyled">
-                                                <li><b>Record Root</b>:<code class="path">{{ file.delimit.recordRoot }}</code></li>
-                                                <li><b>Unique ID</b>: <code class="path">{{ file.delimit.uniqueId }}</code></li>
-                                            </ul>
-
-                                            <div class="" data-ng-show="file.namespaces">
-                                                <h4 class="heading">Namespace(s)</h4>
-                                                <ul class="list-unstyled">
-                                                    <li data-ng-repeat="namespace in file.namespaces">
-                                                        <b>{{ namespace.prefix }}</b> = "{{ namespace.uri }}"
-                                                    </li>
-                                                </ul>
-                                            </div>
-
-                                            <div class="btn-toolbar">
-                                                <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
-                                                    <i class="fa fa-download"></i> Download Terminology Mappings
-                                                </a>
-                                                <a data-ng-if="file.status.state == '6:published'" ng-href="{{file.oaiPmhListRecords}}" target="_blank" class="btn btn-primary">
-                                                    <i class="fa fa-download"></i> Download Records via OAI-PMH
-                                                </a>
-                                                <button class="btn btn-danger btn-isolate"
-                                                        data-ng-click="deleteDataset(file)">Delete File <i class="fa fa-trash-o"></i>&nbsp;
-                                                </button>
-                                            </div>
-                                        </div>
+                                        <div data-ng-include="'dataset-extended.html'" data-ng-show="file.showExtendedInfo">-extended-</div>
                                     </div>
 
-                                    <!-- UNKNOWN STATE -->
-                                     <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
+                                    <div ng-switch-when="state-published">
+                                        <i class="fa fa-database fa-fw"></i>
+                                        <span><a href data-ng-click="viewFile(file)">{{ file.name }} ({{ file.delimit.recordCount }})</a></span>
+                                        <span data-ng-include="'dataset-extend-button.html'">button</span>
+                                        <button type="button" class="btn btn-xs pull-right btn-success" data-ng-click="togglePublished(file)">
+                                              <span>Published</span>
+                                        </button>
+                                        <div data-ng-include="'dataset-extended.html'" data-ng-show="file.showExtendedInfo">-extended-</div>
+                                    </div>
+
+                                    <span ng-switch-default>UNKNOWN STATE {{ file.status.state }}!</span>
                                 </div>
                             </li>
                         </ul>
@@ -219,5 +185,40 @@
             </div>
         </div>
     </div>
+    <script type="text/ng-template" id="dataset-extend-button.html">
+        <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo">
+            <span class="fa" data-ng-class="{ 'fa-arrow-down':!file.showExtendedInfo, 'fa-arrow-up':file.showExtendedInfo }" ></span>
+            <span>Details</span>
+        </a>
+    </script>
+    <script type="text/ng-template" id="dataset-extended.html">
+        <div class="file-extended-info clearfix">
+            <h4 class="heading">Record info</h4>
+            <ul class="list-unstyled">
+                <li><b>Record Root</b>:<code class="path">{{ file.delimit.recordRoot }}</code></li>
+                <li><b>Unique ID</b>: <code class="path">{{ file.delimit.uniqueId }}</code></li>
+            </ul>
+            <div class="" data-ng-show="file.namespaces">
+                <h4 class="heading">Namespace(s)</h4>
+                <ul class="list-unstyled">
+                    <li data-ng-repeat="(prefix, uri) in file.namespaces">
+                        <b>{{ prefix }}</b> = "{{ uri }}"
+                    </li>
+                </ul>
+            </div>
+
+            <div class="btn-toolbar">
+                <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
+                    <i class="fa fa-download"></i> Download Terminology Mappings
+                </a>
+                <a data-ng-if="file.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}" target="_blank" class="btn btn-primary">
+                    <i class="fa fa-download"></i> Download Records via OAI-PMH
+                </a>
+                <button class="btn btn-danger btn-isolate"
+                        data-ng-click="deleteDataset(file)">Delete File <i class="fa fa-trash-o"></i>&nbsp;
+                </button>
+            </div>
+        </div>
+    </script>
 </div>
 

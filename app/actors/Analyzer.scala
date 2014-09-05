@@ -25,7 +25,7 @@ import actors.Sorter._
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import org.apache.commons.io.FileUtils
 import play.api.libs.json._
-import services.RepoUtil.State._
+import services.DatasetState._
 import services._
 
 import scala.util.{Failure, Success}
