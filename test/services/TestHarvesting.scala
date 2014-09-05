@@ -49,7 +49,7 @@ with ImplicitSender with FlatSpecLike with BeforeAndAfterAll with Matchers with 
     harvester ! HarvestPMH(
       url = "http://62.221.199.184:7829/oai",
       set = "",
-      metadataPrefix = "oai_dc"
+      prefix = "oai_dc"
     )
 
     expectMsg(10.minutes, HarvestComplete())

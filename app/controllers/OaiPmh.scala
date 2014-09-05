@@ -48,7 +48,7 @@ object OaiPmh extends Controller with BaseXTools {
       Repo.repo.getMetadataFormats
     }
 
-    def getDataSets: Seq[RepoDataSet] = {
+    def getDataSets: Seq[PublishedDataset] = {
       Repo.repo.getPublishedDatasets
     }
 
@@ -66,7 +66,7 @@ object OaiPmh extends Controller with BaseXTools {
     }
 
     def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
-      Repo.repo.fileRepoOption(set) match {
+      Repo.repo.datasetRepoOption(set) match {
         case Some(datasetRepo) =>
           datasetRepo.recordRepo.recordPmh(identifier)
         case None =>

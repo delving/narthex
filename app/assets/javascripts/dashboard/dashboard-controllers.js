@@ -36,7 +36,13 @@ define(["angular"], function () {
         $scope.activeTab = $routeParams.tab || "files";
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
-        $scope.harvest = { harvestType: "pmh" };
+        $scope.harvest = {
+            harvestType: "pmh",
+
+            name: "OaiPmhHarvest",
+            url: "http://62.221.199.184:7829/oai",
+            prefix: "oai_dc"
+        };
 
         function oaiPmhListRecords(fileName) {
             var absUrl = $location.absUrl();
@@ -93,14 +99,15 @@ define(["angular"], function () {
             }
         };
 
-        function checkFileStatus(file) {
-            dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
-                file.status = datasetInfo.status;
-                file.delimit = datasetInfo.delimit;
-                file.namespaces = datasetInfo.namespaces;
-                file.harvest = datasetInfo.harvest;
+        function isActive(file) {
+            return (file.info.status.percent > 0 || file.info.status.workers > 0)
+        }
 
-                if (file.status.percent > 0 || file.status.workers > 0) {
+        function checkFileStatus(file) {
+            if (!isActive(file)) return;
+            dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
+                file.info = datasetInfo;
+                if (isActive(file)) {
                     var interval = timeSinceStatusCheck();
                     if (interval > 1000) { // don't change the scope thing too often
                         $scope.lastStatusCheck = new Date().getTime();
@@ -123,13 +130,7 @@ define(["angular"], function () {
             })
         }
 
-        function checkSaveStatus(file) {
-            if (!file.datasetInfo) return false;
-            var delimit = file.datasetInfo.delimit;
-            return !!delimit.recordRoot;
-        }
-
-        function fetchFileList() {
+        function fetchFileList() { // todo: rename to DatasetList everywhere
             dashboardService.list().then(function (data) {
                 _.forEach($scope.files, function (file) {
                     if (file.checker) {
@@ -140,7 +141,6 @@ define(["angular"], function () {
                 });
                 $scope.files = data;
                 _.forEach($scope.files, checkFileStatus);
-                _.forEach($scope.files, checkSaveStatus);
                 _.forEach($scope.files, function (file) {
                     file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
                     file.oaiPmhListRecords = oaiPmhListRecords(file.name);
@@ -161,9 +161,9 @@ define(["angular"], function () {
         };
 
         $scope.togglePublished = function (file) {
-            var published = file.status.state != 'state-published';
+            var published = file.info.status.state != 'state-published';
             dashboardService.setPublished(file.name, published).then(function (data) {
-                file.status.state = data.state;
+                file.info.status.state = data.state;
             });
         };
 

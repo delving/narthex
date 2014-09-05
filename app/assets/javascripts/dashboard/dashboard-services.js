@@ -24,17 +24,17 @@ define(["angular", "common"], function (angular) {
         function ($http, $q, playRoutes, $location) {
             var dash = playRoutes.controllers.Dashboard;
 
-            var rejection = function (problem) {
-                if (problem.status == 401) { // unauthorized
+            var rejection = function (reply) {
+                if (reply.status == 401) { // unauthorized
                     $location.path('/');
                 }
                 else {
-                    console.log('why', problem.statusText);
-                    if (problem.data.message) {
-                        alert("Processing problem " + problem.status + " (" + problem.data.message + ")");
+                    console.log('why', reply);
+                    if (reply.data.problem) {
+                        alert("Processing problem " + reply.status + " (" + reply.data.problem + ")");
                     }
                     else {
-                        alert("Network problem " + problem.statusText);
+                        alert("Network problem " + reply.statusText);
                     }
                 }
             };

@@ -99,13 +99,13 @@
                     <div ng-switch-when="files" class="file-list">
                         <ul class="list-group">
                             <li ng-repeat="file in files" class="list-group-item clearfix"
-                                data-ng-show="file.status">
-                                <div ng-switch="file.status.state">
+                                data-ng-show="file.info.status">
+                                <div ng-switch="file.info.status.state">
 
                                     <div ng-switch-when="state-harvesting">
                                         {{ file.name }} <span class="label label-warning">Harvesting</span>
-                                        <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
-                                            {{file.status.percent}}%
+                                        <progressbar class="progress-striped active" animate="true" value="file.info.status.percent" max="100" type="success">
+                                            {{file.info.status.percent}}%
                                         </progressbar>
                                     </div>
 
@@ -115,14 +115,14 @@
 
                                     <div ng-switch-when="state-splitting">
                                         {{ file.name }} <span class="label label-warning">Splitting</span>
-                                        <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
-                                            {{file.status.percent}}%
+                                        <progressbar class="progress-striped active" animate="true" value="file.info.status.percent" max="100" type="success">
+                                            {{file.info.status.percent}}%
                                         </progressbar>
                                     </div>
 
                                     <div ng-switch-when="state-analyzing">
                                         <p>{{ file.name }} <span class="label label-success">Analyzing</span></p>
-                                        <code class="process">({{file.status.workers}} workers)</code>
+                                        <code class="process">({{file.info.status.workers}} workers)</code>
                                     </div>
 
                                     <div ng-switch-when="state-analyzed">
@@ -131,7 +131,7 @@
                                                 data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
                                         <button typ="button" class="btn btn-success btn-xs"
-                                                data-ng-click="saveRecords(file)" data-ng-show="file.delimit.recordCount > 0">
+                                                data-ng-click="saveRecords(file)" data-ng-show="file.info.delimit.recordCount > 0">
                                             <i class="fa fa-database"></i> Save Records
                                         </button>
                                     </div>
@@ -139,14 +139,14 @@
                                     <div ng-switch-when="state-saving">
                                         <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span
                                             class="label label-info">Saving...</span>
-                                        <progressbar class="progress-striped active" animate="true" value="file.status.percent" max="100" type="success">
-                                            {{file.status.percent}}%
+                                        <progressbar class="progress-striped active" animate="true" value="file.info.status.percent" max="100" type="success">
+                                            {{file.info.status.percent}}%
                                         </progressbar>
                                     </div>
 
                                     <div ng-switch-when="state-saved">
                                         <i class="fa fa-database fa-fw"></i>
-                                        <span><a href data-ng-click="viewFile(file)">{{ file.name }} ({{ file.delimit.recordCount }})</a></span>
+                                        <span><a href data-ng-click="viewFile(file)">{{ file.name }} ({{ file.info.delimit.recordCount }})</a></span>
                                         <span data-ng-include="'dataset-extend-button.html'">button</span>
                                         <button type="button" class="btn btn-xs pull-right btn-warning" data-ng-click="togglePublished(file)">
                                               <span>Publish</span>
@@ -156,7 +156,7 @@
 
                                     <div ng-switch-when="state-published">
                                         <i class="fa fa-database fa-fw"></i>
-                                        <span><a href data-ng-click="viewFile(file)">{{ file.name }} ({{ file.delimit.recordCount }})</a></span>
+                                        <span><a href data-ng-click="viewFile(file)">{{ file.name }} ({{ file.info.delimit.recordCount }})</a></span>
                                         <span data-ng-include="'dataset-extend-button.html'">button</span>
                                         <button type="button" class="btn btn-xs pull-right btn-success" data-ng-click="togglePublished(file)">
                                               <span>Published</span>
@@ -170,7 +170,7 @@
                                                 data-ng-click="deleteDataset(file)">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
                                         <div>
-                                            Error Message: {{ file.status.error }}
+                                            Error Message: {{ file.info.status.error }}
                                         </div>
                                     </div>
 
@@ -178,7 +178,7 @@
                                         {{ file.name }} <span class="label label-info">Deleted</span>
                                     </div>
 
-                                    <span ng-switch-default>{{ file.name }}:UNKNOWN STATE {{ file.status }}!</span>
+                                    <span ng-switch-default>{{ file.name }}:UNKNOWN STATE {{ file.info.status }}!</span>
                                 </div>
                             </li>
                         </ul>
@@ -216,13 +216,13 @@
         <div class="file-extended-info clearfix">
             <h4 class="heading">Record info</h4>
             <ul class="list-unstyled">
-                <li><b>Record Root</b>:<code class="path">{{ file.delimit.recordRoot }}</code></li>
-                <li><b>Unique ID</b>: <code class="path">{{ file.delimit.uniqueId }}</code></li>
+                <li><b>Record Root</b>:<code class="path">{{ file.info.delimit.recordRoot }}</code></li>
+                <li><b>Unique ID</b>: <code class="path">{{ file.info.delimit.uniqueId }}</code></li>
             </ul>
-            <div class="" data-ng-show="file.namespaces">
+            <div class="" data-ng-show="file.info.namespaces">
                 <h4 class="heading">Namespace(s)</h4>
                 <ul class="list-unstyled">
-                    <li data-ng-repeat="(prefix, uri) in file.namespaces">
+                    <li data-ng-repeat="(prefix, uri) in file.info.namespaces">
                         <b>{{ prefix }}</b> = "{{ uri }}"
                     </li>
                 </ul>
@@ -232,7 +232,7 @@
                 <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
                     <i class="fa fa-download"></i> Download Terminology Mappings
                 </a>
-                <a data-ng-if="file.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}" target="_blank" class="btn btn-primary">
+                <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}" target="_blank" class="btn btn-primary">
                     <i class="fa fa-download"></i> Download Records via OAI-PMH
                 </a>
                 <button class="btn btn-danger btn-isolate"

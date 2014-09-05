@@ -26,8 +26,9 @@ import scala.xml.{Elem, XML}
  */
 
 class RepoDb(val orgId: String) {
-  
+
   def datasetDb = s"narthex_$orgId"
+
   def allDatasets = s"doc('$datasetDb/$datasetDb.xml')/narthex-datasets"
 
   case class Dataset(name: String, info: Elem)
@@ -51,8 +52,9 @@ class RepoDb(val orgId: String) {
   def listDatasets: Seq[Dataset] = db {
     session =>
       val answer = session.query(allDatasets).execute()
-      val allSets = XML.loadString(answer)
-      allSets.map(node => Dataset((node \ "@name").text, node.asInstanceOf[Elem]))
+      val wholeFile = XML.loadString(answer)
+      val datasets = wholeFile \ "dataset"
+      datasets.map(node => Dataset((node \ "@name").text, node.asInstanceOf[Elem]))
   }
 
 }

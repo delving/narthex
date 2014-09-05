@@ -32,16 +32,19 @@ import scala.xml.{Elem, NodeSeq, XML}
  */
 
 class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
+
   val recordDb = s"${dbName}_records"
 
   def createDb = BaseX.createDatabase(recordDb)
 
   def dropDb() = BaseX.dropDatabase(recordDb)
 
+  def getDatasetInfo = datasetRepo.datasetDb.getDatasetInfoOption.getOrElse(throw new RuntimeException(s"Not found: $datasetRepo"))
+
   def db[T](block: ClientSession => T) = BaseX.withDbSession(recordDb)(block)
 
   def saveRecords() = {
-    val delim = datasetRepo.datasetDb.getDatasetInfo \ "delimit"
+    val delim = getDatasetInfo \ "delimit"
     val recordRoot = (delim \ "recordRoot").text
     val uniqueId = (delim \ "uniqueId").text
     val recordCountText = (delim \ "recordCount").text
@@ -67,7 +70,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
   }
 
   def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = {
-    val datasetInfo = datasetRepo.datasetDb.getDatasetInfo
+    val datasetInfo = getDatasetInfo
     // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
     val delim = datasetInfo \ "delimit"
     val recordRoot = (delim \ "recordRoot").text
@@ -96,7 +99,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
     session =>
       val queryForRecord = s"""
         |
-        | ${namespaceDeclarations(datasetRepo.datasetDb.getDatasetInfo)}
+        | ${namespaceDeclarations(getDatasetInfo)}
         | let $$recordWithId := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
         | return <record>{
         |   $$recordWithId
@@ -140,7 +143,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
     val now = new DateTime()
     val name = datasetRepo.name
     println(s"createHarvest: $name, $from, $until")
-    val datasetInfo = datasetRepo.datasetDb.getDatasetInfo
+    val datasetInfo = getDatasetInfo
     val state = (datasetInfo \ "status" \ "state").text
     if (!PUBLISHED.matches(state)) return None
     val countString = db {
@@ -159,12 +162,12 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
 
   def recordPmh(identifier: String): Option[Elem] = db {
     session =>
-      val datasetInfo = datasetRepo.datasetDb.getDatasetInfo
+      val datasetInfo = getDatasetInfo
       val state = (datasetInfo \ "status" \ "state").text
       if (!PUBLISHED.matches(state)) return None
       val queryForRecord = s"""
         |
-        | ${namespaceDeclarations(datasetRepo.datasetDb.getDatasetInfo)}
+        | ${namespaceDeclarations(getDatasetInfo)}
         | let $$rec := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
         | return
         |   <record>
@@ -187,7 +190,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
       val metadata = if (headersOnly) "" else "<metadata>{$narthex/*}</metadata>"
       val query = s"""
         |
-        | ${namespaceDeclarations(datasetRepo.datasetDb.getDatasetInfo)}
+        | ${namespaceDeclarations(getDatasetInfo)}
         |
         | let $$selection := collection('$recordDb')/narthex${dateSelector(from, until)}
         |

@@ -143,14 +143,14 @@ class Repo(userHome: String, val orgId: String) {
     new DatasetRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
   }
 
-  def fileRepoOption(fileName: String): Option[DatasetRepo] = {
-    val fr = datasetRepo(fileName)
-    if (fr.datasetDb.getDatasetInfo.nonEmpty) Some(fr) else None
+  def datasetRepoOption(fileName: String): Option[DatasetRepo] = {
+    val dr = datasetRepo(fileName)
+    if (dr.datasetDb.getDatasetInfoOption.isDefined) Some(dr) else None
   }
 
   // todo: whenever there are enriched datasets, add new spec s"${spec}_enriched" for them
 
-  def getPublishedDatasets: Seq[RepoDataSet] = {
+  def getPublishedDatasets: Seq[PublishedDataset] = {
     val FileName = "(.*)__(.*)".r
     BaseX.withSession {
       session =>
@@ -160,7 +160,7 @@ class Repo(userHome: String, val orgId: String) {
           name =>
             val fr = datasetRepo(name)
             val FileName(spec, prefix) = name
-            val dataset = fr.datasetDb.getDatasetInfo
+            val dataset = fr.datasetDb.getDatasetInfoOption.getOrElse(throw new RuntimeException)
             val state = (dataset \ "status" \ "state").text
             val totalRecords = (dataset \ "delimit" \ "recordCount").text
             val namespace = (dataset \ "namespaces" \ "namespace").find(n => (n \ "prefix").text == prefix)
@@ -169,10 +169,11 @@ class Repo(userHome: String, val orgId: String) {
               case None => RepoMetadataFormat(prefix)
             }
             if (PUBLISHED.matches(state)) {
-              Some(RepoDataSet(name, prefix, "name", "dataProvider", totalRecords.toInt, metadataFormat))
+              Some(PublishedDataset(name, prefix, "name", "dataProvider", totalRecords.toInt, metadataFormat))
             }
-            else
+            else {
               None
+            }
         }
     }
   }
@@ -234,7 +235,7 @@ class Repo(userHome: String, val orgId: String) {
 
 case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
 
-case class RepoDataSet
+case class PublishedDataset
 (
   spec: String, prefix: String, name: String, dataProvider: String, totalRecords: Int,
   metadataFormat: RepoMetadataFormat)

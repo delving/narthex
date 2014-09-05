@@ -32,7 +32,7 @@ object Harvester {
 
   case class HarvestAdLib(url: String, database: String)
 
-  case class HarvestPMH(url: String, set: String, metadataPrefix: String)
+  case class HarvestPMH(url: String, set: String, prefix: String)
 
   case class HarvestProgress(percent: Int)
 

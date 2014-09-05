@@ -89,7 +89,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   class Stamp(prefix: String, localName: String) extends RewriteRule {
     override def transform(node: Node): Node = node match {
       case elem: Elem if elem.label == "Identifier" =>
-        <hello>helllo</hello>
+        <hello>hello</hello>
       case remainder => remainder
     }
   }
@@ -129,7 +129,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
 
   def mappings(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-        repo.fileRepoOption(fileName) match {
+        repo.datasetRepoOption(fileName) match {
           case Some(datasetRepo) =>
             val mappings = datasetRepo.termRepo.getMappings
             val reply =

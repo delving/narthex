@@ -28,7 +28,7 @@ import services.RepoUtil.tagToDirectory
 class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
   val root = new NodeRepo(this, dir)
   val dbName = s"narthex_${orgRepo.orgId}___$name"
-  lazy val datasetDb = new DatasetDb(orgRepo.repoDb, dbName)
+  lazy val datasetDb = new DatasetDb(orgRepo.repoDb, name)
   lazy val termRepo = new TermDb(dbName)
   lazy val recordRepo = new RecordDb(this, dbName)
 

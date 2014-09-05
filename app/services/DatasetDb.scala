@@ -20,18 +20,18 @@ import org.basex.server.ClientSession
 
 import scala.xml.{Elem, XML}
 
-class DatasetDb(repoDb: RepoDb, dbName: String) extends BaseXTools {
+class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
 
   def db[T](block: ClientSession => T): T = repoDb.db(block)
 
-  def datasetElement = s"${repoDb.allDatasets}/dataset[@name=${quote(dbName)}]"
+  def datasetElement = s"${repoDb.allDatasets}/dataset[@name=${quote(fileName)}]"
 
   def createDataset(state: DatasetState) = db {
     session =>
       val update = s"""
           |
           | let $$dataset :=
-          |   <dataset name="$dbName">
+          |   <dataset name="$fileName">
           |     <status><state>$state</state></status>
           |     <delimit/>
           |     <namespaces/>
@@ -47,10 +47,10 @@ class DatasetDb(repoDb: RepoDb, dbName: String) extends BaseXTools {
       session.query(update).execute()
   }
 
-  def getDatasetInfo: Elem = db {
+  def getDatasetInfoOption: Option[Elem] = db {
     session =>
       val answer = session.query(datasetElement).execute()
-      XML.loadString(answer)
+      if (answer.nonEmpty) Some(XML.loadString(answer)) else None
   }
 
   def removeDataset() = db {

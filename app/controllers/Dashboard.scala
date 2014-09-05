@@ -54,14 +54,15 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def harvest = Secure(parse.json) {
     token => implicit request => {
-      def string(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
+      def string(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
+      def filled(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
       try {
-        val datasetRepo = repo.datasetRepo(string("name"))
-        string("harvestType") match {
+        val datasetRepo = repo.datasetRepo(filled("name"))
+        filled("harvestType") match {
           case "pmh" =>
-            datasetRepo.startPmhHarvest(string("url"), string("dataset"), string("prefix"))
+            datasetRepo.startPmhHarvest(filled("url"), string("dataset"), filled("prefix"))
           case "adlib" =>
-            datasetRepo.startAdLibHarvest(string("url"), string("dataset"))
+            datasetRepo.startAdLibHarvest(filled("url"), filled("dataset"))
           case _ =>
             throw new IllegalArgumentException("Missing harvestType=[pmh,adlib]")
         }
@@ -75,32 +76,36 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def list = Secure() {
     token => implicit request => {
-      val stringList = repo.listFileRepos
-      Ok(Json.toJson(stringList.map(string => Json.obj("name" -> string))))
+      val datasets = repo.repoDb.listDatasets.map {
+        dataset =>
+          val lists = DATASET_PROPERTY_LISTS.map(name => name -> toJsObject(dataset.info, name))
+          Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
+      }
+      Ok(JsArray(datasets))
     }
   }
 
   def analyze(fileName: String) = Secure() {
     token => implicit request => {
-      repo.fileRepoOption(fileName) match {
+      repo.datasetRepoOption(fileName) match {
         case Some(datasetRepo) =>
           datasetRepo.startAnalysis()
           Ok
         case None =>
-          Logger.warn(s"No such file found: $fileName")
-          NotFound(Json.obj("problem" -> s"No such file to analyze"))
+          NotFound(Json.obj("problem" -> s"Not found $fileName"))
       }
     }
   }
 
   def datasetInfo(fileName: String) = Secure() {
     token => implicit request => {
-      val datasetInfo = repo.datasetRepo(fileName).datasetDb.getDatasetInfo
-      def extract(tag: String) = (datasetInfo \ tag).head.child.filter(_.isInstanceOf[Elem]).map(
-        n => n.label -> JsString(n.text)
-      )
-      val lists = List("status", "delimit", "namespaces", "harvest").map(name => name -> JsObject(extract(name)))
-      Ok(JsObject(lists))
+      repo.datasetRepo(fileName).datasetDb.getDatasetInfoOption match {
+        case Some(datasetInfo) =>
+          val lists = DATASET_PROPERTY_LISTS.map(name => name -> toJsObject(datasetInfo, name))
+          Ok(JsObject(lists))
+        case None =>
+          NotFound(Json.obj("problem" -> s"Not found $fileName"))
+      }
     }
   }
 
@@ -247,4 +252,13 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       Ok(Json.obj("list" -> fileNames))
     }
   }
+
+  val DATASET_PROPERTY_LISTS = List("status", "delimit", "namespaces", "harvest")
+
+  private def toJsObject(datasetInfo: Elem, tag: String) = JsObject(
+    (datasetInfo \ tag).head.child.filter(_.isInstanceOf[Elem]).map(
+      n => n.label -> JsString(n.text)
+    )
+  )
+
 }
