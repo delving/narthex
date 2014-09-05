@@ -17,7 +17,6 @@ with ImplicitSender with FlatSpecLike with BeforeAndAfterAll with Matchers with 
 
   val userHome = "/tmp/narthex-user"
   var repo = new Repo(userHome, "test-harvesting")
-  repo.create("passwhat?")
 
   def this() = this(ActorSystem("TestHarvesting"))
 
@@ -31,8 +30,8 @@ with ImplicitSender with FlatSpecLike with BeforeAndAfterAll with Matchers with 
 
   "The AdLib Harvester" should "fetch pages" in {
 
-    val fileRepo = repo.fileRepo("umu-test__adlib.zip")
-    val harvester = system.actorOf(Props(new Harvester(fileRepo)))
+    val datasetRepo = repo.datasetRepo("umu-test__adlib.zip")
+    val harvester = system.actorOf(Props(new Harvester(datasetRepo)))
 
     harvester ! HarvestAdLib(
       url = "http://umu.adlibhosting.com/api/wwwopac.ashx",
@@ -44,8 +43,8 @@ with ImplicitSender with FlatSpecLike with BeforeAndAfterAll with Matchers with 
 
   "The PMH Harvester" should "fetch pages" in {
 
-    val fileRepo = repo.fileRepo("pmh-test__oai_dc.zip")
-    val harvester = system.actorOf(Props(new Harvester(fileRepo)))
+    val datasetRepo = repo.datasetRepo("pmh-test__oai_dc.zip")
+    val harvester = system.actorOf(Props(new Harvester(datasetRepo)))
 
     harvester ! HarvestPMH(
       url = "http://62.221.199.184:7829/oai",

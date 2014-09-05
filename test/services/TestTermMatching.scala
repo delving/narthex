@@ -14,22 +14,22 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
 //    "A NodeRepo" should "allow terminology mapping" in {
 //      val repo = Repo("test@narthex.delving.org")
 //      repo.create("password")
-//      val fileRepo = repo.fileRepo("pretend-file.xml.gz")
+//      val datasetRepo = repo.datasetRepo("pretend-file.xml.gz")
 //
 //      def createNodeRepo(path: String) = {
-//        val nodeDir = path.split('/').toList.foldLeft(fileRepo.dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
+//        val nodeDir = path.split('/').toList.foldLeft(datasetRepo.dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
 //        nodeDir.mkdirs()
-//        fileRepo.nodeRepo(path).get
+//        datasetRepo.nodeRepo(path).get
 //      }
 //
 //      Repo.startBaseX()
 //
-//      fileRepo.setMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink", "cusses", "finky"))
-//      fileRepo.setMapping(TermMapping("bb", "http://gumby.com/pokey", "cusses", "horsey"))
-//      fileRepo.setMapping(TermMapping("a", "http://gumby.com/gumby", "cusses", "clayman"))
+//      datasetRepo.setMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink", "cusses", "finky"))
+//      datasetRepo.setMapping(TermMapping("bb", "http://gumby.com/pokey", "cusses", "horsey"))
+//      datasetRepo.setMapping(TermMapping("a", "http://gumby.com/gumby", "cusses", "clayman"))
 //
-//      fileRepo.getMappings.toString() should be("List(TermMapping(a,http://gumby.com/gumby,cusses,clayman), TermMapping(bb,http://gumby.com/pokey,cusses,horsey))")
-//      fileRepo.getMapping("a") should be("http://gumby.com/gumby")
+//      datasetRepo.getMappings.toString() should be("List(TermMapping(a,http://gumby.com/gumby,cusses,clayman), TermMapping(bb,http://gumby.com/pokey,cusses,horsey))")
+//      datasetRepo.getMapping("a") should be("http://gumby.com/gumby")
 //    }
 
   "A transformer" should "insert an enrichment" in {

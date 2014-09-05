@@ -35,13 +35,13 @@ object APIController extends Controller with TreeHandling with RecordHandling {
 
   def indexJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-      OkFile(repo.fileRepo(fileName).index)
+      OkFile(repo.datasetRepo(fileName).index)
     }
   }
 
   def indexText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-        repo.fileRepo(fileName).indexText(path) match {
+        repo.datasetRepo(fileName).indexText(path) match {
           case None =>
             NotFound(s"No index found for $path")
           case Some(file) =>
@@ -52,7 +52,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
 
   def uniqueText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-        repo.fileRepo(fileName).uniqueText(path) match {
+        repo.datasetRepo(fileName).uniqueText(path) match {
           case None =>
             NotFound(s"No list found for $path")
           case Some(file) =>
@@ -63,7 +63,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
 
   def histogramText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-        repo.fileRepo(fileName).histogramText(path) match {
+        repo.datasetRepo(fileName).histogramText(path) match {
           case None =>
             NotFound(s"No list found for $path")
           case Some(file) =>
@@ -74,8 +74,8 @@ object APIController extends Controller with TreeHandling with RecordHandling {
 
   def rawRecord(apiKey: String, fileName: String, id: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-        val fileRepo = repo.fileRepo(fileName)
-        val storedRecord: Elem = fileRepo.recordRepo.record(id)
+        val datasetRepo = repo.datasetRepo(fileName)
+        val storedRecord: Elem = datasetRepo.recordRepo.record(id)
         if (storedRecord.nonEmpty) {
           Ok(storedRecord)
         }
@@ -98,14 +98,14 @@ object APIController extends Controller with TreeHandling with RecordHandling {
 
   def enrichedRecord(apiKey: String, fileName: String, id: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-        val fileRepo = repo.fileRepo(fileName)
-        val termRepo = fileRepo.termRepo
+        val datasetRepo = repo.datasetRepo(fileName)
+        val termRepo = datasetRepo.termRepo
         val mappings = Cache.getAs[Map[String, TargetConcept]](fileName).getOrElse {
           val freshMap = termRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
           Cache.set(fileName, freshMap, 60 * 5)
           freshMap
         }
-        val storedRecord: Elem = fileRepo.recordRepo.record(id)
+        val storedRecord: Elem = datasetRepo.recordRepo.record(id)
         if (storedRecord.nonEmpty) {
           val filePrefix = s"${NarthexConfig.ORG_ID}/$fileName"
           val parser = new StoredRecordParser(filePrefix, mappings)
@@ -121,8 +121,8 @@ object APIController extends Controller with TreeHandling with RecordHandling {
 
   def ids(apiKey: String, fileName: String, since: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
-        val fileRepo = repo.fileRepo(fileName)
-        val ids = fileRepo.recordRepo.getIds(since)
+        val datasetRepo = repo.datasetRepo(fileName)
+        val ids = datasetRepo.recordRepo.getIds(since)
         Ok(scala.xml.XML.loadString(ids))
     }
   }
@@ -130,8 +130,8 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def mappings(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
         repo.fileRepoOption(fileName) match {
-          case Some(fileRepo) =>
-            val mappings = fileRepo.termRepo.getMappings
+          case Some(datasetRepo) =>
+            val mappings = datasetRepo.termRepo.getMappings
             val reply =
               <mappings>
                 {mappings.map { m =>
@@ -154,19 +154,19 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       val uploaded: File = repo.uploadedFile(fileName)
       if (uploaded.exists()) {
-        val fileRepo = repo.fileRepo(fileName)
-        fileRepo.delete()
+        val datasetRepo = repo.datasetRepo(fileName)
+        datasetRepo.delete()
         request.body.moveTo(uploaded)
       }
       else {
         request.body.moveTo(uploaded)
-        val fileRepo = repo.fileRepo(fileName)
-        fileRepo.datasetDb.setRecordDelimiter(
+        val datasetRepo = repo.datasetRepo(fileName)
+        datasetRepo.datasetDb.setRecordDelimiter(
           recordRoot = "/delving-sip-target/output",
           uniqueId = "/delving-sip-target/output/@id",
           recordCount = -1
         )
-        fileRepo.startAnalysis()
+        datasetRepo.startAnalysis()
       }
       Ok
     }

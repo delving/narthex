@@ -23,7 +23,7 @@ import actors.Harvester._
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.pipe
 import org.apache.commons.io.FileUtils
-import services.{FileRepo, Harvesting, RecordHandling}
+import services.{DatasetRepo, Harvesting, RecordHandling}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
@@ -38,12 +38,12 @@ object Harvester {
 
   case class HarvestComplete()
 
-  def props(fileRepo: FileRepo) = Props(new Harvester(fileRepo))
+  def props(datasetRepo: DatasetRepo) = Props(new Harvester(datasetRepo))
 
   global.getClass // to avoid optimizing the import away
 }
 
-class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with Harvesting with ActorLogging {
+class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with Harvesting with ActorLogging {
 
   var tempFile = File.createTempFile("narthex","harvest")
   val zip = new ZipOutputStream(new FileOutputStream(tempFile))
@@ -60,7 +60,7 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
 
   def renameFile() = {
     zip.close()
-    FileUtils.moveFile(tempFile, fileRepo.sourceFile)
+    FileUtils.moveFile(tempFile, datasetRepo.sourceFile)
   }
 
   var boss : ActorRef = null
@@ -68,13 +68,13 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
   def receive = {
 
     case HarvestAdLib(url, database) =>
-      log.info(s"Harvesting $url $database to $fileRepo")
+      log.info(s"Harvesting $url $database to $datasetRepo")
       boss = sender
       fetchAdLibPage(url, database) pipeTo self
 
     case AdLibHarvestPage(records, url, database, diagnostic) =>
       val pageName = addPage(records)
-      log.info(s"Page: $pageName - $url $database to $fileRepo: $diagnostic")
+      log.info(s"Page: $pageName - $url $database to $datasetRepo: $diagnostic")
       if (diagnostic.isLast) {
         self ! HarvestComplete()
       }
@@ -83,13 +83,13 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
       }
 
     case HarvestPMH(url, set, metadataPrefix) =>
-      log.info(s"Harvesting $url $set $metadataPrefix to $fileRepo")
+      log.info(s"Harvesting $url $set $metadataPrefix to $datasetRepo")
       boss = sender
       fetchPMHPage(url, set, metadataPrefix) pipeTo self
 
     case PMHHarvestPage(records, url, set, prefix, total, resumptionToken) =>
       val pageName = addPage(records)
-      log.info(s"Page $pageName to $fileRepo: $resumptionToken")
+      log.info(s"Page $pageName to $datasetRepo: $resumptionToken")
       resumptionToken match {
         case None =>
           self ! HarvestComplete()
@@ -98,7 +98,7 @@ class Harvester(val fileRepo: FileRepo) extends Actor with RecordHandling with H
       }
 
     case HarvestComplete() =>
-      log.info(s"Harvested $fileRepo")
+      log.info(s"Harvested $datasetRepo")
       renameFile()
       boss ! HarvestComplete()
       context.stop(self)

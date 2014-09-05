@@ -46,10 +46,10 @@ object Analyzer {
 
   case class AnalysisComplete()
 
-  def props(fileRepo: FileRepo) = Props(new Analyzer(fileRepo))
+  def props(datasetRepo: DatasetRepo) = Props(new Analyzer(datasetRepo))
 }
 
-class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with ActorLogging {
+class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling with ActorLogging {
 
   val LINE = """^ *(\d*) (.*)$""".r
   var sorters = List.empty[ActorRef]
@@ -63,11 +63,11 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
       val progress = context.actorOf(Props(new Actor() {
         override def receive: Receive = {
           case AnalysisProgress(percent) =>
-            fileRepo.datasetDb.setStatus(SPLITTING, percent = percent)
+            datasetRepo.datasetDb.setStatus(SPLITTING, percent = percent)
         }
       }))
       def sendProgress(percent: Int) = progress ! AnalysisProgress(percent)
-      TreeNode(source, file.length, countingStream, fileRepo, sendProgress) match {
+      TreeNode(source, file.length, countingStream, datasetRepo, sendProgress) match {
         case Success(tree) =>
           tree.launchSorters {
             node =>
@@ -85,7 +85,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
 
         case Failure(e) =>
           log.error(e, "Problem reading the file")
-          fileRepo.datasetDb.setStatus(ERROR, error = s"Unable to read ${file.getName}: $e")
+          datasetRepo.datasetDb.setStatus(ERROR, error = s"Unable to read ${file.getName}: $e")
           self ! AnalysisError(file)
       }
       source.close()
@@ -113,7 +113,7 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
           collator ! Count()
 
         case SortType.HISTOGRAM_SORT =>
-          log.debug(s"writing histograms : ${fileRepo.dir.getAbsolutePath}")
+          log.debug(s"writing histograms : ${datasetRepo.dir.getAbsolutePath}")
           RepoUtil.updateJson(nodeRepo.status) {
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]
@@ -130,23 +130,23 @@ class Analyzer(val fileRepo: FileRepo) extends Actor with TreeHandling with Acto
             self ! AnalysisComplete()
           }
           else {
-            fileRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
+            datasetRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
           }
       }
 
     case AnalysisError(file) =>
-      log.info(s"File error at ${fileRepo.dir.getName}")
+      log.info(s"File error at ${datasetRepo.dir.getName}")
       FileUtils.deleteQuietly(file)
-      FileUtils.deleteQuietly(fileRepo.dir)
+      FileUtils.deleteQuietly(datasetRepo.dir)
       context.stop(self)
 
     case AnalysisTreeComplete(json, digest) =>
-      fileRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
-      log.info(s"Tree Complete at ${fileRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
+      datasetRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
+      log.info(s"Tree Complete at ${datasetRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
 
     case AnalysisComplete() =>
       log.info(s"Analysis Complete, kill: ${self.toString()}")
-      fileRepo.datasetDb.setStatus(ANALYZED)
+      datasetRepo.datasetDb.setStatus(ANALYZED)
       context.stop(self)
 
   }

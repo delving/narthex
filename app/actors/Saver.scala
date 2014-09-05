@@ -20,33 +20,33 @@ import akka.actor.{Actor, ActorLogging, Props}
 import org.basex.core.cmd.Optimize
 import play.Logger
 import services.DatasetState._
-import services.{FileHandling, FileRepo, RecordHandling}
+import services.{DatasetRepo, FileHandling, RecordHandling}
 
 import scala.language.postfixOps
 
 object Saver {
-  def props(fileRepo: FileRepo) = Props(new Saver(fileRepo))
+  def props(datasetRepo: DatasetRepo) = Props(new Saver(datasetRepo))
 }
 
-class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with ActorLogging {
+class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with ActorLogging {
 
   var parser: RawRecordParser = null
 
   def receive = {
 
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
-      Logger.info(s"Saving $fileRepo")
-      fileRepo.recordRepo.createDb
-      fileRepo.recordRepo.db {
+      Logger.info(s"Saving $datasetRepo")
+      datasetRepo.recordRepo.createDb
+      datasetRepo.recordRepo.db {
         session =>
           parser = new RawRecordParser(recordRoot, uniqueId)
-          val source = FileHandling.source(fileRepo.sourceFile)
+          val source = FileHandling.source(datasetRepo.sourceFile)
 
           val progress = context.actorOf(Props(new Actor() {
             override def receive: Receive = {
               case SaveProgress(percent) =>
                 if (percent == 100) context.stop(self)
-                fileRepo.datasetDb.setStatus(SAVING, percent = percent)
+                datasetRepo.datasetDb.setStatus(SAVING, percent = percent)
             }
           }))
 
@@ -61,11 +61,11 @@ class Saver(val fileRepo: FileRepo) extends Actor with RecordHandling with Actor
       }
 
     case SaveComplete() =>
-      Logger.info(s"Saved ${fileRepo.dir.getName}, optimizing..")
-      fileRepo.recordRepo.db(_.execute(new Optimize()))
-      Logger.info(s"Optimized ${fileRepo.dir.getName}.")
-      fileRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
-      fileRepo.datasetDb.setStatus(SAVED)
+      Logger.info(s"Saved ${datasetRepo.dir.getName}, optimizing..")
+      datasetRepo.recordRepo.db(_.execute(new Optimize()))
+      Logger.info(s"Optimized ${datasetRepo.dir.getName}.")
+      datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
+      datasetRepo.datasetDb.setStatus(SAVED)
       context.stop(self)
 
   }

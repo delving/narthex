@@ -31,7 +31,7 @@ import scala.xml.{Elem, NodeSeq, XML}
  * @author Gerald de Jong <gerald@delving.eu
  */
 
-class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
+class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
   val recordDb = s"${dbName}_records"
 
   def createDb = BaseX.createDatabase(recordDb)
@@ -41,15 +41,15 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
   def db[T](block: ClientSession => T) = BaseX.withDbSession(recordDb)(block)
 
   def saveRecords() = {
-    val delim = fileRepo.datasetDb.getDatasetInfo \ "delimit"
+    val delim = datasetRepo.datasetDb.getDatasetInfo \ "delimit"
     val recordRoot = (delim \ "recordRoot").text
     val uniqueId = (delim \ "uniqueId").text
     val recordCountText = (delim \ "recordCount").text
     val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
     // set status now so it's done before the actor starts
-    fileRepo.datasetDb.setStatus(SAVING, percent = 1)
-    val saver = Akka.system.actorOf(Saver.props(fileRepo), fileRepo.name)
-    saver ! SaveRecords(recordRoot, uniqueId, recordCount, fileRepo.name)
+    datasetRepo.datasetDb.setStatus(SAVING, percent = 1)
+    val saver = Akka.system.actorOf(Saver.props(datasetRepo), datasetRepo.name)
+    saver ! SaveRecords(recordRoot, uniqueId, recordCount, datasetRepo.name)
   }
 
   private def namespaceDeclarations(dataset: Elem) = {
@@ -67,7 +67,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
   }
 
   def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = {
-    val datasetInfo = fileRepo.datasetDb.getDatasetInfo
+    val datasetInfo = datasetRepo.datasetDb.getDatasetInfo
     // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
     val delim = datasetInfo \ "delimit"
     val recordRoot = (delim \ "recordRoot").text
@@ -96,7 +96,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
     session =>
       val queryForRecord = s"""
         |
-        | ${namespaceDeclarations(fileRepo.datasetDb.getDatasetInfo)}
+        | ${namespaceDeclarations(datasetRepo.datasetDb.getDatasetInfo)}
         | let $$recordWithId := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
         | return <record>{
         |   $$recordWithId
@@ -138,9 +138,9 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
 
   def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[String] = {
     val now = new DateTime()
-    val name = fileRepo.name
+    val name = datasetRepo.name
     println(s"createHarvest: $name, $from, $until")
-    val datasetInfo = fileRepo.datasetDb.getDatasetInfo
+    val datasetInfo = datasetRepo.datasetDb.getDatasetInfo
     val state = (datasetInfo \ "status" \ "state").text
     if (!PUBLISHED.matches(state)) return None
     val countString = db {
@@ -159,19 +159,19 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
 
   def recordPmh(identifier: String): Option[Elem] = db {
     session =>
-      val datasetInfo = fileRepo.datasetDb.getDatasetInfo
+      val datasetInfo = datasetRepo.datasetDb.getDatasetInfo
       val state = (datasetInfo \ "status" \ "state").text
       if (!PUBLISHED.matches(state)) return None
       val queryForRecord = s"""
         |
-        | ${namespaceDeclarations(fileRepo.datasetDb.getDatasetInfo)}
+        | ${namespaceDeclarations(datasetRepo.datasetDb.getDatasetInfo)}
         | let $$rec := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
         | return
         |   <record>
         |     <header>
         |       <identifier>{$$rec/narthex/@id}</identifier>
         |       <datestamp>{$$rec/narthex/@mod}</datestamp>
-        |       <setSpec>${fileRepo.name}</setSpec>
+        |       <setSpec>${datasetRepo.name}</setSpec>
         |     </header>
         |     <metadata>
         |      {$$rec/narthex/*}
@@ -187,7 +187,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
       val metadata = if (headersOnly) "" else "<metadata>{$narthex/*}</metadata>"
       val query = s"""
         |
-        | ${namespaceDeclarations(fileRepo.datasetDb.getDatasetInfo)}
+        | ${namespaceDeclarations(datasetRepo.datasetDb.getDatasetInfo)}
         |
         | let $$selection := collection('$recordDb')/narthex${dateSelector(from, until)}
         |
@@ -199,7 +199,7 @@ class RecordDb(fileRepo: FileRepo, dbName: String) extends BaseXTools {
         |         <header>
         |           <identifier>{$$narthex/@id}</identifier>
         |           <datestamp>{$$narthex/@mod}</datestamp>
-        |           <setSpec>${fileRepo.name}</setSpec>
+        |           <setSpec>${datasetRepo.name}</setSpec>
         |         </header>
         |         $metadata
         |       </record>

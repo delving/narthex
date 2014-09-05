@@ -16,23 +16,17 @@
 
 package services
 
-import java.io.{BufferedReader, File, FileReader}
-import java.util.UUID
+import java.io.File
 
-import actors.Harvester.{HarvestAdLib, HarvestPMH}
-import actors._
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
-import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
-import play.api.libs.concurrent.Akka
-import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
 import services.DatasetState._
 import services.RepoUtil._
 
-import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.io.Source
 import scala.language.postfixOps
@@ -111,16 +105,17 @@ class Repo(userHome: String, val orgId: String) {
   val uploaded = new File(orgRoot, UPLOADED_DIR)
   val analyzed = new File(orgRoot, ANALYZED_DIR)
   val sipZip = new File(orgRoot, SIP_ZIP)
+  val repoDb = new RepoDb(orgId)
 
-  def create(password: String) = {
-    orgRoot.mkdirs()
-  }
+  orgRoot.mkdirs()
 
   def uploadedFile(fileName: String) = {
     val suffix = getSuffix(fileName)
     if (suffix.isEmpty) {
       val fileNameDot = s"$fileName."
-      val matchingFiles = uploaded.listFiles().filter(file => file.getName.startsWith(fileNameDot))
+      val listFiles = uploaded.listFiles()
+      val uploadedFiles = if (listFiles == null) List.empty[File] else listFiles.toList
+      val matchingFiles = uploadedFiles.filter(file => file.getName.startsWith(fileNameDot))
       if (matchingFiles.isEmpty) {
         new File(uploaded, s"$fileName.zip")
       }
@@ -144,18 +139,18 @@ class Repo(userHome: String, val orgId: String) {
 
   def listFileRepos = listUploadedFiles.map(file => stripSuffix(file.getName))
 
-  def fileRepo(fileName: String): FileRepo = {
-    new FileRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
+  def datasetRepo(fileName: String): DatasetRepo = {
+    new DatasetRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
   }
 
-  def fileRepoOption(fileName: String): Option[FileRepo] = {
-    val fr = fileRepo(fileName)
+  def fileRepoOption(fileName: String): Option[DatasetRepo] = {
+    val fr = datasetRepo(fileName)
     if (fr.datasetDb.getDatasetInfo.nonEmpty) Some(fr) else None
   }
 
   // todo: whenever there are enriched datasets, add new spec s"${spec}_enriched" for them
 
-  def getDataSets: Seq[RepoDataSet] = {
+  def getPublishedDatasets: Seq[RepoDataSet] = {
     val FileName = "(.*)__(.*)".r
     BaseX.withSession {
       session =>
@@ -163,7 +158,7 @@ class Repo(userHome: String, val orgId: String) {
         val properSets = listFileRepos.filter(_.contains("__"))
         properSets.flatMap {
           name =>
-            val fr = fileRepo(name)
+            val fr = datasetRepo(name)
             val FileName(spec, prefix) = name
             val dataset = fr.datasetDb.getDatasetInfo
             val state = (dataset \ "status" \ "state").text
@@ -183,14 +178,14 @@ class Repo(userHome: String, val orgId: String) {
   }
 
   def getMetadataFormats: Seq[RepoMetadataFormat] = {
-    getDataSets.sortBy(_.metadataFormat.namespace).map(d => (d.prefix, d.metadataFormat)).toMap.values.toSeq
+    getPublishedDatasets.sortBy(_.metadataFormat.namespace).map(d => (d.prefix, d.metadataFormat)).toMap.values.toSeq
   }
 
   def getHarvest(resumptionToken: String): (Option[NodeSeq], Option[String]) = {
     Cache.getAs[Harvest](resumptionToken).map { harvest =>
       val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
       val start = 1 + (harvest.page - 1) * pageSize
-      val recordRepo = fileRepo(harvest.repoName).recordRepo
+      val recordRepo = datasetRepo(harvest.repoName).recordRepo
       def records = Some(recordRepo.recordsPmh(harvest.from, harvest.until, start, pageSize, harvest.headersOnly))
       harvest.next.map { next =>
         Cache.set(next.resumptionToken, next, 2 minutes)
@@ -237,102 +232,6 @@ class Repo(userHome: String, val orgId: String) {
   }
 }
 
-class FileRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
-  val root = new NodeRepo(this, dir)
-  val dbName = s"narthex_${orgRepo.orgId}___$name"
-  lazy val datasetDb = new DatasetDb(dbName)
-  lazy val termRepo = new TermDb(dbName)
-  lazy val recordRepo = new RecordDb(this, dbName)
-
-  override def toString = sourceFile.getCanonicalPath
-
-  def mkdirs = {
-    dir.mkdirs()
-    this
-  }
-
-  def startPmhHarvest(url: String, dataset: String, prefix: String) = {
-    val harvester = Akka.system.actorOf(Harvester.props(this), s"pmh-${sourceFile.getName}")
-    val kickoff = HarvestPMH(url, dataset, prefix)
-    Logger.info(s"Harvest $kickoff")
-    harvester ! kickoff
-  }
-
-  def startAdLibHarvest(url: String, dataset: String) = {
-    val harvester = Akka.system.actorOf(Harvester.props(this), s"adlib-${sourceFile.getName}")
-    val kickoff = HarvestAdLib(url, dataset)
-    Logger.info(s"Harvest $kickoff")
-    harvester ! kickoff
-  }
-
-  def startAnalysis() = {
-    deleteDirectory(dir)
-    datasetDb.setStatus(SPLITTING, percent = 1)
-    val analyzer = Akka.system.actorOf(Analyzer.props(this), s"analyze-${sourceFile.getName}")
-    analyzer ! Analyzer.Analyze(sourceFile)
-  }
-
-  def index = new File(dir, "index.json")
-
-  def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, tagToDirectory(tag)))
-    if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
-  }
-
-  def status(path: String): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeDirectory) => Some(nodeDirectory.status)
-    }
-  }
-
-  def sample(path: String, size: Int): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeRepo) =>
-        val fileList = nodeRepo.sampleJson.filter(pair => pair._1 == size)
-        if (fileList.isEmpty) None else Some(fileList.head._2)
-    }
-  }
-
-  def histogram(path: String, size: Int): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeRepo) =>
-        val fileList = nodeRepo.histogramJson.filter(pair => pair._1 == size)
-        if (fileList.isEmpty) None else Some(fileList.head._2)
-    }
-  }
-
-  def indexText(path: String): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeRepo) => Some(nodeRepo.indexText)
-    }
-  }
-
-  def uniqueText(path: String): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeRepo) => Some(nodeRepo.uniqueText)
-    }
-  }
-
-  def histogramText(path: String): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeRepo) => Some(nodeRepo.histogramText)
-    }
-  }
-
-  def delete() = {
-    datasetDb.setStatus(DELETED)
-    recordRepo.dropDb()
-    deleteQuietly(sourceFile)
-    deleteDirectory(dir)
-  }
-}
-
 case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
 
 case class RepoDataSet
@@ -340,86 +239,6 @@ case class RepoDataSet
   spec: String, prefix: String, name: String, dataProvider: String, totalRecords: Int,
   metadataFormat: RepoMetadataFormat)
 
-object NodeRepo {
-  def apply(parent: FileRepo, parentDir: File, tag: String) = {
-    val dir = if (tag == null) parentDir else new File(parentDir, tagToDirectory(tag))
-    dir.mkdirs()
-    new NodeRepo(parent, dir)
-  }
-}
-
-class NodeRepo(val parent: FileRepo, val dir: File) {
-
-  def child(childTag: String) = NodeRepo(parent, dir, childTag)
-
-  def f(name: String) = new File(dir, name)
-
-  def status = f("status.json")
-
-  def setStatus(content: JsObject) = createJson(status, content)
-
-  def values = f("values.txt")
-
-  def tempSort = f(s"sorting-${UUID.randomUUID()}.txt")
-
-  def sorted = f("sorted.txt")
-
-  def counted = f("counted.txt")
-
-  val sizeFactor = 5 // relates to the lists below
-
-  def histogramJson = List(100, 500, 2500, 12500).map(size => (size, f(s"histogram-$size.json")))
-
-  def sampleJson = List(100, 500, 2500).map(size => (size, f(s"sample-$size.json")))
-
-  def indexText = f("index.txt")
-
-  def uniqueText = f("unique.txt")
-
-  def histogramText = f("histogram.txt")
-
-  def writeHistograms(uniqueCount: Int) = {
-
-    val LINE = """^ *(\d*) (.*)$""".r
-    val input = new BufferedReader(new FileReader(histogramText))
-
-    def lineOption = {
-      val string = input.readLine()
-      if (string != null) Some(string) else None
-    }
-
-    def createFile(maximum: Int, entries: mutable.ArrayBuffer[JsArray], histogramFile: File) = {
-      createJson(histogramFile, Json.obj(
-        "uniqueCount" -> uniqueCount,
-        "entries" -> entries.size,
-        "maximum" -> maximum,
-        "complete" -> (entries.size == uniqueCount),
-        "histogram" -> entries
-      ))
-    }
-
-    var activeCounters = histogramJson.map(pair => (pair._1, new mutable.ArrayBuffer[JsArray], pair._2))
-    activeCounters = activeCounters.filter(pair => pair._1 == activeCounters.head._1 || uniqueCount > pair._1 / sizeFactor)
-    val counters = activeCounters
-    var line = lineOption
-    var count = 1
-    while (line.isDefined && activeCounters.nonEmpty) {
-      val lineMatch = LINE.findFirstMatchIn(line.get)
-      activeCounters = activeCounters.filter {
-        triple =>
-          lineMatch.map(groups => triple._2 += Json.arr(groups.group(1), groups.group(2)))
-          val keep = count < triple._1
-          if (!keep) createFile(triple._1, triple._2, triple._3) // side effect
-          keep
-      }
-      line = lineOption
-      count += 1
-    }
-    activeCounters.foreach(triple => createFile(triple._1, triple._2, triple._3))
-    counters.map(triple => triple._1)
-
-  }
-}
 
 case class Harvest
 (

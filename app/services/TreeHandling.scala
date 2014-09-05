@@ -102,7 +102,7 @@ trait TreeHandling {
 
   object TreeNode {
 
-    def apply(source: Source, length: Long, counter: CountingInputStream, directory: FileRepo, progress: Int => Unit): Try[TreeNode] = Try {
+    def apply(source: Source, length: Long, counter: CountingInputStream, directory: DatasetRepo, progress: Int => Unit): Try[TreeNode] = Try {
       val base = new TreeNode(directory.root, null, null)
       var node = base
       var percentWas = -1

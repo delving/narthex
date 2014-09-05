@@ -37,9 +37,9 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
           Logger.info(s"upload ${file.filename} (${file.contentType})")
           if (RepoUtil.acceptableFile(file.filename, file.contentType)) {
             println(s"Acceptable ${file.filename}")
-            val fileRepo = repo.fileRepo(file.filename)
-            file.ref.moveTo(fileRepo.sourceFile, replace = true)
-            fileRepo.datasetDb.createDataset(DatasetState.READY)
+            val datasetRepo = repo.datasetRepo(file.filename)
+            file.ref.moveTo(datasetRepo.sourceFile, replace = true)
+            datasetRepo.datasetDb.createDataset(DatasetState.READY)
             Ok(file.filename)
           }
           else {
@@ -56,12 +56,12 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     token => implicit request => {
       def string(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
       try {
-        val fileRepo = repo.fileRepo(string("name"))
+        val datasetRepo = repo.datasetRepo(string("name"))
         string("harvestType") match {
           case "pmh" =>
-            fileRepo.startPmhHarvest(string("url"), string("dataset"), string("prefix"))
+            datasetRepo.startPmhHarvest(string("url"), string("dataset"), string("prefix"))
           case "adlib" =>
-            fileRepo.startAdLibHarvest(string("url"), string("dataset"))
+            datasetRepo.startAdLibHarvest(string("url"), string("dataset"))
           case _ =>
             throw new IllegalArgumentException("Missing harvestType=[pmh,adlib]")
         }
@@ -83,8 +83,8 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def analyze(fileName: String) = Secure() {
     token => implicit request => {
       repo.fileRepoOption(fileName) match {
-        case Some(fileRepo) =>
-          fileRepo.startAnalysis()
+        case Some(datasetRepo) =>
+          datasetRepo.startAnalysis()
           Ok
         case None =>
           Logger.warn(s"No such file found: $fileName")
@@ -95,7 +95,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def datasetInfo(fileName: String) = Secure() {
     token => implicit request => {
-      val datasetInfo = repo.fileRepo(fileName).datasetDb.getDatasetInfo
+      val datasetInfo = repo.datasetRepo(fileName).datasetDb.getDatasetInfo
       def extract(tag: String) = (datasetInfo \ tag).head.child.filter(_.isInstanceOf[Elem]).map(
         n => n.label -> JsString(n.text)
       )
@@ -107,28 +107,28 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def setPublished(fileName: String, published: String) = Secure() {
     token => implicit request => {
       val state = if (published == "true") PUBLISHED else SAVED
-      val datasetInfo = repo.fileRepo(fileName).datasetDb.setStatus(state, 0, 0)
+      val datasetInfo = repo.datasetRepo(fileName).datasetDb.setStatus(state, 0, 0)
       Ok(Json.obj("state" -> state.toString))
     }
   }
 
   def deleteDataset(fileName: String) = Secure() {
     token => implicit request => {
-      val fileRepo = repo.fileRepo(fileName)
-      fileRepo.delete()
+      val datasetRepo = repo.datasetRepo(fileName)
+      datasetRepo.delete()
       Ok
     }
   }
 
   def index(fileName: String) = Secure() {
     token => implicit request => {
-      OkFile(repo.fileRepo(fileName).index)
+      OkFile(repo.datasetRepo(fileName).index)
     }
   }
 
   def nodeStatus(fileName: String, path: String) = Secure() {
     token => implicit request => {
-      repo.fileRepo(fileName).status(path) match {
+      repo.datasetRepo(fileName).status(path) match {
         case None => NotFound(Json.obj("path" -> path))
         case Some(file) => OkFile(file)
       }
@@ -137,7 +137,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def sample(fileName: String, path: String, size: Int) = Secure() {
     token => implicit request => {
-      repo.fileRepo(fileName).sample(path, size) match {
+      repo.datasetRepo(fileName).sample(path, size) match {
         case None => NotFound(Json.obj("path" -> path, "size" -> size))
         case Some(file) => OkFile(file)
       }
@@ -146,7 +146,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def histogram(fileName: String, path: String, size: Int) = Secure() {
     token => implicit request => {
-      repo.fileRepo(fileName).histogram(path, size) match {
+      repo.datasetRepo(fileName).histogram(path, size) match {
         case None => NotFound(Json.obj("path" -> path, "size" -> size))
         case Some(file) => OkFile(file)
       }
@@ -158,18 +158,18 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       var recordRoot = (request.body \ "recordRoot").as[String]
       var uniqueId = (request.body \ "uniqueId").as[String]
       var recordCount = (request.body \ "recordCount").as[Int]
-      val fileRepo = repo.fileRepo(fileName)
-      fileRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
+      val datasetRepo = repo.datasetRepo(fileName)
+      datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
-      //      fileRepo.saveRecords(recordRoot, uniqueId, recordCount)
+      //      datasetRepo.saveRecords(recordRoot, uniqueId, recordCount)
       Ok
     }
   }
 
   def saveRecords(fileName: String) = Secure() {
     token => implicit request => {
-      val fileRepo = repo.fileRepo(fileName)
-      fileRepo.recordRepo.saveRecords()
+      val datasetRepo = repo.datasetRepo(fileName)
+      datasetRepo.recordRepo.saveRecords()
       Ok
     }
   }
@@ -179,8 +179,8 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       println("query records arrival")
       val path = (request.body \ "path").as[String]
       val value = (request.body \ "value").as[String]
-      val fileRepo = repo.fileRepo(fileName)
-      val result: String = fileRepo.recordRepo.recordsWithValue(path, value)
+      val datasetRepo = repo.datasetRepo(fileName)
+      val result: String = datasetRepo.recordRepo.recordsWithValue(path, value)
       Ok(result)
     }
   }
@@ -208,26 +208,26 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def getMappings(fileName: String) = Secure() {
     token => implicit request => {
-      val fileRepo = repo.fileRepo(fileName)
-      val mappings: scala.Seq[TermDb.TermMapping] = fileRepo.termRepo.getMappings
+      val datasetRepo = repo.datasetRepo(fileName)
+      val mappings: scala.Seq[TermDb.TermMapping] = datasetRepo.termRepo.getMappings
       Ok(Json.obj("mappings" -> mappings))
     }
   }
 
   def getSourcePaths(fileName: String) = Secure() {
     token => implicit request => {
-      val fileRepo = repo.fileRepo(fileName)
-      val sourcePaths = fileRepo.termRepo.getSourcePaths
+      val datasetRepo = repo.datasetRepo(fileName)
+      val sourcePaths = datasetRepo.termRepo.getSourcePaths
       Ok(Json.obj("sourcePaths" -> sourcePaths))
     }
   }
 
   def setMapping(fileName: String) = Secure(parse.json) {
     token => implicit request => {
-      val fileRepo = repo.fileRepo(fileName)
+      val datasetRepo = repo.datasetRepo(fileName)
       if ((request.body \ "remove").asOpt[String].isDefined) {
         val sourceUri = (request.body \ "source").as[String]
-        fileRepo.termRepo.removeMapping(sourceUri)
+        datasetRepo.termRepo.removeMapping(sourceUri)
         Ok("Mapping removed")
       }
       else {
@@ -235,7 +235,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
         val targetUri = (request.body \ "target").as[String]
         val vocabulary = (request.body \ "vocabulary").as[String]
         val prefLabel = (request.body \ "prefLabel").as[String]
-        fileRepo.termRepo.addMapping(TermDb.TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
+        datasetRepo.termRepo.addMapping(TermDb.TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
         Ok("Mapping added")
       }
     }

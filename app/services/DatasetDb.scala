@@ -16,38 +16,15 @@
 
 package services
 
-import org.basex.core.BaseXException
 import org.basex.server.ClientSession
 
 import scala.xml.{Elem, XML}
 
-/**
- * @author Gerald de Jong <gerald@delving.eu
- */
+class DatasetDb(repoDb: RepoDb, dbName: String) extends BaseXTools {
 
-class DatasetDb(dbName: String) extends BaseXTools {
+  def db[T](block: ClientSession => T): T = repoDb.db(block)
 
-  def datasetDb = "narthex_datasets"
-
-  def datasetsElement = s"doc('$datasetDb/$datasetDb.xml')/narthex-datasets"
-
-  def datasetElement = s"$datasetsElement/dataset[@name=${quote(dbName)}]"
-
-  def db[T](block: ClientSession => T): T = {
-    try {
-      BaseX.withDbSession[T](datasetDb)(block)
-    }
-    catch {
-      case be: BaseXException =>
-        if (be.getMessage.contains("not found")) {
-          BaseX.createDatabase(datasetDb, "<narthex-datasets/>")
-          BaseX.withDbSession[T](datasetDb)(block)
-        }
-        else {
-          throw be
-        }
-    }
-  }
+  def datasetElement = s"${repoDb.allDatasets}/dataset[@name=${quote(dbName)}]"
 
   def createDataset(state: DatasetState) = db {
     session =>
@@ -63,7 +40,7 @@ class DatasetDb(dbName: String) extends BaseXTools {
           | return
           |   if (exists($datasetElement))
           |   then replace value of node $datasetElement/status/state with ${quote(state.toString)}
-          |   else insert node $$dataset into $datasetsElement
+          |   else insert node $$dataset into ${repoDb.allDatasets}
           |
           """.stripMargin.trim
       println("updating:\n" + update)
