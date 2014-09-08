@@ -22,7 +22,7 @@ import actors.{Analyzer, Harvester}
 import org.apache.commons.io.FileUtils.{deleteDirectory, deleteQuietly}
 import play.api.Logger
 import play.libs.Akka
-import services.DatasetState.{HARVESTING, SPLITTING}
+import services.DatasetState._
 import services.RepoUtil.tagToDirectory
 
 class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
@@ -151,10 +151,36 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     }
   }
 
-  def delete() = {
-    datasetDb.setStatus(DatasetState.DELETED)
-    recordRepo.dropDb()
-    deleteQuietly(sourceFile)
-    deleteDirectory(dir)
+  def revertToState(state: DatasetState) = {
+    // todo: find a way to terminate processes that are busy?
+    state match {
+      case DELETED =>
+        datasetDb.removeDataset()
+        recordRepo.dropDb()
+        deleteQuietly(sourceFile)
+        deleteDirectory(dir)
+        true
+
+      case EMPTY =>
+        datasetDb.setStatus(state)
+        recordRepo.dropDb()
+        deleteQuietly(sourceFile)
+        deleteDirectory(dir)
+        true
+
+      case READY =>
+        datasetDb.setStatus(state)
+        recordRepo.dropDb()
+        deleteDirectory(dir)
+        true
+
+      case ANALYZED =>
+        datasetDb.setStatus(state)
+        recordRepo.dropDb()
+        true
+
+      case _ =>
+        false
+    }
   }
 }

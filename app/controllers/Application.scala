@@ -135,7 +135,7 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.harvest,
           routes.javascript.Dashboard.datasetInfo,
           routes.javascript.Dashboard.setPublished,
-          routes.javascript.Dashboard.deleteDataset,
+          routes.javascript.Dashboard.revertToState,
           routes.javascript.Dashboard.nodeStatus,
           routes.javascript.Dashboard.index,
           routes.javascript.Dashboard.sample,

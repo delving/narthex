@@ -108,16 +108,23 @@ define(["angular"], function () {
             dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
                 file.info = datasetInfo;
                 if (isActive(file)) {
-                    var interval = timeSinceStatusCheck();
-                    if (interval > 1000) { // don't change the scope thing too often
-                        $scope.lastStatusCheck = new Date().getTime();
+                    var time = file.info.status.time || 0;
+                    var now = new Date().getTime();
+                    if (now - time > 10000) { // stale
+                        file.staleStatus = true;
                     }
-                    file.checker = $timeout(
-                        function () {
-                            checkFileStatus(file)
-                        },
-                        $scope.checkDelay
-                    );
+                    else {
+                        var interval = timeSinceStatusCheck();
+                        if (interval > 1000) { // don't change the scope thing too often
+                            $scope.lastStatusCheck = now;
+                        }
+                        file.checker = $timeout(
+                            function () {
+                                checkFileStatus(file)
+                            },
+                            $scope.checkDelay
+                        );
+                    }
                 }
             }, function (problem) {
                 if (problem.status == 404) {
@@ -205,9 +212,9 @@ define(["angular"], function () {
             $rootScope.addRecentDataset(file.name, $location.absUrl())
         };
 
-        $scope.deleteDataset = function (file) {
-            if (confirm("Are you sure you want to delete the dataset?")) {
-                dashboardService.deleteDataset(file.name).then(function () {
+        $scope.revertToState = function (file, state, areYouSure) {
+            if (confirm(areYouSure)) {
+                dashboardService.revertToState(file.name, state).then(function () {
                     fetchFileList();
                 });
             }

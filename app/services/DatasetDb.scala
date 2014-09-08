@@ -28,11 +28,18 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
 
   def createDataset(state: DatasetState, percent: Int = 0, workers: Int = 0) = db {
     session =>
+      val now = System.currentTimeMillis()
       val update = s"""
           |
           | let $$dataset :=
           |   <dataset name="$fileName">
-          |     <status><state>$state</state><percent>$percent</percent><workers>$workers</workers></status>
+          |     <status>
+          |       <state>$state</state>
+          |       <time>$now</time>
+          |       <percent>$percent</percent>
+          |       <workers>$workers</workers>
+          |       <error/>
+          |     </status>
           |     <delimit/>
           |     <namespaces/>
           |     <harvest/>
@@ -43,7 +50,6 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           |   else insert node $$dataset into ${repoDb.allDatasets}
           |
           """.stripMargin.trim
-      println("updating:\n" + update)
       session.query(update).execute()
   }
 
@@ -55,8 +61,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
 
   def removeDataset() = db {
     session =>
-      val update = s"return delete node $datasetElement"
-      println("updating:\n" + update)
+      val update = s"delete node $datasetElement"
       session.query(update).execute()
   }
 
@@ -76,13 +81,13 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           | return replace node $$block with $$replacement
           |
           """.stripMargin.trim
-      println("updating:\n" + update)
       session.query(update).execute()
   }
 
   def setStatus(state: DatasetState, percent: Int = 0, workers: Int = 0, error: String = "") = setProperties(
     "status",
     "state" -> state,
+    "time" -> System.currentTimeMillis().toString,
     "percent" -> percent,
     "workers" -> workers,
     "error" -> error

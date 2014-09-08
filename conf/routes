@@ -25,7 +25,7 @@ GET         /dashboard/:fileName/analyze                      controllers.Dashbo
 GET         /dashboard/:fileName/index                        controllers.Dashboard.index(fileName)
 GET         /dashboard/:fileName/dataset-info                 controllers.Dashboard.datasetInfo(fileName)
 GET         /dashboard/:fileName/set-published/:pub           controllers.Dashboard.setPublished(fileName, pub)
-GET         /dashboard/:fileName/delete-dataset               controllers.Dashboard.deleteDataset(fileName)
+GET         /dashboard/:fileName/revert/:state                controllers.Dashboard.revertToState(fileName, state)
 GET         /dashboard/:fileName/status/*path                 controllers.Dashboard.nodeStatus(fileName, path)
 GET         /dashboard/:fileName/sample/:size/*path           controllers.Dashboard.sample(fileName, path, size:Int)
 GET         /dashboard/:fileName/histogram/:size/*path        controllers.Dashboard.histogram(fileName, path, size:Int)

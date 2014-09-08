@@ -25,6 +25,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json.Json
 import play.api.mvc._
+import services.DatasetState._
 import services.Repo.repo
 import services._
 
@@ -155,7 +156,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       val uploaded: File = repo.uploadedFile(fileName)
       if (uploaded.exists()) {
         val datasetRepo = repo.datasetRepo(fileName)
-        datasetRepo.delete()
+        datasetRepo.revertToState(EMPTY)
         request.body.moveTo(uploaded)
       }
       else {

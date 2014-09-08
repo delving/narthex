@@ -54,17 +54,17 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def harvest = Secure(parse.json) {
     token => implicit request => {
-      def string(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
-      def filled(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
+      def optional(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
+      def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
       try {
-        val datasetRepo = repo.datasetRepo(filled("name"))
-        filled("harvestType") match {
+        val datasetRepo = repo.datasetRepo(required("name"))
+        required("harvestType") match {
           case "pmh" =>
-            datasetRepo.startPmhHarvest(filled("url"), string("dataset"), filled("prefix"))
+            datasetRepo.startPmhHarvest(required("url"), optional("dataset"), required("prefix"))
           case "adlib" =>
-            datasetRepo.startAdLibHarvest(filled("url"), filled("dataset"))
+            datasetRepo.startAdLibHarvest(required("url"), required("dataset"))
           case _ =>
-            throw new IllegalArgumentException("Missing harvestType=[pmh,adlib]")
+            throw new IllegalArgumentException("Missing harvestType [pmh,adlib]")
         }
         Ok
       } catch {
@@ -117,11 +117,16 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def deleteDataset(fileName: String) = Secure() {
+  def revertToState(fileName: String, state:String) = Secure() {
     token => implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      datasetRepo.delete()
-      Ok
+      fromString(state) match {
+        case Some(datasetState) =>
+          if (datasetRepo.revertToState(datasetState)) Ok else NotAcceptable(Json.obj("problem" -> s"Cannot revert to $datasetState"))
+
+        case None =>
+          NotAcceptable(Json.obj("problem" -> s"Cannot find state $state"))
+      }
     }
   }
 

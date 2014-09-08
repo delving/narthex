@@ -80,8 +80,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                deleteDataset: function (fileName) {
-                    return dash.deleteDataset(fileName).get().then(
+                revertToState: function (fileName, state) {
+                    return dash.revertToState(fileName, state).get().then(
                         function (response) {
                             return response.data;
                         },

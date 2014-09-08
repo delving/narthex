@@ -43,6 +43,8 @@ case class DatasetState(name: String) {
 }
 
 object DatasetState {
+  val DELETED = DatasetState("state-deleted")
+  val EMPTY = DatasetState("state-empty")
   val HARVESTING = DatasetState("state-harvesting")
   val READY = DatasetState("state-ready")
   val SPLITTING = DatasetState("state-splitting")
@@ -51,8 +53,13 @@ object DatasetState {
   val SAVING = DatasetState("state-saving")
   val SAVED = DatasetState("state-saved")
   val PUBLISHED = DatasetState("state-published")
-  val DELETED = DatasetState("state-deleted")
   val ERROR = DatasetState("state-error")
+
+  val ALL_STATES = List(DELETED, EMPTY, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED, PUBLISHED, ERROR)
+
+  def fromString(string: String): Option[DatasetState] = {
+    ALL_STATES.find(s => s.matches(string))
+  }
 }
 
 object RepoUtil {
