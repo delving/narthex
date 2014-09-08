@@ -162,12 +162,12 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       else {
         request.body.moveTo(uploaded)
         val datasetRepo = repo.datasetRepo(fileName)
+        datasetRepo.datasetDb.createDataset(READY)
         datasetRepo.datasetDb.setRecordDelimiter(
           recordRoot = "/delving-sip-target/output",
           uniqueId = "/delving-sip-target/output/@id",
           recordCount = -1
         )
-        datasetRepo.startAnalysis()
       }
       Ok
     }

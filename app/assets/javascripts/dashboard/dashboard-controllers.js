@@ -104,7 +104,6 @@ define(["angular"], function () {
         }
 
         function checkFileStatus(file) {
-            if (!isActive(file)) return;
             dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
                 file.info = datasetInfo;
                 if (isActive(file)) {
