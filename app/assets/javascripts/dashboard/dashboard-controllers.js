@@ -96,7 +96,7 @@ define(["angular"], function () {
                     function () {
                         $scope.uploading = false;
                         $scope.percent = null;
-                        fetchFileList();
+                        fetchDatasetList();
                     }
                 ).error(
                     function (data, status, headers, config) {
@@ -116,14 +116,14 @@ define(["angular"], function () {
             return (file.info.status.percent > 0 || file.info.status.workers > 0)
         }
 
-        function checkFileStatus(file) {
+        function checkDatasetStatus(file) {
             dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
                 var state = file.info.status.state;
                 file.info = datasetInfo;
                 if (status != file.info.status.state || isActive(file)) {
                     var time = file.info.status.time || 0;
                     var now = new Date().getTime();
-                    if (now - time > 180000) { // stale in 3 minutes
+                    if (now - time > 1000*60*10) { // stale in 10 minutes
                         file.staleStatus = true;
                     }
                     else {
@@ -133,7 +133,7 @@ define(["angular"], function () {
                         }
                         file.checker = $timeout(
                             function () {
-                                checkFileStatus(file)
+                                checkDatasetStatus(file)
                             },
                             $scope.checkDelay
                         );
@@ -142,7 +142,7 @@ define(["angular"], function () {
             }, function (problem) {
                 if (problem.status == 404) {
                     alert("Processing problem with " + file.name);
-                    fetchFileList()
+                    fetchDatasetList()
                 }
                 else {
                     alert("Network problem " + problem.status);
@@ -150,7 +150,7 @@ define(["angular"], function () {
             })
         }
 
-        function fetchFileList() { // todo: rename to DatasetList everywhere
+        function fetchDatasetList() {
             dashboardService.list().then(function (data) {
                 _.forEach($scope.files, function (file) {
                     if (file.checker) {
@@ -160,9 +160,8 @@ define(["angular"], function () {
                     }
                 });
                 $scope.files = data;
-                _.forEach($scope.files, checkFileStatus);
+                _.forEach($scope.files, checkDatasetStatus);
                 _.forEach($scope.files, function (file) {
-                    console.log("file", file); // todo
                     file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
                     file.oaiPmhListRecords = oaiPmhListRecords(file.name);
                 })
@@ -171,13 +170,13 @@ define(["angular"], function () {
 
         $scope.startHarvest = function() {
             dashboardService.harvest($scope.harvest).then(function () {
-                fetchFileList();
+                fetchDatasetList();
             });
         };
 
         $scope.startAnalysis = function(file) {
             dashboardService.analyze(file.name).then(function () {
-                fetchFileList();
+                fetchDatasetList();
             });
         };
 
@@ -188,7 +187,7 @@ define(["angular"], function () {
             });
         };
 
-        fetchFileList();
+        fetchDatasetList();
 
         $scope.setActiveTab = function (tab) {
             $scope.activeTab = tab;
@@ -229,7 +228,7 @@ define(["angular"], function () {
         $scope.revertToState = function (file, state, areYouSure) {
             if (confirm(areYouSure)) {
                 dashboardService.revertToState(file.name, state).then(function () {
-                    fetchFileList();
+                    fetchDatasetList();
                 });
             }
         };
@@ -238,7 +237,7 @@ define(["angular"], function () {
             dashboardService.saveRecords(file.name).then(function () {
                 $timeout(
                     function () {
-                        checkFileStatus(file)
+                        checkDatasetStatus(file)
                     },
                     $scope.checkDelay
                 )

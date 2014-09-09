@@ -17,11 +17,15 @@
 package services
 
 import play.api.libs.ws.WS
+import services.Harvesting._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-trait Harvesting extends BaseXTools {
+object Harvesting {
+
+  val PMH_RECORD_ROOT = "/OAI-PMH/ListRecords/record"
+  val PMH_UNIQUE_ID = "/OAI-PMH/ListRecords/record/header/identifier"
 
   val ADLIB_RECORD_ROOT = "/adlibXML/recordList/record"
   val ADLIB_UNIQUE_ID = "/adlibXML/recordList/record/@priref"
@@ -35,6 +39,10 @@ trait Harvesting extends BaseXTools {
   }
 
   case class AdLibHarvestPage(records: String, url: String, database: String, diagnostic: AdLibDiagnostic)
+
+}
+
+trait Harvesting extends BaseXTools {
 
   def fetchAdLibPage(url: String, database: String, diagnostic: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
     val startFrom = diagnostic.map(d => d.current + d.pageItems).getOrElse(1)
@@ -63,18 +71,6 @@ trait Harvesting extends BaseXTools {
     }
   }
 
-  val PMH_RECORD_ROOT = "/OAI-PMH/ListRecords/record"
-  val PMH_UNIQUE_ID = "/OAI-PMH/ListRecords/record/header/identifier"
-
-  case class PMHResumptionToken(value: String, current: Int, total:Int) {
-    def percentComplete: Int = {
-      val pc = (100 * current) / total
-      if (pc < 1) 1 else pc
-    }
-  }
-
-  case class PMHHarvestPage(records: String, url: String, set: String, metadataPrefix: String, total: Int, resumptionToken: Option[PMHResumptionToken])
-
   def fetchPMHPage(url: String, set: String, metadataPrefix: String, resumption: Option[PMHResumptionToken] = None) = {
     val requestUrl = WS.url(url)
     val request = resumption match {
@@ -96,12 +92,17 @@ trait Harvesting extends BaseXTools {
         val newToken = if (tokenNode.nonEmpty && tokenNode.text.nonEmpty) {
           val completeListSize = tokenNode \ "@completeListSize"
           val cursor = tokenNode \ "@cursor"
-          Some(PMHResumptionToken(tokenNode.text, cursor.text.toInt, completeListSize.text.toInt))
+          Some(PMHResumptionToken(
+            value = tokenNode.text,
+            currentPage = cursor.text.toInt,
+            totalPages = 0,
+            totalRecords = completeListSize.text.toInt
+          ))
         }
         else {
           None
         }
-        val total = if (newToken.isDefined) newToken.get.total else resumption.get.total
+        val total = if (newToken.isDefined) newToken.get.totalPages else resumption.get.totalPages
         PMHHarvestPage(response.xml.toString(), url, set, metadataPrefix, total, newToken)
     }
   }

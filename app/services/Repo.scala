@@ -183,14 +183,14 @@ class Repo(userHome: String, val orgId: String) {
     getPublishedDatasets.sortBy(_.metadataFormat.namespace).map(d => (d.prefix, d.metadataFormat)).toMap.values.toSeq
   }
 
-  def getHarvest(resumptionToken: String): (Option[NodeSeq], Option[String]) = {
-    Cache.getAs[Harvest](resumptionToken).map { harvest =>
+  def getHarvest(resumptionToken: PMHResumptionToken): (Option[NodeSeq], Option[PMHResumptionToken]) = {
+    Cache.getAs[Harvest](resumptionToken.value).map { harvest =>
       val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
-      val start = 1 + (harvest.page - 1) * pageSize
+      val start = 1 + (harvest.currentPage - 1) * pageSize
       val recordRepo = datasetRepo(harvest.repoName).recordRepo
       def records = Some(recordRepo.recordsPmh(harvest.from, harvest.until, start, pageSize, harvest.headersOnly))
       harvest.next.map { next =>
-        Cache.set(next.resumptionToken, next, 2 minutes)
+        Cache.set(next.resumptionToken.value, next, 2 minutes)
         (records, Some(next.resumptionToken))
       } getOrElse {
         (records, None)
@@ -234,6 +234,18 @@ class Repo(userHome: String, val orgId: String) {
   }
 }
 
+
+case class PMHResumptionToken(value: String, currentPage: Int, totalPages: Int, totalRecords: Int) {
+  def percentComplete: Int = {
+    val pc = (100 * currentPage) / totalPages
+    if (pc < 1) 1 else pc
+  }
+
+  def currentRecord: Int = (currentPage - 1) * NarthexConfig.OAI_PMH_PAGE_SIZE
+}
+
+case class PMHHarvestPage(records: String, url: String, set: String, metadataPrefix: String, total: Int, resumptionToken: Option[PMHResumptionToken])
+
 case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
 
 case class PublishedDataset
@@ -249,11 +261,20 @@ case class Harvest
   from: Option[DateTime],
   until: Option[DateTime],
   totalPages: Int,
-  token: String = Random.alphanumeric.take(10).mkString(""),
-  page: Int = 1) {
+  totalRecords: Int,
+  pageSize: Int,
+  random: String = Random.alphanumeric.take(10).mkString(""),
+  currentPage: Int = 1) {
 
-  def resumptionToken = s"$token-$totalPages-$page"
+  def resumptionToken: PMHResumptionToken = PMHResumptionToken(
+    value = s"$random-$totalPages-$currentPage",
+    currentPage = currentPage,
+    totalPages = totalPages, 
+    totalRecords = totalRecords
+  )
 
-  def next = if (page >= totalPages) None else Some(this.copy(page = page + 1))
+  def next = if (currentPage >= totalPages) None else Some(this.copy(
+    currentPage = currentPage + 1
+  ))
 }
 

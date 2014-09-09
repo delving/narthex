@@ -139,7 +139,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
       ""
   }
 
-  def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[String] = {
+  def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = {
     val now = new DateTime()
     val name = datasetRepo.name
     println(s"createHarvest: $name, $from, $until")
@@ -155,8 +155,16 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
     val count = countString.toInt
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
     val pages = if (count % pageSize == 0) count / pageSize else count / pageSize + 1
-    val harvest = Harvest(name, headersOnly, from, until, pages)
-    Cache.set(harvest.resumptionToken, harvest, 2 minutes)
+    val harvest = Harvest(
+      repoName = name,
+      headersOnly = headersOnly,
+      from = from,
+      until = until,
+      totalPages = pages,
+      totalRecords = count,
+      pageSize = pageSize
+    )
+    Cache.set(harvest.resumptionToken.value, harvest, 2 minutes)
     Some(harvest.resumptionToken)
   }
 

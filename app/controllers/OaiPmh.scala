@@ -19,6 +19,8 @@ package controllers
 import controllers.OaiPmh.Service.{QueryKey, Verb}
 import org.joda.time.DateTime
 import play.api.Logger
+import play.api.Play.current
+import play.api.cache.Cache
 import play.api.mvc._
 import services.NarthexConfig._
 import services._
@@ -43,7 +45,6 @@ object OaiPmh extends Controller with BaseXTools {
 
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
 
-    // todo: implement this!
     def getFormats(identifier: Option[String]): Seq[RepoMetadataFormat] = {
       Repo.repo.getMetadataFormats
     }
@@ -56,12 +57,12 @@ object OaiPmh extends Controller with BaseXTools {
       getDataSets.exists(ds => ds.spec == set && ds.prefix == prefix)
     }
 
-    def getFirstToken(set: String, prefix: String, headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[String] = {
+    def getFirstToken(set: String, prefix: String, headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = {
       val datasetRepo = Repo.repo.datasetRepo(set)
       datasetRepo.recordRepo.createHarvest(headersOnly, from, until)
     }
 
-    def getHarvestValues(token: String): (Option[NodeSeq], Option[String]) = {
+    def getHarvestValues(token: PMHResumptionToken): (Option[NodeSeq], Option[PMHResumptionToken]) = {
       Repo.repo.getHarvest(token)
     }
 
@@ -169,7 +170,14 @@ object OaiPmh extends Controller with BaseXTools {
         }
       }
       def paramDate(key: String) = paramString(key).map(parseDate).getOrElse(None)
-      def paramResumptionToken(key: String): Option[String] = paramString(key)
+      def paramResumptionToken(key: String): Option[PMHResumptionToken] = {
+        paramString(key) match {
+          case Some(token) =>
+            Cache.getAs[Harvest](key).map(_.resumptionToken)
+          case None =>
+            None
+        }
+      }
       PmhRequest(
         verb,
         paramString("set"),
@@ -274,7 +282,7 @@ object OaiPmh extends Controller with BaseXTools {
       </OAI-PMH>
     }
 
-    def startOrResume(request: PmhRequest, headersOnly: Boolean) : (Option[NodeSeq], Option[String]) = {
+    def startOrResume(request: PmhRequest, headersOnly: Boolean) : (Option[NodeSeq], Option[PMHResumptionToken]) = {
       request.resumptionToken match {
         case Some(previousToken) =>
           RepoBridge.getHarvestValues(previousToken)
@@ -289,7 +297,7 @@ object OaiPmh extends Controller with BaseXTools {
 
     def listIdentifiers(request: PmhRequest): Elem = {
 
-      val (headers: Option[NodeSeq], token: Option[String]) = startOrResume(request, headersOnly = true)
+      val (headers: Option[NodeSeq], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = true)
 
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
@@ -307,7 +315,7 @@ object OaiPmh extends Controller with BaseXTools {
           {
             token match {
               case Some(tok) =>
-                <resumptionToken>{tok}</resumptionToken>
+                <resumptionToken completeListSize={tok.totalPages.toString} cursor={tok.currentRecord.toString}>{tok.value}</resumptionToken>
               case None =>
             }
           }
@@ -317,7 +325,7 @@ object OaiPmh extends Controller with BaseXTools {
 
     def listRecords(request: PmhRequest): Elem = {
 
-      val (records: Option[NodeSeq], token: Option[String]) = startOrResume(request, headersOnly = false)
+      val (records: Option[NodeSeq], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = false)
 
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
@@ -335,7 +343,7 @@ object OaiPmh extends Controller with BaseXTools {
           {
             token match {
               case Some(tok) =>
-                <resumptionToken>{tok}</resumptionToken>
+                <resumptionToken completeList={tok.totalPages.toString} cursor={tok.currentRecord.toString}>{tok.value}</resumptionToken>
               case None =>
             }
           }
@@ -480,7 +488,7 @@ object OaiPmh extends Controller with BaseXTools {
     until: Option[DateTime],
     metadataPrefix: Option[String],
     identifier: Option[String],
-    resumptionToken: Option[String])
+    resumptionToken: Option[PMHResumptionToken])
 
 }
 

@@ -24,7 +24,8 @@ import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.pipe
 import org.apache.commons.io.FileUtils._
 import services.DatasetState._
-import services.{DatasetRepo, Harvesting, RecordHandling}
+import services.Harvesting._
+import services.{DatasetRepo, Harvesting, PMHHarvestPage, RecordHandling}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
