@@ -25,7 +25,7 @@ import scala.io.Source
 
 object FileHandling {
   
-  abstract class ReadProgress(fileSize: Int) {
+  abstract class ReadProgress(fileSize: Long) {
     def getPercentRead: Int
   }
 
@@ -88,9 +88,9 @@ object FileHandling {
 
     def getFileSize = {
       val e = file.entries()
-      var size = 0
+      var size = 0L
       while (e.hasMoreElements) {
-        size += e.nextElement().getSize.toInt
+        size += e.nextElement().getSize
       }
       size
     }
@@ -99,10 +99,10 @@ object FileHandling {
     var entry: Option[ZipEntry] = None
     var entryInputStream: InputStream = null
     var nextChar : Int = -1
-    var charCount = 0
+    var charCount = 0L
 
-    class ZipReadProgress(size: Int) extends ReadProgress(size) {
-      override def getPercentRead: Int = (100 * charCount) / size
+    class ZipReadProgress(size: Long) extends ReadProgress(size) {
+      override def getPercentRead: Int = ((100 * charCount) / size).toInt
     }
 
     class ZipEntryIterator extends Iterator[Char] {

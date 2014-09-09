@@ -173,7 +173,7 @@ object OaiPmh extends Controller with BaseXTools {
       def paramResumptionToken(key: String): Option[PMHResumptionToken] = {
         paramString(key) match {
           case Some(token) =>
-            Cache.getAs[Harvest](key).map(_.resumptionToken)
+            Cache.getAs[Harvest](token).map(_.resumptionToken)
           case None =>
             None
         }
@@ -282,13 +282,13 @@ object OaiPmh extends Controller with BaseXTools {
       </OAI-PMH>
     }
 
-    def startOrResume(request: PmhRequest, headersOnly: Boolean) : (Option[NodeSeq], Option[PMHResumptionToken]) = {
+    def startOrResume(request: PmhRequest, headersOnly: Boolean): (Option[NodeSeq], Option[PMHResumptionToken]) = {
       request.resumptionToken match {
         case Some(previousToken) =>
           RepoBridge.getHarvestValues(previousToken)
         case None =>
-          val set = request.set.getOrElse(throw new BadArgumentException("No set provided"))
-          val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException("No metadataPrefix provided"))
+          val set = request.set.getOrElse(throw new BadArgumentException(s"No set provided: $request"))
+          val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException(s"No metadataPrefix provided: $request"))
           if (!RepoBridge.exists(set, prefix)) throw new DataSetNotFoundException(s"Set not found: [$set] [$prefix]")
           val firstToken = RepoBridge.getFirstToken(set, prefix, headersOnly, request.from, request.until)
           RepoBridge.getHarvestValues(firstToken.get)
@@ -315,7 +315,7 @@ object OaiPmh extends Controller with BaseXTools {
           {
             token match {
               case Some(tok) =>
-                <resumptionToken completeListSize={tok.totalPages.toString} cursor={tok.currentRecord.toString}>{tok.value}</resumptionToken>
+                <resumptionToken completeListSize={tok.totalRecords.toString} cursor={tok.currentRecord.toString}>{tok.value}</resumptionToken>
               case None =>
             }
           }
@@ -343,7 +343,7 @@ object OaiPmh extends Controller with BaseXTools {
           {
             token match {
               case Some(tok) =>
-                <resumptionToken completeList={tok.totalPages.toString} cursor={tok.currentRecord.toString}>{tok.value}</resumptionToken>
+                <resumptionToken completeListSize={tok.totalRecords.toString} cursor={tok.currentRecord.toString}>{tok.value}</resumptionToken>
               case None =>
             }
           }

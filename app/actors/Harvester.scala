@@ -38,7 +38,7 @@ object Harvester {
 
   case class HarvestProgress(percent: Int)
 
-  case class HarvestComplete()
+  case class HarvestComplete(error: Option[String])
 
   def props(datasetRepo: DatasetRepo) = Props(new Harvester(datasetRepo))
 
@@ -71,7 +71,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
       val pageName = addPage(records)
       log.info(s"Page: $pageName - $url $database to $datasetRepo: $diagnostic")
       if (diagnostic.isLast) {
-        self ! HarvestComplete()
+        self ! HarvestComplete(None)
       }
       else {
         datasetRepo.datasetDb.setStatus(HARVESTING, percent = diagnostic.percentComplete)
@@ -83,25 +83,36 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
       datasetRepo.datasetDb.setHarvestInfo("pmh", url, set, prefix)
       fetchPMHPage(url, set, prefix) pipeTo self
 
-    case PMHHarvestPage(records, url, set, prefix, total, resumptionToken) =>
-      val pageName = addPage(records)
-      log.info(s"Page $pageName to $datasetRepo: $resumptionToken")
-      resumptionToken match {
+    case PMHHarvestPage(records, url, set, prefix, total, error, resumptionToken) =>
+      error match {
+        case Some(errorString) =>
+          self ! HarvestComplete(Some(errorString))
+
         case None =>
-          self ! HarvestComplete()
-        case Some(token) =>
-          datasetRepo.datasetDb.setStatus(HARVESTING, percent = token.percentComplete)
-          fetchPMHPage(url, set, prefix, Some(token)) pipeTo self
+          val pageName = addPage(records)
+//          log.info(s"Page $pageName to $datasetRepo: $resumptionToken")
+          resumptionToken match {
+            case None =>
+              self ! HarvestComplete(None)
+            case Some(token) =>
+              datasetRepo.datasetDb.setStatus(HARVESTING, percent = token.percentComplete)
+              fetchPMHPage(url, set, prefix, Some(token)) pipeTo self
+          }
       }
 
-    case HarvestComplete() =>
-      log.info(s"Harvested $datasetRepo")
+    case HarvestComplete(error) =>
+      log.info(s"Harvested $datasetRepo error: $error")
       zip.close()
-      deleteQuietly(datasetRepo.sourceFile)
-      moveFile(tempFile, datasetRepo.sourceFile)
-      datasetRepo.datasetDb.setStatus(READY)
-      context.stop(self)
-
+      error match {
+        case Some(errorString) =>
+          deleteQuietly(datasetRepo.sourceFile)
+          deleteQuietly(tempFile)
+          datasetRepo.datasetDb.setStatus(ERROR, error=errorString)
+        case None =>
+          deleteQuietly(datasetRepo.sourceFile)
+          moveFile(tempFile, datasetRepo.sourceFile)
+          datasetRepo.datasetDb.setStatus(READY)
+      }
   }
 }
 

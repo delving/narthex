@@ -45,16 +45,22 @@ define(["angular"], function () {
 
         $scope.harvest = {
 
-            harvestType: "adlib",
-            name: "AdLibHarvest",
-            url: "http://umu.adlibhosting.com/api/wwwopac.ashx",
-            prefix: "adlib",
-            dataset: "collect"
+//            harvestType: "adlib",
+//            name: "AdLibHarvest",
+//            url: "http://umu.adlibhosting.com/api/wwwopac.ashx",
+//            prefix: "adlib",
+//            dataset: "collect"
 
 //            harvestType: "pmh",
 //            name: "OaiPmhHarvest",
 //            url: "http://62.221.199.184:7829/oai",
 //            prefix: "oai_dc"
+
+            harvestType: "pmh",
+            name: "TestHarvest",
+            url: "http://localhost:9000/oai-pmh/secret",
+            prefix: "car",
+            dataset: "RCE_Monuments__car"
         };
 
         function oaiPmhListRecords(fileName) {

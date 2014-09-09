@@ -235,16 +235,22 @@ class Repo(userHome: String, val orgId: String) {
 }
 
 
-case class PMHResumptionToken(value: String, currentPage: Int, totalPages: Int, totalRecords: Int) {
+case class PMHResumptionToken(value: String, currentRecord: Int, totalRecords: Int) {
   def percentComplete: Int = {
-    val pc = (100 * currentPage) / totalPages
+    val pc = (100 * currentRecord) / totalRecords
     if (pc < 1) 1 else pc
   }
-
-  def currentRecord: Int = (currentPage - 1) * NarthexConfig.OAI_PMH_PAGE_SIZE
 }
 
-case class PMHHarvestPage(records: String, url: String, set: String, metadataPrefix: String, total: Int, resumptionToken: Option[PMHResumptionToken])
+case class PMHHarvestPage
+(
+  records: String,
+  url: String,
+  set: String,
+  metadataPrefix: String,
+  totalRecords: Int,
+  error: Option[String],
+  resumptionToken: Option[PMHResumptionToken])
 
 case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
 
@@ -268,13 +274,15 @@ case class Harvest
 
   def resumptionToken: PMHResumptionToken = PMHResumptionToken(
     value = s"$random-$totalPages-$currentPage",
-    currentPage = currentPage,
-    totalPages = totalPages, 
+    currentRecord = currentPage * NarthexConfig.OAI_PMH_PAGE_SIZE,
     totalRecords = totalRecords
   )
 
-  def next = if (currentPage >= totalPages) None else Some(this.copy(
-    currentPage = currentPage + 1
-  ))
+  def next = {
+    if (currentPage >= totalPages)
+      None
+    else
+      Some(this.copy(currentPage = currentPage + 1))
+  }
 }
 
