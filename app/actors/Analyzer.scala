@@ -17,7 +17,6 @@
 package actors
 
 import java.io.File
-import java.security.MessageDigest
 
 import actors.Analyzer._
 import actors.Collator._
@@ -40,7 +39,7 @@ object Analyzer {
 
   case class AnalysisProgress(percent: Int)
 
-  case class AnalysisTreeComplete(json: JsValue, digest: MessageDigest)
+  case class AnalysisTreeComplete(json: JsValue)
 
   case class AnalysisError(file: File)
 
@@ -59,7 +58,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling wit
 
     case Analyze(file) =>
       log.debug(s"Analyzer on ${file.getName}")
-      val (source, countingStream, digest) = FileHandling.countingSource(file)
+      val (source, readProgress) = FileHandling.xmlSource(file)
       val progress = context.actorOf(Props(new Actor() {
         override def receive: Receive = {
           case AnalysisProgress(percent) =>
@@ -67,7 +66,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling wit
         }
       }))
       def sendProgress(percent: Int) = progress ! AnalysisProgress(percent)
-      TreeNode(source, file.length, countingStream, datasetRepo, sendProgress) match {
+      TreeNode(source, file.length, readProgress, datasetRepo, sendProgress) match {
         case Success(tree) =>
           tree.launchSorters {
             node =>
@@ -81,7 +80,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling wit
                 sorter ! Sort(SortType.VALUE_SORT)
               }
           }
-          self ! AnalysisTreeComplete(Json.toJson(tree), digest)
+          self ! AnalysisTreeComplete(Json.toJson(tree))
 
         case Failure(e) =>
           log.error(e, "Problem reading the file")
@@ -140,9 +139,9 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling wit
       FileUtils.deleteQuietly(datasetRepo.dir)
       context.stop(self)
 
-    case AnalysisTreeComplete(json, digest) =>
+    case AnalysisTreeComplete(json) =>
       datasetRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
-      log.info(s"Tree Complete at ${datasetRepo.dir.getName}, digest=${FileHandling.hex(digest)}")
+      log.info(s"Tree Complete at ${datasetRepo.dir.getName}")
 
     case AnalysisComplete() =>
       log.info(s"Analysis Complete, kill: ${self.toString()}")

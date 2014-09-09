@@ -19,8 +19,8 @@ package services
 import java.io.{BufferedWriter, FileWriter}
 
 import org.apache.commons.io.FileUtils
-import org.apache.commons.io.input.CountingInputStream
 import play.api.libs.json.{JsArray, _}
+import services.FileHandling.ReadProgress
 
 import scala.collection.mutable
 import scala.io.Source
@@ -102,7 +102,7 @@ trait TreeHandling {
 
   object TreeNode {
 
-    def apply(source: Source, length: Long, counter: CountingInputStream, directory: DatasetRepo, progress: Int => Unit): Try[TreeNode] = Try {
+    def apply(source: Source, length: Long, readProgress: ReadProgress, directory: DatasetRepo, progress: Int => Unit): Try[TreeNode] = Try {
       val base = new TreeNode(directory.root, null, null)
       var node = base
       var percentWas = -1
@@ -110,7 +110,7 @@ trait TreeHandling {
       val events = new XMLEventReader(source)
 
       def sendProgress(): Unit = {
-        val percentZero = ((counter.getByteCount * 100) / length).toInt
+        val percentZero = readProgress.getPercentRead
         val percent = if (percentZero == 0) 1 else percentZero
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
           progress(percent)
@@ -154,7 +154,6 @@ trait TreeHandling {
       base.finish()
       val pretty = Json.prettyPrint(Json.toJson(root))
       FileUtils.writeStringToFile(directory.index, pretty, "UTF-8")
-      progress(100)
       root
     }
   }

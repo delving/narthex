@@ -46,7 +46,7 @@ object Harvester {
 
 class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with Harvesting with ActorLogging {
 
-  var tempFile = File.createTempFile("narthex","harvest")
+  var tempFile = File.createTempFile("narthex", "harvest")
   val zip = new ZipOutputStream(new FileOutputStream(tempFile))
   var pageCount = 0
 
@@ -57,12 +57,6 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
     zip.write(page.getBytes("UTF-8"))
     zip.closeEntry()
     fileName
-  }
-
-  def renameFile() = {
-    zip.close()
-    deleteQuietly(datasetRepo.sourceFile)
-    moveFile(tempFile, datasetRepo.sourceFile)
   }
 
   def receive = {
@@ -101,7 +95,9 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
 
     case HarvestComplete() =>
       log.info(s"Harvested $datasetRepo")
-      renameFile()
+      zip.close()
+      deleteQuietly(datasetRepo.sourceFile)
+      moveFile(tempFile, datasetRepo.sourceFile)
       datasetRepo.datasetDb.setStatus(READY)
       context.stop(self)
 

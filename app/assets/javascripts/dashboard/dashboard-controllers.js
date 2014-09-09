@@ -36,12 +36,25 @@ define(["angular"], function () {
         $scope.activeTab = $routeParams.tab || "files";
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
-        $scope.harvest = {
-            harvestType: "pmh",
 
-            name: "OaiPmhHarvest",
-            url: "http://62.221.199.184:7829/oai",
-            prefix: "oai_dc"
+        function setFileName() {
+            $scope.harvest.fileName = $scope.harvest.name + "__" + $scope.harvest.prefix;
+        }
+        $scope.$watch("harvest.name", setFileName);
+        $scope.$watch("harvest.prefix", setFileName);
+
+        $scope.harvest = {
+
+            harvestType: "adlib",
+            name: "AdLibHarvest",
+            url: "http://umu.adlibhosting.com/api/wwwopac.ashx",
+            prefix: "adlib",
+            dataset: "collect"
+
+//            harvestType: "pmh",
+//            name: "OaiPmhHarvest",
+//            url: "http://62.221.199.184:7829/oai",
+//            prefix: "oai_dc"
         };
 
         function oaiPmhListRecords(fileName) {
@@ -105,11 +118,12 @@ define(["angular"], function () {
 
         function checkFileStatus(file) {
             dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
+                var state = file.info.status.state;
                 file.info = datasetInfo;
-                if (isActive(file)) {
+                if (status != file.info.status.state || isActive(file)) {
                     var time = file.info.status.time || 0;
                     var now = new Date().getTime();
-                    if (now - time > 10000) { // stale
+                    if (now - time > 180000) { // stale in 3 minutes
                         file.staleStatus = true;
                     }
                     else {
@@ -148,6 +162,7 @@ define(["angular"], function () {
                 $scope.files = data;
                 _.forEach($scope.files, checkFileStatus);
                 _.forEach($scope.files, function (file) {
+                    console.log("file", file); // todo
                     file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
                     file.oaiPmhListRecords = oaiPmhListRecords(file.name);
                 })

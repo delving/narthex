@@ -71,7 +71,10 @@
                                     <input id="pmh_set" class="form-control" data-ng-model="harvest.dataset" placeholder="dataset"/>
                                 </div>
                                 <button typ="button" class="pull-right btn btn-success btn-xs" data-ng-click="startHarvest()">
-                                    <i class="fa fa-refresh"></i> Start Harvest
+                                    <i class="fa fa-refresh"></i> <span>Harvest</span>
+                                    <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH</span>
+                                    <span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>
+                                    <span>to "{{ harvest.fileName }}"</span>
                                 </button>
                             </fieldset>
                         </form>

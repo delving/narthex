@@ -39,6 +39,7 @@ object Repo {
 
 case class DatasetState(name: String) {
   override def toString = name
+
   def matches(otherName: String) = name == otherName
 }
 
@@ -142,13 +143,9 @@ class Repo(userHome: String, val orgId: String) {
     directory.listFiles.filter(f => f.isFile && SUFFIXES.filter(end => f.getName.endsWith(end)).nonEmpty).toList
   }
 
-  def listUploadedFiles = listFiles(uploaded)
-
-  def listFileRepos = listUploadedFiles.map(file => stripSuffix(file.getName))
-
-  def datasetRepo(fileName: String): DatasetRepo = {
-    new DatasetRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
-  }
+  def datasetRepo(fileName: String): DatasetRepo = new DatasetRepo(
+    this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName)
+  )
 
   def datasetRepoOption(fileName: String): Option[DatasetRepo] = {
     val dr = datasetRepo(fileName)
@@ -161,22 +158,19 @@ class Repo(userHome: String, val orgId: String) {
     val FileName = "(.*)__(.*)".r
     BaseX.withSession {
       session =>
-        val ENDING = ".xml.gz"
-        val properSets = listFileRepos.filter(_.contains("__"))
-        properSets.flatMap {
-          name =>
-            val fr = datasetRepo(name)
-            val FileName(spec, prefix) = name
-            val dataset = fr.datasetDb.getDatasetInfoOption.getOrElse(throw new RuntimeException)
-            val state = (dataset \ "status" \ "state").text
-            val totalRecords = (dataset \ "delimit" \ "recordCount").text
-            val namespace = (dataset \ "namespaces" \ "namespace").find(n => (n \ "prefix").text == prefix)
+        repoDb.listDatasets.flatMap {
+          dataset =>
+            val fr = datasetRepo(dataset.name)
+            val FileName(spec, prefix) = dataset.name
+            val state = (dataset.info \ "status" \ "state").text
+            val totalRecords = (dataset.info \ "delimit" \ "recordCount").text
+            val namespace = (dataset.info \ "namespaces" \ "namespace").find(n => (n \ "prefix").text == prefix)
             val metadataFormat = namespace match {
               case Some(ns) => RepoMetadataFormat(prefix, (ns \ "uri").text)
               case None => RepoMetadataFormat(prefix)
             }
             if (PUBLISHED.matches(state)) {
-              Some(PublishedDataset(name, prefix, "name", "dataProvider", totalRecords.toInt, metadataFormat))
+              Some(PublishedDataset(dataset.name, prefix, "name", "dataProvider", totalRecords.toInt, metadataFormat))
             }
             else {
               None
