@@ -16,7 +16,7 @@
 
 package services
 
-import java.io.{File, FileInputStream, InputStream}
+import java.io.{BufferedInputStream, File, FileInputStream, InputStream}
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipFile}
 
 import org.apache.commons.io.input.{BOMInputStream, CountingInputStream}
@@ -121,7 +121,8 @@ object FileHandling {
             if (entries.hasMoreElements) {
               // check for .xml
               entry = Some(entries.nextElement())
-              entryInputStream = new BOMInputStream(file.getInputStream(entry.get))
+              val is = file.getInputStream(entry.get)
+              entryInputStream = new BOMInputStream(new BufferedInputStream(is))
               nextChar = entryInputStream.read()
               charCount += 1
               hasNext

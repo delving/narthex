@@ -65,11 +65,12 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
     case HarvestAdLib(url, database) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
       datasetRepo.datasetDb.setHarvestInfo("adlib", url, database, "adlib")
+      datasetRepo.datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
       fetchAdLibPage(url, database) pipeTo self
 
     case AdLibHarvestPage(records, url, database, diagnostic) =>
       val pageName = addPage(records)
-      log.info(s"Page: $pageName - $url $database to $datasetRepo: $diagnostic")
+      log.info(s"Harvest Page: $pageName - $url $database to $datasetRepo: $diagnostic")
       if (diagnostic.isLast) {
         self ! HarvestComplete(None)
       }
@@ -81,6 +82,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
     case HarvestPMH(url, set, prefix) =>
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
       datasetRepo.datasetDb.setHarvestInfo("pmh", url, set, prefix)
+      datasetRepo.datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
       fetchPMHPage(url, set, prefix) pipeTo self
 
     case PMHHarvestPage(records, url, set, prefix, total, error, resumptionToken) =>
@@ -90,7 +92,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
 
         case None =>
           val pageName = addPage(records)
-//          log.info(s"Page $pageName to $datasetRepo: $resumptionToken")
+          log.info(s"Harvest Page $pageName to $datasetRepo: $resumptionToken")
           resumptionToken match {
             case None =>
               self ! HarvestComplete(None)

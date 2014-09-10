@@ -180,8 +180,8 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
         | return
         |   <record>
         |     <header>
-        |       <identifier>{$$rec/narthex/@id}</identifier>
-        |       <datestamp>{$$rec/narthex/@mod}</datestamp>
+        |       <identifier>{data($$rec/narthex/@id)}</identifier>
+        |       <datestamp>{data($$rec/narthex/@mod)}</datestamp>
         |       <setSpec>${datasetRepo.name}</setSpec>
         |     </header>
         |     <metadata>
@@ -208,8 +208,8 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
         |     return
         |       <record>
         |         <header>
-        |           <identifier>{$$narthex/@id}</identifier>
-        |           <datestamp>{$$narthex/@mod}</datestamp>
+        |           <identifier>{data($$narthex/@id)}</identifier>
+        |           <datestamp>{data($$narthex/@mod)}</datestamp>
         |           <setSpec>${datasetRepo.name}</setSpec>
         |         </header>
         |         $metadata

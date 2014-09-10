@@ -115,7 +115,7 @@
                                     <div ng-switch-when="state-harvesting">
                                         {{ file.name }} <span class="label label-warning">Harvesting</span>
                                         <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
-                                                data-ng-click="revertToState(file, 'state-empty', 'Start fresh?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                                data-ng-click="revertToState(file, 'state-empty')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
                                         <div data-ng-include="'percent-progress.html'">%</div>
                                     </div>
@@ -123,7 +123,7 @@
                                     <div ng-switch-when="state-ready">
                                         {{ file.name }} <span class="label label-success" data-ng-click="startAnalysis(file)">Ready: Split and Analyze</span>
                                         <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
-                                                data-ng-click="revertToState(file, 'state-empty', 'Start fresh?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                                data-ng-click="revertToState(file, 'state-empty')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
                                     </div>
 
@@ -131,7 +131,7 @@
                                         {{ file.name }} <span class="label label-warning">Splitting</span>
                                         <div data-ng-include="'percent-progress.html'">%</div>
                                         <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
-                                                data-ng-click="revertToState(file, 'state-ready', 'Back to ready state?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                                data-ng-click="revertToState(file, 'state-ready')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
                                     </div>
 
@@ -139,14 +139,14 @@
                                         <p>{{ file.name }} <span class="label label-success">Analyzing</span></p>
                                         <code class="process">({{file.info.status.workers}} workers)</code>
                                         <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
-                                                data-ng-click="revertToState(file, 'state-empty', 'Start fresh?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                                data-ng-click="revertToState(file, 'state-ready')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
                                     </div>
 
                                     <div ng-switch-when="state-analyzed">
                                         <span><i class="fa fa-folder-open"></i> <a href data-ng-click="viewFile(file)">{{ file.name }}</a></span>
                                         <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
-                                                data-ng-click="revertToState(file, 'state-empty', 'Start fresh?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                                data-ng-click="revertToState(file, 'state-ready', 'Remove the analysis?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
                                         <button typ="button" class="btn btn-success btn-xs"
                                                 data-ng-click="saveRecords(file)" data-ng-show="file.info.delimit.recordCount > 0">
@@ -157,10 +157,10 @@
                                     <div ng-switch-when="state-saving">
                                         <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span
                                             class="label label-info">Saving...</span>
-                                        <div data-ng-include="'percent-progress.html'">%</div>
                                         <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
-                                                data-ng-click="revertToState(file, 'state-analyzed', 'Start fresh?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                                                data-ng-click="revertToState(file, 'state-analyzed')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
+                                        <div data-ng-include="'percent-progress.html'">%</div>
                                     </div>
 
                                     <div ng-switch-when="state-saved">
@@ -256,7 +256,7 @@
                     <i class="fa fa-download"></i> Download Records via OAI-PMH
                 </a>
                 <button class="btn btn-danger btn-isolate"
-                        data-ng-click="revertToState(file, 'state-empty', 'Delete file?')">Delete File <i class="fa fa-trash-o"></i>&nbsp;
+                        data-ng-click="revertToState(file, 'state-empty', 'Empty the dataset?')">Empty the Dataset <i class="fa fa-trash-o"></i>&nbsp;
                 </button>
             </div>
         </div>

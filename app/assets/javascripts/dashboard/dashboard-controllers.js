@@ -129,7 +129,7 @@ define(["angular"], function () {
                 if (status != file.info.status.state || isActive(file)) {
                     var time = file.info.status.time || 0;
                     var now = new Date().getTime();
-                    if (now - time > 1000*60*10) { // stale in 10 minutes
+                    if (now - time > 1000*60*3) { // stale in 10 minutes
                         file.staleStatus = true;
                     }
                     else {
@@ -232,11 +232,10 @@ define(["angular"], function () {
         };
 
         $scope.revertToState = function (file, state, areYouSure) {
-            if (confirm(areYouSure)) {
-                dashboardService.revertToState(file.name, state).then(function () {
-                    fetchDatasetList();
-                });
-            }
+            if (areYouSure && !confirm(areYouSure))return;
+            dashboardService.revertToState(file.name, state).then(function () {
+                fetchDatasetList();
+            });
         };
 
         $scope.saveRecords = function (file) {
@@ -343,7 +342,7 @@ define(["angular"], function () {
                     var recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
                     var uniqueId = datasetInfo.delimit.uniqueId;
                     setDelim(tree, recordRoot, recordContainer, uniqueId);
-                    if (parseInt(datasetInfo.delimit.recordCount) < 0) {
+                    if (parseInt(datasetInfo.delimit.recordCount) <= 0) {
                         $scope.setUniqueIdNode($scope.uniqueIdNode); // trigger setting record count
                     }
                 }

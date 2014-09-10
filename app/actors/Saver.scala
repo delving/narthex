@@ -41,7 +41,6 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
         session =>
           parser = new RawRecordParser(recordRoot, uniqueId)
           val (source, readProgress) = FileHandling.xmlSource(datasetRepo.sourceFile)
-
           val progress = context.actorOf(Props(new Actor() {
             override def receive: Receive = {
               case SaveProgress(percent) =>
@@ -49,15 +48,20 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
                 datasetRepo.datasetDb.setStatus(SAVING, percent = percent)
             }
           }))
-
           def sendProgress(percent: Int) = progress ! SaveProgress(percent)
-
-          def receiveRecord(record: String) = session.add(hashRecordFileName(collection, record), bytesOf(record))
-
-          parser.parse(source, receiveRecord, recordCount, sendProgress)
-          sendProgress(100)
+          def receiveRecord(record: String) = {
+            session.add(hashRecordFileName(collection, record), bytesOf(record))
+          }
+          try {
+            parser.parse(source, receiveRecord, recordCount, sendProgress)
+            self ! SaveComplete()
+          }
+          catch {
+            case e:Exception =>
+              datasetRepo.datasetDb.setStatus(ERROR, error = e.toString)
+              context.stop(self)
+          }
           source.close()
-          self ! SaveComplete()
       }
 
     case SaveComplete() =>

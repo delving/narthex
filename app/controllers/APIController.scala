@@ -178,7 +178,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       val file = repo.sipZipFile(fileName)
       request.body.moveTo(file, replace = true)
       val zip = new ZipFile(file)
-      val datasetFacts = zip.getEntry("dataset_facts.txt")
+      val datasetFacts = zip.getEntry("dataset_facts.txt") // todo: put them in the db
       val inputStream = zip.getInputStream(datasetFacts)
       val factsFile = new File(file.getParentFile, s"${file.getName}.facts")
       FileUtils.copyInputStreamToFile(inputStream, factsFile)

@@ -30,8 +30,6 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 trait RecordHandling extends BaseXTools {
 
-  val SUBSTITUTE = "__substitute__"
-
   class RawRecordParser(recordRootPath: String, uniqueIdPath: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
     var percentWas = -1
@@ -58,7 +56,7 @@ trait RecordHandling extends BaseXTools {
         val realPercent = ((recordCount * 100) / totalRecords).toInt
         val percent = if (realPercent > 0) realPercent else 1
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
-//          println(s"progress $recordCount / $totalRecords : $percent / $percentWas")
+          //          println(s"progress $recordCount / $totalRecords : $percent / $percentWas")
           if (percent < 100) progress(percent)
           percentWas = percent
           lastProgress = System.currentTimeMillis()
@@ -66,6 +64,12 @@ trait RecordHandling extends BaseXTools {
       }
 
       def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
+        def recordNamespace(binding: NamespaceBinding): Unit = {
+          if (binding eq TopScope) return
+          namespaceMap += binding.prefix -> binding.uri
+          recordNamespace(binding.parent)
+        }
+        recordNamespace(scope)
         def flushStartElement() = {
           if (startElement.isDefined) {
             // todo: check if there was text, if so it's a violation
@@ -91,15 +95,6 @@ trait RecordHandling extends BaseXTools {
           findUniqueId(attrs)
         }
         else if (string == recordRootPath) {
-
-          def recordNamespace(binding: NamespaceBinding): Unit = {
-            if (binding eq TopScope) return
-            namespaceMap += binding.prefix -> binding.uri
-            recordNamespace(binding.parent)
-          }
-
-          recordNamespace(scope)
-          recordText.append(s"<narthex$SUBSTITUTE$scope>\n")
           depth = 1
           startElement = Some(startElementString(tag, attrs))
           findUniqueId(attrs)
@@ -126,10 +121,13 @@ trait RecordHandling extends BaseXTools {
             indent()
             recordText.append(s"</$tag>\n</narthex>\n")
             val mod = toXSDString(new DateTime())
-            val record = uniqueId.map{ id =>
-              recordText.toString().replace(SUBSTITUTE, s""" id="$id" mod="$mod" """)
+            val record = uniqueId.map { id =>
+              if (id.isEmpty) throw new RuntimeException("Empty unique id!")
+              val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
+              recordText.insert(0, s"""<narthex id="$id" mod="$mod" $scope>\n""")
+              recordText.toString()
             } getOrElse {
-              throw new RuntimeException("Missing id")
+              throw new RuntimeException("Missing id!")
             }
             output(record)
             recordText.clear()
@@ -181,7 +179,7 @@ trait RecordHandling extends BaseXTools {
 
   def bytesOf(record: String) = new ByteArrayInputStream(record.getBytes("UTF-8"))
 
-  def hashRecordFileName(name:String, record: String) = {
+  def hashRecordFileName(name: String, record: String) = {
     val hash = hashString(record)
     s"$name/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
   }
@@ -217,7 +215,7 @@ trait RecordHandling extends BaseXTools {
 
   case class Record(id: String, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
 
-  case class TargetConcept(uri: String, vocabulary:String, prefLabel: String)
+  case class TargetConcept(uri: String, vocabulary: String, prefLabel: String)
 
   class StoredRecordParser(filePrefix: String, mappings: Map[String, TargetConcept]) {
 
@@ -267,7 +265,7 @@ trait RecordHandling extends BaseXTools {
               start = startElement(tag, attrs)
               stack.push(Frame(tag, path))
             case None =>
-              // not in the record yet
+            // not in the record yet
           }
 
         case EvText(text) => pushText(text)
