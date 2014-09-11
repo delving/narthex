@@ -48,7 +48,7 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
       (__ \ "name").read[String] and
       (__ \ "orgId").read[String]
     )({ (nId: String, nName: String, nOrgId: String) =>
-    new Node {
+    new CommonsNode {
       def nodeId: String = nId
 
       def name: String = nName
@@ -253,7 +253,7 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
 
   // nodes
 
-  def registerNode(node: Node, userName: String) {
+  def registerNode(node: CommonsNode, userName: String) {
     post(
       "/node/register",
       "orgId" -> node.orgId,
@@ -273,7 +273,7 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
     }
   }
 
-  def updateNode(node: Node) {
+  def updateNode(node: CommonsNode) {
     post(
       "/node/%s/%s/update".format(node.orgId, node.nodeId),
       "name" -> node.name
@@ -293,7 +293,7 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
     }
   }
 
-  def removeNode(node: Node) {
+  def removeNode(node: CommonsNode) {
     delete("/node/%s/%s".format(node.orgId, node.nodeId)).foreach { response =>
       response.status match {
         case UNAUTHORIZED =>
@@ -310,7 +310,7 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
     }
   }
 
-  def listMembers(node: Node): Seq[String] = {
+  def listMembers(node: CommonsNode): Seq[String] = {
     get(
       "/node/%s/%s/user/list".format(node.orgId, node.nodeId)
     ).map { response =>
@@ -323,7 +323,7 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
     }.getOrElse(Seq.empty)
   }
 
-  def addMember(node: Node, userName: String) {
+  def addMember(node: CommonsNode, userName: String) {
     post(
       "/node/%s/%s/user/add".format(node.orgId, node.nodeId),
       "userName" -> userName
@@ -343,7 +343,7 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
     }
   }
 
-  def removeMember(node: Node, userName: String) {
+  def removeMember(node: CommonsNode, userName: String) {
     delete(
       "/node/%s/%s/user/%s".format(node.orgId, node.nodeId, userName)
     ).foreach { response =>
@@ -364,20 +364,20 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
 
   // node directory
 
-  def findOneById(nodeId: String): Option[Node] = {
+  def findOneById(nodeId: String): Option[CommonsNode] = {
     get("/node/" + nodeId).flatMap { response =>
       if (response.status == OK) {
-        Json.fromJson[Node](response.json).asOpt
+        Json.fromJson[CommonsNode](response.json).asOpt
       } else {
         None
       }
     }
   }
 
-  def listEntries: Seq[Node] = {
+  def listEntries: Seq[CommonsNode] = {
     get("/node/list").flatMap { response =>
       if (response.status == OK) {
-        Json.fromJson[List[Node]](response.json).asOpt
+        Json.fromJson[List[CommonsNode]](response.json).asOpt
       } else {
         None
       }
@@ -432,7 +432,7 @@ case class RegisteredUser(userName: String, firstName: String, lastName: String,
 
 case class OrganizationEntry(uri: String, name: String, countryCode: String)
 
-trait Node {
+trait CommonsNode {
   def nodeId: String
 
   def name: String
@@ -441,7 +441,7 @@ trait Node {
 
   def isLocal: Boolean
 
-  override def equals(that: Any): Boolean = that.isInstanceOf[Node] && that.asInstanceOf[Node].nodeId == nodeId
+  override def equals(that: Any): Boolean = that.isInstanceOf[CommonsNode] && that.asInstanceOf[CommonsNode].nodeId == nodeId
 
   override def hashCode(): Int = nodeId.hashCode
 }

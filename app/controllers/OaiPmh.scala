@@ -62,7 +62,7 @@ object OaiPmh extends Controller with BaseXTools {
       datasetRepo.recordRepo.createHarvest(headersOnly, from, until)
     }
 
-    def getHarvestValues(token: PMHResumptionToken): (Option[NodeSeq], Option[PMHResumptionToken]) = {
+    def getHarvestValues(token: PMHResumptionToken): (NodeSeq, Option[PMHResumptionToken]) = {
       Repo.repo.getHarvest(token)
     }
 
@@ -282,7 +282,7 @@ object OaiPmh extends Controller with BaseXTools {
       </OAI-PMH>
     }
 
-    def startOrResume(request: PmhRequest, headersOnly: Boolean): (Option[NodeSeq], Option[PMHResumptionToken]) = {
+    def startOrResume(request: PmhRequest, headersOnly: Boolean): (NodeSeq, Option[PMHResumptionToken]) = {
       request.resumptionToken match {
         case Some(previousToken) =>
           RepoBridge.getHarvestValues(previousToken)
@@ -297,7 +297,7 @@ object OaiPmh extends Controller with BaseXTools {
 
     def listIdentifiers(request: PmhRequest): Elem = {
 
-      val (headers: Option[NodeSeq], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = true)
+      val (headers: NodeSeq, token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = true)
 
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
@@ -311,7 +311,7 @@ object OaiPmh extends Controller with BaseXTools {
           metadataPrefix={emptyOrString(request.metadataPrefix)}
         >{requestURL}</request>
         <ListIdentifiers>
-          {headers.get}
+          {headers}
           {
             token match {
               case Some(tok) =>
@@ -325,7 +325,7 @@ object OaiPmh extends Controller with BaseXTools {
 
     def listRecords(request: PmhRequest): Elem = {
 
-      val (records: Option[NodeSeq], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = false)
+      val (records: NodeSeq, token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = false)
 
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
@@ -339,7 +339,7 @@ object OaiPmh extends Controller with BaseXTools {
         metadataPrefix={emptyOrString(request.metadataPrefix)}
         >{requestURL}</request>
         <ListRecords>
-          {records.get}
+          {records}
           {
             token match {
               case Some(tok) =>

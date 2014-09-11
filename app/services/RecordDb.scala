@@ -55,18 +55,24 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
     saver ! SaveRecords(recordRoot, uniqueId, recordCount, datasetRepo.name)
   }
 
+  def childrenAsMap(nodeSeq: NodeSeq) = nodeSeq flatMap {
+    case e: Elem => e.child
+    case _ => NodeSeq.Empty
+  }
+
   private def namespaceDeclarations(dataset: Elem) = {
-    val namespaces = dataset \ "namespaces" \ "namespace"
-    namespaces.flatMap {
+    val declarations = (dataset \ "namespaces" \ "_").flatMap {
       node =>
-        val prefix = (node \ "prefix").text
-        val uri = (node \ "uri").text
-        if (prefix != "xml") {
-          Some( s"""declare namespace $prefix = "$uri";""")
+        if (node.label.trim.nonEmpty && node.label != "xml") {
+          val prefix = node.label
+          val uri = node.text
+          Some( s"""declare namespace $prefix="$uri";""")
         }
-        else
+        else {
           None
-    }.mkString("\n")
+        }
+    }
+    declarations.mkString("\n")
   }
 
   def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = {
@@ -95,7 +101,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
     }
   }
 
-  def record(identifier: String): Elem = db {
+  def record(identifier: String): String = db {
     session =>
       val queryForRecord = s"""
         |
@@ -107,7 +113,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
         |
         """.stripMargin.trim
       println("asking:\n" + queryForRecord)
-      XML.loadString(session.query(queryForRecord).execute())
+      session.query(queryForRecord).execute()
   }
 
   def getIds(since: String): String = db {

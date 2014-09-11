@@ -164,9 +164,9 @@ class Repo(userHome: String, val orgId: String) {
             val FileName(spec, prefix) = dataset.name
             val state = (dataset.info \ "status" \ "state").text
             val totalRecords = (dataset.info \ "delimit" \ "recordCount").text
-            val namespace = (dataset.info \ "namespaces" \ "namespace").find(n => (n \ "prefix").text == prefix)
-            val metadataFormat = namespace match {
-              case Some(ns) => RepoMetadataFormat(prefix, (ns \ "uri").text)
+            val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
+            val metadataFormat = namespaces.find(_._1 == prefix) match {
+              case Some(ns) => RepoMetadataFormat(prefix, ns._2)
               case None => RepoMetadataFormat(prefix)
             }
             if (PUBLISHED.matches(state)) {
@@ -183,12 +183,12 @@ class Repo(userHome: String, val orgId: String) {
     getPublishedDatasets.sortBy(_.metadataFormat.namespace).map(d => (d.prefix, d.metadataFormat)).toMap.values.toSeq
   }
 
-  def getHarvest(resumptionToken: PMHResumptionToken): (Option[NodeSeq], Option[PMHResumptionToken]) = {
+  def getHarvest(resumptionToken: PMHResumptionToken): (NodeSeq, Option[PMHResumptionToken]) = {
     Cache.getAs[Harvest](resumptionToken.value).map { harvest =>
       val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
       val start = 1 + (harvest.currentPage - 1) * pageSize
       val recordRepo = datasetRepo(harvest.repoName).recordRepo
-      def records = Some(recordRepo.recordsPmh(harvest.from, harvest.until, start, pageSize, harvest.headersOnly))
+      def records = recordRepo.recordsPmh(harvest.from, harvest.until, start, pageSize, harvest.headersOnly)
       harvest.next.map { next =>
         Cache.set(next.resumptionToken.value, next, 2 minutes)
         (records, Some(next.resumptionToken))
@@ -196,7 +196,7 @@ class Repo(userHome: String, val orgId: String) {
         (records, None)
       }
     } getOrElse {
-      (None, None)
+      throw new RuntimeException(s"Resumption token not found: $resumptionToken")
     }
   }
 

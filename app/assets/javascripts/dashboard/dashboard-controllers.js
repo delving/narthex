@@ -124,9 +124,17 @@ define(["angular"], function () {
 
         function checkDatasetStatus(file) {
             dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
+                if (!file.info || !file.info.status) {
+                    console.log("MISSING STATUS BEFORE", file);
+                    return
+                }
                 var state = file.info.status.state;
                 file.info = datasetInfo;
-                if (status != file.info.status.state || isActive(file)) {
+                if (!file.info || !file.info.status) {
+                    console.log("MISSING STATUS AFTER", file);
+                    return
+                }
+                if (state != file.info.status.state || isActive(file)) {
                     var time = file.info.status.time || 0;
                     var now = new Date().getTime();
                     if (now - time > 1000*60*3) { // stale in 10 minutes

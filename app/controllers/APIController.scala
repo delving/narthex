@@ -29,9 +29,6 @@ import services.DatasetState._
 import services.Repo.repo
 import services._
 
-import scala.xml.transform.{RewriteRule, RuleTransformer}
-import scala.xml.{Elem, Node}
-
 object APIController extends Controller with TreeHandling with RecordHandling {
 
   def indexJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
@@ -73,12 +70,25 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  def rawRecord(apiKey: String, fileName: String, id: String) = KeyFits(apiKey, parse.anyContent) {
+  def record(apiKey: String, fileName: String, id: String, enrich: Boolean = false) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
         val datasetRepo = repo.datasetRepo(fileName)
-        val storedRecord: Elem = datasetRepo.recordRepo.record(id)
+        val storedRecord: String = datasetRepo.recordRepo.record(id)
         if (storedRecord.nonEmpty) {
-          Ok(storedRecord)
+          if (enrich) {
+            val filePrefix = s"${NarthexConfig.ORG_ID}/$fileName"
+            val mappings = Cache.getAs[Map[String, TargetConcept]](fileName).getOrElse {
+              val freshMap = datasetRepo.termRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
+              Cache.set(fileName, freshMap, 60 * 5)
+              freshMap
+            }
+            val parser = new StoredRecordParser(filePrefix, mappings)
+            val record = parser.parse(storedRecord)
+            Ok(scala.xml.XML.loadString(record.text.toString())) // should just send the XML, mimetyped
+          }
+          else {
+            Ok(scala.xml.XML.loadString(storedRecord)) // could just send the XML string if we can mimetype the output
+          }
         }
         else {
           NotFound(s"No record found for $id")
@@ -86,39 +96,9 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     }
   }
 
-  // todo: use something like this for enrichment
-  class Stamp(prefix: String, localName: String) extends RewriteRule {
-    override def transform(node: Node): Node = node match {
-      case elem: Elem if elem.label == "Identifier" =>
-        <hello>hello</hello>
-      case remainder => remainder
-    }
-  }
+  def rawRecord(apiKey: String, fileName: String, id: String) = record(apiKey,fileName, id, enrich = false)
 
-  class Stamper(prefix: String, localName: String) extends RuleTransformer(new Stamp(prefix, localName))
-
-  def enrichedRecord(apiKey: String, fileName: String, id: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-        val datasetRepo = repo.datasetRepo(fileName)
-        val termRepo = datasetRepo.termRepo
-        val mappings = Cache.getAs[Map[String, TargetConcept]](fileName).getOrElse {
-          val freshMap = termRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
-          Cache.set(fileName, freshMap, 60 * 5)
-          freshMap
-        }
-        val storedRecord: Elem = datasetRepo.recordRepo.record(id)
-        if (storedRecord.nonEmpty) {
-          val filePrefix = s"${NarthexConfig.ORG_ID}/$fileName"
-          val parser = new StoredRecordParser(filePrefix, mappings)
-          // todo: use something like Stamper above to find a way to iterate through the elem instead
-          val record = parser.parse(storedRecord.toString())
-          Ok(scala.xml.XML.loadString(record.text.toString()))
-        }
-        else {
-          NotFound(s"No record found for $id")
-        }
-    }
-  }
+  def enrichedRecord(apiKey: String, fileName: String, id: String) = record(apiKey,fileName, id, enrich = true)
 
   def ids(apiKey: String, fileName: String, since: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {

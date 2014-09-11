@@ -35,7 +35,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
   "A transformer" should "insert an enrichment" in {
 
     val filePrefix = "gerald_delving_eu/RCE_Beeldbank"
-    val recordRoot = "/adlibXML/recordList/record"
+    val recordRoot = "/record"
 
     val mappings = Map(
       s"$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> TargetConcept("uri", "vocab", "glasinloody"),
