@@ -20,7 +20,6 @@ import java.io.File
 
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
-import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json.{JsObject, JsValue, Json}
@@ -191,10 +190,6 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
       val repo = datasetRepo(harvest.repoName)
       val storedRecords = repo.recordRepo.recordHarvest(harvest.from, harvest.until, start, pageSize)
       val records = if (enriched) repo.enrichRecords(storedRecords) else repo.parseStoredRecords(storedRecords)
-      Logger.info(s"records\n${records.take(3)}")
-//      val wrapped = XML.loadString(s"<wrapped>${records.map(_.text.toString()).mkString("\n")}</wrapped>")
-//      val recordsSeq = wrapped \ "_"
-//      Logger.info(s"recordSeq\n${recordsSeq.take(3)}")
       harvest.next.map { next =>
         Cache.set(next.resumptionToken.value, next, 2 minutes)
         (records, Some(next.resumptionToken))

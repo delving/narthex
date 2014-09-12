@@ -29,8 +29,9 @@ object FileHandling {
     def getPercentRead: Int
   }
 
-  class CountingReadProgress(fileSize: Int, counter: CountingInputStream) extends ReadProgress(fileSize) {
-    override def getPercentRead: Int = (100 * counter.getCount) / fileSize
+  class CountingReadProgress(fileSize: Long, counter: CountingInputStream) extends ReadProgress(fileSize) {
+    override def getPercentRead: Int = ((100 * counter.getByteCount) / fileSize).toInt
+
   }
 
   def xmlSource(file: File): (Source, ReadProgress) = {
@@ -44,13 +45,13 @@ object FileHandling {
       val cs = new CountingInputStream(is)
       val gz = new GZIPInputStream(cs)
       val bis = new BOMInputStream(gz)
-      (Source.fromInputStream(bis), new CountingReadProgress(file.length().toInt, cs))
+      (Source.fromInputStream(bis), new CountingReadProgress(file.length(), cs))
     }
     else if (name.endsWith(".xml")) {
       val is = new FileInputStream(file)
       val cs = new CountingInputStream(is)
       val bis = new BOMInputStream(cs)
-      (Source.fromInputStream(bis), new CountingReadProgress(file.length().toInt, cs))
+      (Source.fromInputStream(bis), new CountingReadProgress(file.length(), cs))
     }
     else {
       throw new RuntimeException(s"Unrecognized extension: $name")

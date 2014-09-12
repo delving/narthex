@@ -115,6 +115,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
           moveFile(tempFile, datasetRepo.sourceFile)
           datasetRepo.datasetDb.setStatus(READY)
       }
+      context.stop(self)
   }
 }
 

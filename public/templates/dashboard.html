@@ -144,7 +144,10 @@
                                     </div>
 
                                     <div ng-switch-when="state-analyzed">
-                                        <span><i class="fa fa-folder-open"></i> <a href data-ng-click="viewFile(file)">{{ file.name }}</a></span>
+                                        <span>
+                                            <i class="fa fa-folder-open"></i>
+                                            <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                                        </span>
                                         <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
                                                 data-ng-click="revertToState(file, 'state-ready', 'Remove the analysis?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                                         </button>
@@ -165,7 +168,6 @@
 
                                     <div ng-switch-when="state-saved">
                                         <i class="fa fa-database fa-fw"></i>
-                                        <span><a href data-ng-click="viewFile(file)">{{ file.name }} ({{ file.info.delimit.recordCount }})</a></span>
                                         <span data-ng-include="'dataset-extend-button.html'">button</span>
                                         <button type="button" class="btn btn-xs pull-right btn-warning" data-ng-click="togglePublished(file)">
                                               <span>Publish</span>
@@ -175,7 +177,6 @@
 
                                     <div ng-switch-when="state-published">
                                         <i class="fa fa-database fa-fw"></i>
-                                        <span><a href data-ng-click="viewFile(file)">{{ file.name }} ({{ file.info.delimit.recordCount }})</a></span>
                                         <span data-ng-include="'dataset-extend-button.html'">button</span>
                                         <button type="button" class="btn btn-xs pull-right btn-success" data-ng-click="togglePublished(file)">
                                               <span>Published</span>
@@ -228,12 +229,33 @@
     </script>
     <script type="text/ng-template" id="dataset-extend-button.html">
         <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo">
-            <span class="fa" data-ng-class="{ 'fa-arrow-down':!file.showExtendedInfo, 'fa-arrow-up':file.showExtendedInfo }" ></span>
-            <span>Details</span>
+            <span>{{ file.name }} ({{ file.info.delimit.recordCount }})</span>
+            <span class="fa" data-ng-class="{ 'fa-arrow-down':file.showExtendedInfo }" ></span>
         </a>
     </script>
     <script type="text/ng-template" id="dataset-extended.html">
         <div class="file-extended-info clearfix">
+            <div class="btn-toolbar">
+                <a data-ng-click="viewFile(file)" class="btn btn-primary">
+                    <i class="fa fa-eye"></i> View Schema
+                </a>
+                <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
+                    <i class="fa fa-download"></i> Terminology Mappings
+                </a>
+                <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}"
+                   target="_blank" class="btn btn-primary">
+                    <i class="fa fa-download"></i> Raw Records
+                </a>
+                <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListEnrichedRecords}}"
+                   target="_blank" class="btn btn-primary">
+                    <i class="fa fa-download"></i> Enriched Records
+                </a>
+                <button class="btn btn-danger btn-isolate pull-right"
+                        data-ng-click="revertToState(file, 'state-empty', 'Empty the dataset?')">
+                    <i class="fa fa-trash-o"></i>
+                </button>
+            </div>
+
             <h4 class="heading">Record info</h4>
             <ul class="list-unstyled">
                 <li><b>Record Root</b>:<code class="path">{{ file.info.delimit.recordRoot }}</code></li>
@@ -247,18 +269,15 @@
                     </li>
                 </ul>
             </div>
-
-            <div class="btn-toolbar">
-                <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
-                    <i class="fa fa-download"></i> Download Terminology Mappings
-                </a>
-                <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}" target="_blank" class="btn btn-primary">
-                    <i class="fa fa-download"></i> Download Records via OAI-PMH
-                </a>
-                <button class="btn btn-danger btn-isolate"
-                        data-ng-click="revertToState(file, 'state-empty', 'Empty the dataset?')">Empty the Dataset <i class="fa fa-trash-o"></i>&nbsp;
-                </button>
+            <div class="" data-ng-show="file.info.harvest.url">
+                <h4 class="heading">Harvest Information</h4>
+                <ul class="list-unstyled">
+                    <li data-ng-repeat="(key, value) in file.info.harvest">
+                        <b>{{ key }}</b> = "{{ value }}"
+                    </li>
+                </ul>
             </div>
+
         </div>
     </script>
 </div>

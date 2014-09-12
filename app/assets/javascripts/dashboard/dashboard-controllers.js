@@ -63,11 +63,12 @@ define(["angular"], function () {
             dataset: "RCE_Monuments__car"
         };
 
-        function oaiPmhListRecords(fileName) {
+        function oaiPmhListRecords(fileName, enriched) {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
             var fileNameParts = fileName.split("__");
-            return serverUrl + 'oai-pmh/' + API_ACCESS_KEY + '?verb=ListRecords&set=' + fileName + "&metadataPrefix=" + fileNameParts[1];
+            var start = enriched ? 'oai-pmh/enriched/' : 'oai-pmh/';
+            return serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + fileName + "&metadataPrefix=" + fileNameParts[1];
         }
 
         function timeSinceStatusCheck() {
@@ -177,7 +178,8 @@ define(["angular"], function () {
                 _.forEach($scope.files, checkDatasetStatus);
                 _.forEach($scope.files, function (file) {
                     file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
-                    file.oaiPmhListRecords = oaiPmhListRecords(file.name);
+                    file.oaiPmhListRecords = oaiPmhListRecords(file.name, false);
+                    file.oaiPmhListEnrichedRecords = oaiPmhListRecords(file.name, true);
                 })
             });
         }

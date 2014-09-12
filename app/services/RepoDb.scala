@@ -54,7 +54,7 @@ class RepoDb(val orgId: String) {
       val answer = session.query(allDatasets).execute()
       val wholeFile = XML.loadString(answer)
       val datasets = wholeFile \ "dataset"
-      datasets.map(node => Dataset((node \ "@name").text, node.asInstanceOf[Elem]))
+      datasets.map(node => Dataset((node \ "@name").text, node.asInstanceOf[Elem])).sortBy(_.name.toLowerCase)
   }
 
 }

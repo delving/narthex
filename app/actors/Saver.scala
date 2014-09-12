@@ -44,7 +44,6 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
           val progress = context.actorOf(Props(new Actor() {
             override def receive: Receive = {
               case SaveProgress(percent) =>
-                if (percent == 100) context.stop(self)
                 datasetRepo.datasetDb.setStatus(SAVING, percent = percent)
             }
           }))
@@ -60,6 +59,9 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
             case e:Exception =>
               datasetRepo.datasetDb.setStatus(ERROR, error = e.toString)
               context.stop(self)
+          }
+          finally {
+            context.stop(progress)
           }
           source.close()
       }
