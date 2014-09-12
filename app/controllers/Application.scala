@@ -118,6 +118,15 @@ object Application extends Controller with Security {
     }
   }
 
+  def OkXml(xml: String): SimpleResult = {
+    SimpleResult(
+      ResponseHeader(OK, Map(
+        CONTENT_LENGTH -> xml.length().toString,
+        CONTENT_TYPE -> "application/xml"
+      )),
+      body = Enumerator(xml.getBytes)
+    )
+  }
 
   /**
    * Returns the JavaScript router that the client can use for "type-safe" routes.

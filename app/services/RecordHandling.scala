@@ -22,11 +22,20 @@ import java.security.MessageDigest
 
 import org.joda.time.DateTime
 import play.Logger
+import services.RecordHandling.{Record, TargetConcept}
 
 import scala.collection.mutable
 import scala.io.Source
 import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
+
+object RecordHandling {
+
+  case class Record(id: String, mod: DateTime, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
+
+  case class TargetConcept(uri: String, vocabulary: String, prefLabel: String)
+
+}
 
 trait RecordHandling extends BaseXTools {
 
@@ -211,20 +220,17 @@ trait RecordHandling extends BaseXTools {
     toHex(digest.digest(record.getBytes("UTF-8")))
   }
 
-  case class Frame(tag: String, path: String, text: mutable.StringBuilder = new mutable.StringBuilder())
+  class StoredRecordEnricher(pathPrefix: String, mappings: Map[String, TargetConcept]) {
 
-  case class Record(id: String, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
+    case class Frame(tag: String, path: String, text: mutable.StringBuilder = new mutable.StringBuilder())
 
-  case class TargetConcept(uri: String, vocabulary: String, prefLabel: String)
-
-  class StoredRecordParser(filePrefix: String, mappings: Map[String, TargetConcept]) {
-
-    def parse(xmlString: String): Record = {
+    def parse(xmlString: String): List[Record] = {
 
       val events = new XMLEventReader(Source.fromString(xmlString))
       val stack = new mutable.Stack[Frame]()
       var start: Option[String] = None
       var record: Option[Record] = None
+      var records = List.empty[Record]
       var recordStart = true
 
       def startElement(tag: String, attrs: MetaData) = {
@@ -251,7 +257,7 @@ trait RecordHandling extends BaseXTools {
         case EvElemStart(pre, label, attrs, scope) =>
           val tag = FileHandling.tag(pre, label)
           if (tag == "narthex") {
-            record = Some(Record(attrs.get("id").head.text, scope))
+            record = Some(Record(attrs.get("id").head.text, fromXSDDateTime(attrs.get("mod").head.text), scope))
           }
           else record match {
             case Some(r) =>
@@ -272,32 +278,40 @@ trait RecordHandling extends BaseXTools {
 
         case EvEntityRef(entity) => pushText(s"&$entity;")
 
-        case EvElemEnd(pre, label) => if (stack.nonEmpty) {
-          val frame = stack.head
-          val tag = frame.tag
-          val text = frame.text.toString().trim
-          if (text.nonEmpty) {
-            val path = s"$filePrefix${frame.path}/${value(text)}"
-            val mapping = mappings.get(path)
-            val startString = mapping match {
-              case Some(TargetConcept(uri, vocabulary, prefLabel)) =>
-                start.get.replaceFirst(tag, s"""$tag enrichmentUri="$uri" enrichmentVocabulary="$vocabulary" enrichmentPrefLabel="$prefLabel" """.trim)
-              case None =>
-                start.get
+        case EvElemEnd(pre, label) =>
+          if (stack.isEmpty) {
+            if (record.isDefined) {
+              records = record.get :: records
+              record = None
+              recordStart = true
             }
-            record.get.text.append(s"$indent$startString${frame.text}</$tag>\n")
-            start = None
           }
-          else start match {
-            case Some(startString) =>
-              record.get.text.append(s"$indent${startString.replace(">", "/>")}\n")
+          else {
+            val frame = stack.head
+            val tag = frame.tag
+            val text = frame.text.toString().trim
+            if (text.nonEmpty) {
+              val path = s"$pathPrefix${frame.path}/${value(text)}"
+              val mapping = mappings.get(path)
+              val startString = mapping match {
+                case Some(TargetConcept(uri, vocabulary, prefLabel)) =>
+                  start.get.replaceFirst(tag, s"""$tag enrichmentUri="$uri" enrichmentVocabulary="$vocabulary" enrichmentPrefLabel="$prefLabel" """.trim)
+                case None =>
+                  start.get
+              }
+              record.get.text.append(s"$indent$startString${frame.text}</$tag>\n")
               start = None
-            case None =>
-              record.get.text.append(s"$indent</$tag>\n")
-          }
-          stack.pop()
+            }
+            else start match {
+              case Some(startString) =>
+                record.get.text.append(s"$indent${startString.replace(">", "/>")}\n")
+                start = None
+              case None =>
+                record.get.text.append(s"$indent</$tag>\n")
+            }
+            stack.pop()
 
-        }
+          }
 
         case EvComment(text) =>
           FileHandling.stupidParser(text, entity => pushText(s"&$entity;"))
@@ -306,8 +320,20 @@ trait RecordHandling extends BaseXTools {
           Logger.warn("EVENT? " + x) // todo: record these in an error file for later
       }
 
-      record.getOrElse(throw new RuntimeException("No record"))
+      records.reverse
     }
   }
 
+  def parseStoredRecords(xmlString: String): List[Record] = {
+    val wrappedRecord = scala.xml.XML.loadString(xmlString)
+    (wrappedRecord \ "narthex").map {
+      narthex =>
+        Record(
+          id = (narthex \ "@id").text,
+          mod = fromXSDDateTime((narthex \ "@mod").text),
+          narthex.scope,
+          new mutable.StringBuilder((narthex \ "_").toString())
+        )
+    }.toList
+  }
 }

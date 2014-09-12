@@ -23,6 +23,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.mvc._
 import services.NarthexConfig._
+import services.RecordHandling.Record
 import services._
 
 import scala.xml.{Elem, NodeSeq, PrettyPrinter}
@@ -34,7 +35,17 @@ object OaiPmh extends Controller with BaseXTools {
   def service(accessKey: String) = Action(parse.anyContent) {
     implicit request =>
       if (NarthexConfig.oaiPmhKeyFits(accessKey)) {
-        Ok(Service(request.queryString, request.uri))
+        Ok(Service(request.queryString, request.uri, enriched = false))
+      }
+      else {
+        Unauthorized("Access key not accepted")
+      }
+  }
+
+  def serviceEnriched(accessKey: String) = Action(parse.anyContent) {
+    implicit request =>
+      if (NarthexConfig.oaiPmhKeyFits(accessKey)) {
+        Ok(Service(request.queryString, request.uri, enriched = true))
       }
       else {
         Unauthorized("Access key not accepted")
@@ -62,8 +73,8 @@ object OaiPmh extends Controller with BaseXTools {
       datasetRepo.recordRepo.createHarvest(headersOnly, from, until)
     }
 
-    def getHarvestValues(token: PMHResumptionToken): (NodeSeq, Option[PMHResumptionToken]) = {
-      Repo.repo.getHarvest(token)
+    def getHarvestValues(token: PMHResumptionToken, enriched: Boolean): (List[Record], Option[PMHResumptionToken]) = {
+      Repo.repo.getHarvest(token, enriched)
     }
 
     def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
@@ -78,8 +89,8 @@ object OaiPmh extends Controller with BaseXTools {
 
   object Service {
 
-    def apply(queryString: Map[String, Seq[String]], requestURL: String) = {
-      val oaiPmhService = new Service(queryString, requestURL)
+    def apply(queryString: Map[String, Seq[String]], requestURL: String, enriched: Boolean) = {
+      val oaiPmhService = new Service(queryString, requestURL, enriched)
       oaiPmhService.handleRequest
     }
 
@@ -106,7 +117,7 @@ object OaiPmh extends Controller with BaseXTools {
 
   }
 
-  class Service(queryParams: Map[String, Seq[String]], requestURL: String) {
+  class Service(queryParams: Map[String, Seq[String]], requestURL: String, enriched: Boolean) {
 
     object VerbHandling {
 
@@ -282,22 +293,22 @@ object OaiPmh extends Controller with BaseXTools {
       </OAI-PMH>
     }
 
-    def startOrResume(request: PmhRequest, headersOnly: Boolean): (NodeSeq, Option[PMHResumptionToken]) = {
+    def startOrResume(request: PmhRequest, headersOnly: Boolean): (List[Record], Option[PMHResumptionToken]) = {
       request.resumptionToken match {
         case Some(previousToken) =>
-          RepoBridge.getHarvestValues(previousToken)
+          RepoBridge.getHarvestValues(previousToken, enriched)
         case None =>
           val set = request.set.getOrElse(throw new BadArgumentException(s"No set provided: $request"))
           val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException(s"No metadataPrefix provided: $request"))
           if (!RepoBridge.exists(set, prefix)) throw new DataSetNotFoundException(s"Set not found: [$set] [$prefix]")
           val firstToken = RepoBridge.getFirstToken(set, prefix, headersOnly, request.from, request.until)
-          RepoBridge.getHarvestValues(firstToken.get)
+          RepoBridge.getHarvestValues(firstToken.get, enriched)
       }
     }
 
     def listIdentifiers(request: PmhRequest): Elem = {
 
-      val (headers: NodeSeq, token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = true)
+      val (records: List[Record], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = true)
 
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
@@ -311,7 +322,18 @@ object OaiPmh extends Controller with BaseXTools {
           metadataPrefix={emptyOrString(request.metadataPrefix)}
         >{requestURL}</request>
         <ListIdentifiers>
-          {headers}
+          {
+            for (record <- records) yield {
+              val recordNodes = scala.xml.XML.loadString(record.text.toString())
+              <record>
+                <header>
+                  <identifier>{record.id}</identifier>
+                  <datestamp>{toXSDString(record.mod)}</datestamp>
+                  <setSpec>{request.set}</setSpec>
+                </header>
+              </record>
+            }
+          }
           {
             token match {
               case Some(tok) =>
@@ -325,7 +347,7 @@ object OaiPmh extends Controller with BaseXTools {
 
     def listRecords(request: PmhRequest): Elem = {
 
-      val (records: NodeSeq, token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = false)
+      val (records: List[Record], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = false)
 
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
@@ -339,7 +361,21 @@ object OaiPmh extends Controller with BaseXTools {
         metadataPrefix={emptyOrString(request.metadataPrefix)}
         >{requestURL}</request>
         <ListRecords>
-          {records}
+          {
+            for (record <- records) yield {
+              val recordNodes = scala.xml.XML.loadString(record.text.toString())
+              <record>
+                <header>
+                  <identifier>{record.id}</identifier>
+                  <datestamp>{toXSDString(record.mod)}</datestamp>
+                  <setSpec>{request.set}</setSpec>
+                </header>
+                <metadata>
+                  {recordNodes}
+                </metadata>
+              </record>
+            }
+          }
           {
             token match {
               case Some(tok) =>

@@ -174,6 +174,27 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
     Some(harvest.resumptionToken)
   }
 
+  def recordHarvest(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int): String = db {
+    session =>
+      val query = s"""
+        |
+        | ${namespaceDeclarations(getDatasetInfo)}
+        |
+        | let $$selection := collection('$recordDb')/narthex${dateSelector(from, until)}
+        |
+        | return
+        |   <records>
+        |     {
+        |       for $$narthex in subsequence($$selection, $start, $pageSize)
+        |          order by $$narthex/@mod descending
+        |              return $$narthex
+        |     }
+        |   </records>
+        |
+        """.stripMargin.trim
+      session.query(query).execute()
+  }
+
   def recordPmh(identifier: String): Option[Elem] = db {
     session =>
       val datasetInfo = getDatasetInfo
@@ -199,7 +220,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
       Some(XML.loadString(session.query(queryForRecord).execute()))
   }
 
-  def recordsPmh(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int, headersOnly: Boolean = true): NodeSeq = db {
+  def recordsPmh(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int, headersOnly: Boolean): Seq[String] = db {
     session =>
       val metadata = if (headersOnly) "" else "<metadata>{$narthex/*}</metadata>"
       val query = s"""
@@ -227,7 +248,8 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
         |   </records>
         |
         """.stripMargin.trim
+      // todo: look at doing this with just string instead of via XML
       val wrappedRecords: Elem = XML.loadString(session.query(query).execute())
-      wrappedRecords \ "record"
+      (wrappedRecords \ "record").map(_.toString())
   }
 }

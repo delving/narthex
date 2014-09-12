@@ -21,11 +21,14 @@ import actors.Harvester.{HarvestAdLib, HarvestPMH}
 import actors.{Analyzer, Harvester}
 import org.apache.commons.io.FileUtils.{deleteDirectory, deleteQuietly}
 import play.api.Logger
+import play.api.Play.current
+import play.api.cache.Cache
 import play.libs.Akka
 import services.DatasetState._
+import services.RecordHandling.{Record, TargetConcept}
 import services.RepoUtil.tagToDirectory
 
-class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) {
+class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) extends RecordHandling {
   val root = new NodeRepo(this, dir)
   val dbName = s"narthex_${orgRepo.orgId}___$name"
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, name)
@@ -182,5 +185,16 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
       case _ =>
         false
     }
+  }
+
+  def enrichRecords(storedRecords: String): List[Record] = {
+    val pathPrefix = s"${NarthexConfig.ORG_ID}/$name"
+    val mappings = Cache.getAs[Map[String, TargetConcept]](name).getOrElse {
+      val freshMap = termRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
+      Cache.set(name, freshMap, 60 * 5)
+      freshMap
+    }
+    val parser = new StoredRecordEnricher(pathPrefix, mappings)
+    parser.parse(storedRecords)
   }
 }

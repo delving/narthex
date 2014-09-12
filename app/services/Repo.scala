@@ -20,18 +20,18 @@ import java.io.File
 
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
+import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json.{JsObject, JsValue, Json}
 import services.DatasetState._
+import services.RecordHandling.Record
 import services.RepoUtil._
 
 import scala.concurrent.duration._
 import scala.io.Source
 import scala.language.postfixOps
 import scala.util.Random
-import scala.xml.NodeSeq
 
 object Repo {
   lazy val repo = new Repo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
@@ -64,6 +64,7 @@ object DatasetState {
 }
 
 object RepoUtil {
+  val ENRICHED_PREFIX = "enriched-"
   val SUFFIXES = List(".xml.gz", ".xml")
   val UPLOADED_DIR = "uploaded"
   val ANALYZED_DIR = "analyzed"
@@ -104,10 +105,9 @@ object RepoUtil {
     val suffix = getSuffix(fileName)
     fileName.substring(0, fileName.length - suffix.length)
   }
-
 }
 
-class Repo(userHome: String, val orgId: String) {
+class Repo(userHome: String, val orgId: String) extends RecordHandling {
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
   val uploaded = new File(orgRoot, UPLOADED_DIR)
@@ -143,9 +143,9 @@ class Repo(userHome: String, val orgId: String) {
     directory.listFiles.filter(f => f.isFile && SUFFIXES.filter(end => f.getName.endsWith(end)).nonEmpty).toList
   }
 
-  def datasetRepo(fileName: String): DatasetRepo = new DatasetRepo(
-    this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName)
-  )
+  def datasetRepo(fileName: String): DatasetRepo = {
+    new DatasetRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
+  }
 
   def datasetRepoOption(fileName: String): Option[DatasetRepo] = {
     val dr = datasetRepo(fileName)
@@ -156,7 +156,7 @@ class Repo(userHome: String, val orgId: String) {
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
     val FileName = "(.*)__(.*)".r
-    BaseX.withSession {
+    val published = BaseX.withSession {
       session =>
         repoDb.listDatasets.flatMap {
           dataset =>
@@ -177,18 +177,24 @@ class Repo(userHome: String, val orgId: String) {
             }
         }
     }
+    published ++ published.map(ds => ds.copy(spec = s"$ENRICHED_PREFIX${ds.spec}"))
   }
 
   def getMetadataFormats: Seq[RepoMetadataFormat] = {
     getPublishedDatasets.sortBy(_.metadataFormat.namespace).map(d => (d.prefix, d.metadataFormat)).toMap.values.toSeq
   }
 
-  def getHarvest(resumptionToken: PMHResumptionToken): (NodeSeq, Option[PMHResumptionToken]) = {
+  def getHarvest(resumptionToken: PMHResumptionToken, enriched: Boolean): (List[Record], Option[PMHResumptionToken]) = {
     Cache.getAs[Harvest](resumptionToken.value).map { harvest =>
       val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
       val start = 1 + (harvest.currentPage - 1) * pageSize
-      val recordRepo = datasetRepo(harvest.repoName).recordRepo
-      def records = recordRepo.recordsPmh(harvest.from, harvest.until, start, pageSize, harvest.headersOnly)
+      val repo = datasetRepo(harvest.repoName)
+      val storedRecords = repo.recordRepo.recordHarvest(harvest.from, harvest.until, start, pageSize)
+      val records = if (enriched) repo.enrichRecords(storedRecords) else repo.parseStoredRecords(storedRecords)
+      Logger.info(s"records\n${records.take(3)}")
+//      val wrapped = XML.loadString(s"<wrapped>${records.map(_.text.toString()).mkString("\n")}</wrapped>")
+//      val recordsSeq = wrapped \ "_"
+//      Logger.info(s"recordSeq\n${recordsSeq.take(3)}")
       harvest.next.map { next =>
         Cache.set(next.resumptionToken.value, next, 2 minutes)
         (records, Some(next.resumptionToken))
@@ -205,7 +211,6 @@ class Repo(userHome: String, val orgId: String) {
   def sipZipFile(fileName: String) = new File(sipZip, fileName)
 
   val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
-  val FORMATTER = ISODateTimeFormat.dateTime()
 
   // todo: add hints, to get record count
   def listSipZip: Seq[(File, Map[String, String])] = {
