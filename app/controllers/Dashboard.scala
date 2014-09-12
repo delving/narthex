@@ -17,6 +17,7 @@
 package controllers
 
 import controllers.Application.OkFile
+import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -255,6 +256,18 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     token => implicit request => {
       val fileNames = repo.listSipZip.map(_._1.getName)
       Ok(Json.obj("list" -> fileNames))
+    }
+  }
+
+  def deleteSipFile(fileName: String) = Secure() {
+    token => implicit request => {
+      repo.listSipZip.find(_._1.getName == fileName) match {
+        case Some(fileAndFacts) =>
+          FileUtils.deleteQuietly(fileAndFacts._1)
+          Ok(Json.obj("deleted" -> fileAndFacts._1.getName))
+        case None =>
+          NotFound(Json.obj("problem" -> s"Could not delete $fileName"))
+      }
     }
   }
 

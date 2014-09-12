@@ -21,6 +21,7 @@ POST        /dashboard/upload                                 controllers.Dashbo
 POST        /dashboard/harvest                                controllers.Dashboard.harvest
 GET         /dashboard/list                                   controllers.Dashboard.list
 GET         /dashboard/sip-list                               controllers.Dashboard.listSipFiles
+GET         /dashboard/delete-sip/:fileName                   controllers.Dashboard.deleteSipFile(fileName)
 GET         /dashboard/:fileName/analyze                      controllers.Dashboard.analyze(fileName)
 GET         /dashboard/:fileName/index                        controllers.Dashboard.index(fileName)
 GET         /dashboard/:fileName/dataset-info                 controllers.Dashboard.datasetInfo(fileName)

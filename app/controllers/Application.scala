@@ -157,7 +157,8 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.getMappings,
           routes.javascript.Dashboard.getSourcePaths,
           routes.javascript.Dashboard.setMapping,
-          routes.javascript.Dashboard.listSipFiles
+          routes.javascript.Dashboard.listSipFiles,
+          routes.javascript.Dashboard.deleteSipFile
         )
       ).as(JAVASCRIPT)
   }

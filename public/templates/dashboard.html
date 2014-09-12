@@ -204,7 +204,10 @@
                             <li class="list-group-item" data-ng-repeat="file in sipFiles">
                                 <i class="fa fa-cube"></i>
                                 <span data-ng-show="file.details">
-                                  <b>{{ file.details.spec }}</b>
+                                    <b>{{ file.details.spec }}</b>
+                                    <button type="button" class="btn btn-danger btn-xs" data-ng-show="file.expendable"
+                                        data-ng-click="deleteSipZip(file)"><i class="fa fa-trash-o"></i>
+                                    </button>
                                     <span class="pull-right">
                                         <i class="fa fa-male"></i>
                                         <b>{{ file.details.uploadedBy }}</b>

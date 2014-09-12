@@ -206,6 +206,14 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                deleteSipFile: function (name) {
+                    return dash.deleteSipFile(name).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }

@@ -210,31 +210,6 @@ define(["angular"], function () {
             $location.search({ tab: tab });
         };
 
-        function fetchSipFileList() {
-            dashboardService.listSipFiles().then(function (data) {
-                $scope.sipFiles = _.map(data.list, function (sipFile) {
-                    var entry = { fileName: sipFile };
-                    var part = sipFile.match(/sip_(.+)__(\d+)_(\d+)_(\d+)_(\d+)_(\d+)__(.*).zip/);
-                    if (part) {
-                        entry.details = {
-                            spec: part[1],
-                            date: new Date(
-                                parseInt(part[2]), parseInt(part[3]), parseInt(part[4]),
-                                parseInt(part[5]), parseInt(part[6]), 0),
-                            uploadedBy: part[7]
-                        }
-                    }
-                    return entry;
-                });
-//                $scope.sipFiles = _.groupBy(entries, function(entry) {
-//                    if (!entry.details) return entry.fileName;
-//                    return entry.details.spec;
-//                });
-            });
-        }
-
-        fetchSipFileList();
-
         $scope.viewFile = function (file) {
             $location.path("/dataset/" + file.name);
             $location.search({});
@@ -259,6 +234,36 @@ define(["angular"], function () {
             });
         };
 
+        function fetchSipFileList() {
+            dashboardService.listSipFiles().then(function (data) {
+                var specs = {};
+                $scope.sipFiles = _.map(data.list, function (sipFile) {
+                    var entry = { fileName: sipFile };
+                    var part = sipFile.match(/sip_(.+)__(\d+)_(\d+)_(\d+)_(\d+)_(\d+)__(.*).zip/);
+                    if (part) {
+                        var spec = part[1];
+                        if (specs[spec]) entry.expendable = true;
+                        specs[spec] = true;
+                        entry.details = {
+                            spec: spec,
+                            date: new Date(
+                                parseInt(part[2]), parseInt(part[3]), parseInt(part[4]),
+                                parseInt(part[5]), parseInt(part[6]), 0),
+                            uploadedBy: part[7]
+                        };
+                    }
+                    return entry;
+                });
+            });
+        }
+
+        fetchSipFileList();
+
+        $scope.deleteSipZip = function(file) {
+            dashboardService.deleteSipFile(file.fileName).then(function() {
+                fetchSipFileList();
+            });
+        };
     };
 
     DashboardCtrl.$inject = [
