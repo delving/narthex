@@ -264,6 +264,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       repo.listSipZip.find(_._1.getName == fileName) match {
         case Some(fileAndFacts) =>
           FileUtils.deleteQuietly(fileAndFacts._1)
+          FileUtils.deleteQuietly(fileAndFacts._2)
           Ok(Json.obj("deleted" -> fileAndFacts._1.getName))
         case None =>
           NotFound(Json.obj("problem" -> s"Could not delete $fileName"))

@@ -160,11 +160,11 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def uploadSipZip(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request =>
       val file = repo.sipZipFile(fileName)
+      val factsFile = repo.sipZipFactsFile(fileName)
       request.body.moveTo(file, replace = true)
       val zip = new ZipFile(file)
-      val datasetFacts = zip.getEntry("dataset_facts.txt") // todo: put them in the db
-    val inputStream = zip.getInputStream(datasetFacts)
-      val factsFile = new File(file.getParentFile, s"${file.getName}.facts")
+      val datasetFacts = zip.getEntry("dataset_facts.txt")
+      val inputStream = zip.getInputStream(datasetFacts)
       FileUtils.copyInputStreamToFile(inputStream, factsFile)
       Ok
   }
@@ -173,7 +173,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request =>
       def reply =
         <sip-list>
-          {for ((file, facts) <- repo.listSipZip)
+          {for ((file, factsFile, facts) <- repo.listSipZip)
         yield
           <sip>
             <file>{file.getName}</file>

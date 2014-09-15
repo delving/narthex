@@ -205,10 +205,12 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
 
   def sipZipFile(fileName: String) = new File(sipZip, fileName)
 
+  def sipZipFactsFile(fileName: String) = new File(sipZip, s"$fileName.facts")
+
   val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
 
   // todo: add hints, to get record count
-  def listSipZip: Seq[(File, Map[String, String])] = {
+  def listSipZip: Seq[(File, File, Map[String, String])] = {
     if (!sipZip.exists()) return Seq.empty
     val fileList = sipZip.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
     val ordered = fileList.sortBy {
@@ -229,7 +231,7 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
         val SipZipName(spec, year, month, day, hour, minute, uploadedBy) = file.getName
         val dateTime = new DateTime(year.toInt, month.toInt, day.toInt, hour.toInt, minute.toInt)
         val factsPlus = facts + ("uploadedBy" -> uploadedBy) + ("uploadedOn" -> FORMATTER.print(dateTime))
-        (file, factsPlus)
+        (file, factsFile, factsPlus)
     }
   }
 }
