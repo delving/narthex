@@ -4,6 +4,7 @@ import java.io.File
 
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
+import services.RecordHandling.TargetConcept
 
 class TestTermMatching extends FlatSpec with Matchers with TreeHandling with RecordHandling {
 
@@ -66,9 +67,9 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
         |</record>
       """.stripMargin.trim
 
-    val parser = new StoredRecordParser(filePrefix, mappings)
+    val parser = new StoredRecordEnricher(filePrefix, mappings)
     val record = parser.parse(storedString)
-    val recordText = record.text.toString().trim
+    val recordText = record(0).text.toString().trim
     recordText should be(expectedString)
   }
 }
