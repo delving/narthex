@@ -187,11 +187,13 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def queryRecords(fileName: String) = Secure(parse.json) {
     token => implicit request => {
-      println("query records arrival")
       val path = (request.body \ "path").as[String]
       val value = (request.body \ "value").as[String]
       val datasetRepo = repo.datasetRepo(fileName)
-      val result: String = datasetRepo.recordRepo.recordsWithValue(path, value)
+      val recordsString = datasetRepo.recordRepo.recordsWithValue(path, value)
+      val enrichedRecords = datasetRepo.enrichRecords(recordsString)
+      val result = enrichedRecords.map(rec => rec.text).mkString("\n")
+      Logger.info(s"Records: $result")
       Ok(result)
     }
   }

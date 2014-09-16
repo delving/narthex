@@ -92,7 +92,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
           | ${namespaceDeclarations(datasetInfo)}
           | let $$recordsWithValue := collection('$recordDb')[/narthex$queryPath/$field=${quote(value)}]
           | let $$selected := subsequence($$recordsWithValue, $start, $max)
-          | return <records>{ for $$rec in $$selected return $$rec/narthex/* }</records>
+          | return <records>{ for $$rec in $$selected return $$rec/* }</records>
           |
           """.stripMargin.trim
         println("asking:\n" + queryForRecords)
