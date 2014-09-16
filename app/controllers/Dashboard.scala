@@ -193,7 +193,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val recordsString = datasetRepo.recordRepo.recordsWithValue(path, value)
       val enrichedRecords = datasetRepo.enrichRecords(recordsString)
       val result = enrichedRecords.map(rec => rec.text).mkString("\n")
-      Logger.info(s"Records: $result")
       Ok(result)
     }
   }

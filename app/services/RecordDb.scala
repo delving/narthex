@@ -97,7 +97,6 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
           """.stripMargin.trim
         println("asking:\n" + queryForRecords)
         session.query(queryForRecords).execute()
-      // todo: ENRICH!
     }
   }
 
