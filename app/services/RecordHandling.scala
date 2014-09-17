@@ -250,7 +250,12 @@ trait RecordHandling extends BaseXTools {
 
       def pushText(text: String) = if (stack.nonEmpty) stack.head.text.append(text)
       def indent = "  " * (stack.size - 1)
-      def value(unencoded: String) = URLEncoder.encode(unencoded, "utf-8").replaceAll("[+]", "%20")
+      def value(unencoded: String) = {
+        URLEncoder.encode(unencoded, "utf-8")
+          .replaceAll("[+]", "%20")
+          .replaceAll("[%]28", "(")
+          .replaceAll("[%]29", ")")
+      }
 
       while (events.hasNext) events.next() match {
 
@@ -292,6 +297,7 @@ trait RecordHandling extends BaseXTools {
             val text = frame.text.toString().trim
             if (text.nonEmpty) {
               val path = s"$pathPrefix${frame.path}/${value(text)}"
+              Logger.info(s"searching for $path")
               val mapping = mappings.get(path)
               val startString = mapping match {
                 case Some(TargetConcept(uri, vocabulary, prefLabel)) =>
