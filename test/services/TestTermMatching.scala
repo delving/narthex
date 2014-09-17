@@ -45,7 +45,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
 
     val storedString =
       """
-        |<narthex id="666" xmlns:very="http://veryother.org/#">
+        |<narthex id="666" mod="2014-09-14T10:11:38.398+02:00" xmlns:very="http://veryother.org/#">
         |  <record>
         |    <inner>
         |      <content.subject>Glas in loodraam</content.subject>
@@ -72,4 +72,26 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
     val recordText = record(0).text.toString().trim
     recordText should be(expectedString)
   }
+
+//  "A Source" should "be readable" in {
+//    val example = getClass.getResource("/skos-example.xml")
+//    val source = Source.fromInputStream(example.openStream())
+//    val conceptScheme = SkosVocabulary(source)
+//
+//    def searchConceptScheme(sought: String) = conceptScheme.search("dut", sought, 3)
+//
+//    val searches: List[LabelSearch] = List(
+//      "Europese wetgeving",
+//      "bezoeken",
+//      //      "bezoiken",
+//      //      "geografische bevoegdheid",
+//      //      "herwoorderingspolitiek",
+//      "wetgevingen"
+//    ).map(searchConceptScheme)
+//
+//    //    searches.foreach(s => println(Json.prettyPrint(Json.obj("search" -> s))))
+//
+//    //    stack.pop() should be(1)
+//  }
+
 }

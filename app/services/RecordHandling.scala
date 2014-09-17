@@ -262,7 +262,9 @@ trait RecordHandling extends BaseXTools {
         case EvElemStart(pre, label, attrs, scope) =>
           val tag = FileHandling.tag(pre, label)
           if (tag == "narthex") {
-            record = Some(Record(attrs.get("id").head.text, fromXSDDateTime(attrs.get("mod").head.text), scope))
+            val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException("Narthex element missing id"))
+            val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException("Narthex element missing mod"))
+            record = Some(Record(id, fromXSDDateTime(mod), scope))
           }
           else record match {
             case Some(r) =>
