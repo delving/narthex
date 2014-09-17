@@ -297,7 +297,6 @@ trait RecordHandling extends BaseXTools {
             val text = frame.text.toString().trim
             if (text.nonEmpty) {
               val path = s"$pathPrefix${frame.path}/${value(text)}"
-              Logger.info(s"searching for $path")
               val mapping = mappings.get(path)
               val startString = mapping match {
                 case Some(TargetConcept(uri, vocabulary, prefLabel)) =>
