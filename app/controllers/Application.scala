@@ -31,10 +31,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object Application extends Controller with Security {
 
+  def root = Action {
+    request =>
+      Redirect("/narthex/")
+  }
+
   def index = Action {
-    val services: CommonsServices = CommonsServices.services
-    val orgName = services.getName(ORG_ID, "en").getOrElse(ORG_ID)
-    Ok(views.html.index(ORG_ID, orgName))
+    request =>
+      val services: CommonsServices = CommonsServices.services
+      val orgName = services.getName(ORG_ID, "en").getOrElse(ORG_ID)
+      Ok(views.html.index(ORG_ID, orgName))
   }
 
   def login = Action(parse.json) {

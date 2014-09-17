@@ -31,13 +31,13 @@ define(
                 function ($routeProvider, userResolve) {
                     $routeProvider.when(
                         "/dashboard", {
-                            templateUrl: "/assets/templates/dashboard.html",
+                            templateUrl: "/narthex/assets/templates/dashboard.html",
                             controller: controllers.DashboardCtrl,
                             resolve: userResolve
                         }
                     ).when(
                         "/dataset/:fileName", {
-                            templateUrl: "/assets/templates/dataset.html",
+                            templateUrl: "/narthex/assets/templates/dataset.html",
                             controller: controllers.FileDetailCtrl,
                             resolve: userResolve,
                             reloadOnSearch: false

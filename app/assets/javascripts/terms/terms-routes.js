@@ -32,7 +32,7 @@ define(
                 $routeProvider.when(
                     "/terms/:fileName",
                     {
-                        templateUrl: "/assets/templates/terms.html",
+                        templateUrl: "/narthex/assets/templates/terms.html",
                         controller: controllers.TermsCtrl,
                         resolve: userResolve,
                         reloadOnSearch: false

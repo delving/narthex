@@ -36,7 +36,7 @@
             }
         },
         paths: {
-            "jsRoutes": "/jsroutes"
+            "jsRoutes": "/narthex/jsroutes"
         }
     });
 

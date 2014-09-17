@@ -31,12 +31,12 @@ define(
                 .when(
                 "/",
                 {
-                    templateUrl: "/assets/templates/home.html",
+                    templateUrl: "/narthex/assets/templates/home.html",
                     controller: controllers.HomeCtrl
                 }
             ).otherwise(
                 {
-                    templateUrl: "/assets/templates/notFound.html"
+                    templateUrl: "/narthex/assets/templates/notFound.html"
                 }
             );
         }]);
