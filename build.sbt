@@ -20,8 +20,6 @@ name := """narthex"""
 
 version := "0.8.1"
 
-val repo = "http//82.94.206.176:8081"
-
 libraryDependencies ++= Seq(
   "org.webjars" % "webjars-locator" % "0.14",
   "org.webjars" %% "webjars-play" % "2.2.1-2",
@@ -53,7 +51,7 @@ playScalaSettings
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 
-resolvers += "Delving Artifactory" at s"$repo/artifactory"
+resolvers += "Delving" at "http://artifactory.delving.org/artifactory/delving"
 
 // This tells Play to optimize this file and its dependencies
 requireJs += "main.js"
@@ -69,16 +67,12 @@ resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"
 
 publishMavenStyle := true
 
+publishArtifact in (Compile, packageBin) := false
+
 publishArtifact in (Compile, packageDoc) := false
 
 publishArtifact in (Compile, packageSrc) := false
 
-//publishTo := {
-//  val nexus = "http://nexus.delving.org/nexus/content/repositories/"
-//  if (isSnapshot.value)
-//    Some("snapshots" at nexus + "snapshots")
-//  else
-//    Some("releases"  at nexus + "releases")
-//}
-//
-//credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+publishTo := Some("Delving" at "http://artifactory.delving.org/artifactory/delving")
+
+credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
