@@ -18,7 +18,7 @@ import play.Project._
 
 name := """narthex"""
 
-version := "0.8.2"
+version := "0.8.3-SNAPSHOT"
 
 libraryDependencies ++= Seq(
   "org.webjars" % "webjars-locator" % "0.14",
@@ -33,17 +33,12 @@ libraryDependencies ++= Seq(
   "org.webjars" % "angular-file-upload" % "1.6.5",
   "org.webjars" % "angular-ui-bootstrap" % "0.11.0-2",
   "org.webjars" % "ngStorage" % "0.3.0",
-//  "org.mindrot" % "jbcrypt" % "0.3m",
-//  "org.webjars" % "angular-pusher" % "0.0.8",
   "org.scalatest" % "scalatest_2.10" % "2.2.0",
   "org.scalautils" % "scalautils_2.10" % "2.1.3",
   "com.typesafe.akka" % "akka-testkit_2.10" % "2.2.0" % "test",
   "commons-io" % "commons-io" % "2.4",
   "org.basex" % "basex" % "7.9",
-//  "org.webjars" % "cryptojs" % "3.1.2",
-//  "org.reactivemongo" %% "reactivemongo" % "0.10.0",
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
-//  "com.clever-age" % "play2-elasticsearch" % "1.1.0",
   cache
 )
 
@@ -51,17 +46,15 @@ playScalaSettings
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 
-resolvers += "Delving" at "http://artifactory.delving.org/artifactory/delving"
+//resolvers += "Delving" at "http://artifactory.delving.org/artifactory/delving"
 
-// This tells Play to optimize this file and its dependencies
-requireJs += "main.js"
+resolvers += "Release" at "http://artifactory.delving.org/artifactory/libs-release"
 
-// The main config file
-// See http://requirejs.org/docs/optimization.html#mainConfigFile
-requireJsShim := "build.js"
+resolvers += "Snapshot" at "http://artifactory.delving.org/artifactory/libs-snapshot"
 
-// To completely override the optimization process, use this config option:
-//requireNativePath := Some("node r.js -o name=main out=javascript-min/main.min.js")
+requireJs += "main.js" // optimize this file and its dependencies
+
+requireJsShim := "build.js" // http://requirejs.org/docs/optimization.html#mainConfigFile
 
 resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"))(Resolver.ivyStylePatterns)
 
