@@ -37,6 +37,8 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
       Logger.info(s"Saving $datasetRepo")
       datasetRepo.recordRepo.createDb
+      var tick = 0
+      var time = System.currentTimeMillis()
       datasetRepo.recordRepo.db {
         session =>
           parser = new RawRecordParser(recordRoot, uniqueId)
@@ -49,6 +51,12 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
           }))
           def sendProgress(percent: Int) = progress ! SaveProgress(percent)
           def receiveRecord(record: String) = {
+            tick += 1
+            if (tick % 100000 == 0) {
+              val now = System.currentTimeMillis()
+              Logger.info(s"$datasetRepo $tick: ${now - time}ms")
+              time = now
+            }
             session.add(hashRecordFileName(collection, record), bytesOf(record))
           }
           try {
@@ -57,13 +65,14 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
           }
           catch {
             case e:Exception =>
+              Logger.error("Problem saving", e)
               datasetRepo.datasetDb.setStatus(ERROR, error = e.toString)
               context.stop(self)
           }
           finally {
+            source.close()
             context.stop(progress)
           }
-          source.close()
       }
 
     case SaveComplete() =>
