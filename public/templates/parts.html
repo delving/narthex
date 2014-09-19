@@ -1,0 +1,69 @@
+<!--<script type="text/ng-template" id="sip-list.html">-->
+<!--</script>-->
+
+
+
+<script type="text/ng-template" id="percent-progress.html">
+    <progressbar class="progress-striped active" animate="true" value="file.info.status.percent" max="100"
+                 type="success">
+        {{file.info.status.percent}}%
+    </progressbar>
+</script>
+
+
+<script type="text/ng-template" id="dataset-extend-button.html">
+    <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo">
+        <span>{{ file.name }} ({{ file.info.delimit.recordCount }})</span>
+        <span class="fa" data-ng-class="{ 'fa-arrow-down':file.showExtendedInfo }"></span>
+    </a>
+</script>
+
+
+<script type="text/ng-template" id="dataset-extended.html">
+    <div class="file-extended-info clearfix">
+        <div class="btn-toolbar">
+            <a data-ng-click="viewFile(file)" class="btn btn-primary">
+                <i class="fa fa-eye"></i> View Schema
+            </a>
+            <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
+                <i class="fa fa-download"></i> Terminology Mappings
+            </a>
+            <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}"
+               target="_blank" class="btn btn-primary">
+                <i class="fa fa-download"></i> Raw Records
+            </a>
+            <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListEnrichedRecords}}"
+               target="_blank" class="btn btn-primary">
+                <i class="fa fa-download"></i> Enriched Records
+            </a>
+            <button class="btn btn-danger btn-isolate pull-right"
+                    data-ng-click="revertToState(file, 'state-empty', 'Empty the dataset?')">
+                <i class="fa fa-trash-o"></i>
+            </button>
+        </div>
+
+        <h4 class="heading">Record info</h4>
+        <ul class="list-unstyled">
+            <li><b>Record Root</b>:<code class="path">{{ file.info.delimit.recordRoot }}</code></li>
+            <li><b>Unique ID</b>: <code class="path">{{ file.info.delimit.uniqueId }}</code></li>
+        </ul>
+        <div class="" data-ng-show="file.info.namespaces">
+            <h4 class="heading">Namespace(s)</h4>
+            <ul class="list-unstyled">
+                <li data-ng-repeat="(prefix, uri) in file.info.namespaces">
+                    <b>{{ prefix }}</b> = "{{ uri }}"
+                </li>
+            </ul>
+        </div>
+        <div class="" data-ng-show="file.info.harvest.url">
+            <h4 class="heading">Harvest Information</h4>
+            <ul class="list-unstyled">
+                <li data-ng-repeat="(key, value) in file.info.harvest">
+                    <b>{{ key }}</b> = "{{ value }}"
+                </li>
+            </ul>
+        </div>
+
+    </div>
+</script>
+

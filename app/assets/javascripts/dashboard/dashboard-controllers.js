@@ -36,6 +36,7 @@ define(["angular"], function () {
         $scope.activeTab = $routeParams.tab || "files";
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
+        $scope.dropSupported = false;
 
         function setFileName() {
             $scope.harvest.fileName = $scope.harvest.name + "__" + $scope.harvest.prefix;
@@ -75,6 +76,10 @@ define(["angular"], function () {
             var now = new Date().getTime();
             return now - $scope.lastStatusCheck;
         }
+
+        $scope.setDropSupported = function() {
+            $scope.dropSupported = true;
+        };
 
         $scope.onFileSelect = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.

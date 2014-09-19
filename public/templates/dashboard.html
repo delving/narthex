@@ -1,91 +1,8 @@
-<div class="alert alert-dismissable alert-warning" ng-file-drop-available="dropSupported=true" ng-show="!dropSupported">
-    <button type="button" class="close" data-dismiss="alert">×</button>
-    <h4>Dang! HTML5 Drop File is not supported!</h4>
+<div ng-include="'/narthex/assets/templates/parts.html'"></div>
 
-    <p>Go get yourself an <a href="#" class="alert-link">HTML5 compliant browser</a>.</p>
-</div>
 
 <div class="row">
-    <div class="col-sm-4">
-
-        <div class="tabbable">
-
-            <ul class="nav nav-pills" role="tablist" ng-init="inputTab = 'drop'">
-                <li ng-class="{'active':inputTab === 'drop'}">
-                    <a href role="tab" data-ng-click="inputTab = 'drop'">Drag and Drop Files</a>
-                </li>
-                <li ng-class="{'active':inputTab === 'harvest'}">
-                    <a href role="tab" data-ng-click="inputTab = 'harvest'">Harvest from Server</a>
-                </li>
-            </ul>
-            <!-- Tab panes -->
-            <div class="tab-content">
-                <div ng-switch="inputTab">
-                    <div ng-switch-when="drop">
-                        <div class="file-drop well" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over"
-                             ng-show="dropSupported">
-                            <h6>Drag and drop your xml source file into this area</h6>
-
-                            <div class="img-holder" data-ng-show="uploading">
-                                <img ng-src="/narthex/assets/images/narthex-blue.png"/>
-                                <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
-                                <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
-                                <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
-                            </div>
-                            <div class="img-holder" data-ng-show="!uploading">
-                                <img ng-src="/narthex/assets/images/narthex-blue.png"/>
-                            </div>
-                            <div data-ng-if="percent">
-                                <progressbar class="progress-striped active" animate="true" value="percent" max="100" type="success">
-                                    <b>{{percent}}%</b>
-                                </progressbar>
-                            </div>
-                        </div>
-                    </div>
-                    <div ng-switch-when="harvest">
-                        <h3>Server Information</h3>
-                        <form name="form" class="form well">
-                            <fieldset>
-                                <div class="form-group">
-                                    <label for="pmh_name">Harvest Server Type</label>
-                                    <div id="harvest_type" class="form-control">
-                                        <input type="radio" ng-model="harvest.harvestType" value="pmh"> <span>OAI-PMH</span>
-                                        <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                                        <input type="radio" ng-model="harvest.harvestType" value="adlib"> <span>AdLib</span>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="pmh_name">New Dataset Name</label>
-                                    <input id="pmh_name" class="form-control" data-ng-model="harvest.name" placeholder="name" required autofocus/>
-                                </div>
-                                <div class="form-group">
-                                    <label for="pmh_prefix">Metadata Prefix</label>
-                                    <input id="pmh_prefix" class="form-control" data-ng-model="harvest.prefix" placeholder="prefix" required/>
-                                </div>
-                                <div class="form-group">
-                                    <label for="pmh_url">Server URL</label>
-                                    <input id="pmh_url" class="form-control" data-ng-model="harvest.url" placeholder="http://..." required/>
-                                </div>
-                                <div class="form-group">
-                                    <label for="pmh_set">Server Dataset</label>
-                                    <input id="pmh_set" class="form-control" data-ng-model="harvest.dataset" placeholder="dataset"/>
-                                </div>
-                                <button typ="button" class="pull-right btn btn-success btn-xs" data-ng-click="startHarvest()">
-                                    <i class="fa fa-refresh"></i> <span>Harvest</span>
-                                    <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH</span>
-                                    <span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>
-                                    <span>to "{{ harvest.fileName }}"</span>
-                                </button>
-                            </fieldset>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-    <div class="col-sm-8">
-
+    <div class="col-sm-12">
         <div class="tabbable">
             <!-- Nav tabs -->
             <ul class="nav nav-pills" role="tablist">
@@ -100,188 +17,232 @@
             <div class="tab-content">
                 <div ng-switch="activeTab">
                     <div ng-switch-when="files" class="file-list">
-                        <ul class="list-group">
-                            <li ng-repeat="file in files" class="list-group-item clearfix"
-                                data-ng-show="file.info.status">
-                                <div ng-switch="file.info.status.state">
-
-                                    <div ng-switch-when="state-empty">
-                                        {{ file.name }} <span class="label label-info">Empty</span>
-                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
-                                                data-ng-click="revertToState(file, 'state-deleted', 'Delete dataset?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
-                                        </button>
-                                    </div>
-
-                                    <div ng-switch-when="state-harvesting">
-                                        {{ file.name }} <span class="label label-warning">Harvesting</span>
-                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
-                                                data-ng-click="revertToState(file, 'state-empty')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
-                                        </button>
-                                        <div data-ng-include="'percent-progress.html'">%</div>
-                                    </div>
-
-                                    <div ng-switch-when="state-ready">
-                                        {{ file.name }} <span class="label label-success" data-ng-click="startAnalysis(file)">Ready: Split and Analyze</span>
-                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
-                                                data-ng-click="revertToState(file, 'state-empty')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
-                                        </button>
-                                    </div>
-
-                                    <div ng-switch-when="state-splitting">
-                                        {{ file.name }} <span class="label label-warning">Splitting</span>
-                                        <div data-ng-include="'percent-progress.html'">%</div>
-                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
-                                                data-ng-click="revertToState(file, 'state-ready')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
-                                        </button>
-                                    </div>
-
-                                    <div ng-switch-when="state-analyzing">
-                                        <p>{{ file.name }} <span class="label label-success">Analyzing</span></p>
-                                        <code class="process">({{file.info.status.workers}} workers)</code>
-                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
-                                                data-ng-click="revertToState(file, 'state-ready')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
-                                        </button>
-                                    </div>
-
-                                    <div ng-switch-when="state-analyzed">
-                                        <span>
-                                            <i class="fa fa-folder-open"></i>
-                                            <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
-                                        </span>
-                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
-                                                data-ng-click="revertToState(file, 'state-ready', 'Remove the analysis?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
-                                        </button>
-                                        <button typ="button" class="btn btn-success btn-xs"
-                                                data-ng-click="saveRecords(file)" data-ng-show="file.info.delimit.recordCount > 0">
-                                            <i class="fa fa-database"></i> Save Records
-                                        </button>
-                                    </div>
-
-                                    <div ng-switch-when="state-saving">
-                                        <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span
-                                            class="label label-info">Saving...</span>
-                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
-                                                data-ng-click="revertToState(file, 'state-analyzed')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
-                                        </button>
-                                        <div data-ng-include="'percent-progress.html'">%</div>
-                                    </div>
-
-                                    <div ng-switch-when="state-saved">
-                                        <i class="fa fa-database fa-fw"></i>
-                                        <span data-ng-include="'dataset-extend-button.html'">button</span>
-                                        <button type="button" class="btn btn-xs pull-right btn-warning" data-ng-click="togglePublished(file)">
-                                              <span>Publish</span>
-                                        </button>
-                                        <div data-ng-include="'dataset-extended.html'" data-ng-show="file.showExtendedInfo">-extended-</div>
-                                    </div>
-
-                                    <div ng-switch-when="state-published">
-                                        <i class="fa fa-database fa-fw"></i>
-                                        <span data-ng-include="'dataset-extend-button.html'">button</span>
-                                        <button type="button" class="btn btn-xs pull-right btn-success" data-ng-click="togglePublished(file)">
-                                              <span>Published</span>
-                                        </button>
-                                        <div data-ng-include="'dataset-extended.html'" data-ng-show="file.showExtendedInfo">-extended-</div>
-                                    </div>
-
-                                    <div ng-switch-when="state-error">
-                                        {{ file.name }} <span class="label label-danger">Error!</span>
-                                        <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
-                                                data-ng-click="revertToState(file, 'state-empty', 'Start again?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
-                                        </button>
-                                        <div>
-                                            Error Message: {{ file.info.status.error }}
-                                        </div>
-                                    </div>
-
-                                    <span ng-switch-default>{{ file.name }}:UNKNOWN STATE {{ file.info.status }}!</span>
-                                </div>
-                            </li>
-                        </ul>
+                        <div data-ng-include="'file-list.html'">file list</div>
+                        <center>
+                            <div data-ng-include="'new-file.html'">new file</div>
+                        </center>
                     </div>
-                    <div ng-switch-when="sips" class="file-list">
-                        <ul class="list-group">
-                            <li class="list-group-item" data-ng-repeat="file in sipFiles">
-                                <i class="fa fa-cube"></i>
-                                <span data-ng-show="file.details">
-                                    <b>{{ file.details.spec }}</b>
-                                    <button type="button" class="btn btn-danger btn-xs" data-ng-show="file.expendable"
-                                        data-ng-click="deleteSipZip(file)"><i class="fa fa-trash-o"></i>
-                                    </button>
-                                    <span class="pull-right">
-                                        <i class="fa fa-male"></i>
-                                        <b>{{ file.details.uploadedBy }}</b>
-                                        <i class="fa fa-clock-o"></i>
-                                        {{ file.details.date | date:"yyyy-MM-dd HH:mm:ss" }}
-                                    </span>
-                                </span>
-                                <span data-ng-show="!file.details">
-                                  <b>{{ file.fileName }}</b>
-                                </span>
-                            </li>
-                        </ul>
+                    <div ng-switch-when="sips">
+                        <div data-ng-include="'sip-list.html'">
+                            <!--todo: why can sip-list.html not be moved to parts.html, like the others?-->
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <script type="text/ng-template" id="percent-progress.html">
-        <progressbar class="progress-striped active" animate="true" value="file.info.status.percent" max="100" type="success">
-            {{file.info.status.percent}}%
-        </progressbar>
-    </script>
-    <script type="text/ng-template" id="dataset-extend-button.html">
-        <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo">
-            <span>{{ file.name }} ({{ file.info.delimit.recordCount }})</span>
-            <span class="fa" data-ng-class="{ 'fa-arrow-down':file.showExtendedInfo }" ></span>
-        </a>
-    </script>
-    <script type="text/ng-template" id="dataset-extended.html">
-        <div class="file-extended-info clearfix">
-            <div class="btn-toolbar">
-                <a data-ng-click="viewFile(file)" class="btn btn-primary">
-                    <i class="fa fa-eye"></i> View Schema
-                </a>
-                <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
-                    <i class="fa fa-download"></i> Terminology Mappings
-                </a>
-                <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}"
-                   target="_blank" class="btn btn-primary">
-                    <i class="fa fa-download"></i> Raw Records
-                </a>
-                <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListEnrichedRecords}}"
-                   target="_blank" class="btn btn-primary">
-                    <i class="fa fa-download"></i> Enriched Records
-                </a>
-                <button class="btn btn-danger btn-isolate pull-right"
-                        data-ng-click="revertToState(file, 'state-empty', 'Empty the dataset?')">
-                    <i class="fa fa-trash-o"></i>
-                </button>
-            </div>
-
-            <h4 class="heading">Record info</h4>
-            <ul class="list-unstyled">
-                <li><b>Record Root</b>:<code class="path">{{ file.info.delimit.recordRoot }}</code></li>
-                <li><b>Unique ID</b>: <code class="path">{{ file.info.delimit.uniqueId }}</code></li>
-            </ul>
-            <div class="" data-ng-show="file.info.namespaces">
-                <h4 class="heading">Namespace(s)</h4>
-                <ul class="list-unstyled">
-                    <li data-ng-repeat="(prefix, uri) in file.info.namespaces">
-                        <b>{{ prefix }}</b> = "{{ uri }}"
-                    </li>
-                </ul>
-            </div>
-            <div class="" data-ng-show="file.info.harvest.url">
-                <h4 class="heading">Harvest Information</h4>
-                <ul class="list-unstyled">
-                    <li data-ng-repeat="(key, value) in file.info.harvest">
-                        <b>{{ key }}</b> = "{{ value }}"
-                    </li>
-                </ul>
-            </div>
-
-        </div>
-    </script>
 </div>
+
+<script type="text/ng-template" id="new-file.html">
+    <div data-ng-show="!newFileOpen">
+        <button type="button" class="btn btn-xs btn-success" data-ng-click="newFileOpen = true">
+            <span>New File</span>
+        </button>
+    </div>
+    <div data-ng-show="newFileOpen">
+        <button type="button" class="btn btn-xs btn-success col-sm-12" data-ng-click="newFileOpen = false">
+            <span>New File</span>
+        </button>
+        <div class="col-sm-6">
+            <div data-ng-include="'drop-file.html'" ng-show="dropSupported">
+                <!--todo: why can drop-file.html not be moved to parts.html, like the others?-->
+            </div>
+        </div>
+        <div  class="col-sm-6">
+            <div data-ng-include="'harvest-form.html'">harvest form</div>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="drop-file.html">
+    <h3>Drag &amp; Drop</h3>
+    <div class="alert alert-warning" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
+        <h4>HTML5 Drop File is not supported!</h4>
+        <p>You need an <a href="#" class="alert-link">HTML5 compliant browser</a>.</p>
+    </div>
+    <div class="file-drop well" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over">
+        <h6>Drag and drop your xml source file into this area</h6>
+
+        <div class="img-holder" data-ng-show="uploading">
+            <img src="/narthex/assets/images/narthex-blue.png"/>
+            <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
+            <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
+            <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
+        </div>
+        <div class="img-holder" data-ng-show="!uploading">
+            <img src="/narthex/assets/images/narthex-blue.png"/>
+        </div>
+        <div data-ng-if="percent">
+            <progressbar class="progress-striped active" animate="true" value="percent" max="100" type="success">
+                <b>{{percent}}%</b>
+            </progressbar>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="harvest-form.html">
+    <h3>Harvest from Server</h3>
+    <form name="form" class="form well">
+        <fieldset>
+            <div class="form-group">
+                <label for="pmh_name">Harvest Server Type</label>
+
+                <div id="harvest_type" class="form-control">
+                    <input type="radio" ng-model="harvest.harvestType" value="pmh"> <span>OAI-PMH</span>
+                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    <input type="radio" ng-model="harvest.harvestType" value="adlib"> <span>AdLib API</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="pmh_name">New Dataset Name</label>
+                <input id="pmh_name" class="form-control" data-ng-model="harvest.name" placeholder="name" required
+                       autofocus/>
+            </div>
+            <div class="form-group">
+                <label for="pmh_prefix">Metadata Prefix</label>
+                <input id="pmh_prefix" class="form-control" data-ng-model="harvest.prefix" placeholder="prefix"
+                       required/>
+            </div>
+            <div class="form-group">
+                <label for="pmh_url">Server URL</label>
+                <input id="pmh_url" class="form-control" data-ng-model="harvest.url" placeholder="http://..." required/>
+            </div>
+            <div class="form-group">
+                <label for="pmh_set">Server Dataset</label>
+                <input id="pmh_set" class="form-control" data-ng-model="harvest.dataset" placeholder="dataset"/>
+            </div>
+            <button typ="button" class="pull-right btn btn-success btn-xs" data-ng-click="startHarvest()">
+                <i class="fa fa-refresh"></i> <span>Harvest</span>
+                <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH</span>
+                <span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>
+                <span>to "{{ harvest.fileName }}"</span>
+            </button>
+        </fieldset>
+    </form>
+</script>
+
+
+<script type="text/ng-template" id="sip-list.html">
+    <ul class="list-group file-list">
+        <li class="list-group-item" data-ng-repeat="file in sipFiles">
+            <i class="fa fa-cube"></i>
+            <span data-ng-show="file.details">
+                <b>{{ file.details.spec }}</b>
+                <button type="button" class="btn btn-danger btn-xs" data-ng-show="file.expendable"
+                        data-ng-click="deleteSipZip(file)"><i class="fa fa-trash-o"></i>
+                </button>
+                <span class="pull-right">
+                    <i class="fa fa-male"></i>
+                    <b>{{ file.details.uploadedBy }}</b>
+                    <i class="fa fa-clock-o"></i>
+                    {{ file.details.date | date:"yyyy-MM-dd HH:mm:ss" }}
+                </span>
+            </span>
+            <span data-ng-show="!file.details">
+              <b>{{ file.fileName }}</b>
+            </span>
+        </li>
+    </ul>
+</script>
+
+<script type="text/ng-template" id="file-list.html">
+    <ul class="list-group">
+        <li ng-repeat="file in files" class="list-group-item clearfix"
+            data-ng-show="file.info.status">
+            <div ng-switch="file.info.status.state">
+
+                <div ng-switch-when="state-empty">
+                    {{ file.name }} <span class="label label-info">Empty</span>
+                    <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
+                            data-ng-click="revertToState(file, 'state-deleted', 'Delete dataset?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                    </button>
+                </div>
+
+                <div ng-switch-when="state-harvesting">
+                    {{ file.name }} <span class="label label-warning">Harvesting</span>
+                    <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
+                            data-ng-click="revertToState(file, 'state-empty')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                    </button>
+                    <div data-ng-include="'percent-progress.html'">%</div>
+                </div>
+
+                <div ng-switch-when="state-ready">
+                    {{ file.name }} <span class="label label-success" data-ng-click="startAnalysis(file)">Ready: Split and Analyze</span>
+                    <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
+                            data-ng-click="revertToState(file, 'state-empty')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                    </button>
+                </div>
+
+                <div ng-switch-when="state-splitting">
+                    {{ file.name }} <span class="label label-warning">Splitting</span>
+                    <div data-ng-include="'percent-progress.html'">%</div>
+                    <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
+                            data-ng-click="revertToState(file, 'state-ready')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                    </button>
+                </div>
+
+                <div ng-switch-when="state-analyzing">
+                    <p>{{ file.name }} <span class="label label-success">Analyzing</span></p>
+                    <code class="process">({{file.info.status.workers}} workers)</code>
+                    <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
+                            data-ng-click="revertToState(file, 'state-ready')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                    </button>
+                </div>
+
+                <div ng-switch-when="state-analyzed">
+                    <span>
+                        <i class="fa fa-folder-open"></i>
+                        <a href data-ng-click="viewFile(file)">{{ file.name }}</a>
+                    </span>
+                    <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
+                            data-ng-click="revertToState(file, 'state-ready', 'Remove the analysis?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                    </button>
+                    <button typ="button" class="btn btn-success btn-xs"
+                            data-ng-click="saveRecords(file)" data-ng-show="file.info.delimit.recordCount > 0">
+                        <i class="fa fa-database"></i> Save Records
+                    </button>
+                </div>
+
+                <div ng-switch-when="state-saving">
+                    <a href data-ng-click="viewFile(file)">{{ file.name }}</a> <span
+                        class="label label-info">Saving...</span>
+                    <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate" data-ng-show="file.staleStatus"
+                            data-ng-click="revertToState(file, 'state-analyzed')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                    </button>
+                    <div data-ng-include="'percent-progress.html'">%</div>
+                </div>
+
+                <div ng-switch-when="state-saved">
+                    <i class="fa fa-database fa-fw"></i>
+                    <span data-ng-include="'dataset-extend-button.html'">button</span>
+                    <button type="button" class="btn btn-xs pull-right btn-warning" data-ng-click="togglePublished(file)">
+                        <span>Publish</span>
+                    </button>
+                    <div data-ng-include="'dataset-extended.html'" data-ng-show="file.showExtendedInfo">-extended-</div>
+                </div>
+
+                <div ng-switch-when="state-published">
+                    <i class="fa fa-database fa-fw"></i>
+                    <span data-ng-include="'dataset-extend-button.html'">button</span>
+                    <button type="button" class="btn btn-xs pull-right btn-success" data-ng-click="togglePublished(file)">
+                        <span>Published</span>
+                    </button>
+                    <div data-ng-include="'dataset-extended.html'" data-ng-show="file.showExtendedInfo">-extended-</div>
+                </div>
+
+                <div ng-switch-when="state-error">
+                    {{ file.name }} <span class="label label-danger">Error!</span>
+                    <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
+                            data-ng-click="revertToState(file, 'state-empty', 'Start again?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                    </button>
+                    <div>
+                        Error Message: {{ file.info.status.error }}
+                    </div>
+                </div>
+
+                <span ng-switch-default>{{ file.name }}:UNKNOWN STATE {{ file.info.status }}!</span>
+            </div>
+        </li>
+    </ul>
+</script>
 
