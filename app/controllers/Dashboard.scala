@@ -120,10 +120,27 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def revertToState(fileName: String, state:String) = Secure() {
     token => implicit request => {
-      val datasetRepo = repo.datasetRepo(fileName)
       fromString(state) match {
         case Some(datasetState) =>
-          if (datasetRepo.revertToState(datasetState)) Ok else NotAcceptable(Json.obj("problem" -> s"Cannot revert to $datasetState"))
+          if (datasetState == DatasetState.EMPTY) {
+            repo.datasetRepoOption(fileName) map {
+              datasetRepo =>
+                if (datasetRepo.revertToState(datasetState))
+                  Ok
+                else
+                  NotAcceptable(Json.obj("problem" -> "Cannot revert to empty"))
+            } getOrElse {
+              repo.datasetRepo(fileName).datasetDb.createDataset(datasetState)
+              Ok
+            }
+          }
+          else {
+            val datasetRepo = repo.datasetRepo(fileName)
+            if (datasetRepo.revertToState(datasetState))
+              Ok
+            else
+              NotAcceptable(Json.obj("problem" -> s"Cannot revert to nonempty state $datasetState"))
+          }
 
         case None =>
           NotAcceptable(Json.obj("problem" -> s"Cannot find state $state"))

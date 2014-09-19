@@ -53,8 +53,19 @@ define(["angular"], function () {
         $scope.$watch("dataset.name", setFileName);
         $scope.$watch("dataset.prefix", setFileName);
 
+        $scope.setNewFileOpen = function(value) {
+            $scope.newFileOpen = value;
+        };
+
         $scope.createDataset = function () {
-            alert("not implemented " + $scope.dataset);
+            if ($scope.dataset.validFileName) {
+                // empty state means create a dataset if it's not there
+                dashboardService.revertToState($scope.dataset.fileName, 'state-empty').then(function () {
+                    $scope.setNewFileOpen(false);
+                    $scope.dataset.name = $scope.dataset.prefix = "";
+                    fetchDatasetList();
+                });
+            }
         };
 
         $scope.harvest = {

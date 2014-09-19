@@ -1,4 +1,3 @@
-<div ng-include="'/narthex/assets/templates/parts.html'"></div>
 
 <div class="row">
     <div class="col-sm-12">
@@ -17,19 +16,23 @@
                 <div ng-switch="activeTab">
                     <div ng-switch-when="files" class="file-list">
                         <div data-ng-include="'file-list.html'">file list</div>
-                        <center>
+                        <div class="col-sm-offset-4">
                             <div data-ng-show="!newFileOpen">
-                                <button type="button" class="btn btn-xs btn-success" data-ng-click="newFileOpen = true">
-                                    <span>New File</span>
-                                </button>
+                                <div class="col-sm-8">
+                                    <span type="button" class="btn btn-xs btn-success" data-ng-click="setNewFileOpen(true)">
+                                        <span>Create a new file</span>
+                                    </span>
+                                </div>
                             </div>
                             <div data-ng-show="newFileOpen">
-                                <button type="button" class="btn btn-xs btn-success col-sm-12" data-ng-click="newFileOpen = false">
-                                    <span>New File</span>
-                                </button>
-                                <div data-ng-include="'new-file.html'">new file</div>
+                                <div class="col-sm-8">
+                                    <span type="button" class="fa-2x btn btn-default" data-ng-click="setNewFileOpen(false)" style="width:100%; text-align: left">
+                                        New File:
+                                    </span>
+                                    <div data-ng-include="'new-file.html'">new file</div>
+                                </div>
                             </div>
-                        </center>
+                        </div>
                     </div>
                     <div ng-switch-when="sips">
                         <div data-ng-include="'sip-list.html'">
@@ -47,7 +50,7 @@
 </div>
 
 <script type="text/ng-template" id="new-file.html">
-    <div  class="col-sm-6">
+    <div>
         <form name="form" class="form well">
             <fieldset>
                 <div class="form-group">
@@ -69,11 +72,6 @@
                 </div>
             </fieldset>
         </form>
-    </div>
-    <div class="col-sm-6">
-        <div data-ng-include="'drop-file.html'" ng-show="dropSupported">
-            <!--todo: why can drop-file.html not be moved to parts.html, like the others?-->
-        </div>
     </div>
 </script>
 
@@ -180,7 +178,7 @@
                 <div ng-switch-when="state-empty">
                     {{ file.name }} <span class="label label-info">Empty</span>
                     <button type="button" class="pull-right btn btn-danger btn-xs btn-isolate"
-                            data-ng-click="revertToState(file, 'state-deleted', 'Delete dataset?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
+                            data-ng-click="revertToState(file, 'state-deleted', 'Delete dataset ' + file.name + '?')">&nbsp;<i class="fa fa-trash-o"></i>&nbsp;
                     </button>
                 </div>
 
@@ -270,5 +268,69 @@
             </div>
         </li>
     </ul>
+</script>
+
+<script type="text/ng-template" id="percent-progress.html">
+    <progressbar class="progress-striped active" animate="true" value="file.info.status.percent" max="100"
+                 type="success">
+        {{file.info.status.percent}}%
+    </progressbar>
+</script>
+
+
+<script type="text/ng-template" id="dataset-extend-button.html">
+    <a href class="btn btn-inverse btn-xs" data-ng-click="file.showExtendedInfo = !file.showExtendedInfo">
+        <span>{{ file.name }} ({{ file.info.delimit.recordCount }})</span>
+        <span class="fa" data-ng-class="{ 'fa-arrow-down':file.showExtendedInfo }"></span>
+    </a>
+</script>
+
+
+<script type="text/ng-template" id="dataset-extended.html">
+    <div class="file-extended-info clearfix">
+        <div class="btn-toolbar">
+            <a data-ng-click="viewFile(file)" class="btn btn-primary">
+                <i class="fa fa-eye"></i> View Schema
+            </a>
+            <a ng-href="{{file.apiMappings}}" target="_blank" class="btn btn-primary">
+                <i class="fa fa-download"></i> Terminology Mappings
+            </a>
+            <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}"
+               target="_blank" class="btn btn-primary">
+                <i class="fa fa-download"></i> Raw Records
+            </a>
+            <a data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListEnrichedRecords}}"
+               target="_blank" class="btn btn-primary">
+                <i class="fa fa-download"></i> Enriched Records
+            </a>
+            <button class="btn btn-danger btn-isolate pull-right"
+                    data-ng-click="revertToState(file, 'state-empty', 'Empty the dataset?')">
+                <i class="fa fa-trash-o"></i>
+            </button>
+        </div>
+
+        <h4 class="heading">Record info</h4>
+        <ul class="list-unstyled">
+            <li><b>Record Root</b>:<code class="path">{{ file.info.delimit.recordRoot }}</code></li>
+            <li><b>Unique ID</b>: <code class="path">{{ file.info.delimit.uniqueId }}</code></li>
+        </ul>
+        <div class="" data-ng-show="file.info.namespaces">
+            <h4 class="heading">Namespace(s)</h4>
+            <ul class="list-unstyled">
+                <li data-ng-repeat="(prefix, uri) in file.info.namespaces">
+                    <b>{{ prefix }}</b> = "{{ uri }}"
+                </li>
+            </ul>
+        </div>
+        <div class="" data-ng-show="file.info.harvest.url">
+            <h4 class="heading">Harvest Information</h4>
+            <ul class="list-unstyled">
+                <li data-ng-repeat="(key, value) in file.info.harvest">
+                    <b>{{ key }}</b> = "{{ value }}"
+                </li>
+            </ul>
+        </div>
+
+    </div>
 </script>
 
