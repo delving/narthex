@@ -33,7 +33,8 @@ define(
                         "/dashboard", {
                             templateUrl: "/narthex/assets/templates/dashboard.html",
                             controller: controllers.DashboardCtrl,
-                            resolve: userResolve
+                            resolve: userResolve,
+                            reloadOnSearch: false
                         }
                     ).when(
                         "/dataset/:fileName", {

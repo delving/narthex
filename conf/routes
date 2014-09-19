@@ -18,11 +18,11 @@ POST        /narthex/login                                            controller
 GET         /narthex/logout                                           controllers.Application.logout
 
 # File Handling
-POST        /narthex/dashboard/upload                                 controllers.Dashboard.upload
-POST        /narthex/dashboard/harvest                                controllers.Dashboard.harvest
 GET         /narthex/dashboard/list                                   controllers.Dashboard.list
 GET         /narthex/dashboard/sip-list                               controllers.Dashboard.listSipFiles
 GET         /narthex/dashboard/delete-sip/:fileName                   controllers.Dashboard.deleteSipFile(fileName)
+POST        /narthex/dashboard/:fileName/upload                       controllers.Dashboard.upload(fileName)
+POST        /narthex/dashboard/:fileName/harvest                      controllers.Dashboard.harvest(fileName)
 GET         /narthex/dashboard/:fileName/analyze                      controllers.Dashboard.analyze(fileName)
 GET         /narthex/dashboard/:fileName/index                        controllers.Dashboard.index(fileName)
 GET         /narthex/dashboard/:fileName/dataset-info                 controllers.Dashboard.datasetInfo(fileName)

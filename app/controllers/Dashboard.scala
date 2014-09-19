@@ -31,11 +31,24 @@ import scala.xml.Elem
 
 object Dashboard extends Controller with Security with TreeHandling with SkosJson {
 
-  def upload = Secure(parse.multipartFormData) {
+  def list = Secure() {
+    token => implicit request => {
+      val datasets = repo.repoDb.listDatasets.map {
+        dataset =>
+          val lists = DATASET_PROPERTY_LISTS.map(name => name -> toJsObject(dataset.info, name))
+          Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
+      }
+      Ok(JsArray(datasets))
+    }
+  }
+
+  def upload(fileName: String) = Secure(parse.multipartFormData) {
     token => implicit request => {
       request.body.file("file") match {
         case Some(file) =>
-          Logger.info(s"upload ${file.filename} (${file.contentType})")
+          Logger.info(s"upload ${file.filename} (${file.contentType}) to $fileName")
+          Ok(file.filename)
+          /*
           if (RepoUtil.acceptableFile(file.filename, file.contentType)) {
             println(s"Acceptable ${file.filename}")
             val datasetRepo = repo.datasetRepo(file.filename)
@@ -47,18 +60,21 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
             println(s"NOT Acceptable ${file.filename}")
             NotAcceptable(Json.obj("problem" -> "File must be .xml or .xml.gz"))
           }
+          */
         case None =>
           NotAcceptable(Json.obj("problem" -> "Missing file"))
       }
     }
   }
 
-  def harvest = Secure(parse.json) {
+  def harvest(fileName: String) = Secure(parse.json) {
     token => implicit request => {
       def optional(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
       def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
       try {
-        val datasetRepo = repo.datasetRepo(required("fileName"))
+        val datasetRepo = repo.datasetRepo(fileName)
+        Logger.info(s"harvest ${required("url")} (${required("dataset")}) to $fileName")
+        /*
         required("harvestType") match {
           case "pmh" =>
             datasetRepo.startPmhHarvest(required("url"), optional("dataset"), required("prefix"))
@@ -67,22 +83,12 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
           case _ =>
             throw new IllegalArgumentException("Missing harvestType [pmh,adlib]")
         }
+        */
         Ok
       } catch {
         case e: IllegalArgumentException =>
           NotAcceptable(Json.obj("problem" -> e.getMessage))
       }
-    }
-  }
-
-  def list = Secure() {
-    token => implicit request => {
-      val datasets = repo.repoDb.listDatasets.map {
-        dataset =>
-          val lists = DATASET_PROPERTY_LISTS.map(name => name -> toJsObject(dataset.info, name))
-          Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
-      }
-      Ok(JsArray(datasets))
     }
   }
 

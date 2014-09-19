@@ -34,11 +34,17 @@ define(["angular"], function () {
         $scope.lastStatusCheck = 0;
         $scope.percent = null;
         $scope.activeTab = $routeParams.tab || "files";
+        $scope.fileOpen = $routeParams.open || "";
+
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
         $scope.dataset = { name: "", prefix: "", fileName: ""};
+
+        function setSearch() {
+            $location.search({ tab: $scope.activeTab, open: $scope.fileOpen });
+        }
 
         function setFileName() {
             var ds = $scope.dataset;
@@ -53,7 +59,21 @@ define(["angular"], function () {
         $scope.$watch("dataset.name", setFileName);
         $scope.$watch("dataset.prefix", setFileName);
 
-        $scope.setNewFileOpen = function(value) {
+        $scope.nonEmpty = function (obj) {
+            return !_.isEmpty(obj)
+        };
+
+        $scope.setFileOpen = function (file) {
+            if ($scope.fileOpen == file.name) {
+                $scope.fileOpen = "";
+            }
+            else {
+                $scope.fileOpen = file.name;
+            }
+            setSearch();
+        };
+
+        $scope.setNewFileOpen = function (value) {
             $scope.newFileOpen = value;
         };
 
@@ -101,60 +121,8 @@ define(["angular"], function () {
             return now - $scope.lastStatusCheck;
         }
 
-        $scope.getFullDatasetName = function () {
-            if (!$scope.dataset.name || !$scope.dataset.prefix) {
-                return "?"
-            }
-            var name = $scope.dataset.name.replace(/\W/, "_").replace(/__/, "_");
-            var prefix = $scope.dataset.prefix.toLowerCase();
-            return name + "__" + prefix
-        };
-
         $scope.setDropSupported = function () {
             $scope.dropSupported = true;
-        };
-
-        $scope.onFileSelect = function ($files) {
-            //$files: an array of files selected, each file has name, size, and type.  Take the first only.
-            if ($files.length && !$scope.uploading) {
-                var file = $files[0];
-                var part = file.name.match(/(.+)__(.+).xml.gz/);
-                if (!part) {
-                    alert("Sorry, the file must be named SPEC__PREFIX.xml.gz");
-                    return;
-                }
-                $scope.uploading = true;
-                $scope.upload = $upload.upload(
-                    {
-                        url: '/narthex/dashboard/upload', //upload.php script, node.js route, or servlet url
-                        // method: POST or PUT,
-                        // headers: {'header-key': 'header-value'},
-                        // withCredentials: true,
-                        data: {myObj: $scope.myModelObj},
-                        file: file
-                    }
-                ).progress(
-                    function (evt) {
-                        if ($scope.uploading) $scope.percent = parseInt(100.0 * evt.loaded / evt.total);
-                    }
-                ).success(
-                    function () {
-                        $scope.uploading = false;
-                        $scope.percent = null;
-                        fetchDatasetList();
-                    }
-                ).error(
-                    function (data, status, headers, config) {
-                        $scope.uploading = false;
-                        $scope.percent = null;
-                        console.log("Failure during upload: data", data);
-                        console.log("Failure during upload: status", status);
-                        console.log("Failure during upload: headers", headers);
-                        console.log("Failure during upload: config", config);
-                        alert(data.problem);
-                    }
-                );
-            }
         };
 
         function isActive(file) {
@@ -203,6 +171,43 @@ define(["angular"], function () {
             })
         }
 
+        function fileDropped(file, $files) {
+            //$files: an array of files selected, each file has name, size, and type.  Take the first only.
+            if ($files.length && !file.uploading) {
+                var onlyFile = $files[0];
+                var part = onlyFile.name.match(/(.+)__(.+).xml.gz/);
+                if (!part) {
+                    alert("Sorry, the file must be named SPEC__PREFIX.xml.gz");
+                    return;
+                }
+                file.uploading = true;
+                $upload.upload({
+                    url: '/narthex/dashboard/' + file.name + '/upload',
+                    file: onlyFile
+                }).progress(
+                    function (evt) {
+                        if (file.uploading) file.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
+                    }
+                ).success(
+                    function () {
+                        file.uploading = false;
+                        file.uploadPercent = null;
+                        fetchDatasetList();
+                    }
+                ).error(
+                    function (data, status, headers, config) {
+                        file.uploading = false;
+                        file.uploadPercent = null;
+                        console.log("Failure during upload: data", data);
+                        console.log("Failure during upload: status", status);
+                        console.log("Failure during upload: headers", headers);
+                        console.log("Failure during upload: config", config);
+                        alert(data.problem);
+                    }
+                );
+            }
+        };
+
         function fetchDatasetList() {
             dashboardService.list().then(function (data) {
                 _.forEach($scope.files, function (file) {
@@ -218,14 +223,18 @@ define(["angular"], function () {
                     file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
                     file.oaiPmhListRecords = oaiPmhListRecords(file.name, false);
                     file.oaiPmhListEnrichedRecords = oaiPmhListRecords(file.name, true);
+                    file.fileDropped = function ($files) {
+                        fileDropped(file, $files)
+                    };
                 })
             });
         }
 
-        $scope.startHarvest = function () {
-            dashboardService.harvest($scope.harvest).then(function () {
-                fetchDatasetList();
-            });
+        $scope.startHarvest = function () { //todo
+            alert("Currently disabled");
+//            dashboardService.harvest($scope.harvest).then(function () {
+//                fetchDatasetList();
+//            });
         };
 
         $scope.startAnalysis = function (file) {
@@ -245,7 +254,7 @@ define(["angular"], function () {
 
         $scope.setActiveTab = function (tab) {
             $scope.activeTab = tab;
-            $location.search({ tab: tab });
+            setSearch();
         };
 
         $scope.viewFile = function (file) {
