@@ -37,12 +37,25 @@ define(["angular"], function () {
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
         $scope.dropSupported = false;
+        $scope.newFileOpen = false;
+        $scope.dataset = { name: "", prefix: "", fileName: ""};
 
         function setFileName() {
-            $scope.harvest.fileName = $scope.harvest.name + "__" + $scope.harvest.prefix;
+            var ds = $scope.dataset;
+            if (!ds.name) ds.name = "";
+            if (!ds.prefix) ds.prefix = "";
+            var name = ds.name.replace(/\W+/g, "-").replace(/_/g, "");
+            var prefix = ds.prefix.toLowerCase().replace(/\W/g, "").replace(/_+/g, "_");
+            ds.validFileName = name.length > 0 && prefix.length > 0 && prefix.length < 9;
+            ds.fileName = name + "__" + prefix
         }
-        $scope.$watch("harvest.name", setFileName);
-        $scope.$watch("harvest.prefix", setFileName);
+
+        $scope.$watch("dataset.name", setFileName);
+        $scope.$watch("dataset.prefix", setFileName);
+
+        $scope.createDataset = function () {
+            alert("not implemented " + $scope.dataset);
+        };
 
         $scope.harvest = {
 
@@ -77,7 +90,16 @@ define(["angular"], function () {
             return now - $scope.lastStatusCheck;
         }
 
-        $scope.setDropSupported = function() {
+        $scope.getFullDatasetName = function () {
+            if (!$scope.dataset.name || !$scope.dataset.prefix) {
+                return "?"
+            }
+            var name = $scope.dataset.name.replace(/\W/, "_").replace(/__/, "_");
+            var prefix = $scope.dataset.prefix.toLowerCase();
+            return name + "__" + prefix
+        };
+
+        $scope.setDropSupported = function () {
             $scope.dropSupported = true;
         };
 
@@ -143,7 +165,7 @@ define(["angular"], function () {
                 if (state != file.info.status.state || isActive(file)) {
                     var time = file.info.status.time || 0;
                     var now = new Date().getTime();
-                    if (now - time > 1000*60*3) { // stale in 10 minutes
+                    if (now - time > 1000 * 60 * 3) { // stale in 10 minutes
                         file.staleStatus = true;
                     }
                     else {
@@ -189,13 +211,13 @@ define(["angular"], function () {
             });
         }
 
-        $scope.startHarvest = function() {
+        $scope.startHarvest = function () {
             dashboardService.harvest($scope.harvest).then(function () {
                 fetchDatasetList();
             });
         };
 
-        $scope.startAnalysis = function(file) {
+        $scope.startAnalysis = function (file) {
             dashboardService.analyze(file.name).then(function () {
                 fetchDatasetList();
             });
@@ -264,8 +286,8 @@ define(["angular"], function () {
 
         fetchSipFileList();
 
-        $scope.deleteSipZip = function(file) {
-            dashboardService.deleteSipFile(file.fileName).then(function() {
+        $scope.deleteSipZip = function (file) {
+            dashboardService.deleteSipFile(file.fileName).then(function () {
                 fetchSipFileList();
             });
         };

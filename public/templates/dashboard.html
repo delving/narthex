@@ -1,6 +1,5 @@
 <div ng-include="'/narthex/assets/templates/parts.html'"></div>
 
-
 <div class="row">
     <div class="col-sm-12">
         <div class="tabbable">
@@ -19,7 +18,17 @@
                     <div ng-switch-when="files" class="file-list">
                         <div data-ng-include="'file-list.html'">file list</div>
                         <center>
-                            <div data-ng-include="'new-file.html'">new file</div>
+                            <div data-ng-show="!newFileOpen">
+                                <button type="button" class="btn btn-xs btn-success" data-ng-click="newFileOpen = true">
+                                    <span>New File</span>
+                                </button>
+                            </div>
+                            <div data-ng-show="newFileOpen">
+                                <button type="button" class="btn btn-xs btn-success col-sm-12" data-ng-click="newFileOpen = false">
+                                    <span>New File</span>
+                                </button>
+                                <div data-ng-include="'new-file.html'">new file</div>
+                            </div>
                         </center>
                     </div>
                     <div ng-switch-when="sips">
@@ -33,33 +42,50 @@
     </div>
 </div>
 
+<div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
+    <h4>HTML5 Drop File is not supported! You need an HTML5 compliant browser.</h4>
+</div>
+
 <script type="text/ng-template" id="new-file.html">
-    <div data-ng-show="!newFileOpen">
-        <button type="button" class="btn btn-xs btn-success" data-ng-click="newFileOpen = true">
-            <span>New File</span>
-        </button>
+    <div  class="col-sm-6">
+        <form name="form" class="form well">
+            <fieldset>
+                <div class="form-group">
+                    <label for="new-name">Dataset Name</label>
+                    <input id="new-name" class="form-control" data-ng-model="dataset.name"
+                           placeholder="name" required autofocus/>
+                </div>
+                <div class="form-group">
+                    <label for="new-prefix">Metadata Prefix</label>
+                    <input id="new-prefix" class="form-control" data-ng-model="dataset.prefix"
+                           placeholder="prefix" required/>
+                </div>
+                <hr/>
+                <div class="form-group">
+                    <span typ="button" class="btn btn-lg btn-success" data-ng-class="{ 'disabled': !dataset.validFileName }" data-ng-click="createDataset()">
+                        <i class="fa fa-plus"></i> <span>Create</span>
+                        <span>"{{ dataset.fileName }}"</span>
+                    </span>
+                </div>
+            </fieldset>
+        </form>
     </div>
-    <div data-ng-show="newFileOpen">
-        <button type="button" class="btn btn-xs btn-success col-sm-12" data-ng-click="newFileOpen = false">
-            <span>New File</span>
-        </button>
-        <div class="col-sm-6">
-            <div data-ng-include="'drop-file.html'" ng-show="dropSupported">
-                <!--todo: why can drop-file.html not be moved to parts.html, like the others?-->
-            </div>
-        </div>
-        <div  class="col-sm-6">
-            <div data-ng-include="'harvest-form.html'">harvest form</div>
+    <div class="col-sm-6">
+        <div data-ng-include="'drop-file.html'" ng-show="dropSupported">
+            <!--todo: why can drop-file.html not be moved to parts.html, like the others?-->
         </div>
     </div>
 </script>
 
+<script type="text/ng-template" id="acquire.html">
+    <div data-ng-include="'drop-file.html'" ng-show="dropSupported">
+        <!--todo: why can drop-file.html not be moved to parts.html, like the others?-->
+    </div>
+    <div data-ng-include="'harvest-form.html'">harvest form</div>
+</script>
+
 <script type="text/ng-template" id="drop-file.html">
     <h3>Drag &amp; Drop</h3>
-    <div class="alert alert-warning" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
-        <h4>HTML5 Drop File is not supported!</h4>
-        <p>You need an <a href="#" class="alert-link">HTML5 compliant browser</a>.</p>
-    </div>
     <div class="file-drop well" ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="file-drop-over">
         <h6>Drag and drop your xml source file into this area</h6>
 
