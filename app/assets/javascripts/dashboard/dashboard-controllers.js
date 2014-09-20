@@ -50,7 +50,7 @@ define(["angular"], function () {
             var ds = $scope.dataset;
             if (!ds.name) ds.name = "";
             if (!ds.prefix) ds.prefix = "";
-            var name = ds.name.replace(/\W+/g, "-").replace(/_/g, "");
+            var name = ds.name.replace(/\W+/g, "_").replace(/_+/g, "_");
             var prefix = ds.prefix.toLowerCase().replace(/\W/g, "").replace(/_+/g, "_");
             ds.validFileName = name.length > 0 && prefix.length > 0 && prefix.length < 9;
             ds.fileName = name + "__" + prefix
@@ -231,11 +231,10 @@ define(["angular"], function () {
             });
         }
 
-        $scope.startHarvest = function () { //todo
-            alert("Currently disabled");
-//            dashboardService.harvest($scope.harvest).then(function () {
-//                fetchDatasetList();
-//            });
+        $scope.startHarvest = function (file) {
+            dashboardService.harvest(file.name, file.info.harvest).then(function () {
+                fetchDatasetList();
+            });
         };
 
         $scope.startAnalysis = function (file) {

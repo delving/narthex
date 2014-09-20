@@ -106,6 +106,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
 
   def setHarvestInfo(harvestType: String, url: String, dataset: String, prefix: String) = setProperties(
     "harvest",
+    "harvestType" -> harvestType,
     "url" -> url,
     "dataset" -> dataset,
     "prefix" -> prefix

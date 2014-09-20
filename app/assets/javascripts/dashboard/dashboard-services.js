@@ -48,8 +48,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                harvest: function (harvestInfo) {
-                    return dash.harvest().post(harvestInfo).then(
+                harvest: function (fileName, harvestInfo) {
+                    return dash.harvest(fileName).post(harvestInfo).then(
                         function (response) {
                             return response.data;
                         },

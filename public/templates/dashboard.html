@@ -254,25 +254,25 @@
                 <label for="harvest_type">Harvest Server Type</label>
 
                 <div id="harvest_type" class="form-control">
-                    <input type="radio" ng-model="harvest.harvestType" value="pmh"> <span>OAI-PMH</span>
+                    <input type="radio" ng-model="file.info.harvest.harvestType" value="pmh"> <span>OAI-PMH</span>
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    <input type="radio" ng-model="harvest.harvestType" value="adlib"> <span>AdLib API</span>
+                    <input type="radio" ng-model="file.info.harvest.harvestType" value="adlib"> <span>AdLib API</span>
                 </div>
             </div>
             <div class="form-group">
                 <label for="pmh_url">Server URL</label>
-                <input id="pmh_url" class="form-control" data-ng-model="harvest.url" placeholder="http://..." required/>
+                <input id="pmh_url" class="form-control" data-ng-model="file.info.harvest.url" placeholder="http://..." required/>
             </div>
             <div class="form-group">
                 <label for="pmh_set">Server Dataset</label>
-                <input id="pmh_set" class="form-control" data-ng-model="harvest.dataset" placeholder="dataset"/>
+                <input id="pmh_set" class="form-control" data-ng-model="file.info.harvest.dataset" placeholder="dataset"/>
             </div>
-            <div class="form-group" data-ng-show="harvest.harvestType == 'pmh'">
+            <div class="form-group" data-ng-show="file.info.harvest.harvestType == 'pmh'">
                 <label for="pmh_prefix">Metadata Prefix</label>
-                <input id="pmh_prefix" class="form-control" data-ng-model="harvest.prefix" placeholder="prefix"
+                <input id="pmh_prefix" class="form-control" data-ng-model="file.info.harvest.prefix" placeholder="prefix"
                        required/>
             </div>
-            <button typ="button" class="pull-right btn btn-success btn-xs" data-ng-click="startHarvest()">
+            <button typ="button" class="pull-right btn btn-success btn-xs" data-ng-click="startHarvest(file)">
                 <i class="fa fa-refresh"></i> <span>Harvest</span>
                 <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH</span>
                 <span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>
@@ -313,7 +313,7 @@
         <div data-ng-include="'drop-file.html'" data-ng-if="dropSupported && file.drop">
             <!--todo: why can drop-file.html not be moved to parts.html, like the others?-->
         </div>
-        <div data-ng-include="'harvest-form.html'" data-ng-if="file.harvest">
+        <div data-ng-include="'harvest-form.html'" data-ng-if="file.info.harvest">
             harvest form
         </div>
         <div class="" data-ng-show="nonEmpty(file.info.delimit)">

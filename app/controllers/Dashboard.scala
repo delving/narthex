@@ -74,7 +74,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       try {
         val datasetRepo = repo.datasetRepo(fileName)
         Logger.info(s"harvest ${required("url")} (${required("dataset")}) to $fileName")
-        /*
         required("harvestType") match {
           case "pmh" =>
             datasetRepo.startPmhHarvest(required("url"), optional("dataset"), required("prefix"))
@@ -83,7 +82,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
           case _ =>
             throw new IllegalArgumentException("Missing harvestType [pmh,adlib]")
         }
-        */
         Ok
       } catch {
         case e: IllegalArgumentException =>
