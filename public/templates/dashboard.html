@@ -310,11 +310,13 @@
             </button>
         </div>
 
-        <div data-ng-include="'drop-file.html'" data-ng-if="dropSupported && file.drop">
-            <!--todo: why can drop-file.html not be moved to parts.html, like the others?-->
-        </div>
-        <div data-ng-include="'harvest-form.html'" data-ng-if="file.info.harvest">
-            harvest form
+        <div class="" data-ng-show="nonEmpty(file.info.origin)">
+            <h4 class="heading">Origin</h4>
+            <ul class="list-unstyled">
+                <li data-ng-repeat="(key, value) in file.info.origin">
+                    <b>{{ key }}</b> = "{{ value }}"
+                </li>
+            </ul>
         </div>
         <div class="" data-ng-show="nonEmpty(file.info.delimit)">
             <h4 class="heading">Record Identification</h4>
@@ -338,6 +340,12 @@
                     <b>{{ key }}</b> = "{{ value }}"
                 </li>
             </ul>
+        </div>
+        <div data-ng-include="'drop-file.html'" data-ng-if="dropSupported && file.drop">
+            <!--todo: why can drop-file.html not be moved to parts.html, like the others?-->
+        </div>
+        <div data-ng-include="'harvest-form.html'" data-ng-if="file.harvest">
+            harvest form
         </div>
     </div>
 </script>

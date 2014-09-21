@@ -47,20 +47,18 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       request.body.file("file") match {
         case Some(file) =>
           Logger.info(s"upload ${file.filename} (${file.contentType}) to $fileName")
-          Ok(file.filename)
-          /*
-          if (RepoUtil.acceptableFile(file.filename, file.contentType)) {
-            println(s"Acceptable ${file.filename}")
-            val datasetRepo = repo.datasetRepo(file.filename)
-            file.ref.moveTo(datasetRepo.sourceFile, replace = true)
-            datasetRepo.datasetDb.createDataset(DatasetState.READY)
-            Ok(file.filename)
+          RepoUtil.acceptableFile(file.filename, file.contentType) match {
+            case Some(suffix) =>
+              println(s"Acceptable ${file.filename}")
+              val datasetRepo = repo.datasetRepo(s"$fileName$suffix")
+              file.ref.moveTo(datasetRepo.sourceFile, replace = true)
+              datasetRepo.datasetDb.createDataset(DatasetState.READY)
+              datasetRepo.datasetDb.setOrigin(DatasetOrigin.DROP, "?") // find out who
+              Ok(datasetRepo.name)
+            case None =>
+              println(s"NOT Acceptable ${file.filename}")
+              NotAcceptable(Json.obj("problem" -> "File must be .xml or .xml.gz"))
           }
-          else {
-            println(s"NOT Acceptable ${file.filename}")
-            NotAcceptable(Json.obj("problem" -> "File must be .xml or .xml.gz"))
-          }
-          */
         case None =>
           NotAcceptable(Json.obj("problem" -> "Missing file"))
       }
@@ -122,7 +120,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def revertToState(fileName: String, state:String) = Secure() {
+  def revertToState(fileName: String, state: String) = Secure() {
     token => implicit request => {
       fromString(state) match {
         case Some(datasetState) =>
@@ -294,12 +292,14 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  val DATASET_PROPERTY_LISTS = List("status", "delimit", "namespaces", "harvest")
+  val DATASET_PROPERTY_LISTS = List("origin", "status", "delimit", "namespaces", "harvest")
 
   private def toJsObject(datasetInfo: Elem, tag: String) = JsObject(
-    (datasetInfo \ tag).head.child.filter(_.isInstanceOf[Elem]).map(
-      n => n.label -> JsString(n.text)
-    )
+    (datasetInfo \ tag).headOption.map(
+      _.child.filter(_.isInstanceOf[Elem]).map(
+        n => n.label -> JsString(n.text)
+      )
+    ) getOrElse Seq.empty
   )
 
 }

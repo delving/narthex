@@ -17,6 +17,7 @@
 package services
 
 import org.basex.server.ClientSession
+import org.joda.time.DateTime
 
 import scala.xml.{Elem, XML}
 
@@ -33,6 +34,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           |
           | let $$dataset :=
           |   <dataset name="$fileName">
+          |     <origin/>
           |     <status>
           |       <state>$state</state>
           |       <time>$now</time>
@@ -83,6 +85,13 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           """.stripMargin.trim
       session.query(update).execute()
   }
+
+  def setOrigin(origin: DatasetOrigin, who: String) = setProperties(
+    "origin",
+    "type" -> origin,
+    "who" -> who,
+    "time" -> toXSDString(new DateTime())
+  )
 
   def setStatus(state: DatasetState, percent: Int = 0, workers: Int = 0, error: String = "") = setProperties(
     "status",

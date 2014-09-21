@@ -36,6 +36,18 @@ object Repo {
   lazy val repo = new Repo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
 }
 
+case class DatasetOrigin(name: String) {
+  override def toString = name
+
+  def matches(otherName: String) = name == otherName
+}
+
+object DatasetOrigin {
+  val DROP = DatasetOrigin("origin-drop")
+  val HARVEST = DatasetOrigin("origin-harvest")
+  val SIP = DatasetOrigin("origin-sip")
+}
+
 case class DatasetState(name: String) {
   override def toString = name
 
@@ -75,7 +87,7 @@ object RepoUtil {
     // todo: be very careful about files matching a regex, so that they have spec__prefix form
     // todo: something with content-type
     println("content type " + contentType)
-    SUFFIXES.filter(suffix => fileName.endsWith(suffix)).nonEmpty
+    SUFFIXES.find(suffix => fileName.endsWith(suffix))
   }
 
   def readJson(file: File) = Json.parse(readFileToString(file))
