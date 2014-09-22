@@ -3,12 +3,17 @@
     <div class="col-sm-12">
         <div class="tabbable">
             <!-- Nav tabs -->
-            <ul class="nav nav-pills" role="tablist">
+            <ul class="nav nav-tabs" role="tablist">
                 <li ng-class="{'active':activeTab === 'files'}">
                     <a href role="tab" data-ng-click="setActiveTab('files')">Files</a>
                 </li>
                 <li ng-class="{'active':activeTab === 'sips'}">
                     <a href role="tab" data-ng-click="setActiveTab('sips')">SIPs</a>
+                </li>
+                <li class="toolbar pull-right a-right">
+                      <button data-ng-show="files" class="btn btn-default btn-sm" data-ng-click="setNewFileOpen(true)">
+                            <span>Create a new file</span>
+                        </button>
                 </li>
             </ul>
             <!-- Tab panes -->
@@ -17,13 +22,7 @@
                     <div ng-switch-when="files" class="file-list">
                         <div data-ng-include="'file-list.html'">file list</div>
                         <div class="col-sm-offset-2">
-                            <div data-ng-show="!newFileOpen">
-                                <div class="col-sm-8">
-                                    <span type="button" class="btn btn-xs btn-success" data-ng-click="setNewFileOpen(true)">
-                                        <span>Create a new file</span>
-                                    </span>
-                                </div>
-                            </div>
+
                             <div data-ng-show="newFileOpen">
                                 <div class="col-sm-8">
                                     <span type="button" class="fa-2x btn btn-default" data-ng-click="setNewFileOpen(false)" style="width:100%; text-align: left">
