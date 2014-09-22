@@ -159,7 +159,7 @@ define(["angular"], function () {
         $scope.createDataset = function () {
             if ($scope.dataset.validFileName) {
                 // empty state means create a dataset if it's not there
-                dashboardService.revertToState($scope.dataset.fileName, 'state-empty').then(function () {
+                dashboardService.goToState($scope.dataset.fileName, 'state-empty').then(function () {
                     $scope.setNewFileOpen(false);
                     $scope.fileOpen = $scope.dataset.fileName;
                     $scope.dataset.name = $scope.dataset.prefix = "";
@@ -334,7 +334,7 @@ define(["angular"], function () {
 
         $scope.revertToState = function (file, state, areYouSure) {
             if (areYouSure && !confirm(areYouSure))return;
-            dashboardService.revertToState(file.name, state).then(function () {
+            dashboardService.goToState(file.name, state).then(function () {
                 fetchDatasetList();
             });
         };
