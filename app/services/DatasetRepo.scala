@@ -18,7 +18,8 @@ package services
 import java.io.File
 
 import actors.Harvester.{HarvestAdLib, HarvestPMH}
-import actors.{Analyzer, Harvester}
+import actors.{Analyzer, Harvester, SaveRecords, Saver}
+import akka.actor.{PoisonPill, Props}
 import org.apache.commons.io.FileUtils.{deleteDirectory, deleteQuietly}
 import play.api.Logger
 import play.api.Play.current
@@ -32,8 +33,8 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
   val root = new NodeRepo(this, dir)
   val dbName = s"narthex_${orgRepo.orgId}___$name"
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, name)
-  lazy val termRepo = new TermDb(dbName)
-  lazy val recordRepo = new RecordDb(this, dbName)
+  lazy val termDb = new TermDb(dbName)
+  lazy val recordDb = new RecordDb(this, dbName)
 
   override def toString = sourceFile.getCanonicalPath
 
@@ -42,10 +43,20 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     this
   }
 
+  def actor(props: Props) = {
+    Logger.info(s"Creating actor $name")
+    Akka.system.actorOf(props, name)
+  }
+
+  def killActor() = {
+    Logger.info(s"Sending actor $name a poison pill")
+    Akka.system.actorSelection(name) ! PoisonPill
+  }
+
   def startPmhHarvest(url: String, dataset: String, prefix: String) = {
 
     def startActor() = {
-      val harvester = Akka.system.actorOf(Harvester.props(this), s"pmh-${sourceFile.getName}")
+      val harvester = actor(Harvester.props(this))
       val kickoff = HarvestPMH(url, dataset, prefix)
       Logger.info(s"Harvest $kickoff")
       harvester ! kickoff
@@ -71,7 +82,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
   def startAdLibHarvest(url: String, dataset: String) = {
 
     def startActor() = {
-      val harvester = Akka.system.actorOf(Harvester.props(this), s"adlib-${sourceFile.getName}")
+      val harvester = actor(Harvester.props(this))
       val kickoff = HarvestAdLib(url, dataset)
       Logger.info(s"Harvest $kickoff")
       harvester ! kickoff
@@ -98,8 +109,20 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
   def startAnalysis() = {
     deleteDirectory(dir)
     datasetDb.setStatus(SPLITTING, percent = 1)
-    val analyzer = Akka.system.actorOf(Analyzer.props(this), s"analyze-${sourceFile.getName}")
+    val analyzer = actor(Analyzer.props(this))
     analyzer ! Analyzer.Analyze(sourceFile)
+  }
+
+  def saveRecords() = {
+    val delim = recordDb.getDatasetInfo \ "delimit"
+    val recordRoot = (delim \ "recordRoot").text
+    val uniqueId = (delim \ "uniqueId").text
+    val recordCountText = (delim \ "recordCount").text
+    val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
+    // set status now so it's done before the actor starts
+    datasetDb.setStatus(SAVING, percent = 1)
+    val saver = actor(Saver.props(this))
+    saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
   }
 
   def index = new File(dir, "index.json")
@@ -155,33 +178,51 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     }
   }
 
-  def revertToState(state: DatasetState) = {
-    // todo: find a way to terminate processes that are busy?
+  def goToState(state: DatasetState) = {
+    killActor()
     state match {
       case DELETED =>
         datasetDb.removeDataset()
-        recordRepo.dropDb()
+        recordDb.dropDb()
         deleteQuietly(sourceFile)
         deleteDirectory(dir)
         true
 
       case EMPTY =>
         datasetDb.setStatus(state)
-        recordRepo.dropDb()
+        recordDb.dropDb()
         deleteQuietly(sourceFile)
         deleteDirectory(dir)
         true
 
       case READY =>
         datasetDb.setStatus(state)
-        recordRepo.dropDb()
+        recordDb.dropDb()
         deleteDirectory(dir)
         true
 
       case ANALYZED =>
         datasetDb.setStatus(state)
-        recordRepo.dropDb()
+        recordDb.dropDb()
         true
+
+      case SAVED =>
+        datasetDb.getDatasetInfoOption match {
+          case Some(info) if PUBLISHED.matches((info \ "status" \ "state").text) =>
+            datasetDb.setStatus(state)
+            true
+          case _ =>
+            false
+        }
+
+      case PUBLISHED =>
+        datasetDb.getDatasetInfoOption match {
+          case Some(info) if SAVED.matches((info \ "status" \ "state").text) =>
+            datasetDb.setStatus(state)
+            true
+          case _ =>
+            false
+        }
 
       case _ =>
         false
@@ -191,7 +232,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
   def enrichRecords(storedRecords: String): List[Record] = {
     val pathPrefix = s"${NarthexConfig.ORG_ID}/$name"
     val mappings = Cache.getAs[Map[String, TargetConcept]](name).getOrElse {
-      val freshMap = termRepo.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
+      val freshMap = termDb.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
       Cache.set(name, freshMap, 60 * 5)
       freshMap
     }

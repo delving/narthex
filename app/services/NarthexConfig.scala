@@ -50,6 +50,8 @@ object NarthexConfig {
   lazy val OAI_PMH_PAGE_SIZE = configInt("oai_pmh.pageSize")
   lazy val OAI_PMH_ACCESS_KEYS = secretList("oai_pmh.accessKeys")
 
+  lazy val HARVEST_TIMEOUT = config.getInt("harvest.timeout").getOrElse(60000)
+
   def oaiPmhKeyFits(accessKey: String) = OAI_PMH_ACCESS_KEYS.contains(accessKey)
   def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
 }

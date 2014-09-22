@@ -15,12 +15,10 @@
 //===========================================================================
 package services
 
-import actors.{SaveRecords, Saver}
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
-import play.libs.Akka
 import services.DatasetState._
 
 import scala.concurrent.duration._
@@ -42,18 +40,6 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
   def getDatasetInfo = datasetRepo.datasetDb.getDatasetInfoOption.getOrElse(throw new RuntimeException(s"Not found: $datasetRepo"))
 
   def db[T](block: ClientSession => T) = BaseX.withDbSession(recordDb)(block)
-
-  def saveRecords() = {
-    val delim = getDatasetInfo \ "delimit"
-    val recordRoot = (delim \ "recordRoot").text
-    val uniqueId = (delim \ "uniqueId").text
-    val recordCountText = (delim \ "recordCount").text
-    val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
-    // set status now so it's done before the actor starts
-    datasetRepo.datasetDb.setStatus(SAVING, percent = 1)
-    val saver = Akka.system.actorOf(Saver.props(datasetRepo), datasetRepo.name)
-    saver ! SaveRecords(recordRoot, uniqueId, recordCount, datasetRepo.name)
-  }
 
   def childrenAsMap(nodeSeq: NodeSeq) = nodeSeq flatMap {
     case e: Elem => e.child

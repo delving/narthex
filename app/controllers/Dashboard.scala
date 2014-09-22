@@ -112,34 +112,26 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def setPublished(fileName: String, published: String) = Secure() {
-    token => implicit request => {
-      val state = if (published == "true") PUBLISHED else SAVED
-      val datasetInfo = repo.datasetRepo(fileName).datasetDb.setStatus(state, 0, 0)
-      Ok(Json.obj("state" -> state.toString))
-    }
-  }
-
-  def revertToState(fileName: String, state: String) = Secure() {
+  def goToState(fileName: String, state: String) = Secure() {
     token => implicit request => {
       fromString(state) match {
         case Some(datasetState) =>
           if (datasetState == DatasetState.EMPTY) {
             repo.datasetRepoOption(fileName) map {
               datasetRepo =>
-                if (datasetRepo.revertToState(datasetState))
-                  Ok
+                if (datasetRepo.goToState(datasetState))
+                  Ok(Json.obj("state" -> datasetState.toString))
                 else
                   NotAcceptable(Json.obj("problem" -> "Cannot revert to empty"))
             } getOrElse {
               repo.datasetRepo(fileName).datasetDb.createDataset(datasetState)
-              Ok
+              Ok(Json.obj("state" -> datasetState.toString))
             }
           }
           else {
             val datasetRepo = repo.datasetRepo(fileName)
-            if (datasetRepo.revertToState(datasetState))
-              Ok
+            if (datasetRepo.goToState(datasetState))
+              Ok(Json.obj("state" -> datasetState.toString))
             else
               NotAcceptable(Json.obj("problem" -> s"Cannot revert to nonempty state $datasetState"))
           }
@@ -199,7 +191,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def saveRecords(fileName: String) = Secure() {
     token => implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      datasetRepo.recordRepo.saveRecords()
+      datasetRepo.saveRecords()
       Ok
     }
   }
@@ -209,7 +201,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val path = (request.body \ "path").as[String]
       val value = (request.body \ "value").as[String]
       val datasetRepo = repo.datasetRepo(fileName)
-      val recordsString = datasetRepo.recordRepo.recordsWithValue(path, value)
+      val recordsString = datasetRepo.recordDb.recordsWithValue(path, value)
       val enrichedRecords = datasetRepo.enrichRecords(recordsString)
       val result = enrichedRecords.map(rec => rec.text).mkString("\n")
       Ok(result)
@@ -240,7 +232,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def getMappings(fileName: String) = Secure() {
     token => implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      val mappings: scala.Seq[TermDb.TermMapping] = datasetRepo.termRepo.getMappings
+      val mappings: scala.Seq[TermDb.TermMapping] = datasetRepo.termDb.getMappings
       Ok(Json.obj("mappings" -> mappings))
     }
   }
@@ -248,7 +240,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def getSourcePaths(fileName: String) = Secure() {
     token => implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      val sourcePaths = datasetRepo.termRepo.getSourcePaths
+      val sourcePaths = datasetRepo.termDb.getSourcePaths
       Ok(Json.obj("sourcePaths" -> sourcePaths))
     }
   }
@@ -258,7 +250,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val datasetRepo = repo.datasetRepo(fileName)
       if ((request.body \ "remove").asOpt[String].isDefined) {
         val sourceUri = (request.body \ "source").as[String]
-        datasetRepo.termRepo.removeMapping(sourceUri)
+        datasetRepo.termDb.removeMapping(sourceUri)
         Ok("Mapping removed")
       }
       else {
@@ -266,7 +258,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
         val targetUri = (request.body \ "target").as[String]
         val vocabulary = (request.body \ "vocabulary").as[String]
         val prefLabel = (request.body \ "prefLabel").as[String]
-        datasetRepo.termRepo.addMapping(TermDb.TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
+        datasetRepo.termDb.addMapping(TermDb.TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
         Ok("Mapping added")
       }
     }

@@ -48,7 +48,8 @@ trait Harvesting extends BaseXTools {
 
   def fetchAdLibPage(url: String, database: String, diagnostic: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
     val startFrom = diagnostic.map(d => d.current + d.pageItems).getOrElse(1)
-    WS.url(url).withQueryString(
+    val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
+    requestUrl.withQueryString(
       "database" -> database,
       "search" -> "all",
       "xmltype" -> "grouped",
@@ -74,7 +75,7 @@ trait Harvesting extends BaseXTools {
   }
 
   def fetchPMHPage(url: String, set: String, metadataPrefix: String, resumption: Option[PMHResumptionToken] = None) = {
-    val requestUrl = WS.url(url)
+    val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     val request = resumption match {
       case None =>
         if (set.isEmpty) {
@@ -98,7 +99,13 @@ trait Harvesting extends BaseXTools {
     }
     request.get().map {
       response =>
-        val errorNode = response.xml \ "error"
+        val errorNode =  if (response.status != 200) {
+          Logger.info(s"response: ${response.body}")
+          <error>HTTP Response: {response.statusText}</error>
+        }
+        else {
+          response.xml \ "error"
+        }
         if (errorNode.isEmpty) {
           val tokenNode = response.xml \ "ListRecords" \ "resumptionToken"
           val newToken = if (tokenNode.nonEmpty && tokenNode.text.nonEmpty) {
@@ -124,9 +131,8 @@ trait Harvesting extends BaseXTools {
             resumptionToken = newToken
           )
         } else {
-          Logger.info(s"response:\n${response.xml}")
           PMHHarvestPage(
-            records = response.xml.toString(),
+            records = "",
             url = url,
             set = set,
             metadataPrefix = metadataPrefix,

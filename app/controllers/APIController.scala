@@ -71,7 +71,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def record(apiKey: String, fileName: String, id: String, enrich: Boolean = false) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      val storedRecord: String = datasetRepo.recordRepo.record(id)
+      val storedRecord: String = datasetRepo.recordDb.record(id)
       if (storedRecord.nonEmpty) {
         if (enrich) {
           val records = datasetRepo.enrichRecords(storedRecord)
@@ -107,7 +107,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def ids(apiKey: String, fileName: String, since: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      val ids = datasetRepo.recordRepo.getIds(since)
+      val ids = datasetRepo.recordDb.getIds(since)
       Ok(scala.xml.XML.loadString(ids))
     }
   }
@@ -116,7 +116,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       repo.datasetRepoOption(fileName) match {
         case Some(datasetRepo) =>
-          val mappings = datasetRepo.termRepo.getMappings
+          val mappings = datasetRepo.termDb.getMappings
           val reply =
               <mappings>
                 {mappings.map { m =>
@@ -140,7 +140,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       val uploaded: File = repo.uploadedFile(fileName)
       if (uploaded.exists()) {
         val datasetRepo = repo.datasetRepo(fileName)
-        datasetRepo.revertToState(EMPTY)
+        datasetRepo.goToState(EMPTY)
         datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // connect with sip somehow
         request.body.moveTo(uploaded)
       }

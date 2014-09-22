@@ -70,7 +70,7 @@ object OaiPmh extends Controller with BaseXTools {
 
     def getFirstToken(set: String, prefix: String, headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = {
       val datasetRepo = Repo.repo.datasetRepo(set)
-      datasetRepo.recordRepo.createHarvest(headersOnly, from, until)
+      datasetRepo.recordDb.createHarvest(headersOnly, from, until)
     }
 
     def getHarvestValues(token: PMHResumptionToken, enriched: Boolean): (List[Record], Option[PMHResumptionToken]) = {
@@ -80,7 +80,7 @@ object OaiPmh extends Controller with BaseXTools {
     def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
       Repo.repo.datasetRepoOption(set) match {
         case Some(datasetRepo) =>
-          datasetRepo.recordRepo.recordPmh(identifier)
+          datasetRepo.recordDb.recordPmh(identifier)
         case None =>
           None
       }

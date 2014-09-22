@@ -65,9 +65,8 @@ object DatasetState {
   val SAVING = DatasetState("state-saving")
   val SAVED = DatasetState("state-saved")
   val PUBLISHED = DatasetState("state-published")
-  val ERROR = DatasetState("state-error")
 
-  val ALL_STATES = List(DELETED, EMPTY, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED, PUBLISHED, ERROR)
+  val ALL_STATES = List(DELETED, EMPTY, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED, PUBLISHED)
 
   def fromString(string: String): Option[DatasetState] = {
     ALL_STATES.find(s => s.matches(string))
@@ -200,7 +199,7 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
       val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
       val start = 1 + (harvest.currentPage - 1) * pageSize
       val repo = datasetRepo(harvest.repoName)
-      val storedRecords = repo.recordRepo.recordHarvest(harvest.from, harvest.until, start, pageSize)
+      val storedRecords = repo.recordDb.recordHarvest(harvest.from, harvest.until, start, pageSize)
       val records = if (enriched) repo.enrichRecords(storedRecords) else repo.parseStoredRecords(storedRecords)
       harvest.next.map { next =>
         Cache.set(next.resumptionToken.value, next, 2 minutes)

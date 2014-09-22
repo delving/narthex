@@ -312,7 +312,8 @@ define(["angular"], function () {
         };
 
         $scope.setPublished = function (file, published) {
-            dashboardService.setPublished(file.name, published).then(function (data) {
+            var toState = published ? 'state-published' : 'state-saved';
+            dashboardService.goToState(file.name, toState).then(function (data) {
                 file.info.status.state = data.state;
                 file.stateBlock = STATE_BLOCK[data.state];
             });

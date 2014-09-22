@@ -72,16 +72,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                setPublished: function (fileName, published) {
-                    return dash.setPublished(fileName, published).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                revertToState: function (fileName, state) {
-                    return dash.revertToState(fileName, state).get().then(
+                goToState: function (fileName, state) {
+                    return dash.goToState(fileName, state).get().then(
                         function (response) {
                             return response.data;
                         },

@@ -36,10 +36,10 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
 
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
       Logger.info(s"Saving $datasetRepo")
-      datasetRepo.recordRepo.createDb
+      datasetRepo.recordDb.createDb
       var tick = 0
       var time = System.currentTimeMillis()
-      datasetRepo.recordRepo.db {
+      datasetRepo.recordDb.db {
         session =>
           parser = new RawRecordParser(recordRoot, uniqueId)
           val (source, readProgress) = FileHandling.xmlSource(datasetRepo.sourceFile)
@@ -66,7 +66,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
           catch {
             case e:Exception =>
               Logger.error("Problem saving", e)
-              datasetRepo.datasetDb.setStatus(ERROR, error = e.toString)
+              datasetRepo.datasetDb.setStatus(ANALYZED, error = e.toString)
               context.stop(self)
           }
           finally {
@@ -77,7 +77,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
 
     case SaveComplete() =>
       Logger.info(s"Saved ${datasetRepo.dir.getName}, optimizing..")
-      datasetRepo.recordRepo.db(_.execute(new Optimize()))
+      datasetRepo.recordDb.db(_.execute(new Optimize()))
       Logger.info(s"Optimized ${datasetRepo.dir.getName}.")
       datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
       datasetRepo.datasetDb.setStatus(SAVED)
