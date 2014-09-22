@@ -20,6 +20,84 @@ String.prototype.endsWith = function (suffix) {
 
 var API_ACCESS_KEY = "secret";
 
+var STATE_BLOCK = {
+    'state-empty': {
+        label: 'Empty',
+        css: 'label-info',
+        faIcon: 'fa-folder',
+        revertState: 'state-deleted',
+        revertPrompt: 'Delete dataset?'
+    },
+    'state-harvesting': {
+        label: 'Harvesting',
+        css: 'label-warning',
+        faIcon: 'fa-cogs',
+        revertState: 'state-empty',
+        revertPrompt: 'Cancel harvesting?'
+    },
+    'state-ready': {
+        label: 'Ready',
+        css: 'label-success',
+        faIcon: 'fa-folder',
+        revertState: 'state-empty',
+        revertPrompt: 'Empty dataset?'
+    },
+    'state-splitting': {
+        label: 'Splitting',
+        css: 'label-warning',
+        faIcon: 'fa-cogs',
+        revertState: 'state-ready',
+        revertPrompt: 'Cancel splitting?'
+    },
+    'state-analyzing': {
+        label: 'Analyzing',
+        css: 'label-warning',
+        faIcon: 'fa-cogs',
+        revertState: 'state-ready',
+        revertPrompt: 'Cancel analyzing?'
+    },
+    'state-analyzed': {
+        label: 'Analyzed',
+        css: 'label-success',
+        faIcon: 'fa-folder-open',
+        revertState: 'state-ready',
+        revertPrompt: 'Discard analysis?',
+        viewSchema: true
+    },
+    'state-saving': {
+        label: 'Saving',
+        css: 'label-warning',
+        faIcon: 'fa-cogs',
+        revertState: 'state-analyzed',
+        revertPrompt: 'Cancel record saving?',
+        viewSchema: true
+    },
+    'state-saved': {
+        label: 'Saved',
+        css: 'label-success',
+        faIcon: 'fa-database',
+        revertState: 'state-analyzed',
+        revertPrompt: 'Delete saved records?',
+        viewSchema: true
+    },
+    'state-published': {
+        label: 'Published',
+        css: 'label-success',
+        faIcon: 'fa-share-square-o',
+        revertState: 'state-analyzed',
+        revertPrompt: 'Delete saved records?',
+        viewSchema: true,
+        viewTerminology: true
+    },
+    'state-error': { // todo: multiple error states!
+        label: 'Error',
+        css: 'label-danger',
+        faIcon: 'fa-thumbs-down',
+        revertState: 'state-empty',
+        revertPrompt: 'Empty dataset?'
+    }
+};
+
 define(["angular"], function () {
     "use strict";
 
@@ -27,6 +105,7 @@ define(["angular"], function () {
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
     var DashboardCtrl = function ($rootScope, $scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
+
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];
@@ -89,26 +168,6 @@ define(["angular"], function () {
             }
         };
 
-        $scope.harvest = {
-
-//            harvestType: "adlib",
-//            name: "AdLibHarvest",
-//            url: "http://umu.adlibhosting.com/api/wwwopac.ashx",
-//            prefix: "adlib",
-//            dataset: "collect"
-
-//            harvestType: "pmh",
-//            name: "OaiPmhHarvest",
-//            url: "http://62.221.199.184:7829/oai",
-//            prefix: "oai_dc"
-
-//            harvestType: "pmh",
-//            name: "TestHarvest",
-//            url: "http://localhost:9000/oai-pmh/secret",
-//            prefix: "car",
-//            dataset: "RCE_Monuments__car"
-        };
-
         function oaiPmhListRecords(fileName, enriched) {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
@@ -137,6 +196,7 @@ define(["angular"], function () {
                     return
                 }
                 var state = file.info.status.state;
+                file.stateBlock = STATE_BLOCK[state];
                 file.info = datasetInfo;
                 if (!file.info || !file.info.status) {
                     console.log("MISSING STATUS AFTER", file);
@@ -212,6 +272,7 @@ define(["angular"], function () {
         function fetchDatasetList() {
             dashboardService.list().then(function (data) {
                 _.forEach($scope.files, function (file) {
+                    file.stateBlock = STATE_BLOCK[file.info.status.state];
                     if (file.checker) {
                         $timeout.cancel(file.checker);
                         file.checker = undefined;
@@ -227,6 +288,13 @@ define(["angular"], function () {
                     file.fileDropped = function ($files) {
                         fileDropped(file, $files)
                     };
+                    var parts = file.name.split(/__/);
+                    file.identity = {
+                        name: parts[0].replace(/_/g, ' '),
+                        prefix: parts[1],
+                        recordCount: file.info.delimit.recordCount > 0 ? file.info.delimit.recordCount : undefined
+                    };
+
                 })
             });
         }
@@ -243,10 +311,10 @@ define(["angular"], function () {
             });
         };
 
-        $scope.togglePublished = function (file) {
-            var published = file.info.status.state != 'state-published';
+        $scope.setPublished = function (file, published) {
             dashboardService.setPublished(file.name, published).then(function (data) {
                 file.info.status.state = data.state;
+                file.stateBlock = STATE_BLOCK[data.state];
             });
         };
 
@@ -602,6 +670,46 @@ define(["angular"], function () {
 
     FileDetailCtrl.$inject = ["$rootScope", "$scope", "$routeParams", "$timeout", "$location", "dashboardService", "pageScroll"];
 
+    var FileListCtrl = function ($scope) {
+    };
+
+    FileListCtrl.$inject = ["$scope"];
+
+    var FileEntryCtrl = function ($scope) {
+
+
+        $scope.allowHarvest = function(file) {
+            if (!$scope.nonEmpty(file.info.origin)) return true;
+            return file.info.origin.type == 'origin-harvest'
+        };
+
+        $scope.allowDrop = function(file) {
+            if (!$scope.nonEmpty(file.info.origin)) return true;
+            return file.info.origin.type == 'origin-drop'
+        };
+
+        $scope.allowAnalysis = function(file) {
+            return file.info.status.state == 'state-ready';
+        };
+
+        $scope.allowSaveRecords = function(file) {
+            return file.info.status.state == 'state-analyzed' && file.info.delimit.recordCount > 0;
+        };
+
+        $scope.allowPublish = function(file) {
+            return file.info.status.state == 'state-saved';
+        };
+
+        $scope.allowUnpublish = function(file) {
+            return file.info.status.state == 'state-published';
+        };
+
+        $scope.revert = function(file) {
+            $scope.revertToState(file, file.stateBlock.revertState, file.stateBlock.revertPrompt)
+        };
+    };
+
+    FileEntryCtrl.$inject = ["$scope"];
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree) {
@@ -624,6 +732,8 @@ define(["angular"], function () {
 
     return {
         DashboardCtrl: DashboardCtrl,
+        FileEntryCtrl: FileEntryCtrl,
+        FileListCtrl: FileListCtrl,
         TreeCtrl: TreeCtrl,
         TreeNodeCtrl: TreeNodeCtrl,
         FileDetailCtrl: FileDetailCtrl

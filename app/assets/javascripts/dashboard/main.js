@@ -23,6 +23,8 @@ define(
             ]
         );
 
+        mod.controller('FileListCtrl', controllers.FileListCtrl);
+        mod.controller('FileEntryCtrl', controllers.FileEntryCtrl);
         mod.controller('TreeCtrl', controllers.TreeCtrl);
         mod.controller('TreeNodeCtrl', controllers.TreeNodeCtrl);
         mod.config(function ($rootScopeProvider) {
