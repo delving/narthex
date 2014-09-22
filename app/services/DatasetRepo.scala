@@ -66,7 +66,6 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
       datasetDb.createDataset(HARVESTING, percent = 1)
       startActor()
     }
-    datasetDb.setHarvestInfo("pmh", url, dataset, prefix)
   }
 
   def startAdLibHarvest(url: String, dataset: String) = {

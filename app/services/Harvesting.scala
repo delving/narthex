@@ -77,11 +77,19 @@ trait Harvesting extends BaseXTools {
     val requestUrl = WS.url(url)
     val request = resumption match {
       case None =>
-        requestUrl.withQueryString(
-          "verb" -> "ListRecords",
-          "set" -> set,
-          "metadataPrefix" -> metadataPrefix
-        )
+        if (set.isEmpty) {
+          requestUrl.withQueryString(
+            "verb" -> "ListRecords",
+            "metadataPrefix" -> metadataPrefix
+          )
+        }
+        else {
+          requestUrl.withQueryString(
+            "verb" -> "ListRecords",
+            "set" -> set,
+            "metadataPrefix" -> metadataPrefix
+          )
+        }
       case Some(token) =>
         requestUrl.withQueryString(
           "verb" -> "ListRecords",

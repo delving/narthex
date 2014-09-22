@@ -71,7 +71,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
       try {
         val datasetRepo = repo.datasetRepo(fileName)
-        Logger.info(s"harvest ${required("url")} (${required("dataset")}) to $fileName")
+        Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $fileName")
         required("harvestType") match {
           case "pmh" =>
             datasetRepo.startPmhHarvest(required("url"), optional("dataset"), required("prefix"))
