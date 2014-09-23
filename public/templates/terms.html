@@ -96,10 +96,9 @@
                         <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceEntry.sourceUri].target == concept.uri }">
 
                             <!-- MATCHTED TERM / ALT TERM -->
-                            <button class="btn btn-default" tooltip="Click to map to this term..."  tooltip-trigger="mouseenter" tooltip-placement="right">
+                            <button class="btn btn-default" tooltip="Click to map to this term..."  tooltip-trigger="mouseenter" tooltip-placement="right" data-ng-click="setMapping(concept)">
                                 <span class="badge">{{ concept.proximity * 100 | number : 0 }}%</span>
-                            <span data-ng-click="setMapping(concept)"
-                                  class="found-term" title="Click to map!">
+                            <span class="found-term" title="Click to map!">
                                 <span class="label term-matched" data-ng-class="{ 'term-alt' : !concept.preferred }">{{ concept.label }}</span>
                             </span>
 
