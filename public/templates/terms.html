@@ -98,27 +98,29 @@
                             </span>
 
                             </button>
-                            <!-- PREFERRED TERM -->
-                            <span data-ng-show="!concept.preferred"
-                                  data-ng-click="selectSought(concept.prefLabel)">
-                                <span class="label term-preferred"><!--&#8594;--><i class="fa fa-star"></i> {{ concept.prefLabel }}</span>
-                            </span>
-                            <!-- BROADER TERM -->
-                            <span ng-show="concept.broader">
-                                <span data-ng-repeat="b in concept.broader"
-                                      data-ng-click="selectSought(b.label)"
-                                      class="broader-term">
-                                     <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b.label }}</span>
+                            <div>
+                                <!-- PREFERRED TERM -->
+                                <span data-ng-show="!concept.preferred"
+                                      data-ng-click="selectSought(concept.prefLabel)">
+                                    <span class="label term-preferred"><!--&#8594;--><i class="fa fa-star"></i> {{ concept.prefLabel }}</span>
                                 </span>
-                            </span>
-                            <!-- NARROWER TERM -->
-                            <span ng-show="concept.narrower">
-                                <span data-ng-repeat="n in concept.narrower"
-                                      data-ng-click="selectSought(n.label)"
-                                      class="narrower-term">
-                                    <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>--> {{ n.label }}</span>
+                                <!-- BROADER TERM -->
+                                <span ng-show="concept.broader">
+                                    <span data-ng-repeat="b in concept.broader"
+                                          data-ng-click="selectSought(b.label)"
+                                          class="broader-term">
+                                         <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b.label }}</span>
+                                    </span>
                                 </span>
-                            </span>
+                                <!-- NARROWER TERM -->
+                                <span ng-show="concept.narrower">
+                                    <span data-ng-repeat="n in concept.narrower"
+                                          data-ng-click="selectSought(n.label)"
+                                          class="narrower-term">
+                                        <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>--> {{ n.label }}</span>
+                                    </span>
+                                </span>
+                                </div>
 
                             <div class="concept-bottom">
                                     <a ng-href="{{concept.uri}}" target="_blank">
