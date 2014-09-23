@@ -143,7 +143,7 @@
 
 <script type="text/ng-template" id="node.html">
     <li data-ng-click="selectNode(node, $event)">
-        <div class="node" data-ng-class="{ 'chosen': node.chosen, 'active': node.lengths.length != 0 }">
+        <div class="node" data-ng-class="{ 'chosen': node == selectedNode, 'active': node.lengths.length != 0 }">
             <span data-ng-show="!node.lengths.length > 0" data-ng-click="node.collapsed = !node.collapsed">
                 <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}" class="fa pointer"></i>
             </span>
@@ -153,7 +153,7 @@
                     Record Root: {{ node.count }}
                 </span>
                 <span data-ng-if="node == uniqueIdNode" class="badge badge-unique">Unique Id: {{ node.count }}</span>
-                <span data-ng-if="node.sourcePath" class="badge badge-mapped">Terminology: {{ node.count }}</span>
+                <span data-ng-if="node.sourcePath" class="badge badge-mapped" data-ng-click="goToTerms(node)">Terminology: {{ node.count }}</span>
                 <span data-ng-if="!(node == recordRootNode || node == uniqueIdNode || node.sourcePath)" class="badge badge-info">{{ node.count }}</span>
             </span>
         </div>

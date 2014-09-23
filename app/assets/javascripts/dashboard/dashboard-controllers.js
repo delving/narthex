@@ -498,7 +498,11 @@ define(["angular"], function () {
             $location.search({});
         };
 
-        $scope.goToTerms = function () {
+        $scope.goToTerms = function (node) {
+            if (node && node != $scope.selectedNode) {
+                console.log("not me", node);
+                return;
+            }
             $location.path("/terms/" + $scope.fileName);
             $location.search({
                 path: $routeParams.path,
