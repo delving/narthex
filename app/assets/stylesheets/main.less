@@ -116,22 +116,11 @@
 
 
 body {
-  margin-top: 80px;
+  margin-top: 60px;
 }
 
 a {
   color: @link-color;
-}
-
-code {
-  &.path {
-    color: @gray;
-    white-space: pre-line;
-    word-wrap: break-word;
-    span {
-      color: @brand-success;
-    }
-  }
 }
 
 /* login view **********************************************************/
@@ -242,8 +231,33 @@ code {
 
 /* dataset/schema view styles *****************************************/
 
+.file-path-info {
+  font-weight: normal;
+  font-size: 100%;
+  .file-name {
+    color: @gray-dark;
+  }
+  .file-path {
+    color: @green;
+  }
+}
 
+.navtabs {
+  .toolbar {
+    float: right;
+  }
+}
 
+code {
+  &.path {
+    color: @gray;
+    white-space: pre-line;
+    word-wrap: break-word;
+    span {
+      color: @brand-success;
+    }
+  }
+}
 //
 //.label-clear {
 //  background: @white;
@@ -320,16 +334,16 @@ code {
     padding: 0 0 0 0;
   }
   div.node {
-    border-bottom: 1px solid @gray;
+    border-bottom: 1px solid @ash-gray;
     padding: 2px;
     &.active:hover {
-      background: @gray;
-      color: @white;
+      background: @gray-lighter;
+//      color: @white;
       cursor: pointer;
     }
     &.chosen {
-      background: @white;
-      color: @black;
+      background: @bright-blue;
+      color: @white;
       cursor: default;
     }
     &.chosen:hover {
@@ -512,11 +526,11 @@ code {
 ////}
 //
 //
-//.vertical-scroll {
-//  overflow-x: hidden;
-//  overflow-y: auto;
-//  position: relative;
-//}
+.vertical-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+}
 //
 ///* CONCEPT LIST */
 //
