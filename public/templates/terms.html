@@ -40,13 +40,6 @@
                     <li data-ng-class="{ active: activeView == 'record' }"><a href data-ng-click="recordTab()">Records</a></li>
                 </ul>
 
-                <span data-ng-show="activeView == 'skos'" class="pull-right">
-                    <span class="label term-matched">matched term</span>
-                    <span class="label term-alt">alt term</span>
-                    <span class="label term-preferred"><i class="fa fa-star"></i> preferred term</span>
-                    <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> broader term</span>
-                    <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>-->  narrower term</span>
-                </span>
                 <span data-ng-show="activeView == 'vocabulary'" class="pull-right">
                     <span class="label term-broader">Available SKOS Vocabularies</span>
                 </span>
@@ -61,7 +54,7 @@
                 <textarea class="form-control" style="font-family: monospace; font-size: 8pt;"data-scrollable id="records" data-offset="230" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">{{ records }}</textarea>
             </div>
 
-            <div class="panel-body">
+            <div class="panel-body-x">
 
                 <!-- SHOW SKOS (CONCEPT) -->
                 <div data-ng-show="vocabularyList && activeView == 'vocabulary'">
@@ -77,6 +70,15 @@
                         <label class="input-group-addon"><i class="fa fa-search"></i> {{ vocabulary }}</label>
                         <input class="form-control" type="text" data-ng-model="sought"/>
                     </div>
+
+                    <div data-ng-show="activeView == 'skos'" class="well well-sm">
+                        <span class="label term-preferred"><i class="fa fa-star"></i> preferred term</span>
+                        <span class="label term-matched">matched term</span>
+                        <span class="label term-alt">alt term</span>
+                        <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> broader term</span>
+                        <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>-->  narrower term</span>
+                    </div>
+
                     <div class="alert alert-explain" role="alert" data-ng-show="!sought">
                         <b>Click</b> on a term from the list on the left or <b>enter</b> a term in the search field above
                     </div>
@@ -88,15 +90,20 @@
                     <div data-ng-show="concepts" class="concepts-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="289" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceEntry.sourceUri].target == concept.uri }">
 
-                            <progressbar value="concept.proximity" max="1.0" type="success">
-                                {{ concept.proximity * 100 | number : 0 }}%
-                            </progressbar>
+
+                            <!--<progressbar value="concept.proximity" max="1.0" type="success">-->
+                                <!--{{ concept.proximity * 100 | number : 0 }}%-->
+                            <!--</progressbar>-->
                             <div>
                                 <!-- MATCHTED TERM / ALT TERM -->
+                                <button class="btn btn-default">
+                                    <span class="badge">{{ concept.proximity * 100 | number : 0 }}%</span>
                                 <span data-ng-click="setMapping(concept)"
                                       class="found-term" title="Click to map!">
                                     <span class="label term-matched" data-ng-class="{ 'term-alt' : !concept.preferred }">{{ concept.label }}</span>
                                 </span>
+
+                                </button>
                                 <!-- PREFERRED TERM -->
                                 <span data-ng-show="!concept.preferred"
                                       data-ng-click="selectSought(concept.prefLabel)">

@@ -332,6 +332,15 @@ code {
     }
   }
 }
+
+/* terms view styles *******************************/
+
+.alert-explain {
+  background:@linnen;
+  border: 1px solid lighten(@tan, 25%);
+//  color: @white;
+}
+
 //
 //.label-clear {
 //  background: @white;
@@ -341,11 +350,7 @@ code {
 //  display: inline-block;
 //}
 //
-//.alert-explain {
-//  background:@gray-light;
-//  border: darken(@gray-light, 10%);
-//  color: @white;
-//}
+
 //
 
 //
@@ -528,82 +533,82 @@ code {
 ////}
 //
 //
-///****************************
-//  SKOS TERMS BROWSER
-//****************************/
-//
-//.panel-choice {
-//  .panel-body {
-//    &:hover {
-//      background: @gray;
-//      cursor: pointer;
-//    }
-//  }
-//}
-//
-//.input-group-skos-term {
-//  margin-bottom: 20px;
-//  .input-group-addon {
-//      background: @brand-primary;
-//      color: @gray-lighter;
-//  }
-//}
-//
-////.dropdown-menu {
-////  background: @gray;
-////}
-//
-//
+/****************************
+  SKOS TERMS BROWSER
+****************************/
 
-//
-///* CONCEPT LIST */
-//
-//.concepts-list {
-//  .concept-bottom {
-//    font-size: 85%;
-//  }
-//  .concept-box {
+.panel-choice {
+  .panel-body {
+    &:hover {
+      background: @gray;
+      cursor: pointer;
+    }
+  }
+}
+
+.input-group-skos-term {
+  margin-bottom: 20px;
+  .input-group-addon {
+      background: @brand-primary;
+      color: @gray-lighter;
+  }
+}
+
+//.dropdown-menu {
+//  background: @gray;
+//}
+
+
+
+
+/* CONCEPT LIST */
+
+.concepts-list {
+  .concept-bottom {
+    font-size: 85%;
+  }
+  .concept-box {
 //    background: @gray-darker;
-//    padding-bottom: 10px;
+    padding-bottom: 10px;
 //    border-bottom: 1px dashed @gray;
-////    position: relative;
-//    .progress {
-//      margin-bottom: 4px !important;
-//    }
-//  }
-//  .concept-selected {
-//    background: @gray;
-//    padding: 8px;
-//  }
-//  .label {
-//    font-size: 85%;
-//    display: inline-block;
-//    margin-bottom: 4px;
-//    &:hover {
-//      cursor: pointer;
-//    }
-//  }
-//}
-//
-//.term-matched {
-//  background: @brand-primary;
-//}
-//
-//.term-alt {
-//  background: @brand-info;
-//}
-//
-//.term-preferred {
-//  background: @brand-success;
-//}
-//
-//.term-broader {
-//  background: @gray-light;
-//}
-//
-//.term-narrower {
-//  background: @gray-light;
-//}
+//    position: relative;
+    .progress {
+      margin-bottom: 4px !important;
+    }
+  }
+  .concept-selected {
+    background: @gray;
+    padding: 8px;
+  }
+  .label {
+    font-size: 85%;
+    display: inline-block;
+    margin-bottom: 4px;
+    &:hover {
+      cursor: pointer;
+    }
+  }
+}
+
+.term-matched {
+  background: @brand-primary;
+}
+
+.term-alt {
+  background: @brand-info;
+}
+
+.term-preferred {
+  background: @brand-success;
+}
+
+.term-broader {
+  background: @gray-light;
+}
+
+.term-narrower {
+  background: @gray-light;
+}
 //
 //
 //
