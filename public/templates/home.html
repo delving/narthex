@@ -1,14 +1,12 @@
 <div class="home row clearfix">
-    <div class="col-sm-4">
-        <div class="img">
-            <img src="/narthex/assets/images/narthex-blue.png" />
-        </div>
-    </div>
 
-    <div class="col-sm-4">
+    <div class="col-sm-4 col-sm-push-4">
         <h2>Login</h2>
 
-        <form name="form" class="form well">
+        <form name="form" class="form well clearfix">
+            <div class="img pull-left">
+                <img src="/narthex/assets/images/narthex-blue.png" />
+            </div>
             <fieldset>
                 <div class="form-group">
                     <label for="username">Username</label>
@@ -19,7 +17,7 @@
                     <input id="password" type="password" class="form-control" data-ng-model="credentials.password" placeholder="Password" required autofocus/>
                 </div>
                 <br/>
-                <button class="btn btn-primary" data-ng-disabled="form.$invalid" data-ng-click="login(credentials)">Log In</button>
+                <button class="btn btn-primary pull-right" data-ng-disabled="form.$invalid" data-ng-click="login(credentials)">Log In</button>
             </fieldset>
             <div data-ng-show="errorMessage">
                 <br/>

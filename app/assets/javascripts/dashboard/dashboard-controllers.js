@@ -24,7 +24,7 @@ var STATE_BLOCK = {
     'state-empty': {
         label: 'Empty',
         css: 'label-info',
-        faIcon: 'fa-folder',
+        faIcon: 'fa-folder-o',
         revertState: 'state-deleted',
         revertPrompt: 'Delete dataset?'
     },
@@ -59,7 +59,7 @@ var STATE_BLOCK = {
     'state-analyzed': {
         label: 'Analyzed',
         css: 'label-success',
-        faIcon: 'fa-folder-open',
+        faIcon: 'fa-folder',
         revertState: 'state-ready',
         revertPrompt: 'Discard analysis?',
         viewSchema: true
