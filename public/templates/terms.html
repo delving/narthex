@@ -8,10 +8,10 @@
     </div>
     <div class="col-md-4">
         <ul class="nav nav-tabs" data-ng-init="show='all'">
-            <li><span class="nav-tabs-title">Terms</span></li>
-            <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'"><a href >All ({{ all }})</a></li>
-            <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'"><a href >Mapped ({{ mapped }})</a></li>
-            <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'"><a href >Unmapped ({{ unmapped }})</a></li>
+            <li class="nav-tabs-title"><span >Terms</span></li>
+            <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'"><a href >All <span class="badge">{{ all }}</span></a></li>
+            <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'"><a href >Mapped <span class="badge">{{ mapped }}</span></a></li>
+            <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'"><a href >Unmapped <span class="badge">{{ unmapped }}</span></a></li>
         </ul>
 
         <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="200" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
