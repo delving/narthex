@@ -442,7 +442,6 @@ define(["angular"], function () {
                         }
                     }
                 }
-
                 $scope.tree = tree;
                 if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
 
@@ -468,12 +467,13 @@ define(["angular"], function () {
                     }
                 }
 
+
                 var recordRoot = datasetInfo.delimit.recordRoot;
                 if (recordRoot) {
                     var recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
                     var uniqueId = datasetInfo.delimit.uniqueId;
                     setDelim(tree, recordRoot, recordContainer, uniqueId);
-                    if (parseInt(datasetInfo.delimit.recordCount) <= 0) {
+                    if (parseInt(datasetInfo.delimit.recordCount) <= 0 && $scope.uniqueIdNode) {
                         $scope.setUniqueIdNode($scope.uniqueIdNode); // trigger setting record count
                     }
                 }
@@ -499,10 +499,7 @@ define(["angular"], function () {
         };
 
         $scope.goToTerms = function (node) {
-            if (node && node != $scope.selectedNode) {
-                console.log("not me", node);
-                return;
-            }
+            if (node && node != $scope.selectedNode) return;
             $location.path("/terms/" + $scope.fileName);
             $location.search({
                 path: $routeParams.path,

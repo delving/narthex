@@ -57,6 +57,8 @@ define(["angular"], function (angular) {
             var lastSlash = recordRoot.lastIndexOf('/');
             $scope.recordContainer = recordRoot.substring(0, lastSlash);
             $scope.sourceUriPath = $scope.path.substring($scope.recordContainer.length);
+            var state = datasetInfo.status.state;
+            $scope.datasetRecordsSaved = (state == 'state-published' || state == 'state-saved');
         });
 
         function filterHistogram() {

@@ -35,9 +35,15 @@
 
 
                 <ul class="nav nav-tabs" >
-                    <li data-ng-class="{ active: activeView == 'vocabulary' }"><a href data-ng-click="vocabularyTab()">Vocabularies</a></li>
-                    <li data-ng-class="{ active: activeView == 'skos' }"><a href data-ng-click="skosTab()">Concepts</a></li>
-                    <li data-ng-class="{ active: activeView == 'record' }"><a href data-ng-click="recordTab()">Records</a></li>
+                    <li data-ng-class="{ active: activeView == 'vocabulary' }">
+                        <a href data-ng-click="vocabularyTab()">Vocabularies</a>
+                    </li>
+                    <li data-ng-class="{ active: activeView == 'skos' }">
+                        <a href data-ng-click="skosTab()">Concepts</a>
+                    </li>
+                    <li data-ng-class="{ active: activeView == 'record' }" data-ng-show="datasetRecordsSaved">
+                        <a href data-ng-click="recordTab()">Records</a>
+                    </li>
                 </ul>
 
                 <span data-ng-show="activeView == 'vocabulary'" class="pull-right">

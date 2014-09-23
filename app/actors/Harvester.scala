@@ -25,7 +25,7 @@ import akka.pattern.pipe
 import org.apache.commons.io.FileUtils._
 import services.DatasetState._
 import services.Harvesting._
-import services.{DatasetRepo, Harvesting, PMHHarvestPage, RecordHandling}
+import services._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
@@ -91,6 +91,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
       datasetRepo.datasetDb.setHarvestInfo("pmh", url, set, prefix)
       datasetRepo.datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
+      datasetRepo.datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
       val futurePage = fetchPMHPage(url, set, prefix)
       futurePage.onFailure {
         case e => self ! HarvestComplete(Some(e.toString))
