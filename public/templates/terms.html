@@ -32,8 +32,8 @@
         </div>
     </div>
     <div class="col-md-8">
-        <div class="panelx panel-primary">
-            <div class="panel-headingx list-controlsx">
+
+
                 <ul class="nav nav-tabs" >
                     <li data-ng-class="{ active: activeView == 'vocabulary' }"><a href data-ng-click="vocabularyTab()">Vocabularies</a></li>
                     <li data-ng-class="{ active: activeView == 'skos' }"><a href data-ng-click="skosTab()">Concepts</a></li>
@@ -46,15 +46,14 @@
                 <span data-ng-show="activeView == 'record'" class="pull-right">
                     <span class="label term-broader">Records containing "{{ sourceEntry.value }}"</span>
                 </span>
-            </div>
+
 
             <!-- SHOW RECORD -->
             <div data-ng-show="activeView == 'record'">
                 <!--todo: this should show an enriched record, and highlight the lines which are enriched-->
-                <textarea class="form-control" style="font-family: monospace; font-size: 8pt;"data-scrollable id="records" data-offset="230" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">{{ records }}</textarea>
+                <textarea class="form-control" style="font-family: monospace; font-size: 8pt;" data-scrollable id="records" data-offset="260" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">{{ records }}</textarea>
             </div>
 
-            <div class="panel-body-x">
 
                 <!-- SHOW SKOS (CONCEPT) -->
                 <div data-ng-show="vocabularyList && activeView == 'vocabulary'">
@@ -87,45 +86,40 @@
                     </div>
 
 
-                    <div data-ng-show="concepts" class="concepts-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="289" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                    <div data-ng-show="concepts" class="concepts-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="320" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                         <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceEntry.sourceUri].target == concept.uri }">
 
+                            <!-- MATCHTED TERM / ALT TERM -->
+                            <button class="btn btn-default" tooltip="Click to map to this term..."  tooltip-trigger="mouseenter" tooltip-placement="top">
+                                <span class="badge">{{ concept.proximity * 100 | number : 0 }}%</span>
+                            <span data-ng-click="setMapping(concept)"
+                                  class="found-term" title="Click to map!">
+                                <span class="label term-matched" data-ng-class="{ 'term-alt' : !concept.preferred }">{{ concept.label }}</span>
+                            </span>
 
-                            <!--<progressbar value="concept.proximity" max="1.0" type="success">-->
-                                <!--{{ concept.proximity * 100 | number : 0 }}%-->
-                            <!--</progressbar>-->
-                            <div>
-                                <!-- MATCHTED TERM / ALT TERM -->
-                                <button class="btn btn-default">
-                                    <span class="badge">{{ concept.proximity * 100 | number : 0 }}%</span>
-                                <span data-ng-click="setMapping(concept)"
-                                      class="found-term" title="Click to map!">
-                                    <span class="label term-matched" data-ng-class="{ 'term-alt' : !concept.preferred }">{{ concept.label }}</span>
+                            </button>
+                            <!-- PREFERRED TERM -->
+                            <span data-ng-show="!concept.preferred"
+                                  data-ng-click="selectSought(concept.prefLabel)">
+                                <span class="label term-preferred"><!--&#8594;--><i class="fa fa-star"></i> {{ concept.prefLabel }}</span>
+                            </span>
+                            <!-- BROADER TERM -->
+                            <span ng-show="concept.broader">
+                                <span data-ng-repeat="b in concept.broader"
+                                      data-ng-click="selectSought(b.label)"
+                                      class="broader-term">
+                                     <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b.label }}</span>
                                 </span>
+                            </span>
+                            <!-- NARROWER TERM -->
+                            <span ng-show="concept.narrower">
+                                <span data-ng-repeat="n in concept.narrower"
+                                      data-ng-click="selectSought(n.label)"
+                                      class="narrower-term">
+                                    <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>--> {{ n.label }}</span>
+                                </span>
+                            </span>
 
-                                </button>
-                                <!-- PREFERRED TERM -->
-                                <span data-ng-show="!concept.preferred"
-                                      data-ng-click="selectSought(concept.prefLabel)">
-                                    <span class="label term-preferred"><!--&#8594;--><i class="fa fa-star"></i> {{ concept.prefLabel }}</span>
-                                </span>
-                                <!-- BROADER TERM -->
-                                <span ng-show="concept.broader">
-                                    <span data-ng-repeat="b in concept.broader"
-                                          data-ng-click="selectSought(b.label)"
-                                          class="broader-term">
-                                         <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b.label }}</span>
-                                    </span>
-                                </span>
-                                <!-- NARROWER TERM -->
-                                <span ng-show="concept.narrower">
-                                    <span data-ng-repeat="n in concept.narrower"
-                                          data-ng-click="selectSought(n.label)"
-                                          class="narrower-term">
-                                        <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>--> {{ n.label }}</span>
-                                    </span>
-                                </span>
-                            </div>
                             <div class="concept-bottom">
                                     <a ng-href="{{concept.uri}}" target="_blank">
                                         {{ concept.uri }}
@@ -137,8 +131,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+
+
     </div>
 
 </div>

@@ -577,7 +577,8 @@ code {
     }
   }
   .concept-selected {
-    background: @gray;
+    background: @linnen;
+    border: 1px solid lighten(@tan, 25%);
     padding: 8px;
   }
   .label {
@@ -588,6 +589,10 @@ code {
       cursor: pointer;
     }
   }
+}
+
+div.tooltip {
+  z-index: @zindex-modal;
 }
 
 .term-matched {
