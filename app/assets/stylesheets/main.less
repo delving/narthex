@@ -202,6 +202,26 @@ a {
 //  color: @brand-info;
 //}
 
+/* vertical scroll directive styles ************************************/
+
+.vertical-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* nav-tabs ************************************************************/
+
+.nav-tabs {
+  .nav-tabs-title {
+    display: inline-block;
+    color: @gray-light;
+    font-weight: bold;
+    padding: 10px 15px 10px 0;
+    text-transform: uppercase;
+  }
+}
+
 /* dashboard file list styles *******************************************/
 
 .list-group {
@@ -223,6 +243,10 @@ a {
   padding: 10px;
 }
 
+.file-drop-over {
+  border-color: @brand-primary;
+}
+
 .file-harvest {
   margin-top: 10px;
   background: @silver;
@@ -242,11 +266,61 @@ a {
   }
 }
 
+.panel-schema {
+  margin-bottom: 0px;
+  ul {
+    margin: 0 0 0 18px;
+    padding: 0 0 0 0;
+  }
+  div.node {
+    border-bottom: 1px solid @ash-gray;
+    padding: 2px;
+    &.active:hover {
+      background: @gray-lighter;
+      cursor: pointer;
+    }
+    &.chosen {
+      background: @bright-blue;
+      color: @white;
+      cursor: default;
+    }
+    &.chosen:hover {
+      background: @white;
+      color: @black;
+      cursor: default;
+    }
+  }
+  .badge {
+    background: @black;
+    &.badge-info {
+      background: @brand-primary;
+      color: @white;
+    }
+    &.badge-unique {
+      background: @alert-success-bg;
+      color: @alert-success-text;
+    }
+    &.badge-mapped {
+      background: @alert-danger-bg;
+      color: @alert-danger-text;
+    }
+    &.badge-record-root {
+      background: @alert-warning-bg;
+      color: @alert-warning-text;
+    }
+  }
+}
+
 .navtabs {
   .toolbar {
     float: right;
   }
 }
+
+.navbar-tools {
+  background: @silver;
+}
+
 
 code {
   &.path {
@@ -322,56 +396,10 @@ code {
 //}
 //
 
-.file-drop-over {
-  border-color: @brand-primary;
-}
 
 
-.panel-schema {
-  margin-bottom: 0px;
-  ul {
-    margin: 0 0 0 18px;
-    padding: 0 0 0 0;
-  }
-  div.node {
-    border-bottom: 1px solid @ash-gray;
-    padding: 2px;
-    &.active:hover {
-      background: @gray-lighter;
-//      color: @white;
-      cursor: pointer;
-    }
-    &.chosen {
-      background: @bright-blue;
-      color: @white;
-      cursor: default;
-    }
-    &.chosen:hover {
-      background: @white;
-      color: @black;
-      cursor: default;
-    }
-  }
-  .badge {
-    background: @black;
-    &.badge-info {
-      background: @brand-primary;
-      color: @white;
-    }
-    &.badge-unique {
-      background: @alert-success-bg;
-      color: @alert-success-text;
-    }
-    &.badge-mapped {
-      background: @alert-danger-bg;
-      color: @alert-danger-text;
-    }
-    &.badge-record-root {
-      background: @alert-warning-bg;
-      color: @alert-warning-text;
-    }
-  }
-}
+
+
 //
 //.badge-warning {
 //  background: @alert-danger-bg;
@@ -526,11 +554,7 @@ code {
 ////}
 //
 //
-.vertical-scroll {
-  overflow-x: hidden;
-  overflow-y: auto;
-  position: relative;
-}
+
 //
 ///* CONCEPT LIST */
 //

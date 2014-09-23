@@ -1,4 +1,3 @@
-
 <div class="row">
     <div class="col-sm-12">
         <div class="tabbable">
@@ -11,9 +10,9 @@
                     <a href role="tab" data-ng-click="setActiveTab('sips')">SIPs</a>
                 </li>
                 <li class="toolbar pull-right a-right">
-                      <button data-ng-show="files" class="btn btn-default btn-sm" data-ng-click="setNewFileOpen(true)">
-                            <span>Create a new file</span>
-                        </button>
+                    <button data-ng-show="activeTab === 'files'" class="btn btn-default btn-sm" data-ng-click="setNewFileOpen(true)">
+                        <span>Create a new file</span>
+                    </button>
                 </li>
             </ul>
             <!-- Tab panes -->
@@ -21,9 +20,9 @@
                 <div ng-switch="activeTab">
                     <div ng-switch-when="files" class="file-list">
                         <div data-ng-include="'file-list.html'">file list</div>
-                            <div data-ng-show="newFileOpen">
-                                        <div data-ng-include="'new-file.html'">new file</div>
-                                </div>
+                        <div data-ng-show="newFileOpen">
+                            <div data-ng-include="'new-file.html'">new file</div>
+                        </div>
 
                     </div>
                     <div ng-switch-when="sips">
@@ -89,7 +88,7 @@
             <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
         </div>
         <!--<div class="img-holder" data-ng-show="!file.uploading">-->
-            <!--<img src="/narthex/assets/images/narthex-blue.png"/>-->
+        <!--<img src="/narthex/assets/images/narthex-blue.png"/>-->
         <!--</div>-->
         <div data-ng-if="file.uploadPercent">
             <progressbar class="progress-striped active" animate="true" value="file.uploadPercent" max="100" type="success">
@@ -105,9 +104,11 @@
             <div class="form-group">
                 <label for="harvest_type">Harvest Server Type</label>
                 <div id="harvest_type" class="form-control">
-                    <input type="radio" ng-model="file.info.harvest.harvestType" value="pmh"> <span>OAI-PMH</span>
+                    <input type="radio" ng-model="file.info.harvest.harvestType" value="pmh">
+                    <span>OAI-PMH</span>
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    <input type="radio" ng-model="file.info.harvest.harvestType" value="adlib"> <span>AdLib API</span>
+                    <input type="radio" ng-model="file.info.harvest.harvestType" value="adlib">
+                    <span>AdLib API</span>
                 </div>
             </div>
             <div class="form-group">
@@ -120,11 +121,11 @@
             </div>
             <div class="form-group" data-ng-show="file.info.harvest.harvestType == 'pmh'">
                 <label for="pmh_prefix">Metadata Prefix</label>
-                <input id="pmh_prefix" class="form-control" data-ng-model="file.info.harvest.prefix" placeholder="prefix"
-                       required/>
+                <input id="pmh_prefix" class="form-control" data-ng-model="file.info.harvest.prefix" placeholder="prefix" required/>
             </div>
             <button typ="button" class="btn btn-success" data-ng-click="startHarvest(file)">
-                <i class="fa fa-refresh"></i> <span>Harvest</span>
+                <i class="fa fa-refresh"></i>
+                <span>Harvest</span>
                 <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH</span>
                 <span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>
             </button>
@@ -138,8 +139,8 @@
             <i class="fa fa-cube"></i>
             <span data-ng-show="file.details">
                 <b>{{ file.details.spec }}</b>
-                <button type="button" class="btn btn-danger btn-xs" data-ng-show="file.expendable"
-                        data-ng-click="deleteSipZip(file)"><i class="fa fa-trash-o"></i>
+                <button type="button" class="btn btn-danger btn-xs" data-ng-show="file.expendable" data-ng-click="deleteSipZip(file)">
+                    <i class="fa fa-trash-o"></i>
                 </button>
                 <span class="pull-right">
                     <i class="fa fa-male"></i>
@@ -157,8 +158,7 @@
 
 
 <script type="text/ng-template" id="percent-progress.html">
-    <progressbar class="progress-striped active" animate="true" value="file.info.status.percent"
-                 max="100" type="success"> {{file.info.status.percent}}%</progressbar>
+    <progressbar class="progress-striped active" animate="true" value="file.info.status.percent" max="100" type="success"> {{file.info.status.percent}}%</progressbar>
 </script>
 
 <script type="text/ng-template" id="file-open.html">
