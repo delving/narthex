@@ -23,7 +23,7 @@ var API_ACCESS_KEY = "secret";
 var STATE_BLOCK = {
     'state-empty': {
         label: 'Empty',
-        css: 'label-info',
+        css: 'label-inverse',
         faIcon: 'fa-folder-o',
         revertState: 'state-deleted',
         revertPrompt: 'Delete dataset?'
@@ -37,7 +37,7 @@ var STATE_BLOCK = {
     },
     'state-ready': {
         label: 'Ready',
-        css: 'label-success',
+        css: 'label-info',
         faIcon: 'fa-folder',
         revertState: 'state-empty',
         revertPrompt: 'Empty dataset?'
