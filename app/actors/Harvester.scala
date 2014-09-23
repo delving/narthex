@@ -23,7 +23,6 @@ import actors.Harvester._
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.pipe
 import org.apache.commons.io.FileUtils._
-import play.api.Logger
 import services.DatasetState._
 import services.Harvesting._
 import services.{DatasetRepo, Harvesting, PMHHarvestPage, RecordHandling}
@@ -69,10 +68,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
       datasetRepo.datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
       val futurePage = fetchAdLibPage(url, database)
       futurePage.onFailure {
-        case e =>
-          Logger.error(s"Failed harvest of $url $database to $datasetRepo first page")
-          datasetRepo.datasetDb.setStatus(EMPTY, error = e.toString)
-          context.stop(self)
+        case e => self ! HarvestComplete(Some(e.toString))
       }
       futurePage pipeTo self
 
@@ -86,10 +82,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
         datasetRepo.datasetDb.setStatus(HARVESTING, percent = diagnostic.percentComplete)
         val futurePage = fetchAdLibPage(url, database, Some(diagnostic))
         futurePage.onFailure {
-          case e =>
-            Logger.error(s"Failed harvest of $url $database to $datasetRepo mid harvest")
-            datasetRepo.datasetDb.setStatus(EMPTY, error = e.toString)
-            context.stop(self)
+          case e => self ! HarvestComplete(Some(e.toString))
         }
         futurePage pipeTo self
       }
@@ -100,10 +93,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
       datasetRepo.datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
       val futurePage = fetchPMHPage(url, set, prefix)
       futurePage.onFailure {
-        case e =>
-          Logger.error(s"Failed harvest of $url $set $prefix to $datasetRepo first page")
-          datasetRepo.datasetDb.setStatus(EMPTY, error = e.toString)
-          context.stop(self)
+        case e => self ! HarvestComplete(Some(e.toString))
       }
       futurePage pipeTo self
 
@@ -122,17 +112,14 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
               datasetRepo.datasetDb.setStatus(HARVESTING, percent = token.percentComplete)
               val futurePage = fetchPMHPage(url, set, prefix, Some(token))
               futurePage.onFailure {
-                case e =>
-                  Logger.error(s"Failed harvest of $url $set $prefix to $datasetRepo mid harvest")
-                  datasetRepo.datasetDb.setStatus(EMPTY, error = e.toString)
-                  context.stop(self)
+                case e => self ! HarvestComplete(Some(e.toString))
               }
               futurePage pipeTo self
           }
       }
 
     case HarvestComplete(error) =>
-      log.info(s"Harvested $datasetRepo error: $error")
+      log.info(s"Harvest complete $datasetRepo error: $error")
       zip.close()
       error match {
         case Some(errorString) =>

@@ -21,6 +21,7 @@ import java.util.zip.ZipFile
 
 import controllers.Application.{OkFile, OkXml}
 import org.apache.commons.io.FileUtils
+import org.apache.commons.io.FileUtils.deleteQuietly
 import play.api.libs.json.Json
 import play.api.mvc._
 import services.DatasetState._
@@ -138,23 +139,16 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def uploadOutput(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request => {
       val uploaded: File = repo.uploadedFile(fileName)
-      if (uploaded.exists()) {
-        val datasetRepo = repo.datasetRepo(fileName)
-        datasetRepo.goToState(EMPTY)
-        datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // connect with sip somehow
-        request.body.moveTo(uploaded)
-      }
-      else {
-        request.body.moveTo(uploaded)
-        val datasetRepo = repo.datasetRepo(fileName)
-        datasetRepo.datasetDb.createDataset(READY)
-        datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // connect with sip somehow
-        datasetRepo.datasetDb.setRecordDelimiter(
-          recordRoot = "/delving-sip-target/output",
-          uniqueId = "/delving-sip-target/output/@id",
-          recordCount = -1
-        )
-      }
+      deleteQuietly(uploaded)
+      request.body.moveTo(uploaded)
+      val datasetRepo = repo.datasetRepo(fileName)
+      datasetRepo.datasetDb.createDataset(READY)
+      datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // connect with sip somehow
+      datasetRepo.datasetDb.setRecordDelimiter(
+        recordRoot = "/delving-sip-target/output",
+        uniqueId = "/delving-sip-target/output/@id",
+        recordCount = -1
+      )
       Ok
     }
   }

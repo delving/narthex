@@ -290,7 +290,7 @@ define(["angular"], function () {
                     };
                     var parts = file.name.split(/__/);
                     file.identity = {
-                        name: parts[0].replace(/_/g, ' '),
+                        name: parts[0],
                         prefix: parts[1],
                         recordCount: file.info.delimit.recordCount > 0 ? file.info.delimit.recordCount : undefined
                     };

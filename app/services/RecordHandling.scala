@@ -132,7 +132,11 @@ trait RecordHandling extends BaseXTools {
             val mod = toXSDString(new DateTime())
             val record = uniqueId.map { id =>
               if (id.isEmpty) throw new RuntimeException("Empty unique id!")
-              val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
+              val scope = namespaceMap.view.filter{
+                ns =>
+                  val key = ns._1
+                  key != null && key != "xsi"
+              }.map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
               recordText.insert(0, s"""<narthex id="$id" mod="$mod" $scope>\n""")
               recordText.toString()
             } getOrElse {

@@ -52,7 +52,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with
           def sendProgress(percent: Int) = progress ! SaveProgress(percent)
           def receiveRecord(record: String) = {
             tick += 1
-            if (tick % 100000 == 0) {
+            if (tick % 10000 == 0) {
               val now = System.currentTimeMillis()
               Logger.info(s"$datasetRepo $tick: ${now - time}ms")
               time = now

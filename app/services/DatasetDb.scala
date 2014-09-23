@@ -18,6 +18,7 @@ package services
 
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
+import play.api.Logger
 
 import scala.xml.{Elem, XML}
 
@@ -52,6 +53,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           |   else insert node $$dataset into ${repoDb.allDatasets}
           |
           """.stripMargin.trim
+      Logger.info(s"create dataset:\n$update")
       session.query(update).execute()
   }
 
@@ -83,6 +85,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           | return replace node $$block with $$replacement
           |
           """.stripMargin.trim
+//      Logger.info(s"set properties:\n$update")
       session.query(update).execute()
   }
 
