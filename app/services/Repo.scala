@@ -67,6 +67,7 @@ object DatasetState {
   val PUBLISHED = DatasetState("state-published")
 
   val ALL_STATES = List(DELETED, EMPTY, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED, PUBLISHED)
+  val BUSY_STATES = List(SPLITTING, ANALYZING, SAVING)
 
   def fromString(string: String): Option[DatasetState] = {
     ALL_STATES.find(s => s.matches(string))

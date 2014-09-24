@@ -24,7 +24,7 @@ import services.FileHandling.ReadProgress
 
 import scala.collection.mutable
 import scala.io.Source
-import scala.util.{Random, Try}
+import scala.util.Random
 import scala.xml.pull._
 
 trait TreeHandling {
@@ -37,10 +37,10 @@ trait TreeHandling {
     var valueBuilder = new StringBuilder
     var valueListSize = 0
     var valueList = List.empty[String]
-    
+
     def flush() = {
       val writer = new BufferedWriter(new FileWriter(nodeRepo.values, true))
-      valueList.foreach{
+      valueList.foreach {
         line =>
           writer.write(line)
           writer.newLine()
@@ -102,24 +102,25 @@ trait TreeHandling {
 
   object TreeNode {
 
-    def apply(source: Source, length: Long, readProgress: ReadProgress, directory: DatasetRepo, progress: Int => Unit): Try[TreeNode] = Try {
+    def apply(source: Source, length: Long, readProgress: ReadProgress, directory: DatasetRepo, progress: Int => Boolean): Option[TreeNode] = {
       val base = new TreeNode(directory.root, null, null)
       var node = base
       var percentWas = -1
       var lastProgress = 0l
       val events = new XMLEventReader(source)
+      var running = true
 
-      def sendProgress(): Unit = {
+      def sendProgress() = {
         val percentZero = readProgress.getPercentRead
         val percent = if (percentZero == 0) 1 else percentZero
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
-          progress(percent)
+          running = progress(percent)
           percentWas = percent
           lastProgress = System.currentTimeMillis()
         }
       }
 
-      while (events.hasNext) {
+      while (events.hasNext && running) {
 
         events.next() match {
 
@@ -149,12 +150,16 @@ trait TreeHandling {
             println("EVENT? " + x) // todo: record these in an error file for later
         }
       }
-
-      val root = base.kids.values.head
-      base.finish()
-      val pretty = Json.prettyPrint(Json.toJson(root))
-      FileUtils.writeStringToFile(directory.index, pretty, "UTF-8")
-      root
+      if (running) {
+        val root = base.kids.values.head
+        base.finish()
+        val pretty = Json.prettyPrint(Json.toJson(root))
+        FileUtils.writeStringToFile(directory.index, pretty, "UTF-8")
+        Some(root)
+      }
+      else {
+        None
+      }
     }
   }
 

@@ -20,7 +20,7 @@ import java.io.{File, FileOutputStream}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import actors.Harvester._
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
 import org.apache.commons.io.FileUtils._
 import play.api.Logger
@@ -41,6 +41,8 @@ object Harvester {
 
   case class HarvestComplete(error: Option[String])
 
+  case class InterruptHarvest()
+
   def props(datasetRepo: DatasetRepo) = Props(new Harvester(datasetRepo))
 
   global.getClass // to avoid optimizing the import away
@@ -51,6 +53,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
   var tempFile = File.createTempFile("narthex", "harvest")
   val zip = new ZipOutputStream(new FileOutputStream(tempFile))
   var pageCount = 0
+  var bomb: Option[ActorRef] = None
 
   def addPage(page: String) = {
     pageCount = pageCount + 1
@@ -63,6 +66,10 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
 
   def receive = {
 
+    case InterruptHarvest() =>
+      log.info(s"Interrupt harvesting $datasetRepo")
+      bomb = Some(sender)
+
     case HarvestAdLib(url, database) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
       datasetRepo.datasetDb.setHarvestInfo("adlib", url, database, "adlib")
@@ -74,18 +81,23 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
       futurePage pipeTo self
 
     case AdLibHarvestPage(records, url, database, diagnostic) =>
-      val pageName = addPage(records)
-      log.info(s"Harvest Page: $pageName - $url $database to $datasetRepo: $diagnostic")
-      if (diagnostic.isLast) {
-        self ! HarvestComplete(None)
+      if (bomb.isDefined) {
+        self ! HarvestComplete(Some("Interrupted while harvesting"))
       }
       else {
-        datasetRepo.datasetDb.setStatus(HARVESTING, percent = diagnostic.percentComplete)
-        val futurePage = fetchAdLibPage(url, database, Some(diagnostic))
-        futurePage.onFailure {
-          case e => self ! HarvestComplete(Some(e.toString))
+        val pageName = addPage(records)
+        log.info(s"Harvest Page: $pageName - $url $database to $datasetRepo: $diagnostic")
+        if (diagnostic.isLast) {
+          self ! HarvestComplete(None)
         }
-        futurePage pipeTo self
+        else {
+          datasetRepo.datasetDb.setStatus(HARVESTING, percent = diagnostic.percentComplete)
+          val futurePage = fetchAdLibPage(url, database, Some(diagnostic))
+          futurePage.onFailure {
+            case e => self ! HarvestComplete(Some(e.toString))
+          }
+          futurePage pipeTo self
+        }
       }
 
     case HarvestPMH(url, set, prefix) =>
@@ -100,24 +112,29 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
       futurePage pipeTo self
 
     case PMHHarvestPage(records, url, set, prefix, total, error, resumptionToken) =>
-      error match {
-        case Some(errorString) =>
-          self ! HarvestComplete(Some(errorString))
+      if (bomb.isDefined) {
+        self ! HarvestComplete(Some("Interrupted while harvesting"))
+      }
+      else {
+        error match {
+          case Some(errorString) =>
+            self ! HarvestComplete(Some(errorString))
 
-        case None =>
-          val pageName = addPage(records)
-          log.info(s"Harvest Page $pageName to $datasetRepo: $resumptionToken")
-          resumptionToken match {
-            case None =>
-              self ! HarvestComplete(None)
-            case Some(token) =>
-              datasetRepo.datasetDb.setStatus(HARVESTING, percent = token.percentComplete)
-              val futurePage = fetchPMHPage(url, set, prefix, Some(token))
-              futurePage.onFailure {
-                case e => self ! HarvestComplete(Some(e.toString))
-              }
-              futurePage pipeTo self
-          }
+          case None =>
+            val pageName = addPage(records)
+            log.info(s"Harvest Page $pageName to $datasetRepo: $resumptionToken")
+            resumptionToken match {
+              case None =>
+                self ! HarvestComplete(None)
+              case Some(token) =>
+                datasetRepo.datasetDb.setStatus(HARVESTING, percent = token.percentComplete)
+                val futurePage = fetchPMHPage(url, set, prefix, Some(token))
+                futurePage.onFailure {
+                  case e => self ! HarvestComplete(Some(e.toString))
+                }
+                futurePage pipeTo self
+            }
+        }
       }
 
     case HarvestComplete(error) =>

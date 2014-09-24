@@ -17,9 +17,11 @@ package services
 
 import java.io.File
 
-import actors.Harvester.{HarvestAdLib, HarvestPMH}
-import actors.{Analyzer, Harvester, SaveRecords, Saver}
-import akka.actor.{PoisonPill, Props}
+import actors.Analyzer.InterruptAnalysis
+import actors.Harvester.{HarvestAdLib, HarvestPMH, InterruptHarvest}
+import actors.Saver.{InterruptSaving, SaveRecords}
+import actors._
+import akka.actor.Props
 import org.apache.commons.io.FileUtils.{deleteDirectory, deleteQuietly}
 import play.api.Logger
 import play.api.Play.current
@@ -46,11 +48,6 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
   def actor(props: Props) = {
     Logger.info(s"Creating actor $name")
     Akka.system.actorOf(props, name)
-  }
-
-  def killActor() = {
-    Logger.info(s"Sending actor $name a poison pill")
-    Akka.system.actorSelection(name) ! PoisonPill
   }
 
   def startPmhHarvest(url: String, dataset: String, prefix: String) = {
@@ -178,9 +175,21 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     }
   }
 
-  def goToState(state: DatasetState) = {
-    killActor()
-    state match {
+  def goToState(newState: DatasetState) = {
+
+    val currentState = datasetDb.getDatasetInfoOption match {
+      case Some(info) =>
+        fromString((info \ "status" \ "state").text).getOrElse(DELETED)
+      case _ =>
+        DELETED
+    }
+
+    Logger.info(s"$name: $currentState --> $newState")
+
+    val selection = Akka.system.actorSelection(s"akka://application/user/$name")
+
+    newState match {
+
       case DELETED =>
         datasetDb.removeDataset()
         recordDb.dropDb()
@@ -189,39 +198,58 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
         true
 
       case EMPTY =>
-        datasetDb.setStatus(state)
+        if (currentState == HARVESTING) {
+          // what if there is no actor listening?
+          Logger.info("Sending InterruptHarvest")
+          selection ! InterruptHarvest()
+        }
+        datasetDb.setStatus(newState)
         recordDb.dropDb()
         deleteQuietly(sourceFile)
         deleteDirectory(dir)
         true
 
       case READY =>
-        datasetDb.setStatus(state)
-        recordDb.dropDb()
-        deleteDirectory(dir)
+        if (currentState == SPLITTING || currentState == ANALYZING) {
+          // what if there is no actor listening?
+          Logger.info("Sending InterruptAnalysis")
+          selection ! InterruptAnalysis()
+        }
+        else {
+          datasetDb.setStatus(newState)
+          recordDb.dropDb()
+          deleteDirectory(dir)
+        }
         true
 
       case ANALYZED =>
-        datasetDb.setStatus(state)
-        recordDb.dropDb()
+        if (currentState == SAVING) {
+          // what if there is no actor listening?
+          Logger.info("Sending InterruptSaving")
+          selection ! InterruptSaving()
+        }
+        else {
+          datasetDb.setStatus(newState)
+          recordDb.dropDb()
+        }
         true
 
       case SAVED =>
-        datasetDb.getDatasetInfoOption match {
-          case Some(info) if PUBLISHED.matches((info \ "status" \ "state").text) =>
-            datasetDb.setStatus(state)
-            true
-          case _ =>
-            false
+        if (currentState == PUBLISHED) {
+          datasetDb.setStatus(SAVED)
+          true
+        }
+        else {
+          false
         }
 
       case PUBLISHED =>
-        datasetDb.getDatasetInfoOption match {
-          case Some(info) if SAVED.matches((info \ "status" \ "state").text) =>
-            datasetDb.setStatus(state)
-            true
-          case _ =>
-            false
+        if (currentState == SAVED) {
+          datasetDb.setStatus(PUBLISHED)
+          true
+        }
+        else {
+          false
         }
 
       case _ =>

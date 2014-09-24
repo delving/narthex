@@ -16,26 +16,42 @@
 
 package actors
 
-import akka.actor.{Actor, Props}
+import actors.Saver._
+import akka.actor.{Actor, ActorRef, Props}
 import org.basex.core.cmd.Optimize
-import play.Logger
+import play.api.Logger
 import services.DatasetState._
 import services.{DatasetRepo, FileHandling, RecordHandling}
 
 import scala.language.postfixOps
 
 object Saver {
+
+  case class SaveRecords(recordRoot: String, uniqueId: String, recordCount: Int, collection: String)
+
+  case class SaveProgress(percent: Int)
+
+  case class SaveComplete()
+
+  case class SaveError(error: String)
+
+  case class InterruptSaving()
+
   def props(datasetRepo: DatasetRepo) = Props(new Saver(datasetRepo))
 }
 
 class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
-
+  var log = Logger
   var parser: RawRecordParser = null
+  var bomb : Option[ActorRef] = None
 
   def receive = {
 
+    case InterruptSaving() =>
+      bomb = Some(sender)
+
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
-      Logger.info(s"Saving $datasetRepo")
+      log.info(s"Saving $datasetRepo")
       datasetRepo.recordDb.createDb
       var tick = 0
       var time = System.currentTimeMillis()
@@ -49,7 +65,10 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
                 datasetRepo.datasetDb.setStatus(SAVING, percent = percent)
             }
           }))
-          def sendProgress(percent: Int) = progress ! SaveProgress(percent)
+          def sendProgress(percent: Int) = {
+            if (bomb.isDefined) throw new InterruptedException
+            progress ! SaveProgress(percent)
+          }
           def receiveRecord(record: String) = {
             tick += 1
             if (tick % 10000 == 0) {
@@ -64,10 +83,11 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
             self ! SaveComplete()
           }
           catch {
+            case e:InterruptedException =>
+              self ! SaveError("Interrupted")
             case e:Exception =>
-              Logger.error("Problem saving", e)
-              datasetRepo.datasetDb.setStatus(ANALYZED, error = e.toString)
-              context.stop(self)
+              log.error(s"Unable to save $collection", e)
+              self ! SaveError(e.toString)
           }
           finally {
             source.close()
@@ -75,19 +95,19 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
           }
       }
 
+    case SaveError(error) =>
+      datasetRepo.datasetDb.setStatus(ANALYZED, error = error)
+      context.stop(self)
+
     case SaveComplete() =>
-      Logger.info(s"Saved ${datasetRepo.dir.getName}, optimizing..")
+      log.info(s"Saved ${datasetRepo.dir.getName}, optimizing..")
       datasetRepo.recordDb.db(_.execute(new Optimize()))
-      Logger.info(s"Optimized ${datasetRepo.dir.getName}.")
+      log.info(s"Optimized ${datasetRepo.dir.getName}.")
       datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
       datasetRepo.datasetDb.setStatus(SAVED)
       context.stop(self)
 
+
   }
 }
 
-case class SaveRecords(recordRoot: String, uniqueId: String, recordCount: Int, collection: String)
-
-case class SaveProgress(percent: Int)
-
-case class SaveComplete()
