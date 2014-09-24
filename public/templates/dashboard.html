@@ -255,7 +255,7 @@
 </script>
 
 <script type="text/ng-template" id="file-entry.html">
-    <div data-ng-controller="FileEntryCtrl" data-ng-click="setFileOpen(file)" class="list-item-inner">
+    <div data-ng-controller="FileEntryCtrl" class="list-item-inner">
         <i class="fa fa-fw {{ file.stateBlock.faIcon }}"></i>
         <a href class="btn btn-inverse btn-link" >
             <span>{{ file.identity.name }}</span>
@@ -273,7 +273,7 @@
 
 <script type="text/ng-template" id="file-list.html">
     <ul class="list-group list-files" data-ng-controller="FileListCtrl">
-        <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-class="" data-ng-show="file.info.status">
+        <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-class="" data-ng-click="setFileOpen(file)"  data-ng-show="file.info.status">
             <div data-ng-include="'file-entry.html'">entry</div>
         </li>
     </ul>
