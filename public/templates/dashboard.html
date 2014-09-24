@@ -207,6 +207,10 @@
             <i class="fa fa-recycle"></i>
             Drop a new file
         </button>
+        <button type="button" class="btn btn-danger btn-sm" data-ng-click="revert(file)">
+            <i class="fa fa-trash-o"></i>
+            {{ file.stateBlock.revertPrompt }}
+        </button>
     </div>
 
     <div data-ng-show="file.showInfo" class="file-info">
@@ -252,10 +256,6 @@
 
 <script type="text/ng-template" id="file-entry.html">
     <div data-ng-controller="FileEntryCtrl">
-        <button type="button" class="pull-right btn btn-danger btn-isolate" data-ng-click="revert(file)">
-            <i class="fa fa-trash-o"></i>
-            {{ file.stateBlock.revertPrompt }}
-        </button>
         <i class="fa fa-fw {{ file.stateBlock.faIcon }}"></i>
         <a href class="btn btn-inverse" data-ng-click="setFileOpen(file)">
             <span>{{ file.identity.name }}</span>
