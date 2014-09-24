@@ -12,15 +12,16 @@
                 <span>Terms</span>
             </li>
             <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'">
-                <a href>All<span class="badge">{{ all }}</span></a>
+                <a href>All&#160;
+                    <span class="badge">{{ all }}</span></a>
             </li>
             <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'">
-                <a href>Mapped
+                <a href>MappedAll&#160;
                     <span class="badge">{{ mapped }}</span>
                 </a>
             </li>
             <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'">
-                <a href>Unmapped
+                <a href>UnmappedAll&#160;
                     <span class="badge">{{ unmapped }}</span>
                 </a>
             </li>
