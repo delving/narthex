@@ -248,6 +248,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def setMapping(fileName: String) = Secure(parse.json) {
     token => implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
+      datasetRepo.invalidateEnrichementCache()
       if ((request.body \ "remove").asOpt[String].isDefined) {
         val sourceUri = (request.body \ "source").as[String]
         datasetRepo.termDb.removeMapping(sourceUri)
@@ -259,7 +260,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
         val vocabulary = (request.body \ "vocabulary").as[String]
         val prefLabel = (request.body \ "prefLabel").as[String]
         datasetRepo.termDb.addMapping(TermDb.TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
-        datasetRepo.invalidateEnrichementCache()
         Ok("Mapping added")
       }
     }
