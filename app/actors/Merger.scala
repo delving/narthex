@@ -16,12 +16,14 @@
 
 package actors
 
-import java.io.{File, FileWriter, FileReader, BufferedReader}
-import akka.actor.{Props, Actor, ActorLogging}
+import java.io.{BufferedReader, File, FileReader, FileWriter}
+
+import actors.Merger._
+import actors.Sorter._
+import akka.actor.{Actor, Props}
 import org.apache.commons.io.FileUtils
+import play.api.Logger
 import services.NodeRepo
-import Sorter._
-import Merger._
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
@@ -36,56 +38,57 @@ object Merger {
   def props(nodeRepo: NodeRepo) = Props(new Merger(nodeRepo))
 }
 
-class Merger(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
+class Merger(val nodeRepo: NodeRepo) extends Actor {
+  val log = Logger
 
-   def receive = {
+  def receive = {
 
-     case Merge(inFileA, inFileB, mergeResultFile, sortType) =>
-       log.debug(s"Merge : ${inFileA.getName} and ${inFileB.getName}")
-       val inputA = new BufferedReader(new FileReader(inFileA))
-       val inputB = new BufferedReader(new FileReader(inFileB))
+    case Merge(inFileA, inFileB, mergeResultFile, sortType) =>
+      log.debug(s"Merge : ${inFileA.getName} and ${inFileB.getName}")
+      val inputA = new BufferedReader(new FileReader(inFileA))
+      val inputB = new BufferedReader(new FileReader(inFileB))
 
-       def lineOption(reader: BufferedReader) = {
-         val string = reader.readLine()
-         if (string != null) Some(string) else None
-       }
+      def lineOption(reader: BufferedReader) = {
+        val string = reader.readLine()
+        if (string != null) Some(string) else None
+      }
 
-       val outputFile = nodeRepo.tempSort
-       val output = new FileWriter(outputFile)
+      val outputFile = nodeRepo.tempSort
+      val output = new FileWriter(outputFile)
 
-       def write(line: Option[String]) = {
-         output.write(line.get)
-         output.write("\n")
-       }
+      def write(line: Option[String]) = {
+        output.write(line.get)
+        output.write("\n")
+      }
 
-       var lineA: Option[String] = lineOption(inputA)
-       var lineB: Option[String] = lineOption(inputB)
-       while (lineA.isDefined || lineB.isDefined) {
-         if (lineA.isDefined && lineB.isDefined) {
-           val comparison = sortType.ordering.compare(lineA.get, lineB.get)
-           if (comparison < 0) {
-             write(lineA)
-             lineA = lineOption(inputA)
-           }
-           else {
-             write(lineB)
-             lineB = lineOption(inputB)
-           }
-         }
-         else if (lineA.isDefined) {
-           write(lineA)
-           lineA = lineOption(inputA)
-         }
-         else if (lineB.isDefined) {
-           write(lineB)
-           lineB = lineOption(inputB)
-         }
-       }
-       output.close()
-       inputA.close()
-       inputB.close()
-       FileUtils.deleteQuietly(inFileA)
-       FileUtils.deleteQuietly(inFileB)
-       sender ! Merged(Merge(inFileA, inFileB, mergeResultFile, sortType), outputFile, sortType)
-   }
- }
+      var lineA: Option[String] = lineOption(inputA)
+      var lineB: Option[String] = lineOption(inputB)
+      while (lineA.isDefined || lineB.isDefined) {
+        if (lineA.isDefined && lineB.isDefined) {
+          val comparison = sortType.ordering.compare(lineA.get, lineB.get)
+          if (comparison < 0) {
+            write(lineA)
+            lineA = lineOption(inputA)
+          }
+          else {
+            write(lineB)
+            lineB = lineOption(inputB)
+          }
+        }
+        else if (lineA.isDefined) {
+          write(lineA)
+          lineA = lineOption(inputA)
+        }
+        else if (lineB.isDefined) {
+          write(lineB)
+          lineB = lineOption(inputB)
+        }
+      }
+      output.close()
+      inputA.close()
+      inputB.close()
+      FileUtils.deleteQuietly(inFileA)
+      FileUtils.deleteQuietly(inFileB)
+      sender ! Merged(Merge(inFileA, inFileB, mergeResultFile, sortType), outputFile, sortType)
+  }
+}

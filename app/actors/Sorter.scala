@@ -20,7 +20,8 @@ import java.io._
 
 import actors.Merger._
 import actors.Sorter._
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, Props}
+import play.api.Logger
 import services.NodeRepo
 
 import scala.language.postfixOps
@@ -41,8 +42,8 @@ object Sorter {
   def props(nodeRepo: NodeRepo) = Props(new Sorter(nodeRepo))
 }
 
-class Sorter(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
-
+class Sorter(val nodeRepo: NodeRepo) extends Actor {
+  val log = Logger
   val linesToSort = 10000
   var sortFiles = List.empty[File]
   var merges = List.empty[Merge]

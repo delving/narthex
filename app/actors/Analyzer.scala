@@ -21,8 +21,9 @@ import java.io.File
 import actors.Analyzer._
 import actors.Collator._
 import actors.Sorter._
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import org.apache.commons.io.FileUtils
+import play.api.Logger
 import play.api.libs.json._
 import services.DatasetState._
 import services._
@@ -48,8 +49,8 @@ object Analyzer {
   def props(datasetRepo: DatasetRepo) = Props(new Analyzer(datasetRepo))
 }
 
-class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling with ActorLogging {
-
+class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
+  val log = Logger
   val LINE = """^ *(\d*) (.*)$""".r
   var sorters = List.empty[ActorRef]
   var collators = List.empty[ActorRef]
@@ -83,7 +84,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling wit
           self ! AnalysisTreeComplete(Json.toJson(tree))
 
         case Failure(e) =>
-          log.error(e, "Problem reading the file")
+          log.error("Problem reading the file", e)
           datasetRepo.datasetDb.setStatus(READY, error = s"Unable to read ${file.getName}: $e")
           self ! AnalysisError(file)
       }

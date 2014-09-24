@@ -16,7 +16,7 @@
 
 package actors
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, Props}
 import org.basex.core.cmd.Optimize
 import play.Logger
 import services.DatasetState._
@@ -28,7 +28,7 @@ object Saver {
   def props(datasetRepo: DatasetRepo) = Props(new Saver(datasetRepo))
 }
 
-class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with ActorLogging {
+class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
 
   var parser: RawRecordParser = null
 

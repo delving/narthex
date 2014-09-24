@@ -20,9 +20,10 @@ import java.io.{File, FileOutputStream}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import actors.Harvester._
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, Props}
 import akka.pattern.pipe
 import org.apache.commons.io.FileUtils._
+import play.api.Logger
 import services.DatasetState._
 import services.Harvesting._
 import services._
@@ -45,8 +46,8 @@ object Harvester {
   global.getClass // to avoid optimizing the import away
 }
 
-class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with Harvesting with ActorLogging {
-
+class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with Harvesting {
+  val log = Logger
   var tempFile = File.createTempFile("narthex", "harvest")
   val zip = new ZipOutputStream(new FileOutputStream(tempFile))
   var pageCount = 0
