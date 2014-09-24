@@ -19,7 +19,8 @@ package actors
 import java.io.{BufferedReader, File, FileReader, FileWriter}
 
 import actors.Collator._
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, Props}
+import play.api.Logger
 import play.api.libs.json.Json
 import services.{NodeRepo, RepoUtil, TreeHandling}
 
@@ -36,7 +37,8 @@ object Collator {
   def props(nodeRepo: NodeRepo) = Props(new Collator(nodeRepo))
 }
 
-class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging with TreeHandling {
+class Collator(val nodeRepo: NodeRepo) extends Actor with TreeHandling {
+  val log = Logger
 
    def receive = {
 
