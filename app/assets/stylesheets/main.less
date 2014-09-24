@@ -177,10 +177,17 @@ a {
 }
 
 .btn-inverse {
-  background: @white;
+  background: transparent;
   color: @gray-dark;
   &:hover {
     color: @gray-light;
+  }
+}
+
+.btn-link {
+  color: @link-color;
+  &:hover {
+    color: @bright-blue;
   }
 }
 
@@ -242,8 +249,11 @@ a {
 
 /* dashboard file list styles *******************************************/
 
-.list-group {
-  font-size: 14px;
+.list-files {
+  .list-group-item:hover {
+    background: @silver;
+    cursor: hand;
+  }
 }
 
 .file-info {
@@ -612,6 +622,10 @@ div.tooltip {
 
 .term-narrower {
   background: @gray-light;
+}
+
+textarea.code {
+  font-family: monospace;
 }
 //
 //

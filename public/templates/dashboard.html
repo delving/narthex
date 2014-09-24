@@ -180,7 +180,7 @@
             Save Records
         </button>
         <button class="btn btn-sm btn-default" data-ng-click="setPublished(file, true)" data-ng-show="allowPublish(file)">
-            <i class="fa fa-share-square-o"></i>
+            <i class="fa fa-unlock"></i>
             Publish
         </button>
         <button class="btn btn-sm btn-default" data-ng-click="setPublished(file, false)" data-ng-show="allowUnpublish(file)">
@@ -255,9 +255,9 @@
 </script>
 
 <script type="text/ng-template" id="file-entry.html">
-    <div data-ng-controller="FileEntryCtrl">
+    <div data-ng-controller="FileEntryCtrl" data-ng-click="setFileOpen(file)" class="list-item-inner">
         <i class="fa fa-fw {{ file.stateBlock.faIcon }}"></i>
-        <a href class="btn btn-inverse" data-ng-click="setFileOpen(file)">
+        <a href class="btn btn-inverse btn-link" >
             <span>{{ file.identity.name }}</span>
             <span>[{{ file.identity.prefix }}]</span>
             <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
@@ -272,8 +272,8 @@
 </script>
 
 <script type="text/ng-template" id="file-list.html">
-    <ul class="list-group" data-ng-controller="FileListCtrl">
-        <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.info.status">
+    <ul class="list-group list-files" data-ng-controller="FileListCtrl">
+        <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-class="" data-ng-show="file.info.status">
             <div data-ng-include="'file-entry.html'">entry</div>
         </li>
     </ul>
