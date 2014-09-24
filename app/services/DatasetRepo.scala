@@ -239,4 +239,6 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     val parser = new StoredRecordEnricher(pathPrefix, mappings)
     parser.parse(storedRecords)
   }
+
+  def invalidateEnrichementCache() = Cache.remove(name)
 }
