@@ -347,6 +347,28 @@ code {
 //  color: @white;
 }
 
+.terminology-list {
+  .list-group-item {
+    &:hover {
+      background: @silver;
+      cursor: pointer !important;
+    }
+    &.list-item-selected {
+      background: @ash-gray !important;
+    }
+    &.list-item-mapped {
+      background: @brand-success;
+    }
+    .term-mapped {
+      font-weight: normal;
+      font-style: italic;
+      i {
+        margin: 0 10px;
+      }
+    }
+  }
+}
+
 //
 //.label-clear {
 //  background: @white;
@@ -490,30 +512,7 @@ code {
 //  .clearfix();
 //}
 //
-//ul.terminology-list {
-//  .list-group-item {
-//    &:hover {
-//      font-weight: bold;
-//      cursor: pointer !important;
-//    }
-//    &.list-item-selected {
-//      background: @gray !important;
-//      font-weight: bold;
-//      color: @white;
-//    }
-//    &.list-item-mapped {
-//      background: @brand-success;
-////      font-weight: bold;
-//    }
-//    .term-mapped {
-//      font-weight: normal;
-//      font-style: italic;
-//      i {
-//        margin: 0 10px;
-//      }
-//    }
-//  }
-//}
+
 //
 //.nav-tab {
 //  background: @gray;
@@ -559,12 +558,6 @@ code {
       color: @gray-lighter;
   }
 }
-
-//.dropdown-menu {
-//  background: @gray;
-//}
-
-
 
 
 /* CONCEPT LIST */

@@ -2,26 +2,35 @@
 
     <div class="col-md-12">
         <div class="file-path-info breadcrumb">
-                <span class="file-name">{{fileName}}</span>
-                <span class="file-path">{{path}}</span>
+            <span class="file-name">{{fileName}}</span>
+            <span class="file-path">{{path}}</span>
         </div>
     </div>
     <div class="col-md-4">
         <ul class="nav nav-tabs nav-tabs-sm" data-ng-init="show='all'">
-            <li class="nav-tabs-title"><span >Terms</span></li>
-            <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'"><a href >All <span class="badge">{{ all }}</span></a></li>
-            <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'"><a href >Mapped <span class="badge">{{ mapped }}</span></a></li>
-            <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'"><a href >Unmapped <span class="badge">{{ unmapped }}</span></a></li>
+            <li class="nav-tabs-title">
+                <span>Terms</span>
+            </li>
+            <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'">
+                <a href>All<span class="badge">{{ all }}</span></a>
+            </li>
+            <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'">
+                <a href>Mapped
+                    <span class="badge">{{ mapped }}</span>
+                </a>
+            </li>
+            <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'">
+                <a href>Unmapped
+                    <span class="badge">{{ unmapped }}</span>
+                </a>
+            </li>
         </ul>
 
         <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="200" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
             <ul class="list-group terminology-list">
-                <li data-ng-repeat="entry in histogramVisible | filter:filterText"
-                    class="list-group-item clearfix test-class"
-                    data-ng-class="{ 'list-item-selected': entry.value ==  sourceEntry.value, 'list-item-mapped' : mappings[entry.sourceUri] }"
-                    data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectSource(entry);">
+                <li data-ng-repeat="entry in histogramVisible | filter:filterText" class="list-group-item clearfix test-class" data-ng-class="{ 'list-item-selected': entry.value ==  sourceEntry.value, 'list-item-mapped' : mappings[entry.sourceUri] }" data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectSource(entry);">
                     <span class="term">{{ entry.value }}</span>
-                    <span  class="term-mapped" data-ng-show="mappings[entry.sourceUri].prefLabel">
+                    <span class="term-mapped" data-ng-show="mappings[entry.sourceUri].prefLabel">
                         <i class="fa fa-link"></i> {{ mappings[entry.sourceUri].prefLabel }}
                         <!-- todo: functionality to delete the term mapping -->
                         <!--<button class="btn btn-danger btn-xs"><i class="fa fa-unlink"></i></button>-->
@@ -30,10 +39,11 @@
                 </li>
             </ul>
         </div>
+
     </div>
     <div class="col-md-8">
 
-        <ul class="nav nav-tabs" >
+        <ul class="nav nav-tabs">
             <li data-ng-class="{ active: activeView == 'vocabulary' }">
                 <a href data-ng-click="vocabularyTab()">Vocabularies</a>
             </li>
@@ -45,7 +55,7 @@
             </li>
         </ul>
 
-        <h4  data-ng-show="activeView == 'vocabulary'">Available SKOS Vocabularies</h4>
+        <h4 data-ng-show="activeView == 'vocabulary'">Available SKOS Vocabularies</h4>
         <h4 data-ng-show="activeView == 'record'">Records containing "{{ sourceEntry.value }}"</h4>
 
         <!-- SHOW RECORD -->
@@ -58,7 +68,8 @@
         <div data-ng-show="vocabularyList && activeView == 'vocabulary'">
             <div class="panel panel-default panel-choice">
                 <div class="panel-body" data-ng-repeat="name in vocabularyList" data-ng-click="selectVocabulary(name)">
-                    <i data-ng-show="name == vocabulary" class="fa fa-search fa-fw"></i> <span>{{ name }}</span>
+                    <i data-ng-show="name == vocabulary" class="fa fa-search fa-fw"></i>
+                    <span>{{ name }}</span>
                 </div>
             </div>
         </div>
@@ -83,7 +94,7 @@
             </div>
 
             <div data-ng-show="initialSearchWait">
-                 <i class="fa fa-spinner fa-spin fa-5x"></i>
+                <i class="fa fa-spinner fa-spin fa-5x"></i>
             </div>
 
             <div data-ng-show="concepts" class="concepts-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="320" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
@@ -91,21 +102,18 @@
                 <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceEntry.sourceUri].target == concept.uri }">
 
                     <!-- MATCHTED TERM / ALT TERM -->
-                    <button style="vertical-align: bottom" class="btn btn-default" tooltip="Click to map to this term..."  tooltip-trigger="mouseenter" tooltip-placement="right" data-ng-click="setMapping(concept)" >
+                    <button style="vertical-align: bottom" class="btn btn-default" tooltip="Click to map to this term..." tooltip-trigger="mouseenter" tooltip-placement="right" data-ng-click="setMapping(concept)">
                         <span class="badge">{{ concept.proximity * 100 | number : 0 }}%</span>
                         <span class="label term-matched" data-ng-class="{ 'term-alt' : !concept.preferred }">{{ concept.label }}</span>
                     </button>
 
                     <!-- PREFERRED TERM -->
-                    <span data-ng-show="!concept.preferred"
-                          data-ng-click="selectSought(concept.prefLabel)">
+                    <span data-ng-show="!concept.preferred" data-ng-click="selectSought(concept.prefLabel)">
                         <span class="label term-preferred"><!--&#8594;--><i class="fa fa-star"></i> {{ concept.prefLabel }}</span>
                     </span>
                     <!-- BROADER TERM -->
                     <span ng-show="concept.broader">
-                        <span data-ng-repeat="b in concept.broader"
-                              data-ng-click="selectSought(b.label)"
-                              class="broader-term">
+                        <span data-ng-repeat="b in concept.broader" data-ng-click="selectSought(b.label)" class="broader-term">
                              <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b.label }}</span>
                         </span>
                     </span>
@@ -117,9 +125,9 @@
                     </span>
 
                     <div class="concept-bottom">
-                            <a ng-href="{{concept.uri}}" target="_blank">
-                                {{ concept.uri }}
-                            </a>
+                        <a ng-href="{{concept.uri}}" target="_blank">
+                            {{ concept.uri }}
+                        </a>
                         <span>
                             "{{ concept.conceptScheme }}"
                         </span>
@@ -127,10 +135,8 @@
                 </div>
             </div>
         </div>
-            </div>
-
-        </div>
-
     </div>
+
 </div>
+
 
