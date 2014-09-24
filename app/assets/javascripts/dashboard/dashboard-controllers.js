@@ -26,42 +26,42 @@ var STATE_BLOCK = {
         css: 'label-inverse',
         faIcon: 'fa-folder-o',
         revertState: 'state-deleted',
-        revertPrompt: 'Delete dataset?'
+        revertPrompt: 'Delete dataset'
     },
     'state-harvesting': {
         label: 'Harvesting',
         css: 'label-warning',
         faIcon: 'fa-cogs',
         revertState: 'state-empty',
-        revertPrompt: 'Cancel harvesting?'
+        revertPrompt: 'Cancel harvesting'
     },
     'state-ready': {
         label: 'Ready',
         css: 'label-info',
         faIcon: 'fa-folder',
         revertState: 'state-empty',
-        revertPrompt: 'Empty dataset?'
+        revertPrompt: 'Empty dataset'
     },
     'state-splitting': {
         label: 'Splitting',
         css: 'label-warning',
         faIcon: 'fa-cogs',
         revertState: 'state-ready',
-        revertPrompt: 'Cancel splitting?'
+        revertPrompt: 'Cancel splitting'
     },
     'state-analyzing': {
         label: 'Analyzing',
         css: 'label-warning',
         faIcon: 'fa-cogs',
         revertState: 'state-ready',
-        revertPrompt: 'Cancel analyzing?'
+        revertPrompt: 'Cancel analyzing'
     },
     'state-analyzed': {
         label: 'Analyzed',
         css: 'label-success',
         faIcon: 'fa-folder',
         revertState: 'state-ready',
-        revertPrompt: 'Discard analysis?',
+        revertPrompt: 'Discard analysis',
         viewSchema: true
     },
     'state-saving': {
@@ -69,7 +69,7 @@ var STATE_BLOCK = {
         css: 'label-warning',
         faIcon: 'fa-cogs',
         revertState: 'state-analyzed',
-        revertPrompt: 'Cancel record saving?',
+        revertPrompt: 'Cancel record saving',
         viewSchema: true
     },
     'state-saved': {
@@ -77,7 +77,7 @@ var STATE_BLOCK = {
         css: 'label-success',
         faIcon: 'fa-database',
         revertState: 'state-analyzed',
-        revertPrompt: 'Delete saved records?',
+        revertPrompt: 'Delete saved records',
         viewSchema: true
     },
     'state-published': {
@@ -85,16 +85,9 @@ var STATE_BLOCK = {
         css: 'label-success',
         faIcon: 'fa-share-square-o',
         revertState: 'state-analyzed',
-        revertPrompt: 'Delete saved records?',
+        revertPrompt: 'Delete saved records',
         viewSchema: true,
         viewTerminology: true
-    },
-    'state-error': { // todo: multiple error states!
-        label: 'Error',
-        css: 'label-danger',
-        faIcon: 'fa-thumbs-down',
-        revertState: 'state-empty',
-        revertPrompt: 'Empty dataset?'
     }
 };
 
@@ -707,7 +700,7 @@ define(["angular"], function () {
         };
 
         $scope.revert = function(file) {
-            $scope.revertToState(file, file.stateBlock.revertState, file.stateBlock.revertPrompt)
+            $scope.revertToState(file, file.stateBlock.revertState, file.stateBlock.revertPrompt + '?')
         };
     };
 

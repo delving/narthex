@@ -254,6 +254,7 @@
     <div data-ng-controller="FileEntryCtrl">
         <button type="button" class="pull-right btn btn-danger btn-isolate" data-ng-click="revert(file)">
             <i class="fa fa-trash-o"></i>
+            {{ file.stateBlock.revertPrompt }}
         </button>
         <i class="fa fa-fw {{ file.stateBlock.faIcon }}"></i>
         <a href class="btn btn-inverse" data-ng-click="setFileOpen(file)">
