@@ -257,7 +257,7 @@
 <script type="text/ng-template" id="file-entry.html">
     <div data-ng-controller="FileEntryCtrl" class="list-item-inner">
         <i class="fa fa-fw {{ file.stateBlock.faIcon }}"></i>
-        <a href class="btn btn-inverse btn-link" >
+        <a href class="btn btn-inverse btn-link" data-ng-click="setFileOpen(file)" >
             <span>{{ file.identity.name }}</span>
             <span>[{{ file.identity.prefix }}]</span>
             <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
@@ -273,7 +273,7 @@
 
 <script type="text/ng-template" id="file-list.html">
     <ul class="list-group list-files" data-ng-controller="FileListCtrl">
-        <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-class="" data-ng-click="setFileOpen(file)"  data-ng-show="file.info.status">
+        <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-class="" data-ng-show="file.info.status">
             <div data-ng-include="'file-entry.html'">entry</div>
         </li>
     </ul>
