@@ -208,19 +208,36 @@ a {
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
+
 }
 
 /* nav-tabs ************************************************************/
 
 .nav-tabs {
+  dipsplay: inline-block;
+  width: 100%;
   .nav-tabs-title {
     display: inline-block;
     color: @gray-light;
     font-weight: bold;
     margin-left: 0px !important;
-    padding: 10px 5px 10px 0;
     text-transform: uppercase;
+    padding: 5px 10px 4px 10px;
   }
+  .toolbar {
+    float: right;
+    .btn {
+      padding: 4px 8px;
+    }
+    .dropdown-menu {
+      left: auto !important;
+      right: 0px !important;
+    }
+  }
+}
+
+.navbar-tools {
+  background: @silver;
 }
 
 /* dashboard file list styles *******************************************/
@@ -276,19 +293,15 @@ a {
   div.node {
     border-bottom: 1px solid @ash-gray;
     padding: 2px;
+    position: relative;
     &.active:hover {
-      background: @gray-lighter;
+      background: @silver;
       cursor: pointer;
     }
     &.chosen {
-      background: @bright-blue;
-      color: @white;
+      background: @ash-gray;
       cursor: default;
-    }
-    &.chosen:hover {
-      background: @white;
-      color: @black;
-      cursor: default;
+      overflow: none;
     }
   }
   .badge {
@@ -312,15 +325,7 @@ a {
   }
 }
 
-.navtabs {
-  .toolbar {
-    float: right;
-  }
-}
 
-.navbar-tools {
-  background: @silver;
-}
 
 
 code {
@@ -541,7 +546,7 @@ code {
 .panel-choice {
   .panel-body {
     &:hover {
-      background: @gray;
+      background: @ash-gray;
       cursor: pointer;
     }
   }
