@@ -175,7 +175,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     }
   }
 
-  def goToState(newState: DatasetState) = {
+  def goToState(newState: DatasetState) : Boolean = {
 
     val currentState = datasetDb.getDatasetInfoOption match {
       case Some(info) =>
@@ -188,7 +188,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
 
     val selection = Akka.system.actorSelection(s"akka://application/user/$name")
 
-    newState match {
+    if (newState != currentState) newState match {
 
       case DELETED =>
         datasetDb.removeDataset()
@@ -255,6 +255,10 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
 
       case _ =>
         false
+    }
+    else {
+      Logger.info("same state, do nothing")
+      false
     }
   }
 
