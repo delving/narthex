@@ -46,12 +46,13 @@ trait RecordHandling extends BaseXTools {
     var recordCount = 0L
     var namespaceMap: Map[String, String] = Map.empty
 
-    def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Unit): Unit = {
+    def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Boolean): Boolean = {
       val events = new XMLEventReader(source)
       var depth = 0
       var recordText = new mutable.StringBuilder()
       var uniqueId: Option[String] = None
       var startElement: Option[String] = None
+      var running = true
 
       def indent() = {
         var countdown = depth
@@ -66,7 +67,9 @@ trait RecordHandling extends BaseXTools {
         val percent = if (realPercent > 0) realPercent else 1
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
           //          println(s"progress $recordCount / $totalRecords : $percent / $percentWas")
-          if (percent < 100) progress(percent)
+          if (percent < 100) {
+            running = progress(percent)
+          }
           percentWas = percent
           lastProgress = System.currentTimeMillis()
         }
@@ -161,7 +164,7 @@ trait RecordHandling extends BaseXTools {
         }
       }
 
-      while (events.hasNext) {
+      while (events.hasNext && running) {
         events.next() match {
           case EvElemStart(pre, label, attrs, scope) => push(FileHandling.tag(pre, label), attrs, scope)
           case EvText(text) => addFieldText(text)
@@ -171,6 +174,7 @@ trait RecordHandling extends BaseXTools {
           case x => Logger.warn("EVENT? " + x) // todo: record these in an error file for later
         }
       }
+      running
     }
 
     def pathString = "/" + path.reverse.map(_._1).mkString("/")

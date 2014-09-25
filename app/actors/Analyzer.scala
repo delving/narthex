@@ -28,7 +28,6 @@ import play.api.libs.json._
 import services.DatasetState._
 import services._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 
 /*
@@ -79,7 +78,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
         progress ! AnalysisProgress(percent)
         true
       }
-
+      import context.dispatcher
       val f = future {
         TreeNode(source, file.length, readProgress, datasetRepo, sendProgress) match {
           case Some(tree) =>

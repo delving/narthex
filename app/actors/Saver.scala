@@ -23,6 +23,7 @@ import play.api.Logger
 import services.DatasetState._
 import services.{DatasetRepo, FileHandling, RecordHandling}
 
+import scala.concurrent.Future
 import scala.language.postfixOps
 
 object Saver {
@@ -43,7 +44,7 @@ object Saver {
 class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
   var log = Logger
   var parser: RawRecordParser = null
-  var bomb : Option[ActorRef] = None
+  var bomb: Option[ActorRef] = None
 
   def receive = {
 
@@ -55,7 +56,8 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
       datasetRepo.recordDb.createDb
       var tick = 0
       var time = System.currentTimeMillis()
-      datasetRepo.recordDb.db {
+      import context.dispatcher
+      val f = Future(datasetRepo.recordDb.db {
         session =>
           parser = new RawRecordParser(recordRoot, uniqueId)
           val (source, readProgress) = FileHandling.xmlSource(datasetRepo.sourceFile)
@@ -65,9 +67,10 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
                 datasetRepo.datasetDb.setStatus(SAVING, percent = percent)
             }
           }))
-          def sendProgress(percent: Int) = {
-            if (bomb.isDefined) throw new InterruptedException
+          def sendProgress(percent: Int): Boolean = {
+            if (bomb.isDefined) return false
             progress ! SaveProgress(percent)
+            true
           }
           def receiveRecord(record: String) = {
             tick += 1
@@ -79,13 +82,15 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
             session.add(hashRecordFileName(collection, record), bytesOf(record))
           }
           try {
-            parser.parse(source, receiveRecord, recordCount, sendProgress)
-            self ! SaveComplete()
+            if (parser.parse(source, receiveRecord, recordCount, sendProgress)) {
+              self ! SaveComplete()
+            }
+            else {
+              self ! SaveError("Interrupted")
+            }
           }
           catch {
-            case e:InterruptedException =>
-              self ! SaveError("Interrupted")
-            case e:Exception =>
+            case e: Exception =>
               log.error(s"Unable to save $collection", e)
               self ! SaveError(e.toString)
           }
@@ -93,7 +98,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
             source.close()
             context.stop(progress)
           }
-      }
+      })
 
     case SaveError(error) =>
       datasetRepo.datasetDb.setStatus(ANALYZED, error = error)

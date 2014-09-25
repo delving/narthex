@@ -21,7 +21,7 @@ import actors.Analyzer.InterruptAnalysis
 import actors.Harvester.{HarvestAdLib, HarvestPMH, InterruptHarvest}
 import actors.Saver.{InterruptSaving, SaveRecords}
 import actors._
-import akka.actor.Props
+import akka.actor.{PoisonPill, Props}
 import org.apache.commons.io.FileUtils.{deleteDirectory, deleteQuietly}
 import play.api.Logger
 import play.api.Play.current
@@ -229,6 +229,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
           selection ! InterruptSaving()
         }
         else {
+          selection ! PoisonPill
           datasetDb.setStatus(newState)
           recordDb.dropDb()
         }
