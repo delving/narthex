@@ -229,9 +229,8 @@ define(["angular"], function () {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
             if ($files.length && !file.uploading) {
                 var onlyFile = $files[0];
-                var part = onlyFile.name.match(/(.+)__(.+).xml.gz/);
-                if (!part) {
-                    alert("Sorry, the file must be named SPEC__PREFIX.xml.gz");
+                if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml'))) {
+                    alert("Sorry, the file must end with '.xml.gz' or '.xml'");
                     return;
                 }
                 file.uploading = true;
