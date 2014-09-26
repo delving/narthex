@@ -107,7 +107,22 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     deleteDirectory(dir)
     datasetDb.setStatus(SPLITTING, percent = 1)
     val analyzer = actor(Analyzer.props(this))
-    analyzer ! Analyzer.Analyze(sourceFile)
+    if (sourceFile.getName.endsWith(".repo")) {
+      datasetDb.getDatasetInfoOption match {
+        case Some(info) =>
+          val delimit = info \ "delimit"
+          ((delimit \ "recordRoot").text,  (delimit \ "uniqueId").text) match {
+            case (recordRoot,uniqueId) if recordRoot.nonEmpty && uniqueId.nonEmpty =>
+              analyzer ! Analyzer.AnalyzeRepo(new SourceRepo(sourceFile, recordRoot, uniqueId))
+            case _ =>
+          }
+        case None =>
+          analyzer ! Analyzer.AnalyzeFile(sourceFile)
+      }
+    }
+    else {
+      analyzer ! Analyzer.AnalyzeFile(sourceFile)
+    }
   }
 
   def saveRecords() = {

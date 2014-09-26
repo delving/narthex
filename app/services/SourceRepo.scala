@@ -15,7 +15,8 @@
 //===========================================================================
 package services
 
-import java.io.{File, PrintWriter}
+import java.io._
+import java.util.zip.GZIPOutputStream
 
 import org.apache.commons.io.FileUtils
 import services.RecordHandling.RawRecord
@@ -42,6 +43,7 @@ import scala.io.Source
 
 class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends RecordHandling {
   val MAX_FILES = 100
+  val SOURCE_NAME = "source.xml.gz"
   dir.mkdirs()
 
   private def numberString(number: Int): String = "%05d".format(number)
@@ -76,6 +78,8 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
     val num = s.substring(0, s.indexOf('.'))
     num.toInt
   }
+
+  private def sourceFile: File = new File(dir, SOURCE_NAME)
 
   private def xmlName(number: Int): String = s"${numberString(number)}.xml"
 
@@ -189,4 +193,14 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
   }
 
   def countFiles = fileList.size
+
+  def getSourceFile: File = {
+    if (!sourceFile.exists()) { // todo: check if it's too old as well
+      val out = new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(sourceFile)), "UTF-8")
+      parse(rawRecord => out.write(rawRecord.text), percent => true)
+      out.close()
+    }
+    sourceFile
+  }
+
 }

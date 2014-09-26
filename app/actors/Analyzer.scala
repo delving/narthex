@@ -36,7 +36,9 @@ import scala.concurrent._
 
 object Analyzer {
 
-  case class Analyze(file: File)
+  case class AnalyzeFile(file: File)
+
+  case class AnalyzeRepo(repo: SourceRepo)
 
   case class AnalysisProgress(percent: Int)
 
@@ -64,9 +66,11 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       log.debug(s"Interrupted analysis $datasetRepo")
       bomb = Some(sender)
 
-    case Analyze(file) =>
+    case AnalyzeRepo(repo) =>
+      self ! AnalyzeFile(repo.getSourceFile)
+
+    case AnalyzeFile(file) =>
       log.debug(s"Analyzer on ${file.getName}")
-      val (source, readProgress) = FileHandling.xmlSource(file)
       val progress = context.actorOf(Props(new Actor() {
         override def receive: Receive = {
           case AnalysisProgress(percent) =>
@@ -78,6 +82,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
         progress ! AnalysisProgress(percent)
         true
       }
+      val (source, readProgress) = FileHandling.sourceFromFile(file)
       import context.dispatcher
       val f = future {
         TreeNode(source, file.length, readProgress, datasetRepo, sendProgress) match {

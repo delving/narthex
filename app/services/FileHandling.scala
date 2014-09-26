@@ -25,16 +25,15 @@ import scala.io.Source
 
 object FileHandling {
   
-  abstract class ReadProgress(fileSize: Long) {
+  abstract class ReadProgress {
     def getPercentRead: Int
   }
 
-  class CountingReadProgress(fileSize: Long, counter: CountingInputStream) extends ReadProgress(fileSize) {
+  class FileReadProgress(fileSize: Long, counter: CountingInputStream) extends ReadProgress {
     override def getPercentRead: Int = ((100 * counter.getByteCount) / fileSize).toInt
-
   }
 
-  def xmlSource(file: File): (Source, ReadProgress) = {
+  def sourceFromFile(file: File): (Source, ReadProgress) = {
     val name = file.getName
     if (name.endsWith(".zip")) {
       val zc = new ZipConcatXML(new ZipFile(file))
@@ -45,13 +44,13 @@ object FileHandling {
       val cs = new CountingInputStream(is)
       val gz = new GZIPInputStream(cs)
       val bis = new BOMInputStream(gz)
-      (Source.fromInputStream(bis), new CountingReadProgress(file.length(), cs))
+      (Source.fromInputStream(bis), new FileReadProgress(file.length(), cs))
     }
     else if (name.endsWith(".xml")) {
       val is = new FileInputStream(file)
       val cs = new CountingInputStream(is)
       val bis = new BOMInputStream(cs)
-      (Source.fromInputStream(bis), new CountingReadProgress(file.length(), cs))
+      (Source.fromInputStream(bis), new FileReadProgress(file.length(), cs))
     }
     else {
       throw new RuntimeException(s"Unrecognized extension: $name")
@@ -102,7 +101,7 @@ object FileHandling {
     var nextChar : Int = -1
     var charCount = 0L
 
-    class ZipReadProgress(size: Long) extends ReadProgress(size) {
+    class ZipReadProgress(size: Long) extends ReadProgress {
       override def getPercentRead: Int = ((100 * charCount) / size).toInt
     }
 
