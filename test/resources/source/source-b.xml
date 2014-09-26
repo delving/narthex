@@ -4,7 +4,7 @@
             <box>final</box>
         </thing>
         <thing which="3">
-            <box>final</box>
+            <box>intermediate</box>
         </thing>
         <thing which="4">
             <box>initial</box>

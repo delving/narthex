@@ -23,44 +23,59 @@ import services.RecordHandling.RawRecord
 import scala.collection.mutable
 import scala.io.Source
 
+/**
+ * This repository maintains a sequence of XML files, together with files containing
+ * identifiers as lines.
+ *
+ * The ids file has the XML file's ids, and the intersection files (underscore between) contain the ids which
+ * are overridden by subsequent id files.  Also there is a .act file indicating how many of the ids are
+ * active still (not overridden).
+ *
+ * Inserting a new file adds new intersection files to previous files, and updates the .act file accordingly.
+ *
+ * @param dir where do we work
+ * @param recordRoot delimit records
+ * @param uniqueId identify records
+ *
+ * @author Gerald de Jong <gerald@delving.eu>
+ */
+
 class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends RecordHandling {
 
   def mkdirs = dir.mkdirs()
 
-  def fileList: List[File] = {
+  private def fileList: List[File] = {
     val files = dir.listFiles()
     if (files == null) List.empty[File] else files.toList
   }
 
-  def numberString(number: Int): String = "%05d".format(number)
+  private def numberString(number: Int): String = "%05d".format(number)
 
-  def fileNumber(file: File): Int = {
+  private def fileNumber(file: File): Int = {
     val s = file.getName
     val num = s.substring(0, s.indexOf('.'))
     num.toInt
   }
 
-  def xmlName(number: Int): String = s"${numberString(number)}.xml"
+  private def xmlName(number: Int): String = s"${numberString(number)}.xml"
 
-  def idsName(number: Int): String = s"${numberString(number)}.ids"
+  private def idsName(number: Int): String = s"${numberString(number)}.ids"
 
-  def activeIdsName(number: Int): String = s"${numberString(number)}.act"
+  private def activeIdsName(number: Int): String = s"${numberString(number)}.act"
 
-  def xmlFile(number: Int): File = new File(dir, xmlName(number))
+  private def xmlFile(number: Int): File = new File(dir, xmlName(number))
 
-  def idsFile(number: Int): File = new File(dir, idsName(number))
+  private def idsFile(number: Int): File = new File(dir, idsName(number))
 
-  def idsFile(file: File): File = idsFile(fileNumber(file))
+  private def idsFile(file: File): File = idsFile(fileNumber(file))
 
-  def activeIdsFile(number: Int): File = new File(dir, activeIdsName(number))
+  private def activeIdsFile(number: Int): File = new File(dir, activeIdsName(number))
 
-  def activeIdsFile(file: File): File = activeIdsFile(fileNumber(file))
+  private def activeIdsFile(file: File): File = activeIdsFile(fileNumber(file))
 
-  def intersectionFile(oldFile: File, newFile: File): File = new File(dir, s"${oldFile.getName}_${newFile.getName}")
-  
-  def xmlFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".xml")).sortBy(_.getName)
+  private def intersectionFile(oldFile: File, newFile: File): File = new File(dir, s"${oldFile.getName}_${newFile.getName}")
 
-  def nextFileNumber(files: List[File]): Int = {
+  private def nextFileNumber(files: List[File]): Int = {
     files.reverse.headOption match {
       case Some(file) =>
         fileNumber(file) + 1
@@ -69,20 +84,18 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
     }
   }
 
-  def nextFileNumber: Int = nextFileNumber(xmlFiles)
-  
-  def avoidFiles(file: File): List[File] = {
+  private def avoidFiles(file: File): List[File] = {
     val prefix = s"${idsFile(file).getName}_"
     fileList.filter(f => f.getName.startsWith(prefix))
   }
 
-  def avoidSet(xmlFile: File): Set[String] = {
+  private def avoidSet(xmlFile: File): Set[String] = {
     var idSet = new mutable.HashSet[String]()
     avoidFiles(xmlFile).foreach(Source.fromFile(_).getLines().foreach(idSet.add))
     idSet.toSet
   }
 
-  def handleFile(xmlFile: File, fileNumber: Int, files: List[File]) = {
+  private def processFile(fileFiller: File => Unit) = {
     def writeToFile(file: File, string: String): Unit = {
       Some(new PrintWriter(file)).foreach {
         p =>
@@ -90,14 +103,18 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
           p.close()
       }
     }
+    val files = xmlFiles
+    val fileNumber = nextFileNumber(files)
+    val file = xmlFile(fileNumber)
+    fileFiller(file)
     var idSet = new mutable.HashSet[String]()
     val parser = new RawRecordParser(recordRoot, uniqueId)
     def sendProgress(percent: Int): Boolean = true
     def receiveRecord(record: RawRecord): Unit = idSet.add(record.id)
-    def source = Source.fromFile(xmlFile)
+    def source = Source.fromFile(file)
     parser.parse(source, Set.empty, receiveRecord, -1, sendProgress)
     if (idSet.isEmpty) {
-      FileUtils.deleteQuietly(xmlFile)
+      FileUtils.deleteQuietly(file)
       None
     }
     else {
@@ -118,25 +135,19 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
           writeToFile(activeIdsFile(idsFile), activeCount.toString)
         }
       }
-      Some(xmlFile)
+      Some(file)
     }
   }
 
-  def acceptFile(file: File): Option[File] = {
-    val files = xmlFiles
-    val fileNumber = nextFileNumber(files)
-    val target = xmlFile(fileNumber)
-    FileUtils.moveFile(file, target)
-    handleFile(target, fileNumber, files)
-  }
+  private def xmlFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".xml")).sortBy(_.getName)
 
-  def acceptPage(page: String): Option[File] = {
-    val files = xmlFiles
-    val fileNumber = nextFileNumber(files)
-    val target = xmlFile(fileNumber)
-    FileUtils.write(target, page, "UTF-8")
-    handleFile(target, fileNumber, files)
-  }
+  private def nextFileNumber: Int = nextFileNumber(xmlFiles)
+
+  // public things:
+
+  def acceptFile(file: File): Option[File] = processFile(targetFile => FileUtils.moveFile(file, targetFile))
+
+  def acceptPage(page: String): Option[File] = processFile(targetFile => FileUtils.write(targetFile, page, "UTF-8"))
 
   def parse(output: RawRecord => Unit, sendProgress: Int => Boolean) = {
     val parser = new RawRecordParser(recordRoot, uniqueId)

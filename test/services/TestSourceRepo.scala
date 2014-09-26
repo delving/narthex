@@ -35,33 +35,55 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
 
   val sourceRepo = new SourceRepo(dir, recordRoot, uniqueId)
 
-  "A Source Repository" should "accept files" in {
+  def countFiles = {
+    val files = dir.listFiles()
+    val fileList = if (files == null) List.empty[File] else files.toList
+    fileList.size
+  }
 
-    sourceRepo.xmlFiles.length should be(0)
-    sourceRepo.nextFileNumber should be(0)
-    sourceRepo.acceptFile(incomingFile("a"))
-    sourceRepo.nextFileNumber should be(1)
-    sourceRepo.acceptFile(incomingFile("b"))
-    sourceRepo.nextFileNumber should be(2)
-    sourceRepo.acceptFile(incomingFile("c"))
-    sourceRepo.nextFileNumber should be(3)
+  "A Source Repository" should "accept files and pages" in {
+
+    countFiles should be(0)
+    sourceRepo.acceptFile(incomingFile("a")).get
+    countFiles should be(3)
+    sourceRepo.acceptFile(incomingFile("b")).get
+    countFiles should be(7)
+    sourceRepo.acceptFile(incomingFile("c")).get
+    countFiles should be(11)
+
+    sourceRepo.acceptPage(s"""
+      |<envelope>
+      |  <list>
+      |    <thing which="3">
+      |      <box>final</box>
+      |    </thing>
+      |  </list>
+      |</envelope>
+      """.stripMargin.trim).get
+
+    countFiles should be(16)
 
     val seenIds = mutable.HashSet[String]()
+    var recordCount = 0
 
     def receiveRecord(record: RawRecord): Unit = {
-//      println(s"${record.id}: ${record.text}")
+      //      println(s"${record.id}: ${record.text}")
       if (seenIds.contains(record.id)) fail(s"seen id ${record.id}")
+      recordCount += 1
       seenIds.add(record.id)
       val narthex = XML.loadString(record.text)
       val content = (narthex \ "thing" \ "box").text
       content should be("final")
     }
+
     def sendProgress(percent: Int): Boolean = {
-      println(s"$percent%")
+//      println(s"$percent%")
       true
     }
 
     sourceRepo.parse(receiveRecord, sendProgress)
+
+    recordCount should be(4)
   }
 
 }
