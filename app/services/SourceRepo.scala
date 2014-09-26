@@ -91,7 +91,7 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
 
   private def activeIdsFile(file: File): File = new File(file.getParentFile, activeIdsName(getFileNumber(file)))
 
-  private def intersectionFile(oldFile: File, newFile: File): File = new File(dir, s"${oldFile.getName}_${newFile.getName}")
+  private def createIntersectionFile(oldFile: File, newFile: File): File = new File(dir, s"${oldFile.getName}_${newFile.getName}")
 
   private def avoidFiles(file: File): Seq[File] = {
     val prefix = s"${idsFile(file).getName}_"
@@ -151,7 +151,7 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
         val intersectionIds = ids.filter(idSet.contains)
         if (intersectionIds.nonEmpty) {
           // create an intersection file
-          val intersection = intersectionFile(idsFile, newIdsFile)
+          val intersection = createIntersectionFile(idsFile, newIdsFile)
           writeToFile(intersection, intersectionIds.mkString("\n"))
           // update the active count
           var avoid = avoidSet(idsFile)
