@@ -21,6 +21,7 @@ import akka.actor.{Actor, ActorRef, Props}
 import org.basex.core.cmd.Optimize
 import play.api.Logger
 import services.DatasetState._
+import services.RecordHandling.RawRecord
 import services.{DatasetRepo, FileHandling, RecordHandling}
 
 import scala.concurrent.Future
@@ -72,14 +73,14 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
             progress ! SaveProgress(percent)
             true
           }
-          def receiveRecord(record: String) = {
+          def receiveRecord(record: RawRecord) = {
             tick += 1
             if (tick % 10000 == 0) {
               val now = System.currentTimeMillis()
               Logger.info(s"$datasetRepo $tick: ${now - time}ms")
               time = now
             }
-            session.add(hashRecordFileName(collection, record), bytesOf(record))
+            session.add(hashRecordFileName(collection, record.text), bytesOf(record.text))
           }
           try {
             if (parser.parse(source, receiveRecord, recordCount, sendProgress)) {

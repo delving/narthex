@@ -23,7 +23,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.mvc._
 import services.NarthexConfig._
-import services.RecordHandling.Record
+import services.RecordHandling.StoredRecord
 import services._
 
 import scala.xml.{Elem, NodeSeq, PrettyPrinter}
@@ -73,7 +73,7 @@ object OaiPmh extends Controller with BaseXTools {
       datasetRepo.recordDb.createHarvest(headersOnly, from, until)
     }
 
-    def getHarvestValues(token: PMHResumptionToken, enriched: Boolean): (List[Record], Option[PMHResumptionToken]) = {
+    def getHarvestValues(token: PMHResumptionToken, enriched: Boolean): (List[StoredRecord], Option[PMHResumptionToken]) = {
       Repo.repo.getHarvest(token, enriched)
     }
 
@@ -293,7 +293,7 @@ object OaiPmh extends Controller with BaseXTools {
       </OAI-PMH>
     }
 
-    def startOrResume(request: PmhRequest, headersOnly: Boolean): (List[Record], Option[PMHResumptionToken]) = {
+    def startOrResume(request: PmhRequest, headersOnly: Boolean): (List[StoredRecord], Option[PMHResumptionToken]) = {
       request.resumptionToken match {
         case Some(previousToken) =>
           RepoBridge.getHarvestValues(previousToken, enriched)
@@ -308,7 +308,7 @@ object OaiPmh extends Controller with BaseXTools {
 
     def listIdentifiers(request: PmhRequest): Elem = {
 
-      val (records: List[Record], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = true)
+      val (records: List[StoredRecord], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = true)
 
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"
@@ -347,7 +347,7 @@ object OaiPmh extends Controller with BaseXTools {
 
     def listRecords(request: PmhRequest): Elem = {
 
-      val (records: List[Record], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = false)
+      val (records: List[StoredRecord], token: Option[PMHResumptionToken]) = startOrResume(request, headersOnly = false)
 
       <OAI-PMH
       xmlns="http://www.openarchives.org/OAI/2.0/"

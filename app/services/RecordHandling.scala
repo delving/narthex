@@ -22,7 +22,7 @@ import java.security.MessageDigest
 
 import org.joda.time.DateTime
 import play.Logger
-import services.RecordHandling.{Record, TargetConcept}
+import services.RecordHandling.{RawRecord, StoredRecord, TargetConcept}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -31,7 +31,9 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object RecordHandling {
 
-  case class Record(id: String, mod: DateTime, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
+  case class RawRecord(id: String, text: String)
+
+  case class StoredRecord(id: String, mod: DateTime, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
 
   case class TargetConcept(uri: String, vocabulary: String, prefLabel: String)
 
@@ -46,7 +48,7 @@ trait RecordHandling extends BaseXTools {
     var recordCount = 0L
     var namespaceMap: Map[String, String] = Map.empty
 
-    def parse(source: Source, output: String => Unit, totalRecords: Int, progress: Int => Boolean): Boolean = {
+    def parse(source: Source, output: RawRecord => Unit, totalRecords: Int, progress: Int => Boolean): Boolean = {
       val events = new XMLEventReader(source)
       var depth = 0
       var recordText = new mutable.StringBuilder()
@@ -137,7 +139,7 @@ trait RecordHandling extends BaseXTools {
               if (id.isEmpty) throw new RuntimeException("Empty unique id!")
               val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
               recordText.insert(0, s"""<narthex id="$id" mod="$mod" $scope>\n""")
-              recordText.toString()
+              RawRecord(id, recordText.toString())
             } getOrElse {
               throw new RuntimeException("Missing id!")
             }
@@ -228,13 +230,13 @@ trait RecordHandling extends BaseXTools {
 
     case class Frame(tag: String, path: String, text: mutable.StringBuilder = new mutable.StringBuilder())
 
-    def parse(xmlString: String): List[Record] = {
+    def parse(xmlString: String): List[StoredRecord] = {
 
       val events = new XMLEventReader(Source.fromString(xmlString))
       val stack = new mutable.Stack[Frame]()
       var start: Option[String] = None
-      var record: Option[Record] = None
-      var records = List.empty[Record]
+      var record: Option[StoredRecord] = None
+      var records = List.empty[StoredRecord]
       var recordStart = true
 
       def startElement(tag: String, attrs: MetaData) = {
@@ -268,7 +270,7 @@ trait RecordHandling extends BaseXTools {
           if (tag == "narthex") {
             val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException("Narthex element missing id"))
             val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException("Narthex element missing mod"))
-            record = Some(Record(id, fromXSDDateTime(mod), scope))
+            record = Some(StoredRecord(id, fromXSDDateTime(mod), scope))
           }
           else record match {
             case Some(r) =>
@@ -335,11 +337,11 @@ trait RecordHandling extends BaseXTools {
     }
   }
 
-  def parseStoredRecords(xmlString: String): List[Record] = {
+  def parseStoredRecords(xmlString: String): List[StoredRecord] = {
     val wrappedRecord = scala.xml.XML.loadString(xmlString)
     (wrappedRecord \ "narthex").map {
       narthex =>
-        Record(
+        StoredRecord(
           id = (narthex \ "@id").text,
           mod = fromXSDDateTime((narthex \ "@mod").text),
           narthex.scope,

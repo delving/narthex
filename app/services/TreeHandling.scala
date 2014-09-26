@@ -228,7 +228,7 @@ trait TreeHandling {
       JsArray(sample.values.map(value => JsString(value)))
     }
 
-    def writes(node: TreeNode) = Json.obj(
+    override def writes(node: TreeNode) = Json.obj(
       "tag" -> node.tag,
       "path" -> node.path,
       "count" -> node.count,
@@ -236,4 +236,21 @@ trait TreeHandling {
       "kids" -> JsArray(node.kids.values.map(writes).toSeq)
     )
   }
+
+//  implicit val nodeReads = new Reads[TreeNode] {
+//
+//    def readsLengthHistogram(json: JsArray) : LengthHistogram = {
+//      json.value.map(_.as[Int]) // todo: ??
+//      new LengthHistogram
+//    }
+//
+//    override def reads(json: JsValue): JsResult[TreeNode] = {
+//        val tag = (json \ "tag").as[String]
+//        val path = (json \ "path").as[String]
+//        val count = (json \ "count").as[Int]
+//        val lengths = readsLengthHistogram((json \ lengths).as[JsArray])
+//        val kids = (json \ "kids").as[JsArray]
+//        JsResult(new TreeNode())
+//    }
+//  }
 }

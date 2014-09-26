@@ -24,7 +24,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json.{JsObject, JsValue, Json}
 import services.DatasetState._
-import services.RecordHandling.Record
+import services.RecordHandling.StoredRecord
 import services.RepoUtil._
 
 import scala.concurrent.duration._
@@ -195,7 +195,7 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
     getPublishedDatasets.sortBy(_.metadataFormat.namespace).map(d => (d.prefix, d.metadataFormat)).toMap.values.toSeq
   }
 
-  def getHarvest(resumptionToken: PMHResumptionToken, enriched: Boolean): (List[Record], Option[PMHResumptionToken]) = {
+  def getHarvest(resumptionToken: PMHResumptionToken, enriched: Boolean): (List[StoredRecord], Option[PMHResumptionToken]) = {
     Cache.getAs[Harvest](resumptionToken.value).map { harvest =>
       val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
       val start = 1 + (harvest.currentPage - 1) * pageSize

@@ -1,0 +1,13 @@
+<envelope>
+    <list>
+        <thing which="2">
+            <box>BB</box>
+        </thing>
+        <thing which="3">
+            <box>CC</box>
+        </thing>
+        <thing which="4">
+            <box>D</box>
+        </thing>
+    </list>
+</envelope>

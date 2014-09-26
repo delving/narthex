@@ -28,7 +28,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.libs.Akka
 import services.DatasetState._
-import services.RecordHandling.{Record, TargetConcept}
+import services.RecordHandling.{StoredRecord, TargetConcept}
 import services.RepoUtil.tagToDirectory
 
 class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) extends RecordHandling {
@@ -262,7 +262,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     }
   }
 
-  def enrichRecords(storedRecords: String): List[Record] = {
+  def enrichRecords(storedRecords: String): List[StoredRecord] = {
     val pathPrefix = s"${NarthexConfig.ORG_ID}/$name"
     val mappings = Cache.getAs[Map[String, TargetConcept]](name).getOrElse {
       val freshMap = termDb.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
