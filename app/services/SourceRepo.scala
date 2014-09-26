@@ -70,7 +70,7 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
     val all = dir.listFiles()
     val (files, dirs) = all.partition(_.isFile)
     val sub = newSubdirectory(dirs)
-    files.foreach(FileUtils.moveFileToDirectory(_, sub, false))
+    files.filter(_.getName != SOURCE_NAME).foreach(FileUtils.moveFileToDirectory(_, sub, false))
   }
 
   private def getFileNumber(file: File): Int = {

@@ -78,6 +78,8 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
     sourceRepo.parse(receiveRecord, sendProgress)
 
     recordCount should be(4)
+
+    println(s"file: ${sourceRepo.getSourceFile.getAbsolutePath}")
   }
 
 }
