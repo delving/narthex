@@ -41,15 +41,35 @@ import scala.io.Source
  */
 
 class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends RecordHandling {
-
-  def mkdirs = dir.mkdirs()
-
-  private def fileList: List[File] = {
-    val files = dir.listFiles()
-    if (files == null) List.empty[File] else files.toList
-  }
+  val MAX_FILES = 100
+  dir.mkdirs()
 
   private def numberString(number: Int): String = "%05d".format(number)
+
+  private def newSubdirectory(dirs: Seq[File]): File = {
+    val number = dirs.sortBy(_.getName).reverse.headOption match {
+      case Some(highest) =>
+        highest.getName.toInt + 1
+      case None =>
+        0
+    }
+    val sub = new File(dir, numberString(number))
+    sub.mkdir()
+    sub
+  }
+
+  private def fileList: Seq[File] = {
+    val all = dir.listFiles()
+    val (files, dirs) = all.partition(_.isFile)
+    dirs.flatMap(_.listFiles()) ++ files
+  }
+
+  private def moveFiles() = {
+    val all = dir.listFiles()
+    val (files, dirs) = all.partition(_.isFile)
+    val sub = newSubdirectory(dirs)
+    files.foreach(FileUtils.moveFileToDirectory(_, sub, false))
+  }
 
   private def fileNumber(file: File): Int = {
     val s = file.getName
@@ -67,15 +87,15 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
 
   private def idsFile(number: Int): File = new File(dir, idsName(number))
 
-  private def idsFile(file: File): File = idsFile(fileNumber(file))
+  private def idsFile(file: File): File = new File(file.getParentFile, idsName(fileNumber(file)))
 
   private def activeIdsFile(number: Int): File = new File(dir, activeIdsName(number))
 
-  private def activeIdsFile(file: File): File = activeIdsFile(fileNumber(file))
+  private def activeIdsFile(file: File): File = new File(file.getParentFile, activeIdsName(fileNumber(file)))
 
   private def intersectionFile(oldFile: File, newFile: File): File = new File(dir, s"${oldFile.getName}_${newFile.getName}")
 
-  private def nextFileNumber(files: List[File]): Int = {
+  private def nextFileNumber(files: Seq[File]): Int = {
     files.reverse.headOption match {
       case Some(file) =>
         fileNumber(file) + 1
@@ -84,7 +104,7 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
     }
   }
 
-  private def avoidFiles(file: File): List[File] = {
+  private def avoidFiles(file: File): Seq[File] = {
     val prefix = s"${idsFile(file).getName}_"
     fileList.filter(f => f.getName.startsWith(prefix))
   }
@@ -95,7 +115,9 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
     idSet.toSet
   }
 
-  private def processFile(fileFiller: File => Unit) = {
+  private def xmlFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".xml")).sortBy(_.getName)
+
+  private def processFile(fileFiller: File => File) = {
     def writeToFile(file: File, string: String): Unit = {
       Some(new PrintWriter(file)).foreach {
         p =>
@@ -103,10 +125,16 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
           p.close()
       }
     }
-    val files = xmlFiles
-    val fileNumber = nextFileNumber(files)
-    val file = xmlFile(fileNumber)
-    fileFiller(file)
+    val filesBefore = xmlFiles
+    val fileNumber = nextFileNumber(filesBefore)
+    val files =
+      if (fileNumber % MAX_FILES < MAX_FILES - 1)
+        filesBefore
+      else {
+        moveFiles()
+        xmlFiles
+      }
+    val file = fileFiller(xmlFile(fileNumber))
     var idSet = new mutable.HashSet[String]()
     val parser = new RawRecordParser(recordRoot, uniqueId)
     def sendProgress(percent: Int): Boolean = true
@@ -123,6 +151,7 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
       writeToFile(activeIdsFile(newIdsFile), idSet.size.toString)
       var idsFiles = files.map(idsFile)
       idsFiles.foreach { idsFile =>
+        if (!idsFile.exists()) throw new RuntimeException(s"where the hell is $idsFile?")
         val ids = Source.fromFile(idsFile).getLines()
         val intersectionIds = ids.filter(idSet.contains)
         if (intersectionIds.nonEmpty) {
@@ -139,15 +168,17 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
     }
   }
 
-  private def xmlFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".xml")).sortBy(_.getName)
-
-  private def nextFileNumber: Int = nextFileNumber(xmlFiles)
-
   // public things:
 
-  def acceptFile(file: File): Option[File] = processFile(targetFile => FileUtils.moveFile(file, targetFile))
+  def acceptFile(file: File): Option[File] = processFile { targetFile =>
+    FileUtils.moveFile(file, targetFile)
+    targetFile
+  }
 
-  def acceptPage(page: String): Option[File] = processFile(targetFile => FileUtils.write(targetFile, page, "UTF-8"))
+  def acceptPage(page: String): Option[File] = processFile { targetFile =>
+    FileUtils.write(targetFile, page, "UTF-8")
+    targetFile
+  }
 
   def parse(output: RawRecord => Unit, sendProgress: Int => Boolean) = {
     val parser = new RawRecordParser(recordRoot, uniqueId)
@@ -162,4 +193,5 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
     }
   }
 
+  def countFiles = fileList.size
 }

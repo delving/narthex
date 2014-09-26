@@ -35,21 +35,15 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
 
   val sourceRepo = new SourceRepo(dir, recordRoot, uniqueId)
 
-  def countFiles = {
-    val files = dir.listFiles()
-    val fileList = if (files == null) List.empty[File] else files.toList
-    fileList.size
-  }
-
   "A Source Repository" should "accept files and pages" in {
 
-    countFiles should be(0)
+    sourceRepo.countFiles should be(0)
     sourceRepo.acceptFile(incomingFile("a")).get
-    countFiles should be(3)
+    sourceRepo.countFiles should be(3)
     sourceRepo.acceptFile(incomingFile("b")).get
-    countFiles should be(7)
+    sourceRepo.countFiles should be(7)
     sourceRepo.acceptFile(incomingFile("c")).get
-    countFiles should be(11)
+    sourceRepo.countFiles should be(11)
 
     sourceRepo.acceptPage(s"""
       |<envelope>
@@ -61,7 +55,7 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
       |</envelope>
       """.stripMargin.trim).get
 
-    countFiles should be(16)
+    sourceRepo.countFiles should be(16)
 
     val seenIds = mutable.HashSet[String]()
     var recordCount = 0
