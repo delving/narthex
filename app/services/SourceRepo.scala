@@ -71,7 +71,7 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
     files.foreach(FileUtils.moveFileToDirectory(_, sub, false))
   }
 
-  private def fileNumber(file: File): Int = {
+  private def getFileNumber(file: File): Int = {
     val s = file.getName
     val num = s.substring(0, s.indexOf('.'))
     num.toInt
@@ -83,26 +83,15 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
 
   private def activeIdsName(number: Int): String = s"${numberString(number)}.act"
 
-  private def xmlFile(number: Int): File = new File(dir, xmlName(number))
+  private def createXmlFile(number: Int): File = new File(dir, xmlName(number))
 
-  private def idsFile(number: Int): File = new File(dir, idsName(number))
+  private def createIdsFile(number: Int): File = new File(dir, idsName(number))
 
-  private def idsFile(file: File): File = new File(file.getParentFile, idsName(fileNumber(file)))
+  private def idsFile(file: File): File = new File(file.getParentFile, idsName(getFileNumber(file)))
 
-  private def activeIdsFile(number: Int): File = new File(dir, activeIdsName(number))
-
-  private def activeIdsFile(file: File): File = new File(file.getParentFile, activeIdsName(fileNumber(file)))
+  private def activeIdsFile(file: File): File = new File(file.getParentFile, activeIdsName(getFileNumber(file)))
 
   private def intersectionFile(oldFile: File, newFile: File): File = new File(dir, s"${oldFile.getName}_${newFile.getName}")
-
-  private def nextFileNumber(files: Seq[File]): Int = {
-    files.reverse.headOption match {
-      case Some(file) =>
-        fileNumber(file) + 1
-      case None =>
-        0
-    }
-  }
 
   private def avoidFiles(file: File): Seq[File] = {
     val prefix = s"${idsFile(file).getName}_"
@@ -126,7 +115,13 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
       }
     }
     val filesBefore = xmlFiles
-    val fileNumber = nextFileNumber(filesBefore)
+    val fileNumber =
+      filesBefore.reverse.headOption match {
+        case Some(latestFile) =>
+          getFileNumber(latestFile) + 1
+        case None =>
+          0
+      }
     val files =
       if (fileNumber % MAX_FILES < MAX_FILES - 1)
         filesBefore
@@ -134,7 +129,7 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
         moveFiles()
         xmlFiles
       }
-    val file = fileFiller(xmlFile(fileNumber))
+    val file = fileFiller(createXmlFile(fileNumber))
     var idSet = new mutable.HashSet[String]()
     val parser = new RawRecordParser(recordRoot, uniqueId)
     def sendProgress(percent: Int): Boolean = true
@@ -146,7 +141,7 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
       None
     }
     else {
-      val newIdsFile = idsFile(fileNumber)
+      val newIdsFile = createIdsFile(fileNumber)
       FileUtils.write(newIdsFile, idSet.toList.sorted.mkString("\n") + "\n")
       writeToFile(activeIdsFile(newIdsFile), idSet.size.toString)
       var idsFiles = files.map(idsFile)
