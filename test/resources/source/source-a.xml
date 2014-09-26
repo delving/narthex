@@ -1,13 +1,13 @@
 <envelope>
     <list>
         <thing which="1">
-            <box>A</box>
+            <box>final</box>
         </thing>
         <thing which="2">
-            <box>B</box>
+            <box>initial</box>
         </thing>
         <thing which="3">
-            <box>C</box>
+            <box>initial</box>
         </thing>
     </list>
 </envelope>

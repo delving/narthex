@@ -1,7 +1,7 @@
 <envelope>
     <list>
         <thing which="4">
-            <box>DD</box>
+            <box>final</box>
         </thing>
     </list>
 </envelope>

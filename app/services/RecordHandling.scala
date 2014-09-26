@@ -48,7 +48,7 @@ trait RecordHandling extends BaseXTools {
     var recordCount = 0L
     var namespaceMap: Map[String, String] = Map.empty
 
-    def parse(source: Source, output: RawRecord => Unit, totalRecords: Int, progress: Int => Boolean): Boolean = {
+    def parse(source: Source, avoidIds: Set[String], output: RawRecord => Unit, totalRecords: Int, progress: Int => Boolean): Boolean = {
       val events = new XMLEventReader(source)
       var depth = 0
       var recordText = new mutable.StringBuilder()
@@ -137,13 +137,15 @@ trait RecordHandling extends BaseXTools {
             val mod = toXSDString(new DateTime())
             val record = uniqueId.map { id =>
               if (id.isEmpty) throw new RuntimeException("Empty unique id!")
-              val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
-              recordText.insert(0, s"""<narthex id="$id" mod="$mod" $scope>\n""")
-              RawRecord(id, recordText.toString())
+              if (avoidIds.contains(id)) None else {
+                val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
+                recordText.insert(0, s"""<narthex id="$id" mod="$mod" $scope>\n""")
+                Some(RawRecord(id, recordText.toString()))
+              }
             } getOrElse {
               throw new RuntimeException("Missing id!")
             }
-            output(record)
+            record.map(output)
             recordText.clear()
             depth = 0
           }

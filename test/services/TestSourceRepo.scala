@@ -5,6 +5,11 @@ import java.io.File
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
+import services.RecordHandling.RawRecord
+
+import scala.collection.mutable
+import scala.xml.XML
+
 
 class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
 
@@ -34,19 +39,29 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
 
     sourceRepo.xmlFiles.length should be(0)
     sourceRepo.nextFileNumber should be(0)
-
     sourceRepo.acceptFile(incomingFile("a"))
     sourceRepo.nextFileNumber should be(1)
-
-
     sourceRepo.acceptFile(incomingFile("b"))
     sourceRepo.nextFileNumber should be(2)
-
-
     sourceRepo.acceptFile(incomingFile("c"))
     sourceRepo.nextFileNumber should be(3)
 
+    val seenIds = mutable.HashSet[String]()
 
+    def receiveRecord(record: RawRecord): Unit = {
+//      println(s"${record.id}: ${record.text}")
+      if (seenIds.contains(record.id)) fail(s"seen id ${record.id}")
+      seenIds.add(record.id)
+      val narthex = XML.loadString(record.text)
+      val content = (narthex \ "thing" \ "box").text
+      content should be("final")
+    }
+    def sendProgress(percent: Int): Boolean = {
+      println(s"$percent%")
+      true
+    }
+
+    sourceRepo.parse(receiveRecord, sendProgress)
   }
 
 }

@@ -83,7 +83,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
             session.add(hashRecordFileName(collection, record.text), bytesOf(record.text))
           }
           try {
-            if (parser.parse(source, receiveRecord, recordCount, sendProgress)) {
+            if (parser.parse(source, Set.empty, receiveRecord, recordCount, sendProgress)) {
               self ! SaveComplete()
             }
             else {
