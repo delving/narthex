@@ -19,7 +19,9 @@ package services
 import java.io.{BufferedWriter, FileWriter}
 
 import org.apache.commons.io.FileUtils
-import play.api.libs.json.{JsArray, _}
+import play.api.libs.functional.syntax._
+import play.api.libs.json.Reads._
+import play.api.libs.json._
 import services.FileHandling.ReadProgress
 
 import scala.collection.mutable
@@ -237,20 +239,13 @@ trait TreeHandling {
     )
   }
 
-//  implicit val nodeReads = new Reads[TreeNode] {
-//
-//    def readsLengthHistogram(json: JsArray) : LengthHistogram = {
-//      json.value.map(_.as[Int]) // todo: ??
-//      new LengthHistogram
-//    }
-//
-//    override def reads(json: JsValue): JsResult[TreeNode] = {
-//        val tag = (json \ "tag").as[String]
-//        val path = (json \ "path").as[String]
-//        val count = (json \ "count").as[Int]
-//        val lengths = readsLengthHistogram((json \ lengths).as[JsArray])
-//        val kids = (json \ "kids").as[JsArray]
-//        JsResult(new TreeNode())
-//    }
-//  }
+  case class ReadTreeNode(tag: String, path: String, count: Int, lengths: Seq[Seq[String]], kids: Seq[ReadTreeNode])
+
+  implicit val nodeReads: Reads[ReadTreeNode] = (
+    (JsPath \ "tag").read[String] and
+      (JsPath \ "path").read[String] and
+      (JsPath \ "count").read[Int] and
+      (JsPath \ "lengths").read[Seq[Seq[String]]] and
+      (JsPath \ "kids").lazyRead(Reads.seq[ReadTreeNode](nodeReads))
+    )(ReadTreeNode)
 }

@@ -1,0 +1,259 @@
+{
+  "tag" : "car:carareWrap",
+  "path" : "/car:carareWrap",
+  "count" : 1,
+  "lengths" : [ ],
+  "kids" : [ {
+    "tag" : "car:carare",
+    "path" : "/car:carareWrap/car:carare",
+    "count" : 63930,
+    "lengths" : [ ],
+    "kids" : [ {
+      "tag" : "@id",
+      "path" : "/car:carareWrap/car:carare/@id",
+      "count" : 63930,
+      "lengths" : [ [ "11-15", "63930" ] ],
+      "kids" : [ ]
+    }, {
+      "tag" : "car:collectionInformation",
+      "path" : "/car:carareWrap/car:carare/car:collectionInformation",
+      "count" : 63930,
+      "lengths" : [ ],
+      "kids" : [ {
+        "tag" : "car:source",
+        "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:source",
+        "count" : 63930,
+        "lengths" : [ [ "21-30", "63930" ] ],
+        "kids" : [ ]
+      }, {
+        "tag" : "car:title",
+        "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:title",
+        "count" : 63930,
+        "lengths" : [ [ "21-30", "63930" ] ],
+        "kids" : [ {
+          "tag" : "@lang",
+          "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:title/@lang",
+          "count" : 63930,
+          "lengths" : [ [ "2", "63930" ] ],
+          "kids" : [ ]
+        } ]
+      }, {
+        "tag" : "car:contacts",
+        "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:contacts",
+        "count" : 63930,
+        "lengths" : [ ],
+        "kids" : [ {
+          "tag" : "car:organization",
+          "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:contacts/car:organization",
+          "count" : 63930,
+          "lengths" : [ [ "31-50", "63930" ] ],
+          "kids" : [ {
+            "tag" : "@lang",
+            "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:contacts/car:organization/@lang",
+            "count" : 63930,
+            "lengths" : [ [ "2", "63930" ] ],
+            "kids" : [ ]
+          } ]
+        }, {
+          "tag" : "car:address",
+          "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:contacts/car:address",
+          "count" : 63930,
+          "lengths" : [ [ "21-30", "63930" ] ],
+          "kids" : [ ]
+        }, {
+          "tag" : "car:email",
+          "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:contacts/car:email",
+          "count" : 63930,
+          "lengths" : [ [ "21-30", "63930" ] ],
+          "kids" : [ ]
+        } ]
+      }, {
+        "tag" : "car:keywords",
+        "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:keywords",
+        "count" : 63930,
+        "lengths" : [ [ "21-30", "63930" ] ],
+        "kids" : [ {
+          "tag" : "@lang",
+          "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:keywords/@lang",
+          "count" : 63930,
+          "lengths" : [ [ "2", "63930" ] ],
+          "kids" : [ ]
+        } ]
+      }, {
+        "tag" : "car:language",
+        "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:language",
+        "count" : 63930,
+        "lengths" : [ [ "2", "63930" ] ],
+        "kids" : [ {
+          "tag" : "@lang",
+          "path" : "/car:carareWrap/car:carare/car:collectionInformation/car:language/@lang",
+          "count" : 63930,
+          "lengths" : [ [ "2", "63930" ] ],
+          "kids" : [ ]
+        } ]
+      } ]
+    }, {
+      "tag" : "car:digitalResource",
+      "path" : "/car:carareWrap/car:carare/car:digitalResource",
+      "count" : 63930,
+      "lengths" : [ ],
+      "kids" : [ {
+        "tag" : "car:link",
+        "path" : "/car:carareWrap/car:carare/car:digitalResource/car:link",
+        "count" : 63930,
+        "lengths" : [ [ "50-100", "63930" ] ],
+        "kids" : [ ]
+      }, {
+        "tag" : "car:recordInformation",
+        "path" : "/car:carareWrap/car:carare/car:digitalResource/car:recordInformation",
+        "count" : 63930,
+        "lengths" : [ ],
+        "kids" : [ {
+          "tag" : "car:id",
+          "path" : "/car:carareWrap/car:carare/car:digitalResource/car:recordInformation/car:id",
+          "count" : 63930,
+          "lengths" : [ [ "1", "9" ], [ "2", "89" ], [ "3", "862" ], [ "4", "8637" ], [ "5", "32164" ], [ "6-10", "22169" ] ],
+          "kids" : [ ]
+        }, {
+          "tag" : "car:source",
+          "path" : "/car:carareWrap/car:carare/car:digitalResource/car:recordInformation/car:source",
+          "count" : 63930,
+          "lengths" : [ [ "21-30", "63930" ] ],
+          "kids" : [ {
+            "tag" : "@lang",
+            "path" : "/car:carareWrap/car:carare/car:digitalResource/car:recordInformation/car:source/@lang",
+            "count" : 63930,
+            "lengths" : [ [ "2", "63930" ] ],
+            "kids" : [ ]
+          } ]
+        } ]
+      }, {
+        "tag" : "car:spatial",
+        "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial",
+        "count" : 63930,
+        "lengths" : [ ],
+        "kids" : [ {
+          "tag" : "car:locationSet",
+          "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:locationSet",
+          "count" : 63930,
+          "lengths" : [ ],
+          "kids" : [ {
+            "tag" : "car:address",
+            "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:locationSet/car:address",
+            "count" : 63930,
+            "lengths" : [ ],
+            "kids" : [ {
+              "tag" : "car:roadName",
+              "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:locationSet/car:address/car:roadName",
+              "count" : 63930,
+              "lengths" : [ [ "1", "10" ], [ "2", "8" ], [ "3", "224" ], [ "4", "507" ], [ "5", "1671" ], [ "6-10", "25049" ], [ "11-15", "26392" ], [ "16-20", "7622" ], [ "21-30", "2405" ], [ "31-50", "38" ] ],
+              "kids" : [ ]
+            }, {
+              "tag" : "car:numberInRoad",
+              "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:locationSet/car:address/car:numberInRoad",
+              "count" : 63930,
+              "lengths" : [ [ "1", "22292" ], [ "2", "31978" ], [ "3", "8954" ], [ "4", "551" ], [ "5", "124" ], [ "6-10", "31" ] ],
+              "kids" : [ ]
+            }, {
+              "tag" : "car:adminArea",
+              "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:locationSet/car:address/car:adminArea",
+              "count" : 63930,
+              "lengths" : [ [ "3", "578" ], [ "4", "598" ], [ "5", "5648" ], [ "6-10", "42246" ], [ "11-15", "10479" ], [ "16-20", "3887" ], [ "21-30", "494" ] ],
+              "kids" : [ ]
+            }, {
+              "tag" : "car:country",
+              "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:locationSet/car:address/car:country",
+              "count" : 63930,
+              "lengths" : [ [ "2", "63930" ] ],
+              "kids" : [ ]
+            }, {
+              "tag" : "car:townOrCity",
+              "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:locationSet/car:address/car:townOrCity",
+              "count" : 63930,
+              "lengths" : [ [ "2", "13" ], [ "3", "278" ], [ "4", "1500" ], [ "5", "5831" ], [ "6-10", "47529" ], [ "11-15", "6796" ], [ "16-20", "1588" ], [ "21-30", "391" ] ],
+              "kids" : [ ]
+            }, {
+              "tag" : "car:postcodeOrZipcode",
+              "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:locationSet/car:address/car:postcodeOrZipcode",
+              "count" : 63930,
+              "lengths" : [ [ "6-10", "63926" ] ],
+              "kids" : [ ]
+            } ]
+          } ]
+        }, {
+          "tag" : "car:spatialReferenceSystem",
+          "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:spatialReferenceSystem",
+          "count" : 63930,
+          "lengths" : [ [ "6-10", "63930" ] ],
+          "kids" : [ ]
+        }, {
+          "tag" : "car:cartographicReference",
+          "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:cartographicReference",
+          "count" : 63930,
+          "lengths" : [ ],
+          "kids" : [ {
+            "tag" : "car:coordinates",
+            "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:cartographicReference/car:coordinates",
+            "count" : 63930,
+            "lengths" : [ ],
+            "kids" : [ {
+              "tag" : "car:x",
+              "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:cartographicReference/car:coordinates/car:x",
+              "count" : 63930,
+              "lengths" : [ [ "1", "791" ], [ "5", "11083" ], [ "6-10", "52056" ] ],
+              "kids" : [ ]
+            }, {
+              "tag" : "car:y",
+              "path" : "/car:carareWrap/car:carare/car:digitalResource/car:spatial/car:cartographicReference/car:coordinates/car:y",
+              "count" : 63930,
+              "lengths" : [ [ "1", "791" ], [ "6-10", "63139" ] ],
+              "kids" : [ ]
+            } ]
+          } ]
+        } ]
+      }, {
+        "tag" : "car:appellation",
+        "path" : "/car:carareWrap/car:carare/car:digitalResource/car:appellation",
+        "count" : 63930,
+        "lengths" : [ ],
+        "kids" : [ {
+          "tag" : "car:name",
+          "path" : "/car:carareWrap/car:carare/car:digitalResource/car:appellation/car:name",
+          "count" : 63930,
+          "lengths" : [ [ "21-30", "63930" ] ],
+          "kids" : [ {
+            "tag" : "@lang",
+            "path" : "/car:carareWrap/car:carare/car:digitalResource/car:appellation/car:name/@lang",
+            "count" : 63930,
+            "lengths" : [ [ "2", "63930" ] ],
+            "kids" : [ ]
+          } ]
+        }, {
+          "tag" : "car:id",
+          "path" : "/car:carareWrap/car:carare/car:digitalResource/car:appellation/car:id",
+          "count" : 63930,
+          "lengths" : [ [ "1", "9" ], [ "2", "89" ], [ "3", "862" ], [ "4", "8637" ], [ "5", "32164" ], [ "6-10", "22169" ] ],
+          "kids" : [ ]
+        } ]
+      }, {
+        "tag" : "car:description",
+        "path" : "/car:carareWrap/car:carare/car:digitalResource/car:description",
+        "count" : 63930,
+        "lengths" : [ [ "31-50", "63930" ] ],
+        "kids" : [ {
+          "tag" : "@lang",
+          "path" : "/car:carareWrap/car:carare/car:digitalResource/car:description/@lang",
+          "count" : 63930,
+          "lengths" : [ [ "2", "63930" ] ],
+          "kids" : [ ]
+        } ]
+      }, {
+        "tag" : "car:format",
+        "path" : "/car:carareWrap/car:carare/car:digitalResource/car:format",
+        "count" : 63930,
+        "lengths" : [ [ "6-10", "63930" ] ],
+        "kids" : [ ]
+      } ]
+    } ]
+  } ]
+}
