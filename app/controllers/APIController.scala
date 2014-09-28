@@ -16,12 +16,12 @@
 
 package controllers
 
-import java.io.File
+import java.io.{File, FileInputStream}
 import java.util.zip.ZipFile
 
 import controllers.Application.{OkFile, OkXml}
-import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils.deleteQuietly
+import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.libs.json.Json
 import play.api.mvc._
 import services.DatasetState._
@@ -29,6 +29,17 @@ import services.Repo.repo
 import services._
 
 object APIController extends Controller with TreeHandling with RecordHandling {
+
+  def pathsJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
+    implicit request => {
+      val treeFile = repo.datasetRepo(fileName).index
+      val string = IOUtils.toString(new FileInputStream(treeFile))
+      val json= Json.parse(string)
+      val tree = json.as[ReadTreeNode]
+      val paths = gatherPaths(tree, new Call(request.method, request.path).absoluteURL())
+      Ok(Json.toJson(paths))
+    }
+  }
 
   def indexJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {

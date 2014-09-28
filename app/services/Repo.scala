@@ -81,7 +81,7 @@ object RepoUtil {
   val ANALYZED_DIR = "analyzed"
   val SIP_ZIP = "sip-zip"
 
-  def tagToDirectory(tag: String) = tag.replace(":", "_").replace("@", "_")
+  def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
 
   def acceptableFile(fileName: String, contentType: Option[String]) = {
     // todo: be very careful about files matching a regex, so that they have spec__prefix form

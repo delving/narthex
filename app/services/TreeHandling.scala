@@ -85,7 +85,7 @@ trait TreeHandling {
 
     def finish(): Unit = {
       flush()
-      val index = kids.values.map(kid => RepoUtil.tagToDirectory(kid.tag)).mkString("\n")
+      val index = kids.values.map(kid => RepoUtil.pathToDirectory(kid.tag)).mkString("\n")
       FileUtils.writeStringToFile(nodeRepo.indexText, index)
       kids.values.foreach(_.finish())
     }
@@ -248,4 +248,22 @@ trait TreeHandling {
       (JsPath \ "lengths").read[Seq[Seq[String]]] and
       (JsPath \ "kids").lazyRead(Reads.seq[ReadTreeNode](nodeReads))
     )(ReadTreeNode)
+
+  case class PathNode(path: String, count: Int)
+
+  def gatherPaths(node: ReadTreeNode, requestUrl: String): List[PathNode] = {
+    val list = node.kids.flatMap(n => gatherPaths(n, requestUrl)).toList
+    if (node.lengths.length > 0) {
+      val path = RepoUtil.pathToDirectory(node.path)
+      PathNode(s"$requestUrl/histogram$path", node.count) :: list
+    }
+    else {
+      list
+    }
+  }
+
+  implicit val pathWrites: Writes[PathNode] = (
+    (JsPath \ "path").write[String] and
+      (JsPath \ "count").write[Int]
+    )(unlift(PathNode.unapply))
 }

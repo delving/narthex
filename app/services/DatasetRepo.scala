@@ -29,7 +29,7 @@ import play.api.cache.Cache
 import play.libs.Akka
 import services.DatasetState._
 import services.RecordHandling.{StoredRecord, TargetConcept}
-import services.RepoUtil.tagToDirectory
+import services.RepoUtil.pathToDirectory
 
 class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) extends RecordHandling {
   val root = new NodeRepo(this, dir)
@@ -140,7 +140,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
   def index = new File(dir, "index.json")
 
   def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, tagToDirectory(tag)))
+    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, pathToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 

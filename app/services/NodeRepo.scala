@@ -27,7 +27,7 @@ import scala.language.postfixOps
 
 object NodeRepo {
   def apply(parent: DatasetRepo, parentDir: File, tag: String) = {
-    val dir = if (tag == null) parentDir else new File(parentDir, tagToDirectory(tag))
+    val dir = if (tag == null) parentDir else new File(parentDir, pathToDirectory(tag))
     dir.mkdirs()
     new NodeRepo(parent, dir)
   }

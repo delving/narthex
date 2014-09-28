@@ -13,20 +13,11 @@ class TestTreeHandling extends FlatSpec with Matchers with TreeHandling {
     val string = IOUtils.toString(url.openStream())
     val json= Json.parse(string)
     val tree = json.as[ReadTreeNode]
+    val baseUrl = "http://thingy.com/api/bla"
+    val paths = gatherPaths(tree, baseUrl)
 
-    def gatherPaths(node: ReadTreeNode): List[String] = {
-      if (node.lengths.length > 0) {
-        node.path :: node.kids.flatMap(gatherPaths).toList
-      }
-      else {
-        node.kids.flatMap(gatherPaths).toList
-      }
-    }
-
-    val paths = gatherPaths(tree)
-
-    paths.head should be("/car:carareWrap/car:carare/@id")
-    paths.last should be("/car:carareWrap/car:carare/car:digitalResource/car:format")
+    paths.head should be(PathNode("http://thingy.com/api/bla/histogram/car_carareWrap/car_carare/_id", 63930))
+    paths.last should be(PathNode("http://thingy.com/api/bla/histogram/car_carareWrap/car_carare/car_digitalResource/car_format", 63930))
     paths.size should be(31)
   }
 }
