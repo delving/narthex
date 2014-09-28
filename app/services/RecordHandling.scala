@@ -41,6 +41,8 @@ object RecordHandling {
 
 trait RecordHandling extends BaseXTools {
 
+  var BOX = "narthex"
+
   class RawRecordParser(recordRootPath: String, uniqueIdPath: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
     var percentWas = -1
@@ -133,13 +135,13 @@ trait RecordHandling extends BaseXTools {
             recordCount += 1
             sendProgress()
             indent()
-            recordText.append(s"</$tag>\n</narthex>\n")
+            recordText.append(s"</$tag>\n</$BOX>\n")
             val mod = toXSDString(new DateTime())
             val record = uniqueId.map { id =>
               if (id.isEmpty) throw new RuntimeException("Empty unique id!")
               if (avoidIds.contains(id)) None else {
                 val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
-                recordText.insert(0, s"""<narthex id="$id" mod="$mod" $scope>\n""")
+                recordText.insert(0, s"""<$BOX id="$id" mod="$mod" $scope>\n""")
                 Some(RawRecord(id, recordText.toString()))
               }
             } getOrElse {
@@ -269,9 +271,9 @@ trait RecordHandling extends BaseXTools {
 
         case EvElemStart(pre, label, attrs, scope) =>
           val tag = FileHandling.tag(pre, label)
-          if (tag == "narthex") {
-            val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException("Narthex element missing id"))
-            val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException("Narthex element missing mod"))
+          if (tag == BOX) {
+            val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$BOX element missing id"))
+            val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$BOX element missing mod"))
             record = Some(StoredRecord(id, fromXSDDateTime(mod), scope))
           }
           else record match {
@@ -341,13 +343,13 @@ trait RecordHandling extends BaseXTools {
 
   def parseStoredRecords(xmlString: String): List[StoredRecord] = {
     val wrappedRecord = scala.xml.XML.loadString(xmlString)
-    (wrappedRecord \ "narthex").map {
-      narthex =>
+    (wrappedRecord \ BOX).map {
+      box =>
         StoredRecord(
-          id = (narthex \ "@id").text,
-          mod = fromXSDDateTime((narthex \ "@mod").text),
-          narthex.scope,
-          new mutable.StringBuilder((narthex \ "_").toString())
+          id = (box \ "@id").text,
+          mod = fromXSDDateTime((box \ "@mod").text),
+          box.scope,
+          new mutable.StringBuilder((box \ "_").toString())
         )
     }.toList
   }

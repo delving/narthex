@@ -29,7 +29,7 @@ import scala.xml.{Elem, NodeSeq, XML}
  * @author Gerald de Jong <gerald@delving.eu
  */
 
-class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
+class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling {
 
   val recordDb = s"${dbName}_records"
 
@@ -76,9 +76,9 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
         val queryForRecords = s"""
           |
           | ${namespaceDeclarations(datasetInfo)}
-          | let $$recordsWithValue := collection('$recordDb')[/narthex$queryPath/$field=${quote(value)}]
-          | let $$selected := subsequence($$recordsWithValue, $start, $max)
-          | return <records>{ for $$rec in $$selected return $$rec/* }</records>
+          | let $$boxes := collection('$recordDb')[/$BOX$queryPath/$field=${quote(value)}]
+          | let $$selected := subsequence($$boxes, $start, $max)
+          | return <records>{ for $$box in $$selected return $$box/* }</records>
           |
           """.stripMargin.trim
         println("asking:\n" + queryForRecords)
@@ -91,10 +91,8 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
-        | let $$recordWithId := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
-        | return <record>{
-        |   $$recordWithId
-        | }</record>
+        | let $$box := collection('$recordDb')[/$BOX/@id=${quote(identifier)}]
+        | return <record>{ $$box }</record>
         |
         """.stripMargin.trim
       println("asking:\n" + queryForRecord)
@@ -105,14 +103,14 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
     session =>
       val q = s"""
         |
-        | let $$records := collection('$recordDb')/narthex
+        | let $$boxes := collection('$recordDb')/$BOX
         | return
         |    <ids>{
-        |       for $$narthex in $$records
-        |       where $$narthex/@mod >= ${quote(since)}
-        |       order by $$narthex/@mod descending
+        |       for $$box in $$boxes
+        |       where $$box/@mod >= ${quote(since)}
+        |       order by $$box/@mod descending
         |       return
-        |          <id>{$$narthex/@mod}{string($$narthex/@id)}</id>
+        |          <id>{$$box/@mod}{string($$box/@id)}</id>
         |    }</ids>
         |
         |""".stripMargin.trim
@@ -139,7 +137,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
     if (!PUBLISHED.matches(state)) return None
     val countString = db {
       session =>
-        val queryForRecords = s"count(collection('$recordDb')/narthex${dateSelector(from, until)})"
+        val queryForRecords = s"count(collection('$recordDb')/$BOX${dateSelector(from, until)})"
         println("asking:\n" + queryForRecords)
         session.query(queryForRecords).execute()
     }
@@ -165,14 +163,14 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         |
-        | let $$selection := collection('$recordDb')/narthex${dateSelector(from, until)}
+        | let $$selection := collection('$recordDb')/$BOX${dateSelector(from, until)}
         |
         | return
         |   <records>
         |     {
-        |       for $$narthex in subsequence($$selection, $start, $pageSize)
-        |          order by $$narthex/@mod descending
-        |              return $$narthex
+        |       for $$box in subsequence($$selection, $start, $pageSize)
+        |          order by $$box/@mod descending
+        |              return $$box
         |     }
         |   </records>
         |
@@ -188,16 +186,16 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
-        | let $$rec := collection('$recordDb')[/narthex/@id=${quote(identifier)}]
+        | let $$box := collection('$recordDb')[/$BOX/@id=${quote(identifier)}]
         | return
         |   <record>
         |     <header>
-        |       <identifier>{data($$rec/narthex/@id)}</identifier>
-        |       <datestamp>{data($$rec/narthex/@mod)}</datestamp>
+        |       <identifier>{data($$rec/$BOX/@id)}</identifier>
+        |       <datestamp>{data($$rec/$BOX/@mod)}</datestamp>
         |       <setSpec>${datasetRepo.name}</setSpec>
         |     </header>
         |     <metadata>
-        |      {$$rec/narthex/*}
+        |      {$$box/$BOX/*}
         |     </metadata>
         |   </record>
         |
@@ -207,21 +205,21 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
 
   def recordsPmh(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int, headersOnly: Boolean): Seq[String] = db {
     session =>
-      val metadata = if (headersOnly) "" else "<metadata>{$narthex/*}</metadata>"
+      val metadata = if (headersOnly) "" else "<metadata>{$box/*}</metadata>"
       val query = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         |
-        | let $$selection := collection('$recordDb')/narthex${dateSelector(from, until)}
+        | let $$selection := collection('$recordDb')/$BOX${dateSelector(from, until)}
         |
-        | let $$records :=
-        |   for $$narthex in subsequence($$selection, $start, $pageSize)
-        |   order by $$narthex/@mod descending
+        | let $$boxes :=
+        |   for $$box in subsequence($$selection, $start, $pageSize)
+        |   order by $$box/@mod descending
         |     return
         |       <record>
         |         <header>
-        |           <identifier>{data($$narthex/@id)}</identifier>
-        |           <datestamp>{data($$narthex/@mod)}</datestamp>
+        |           <identifier>{data($$box/@id)}</identifier>
+        |           <datestamp>{data($$box/@mod)}</datestamp>
         |           <setSpec>${datasetRepo.name}</setSpec>
         |         </header>
         |         $metadata
@@ -229,7 +227,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends BaseXTools {
         |
         | return
         |   <records start="$start" pageSize="$pageSize">
-        |     {$$records}
+        |     {$$boxes}
         |   </records>
         |
         """.stripMargin.trim
