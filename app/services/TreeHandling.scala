@@ -253,7 +253,7 @@ trait TreeHandling {
 
   def gatherPaths(node: ReadTreeNode, requestUrl: String): List[PathNode] = {
     val list = node.kids.flatMap(n => gatherPaths(n, requestUrl)).toList
-    if (node.lengths.length > 0) {
+    if (node.lengths.length > 0 && node.count > 1) {
       val path = RepoUtil.pathToDirectory(node.path)
       PathNode(s"$requestUrl/histogram$path", node.count) :: list
     }

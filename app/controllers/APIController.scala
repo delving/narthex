@@ -22,6 +22,7 @@ import java.util.zip.ZipFile
 import controllers.Application.{OkFile, OkXml}
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.apache.commons.io.{FileUtils, IOUtils}
+import play.api.http.ContentTypes
 import play.api.libs.json.Json
 import play.api.mvc._
 import services.DatasetState._
@@ -37,7 +38,8 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       val json= Json.parse(string)
       val tree = json.as[ReadTreeNode]
       val paths = gatherPaths(tree, new Call(request.method, request.path).absoluteURL())
-      Ok(Json.toJson(paths))
+      val pathJson = Json.toJson(paths)
+      Ok(Json.prettyPrint(pathJson)).as(ContentTypes.JSON)
     }
   }
 
