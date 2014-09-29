@@ -7,15 +7,15 @@
 
 ## Introduction
 
-[Narthex](http://en.wikipedia.org/wiki/Narthex) is an online XML analyzer for preparing cultural heritage metadata files for consumption by other software.  You drop your XML file (zipped) onto Narthex and it will do complete comprehensive rigorous analysis, revealing the schema as well as everything about the content of all non-empty elements and attributes.  The results can be browsed as well as made available via an API to other software.
+[Narthex](http://en.wikipedia.org/wiki/Narthex) is firstly an online XML analyzer for discovering the structure and content of cultural heritage metadata files. It can acquire data either by dropping an XML(gzip) file into the application, or by harvesting records via OAI-PMH or directly from the AdLib API (the first custom technique). The analysis results can be browsed as well as made available via an API to other software. The acquired datasets can be harvested from Narthex using OAI-PMH.
 
-This is only the first step. The next phases in the project will involve building vocabulary alignments, performing link checks, geo-coordinate conversions or whatever else is necessary to prepare the data for entry into the [nave](http://en.wikipedia.org/wiki/Nave) of the CultureCloud.
+Analysis is only the first step, since features will be added to Narthex enabling the improvement of the data as well.  Currently, there is a Terminology Mapping feature which allows users to map utilized terms from the source to concepts expressed in SKOS/XML.
 
 Technologies: **AngularJS**, **D3JS**, **RequireJS**, **Playframework**, and **Akka**. (Thanks to James Ward and the TypeSafe Activator and WebJars people!)|
 
 ## Background
 
-Narthex makes up part of the CultureBrokers project, co-funded by the Swedish Arts Council and the British Museum, and developed by by Delving BV.
+Initially, Narthex was part of the CultureBrokers project, co-funded by the Swedish Arts Council and the British Museum, and developed by by Delving BV. Subsequent developments for Terminology Mapping were developed for the [RCE](http://www.cultureelerfgoed.nl/), and further developments to expand the statistical analysis are also funded by RCE.
 
 ## Development
 
@@ -33,9 +33,9 @@ The distribution is in the form of a zip-file which you must unpack, and then a 
 
 ### Storage and API
 
-All files related to the program are stored in a folder called **NARTHEX** in the user's home directory.  Inside that folder there is a sub-folder for every user which is named according to their email address, and it contains **user.json** for storing the hash of the password that the user has set up.
+All files related to the program are stored in a folder called **NarthexFiles** in the user's home directory.  Inside that folder there is a sub-folder for every organization instance.  Multiple instances of Narthex can therefore be run on the same server machine.
 
-Inside the user's folder here are folders for all **uploaded** XML zip files, and a corresponding folders for the result of the analysis called **analyzed**.  The sub-folders of **analyzed** have names corresponding exactly to the files which were uploaded, and each of these contains the following:
+Inside the organization's folder here are folders for all **uploaded** XML zip files, and a corresponding folders for the result of the analysis called **analyzed**.  The sub-folders of **analyzed** have names corresponding exactly to the files which were uploaded, and each of these contains the following:
 
 * **index.json** - a full tree-shaped description of the schema of the file
 * **"exploded tree"** - a tree of sub-folders corresponding to the tree of the derived XML schema, each folder containing:
@@ -55,34 +55,52 @@ When viewing the histogram of a source field which contains unique values, you h
 
 ### Dataset
 
-The document stored in BaseX for every dataset, which maintains its current state and some important facts looks like this:
+The document stored in BaseX for the datasets, which maintains their current states and some important facts looks like this:
 
-	<narthex-dataset>
-		<status>
-			<state>[State]</state>
-			<percent>[Percent Complete]</percent>
-			<workers>[Worker Count]</workers>
-		</status>
-		<delimit>
-			<recordRoot>[Record Root]</recordRoot>
-			<uniqueId>[Unique Identifier]</uniqueId>
-			<recordCount>[Record Count]</recordCount>
-		</delimit>
-	</narthex-dataset>
+	<narthex-datasets>
+		<narthex-dataset name="[Dataset Name]">
+			<origin>
+				<type>[origin-sip | origin-drop | origin-harvest]</type>
+				<who>[User responsible]</who>
+				<time>[when the dataset was acquired]</time>
+			</origin>
+			<status>
+				<state>[State]</state>
+				<time>[Time the state was changed]</time>
+				<percent>[Percent Complete]</percent>
+				<workers>[Worker Count]</workers>
+				<error>[Error message if there is one]</error>
+			</status>
+			<delimit>
+				<recordRoot>[Record Root]</recordRoot>
+				<uniqueId>[Unique Identifier]</uniqueId>
+				<recordCount>[Record Count]</recordCount>
+			</delimit>
+			<namespaces>
+				<prefix1>[URI 1]</prefix1>
+				<prefix2>[URI 2]</prefix2>
+			</namespace>
+			<harvest>
+				<harvestType>[pmh or adlib]</harvestType>
+				<url>[Base URL of the server]</url>
+				<dataset>[name of the server dataset]</dataset>
+				<prefix>[The metadata prefix]</prefix>
+			</harvest>
+		</narthex-dataset>
+		...
+	</narthex-datasets>
 	
 * **State** - a string containing one of the following values
-	* "1:splitting"
-	* "2:analyzing"
-	* "3:analyzed"
-	* "4:saving"
-	* "5:saved"
-* **Percent Complete** - when there is a process busy this number will reflect how far it is
-* **Worker Count** - when a parallel process is busy, the number of worker threads is here
-* **Record Root** - the path leading to the record element "/adlibXML/recordList/record"
-* **UniqueId** - the path to the unique identifier element within the record "/adlibXML/recordList/record/priref"
-* **Record Count** - the number of uniquely identified records
-
-**NOTE**: Later, when it becomes possible to upload multiple versions and have differences detected, there will be a list of different uploads stored here.
+	* "state-deleted"
+	* "state-empty"
+	* "state-harvesting"
+	* "state-ready"
+	* "state-splitting"
+	* "state-analyzing"
+	* "state-analyzed"
+	* "state-saving"
+	* "state-saved"
+	* "state-published"
 
 ### Records
 
@@ -96,11 +114,11 @@ Narthex stores records in the XML database under names which are generated from 
 
 When a new version of the same dataset arrives, this hash will be used to determine if there has been a change to an existing record or not.  The idea is that only changed records will be propagated, whether or not the contributor of the source file is able to provide incremental updates.
 
-### Terminology Mapping
+### Enrichment: Terminology Mapping
 
 When Narthex has perform its analysis, the fields utilizing a limited (presumably somewhat controlled) vocabulary will be revealed.  For proper integration with other datasets, it may be necessary to translate these (perhaps local) vocabulary terms into choices from a shared terminology resource, represented as a [SKOS](http://www.w3.org/2004/02/skos/) thesaurus.
 
-With the histogram of a terminology field in view, you can choose to map to a vocabulary.  The vocabularies must be made available in a directory **~/NARTHEX/skos/** in the form of XML files, appropriately named, containing SKOS XML.  Examples:
+With the histogram of a terminology field in view, you can choose to map to a vocabulary.  The vocabularies must be made available in a directory **~/NarthexFiles/skos/** in the form of XML files, appropriately named, containing SKOS XML.  Examples:
 
 	Object_Types.xml
 	Styles_and_Periods.xml
@@ -109,27 +127,24 @@ These names, with underscores removed, will be presented to the user so that the
 
 Vocabularies are queried by traversing the concepts in memory and performing string comparisons on the appropriate preferred and alternate labels.  The string comparison is an algorithm from the [Stringmetic](https://rockymadden.com/stringmetric/) library called **RatcliffObershelpMetric** but any other sysem could be used.
 
-The terminology mappings are from URI to URI, and they are stored in BaseX
+The terminology mappings are from URI to URI, and they are stored in BaseX:
 
-	<term-mappings>
-	  <term-mapping>
-	    <source>[email]/[dataset]/[path]/[to]/[field]/[field-value]</source>
-	    <target>[target URI]</target>
-	  </term-mapping>
-	  ...
-	</term-mappings>
+	<mappings>
+		<mapping>
+			<source>[Source URI]</source>
+			<target>[Target URI]</target>
+			<prefLabel>[Preferred Label]</prefLabel>
+			<vocabulary>[Vocabulary Name]</vocabulary>
+		</mapping>
+	</mappings>
 
-A local terminology field could then be translated through a dictinary to URIs from a shared resource on-the-fly whenever another server fetches records for indexing and display. The translations should be stored as pairs of URIs (although the local URI may have to be minted for the purpose).
+Enriched records can be fetched from Narthex via its API or via OAI-PMH harvesting.
 
 ---
 
 ## Future
 
 The functionality of Narthex suggests and leads the way to some interesting potential future developments.  This program represents the first phase of a workflow which can facilitate online publishing of metadata, but in the future it could be used for various cleaning, enriching, and transforming tasks.  It could become a kind of metadata repository where data owners keep the published version of their data available.
-
-### Record Enrichment
-
-Record storage allows for the records to be fetched at any time by another server requiring them, such as an indexing server. Any enrichments that have been recorded (see below) could be optionally used for replacements on the source data on-the-fly while records are being fetched.
 
 ### Link Checking
 
