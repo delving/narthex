@@ -146,7 +146,7 @@ class SourceRepo(val dir: File, recordRoot: String, uniqueId: String) extends Re
     }
     else {
       val newIdsFile = createIdsFile(fileNumber)
-      FileUtils.write(newIdsFile, idSet.toList.sorted.mkString("\n") + "\n")
+      FileUtils.write(newIdsFile, idSet.toList.sorted.mkString("", "\n","\n"))
       writeToFile(activeIdsFile(newIdsFile), idSet.size.toString)
       var idsFiles = files.map(idsFile)
       idsFiles.foreach { idsFile =>
