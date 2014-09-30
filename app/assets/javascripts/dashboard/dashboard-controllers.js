@@ -106,7 +106,7 @@ define(["angular"], function () {
         $scope.lastStatusCheck = 0;
         $scope.percent = null;
         $scope.activeTab = $routeParams.tab || "files";
-        $scope.fileOpen = $routeParams.open || "";
+        $scope.fileOpen = $routeParams.open || $rootScope.fileOpen || "";
 
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
@@ -142,6 +142,7 @@ define(["angular"], function () {
             else {
                 $scope.fileOpen = file.name;
             }
+            $rootScope.saveFileOpen($scope.fileOpen);
             setSearch();
         };
 
