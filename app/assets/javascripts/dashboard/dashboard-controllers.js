@@ -142,7 +142,7 @@ define(["angular"], function () {
             else {
                 $scope.fileOpen = file.name;
             }
-            $rootScope.saveFileOpen($scope.fileOpen);
+//            $rootScope.saveFileOpen($scope.fileOpen);
             setSearch();
         };
 
