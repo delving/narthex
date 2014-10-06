@@ -27,15 +27,13 @@ import services.DatasetState._
 import services.Repo.repo
 import services._
 
-import scala.xml.Elem
-
 object Dashboard extends Controller with Security with TreeHandling with SkosJson {
 
   def list = Secure() {
     token => implicit request => {
       val datasets = repo.repoDb.listDatasets.map {
         dataset =>
-          val lists = DATASET_PROPERTY_LISTS.map(name => name -> toJsObject(dataset.info, name))
+          val lists = DATASET_PROPERTY_LISTS.map(name => name -> DatasetDb.toJsObject(dataset.info, name))
           Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
       }
       Ok(JsArray(datasets))
@@ -120,7 +118,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     token => implicit request => {
       repo.datasetRepo(fileName).datasetDb.getDatasetInfoOption match {
         case Some(datasetInfo) =>
-          val lists = DATASET_PROPERTY_LISTS.map(name => name -> toJsObject(datasetInfo, name))
+          val lists = DATASET_PROPERTY_LISTS.map(name => name -> DatasetDb.toJsObject(datasetInfo, name))
           Ok(JsObject(lists))
         case None =>
           NotFound(Json.obj("problem" -> s"Not found $fileName"))
@@ -303,13 +301,5 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   val DATASET_PROPERTY_LISTS = List("origin", "metadata", "status", "delimit", "namespaces", "harvest", "sipFacts", "sipHints")
-
-  private def toJsObject(datasetInfo: Elem, tag: String) = JsObject(
-    (datasetInfo \ tag).headOption.map(
-      _.child.filter(_.isInstanceOf[Elem]).map(
-        n => n.label -> JsString(n.text)
-      )
-    ) getOrElse Seq.empty
-  )
 
 }

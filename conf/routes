@@ -41,6 +41,7 @@ POST        /narthex/dashboard/:fileName/set-mapping                  controller
 GET         /narthex/dashboard/skos/list                              controllers.Dashboard.listSkos
 GET         /narthex/dashboard/skos/:name/:sought                     controllers.Dashboard.searchSkos(name, sought)
 
+GET         /narthex/api/:apiKey                                      controllers.APIController.listDatasets(apiKey)
 GET         /narthex/api/:apiKey/:fileName                            controllers.APIController.pathsJSON(apiKey, fileName)
 GET         /narthex/api/:apiKey/:fileName/tree                       controllers.APIController.indexJSON(apiKey, fileName)
 GET         /narthex/api/:apiKey/:fileName/index                      controllers.APIController.indexText(apiKey, fileName, path="")

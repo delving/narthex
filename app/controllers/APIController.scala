@@ -20,16 +20,30 @@ import java.io.{File, FileInputStream}
 import java.util.zip.ZipFile
 
 import controllers.Application.{OkFile, OkXml}
+import controllers.Dashboard._
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.http.ContentTypes
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import services.DatasetState._
 import services.Repo.repo
 import services._
 
 object APIController extends Controller with TreeHandling with RecordHandling {
+
+  def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) {
+    implicit request => {
+      val datasets = repo.repoDb.listDatasets.map {
+        dataset =>
+          val lists = DATASET_PROPERTY_LISTS.map(name => name -> DatasetDb.toJsObject(dataset.info, name))
+          Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
+      }
+//      Ok(JsArray(datasets))
+      Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
+    }
+  }
+
 
   def pathsJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {

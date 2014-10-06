@@ -19,8 +19,19 @@ package services
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Logger
+import play.api.libs.json.{JsObject, JsString}
 
 import scala.xml.{Elem, XML}
+
+object DatasetDb {
+  def toJsObject(datasetInfo: Elem, tag: String) = JsObject(
+    (datasetInfo \ tag).headOption.map(
+      _.child.filter(_.isInstanceOf[Elem]).map(
+        n => n.label -> JsString(n.text)
+      )
+    ) getOrElse Seq.empty
+  )
+}
 
 class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
 
