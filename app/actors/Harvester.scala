@@ -142,12 +142,12 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
       zip.close()
       error match {
         case Some(errorString) =>
-          deleteQuietly(datasetRepo.sourceFile)
+          deleteQuietly(datasetRepo.source)
           deleteQuietly(tempFile)
           datasetRepo.datasetDb.setStatus(EMPTY, error=errorString)
         case None =>
-          deleteQuietly(datasetRepo.sourceFile)
-          moveFile(tempFile, datasetRepo.sourceFile)
+          deleteQuietly(datasetRepo.source)
+          moveFile(tempFile, datasetRepo.source)
           datasetRepo.datasetDb.setStatus(READY)
       }
       context.stop(self)

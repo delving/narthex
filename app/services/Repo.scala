@@ -80,6 +80,7 @@ object RepoUtil {
   val UPLOADED_DIR = "uploaded"
   val ANALYZED_DIR = "analyzed"
   val SIP_ZIP = "sip-zip"
+  val GIT_REPO = "git-repo"
 
   def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
 
@@ -124,6 +125,7 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
   val uploaded = new File(orgRoot, UPLOADED_DIR)
   val analyzed = new File(orgRoot, ANALYZED_DIR)
   val sipZip = new File(orgRoot, SIP_ZIP)
+  val gitRepo = new File(orgRoot, GIT_REPO)
   val repoDb = new RepoDb(orgId)
 
   orgRoot.mkdirs()
@@ -155,7 +157,7 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
   }
 
   def datasetRepo(fileName: String): DatasetRepo = {
-    new DatasetRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName))
+    new DatasetRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName), gitRepo)
   }
 
   def datasetRepoOption(fileName: String): Option[DatasetRepo] = {

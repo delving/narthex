@@ -61,7 +61,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
       val f = Future(datasetRepo.recordDb.db {
         session =>
           parser = new RawRecordParser(recordRoot, uniqueId)
-          val (source, readProgress) = FileHandling.sourceFromFile(datasetRepo.sourceFile)
+          val (source, readProgress) = FileHandling.sourceFromFile(datasetRepo.source)
           val progress = context.actorOf(Props(new Actor() {
             override def receive: Receive = {
               case SaveProgress(percent) =>
@@ -106,9 +106,9 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
       context.stop(self)
 
     case SaveComplete() =>
-      log.info(s"Saved ${datasetRepo.dir.getName}, optimizing..")
+      log.info(s"Saved ${datasetRepo.analyzedDir.getName}, optimizing..")
       datasetRepo.recordDb.db(_.execute(new Optimize()))
-      log.info(s"Optimized ${datasetRepo.dir.getName}.")
+      log.info(s"Optimized ${datasetRepo.analyzedDir.getName}.")
       datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
       datasetRepo.datasetDb.setStatus(SAVED)
       context.stop(self)

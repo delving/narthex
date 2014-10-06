@@ -31,17 +31,17 @@ import services.DatasetState._
 import services.RecordHandling.{StoredRecord, TargetConcept}
 import services.RepoUtil.pathToDirectory
 
-class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val dir: File) extends RecordHandling {
-  val root = new NodeRepo(this, dir)
+class DatasetRepo(val orgRepo: Repo, val name: String, val source: File, val analyzedDir: File, gitRepoDir: File) extends RecordHandling {
+  val root = new NodeRepo(this, analyzedDir)
   val dbName = s"narthex_${orgRepo.orgId}___$name"
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, name)
   lazy val termDb = new TermDb(dbName)
   lazy val recordDb = new RecordDb(this, dbName)
 
-  override def toString = sourceFile.getCanonicalPath
+  override def toString = source.getCanonicalPath
 
   def mkdirs = {
-    dir.mkdirs()
+    analyzedDir.mkdirs()
     this
   }
 
@@ -104,24 +104,26 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
   }
 
   def startAnalysis() = {
-    deleteDirectory(dir)
+    deleteDirectory(analyzedDir)
     datasetDb.setStatus(SPLITTING, percent = 1)
     val analyzer = actor(Analyzer.props(this))
-    if (sourceFile.getName.endsWith(".repo")) {
+    if (source.getName.endsWith(".repo")) {
       datasetDb.getDatasetInfoOption match {
         case Some(info) =>
           val delimit = info \ "delimit"
-          ((delimit \ "recordRoot").text,  (delimit \ "uniqueId").text) match {
-            case (recordRoot,uniqueId) if recordRoot.nonEmpty && uniqueId.nonEmpty =>
-              analyzer ! Analyzer.AnalyzeRepo(new SourceRepo(sourceFile, recordRoot, uniqueId))
+          ((delimit \ "recordRoot").text, (delimit \ "uniqueId").text) match {
+            case (recordRoot, uniqueId) if recordRoot.nonEmpty && uniqueId.nonEmpty =>
+              gitRepoDir.mkdirs()
+              val gitFile = new File(gitRepoDir, s"$name.xml")
+              analyzer ! Analyzer.AnalyzeRepo(new SourceRepo(source, recordRoot, uniqueId), gitFile)
             case _ =>
           }
         case None =>
-          analyzer ! Analyzer.AnalyzeFile(sourceFile)
+          analyzer ! Analyzer.AnalyzeFile(source)
       }
     }
     else {
-      analyzer ! Analyzer.AnalyzeFile(sourceFile)
+      analyzer ! Analyzer.AnalyzeFile(source)
     }
   }
 
@@ -137,10 +139,10 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
   }
 
-  def index = new File(dir, "index.json")
+  def index = new File(analyzedDir, "index.json")
 
   def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(dir)((file, tag) => new File(file, pathToDirectory(tag)))
+    val nodeDir = path.split('/').toList.foldLeft(analyzedDir)((file, tag) => new File(file, pathToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 
@@ -190,7 +192,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
     }
   }
 
-  def goToState(newState: DatasetState) : Boolean = {
+  def goToState(newState: DatasetState): Boolean = {
 
     val currentState = datasetDb.getDatasetInfoOption match {
       case Some(info) =>
@@ -208,8 +210,8 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
       case DELETED =>
         datasetDb.removeDataset()
         recordDb.dropDb()
-        deleteQuietly(sourceFile)
-        deleteDirectory(dir)
+        deleteQuietly(source)
+        deleteDirectory(analyzedDir)
         true
 
       case EMPTY =>
@@ -220,8 +222,8 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
         }
         datasetDb.setStatus(newState)
         recordDb.dropDb()
-        deleteQuietly(sourceFile)
-        deleteDirectory(dir)
+        deleteQuietly(source)
+        deleteDirectory(analyzedDir)
         true
 
       case READY =>
@@ -233,7 +235,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val sourceFile: File, val
         else {
           datasetDb.setStatus(newState)
           recordDb.dropDb()
-          deleteDirectory(dir)
+          deleteDirectory(analyzedDir)
         }
         true
 

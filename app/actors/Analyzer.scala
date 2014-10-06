@@ -38,7 +38,7 @@ object Analyzer {
 
   case class AnalyzeFile(file: File)
 
-  case class AnalyzeRepo(repo: SourceRepo)
+  case class AnalyzeRepo(repo: SourceRepo, sourceFile: File)
 
   case class AnalysisProgress(percent: Int)
 
@@ -66,8 +66,11 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       log.debug(s"Interrupted analysis $datasetRepo")
       bomb = Some(sender)
 
-    case AnalyzeRepo(repo) =>
-      self ! AnalyzeFile(repo.getSourceFile)
+    case AnalyzeRepo(repo, sourceFile) =>
+      if (!sourceFile.exists() || sourceFile.lastModified() < repo.lastModified) {
+        repo.generateSourceFile(sourceFile)
+      }
+      self ! AnalyzeFile(sourceFile)
 
     case AnalyzeFile(file) =>
       log.debug(s"Analyzer on ${file.getName}")
@@ -139,7 +142,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
           }
 
         case SortType.HISTOGRAM_SORT =>
-          log.debug(s"writing histograms : ${datasetRepo.dir.getAbsolutePath}")
+          log.debug(s"writing histograms : ${datasetRepo.analyzedDir.getAbsolutePath}")
           RepoUtil.updateJson(nodeRepo.status) {
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]
@@ -162,7 +165,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
 
     case AnalysisTreeComplete(json) =>
       datasetRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
-      log.info(s"Tree Complete at ${datasetRepo.dir.getName}")
+      log.info(s"Tree Complete at ${datasetRepo.analyzedDir.getName}")
 
     case AnalysisComplete() =>
       if (bomb.isDefined) {
@@ -177,7 +180,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
     case AnalysisError(error) =>
       log.info(s"Analysis error: $error")
       datasetRepo.datasetDb.setStatus(READY, error = error)
-      FileUtils.deleteQuietly(datasetRepo.dir)
+      FileUtils.deleteQuietly(datasetRepo.analyzedDir)
       context.stop(self)
 
   }

@@ -15,10 +15,18 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
 
   val recordRoot = "/envelope/list/thing"
   val uniqueId = s"$recordRoot/@which"
-  val dir = new File("/tmp/test-source-repo")
-  deleteQuietly(dir)
-  val incoming = new File("/tmp/test-source-repo-incoming")
-  deleteQuietly(incoming)
+  
+  def fresh(dir: String): File = {
+    val file = new File(dir)
+    deleteQuietly(file)
+    file.mkdirs()
+    file
+  }
+
+  val incoming = fresh("/tmp/test-source-repo-incoming")
+  val sourceDir = fresh("/tmp/test-source-repo")
+  val gitDir = fresh("/tmp/test-source-repo-git")
+  val gitFile = new File(gitDir, s"test-source-repo.xml")
 
   def resourceFile(letter: String): File = {
     val name = s"source-$letter.xml"
@@ -27,13 +35,14 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
   }
 
   List("a", "b", "c").map(resourceFile).foreach(f => FileUtils.copyFile(f, new File(incoming, f.getName)))
+//  deleteQuietly(incoming)
 
   def incomingFile(letter: String): File = {
     val name = s"source-$letter.xml"
     new File(incoming, name)
   }
 
-  val sourceRepo = new SourceRepo(dir, recordRoot, uniqueId)
+  val sourceRepo = new SourceRepo(sourceDir, recordRoot, uniqueId)
 
   "A Source Repository" should "accept files and pages" in {
 
@@ -79,7 +88,11 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
 
     recordCount should be(4)
 
-    println(s"file: ${sourceRepo.getSourceFile.getAbsolutePath}")
+    FileHandling.ensureGitRepo(gitDir) should be(true)
+    
+    sourceRepo.generateSourceFile(gitFile)
+
+    FileHandling.gitCommit(gitFile, "TestSourceRepo") should be(true)
   }
 
 }

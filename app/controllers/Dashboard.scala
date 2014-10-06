@@ -51,7 +51,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
             case Some(suffix) =>
               println(s"Acceptable ${file.filename}")
               val datasetRepo = repo.datasetRepo(s"$fileName$suffix")
-              file.ref.moveTo(datasetRepo.sourceFile, replace = true)
+              file.ref.moveTo(datasetRepo.source, replace = true)
               datasetRepo.datasetDb.createDataset(DatasetState.READY)
               datasetRepo.datasetDb.setOrigin(DatasetOrigin.DROP, "?") // find out who
               Ok(datasetRepo.name)

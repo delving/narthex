@@ -20,10 +20,31 @@ import java.io.{BufferedInputStream, File, FileInputStream, InputStream}
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipFile}
 
 import org.apache.commons.io.input.{BOMInputStream, CountingInputStream}
+import play.api.Logger
 
 import scala.io.Source
+import scala.sys.process._
 
 object FileHandling {
+
+  def ensureGitRepo(directory: File): Boolean = {
+    val hiddenGit = new File(directory, ".git")
+    if (!hiddenGit.exists()) {
+      val init = s"git init ${directory.getAbsolutePath}".!!
+      Logger.info(s"git init: $init")
+    }
+    hiddenGit.exists()
+  }
+
+  def gitCommit(file: File, comment:String): Boolean = {
+    val home = file.getParentFile.getAbsolutePath
+    val name = file.getName
+    val add = s"git -C $home add $name".!!
+    Logger.info(s"git add: $add")
+    val commit = s"""git -C $home commit -m "$comment" $name""".!!
+    Logger.info(s"git commit: $commit")
+    true
+  }
   
   abstract class ReadProgress {
     def getPercentRead: Int
