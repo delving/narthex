@@ -167,7 +167,7 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
     val FileName = "(.*)__(.*)".r
-    val published = BaseX.withSession {
+    BaseX.withSession {
       session =>
         repoDb.listDatasets.flatMap {
           dataset =>
@@ -195,7 +195,6 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
             }
         }
     }
-    published ++ published.map(ds => ds.copy(spec = s"$ENRICHED_PREFIX${ds.spec}"))
   }
 
   def getMetadataFormats: Seq[RepoMetadataFormat] = {
