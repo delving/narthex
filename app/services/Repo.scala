@@ -244,7 +244,7 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
         }.toMap
         val SipZipName(spec, year, month, day, hour, minute, uploadedBy) = file.getName
         val dateTime = new DateTime(year.toInt, month.toInt, day.toInt, hour.toInt, minute.toInt)
-        val factsPlus = facts + ("uploadedBy" -> uploadedBy) + ("uploadedOn" -> FORMATTER.print(dateTime))
+        val factsPlus = facts + ("uploadedBy" -> uploadedBy) + ("uploadedOn" -> XSD_FORMATTER.print(dateTime))
         (file, factsFile, factsPlus)
     }
   }

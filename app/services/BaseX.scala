@@ -19,11 +19,11 @@ object BaseX {
 
   def withSession[T](block: ClientSession => T): T = baseX.withSession(block)
 
-  def withDbSession[T](database:String)(block: ClientSession => T): T = baseX.withDbSession(database)(block)
+  def withDbSession[T](database: String)(block: ClientSession => T): T = baseX.withDbSession(database)(block)
 
   def createDatabase(name: String) = withSession(_.execute(new CreateDB(name)))
 
-  def createDatabase(name: String, content:String) = withSession(_.execute(new CreateDB(name, content)))
+  def createDatabase(name: String, content: String) = withSession(_.execute(new CreateDB(name, content)))
 
   def checkDatabase(name: String) = withSession(_.execute(new Check(name)))
 
@@ -57,11 +57,14 @@ class BaseX(host: String, port: Int, user: String, pass: String) {
 
 trait BaseXTools {
 
-  val FORMATTER = ISODateTimeFormat.dateTime()
+  val XSD_FORMATTER = ISODateTimeFormat.dateTime()
+  val UTC_FORMATTER = ISODateTimeFormat.dateOptionalTimeParser()
 
-  def toXSDString(dateTime: DateTime) = FORMATTER.print(dateTime)
+  def toXSDString(dateTime: DateTime) = XSD_FORMATTER.print(dateTime)
 
-  def fromXSDDateTime(dateString: String) = FORMATTER.parseDateTime(dateString)
+  def fromXSDDateTime(dateString: String) = XSD_FORMATTER.parseDateTime(dateString)
+
+  def fromUTCDateTime(dateString: String) = UTC_FORMATTER.parseDateTime(dateString)
 
   def quote(value: String) = {
     value match {

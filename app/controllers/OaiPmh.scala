@@ -206,7 +206,7 @@ object OaiPmh extends Controller with BaseXTools {
       Seq(queryParams.get("from").headOption, queryParams.get("until").headOption).filterNot(_.isEmpty).foreach {
         dateString =>
           try {
-            fromXSDDateTime(dateString.get.head)
+            fromUTCDateTime(dateString.get.head)
           }
           catch {
             case t: Throwable =>
