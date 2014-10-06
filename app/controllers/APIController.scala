@@ -36,7 +36,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       val datasets = repo.repoDb.listDatasets.map {
         dataset =>
-          val lists = DATASET_PROPERTY_LISTS.map(name => name -> DatasetDb.toJsObject(dataset.info, name))
+          val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
           Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
       }
 //      Ok(JsArray(datasets))

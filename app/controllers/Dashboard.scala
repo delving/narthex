@@ -33,7 +33,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     token => implicit request => {
       val datasets = repo.repoDb.listDatasets.map {
         dataset =>
-          val lists = DATASET_PROPERTY_LISTS.map(name => name -> DatasetDb.toJsObject(dataset.info, name))
+          val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
           Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
       }
       Ok(JsArray(datasets))
@@ -118,7 +118,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     token => implicit request => {
       repo.datasetRepo(fileName).datasetDb.getDatasetInfoOption match {
         case Some(datasetInfo) =>
-          val lists = DATASET_PROPERTY_LISTS.map(name => name -> DatasetDb.toJsObject(datasetInfo, name))
+          val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(datasetInfo, name))
           Ok(JsObject(lists))
         case None =>
           NotFound(Json.obj("problem" -> s"Not found $fileName"))

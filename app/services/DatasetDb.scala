@@ -24,13 +24,12 @@ import play.api.libs.json.{JsObject, JsString}
 import scala.xml.{Elem, XML}
 
 object DatasetDb {
-  def toJsObject(datasetInfo: Elem, tag: String) = JsObject(
-    (datasetInfo \ tag).headOption.map(
-      _.child.filter(_.isInstanceOf[Elem]).map(
-        n => n.label -> JsString(n.text)
-      )
+  def toJsObjectEntryOption(datasetInfo: Elem, tag: String) = {
+    val fields: Seq[(String, JsString)] = (datasetInfo \ tag).headOption.map(element =>
+      element.child.filter(_.isInstanceOf[Elem]).map(n => n.label -> JsString(n.text))
     ) getOrElse Seq.empty
-  )
+    if (fields.nonEmpty) Some(tag -> JsObject(fields)) else None
+  }
 }
 
 class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
