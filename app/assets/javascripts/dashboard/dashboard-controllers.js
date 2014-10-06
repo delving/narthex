@@ -283,17 +283,21 @@ define(["angular"], function () {
                     };
                     var parts = file.name.split(/__/);
                     file.identity = {
-                        name: parts[0],
-                        prefix: parts[1],
-                        recordCount: file.info.delimit.recordCount > 0 ? file.info.delimit.recordCount : undefined
+                        datasetName: parts[0],
+                        prefix: parts[1]
                     };
-
+                    if (file.info.delimit && file.info.delimit.recordCount > 0) {
+                        file.identity.recordCount = file.info.delimit.recordCount;
+                    }
+                    if (file.info.metadata) {
+                        file.identity.name = file.info.metadata.name;
+                        file.identity.dataProvider = file.info.metadata.dataProvider;
+                    }
                 })
             });
         }
 
         $scope.setMetadata = function(file) {
-//            console.log("meta", file.info.metadata); // todo
             dashboardService.setMetadata(file.name, file.info.metadata).then(function () {
                 fetchDatasetList();
             });
@@ -681,28 +685,34 @@ define(["angular"], function () {
 
 
         $scope.allowHarvest = function(file) {
+            if (!file.info.origin) return false;
             if (!$scope.nonEmpty(file.info.origin)) return true;
             return file.info.origin.type == 'origin-harvest'
         };
 
         $scope.allowDrop = function(file) {
+            if (!file.info.origin) return false;
             if (!$scope.nonEmpty(file.info.origin)) return true;
             return file.info.origin.type == 'origin-drop'
         };
 
         $scope.allowAnalysis = function(file) {
+            if (!file.info.status) return false;
             return file.info.status.state == 'state-ready';
         };
 
         $scope.allowSaveRecords = function(file) {
+            if (!file.info.status || !file.info.delimit) return false;
             return file.info.status.state == 'state-analyzed' && file.info.delimit.recordCount > 0;
         };
 
         $scope.allowPublish = function(file) {
+            if (!file.info.status) return false;
             return file.info.status.state == 'state-saved';
         };
 
         $scope.allowUnpublish = function(file) {
+            if (!file.info.status) return false;
             return file.info.status.state == 'state-published';
         };
 

@@ -304,12 +304,19 @@
         <i class="fa fa-fw {{ file.stateBlock.faIcon }}"></i>
 
         <a href class="btn btn-inverse btn-link" data-ng-click="setFileOpen(file)" >
-            <span>{{ file.identity.name }}</span>
+
+            <span data-ng-show="file.identity.name">
+                <span>"{{ file.identity.name }}"</span>
+                <span>from "{{ file.identity.dataProvider }}": </span>
+            </span>
+
+            <span>{{ file.identity.datasetName }}</span>
             <span>[{{ file.identity.prefix }}]</span>
             <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
             <span class="fa" data-ng-class="{ 'fa-arrow-down':fileOpen == file.name }"></span>
         </a>
 
+        <span>&nbsp;&nbsp;&nbsp;</span>
         <span class="label {{ file.stateBlock.css }}">{{ file.stateBlock.label }}</span>
 
         <progressbar class="progress-striped active" animate="true" data-ng-if="file.info.status.percent > 0" value="file.info.status.percent" max="100" type="success"> {{file.info.status.percent}}%</progressbar>
