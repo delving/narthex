@@ -131,4 +131,8 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
     "sipHints", hints.toSeq: _*
   )
 
+  def setMetadata(metadata: Map[String, String]) = setProperties(
+    "metadata", metadata.toSeq: _*
+  )
+
 }

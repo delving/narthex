@@ -265,7 +265,7 @@ object OaiPmh extends Controller with BaseXTools {
             <setSpec>{set.spec}</setSpec>
             <setName>{set.name}</setName>
             <setDescription>
-              <description></description>
+              <description>{set.description}</description>
               <totalRecords>{set.totalRecords}</totalRecords>
               <dataProvider>{set.dataProvider}</dataProvider>
             </setDescription>

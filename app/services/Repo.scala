@@ -174,21 +174,19 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
             val fr = datasetRepo(dataset.name)
             val FileName(spec, prefix) = dataset.name
             val state = (dataset.info \ "status" \ "state").text
-            val totalRecords = (dataset.info \ "delimit" \ "recordCount").text
-            val factsName = (dataset.info \ "sipFacts" \ "name").text
-            val factsDataProvider = (dataset.info \ "sipFacts" \ "dataProvider").text
             val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
             val metadataFormat = namespaces.find(_._1 == prefix) match {
               case Some(ns) => RepoMetadataFormat(prefix, ns._2)
               case None => RepoMetadataFormat(prefix)
             }
             if (PUBLISHED.matches(state)) Some(PublishedDataset(
-              dataset.name,
-              prefix,
-              factsName,
-              factsDataProvider,
-              totalRecords.toInt,
-              metadataFormat
+              spec = dataset.name,
+              prefix = prefix,
+              name = (dataset.info \ "metadata" \ "name").text,
+              dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
+              description = (dataset.info \ "metadata" \ "description").text,
+              totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
+              metadataFormat = metadataFormat
             ))
             else {
               None
@@ -306,7 +304,8 @@ case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
 
 case class PublishedDataset
 (
-  spec: String, prefix: String, name: String, dataProvider: String, totalRecords: Int,
+  spec: String, prefix: String, name: String, description: String,
+  dataProvider: String, totalRecords: Int,
   metadataFormat: RepoMetadataFormat)
 
 

@@ -56,6 +56,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                setMetadata: function (fileName, metadata) {
+                    return dash.setMetadata(fileName).post(metadata).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 datasetInfo: function (fileName) {
                     return dash.datasetInfo(fileName).get().then(
                         function (response) {

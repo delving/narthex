@@ -88,6 +88,22 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
+  def setMetadata(fileName: String) = Secure(parse.json) {
+    token => implicit request => {
+      try {
+        val obj = request.body.as[JsObject]
+        val meta: Map[String,String] = obj.value.map(nv => nv._1 -> nv._2.as[String]).toMap
+        Logger.info(s"saveMetadata: $meta")
+        val datasetRepo = repo.datasetRepo(fileName)
+        datasetRepo.datasetDb.setMetadata(meta)
+        Ok
+      } catch {
+        case e: IllegalArgumentException =>
+          NotAcceptable(Json.obj("problem" -> e.getMessage))
+      }
+    }
+  }
+
   def analyze(fileName: String) = Secure() {
     token => implicit request => {
       repo.datasetRepoOption(fileName) match {
@@ -286,7 +302,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  val DATASET_PROPERTY_LISTS = List("origin", "status", "delimit", "namespaces", "harvest", "sipFacts", "sipHints")
+  val DATASET_PROPERTY_LISTS = List("origin", "metadata", "status", "delimit", "namespaces", "harvest", "sipFacts", "sipHints")
 
   private def toJsObject(datasetInfo: Elem, tag: String) = JsObject(
     (datasetInfo \ tag).headOption.map(

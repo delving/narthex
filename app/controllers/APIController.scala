@@ -187,6 +187,16 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         val db = r.datasetDb
         db.setSipFacts(facts)
         db.setSipHints(hints)
+        db.getDatasetInfoOption.foreach { info =>
+          val description = info \ "description"
+          if (description.isEmpty) {
+            val initialMeta = Map(
+              "name" -> facts("name"),
+              "dataProvider" -> facts("dataProvider")
+            )
+            db.setMetadata(initialMeta)
+          }
+        }
       }
       Ok
   }

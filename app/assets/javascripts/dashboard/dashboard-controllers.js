@@ -292,6 +292,13 @@ define(["angular"], function () {
             });
         }
 
+        $scope.setMetadata = function(file) {
+//            console.log("meta", file.info.metadata); // todo
+            dashboardService.setMetadata(file.name, file.info.metadata).then(function () {
+                fetchDatasetList();
+            });
+        };
+
         $scope.startHarvest = function (file) {
             dashboardService.harvest(file.name, file.info.harvest).then(function () {
                 fetchDatasetList();
