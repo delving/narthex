@@ -165,8 +165,6 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
     if (dr.datasetDb.getDatasetInfoOption.isDefined) Some(dr) else None
   }
 
-  // todo: whenever there are enriched datasets, add new spec s"${spec}_enriched" for them
-
   def getPublishedDatasets: Seq[PublishedDataset] = {
     val FileName = "(.*)__(.*)".r
     val published = BaseX.withSession {
@@ -177,14 +175,21 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
             val FileName(spec, prefix) = dataset.name
             val state = (dataset.info \ "status" \ "state").text
             val totalRecords = (dataset.info \ "delimit" \ "recordCount").text
+            val factsName = (dataset.info \ "sipFacts" \ "name").text
+            val factsDataProvider = (dataset.info \ "sipFacts" \ "dataProvider").text
             val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
             val metadataFormat = namespaces.find(_._1 == prefix) match {
               case Some(ns) => RepoMetadataFormat(prefix, ns._2)
               case None => RepoMetadataFormat(prefix)
             }
-            if (PUBLISHED.matches(state)) {
-              Some(PublishedDataset(dataset.name, prefix, "name", "dataProvider", totalRecords.toInt, metadataFormat))
-            }
+            if (PUBLISHED.matches(state)) Some(PublishedDataset(
+              dataset.name,
+              prefix,
+              factsName,
+              factsDataProvider,
+              totalRecords.toInt,
+              metadataFormat
+            ))
             else {
               None
             }
@@ -221,10 +226,24 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
 
   def sipZipFactsFile(fileName: String) = new File(sipZip, s"$fileName.facts")
 
+  def sipZipHintsFile(fileName: String) = new File(sipZip, s"$fileName.hints")
+
   val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
 
-  // todo: add hints, to get record count
-  def listSipZip: Seq[(File, File, Map[String, String])] = {
+  def readMapFile(factsFile: File): Map[String, String] = {
+    if (!factsFile.exists()) return Map.empty
+    val lines = Source.fromFile(factsFile).getLines()
+    lines.flatMap {
+      line =>
+        val equals = line.indexOf("=")
+        if (equals < 0) None
+        else {
+          Some((line.substring(0, equals).trim, line.substring(equals + 1).trim))
+        }
+    }.toMap
+  }
+
+  def listSipZips: Seq[SipZip] = {
     if (!sipZip.exists()) return Seq.empty
     val fileList = sipZip.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
     val ordered = fileList.sortBy {
@@ -235,21 +254,37 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
     }
     ordered.reverse.map {
       file =>
-        val factsFile = new File(file.getParentFile, s"${file.getName}.facts")
-        val lines = Source.fromFile(factsFile).getLines()
-        val facts = lines.map {
-          line =>
-            val equals = line.indexOf("=")
-            (line.substring(0, equals).trim, line.substring(equals + 1).trim)
-        }.toMap
+        val factsFile = sipZipFactsFile(file.getName)
+        val facts = readMapFile(factsFile)
+        val hintsFile = sipZipHintsFile(file.getName)
+        val hints = readMapFile(hintsFile)
         val SipZipName(spec, year, month, day, hour, minute, uploadedBy) = file.getName
         val dateTime = new DateTime(year.toInt, month.toInt, day.toInt, hour.toInt, minute.toInt)
-        val factsPlus = facts + ("uploadedBy" -> uploadedBy) + ("uploadedOn" -> XSD_FORMATTER.print(dateTime))
-        (file, factsFile, factsPlus)
+        SipZip(
+          zipFile = file,
+          uploadedBy = uploadedBy,
+          uploadedOn = XSD_FORMATTER.print(dateTime),
+          factsFile = factsFile,
+          facts = facts,
+          hintsFile = hintsFile,
+          hints = hints
+        )
     }
   }
 }
 
+case class SipZip
+(
+  zipFile: File,
+  uploadedBy: String,
+  uploadedOn: String,
+  factsFile: File,
+  facts: Map[String, String],
+  hintsFile: File,
+  hints: Map[String, String]
+  ) {
+  override def toString = zipFile.getName
+}
 
 case class PMHResumptionToken(value: String, currentRecord: Int, totalRecords: Int) {
   def percentComplete: Int = {

@@ -35,7 +35,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       val treeFile = repo.datasetRepo(fileName).index
       val string = IOUtils.toString(new FileInputStream(treeFile))
-      val json= Json.parse(string)
+      val json = Json.parse(string)
       val tree = json.as[ReadTreeNode]
       val paths = gatherPaths(tree, new Call(request.method, request.path).absoluteURL())
       val pathJson = Json.toJson(paths)
@@ -156,7 +156,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       request.body.moveTo(uploaded)
       val datasetRepo = repo.datasetRepo(fileName)
       datasetRepo.datasetDb.createDataset(READY)
-      datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // connect with sip somehow
+      datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // todo: connect with sip somehow
       datasetRepo.datasetDb.setRecordDelimiter(
         recordRoot = "/delving-sip-target/output",
         uniqueId = "/delving-sip-target/output/@id",
@@ -169,12 +169,25 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def uploadSipZip(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request =>
       val file = repo.sipZipFile(fileName)
-      val factsFile = repo.sipZipFactsFile(fileName)
       request.body.moveTo(file, replace = true)
       val zip = new ZipFile(file)
-      val datasetFacts = zip.getEntry("dataset_facts.txt")
-      val inputStream = zip.getInputStream(datasetFacts)
-      FileUtils.copyInputStreamToFile(inputStream, factsFile)
+      val factsEntry = zip.getEntry("dataset_facts.txt")
+      val factsFile = repo.sipZipFactsFile(fileName)
+      FileUtils.copyInputStreamToFile(zip.getInputStream(factsEntry), factsFile)
+      val facts = repo.readMapFile(factsFile)
+      val hintsEntry = zip.getEntry("hints.txt")
+      val hintsFile = repo.sipZipHintsFile(fileName)
+      FileUtils.copyInputStreamToFile(zip.getInputStream(hintsEntry), hintsFile)
+      val hints = repo.readMapFile(hintsFile)
+      // have facts and hints - push them to datasetDb
+      val prefixes = for (sv <- facts("schemaVersions").split(", *")) yield sv.split("_")(0)
+      val datasetNames = prefixes.map(p => s"${facts("spec")}__$p")
+      val datasetRepos = datasetNames.flatMap(repo.datasetRepoOption)
+      datasetRepos.foreach { r =>
+        val db = r.datasetDb
+        db.setSipFacts(facts)
+        db.setSipHints(hints)
+      }
       Ok
   }
 
@@ -182,21 +195,21 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request =>
       def reply =
         <sip-list>
-          {for ((file, factsFile, facts) <- repo.listSipZip)
+          {for (sipZip <- repo.listSipZips)
         yield
           <sip>
-            <file>{file.getName}</file>
+            <file>{sipZip.toString}</file>
             <facts>
-              <spec>{facts("spec")}</spec>
-              <name>{facts("name")}</name>
-              <provider>{facts("provider")}</provider>
-              <dataProvider>{facts("dataProvider")}</dataProvider>
-              <country>{facts("country")}</country>
-              <orgId>{facts("orgId")}</orgId>
-              <uploadedBy>{facts("uploadedBy")}</uploadedBy>
-              <uploadedOn>{facts("uploadedOn")}</uploadedOn>
+              <spec>{sipZip.facts("spec")}</spec>
+              <name>{sipZip.facts("name")}</name>
+              <provider>{sipZip.facts("provider")}</provider>
+              <dataProvider>{sipZip.facts("dataProvider")}</dataProvider>
+              <country>{sipZip.facts("country")}</country>
+              <orgId>{sipZip.facts("orgId")}</orgId>
+              <uploadedBy>{sipZip.uploadedBy}</uploadedBy>
+              <uploadedOn>{sipZip.uploadedOn}</uploadedOn>
               <schemaVersions>
-                {for (sv <- facts("schemaVersions").split(", *"))
+                {for (sv <- sipZip.facts("schemaVersions").split(", *"))
               yield
                 <schemaVersion>
                   <prefix>{sv.split("_")(0)}</prefix>

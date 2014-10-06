@@ -267,25 +267,26 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def listSipFiles = Secure() {
     token => implicit request => {
-      val fileNames = repo.listSipZip.map(_._1.getName)
+      val fileNames = repo.listSipZips.map(_.toString)
       Ok(Json.obj("list" -> fileNames))
     }
   }
 
   def deleteSipFile(fileName: String) = Secure() {
     token => implicit request => {
-      repo.listSipZip.find(_._1.getName == fileName) match {
-        case Some(fileAndFacts) =>
-          FileUtils.deleteQuietly(fileAndFacts._1)
-          FileUtils.deleteQuietly(fileAndFacts._2)
-          Ok(Json.obj("deleted" -> fileAndFacts._1.getName))
+      repo.listSipZips.find(_.zipFile.getName == fileName) match {
+        case Some(sipZip) =>
+          FileUtils.deleteQuietly(sipZip.zipFile)
+          FileUtils.deleteQuietly(sipZip.factsFile)
+          FileUtils.deleteQuietly(sipZip.hintsFile)
+          Ok(Json.obj("deleted" -> sipZip.toString))
         case None =>
           NotFound(Json.obj("problem" -> s"Could not delete $fileName"))
       }
     }
   }
 
-  val DATASET_PROPERTY_LISTS = List("origin", "status", "delimit", "namespaces", "harvest")
+  val DATASET_PROPERTY_LISTS = List("origin", "status", "delimit", "namespaces", "harvest", "sipFacts", "sipHints")
 
   private def toJsObject(datasetInfo: Elem, tag: String) = JsObject(
     (datasetInfo \ tag).headOption.map(

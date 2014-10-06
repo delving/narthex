@@ -35,7 +35,6 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           |
           | let $$dataset :=
           |   <dataset name="$fileName">
-          |     <origin/>
           |     <status>
           |       <state>$state</state>
           |       <time>$now</time>
@@ -43,9 +42,6 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           |       <workers>$workers</workers>
           |       <error/>
           |     </status>
-          |     <delimit/>
-          |     <namespaces/>
-          |     <harvest/>
           |   </dataset>
           | return
           |   if (exists($datasetElement))
@@ -79,13 +75,16 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
       val replacement = replacementLines.mkString("\n")
       val update = s"""
           |
-          | let $$block := $datasetElement/$listName
+          | let $$dataset := $datasetElement
+          | let $$block := $$dataset/$listName
           | let $$replacement :=
           | $replacement
-          | return replace node $$block with $$replacement
+          | return if (exists($$block))
+          |    then replace node $$block with $$replacement
+          |    else insert node $$replacement into $$dataset
           |
           """.stripMargin.trim
-//      Logger.info(s"set properties:\n$update")
+      Logger.info(s"set properties:\n$update")
       session.query(update).execute()
   }
 
@@ -122,6 +121,14 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
     "url" -> url,
     "dataset" -> dataset,
     "prefix" -> prefix
+  )
+
+  def setSipFacts(facts: Map[String, String]) = setProperties(
+    "sipFacts", facts.toSeq: _*
+  )
+
+  def setSipHints(hints: Map[String, String]) = setProperties(
+    "sipHints", hints.toSeq: _*
   )
 
 }

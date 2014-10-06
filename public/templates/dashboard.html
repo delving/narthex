@@ -246,6 +246,22 @@
                 </li>
             </ul>
         </div>
+        <div class="file-info-sip-facts" data-ng-show="nonEmpty(file.info.sipFacts)">
+            <h4 class="heading">SIP Facts</h4>
+            <ul class="list-unstyled">
+                <li data-ng-repeat="(key, value) in file.info.sipFacts">
+                    <b>{{ key }}</b> = "{{ value }}"
+                </li>
+            </ul>
+        </div>
+        <div class="file-info-sip-hints" data-ng-show="nonEmpty(file.info.sipHints)">
+            <h4 class="heading">SIP Hints</h4>
+            <ul class="list-unstyled">
+                <li data-ng-repeat="(key, value) in file.info.sipHints">
+                    <b>{{ key }}</b> = "{{ value }}"
+                </li>
+            </ul>
+        </div>
     </div>
 
     <div data-ng-include="'drop-file.html'" data-ng-if="dropSupported && file.showDropForm">drop form</div>
