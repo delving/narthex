@@ -685,13 +685,13 @@ define(["angular"], function () {
 
 
         $scope.allowHarvest = function(file) {
-            if (!file.info.origin) return false;
+            if (!file.info.origin) return true;
             if (!$scope.nonEmpty(file.info.origin)) return true;
             return file.info.origin.type == 'origin-harvest'
         };
 
         $scope.allowDrop = function(file) {
-            if (!file.info.origin) return false;
+            if (!file.info.origin) return true;
             if (!$scope.nonEmpty(file.info.origin)) return true;
             return file.info.origin.type == 'origin-drop'
         };
