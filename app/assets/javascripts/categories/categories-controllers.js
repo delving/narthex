@@ -17,13 +17,12 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var CategoriesCtrl = function ($rootScope, $scope, $location, $routeParams, dashboardService, $timeout, pageScroll) {
+    var CategoriesCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, pageScroll) {
 
         function getSearchParams() {
             $scope.fileName = $routeParams.fileName;
             $scope.path = $routeParams.path;
             $scope.histogramSize = parseInt($routeParams.size || "100");
-            $scope.activeView = $routeParams.view || "vocabulary";
             $scope.vocabulary = $routeParams.vocabulary;
         }
 
@@ -31,7 +30,6 @@ define(["angular"], function (angular) {
             $location.search({
                 path: $scope.path,
                 histogramSize: $scope.histogramSize,
-                view: $scope.activeView,
                 vocabulary: $scope.vocabulary
             });
         }
@@ -40,7 +38,6 @@ define(["angular"], function (angular) {
 
         // local
         $scope.sourceEntry = undefined; // list selection
-        $scope.sought = ""; // the field model
         $scope.mappings = {};
         $scope.show = "all";
         $scope.concepts = [];
@@ -51,7 +48,7 @@ define(["angular"], function (angular) {
             pageScroll.scrollTo(options);
         };
 
-        dashboardService.datasetInfo($scope.fileName).then(function (datasetInfo) {
+        categoriesService.datasetInfo($scope.fileName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
             var recordRoot = datasetInfo.delimit.recordRoot;
             var lastSlash = recordRoot.lastIndexOf('/');
@@ -101,13 +98,7 @@ define(["angular"], function (angular) {
         }
 
         // preparations
-        dashboardService.listSkos().then(function (data) {
-            $scope.vocabularyList = data.list;
-            if ($scope.vocabularyList.length == 1) {
-                $scope.selectVocabulary($scope.vocabularyList[0])
-            }
-        });
-        dashboardService.getMappings($scope.fileName).then(function (data) {
+        categoriesService.getCategoryMappings($scope.fileName).then(function (data) {
             _.forEach(data.mappings, function (mapping) {
                 $scope.mappings[mapping.source] = {
                     target: mapping.target,
@@ -115,7 +106,7 @@ define(["angular"], function (angular) {
                     prefLabel: mapping.prefLabel
                 }
             });
-            dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
+            categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
                 $scope.histogram = _.map(data.histogram, function (count) {
                     var sourceUri = $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(count[1]);
                     return {
@@ -127,87 +118,11 @@ define(["angular"], function (angular) {
             });
         });
 
-        function searchSkos(value) {
-            if (!value || !$scope.vocabulary) return;
-            $scope.scrollTo({element: '#skos-term-list', direction: 'up'});
-            dashboardService.searchSkos($scope.vocabulary, value).then(function (data) {
-                $scope.conceptSearch = data.search;
-                var mapping = $scope.mappings[$scope.sourceUri];
-                if (mapping) {
-                    $scope.concepts = _.flatten(_.partition(data.search.results, function (concept) {
-                        return concept.uri === mapping.target;
-                    }));
-                }
-                else {
-                    $scope.concepts = data.search.results;
-                }
-            });
-        }
-
-        function searchRecords(value) {
-            var body = {
-                "path": $scope.path,
-                "value": value
-            };
-            dashboardService.queryRecords($scope.fileName, body).then(function (data) {
-                $scope.records = data;
-            });
-        }
-
-        $scope.vocabularyTab = function () {
-            $scope.activeView = "vocabulary";
-            updateSearchParams();
-        };
-
-        $scope.skosTab = function () {
-            if ($scope.vocabulary) {
-                $scope.activeView = "skos";
-                if ($scope.sourceEntry) {
-                    $scope.sought = $scope.sourceEntry.value;
-                }
-                updateSearchParams();
-            }
-            else {
-                $scope.vocabularyTab();
-            }
-        };
-
-        $scope.recordTab = function () {
-            $scope.activeView = "record";
-            if ($scope.sourceEntry) {
-                searchRecords($scope.sourceEntry.value);
-            }
-            updateSearchParams();
-        };
-
         $scope.selectSource = function (entry) {
             $scope.sourceEntry = entry;
             var mapping = $scope.mappings[entry.sourceUri];
-            if (mapping && mapping.vocabulary != $scope.vocabulary) {
-                $scope.selectVocabulary(mapping.vocabulary);
-            }
-            switch ($scope.activeView) {
-                case "skos":
-                    $scope.sought = entry.value; // will trigger searchSkos
-                    break;
-                case "record":
-                    searchRecords(entry.value);
-                    break;
-            }
+            // todo: more!
         };
-
-        $scope.selectVocabulary = function (name) {
-            $scope.vocabulary = name;
-            $scope.skosTab();
-        };
-
-        $scope.selectSought = function (value) {
-            $scope.sought = value;
-        };
-
-        $scope.$watch("sought", function (sought) {
-            if (sought) searchSkos(sought);
-        });
 
         $scope.$watch("show", function () {
             filterHistogram();
@@ -217,48 +132,33 @@ define(["angular"], function (angular) {
             filterHistogram();
         });
 
-        $scope.$watch("activeView", updateSearchParams());
-
-        $scope.setMapping = function (concept) {
-            if (!($scope.sourceEntry && $scope.vocabulary)) return;
+        $scope.setMapping = function (category) {
+            if (!$scope.sourceEntry) return;
             var body = {
                 source: $scope.sourceEntry.sourceUri,
-                target: concept.uri,
-                vocabulary: $scope.vocabulary,
-                prefLabel: concept.prefLabel
+                target: category
             };
             if ($scope.mappings[$scope.sourceEntry.sourceUri]) { // it already exists
                 body.remove = "yes";
             }
-            dashboardService.setMapping($scope.fileName, body).then(function (data) {
+            categoriesService.setCategoryMapping($scope.fileName, body).then(function (data) {
                 console.log("set mapping returns", data);
                 if (body.remove) {
                     delete $scope.mappings[$scope.sourceEntry.sourceUri]
                 }
                 else {
                     $scope.mappings[$scope.sourceEntry.sourceUri] = {
-                        target: concept.uri,
-                        vocabulary: $scope.vocabulary,
-                        prefLabel: concept.prefLabel
+                        target: category
                     };
                 }
                 filterHistogram();
             });
         };
-
-        $scope.goToDataset = function () {
-            $location.path("/dataset/" + $scope.fileName);
-            $location.search({
-                path: $scope.path,
-                view: "histogram"
-            });
-        };
-
     };
 
-    CategoriesCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "dashboardService", "$timeout", "pageScroll"];
+    CategoriesCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "categoriesService", "$timeout", "pageScroll"];
 
     return {
-        categoriesCtrl: CategoriesCtrl
+        CategoriesCtrl: CategoriesCtrl
     };
 });

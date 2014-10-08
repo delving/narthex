@@ -243,7 +243,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def getMappings(fileName: String) = Secure() {
+  def getTermMappings(fileName: String) = Secure() {
     token => implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
       val mappings: scala.Seq[TermDb.TermMapping] = datasetRepo.termDb.getMappings
@@ -259,7 +259,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def setMapping(fileName: String) = Secure(parse.json) {
+  def setTermMapping(fileName: String) = Secure(parse.json) {
     token => implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
       datasetRepo.invalidateEnrichementCache()
@@ -277,6 +277,17 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
         Ok("Mapping added")
       }
     }
+  }
+
+  def getCategoryMappings(fileName: String) = Secure() {
+    token => implicit request => {
+      val mappings: scala.Seq[TermDb.TermMapping] = Seq.empty[TermDb.TermMapping] // todo: categorydb etc!
+      Ok(Json.obj("mappings" -> mappings))
+    }
+  }
+
+  def setCategoryMapping(fileName: String) = Secure(parse.json) {
+    token => implicit request => NotImplemented
   }
 
   def listSipFiles = Secure() {

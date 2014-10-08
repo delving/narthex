@@ -36,13 +36,6 @@ define(
                             resolve: userResolve,
                             reloadOnSearch: false
                         }
-                    ).when(
-                        "/dataset/:fileName", {
-                            templateUrl: "/narthex/assets/templates/dataset.html",
-                            controller: controllers.FileDetailCtrl,
-                            resolve: userResolve,
-                            reloadOnSearch: false
-                        }
                     );
                 }
             ]

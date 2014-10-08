@@ -24,6 +24,7 @@ requirejs.config({
         "common",
         "home",
         "dashboard",
+        "dataset",
         "terms",
         "categories"
     ],

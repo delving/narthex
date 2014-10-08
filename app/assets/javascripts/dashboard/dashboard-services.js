@@ -40,24 +40,8 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                list: function () {
-                    return dash.list().get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                harvest: function (fileName, harvestInfo) {
-                    return dash.harvest(fileName).post(harvestInfo).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                setMetadata: function (fileName, metadata) {
-                    return dash.setMetadata(fileName).post(metadata).then(
+                goToState: function (fileName, state) {
+                    return dash.goToState(fileName, state).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -72,6 +56,30 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                list: function () {
+                    return dash.list().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                setMetadata: function (fileName, metadata) {
+                    return dash.setMetadata(fileName).post(metadata).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                harvest: function (fileName, harvestInfo) {
+                    return dash.harvest(fileName).post(harvestInfo).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 analyze: function (fileName) {
                     return dash.analyze(fileName).get().then(
                         function (response) {
@@ -80,119 +88,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                goToState: function (fileName, state) {
-                    return dash.goToState(fileName, state).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                index: function (fileName) {
-                    return dash.index(fileName).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                nodeStatus: function (fileName, path) {
-                    return dash.nodeStatus(fileName, path).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                sample: function (fileName, path, size) {
-                    return dash.sample(fileName, path, size).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                histogram: function (fileName, path, size) {
-                    return dash.histogram(fileName, path, size).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                uniqueText: function (fileName, path) {
-                    return dash.uniqueText(fileName, path).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection);
-                },
-                histogramText: function (fileName, path) {
-                    return dash.histogramText(fileName, path, size).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                setRecordDelimiter: function (fileName, body) {
-                    return dash.setRecordDelimiter(fileName).post(body).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
                 saveRecords: function (fileName) {
                     return dash.saveRecords(fileName).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                queryRecords: function (fileName, body) {
-                    return dash.queryRecords(fileName).post(body).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                listSkos: function () {
-                    return dash.listSkos().get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                searchSkos: function (name, sought) {
-                    return dash.searchSkos(name, sought).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                getMappings: function (fileName) {
-                    return dash.getMappings(fileName).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                getSourcePaths: function (fileName) {
-                    return dash.getSourcePaths(fileName).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                setMapping: function (name, body) {
-                    return dash.setMapping(name).post(body).then(
                         function (response) {
                             return response.data;
                         },

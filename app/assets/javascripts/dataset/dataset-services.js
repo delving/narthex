@@ -17,9 +17,9 @@
 define(["angular", "common"], function (angular) {
     "use strict";
 
-    var mod = angular.module("terms.services", ["narthex.common"]);
+    var mod = angular.module("dataset.services", ["narthex.common"]);
 
-    mod.service("termsService", [
+    mod.service("datasetService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
             var dash = playRoutes.controllers.Dashboard;
@@ -48,16 +48,40 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                listSkos: function () {
-                    return dash.listSkos().get().then(
+                index: function (fileName) {
+                    return dash.index(fileName).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                getMappings: function (fileName) {
-                    return dash.getTermMappings(fileName).get().then(
+                getSourcePaths: function (fileName) {
+                    return dash.getSourcePaths(fileName).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                nodeStatus: function (fileName, path) {
+                    return dash.nodeStatus(fileName, path).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                setRecordDelimiter: function (fileName, body) {
+                    return dash.setRecordDelimiter(fileName).post(body).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                sample: function (fileName, path, size) {
+                    return dash.sample(fileName, path, size).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -66,30 +90,6 @@ define(["angular", "common"], function (angular) {
                 },
                 histogram: function (fileName, path, size) {
                     return dash.histogram(fileName, path, size).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                searchSkos: function (name, sought) {
-                    return dash.searchSkos(name, sought).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                queryRecords: function (fileName, body) {
-                    return dash.queryRecords(fileName).post(body).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                setMapping: function (name, body) {
-                    return dash.setTermMapping(name).post(body).then(
                         function (response) {
                             return response.data;
                         },

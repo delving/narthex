@@ -24,6 +24,7 @@
             "common",
             "home",
             "dashboard",
+            "dataset",
             "terms",
             "categories"
         ],

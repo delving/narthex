@@ -1,8 +1,7 @@
 @(orgId: String, orgName: String)
 <html>
   <head>
-    @*<title>Narthex (@orgName)</title>*@
-    <title>Narthex</title>
+    <title>Narthex-@orgName</title>
     <link rel='shortcut icon' type='image/png' href='@routes.Assets.at("images/favicon.png")'>
     @*<link rel='stylesheet' media='screen' href='@CdnWebJarAssets.getUrl(CdnWebJarAssets.locate("bootstrap.min.css"))' />*@
     @*-- Add More CSS here -- *@
@@ -17,8 +16,7 @@
     <header class="navbar navbar-inverse navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl" data-ng-init="setOrg('@orgId', '@orgName')" data-ng-cloak>
       <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
         <a href="#/" class="navbar-brand"><img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
-            NARTHEX
-            @*<small>@orgName</small>*@
+            NARTHEX <small>@orgName</small>
         </a>
 
         <div data-ng-switch-when="true">

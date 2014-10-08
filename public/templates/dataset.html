@@ -29,7 +29,7 @@
             <div class="panel-body-x">
                 <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="220" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
                     <ul data-ng-controller="TreeCtrl" class="list-node">
-                        <li data-ng-include="'node.html'" data-ng-controller="TreeNodeCtrl">tree</li>
+                        <li data-ng-include="'node.html'">tree</li>
                     </ul>
                 </div>
             </div>
@@ -138,7 +138,7 @@
 </div>
 
 <script type="text/ng-template" id="node.html">
-    <li data-ng-click="selectNode(node, $event)">
+    <li data-ng-click="selectNode(node, $event)" data-ng-controller="NodeCtrl">
         <div class="node" data-ng-class="{ 'chosen': node == selectedNode, 'active': node.lengths.length != 0 }">
             <span data-ng-show="!node.lengths.length > 0" data-ng-click="node.collapsed = !node.collapsed">
                 <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}" class="fa pointer"></i>
@@ -154,7 +154,7 @@
             </span>
         </div>
         <ul data-ng-if="node.kids && !node.collapsed" class="">
-            <li class="" data-ng-repeat="(nodeIndex, node) in node.kids" data-ng-controller="TreeNodeCtrl">
+            <li class="" data-ng-repeat="(nodeIndex, node) in node.kids">
                 <div data-ng-include="'node.html'">node</div>
             </li>
         </ul>

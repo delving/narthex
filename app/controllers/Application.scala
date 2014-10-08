@@ -160,9 +160,11 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.queryRecords,
           routes.javascript.Dashboard.listSkos,
           routes.javascript.Dashboard.searchSkos,
-          routes.javascript.Dashboard.getMappings,
           routes.javascript.Dashboard.getSourcePaths,
-          routes.javascript.Dashboard.setMapping,
+          routes.javascript.Dashboard.getTermMappings,
+          routes.javascript.Dashboard.setTermMapping,
+          routes.javascript.Dashboard.getCategoryMappings,
+          routes.javascript.Dashboard.setCategoryMapping,
           routes.javascript.Dashboard.listSipFiles,
           routes.javascript.Dashboard.deleteSipFile
         )

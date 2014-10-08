@@ -17,29 +17,30 @@
 define(
     [
         "angular",
-        "./categories-controllers",
-        "./categories-services",
+        "./dataset-controllers",
         "../home/home-services",
         "common"
     ],
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("categories.routes", ["narthex.common", "home.services"]);
-        mod.config([
-            "$routeProvider", "userResolve",
-            function ($routeProvider, userResolve) {
-                $routeProvider.when(
-                    "/categories/:fileName",
-                    {
-                        templateUrl: "/narthex/assets/templates/categories.html",
-                        controller: controllers.CategoriesCtrl,
-                        resolve: userResolve,
-                        reloadOnSearch: false
-                    }
-                )
-            }
-        ]);
+        var mod = angular.module("dataset.routes", ["narthex.common", "home.services"]);
+        mod.config(
+            [
+                "$routeProvider", "userResolve",
+                function ($routeProvider, userResolve) {
+                    $routeProvider.when(
+                        "/dataset/:fileName", {
+                            templateUrl: "/narthex/assets/templates/dataset.html",
+                            controller: controllers.DatasetCtrl,
+                            resolve: userResolve,
+                            reloadOnSearch: false
+                        }
+                    );
+                }
+            ]
+        );
+
         return mod;
     }
 );

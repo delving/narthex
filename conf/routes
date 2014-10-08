@@ -35,8 +35,10 @@ POST        /narthex/dashboard/:fileName/record/set-delimiter         controller
 GET         /narthex/dashboard/:fileName/record/save                  controllers.Dashboard.saveRecords(fileName)
 POST        /narthex/dashboard/:fileName/record/query                 controllers.Dashboard.queryRecords(fileName)
 GET         /narthex/dashboard/:fileName/get-source-paths             controllers.Dashboard.getSourcePaths(fileName)
-GET         /narthex/dashboard/:fileName/get-mappings                 controllers.Dashboard.getMappings(fileName)
-POST        /narthex/dashboard/:fileName/set-mapping                  controllers.Dashboard.setMapping(fileName)
+GET         /narthex/dashboard/:fileName/get-term-mappings            controllers.Dashboard.getTermMappings(fileName)
+POST        /narthex/dashboard/:fileName/set-term-mapping             controllers.Dashboard.setTermMapping(fileName)
+GET         /narthex/dashboard/:fileName/get-category-mappings        controllers.Dashboard.getCategoryMappings(fileName)
+POST        /narthex/dashboard/:fileName/set-category-mapping         controllers.Dashboard.setCategoryMapping(fileName)
 
 GET         /narthex/dashboard/skos/list                              controllers.Dashboard.listSkos
 GET         /narthex/dashboard/skos/:name/:sought                     controllers.Dashboard.searchSkos(name, sought)

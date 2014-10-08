@@ -333,7 +333,7 @@
 </script>
 
 <script type="text/ng-template" id="file-list.html">
-    <ul class="list-group list-files" data-ng-controller="FileListCtrl">
+    <ul class="list-group list-files">
         <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-class="" data-ng-show="file.info.status">
             <div data-ng-include="'file-entry.html'">entry</div>
         </li>

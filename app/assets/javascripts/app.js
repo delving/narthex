@@ -27,6 +27,7 @@ define(
         "angular",
         "home",
         "dashboard",
+        "dataset",
         "terms",
         "categories"
     ],
@@ -40,6 +41,7 @@ define(
             [
                 "narthex.home",
                 "narthex.dashboard",
+                "narthex.dataset",
                 "narthex.terms",
                 "narthex.categories",
                 "angularFileUpload",

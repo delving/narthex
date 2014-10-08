@@ -17,7 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, dashboardService, $timeout, pageScroll) {
+    var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, termsService, $timeout, pageScroll) {
 
         function getSearchParams() {
             $scope.fileName = $routeParams.fileName;
@@ -51,7 +51,7 @@ define(["angular"], function (angular) {
             pageScroll.scrollTo(options);
         };
 
-        dashboardService.datasetInfo($scope.fileName).then(function (datasetInfo) {
+        termsService.datasetInfo($scope.fileName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
             var recordRoot = datasetInfo.delimit.recordRoot;
             var lastSlash = recordRoot.lastIndexOf('/');
@@ -101,13 +101,13 @@ define(["angular"], function (angular) {
         }
 
         // preparations
-        dashboardService.listSkos().then(function (data) {
+        termsService.listSkos().then(function (data) {
             $scope.vocabularyList = data.list;
             if ($scope.vocabularyList.length == 1) {
                 $scope.selectVocabulary($scope.vocabularyList[0])
             }
         });
-        dashboardService.getMappings($scope.fileName).then(function (data) {
+        termsService.getMappings($scope.fileName).then(function (data) {
             _.forEach(data.mappings, function (mapping) {
                 $scope.mappings[mapping.source] = {
                     target: mapping.target,
@@ -115,7 +115,7 @@ define(["angular"], function (angular) {
                     prefLabel: mapping.prefLabel
                 }
             });
-            dashboardService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
+            termsService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
                 $scope.histogram = _.map(data.histogram, function (count) {
                     var sourceUri = $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(count[1]);
                     return {
@@ -130,7 +130,7 @@ define(["angular"], function (angular) {
         function searchSkos(value) {
             if (!value || !$scope.vocabulary) return;
             $scope.scrollTo({element: '#skos-term-list', direction: 'up'});
-            dashboardService.searchSkos($scope.vocabulary, value).then(function (data) {
+            termsService.searchSkos($scope.vocabulary, value).then(function (data) {
                 $scope.conceptSearch = data.search;
                 var mapping = $scope.mappings[$scope.sourceUri];
                 if (mapping) {
@@ -149,7 +149,7 @@ define(["angular"], function (angular) {
                 "path": $scope.path,
                 "value": value
             };
-            dashboardService.queryRecords($scope.fileName, body).then(function (data) {
+            termsService.queryRecords($scope.fileName, body).then(function (data) {
                 $scope.records = data;
             });
         }
@@ -230,7 +230,7 @@ define(["angular"], function (angular) {
             if ($scope.mappings[$scope.sourceEntry.sourceUri]) { // it already exists
                 body.remove = "yes";
             }
-            dashboardService.setMapping($scope.fileName, body).then(function (data) {
+            termsService.setMapping($scope.fileName, body).then(function (data) {
                 console.log("set mapping returns", data);
                 if (body.remove) {
                     delete $scope.mappings[$scope.sourceEntry.sourceUri]
@@ -245,18 +245,9 @@ define(["angular"], function (angular) {
                 filterHistogram();
             });
         };
-
-        $scope.goToDataset = function () {
-            $location.path("/dataset/" + $scope.fileName);
-            $location.search({
-                path: $scope.path,
-                view: "histogram"
-            });
-        };
-
     };
 
-    TermsCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "dashboardService", "$timeout", "pageScroll"];
+    TermsCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "termsService", "$timeout", "pageScroll"];
 
     return {
         TermsCtrl: TermsCtrl
