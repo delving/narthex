@@ -14,28 +14,20 @@
 //    limitations under the License.
 //===========================================================================
 
-/*
- * A custom build profile that is passed to the optimizer via requireJsShim in build.sbt.
- * Play does this via settings it as the mainConfigFile:
- * http://requirejs.org/docs/optimization.html#mainConfigFile
- */
-requirejs.config({
-    packages: [
-        "common",
-        "home",
-        "dashboard",
-        "terms",
-        "categories"
-    ],
-    paths: {
-        // Make the optimizer ignore CDN assets
-        "_": "empty:",
-        "jquery": "empty:",
-        "bootstrap": "empty:",
-        "angular": "empty:",
-        "angular-cookies": "empty:",
-        "angular-route": "empty:",
-        // empty: so the optimizer doesn't try to find jsRoutes.js in our project
-        "jsRoutes": "empty:"
-    }
+define(["angular", "common"], function (angular) {
+    "use strict";
+
+    var mod = angular.module("categories.services", ["narthex.common"]);
+
+    /**
+     * If the current route does not resolve, go back to the start page.
+     */
+    var handleRouteError = function ($rootScope, $location) {
+        $rootScope.$on("$routeChangeError", function (e, next, current) {
+            $location.path("/");
+        });
+    };
+    handleRouteError.$inject = ["$rootScope", "$location"];
+    mod.run(handleRouteError);
+    return mod;
 });

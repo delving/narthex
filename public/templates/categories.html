@@ -1,0 +1,51 @@
+<div class="row">
+
+    <div class="col-md-12">
+        <div class="file-path-info breadcrumb">
+            <span class="file-name">{{fileName}}</span>
+            <span class="file-path">{{path}}</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <ul class="nav nav-tabs nav-tabs-sm" data-ng-init="show='all'">
+            <li class="nav-tabs-title">
+                <span>Terms</span>
+            </li>
+            <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'">
+                <a href>All&#160;
+                    <span class="badge">{{ all }}</span></a>
+            </li>
+            <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'">
+                <a href>Mapped&#160;
+                    <span class="badge">{{ mapped }}</span>
+                </a>
+            </li>
+            <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'">
+                <a href>Unmapped&#160;
+                    <span class="badge">{{ unmapped }}</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="200" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+            <ul class="list-group terminology-list">
+                <li data-ng-repeat="entry in histogramVisible | filter:filterText" class="list-group-item clearfix test-class"
+                    data-ng-class="{ 'list-item-selected': entry.value ==  sourceEntry.value, 'list-item-mapped' : mappings[entry.sourceUri] }"
+                    data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectSource(entry);">
+                    <span class="term">{{ entry.value }}</span>
+                    <span class="term-mapped" data-ng-show="mappings[entry.sourceUri].prefLabel">
+                        <i class="fa fa-link"></i> {{ mappings[entry.sourceUri].prefLabel }}
+                    </span>
+                    <span class="node-stats badge">{{ entry.count }}</span>
+                </li>
+            </ul>
+        </div>
+
+    </div>
+    <div class="col-md-8">
+        <h1>Show the categories here perhaps</h1>
+    </div>
+
+</div>
+
+
