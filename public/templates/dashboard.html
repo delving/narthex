@@ -185,6 +185,12 @@
 </script>
 
 <script type="text/ng-template" id="file-open.html">
+
+    <div data-ng-if="file.info.status.error" class="alert alert-explain alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+        <strong>Message:</strong> {{ file.info.status.error }}
+    </div>
+
     <div class="btn-toolbar" role="toolbar">
         <button class="btn btn-sm btn-info" data-ng-click="viewFile(file)" data-ng-show="file.stateBlock.viewSchema">
             <i class="fa fa-eye"></i>
@@ -322,11 +328,6 @@
         <progressbar class="progress-striped active" animate="true" data-ng-if="file.info.status.percent > 0" value="file.info.status.percent" max="100" type="success"> {{file.info.status.percent}}%</progressbar>
 
         <code class="process" data-ng-if="file.info.status.workers > 0">({{file.info.status.workers}} workers)</code>
-
-        <div data-ng-if="file.info.status.error" class="alert alert-explain alert-dismissible" role="alert">
-            <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-            <strong>Message:</strong> {{ file.info.status.error }}
-        </div>
 
         <div data-ng-include="'file-open.html'" data-ng-show="fileOpen == file.name">file open</div>
     </div>
