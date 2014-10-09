@@ -27,6 +27,7 @@ import play.api.mvc._
 import services.NarthexConfig.ORG_ID
 import services.{CommonsServices, UserProfile}
 
+import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Application extends Controller with Security {
@@ -38,42 +39,66 @@ object Application extends Controller with Security {
 
   def index = Action {
     request =>
-      val services: CommonsServices = CommonsServices.services
-      val orgName = services.getName(ORG_ID, "en").getOrElse(ORG_ID)
-      Ok(views.html.index(ORG_ID, orgName))
+      Ok(views.html.index(ORG_ID))
   }
 
   def login = Action(parse.json) {
     request =>
 
-      def getOrCreateUser(username: String, profileMaybe: Option[UserProfile]): SimpleResult = {
-        val profile = profileMaybe.getOrElse(throw new RuntimeException(s"no profile for $username"))
-        Logger.warn("get or create " + username + " " + profile)
-        val token = java.util.UUID.randomUUID().toString
-        // todo: put the user in the database
-        Ok(Json.obj(
-          "firstName" -> profile.firstName,
-          "lastName" -> profile.lastName,
-          "email" -> profile.email
-        )).withToken(token, profile.email)
-      }
-
-      val services: CommonsServices = CommonsServices.services
       var username = (request.body \ "username").as[String]
       var password = (request.body \ "password").as[String]
 
-      Logger.info(s"connecting user $username")
-      if (services.connect(username, password)) {
-        if (services.isAdmin(ORG_ID, username)) {
-          Logger.info(s"Logged in $username of $ORG_ID")
-          getOrCreateUser(username, services.getUserProfile(username))
-        }
-        else {
-          Unauthorized(s"User $username is not an admin of organization $ORG_ID")
-        }
-      }
-      else {
-        Unauthorized("Username password combination failed")
+      CommonsServices.services match {
+        case Some(services) =>
+          def getOrCreateUser(username: String, profileMaybe: Option[UserProfile]): SimpleResult = {
+            val profile = profileMaybe.getOrElse(throw new RuntimeException(s"no profile for $username"))
+            val token = java.util.UUID.randomUUID().toString
+            Logger.warn("get or create " + username + " " + profile)
+            // todo: put the user in the database
+            Ok(Json.obj(
+              "firstName" -> profile.firstName,
+              "lastName" -> profile.lastName,
+              "email" -> profile.email
+            )).withToken(token, profile.email)
+          }
+          Logger.info(s"connecting user $username")
+          if (services.connect(username, password)) {
+            if (services.isAdmin(ORG_ID, username)) {
+              Logger.info(s"Logged in $username of $ORG_ID")
+              getOrCreateUser(username, services.getUserProfile(username))
+            }
+            else {
+              Unauthorized(s"User $username is not an admin of organization $ORG_ID")
+            }
+          }
+          else {
+            Unauthorized("Username password combination failed")
+          }
+
+        case None =>
+          Play.current.configuration.getObjectList("users").map {
+            userList =>
+              userList.map(_.toConfig).find(u => username == u.getString("user")) match {
+                case Some(user) =>
+                  if (password != user.getString("password")) {
+                    Unauthorized("Username/password not found")
+                  }
+                  else {
+                    val token = java.util.UUID.randomUUID().toString
+                    val firstName = user.getString("firstName")
+                    val lastName = user.getString("lastName")
+                    val email = user.getString("email")
+                    Ok(Json.obj(
+                      "firstName" -> firstName,
+                      "lastName" -> lastName,
+                      "email" -> email
+                    )).withToken(token, email)
+                  }
+
+                case None =>
+                  Unauthorized("Username/password not found")
+              }
+          } getOrElse Unauthorized("No authentication configuration")
       }
   }
 

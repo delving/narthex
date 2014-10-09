@@ -3,13 +3,12 @@ package services
 import java.net.URLEncoder
 import java.util.concurrent.TimeoutException
 
-import play.api.Logger
 import play.api.http.Status
 import play.api.libs.Crypto
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.libs.ws.{Response, WS}
-import services.NarthexConfig._
+import play.api.{Logger, Play}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -23,12 +22,18 @@ import scala.language.postfixOps
  */
 
 object CommonsServices {
-  lazy val services = new CommonsServices(
-    COMMONS_HOST,
-    ORG_ID,
-    COMMONS_TOKEN,
-    COMMONS_NODE
-  )
+
+  val config = Play.current.configuration.getObject("commons")
+
+  lazy val services = config.map(_.toConfig).map {
+    cfg =>
+      new CommonsServices(
+        cfg.getString("host"),
+        cfg.getString("orgId"),
+        cfg.getString("token"),
+        cfg.getString("node")
+      )
+  }
 }
 
 class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node: String) extends Status {

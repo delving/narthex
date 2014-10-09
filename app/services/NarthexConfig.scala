@@ -22,7 +22,6 @@ import play.api.Play
 
 import scala.collection.JavaConversions._
 
-
 object NarthexConfig {
   val config = Play.current.configuration
 
@@ -35,10 +34,7 @@ object NarthexConfig {
   def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List[String]("secret"))
 
   lazy val USER_HOME = System.getProperty("user.home")
-  lazy val ORG_ID = configString("commons.orgId")
-  lazy val COMMONS_HOST = configString("commons.host")
-  lazy val COMMONS_TOKEN = configString("commons.token")
-  lazy val COMMONS_NODE = configString("commons.node")
+  lazy val ORG_ID = configString("orgId")
 
   lazy val API_ACCESS_KEYS = secretList("api.accessKeys")
 
@@ -54,4 +50,10 @@ object NarthexConfig {
 
   def oaiPmhKeyFits(accessKey: String) = OAI_PMH_ACCESS_KEYS.contains(accessKey)
   def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
+}
+
+
+
+class CommonsConfig {
+
 }

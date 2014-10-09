@@ -51,9 +51,8 @@ define(["angular"], function (angular) {
     /** Controls the header */
     var HeaderCtrl = function ($rootScope, $scope, userService, $location, $localStorage, $sessionStorage) {
 
-        $scope.setOrg = function (orgId, orgName) {
+        $scope.setOrg = function (orgId) {
             $rootScope.orgId = orgId;
-            $rootScope.orgName = orgName;
         };
 
         // Wrap the current user from the service in a watch expression
