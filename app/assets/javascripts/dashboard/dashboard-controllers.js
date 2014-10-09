@@ -374,6 +374,7 @@ define(["angular"], function () {
                     }
                     return entry;
                 });
+                if (!$scope.sipFiles.length) $scope.sipFiles = undefined
             });
         }
 

@@ -2,12 +2,15 @@
     <div class="col-sm-12">
         <div class="tabbable">
             <!-- Nav tabs -->
-            <ul class="nav nav-tabs" role="tablist">
+            <div data-ng-if="!sipFiles">
+                <h4>Datasets</h4>
+            </div>
+            <ul data-ng-if="sipFiles" class="nav nav-tabs" role="tablist">
                 <li ng-class="{'active':activeTab === 'files'}">
-                    <a href role="tab" data-ng-click="setActiveTab('files')">Files</a>
+                    <a href role="tab" data-ng-click="setActiveTab('files')">Datasets</a>
                 </li>
                 <li ng-class="{'active':activeTab === 'sips'}">
-                    <a href role="tab" data-ng-click="setActiveTab('sips')">SIPs</a>
+                    <a href role="tab" data-ng-click="setActiveTab('sips')">SIP Files</a>
                 </li>
                 <li class="toolbar">
                     <button data-ng-show="activeTab === 'files'" class="btn btn-default btn-sm" data-ng-click="setNewFileOpen(true)">
