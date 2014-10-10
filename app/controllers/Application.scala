@@ -53,7 +53,7 @@ object Application extends Controller with Security {
           def getOrCreateUser(username: String, profileMaybe: Option[UserProfile]): SimpleResult = {
             val profile = profileMaybe.getOrElse(throw new RuntimeException(s"no profile for $username"))
             val token = java.util.UUID.randomUUID().toString
-            Logger.warn("get or create " + username + " " + profile)
+            Logger.warn("get or create " + username + " " + profile + " with token:" + token)
             // todo: put the user in the database
             Ok(Json.obj(
               "firstName" -> profile.firstName,

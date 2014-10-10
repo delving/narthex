@@ -172,8 +172,8 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       datasetRepo.datasetDb.createDataset(READY)
       datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // todo: connect with sip somehow
       datasetRepo.datasetDb.setRecordDelimiter(
-        recordRoot = "/delving-sip-target/output",
-        uniqueId = "/delving-sip-target/output/@id",
+        recordRoot = "/rdf:RDF/rdf:Description",
+        uniqueId = "/rdf:RDF/rdf:Description/@rdf:about",
         recordCount = -1
       )
       Ok
