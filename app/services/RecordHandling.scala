@@ -22,6 +22,7 @@ import java.security.MessageDigest
 
 import org.joda.time.DateTime
 import play.Logger
+import services.FileHandling.ReadProgress
 import services.RecordHandling.{RawRecord, StoredRecord, TargetConcept}
 
 import scala.collection.mutable
@@ -51,7 +52,16 @@ trait RecordHandling extends BaseXTools {
     var recordCount = 0L
     var namespaceMap: Map[String, String] = Map.empty
 
-    def parse(source: Source, avoidIds: Set[String], output: RawRecord => Unit, totalRecords: Int, progress: Int => Boolean): Boolean = {
+    def parse
+    (
+      source: Source,
+      avoidIds: Set[String],
+      output: RawRecord => Unit,
+      progress: Int => Boolean,
+      readProgress: Option[ReadProgress] = None,
+      totalRecords: Option[Long] = None
+      ): Boolean = {
+
       val events = new XMLEventReader(source)
       var depth = 0
       var recordText = new mutable.StringBuilder()
@@ -67,11 +77,20 @@ trait RecordHandling extends BaseXTools {
         }
       }
 
-      def sendProgress(): Unit = {
-        val realPercent = ((recordCount * 100) / totalRecords).toInt
+      def sendProgressRead: Unit => Unit = { x =>
+        val percentZero = readProgress.get.getPercentRead
+        val percent = if (percentZero == 0) 1 else percentZero
+        if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
+          running = progress(percent)
+          percentWas = percent
+          lastProgress = System.currentTimeMillis()
+        }
+      }
+
+      def sendProgressRecords: Unit => Unit = { x =>
+        val realPercent = ((recordCount * 100) / totalRecords.get).toInt
         val percent = if (realPercent > 0) realPercent else 1
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
-          //          println(s"progress $recordCount / $totalRecords : $percent / $percentWas")
           if (percent < 100) {
             running = progress(percent)
           }
@@ -79,6 +98,9 @@ trait RecordHandling extends BaseXTools {
           lastProgress = System.currentTimeMillis()
         }
       }
+
+      // todo: wow this is pretty complicated, maybe there's a better way
+      var progressSender: Unit => Unit = totalRecords.map(total => sendProgressRecords).getOrElse(sendProgressRead)
 
       def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
         def recordNamespace(binding: NamespaceBinding): Unit = {
@@ -134,13 +156,14 @@ trait RecordHandling extends BaseXTools {
         if (depth > 0) {
           if (string == recordRootPath) {
             recordCount += 1
-            sendProgress()
+            progressSender()
             indent()
             recordText.append(s"</$tag>\n</$RECORD_CONTAINER>\n")
             val mod = toXSDString(new DateTime())
             val record = uniqueId.map { id =>
               if (id.isEmpty) throw new RuntimeException("Empty unique id!")
-              if (avoidIds.contains(id)) None else {
+              if (avoidIds.contains(id)) None
+              else {
                 val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
                 recordText.insert(0, s"""<$RECORD_CONTAINER id="$id" mod="$mod" $scope>\n""")
                 Some(RawRecord(id, recordText.toString()))

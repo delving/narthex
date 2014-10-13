@@ -35,6 +35,13 @@ var STATE_BLOCK = {
         revertState: 'state-empty',
         revertPrompt: 'Cancel harvesting'
     },
+    'state-collecting': {
+        label: 'Collecting',
+        css: 'label-warning',
+        faIcon: 'fa-cogs',
+        revertState: 'state-empty',
+        revertPrompt: 'Cancel collecting'
+    },
     'state-ready': {
         label: 'Ready',
         css: 'label-info',
@@ -79,15 +86,6 @@ var STATE_BLOCK = {
         revertState: 'state-analyzed',
         revertPrompt: 'Delete saved records',
         viewSchema: true
-    },
-    'state-published': {
-        label: 'Published',
-        css: 'label-success',
-        faIcon: 'fa-share-square-o',
-        revertState: 'state-analyzed',
-        revertPrompt: 'Delete saved records',
-        viewSchema: true,
-        viewTerminology: true
     }
 };
 
@@ -315,6 +313,7 @@ define(["angular"], function () {
             });
         };
 
+        // todo: this must change!
         $scope.setPublished = function (file, published) {
             var toState = published ? 'state-published' : 'state-saved';
             dashboardService.goToState(file.name, toState).then(function (data) {
@@ -415,11 +414,13 @@ define(["angular"], function () {
             return file.info.status.state == 'state-analyzed' && file.info.delimit.recordCount > 0;
         };
 
+        // todo: this must be removed
         $scope.allowPublish = function(file) {
             if (!file.info.status) return false;
             return file.info.status.state == 'state-saved';
         };
 
+        // todo: this must be removed
         $scope.allowUnpublish = function(file) {
             if (!file.info.status) return false;
             return file.info.status.state == 'state-published';

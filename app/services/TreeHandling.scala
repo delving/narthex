@@ -105,7 +105,7 @@ trait TreeHandling {
   object TreeNode {
 
     def apply(source: Source, length: Long, readProgress: ReadProgress, directory: DatasetRepo, progress: Int => Boolean): Option[TreeNode] = {
-      val base = new TreeNode(directory.root, null, null)
+      val base = new TreeNode(directory.rootNode, null, null)
       var node = base
       var percentWas = -1
       var lastProgress = 0l

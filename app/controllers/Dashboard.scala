@@ -24,6 +24,7 @@ import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
 import services.DatasetState._
+import services.FileHandling.clearDir
 import services.Repo.repo
 import services._
 
@@ -40,22 +41,23 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def upload(fileName: String) = Secure(parse.multipartFormData) {
+  def upload(spec: String) = Secure(parse.multipartFormData) {
     token => implicit request => {
       request.body.file("file") match {
         case Some(file) =>
-          Logger.info(s"upload ${file.filename} (${file.contentType}) to $fileName")
+          Logger.info(s"upload ${file.filename} (${file.contentType}) to $spec")
           RepoUtil.acceptableFile(file.filename, file.contentType) match {
             case Some(suffix) =>
               println(s"Acceptable ${file.filename}")
-              val datasetRepo = repo.datasetRepo(s"$fileName$suffix")
-              file.ref.moveTo(datasetRepo.source, replace = true)
-              datasetRepo.datasetDb.createDataset(DatasetState.READY)
+              val datasetRepo = repo.datasetRepo(s"$spec$suffix")
+              datasetRepo.datasetDb.createDataset(EMPTY)
               datasetRepo.datasetDb.setOrigin(DatasetOrigin.DROP, "?") // find out who
+              file.ref.moveTo(datasetRepo.createIncomingFile(file.filename), replace = true)
+              datasetRepo.consumeIncoming()
               Ok(datasetRepo.name)
             case None =>
               println(s"NOT Acceptable ${file.filename}")
-              NotAcceptable(Json.obj("problem" -> "File must be .xml or .xml.gz"))
+              NotAcceptable(Json.obj("problem" -> "File must be .xml, .xml.gz, or .xml.zip"))
           }
         case None =>
           NotAcceptable(Json.obj("problem" -> "Missing file"))
@@ -195,9 +197,9 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       var uniqueId = (request.body \ "uniqueId").as[String]
       var recordCount = (request.body \ "recordCount").as[Int]
       val datasetRepo = repo.datasetRepo(fileName)
+      clearDir(datasetRepo.analyzedDir)
       datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
-      //      datasetRepo.saveRecords(recordRoot, uniqueId, recordCount)
       Ok
     }
   }

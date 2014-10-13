@@ -21,7 +21,6 @@ import java.util.zip.ZipFile
 
 import controllers.Application.{OkFile, OkXml}
 import controllers.Dashboard._
-import org.apache.commons.io.FileUtils.deleteQuietly
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
@@ -165,17 +164,18 @@ object APIController extends Controller with TreeHandling with RecordHandling {
 
   def uploadOutput(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request => {
-      val uploaded: File = repo.uploadedFile(fileName)
-      deleteQuietly(uploaded)
-      request.body.moveTo(uploaded)
       val datasetRepo = repo.datasetRepo(fileName)
-      datasetRepo.datasetDb.createDataset(READY)
-      datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // todo: connect with sip somehow
-      datasetRepo.datasetDb.setRecordDelimiter(
+      val uploaded: File = datasetRepo.createIncomingFile(fileName)
+      request.body.moveTo(uploaded)
+      val datasetDb = datasetRepo.datasetDb
+      datasetDb.createDataset(READY)
+      datasetDb.setOrigin(DatasetOrigin.SIP, "?")
+      datasetDb.setRecordDelimiter(
         recordRoot = "/rdf:RDF/rdf:Description",
         uniqueId = "/rdf:RDF/rdf:Description/@rdf:about",
         recordCount = -1
       )
+      datasetRepo.consumeIncoming()
       Ok
     }
   }

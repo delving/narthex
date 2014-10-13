@@ -16,10 +16,15 @@
 package services
 
 import java.io._
+import java.nio.file.Files
+import java.util.zip.{GZIPInputStream, ZipFile}
 
+import org.apache.commons.io.input.BOMInputStream
+import play.api.Logger
 import play.api.libs.Files._
 import services.RecordHandling.RawRecord
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.io.Source
 
@@ -40,9 +45,8 @@ import scala.io.Source
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends RecordHandling {
+class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String, val sourceFile: File) extends RecordHandling {
   val MAX_FILES = 100
-  sourceDir.mkdirs()
 
   private def numberString(number: Int): String = "%05d".format(number)
 
@@ -101,7 +105,7 @@ class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends 
 
   private def listXmlFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".xml")).sortBy(_.getName)
 
-  private def processFile(fillFile: File => File) = {
+  private def processFile(progress: Int => Boolean, fillFile: File => File) = {
     def writeToFile(file: File, string: String): Unit = Some(new PrintWriter(file)).foreach { writer =>
       writer.println(string)
       writer.close()
@@ -119,11 +123,10 @@ class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends 
     val file = fillFile(createXmlFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
     val parser = new RawRecordParser(recordRoot, uniqueId)
-    def sendProgress(percent: Int): Boolean = true
     def receiveRecord(record: RawRecord): Unit = idSet.add(record.id)
-    def source = Source.fromFile(file)
+    val (source, readProgress) = FileHandling.sourceFromFile(file)
     try {
-      parser.parse(source, Set.empty, receiveRecord, -1, sendProgress)
+      parser.parse(source, Set.empty, receiveRecord, progress, readProgress = Some(readProgress))
     }
     finally {
       source.close()
@@ -151,7 +154,7 @@ class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends 
           writeToFile(createActiveIdsFile(idsFile), activeCount.toString)
         }
       }
-      Some(file)
+      Some(fileNumber)
     }
   }
 
@@ -159,17 +162,53 @@ class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends 
 
   def countFiles = fileList.size
 
-  def acceptFile(file: File): Option[File] = processFile { targetFile =>
-    moveFile(file, targetFile)
-    targetFile
+  def acceptFile(file: File, progress: Int => Boolean): Option[Int] = {
+    val name = file.getName
+    if (name.endsWith(".xml.gz")) {
+      processFile(progress, { targetFile =>
+        val is = new FileInputStream(file)
+        val gz = new GZIPInputStream(is)
+        val input = new BOMInputStream(gz)
+        Files.copy(input, targetFile.toPath)
+        file.delete()
+        targetFile
+      })
+    }
+    else if (name.endsWith(".xml")) {
+      processFile(progress, { targetFile =>
+        val is = new FileInputStream(file)
+        val input = new BOMInputStream(is)
+        Files.copy(input, targetFile.toPath)
+        file.delete()
+        targetFile
+      })
+    }
+    else if (name.endsWith(".zip")) {
+      val zipFile = new ZipFile(file)
+      val entries = zipFile.entries().toList
+      var lastNumber: Option[Int] = None
+      entries.foreach {
+        entry =>
+          val input = zipFile.getInputStream(entry)
+          lastNumber = processFile(progress, { targetFile =>
+            Files.copy(input, targetFile.toPath)
+            targetFile
+          })
+      }
+      file.delete()
+      lastNumber
+    }
+    else {
+      throw new RuntimeException(s"Unrecognized extension: $name")
+    }
   }
 
-  def acceptPage(page: String): Option[File] = processFile { targetFile =>
+  def acceptPage(page: String): Option[Int] = processFile(percent => true, { targetFile =>
     writeFile(targetFile, page)
     targetFile
-  }
+  })
 
-  def parse(output: RawRecord => Unit, sendProgress: Int => Boolean) = {
+  def parse(output: RawRecord => Unit, sendProgress: Int => Boolean): Map[String, String] = {
     val parser = new RawRecordParser(recordRoot, uniqueId)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(readFile).map(s => s.trim.toInt)
@@ -177,20 +216,32 @@ class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends 
     listXmlFiles.foreach { xmlFile =>
       var idSet = avoidSet(xmlFile)
       val source = Source.fromFile(xmlFile)
-      parser.parse(source, idSet.toSet, output, totalActiveIds, sendProgress)
+      parser.parse(source, idSet.toSet, output, sendProgress, totalRecords = Some(totalActiveIds))
       source.close()
     }
+    parser.namespaceMap
   }
 
   def lastModified = listXmlFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSourceFile(sourceFile: File, progress: Int => Boolean): File = {
+  def generateSourceFile(progress: Int => Boolean, setNamespaceMap: Map[String,String] => Unit): File = {
+    Logger.info(s"Generating source from $sourceDir")
+    var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
     out.write("<?xml version='1.0' encoding='UTF-8'?>\n")
-    out.write(s"""<$RECORD_LIST_CONTAINER>\n""")
-    parse(rawRecord => out.write(rawRecord.text), progress)
-    out.write(s"""</$RECORD_LIST_CONTAINER>\n""")
+    out.write( s"""<$RECORD_LIST_CONTAINER>\n""")
+    def writer(rawRecord: RawRecord) = {
+      recordCount += 1
+      out.write(rawRecord.text)
+      if (recordCount % 1000 == 0) {
+        Logger.info(s"Generating record $recordCount")
+      }
+    }
+    val namespaceMap = parse(rawRecord => out.write(rawRecord.text), progress)
+    out.write( s"""</$RECORD_LIST_CONTAINER>\n""")
     out.close()
+    setNamespaceMap(namespaceMap)
+    Logger.info(s"Finished generating source from $sourceDir")
     sourceFile
   }
 

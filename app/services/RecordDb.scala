@@ -19,7 +19,6 @@ import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
-import services.DatasetState._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -133,8 +132,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     val name = datasetRepo.name
     println(s"createHarvest: $name, $from, $until")
     val datasetInfo = getDatasetInfo
-    val state = (datasetInfo \ "status" \ "state").text
-    if (!PUBLISHED.matches(state)) return None
+    if (!RepoUtil.isPublishedOaiPmh(datasetInfo)) return None
     val countString = db {
       session =>
         val queryForRecords = s"count(collection('$recordDb')/$RECORD_CONTAINER${dateSelector(from, until)})"
@@ -181,8 +179,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
   def recordPmh(identifier: String): Option[Elem] = db {
     session =>
       val datasetInfo = getDatasetInfo
-      val state = (datasetInfo \ "status" \ "state").text
-      if (!PUBLISHED.matches(state)) return None
+      if (!RepoUtil.isPublishedOaiPmh(datasetInfo)) return None
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}

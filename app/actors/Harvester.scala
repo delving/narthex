@@ -16,13 +16,9 @@
 
 package actors
 
-import java.io.{File, FileOutputStream}
-import java.util.zip.{ZipEntry, ZipOutputStream}
-
 import actors.Harvester._
 import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
-import org.apache.commons.io.FileUtils._
 import play.api.Logger
 import services.DatasetState._
 import services.Harvesting._
@@ -43,26 +39,14 @@ object Harvester {
 
   case class InterruptHarvest()
 
-  def props(datasetRepo: DatasetRepo) = Props(new Harvester(datasetRepo))
+  def props(datasetRepo: DatasetRepo, sourceRepo: SourceRepo) = Props(new Harvester(datasetRepo, sourceRepo))
 
   global.getClass // to avoid optimizing the import away
 }
 
-class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling with Harvesting {
+class Harvester(val datasetRepo: DatasetRepo, sourceRepo: SourceRepo) extends Actor with RecordHandling with Harvesting {
   val log = Logger
-  var tempFile = File.createTempFile("narthex", "harvest")
-  val zip = new ZipOutputStream(new FileOutputStream(tempFile))
-  var pageCount = 0
   var bomb: Option[ActorRef] = None
-
-  def addPage(page: String) = {
-    pageCount = pageCount + 1
-    val fileName = s"harvest_$pageCount.xml"
-    zip.putNextEntry(new ZipEntry(fileName))
-    zip.write(page.getBytes("UTF-8"))
-    zip.closeEntry()
-    fileName
-  }
 
   def receive = {
 
@@ -72,8 +56,6 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
 
     case HarvestAdLib(url, database) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
-      datasetRepo.datasetDb.setHarvestInfo("adlib", url, database, "adlib")
-      datasetRepo.datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
       val futurePage = fetchAdLibPage(url, database)
       futurePage.onFailure {
         case e => self ! HarvestComplete(Some(e.toString))
@@ -85,7 +67,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
         self ! HarvestComplete(Some("Interrupted while harvesting"))
       }
       else {
-        val pageName = addPage(records)
+        val pageName = sourceRepo.acceptPage(records)
         log.info(s"Harvest Page: $pageName - $url $database to $datasetRepo: $diagnostic")
         if (diagnostic.isLast) {
           self ! HarvestComplete(None)
@@ -102,9 +84,6 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
 
     case HarvestPMH(url, set, prefix) =>
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
-      datasetRepo.datasetDb.setHarvestInfo("pmh", url, set, prefix)
-      datasetRepo.datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
-      datasetRepo.datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
       val futurePage = fetchPMHPage(url, set, prefix)
       futurePage.onFailure {
         case e => self ! HarvestComplete(Some(e.toString))
@@ -121,8 +100,8 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
             self ! HarvestComplete(Some(errorString))
 
           case None =>
-            val pageName = addPage(records)
-            log.info(s"Harvest Page $pageName to $datasetRepo: $resumptionToken")
+            val pageNumber: Option[Int] = sourceRepo.acceptPage(records)
+            log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
             resumptionToken match {
               case None =>
                 self ! HarvestComplete(None)
@@ -139,15 +118,14 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with RecordHandling 
 
     case HarvestComplete(error) =>
       log.info(s"Harvest complete $datasetRepo error: $error")
-      zip.close()
       error match {
         case Some(errorString) =>
-          deleteQuietly(datasetRepo.source)
-          deleteQuietly(tempFile)
+//          deleteQuietly(datasetRepo.source)
+//          deleteQuietly(tempFile)
           datasetRepo.datasetDb.setStatus(EMPTY, error=errorString)
         case None =>
-          deleteQuietly(datasetRepo.source)
-          moveFile(tempFile, datasetRepo.source)
+//          deleteQuietly(datasetRepo.source)
+//          moveFile(tempFile, datasetRepo.source)
           datasetRepo.datasetDb.setStatus(READY)
       }
       context.stop(self)

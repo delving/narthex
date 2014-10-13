@@ -23,7 +23,6 @@ import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json.{JsObject, JsValue, Json}
-import services.DatasetState._
 import services.RecordHandling.StoredRecord
 import services.RepoUtil._
 
@@ -31,6 +30,7 @@ import scala.concurrent.duration._
 import scala.io.Source
 import scala.language.postfixOps
 import scala.util.Random
+import scala.xml.Elem
 
 object Repo {
   lazy val repo = new Repo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
@@ -59,15 +59,15 @@ object DatasetState {
   val EMPTY = DatasetState("state-empty")
   val HARVESTING = DatasetState("state-harvesting")
   val READY = DatasetState("state-ready")
+  val COLLECTING = DatasetState("state-collecting")
   val SPLITTING = DatasetState("state-splitting")
   val ANALYZING = DatasetState("state-analyzing")
   val ANALYZED = DatasetState("state-analyzed")
   val SAVING = DatasetState("state-saving")
   val SAVED = DatasetState("state-saved")
-  val PUBLISHED = DatasetState("state-published")
 
-  val ALL_STATES = List(DELETED, EMPTY, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED, PUBLISHED)
-  val BUSY_STATES = List(SPLITTING, ANALYZING, SAVING)
+  val ALL_STATES = List(DELETED, EMPTY, COLLECTING, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED)
+  val BUSY_STATES = List(COLLECTING, SPLITTING, ANALYZING, SAVING)
 
   def fromString(string: String): Option[DatasetState] = {
     ALL_STATES.find(s => s.matches(string))
@@ -75,12 +75,9 @@ object DatasetState {
 }
 
 object RepoUtil {
+
   val ENRICHED_PREFIX = "enriched-"
   val SUFFIXES = List(".xml.gz", ".xml")
-  val UPLOADED_DIR = "uploaded"
-  val ANALYZED_DIR = "analyzed"
-  val SIP_ZIP = "sip-zip"
-  val GIT_REPO = "git-repo"
 
   def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
 
@@ -117,39 +114,24 @@ object RepoUtil {
     val suffix = getSuffix(fileName)
     fileName.substring(0, fileName.length - suffix.length)
   }
+
+  def isPublishedOaiPmh(elem: Elem): Boolean = (elem \ "metadata" \ "publishedOaiPmh").text == "true"
+
 }
 
 class Repo(userHome: String, val orgId: String) extends RecordHandling {
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
-  val uploaded = new File(orgRoot, UPLOADED_DIR)
-  val analyzed = new File(orgRoot, ANALYZED_DIR)
-  val sipZip = new File(orgRoot, SIP_ZIP)
-  val gitRepo = new File(orgRoot, GIT_REPO)
+  val datasetsDir = new File(orgRoot, "dastasets")
+  val sipZipDir = new File(orgRoot, "sip-zip")
+  val gitRepoDir = new File(orgRoot, "git-repo")
   val repoDb = new RepoDb(orgId)
 
   orgRoot.mkdirs()
-
-  def uploadedFile(fileName: String) = {
-    val suffix = getSuffix(fileName)
-    if (suffix.isEmpty) {
-      val fileNameDot = s"$fileName."
-      val listFiles = uploaded.listFiles()
-      val uploadedFiles = if (listFiles == null) List.empty[File] else listFiles.toList
-      val matchingFiles = uploadedFiles.filter(file => file.getName.startsWith(fileNameDot))
-      if (matchingFiles.isEmpty) {
-        new File(uploaded, s"$fileName.zip")
-      }
-      else {
-        matchingFiles.head
-      }
-    }
-    else {
-      new File(uploaded, fileName)
-    }
-  }
-
-  def analyzedDir(fileName: String) = new File(analyzed, stripSuffix(fileName))
+  datasetsDir.mkdir()
+  sipZipDir.mkdir()
+  gitRepoDir.mkdir()
+  FileHandling.ensureGitRepo(gitRepoDir)
 
   private def listFiles(directory: File): List[File] = {
     if (!directory.exists()) return List.empty
@@ -157,7 +139,9 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
   }
 
   def datasetRepo(fileName: String): DatasetRepo = {
-    new DatasetRepo(this, stripSuffix(fileName), uploadedFile(fileName), analyzedDir(fileName), gitRepo)
+    val dr = new DatasetRepo(this, stripSuffix(fileName))
+    dr.mkdirs
+    dr
   }
 
   def datasetRepoOption(fileName: String): Option[DatasetRepo] = {
@@ -173,21 +157,23 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
           dataset =>
             val fr = datasetRepo(dataset.name)
             val FileName(spec, prefix) = dataset.name
-            val state = (dataset.info \ "status" \ "state").text
-            val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
-            val metadataFormat = namespaces.find(_._1 == prefix) match {
-              case Some(ns) => RepoMetadataFormat(prefix, ns._2)
-              case None => RepoMetadataFormat(prefix)
+            val publishedOaiPmh = isPublishedOaiPmh(dataset.info)
+            if (publishedOaiPmh) {
+              val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
+              val metadataFormat = namespaces.find(_._1 == prefix) match {
+                case Some(ns) => RepoMetadataFormat(prefix, ns._2)
+                case None => RepoMetadataFormat(prefix)
+              }
+              Some(PublishedDataset(
+                spec = dataset.name,
+                prefix = prefix,
+                name = (dataset.info \ "metadata" \ "name").text,
+                description = (dataset.info \ "metadata" \ "description").text,
+                dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
+                totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
+                metadataFormat = metadataFormat
+              ))
             }
-            if (PUBLISHED.matches(state)) Some(PublishedDataset(
-              spec = dataset.name,
-              prefix = prefix,
-              name = (dataset.info \ "metadata" \ "name").text,
-              dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
-              description = (dataset.info \ "metadata" \ "description").text,
-              totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
-              metadataFormat = metadataFormat
-            ))
             else {
               None
             }
@@ -219,11 +205,11 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
 
   // === sip-zip
 
-  def sipZipFile(fileName: String) = new File(sipZip, fileName)
+  def sipZipFile(fileName: String) = new File(sipZipDir, fileName)
 
-  def sipZipFactsFile(fileName: String) = new File(sipZip, s"$fileName.facts")
+  def sipZipFactsFile(fileName: String) = new File(sipZipDir, s"$fileName.facts")
 
-  def sipZipHintsFile(fileName: String) = new File(sipZip, s"$fileName.hints")
+  def sipZipHintsFile(fileName: String) = new File(sipZipDir, s"$fileName.hints")
 
   val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
 
@@ -241,8 +227,8 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
   }
 
   def listSipZips: Seq[SipZip] = {
-    if (!sipZip.exists()) return Seq.empty
-    val fileList = sipZip.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
+    if (!sipZipDir.exists()) return Seq.empty
+    val fileList = sipZipDir.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
     val ordered = fileList.sortBy {
       f =>
         val n = f.getName

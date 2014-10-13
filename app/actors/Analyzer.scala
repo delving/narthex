@@ -38,8 +38,6 @@ object Analyzer {
 
   case class AnalyzeFile(file: File)
 
-  case class AnalyzeRepo(repo: SourceRepo, sourceFile: File)
-
   case class AnalysisProgress(percent: Int)
 
   case class AnalysisTreeComplete(json: JsValue)
@@ -65,17 +63,6 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
     case InterruptAnalysis() =>
       log.debug(s"Interrupted analysis $datasetRepo")
       bomb = Some(sender)
-
-    case AnalyzeRepo(repo, sourceFile) =>
-      if (!sourceFile.exists() || sourceFile.lastModified() < repo.lastModified) {
-        def sendProgress(percent: Int): Boolean = {
-          if (bomb.isDefined) return false
-          // send the progress out
-          true
-        }
-        repo.generateSourceFile(sourceFile, sendProgress)
-      }
-      self ! AnalyzeFile(sourceFile)
 
     case AnalyzeFile(file) =>
       log.debug(s"Analyzer on ${file.getName}")

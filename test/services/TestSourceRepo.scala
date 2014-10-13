@@ -42,16 +42,16 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
     new File(incoming, name)
   }
 
-  val sourceRepo = new SourceRepo(sourceDir, recordRoot, uniqueId)
+  val sourceRepo = new SourceRepo(sourceDir, recordRoot, uniqueId, gitFile)
 
   "A Source Repository" should "accept files and pages" in {
 
     sourceRepo.countFiles should be(0)
-    sourceRepo.acceptFile(incomingFile("a")).get
+    sourceRepo.acceptFile(incomingFile("a"), percent => true).get
     sourceRepo.countFiles should be(3)
-    sourceRepo.acceptFile(incomingFile("b")).get
+    sourceRepo.acceptFile(incomingFile("b"), percent => true).get
     sourceRepo.countFiles should be(7)
-    sourceRepo.acceptFile(incomingFile("c")).get
+    sourceRepo.acceptFile(incomingFile("c"), percent => true).get
     sourceRepo.countFiles should be(11)
 
     sourceRepo.acceptPage(s"""
@@ -90,9 +90,9 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
     
-    sourceRepo.generateSourceFile(gitFile, percent => true)
+    sourceRepo.generateSourceFile(percent => true, println(_))
 
-    FileHandling.gitCommit(gitFile, "TestSourceRepo") should be(true)
+    FileHandling.gitCommit(gitFile, "Several words of message") should be(true)
   }
 
 }

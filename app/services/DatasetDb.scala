@@ -94,7 +94,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           |    else insert node $$replacement into $$dataset
           |
           """.stripMargin.trim
-      Logger.info(s"set properties:\n$update")
+      Logger.info(s"$fileName set $listName: ${entries.toMap}")
       session.query(update).execute()
   }
 

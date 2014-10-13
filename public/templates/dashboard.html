@@ -154,6 +154,17 @@
                 <label for="meta_description">Description</label>
                 <input id="meta_description" class="form-control" data-ng-model="file.info.metadata.description"/>
             </div>
+
+            <!--todo: here we need some publishing checkboxes-->
+            <!--<button class="btn btn-sm btn-default" data-ng-click="setPublished(file, true)" data-ng-show="allowPublish(file)">-->
+            <!--<i class="fa fa-unlock"></i>-->
+            <!--Publish-->
+            <!--</button>-->
+            <!--<button class="btn btn-sm btn-default" data-ng-click="setPublished(file, false)" data-ng-show="allowUnpublish(file)">-->
+            <!--<i class="fa fa-lock"></i>-->
+            <!--Un-Publish-->
+            <!--</button>-->
+
             <button typ="button" class="btn btn-success" data-ng-click="setMetadata(file)">
                 <i class="fa fa-save"></i>
                 <span>Save</span>
@@ -218,22 +229,16 @@
             <i class="fa fa-database"></i>
             Save Records
         </button>
-        <button class="btn btn-sm btn-default" data-ng-click="setPublished(file, true)" data-ng-show="allowPublish(file)">
-            <i class="fa fa-unlock"></i>
-            Publish
-        </button>
-        <button class="btn btn-sm btn-default" data-ng-click="setPublished(file, false)" data-ng-show="allowUnpublish(file)">
-            <i class="fa fa-lock"></i>
-            Un-Publish
-        </button>
         <a class="btn btn-sm btn-default" ng-href="{{file.apiMappings}}" target="_blank" data-ng-show="file.stateBlock.viewTerminology">
             <i class="fa fa-download"></i>
             Terminology Mappings
         </a>
+        <!--todo: state-published is no more-->
         <a class="btn btn-sm btn-default" data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}" target="_blank">
             <i class="fa fa-download"></i>
             Raw Records
         </a>
+        <!--todo: state-published is no more-->
         <a class="btn btn-sm btn-default" data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListEnrichedRecords}}" target="_blank">
             <i class="fa fa-download"></i>
             Enriched Records

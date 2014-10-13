@@ -19,44 +19,100 @@ import java.io.File
 
 import actors.Analyzer.InterruptAnalysis
 import actors.Harvester.{HarvestAdLib, HarvestPMH, InterruptHarvest}
-import actors.Saver.{InterruptSaving, SaveRecords}
+import actors.SourceActor.{InterruptCollecting, SaveRecords}
 import actors._
 import akka.actor.{PoisonPill, Props}
-import org.apache.commons.io.FileUtils.{deleteDirectory, deleteQuietly}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.libs.Akka
 import services.DatasetState._
+import services.FileHandling.clearDir
+import services.Harvesting._
 import services.RecordHandling.{StoredRecord, TargetConcept}
 import services.RepoUtil.pathToDirectory
 
-class DatasetRepo(val orgRepo: Repo, val name: String, val source: File, val analyzedDir: File, gitRepoDir: File) extends RecordHandling {
-  val root = new NodeRepo(this, analyzedDir)
+class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
+
+  val rootDir = new File(orgRepo.datasetsDir, name)
+  val incomingDir = new File(rootDir, "incoming")
+  val analyzedDir = new File(rootDir, "analyzed")
+  val sourceDir = new File(rootDir, "source")
+  val sourceFile = new File(orgRepo.gitRepoDir, s"$name.xml")
+
+  val rootNode = new NodeRepo(this, analyzedDir)
+
   val dbName = s"narthex_${orgRepo.orgId}___$name"
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, name)
   lazy val termDb = new TermDb(dbName)
   lazy val recordDb = new RecordDb(this, dbName)
 
-  override def toString = source.getCanonicalPath
-
-  def mkdirs = {
-    analyzedDir.mkdirs()
-    this
-  }
+  override def toString = name
 
   def actor(props: Props) = {
     Logger.info(s"Creating actor $name")
     Akka.system.actorOf(props, name)
   }
 
+  def mkdirs = {
+    rootDir.mkdirs()
+    incomingDir.mkdir()
+    analyzedDir.mkdir()
+    sourceDir.mkdir()
+    this
+  }
+
+  def createSourceRepo: Option[SourceRepo] = {
+    datasetDb.getDatasetInfoOption match {
+      case Some(info) =>
+        val delim = info \ "delimit"
+        val recordRoot = (delim \ "recordRoot").text
+        val uniqueId = (delim \ "uniqueId").text
+        if (recordRoot.nonEmpty && uniqueId.nonEmpty) {
+          Some(new SourceRepo(sourceDir, recordRoot, uniqueId, sourceFile))
+        }
+        else {
+          None
+        }
+      case None => None
+    }
+  }
+
+  def createIncomingFile(fileName: String) = new File(incomingDir, fileName)
+
+  def consumeIncoming(): Unit = {
+
+    val incomingFile: Option[File] = incomingDir.listFiles().toList.find(file => file.isFile)
+
+    incomingFile.foreach {
+      file =>
+        createSourceRepo match {
+          case Some(sourceRepo) =>
+            datasetDb.setStatus(COLLECTING, percent = 1)
+            val sorcerer = actor(SourceActor.props(this, sourceRepo))
+            Logger.info(s"Starting sorcerer $this")
+            sorcerer ! SourceActor.AcceptFile(file)
+
+          case None =>
+            clearDir(analyzedDir)
+            datasetDb.setStatus(SPLITTING, percent = 1)
+            val analyzer = actor(Analyzer.props(this))
+            analyzer ! Analyzer.AnalyzeFile(file)
+        }
+    }
+  }
+
   def startPmhHarvest(url: String, dataset: String, prefix: String) = {
 
     def startActor() = {
-      val harvester = actor(Harvester.props(this))
-      val kickoff = HarvestPMH(url, dataset, prefix)
-      Logger.info(s"Harvest $kickoff")
-      harvester ! kickoff
+      createSourceRepo match {
+        case Some(sourceRepo) =>
+          val harvester = actor(Harvester.props(this, sourceRepo))
+          val kickoff = HarvestPMH(url, dataset, prefix)
+          Logger.info(s"Harvest $kickoff")
+          harvester ! kickoff
+        case None =>
+      }
     }
 
     datasetDb.getDatasetInfoOption map {
@@ -72,6 +128,9 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val source: File, val ana
     } getOrElse {
       Logger.info("Fresh database")
       datasetDb.createDataset(HARVESTING, percent = 1)
+      datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
+      datasetDb.setHarvestInfo("pmh", url, dataset, prefix)
+      datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
       startActor()
     }
   }
@@ -79,10 +138,14 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val source: File, val ana
   def startAdLibHarvest(url: String, dataset: String) = {
 
     def startActor() = {
-      val harvester = actor(Harvester.props(this))
-      val kickoff = HarvestAdLib(url, dataset)
-      Logger.info(s"Harvest $kickoff")
-      harvester ! kickoff
+      createSourceRepo match {
+        case Some(sourceRepo) =>
+          val harvester = actor(Harvester.props(this, sourceRepo))
+          val kickoff = HarvestAdLib(url, dataset)
+          Logger.info(s"Harvest $kickoff")
+          harvester ! kickoff
+        case None =>
+      }
     }
 
     datasetDb.getDatasetInfoOption map {
@@ -98,45 +161,46 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val source: File, val ana
     } getOrElse {
       Logger.info("Fresh database")
       datasetDb.createDataset(HARVESTING, percent = 1)
+      datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
+      datasetDb.setHarvestInfo("adlib", url, dataset, "adlib")
+      datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
       startActor()
     }
     datasetDb.setHarvestInfo("adlib", url, dataset, "")
   }
 
   def startAnalysis() = {
-    deleteDirectory(analyzedDir)
+    clearDir(analyzedDir)
     datasetDb.setStatus(SPLITTING, percent = 1)
     val analyzer = actor(Analyzer.props(this))
-    if (source.getName.endsWith(".repo")) {
-      datasetDb.getDatasetInfoOption match {
-        case Some(info) =>
-          val delimit = info \ "delimit"
-          ((delimit \ "recordRoot").text, (delimit \ "uniqueId").text) match {
-            case (recordRoot, uniqueId) if recordRoot.nonEmpty && uniqueId.nonEmpty =>
-              gitRepoDir.mkdirs()
-              val gitFile = new File(gitRepoDir, s"$name.xml")
-              analyzer ! Analyzer.AnalyzeRepo(new SourceRepo(source, recordRoot, uniqueId), gitFile)
-            case _ =>
-          }
-        case None =>
-          analyzer ! Analyzer.AnalyzeFile(source)
-      }
-    }
-    else {
-      analyzer ! Analyzer.AnalyzeFile(source)
-    }
+    //    if (source.getName.endsWith(".repo")) {
+    //      datasetDb.getDatasetInfoOption match {
+    //        case Some(info) =>
+    //          val delimit = info \ "delimit"
+    //          ((delimit \ "recordRoot").text, (delimit \ "uniqueId").text) match {
+    //            case (recordRoot, uniqueId) if recordRoot.nonEmpty && uniqueId.nonEmpty =>
+    //              gitRepoDir.mkdirs()
+    //              val gitFile = new File(gitRepoDir, s"$name.xml")
+    //              analyzer ! Analyzer.AnalyzeRepo(new SourceRepo(source, recordRoot, uniqueId), gitFile)
+    //            case _ =>
+    //          }
+    //        case None =>
+    //          analyzer ! Analyzer.AnalyzeFile(source)
+    //      }
+    //    }
+    //    else {
+    analyzer ! Analyzer.AnalyzeFile(sourceFile)
+    //    }
   }
 
   def saveRecords() = {
-    val delim = recordDb.getDatasetInfo \ "delimit"
-    val recordRoot = (delim \ "recordRoot").text
-    val uniqueId = (delim \ "uniqueId").text
-    val recordCountText = (delim \ "recordCount").text
-    val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
-    // set status now so it's done before the actor starts
-    datasetDb.setStatus(SAVING, percent = 1)
-    val saver = actor(Saver.props(this))
-    saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
+    createSourceRepo.map {
+      sourceRepo =>
+        // set status now so it's done before the actor starts
+        datasetDb.setStatus(SAVING, percent = 1)
+        val saver = actor(SourceActor.props(this, sourceRepo))
+        saver ! SaveRecords()
+    }
   }
 
   def index = new File(analyzedDir, "index.json")
@@ -210,8 +274,8 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val source: File, val ana
       case DELETED =>
         datasetDb.removeDataset()
         recordDb.dropDb()
-        deleteQuietly(source)
-        deleteDirectory(analyzedDir)
+        clearDir(incomingDir)
+        clearDir(analyzedDir)
         true
 
       case EMPTY =>
@@ -222,8 +286,8 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val source: File, val ana
         }
         datasetDb.setStatus(newState)
         recordDb.dropDb()
-        deleteQuietly(source)
-        deleteDirectory(analyzedDir)
+        clearDir(incomingDir)
+        clearDir(analyzedDir)
         true
 
       case READY =>
@@ -235,15 +299,15 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val source: File, val ana
         else {
           datasetDb.setStatus(newState)
           recordDb.dropDb()
-          deleteDirectory(analyzedDir)
+          clearDir(analyzedDir)
         }
         true
 
       case ANALYZED =>
         if (currentState == SAVING) {
           // what if there is no actor listening?
-          Logger.info("Sending InterruptSaving")
-          selection ! InterruptSaving()
+          Logger.info("Sending InterruptCollecting")
+          selection ! InterruptCollecting()
         }
         else {
           selection ! PoisonPill
@@ -253,22 +317,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String, val source: File, val ana
         true
 
       case SAVED =>
-        if (currentState == PUBLISHED) {
-          datasetDb.setStatus(SAVED)
-          true
-        }
-        else {
-          false
-        }
-
-      case PUBLISHED =>
-        if (currentState == SAVED) {
-          datasetDb.setStatus(PUBLISHED)
-          true
-        }
-        else {
-          false
-        }
+        false
 
       case _ =>
         false
