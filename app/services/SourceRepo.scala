@@ -184,9 +184,12 @@ class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends 
 
   def lastModified = listXmlFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSourceFile(sourceFile: File): File = {
+  def generateSourceFile(sourceFile: File, progress: Int => Boolean): File = {
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
-    parse(rawRecord => out.write(rawRecord.text), percent => true)
+    out.write("<?xml version='1.0' encoding='UTF-8'?>\n")
+    out.write(s"""<$RECORD_LIST_CONTAINER>\n""")
+    parse(rawRecord => out.write(rawRecord.text), progress)
+    out.write(s"""</$RECORD_LIST_CONTAINER>\n""")
     out.close()
     sourceFile
   }

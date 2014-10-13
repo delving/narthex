@@ -76,7 +76,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         val queryForRecords = s"""
           |
           | ${namespaceDeclarations(datasetInfo)}
-          | let $$boxes := collection('$recordDb')[/$BOX$queryPath/$field=${quote(value)}]
+          | let $$boxes := collection('$recordDb')[/$RECORD_CONTAINER$queryPath/$field=${quote(value)}]
           | let $$selected := subsequence($$boxes, $start, $max)
           | return <records>{ for $$box in $$selected return $$box/* }</records>
           |
@@ -91,7 +91,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
-        | let $$box := collection('$recordDb')[/$BOX/@id=${quote(identifier)}]
+        | let $$box := collection('$recordDb')[/$RECORD_CONTAINER/@id=${quote(identifier)}]
         | return <record>{ $$box }</record>
         |
         """.stripMargin.trim
@@ -103,7 +103,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     session =>
       val q = s"""
         |
-        | let $$boxes := collection('$recordDb')/$BOX
+        | let $$boxes := collection('$recordDb')/$RECORD_CONTAINER
         | return
         |    <ids>{
         |       for $$box in $$boxes
@@ -137,7 +137,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     if (!PUBLISHED.matches(state)) return None
     val countString = db {
       session =>
-        val queryForRecords = s"count(collection('$recordDb')/$BOX${dateSelector(from, until)})"
+        val queryForRecords = s"count(collection('$recordDb')/$RECORD_CONTAINER${dateSelector(from, until)})"
         println("asking:\n" + queryForRecords)
         session.query(queryForRecords).execute()
     }
@@ -163,7 +163,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         |
-        | let $$selection := collection('$recordDb')/$BOX${dateSelector(from, until)}
+        | let $$selection := collection('$recordDb')/$RECORD_CONTAINER${dateSelector(from, until)}
         |
         | return
         |   <records>
@@ -186,16 +186,16 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
-        | let $$box := collection('$recordDb')[/$BOX/@id=${quote(identifier)}]
+        | let $$box := collection('$recordDb')[/$RECORD_CONTAINER/@id=${quote(identifier)}]
         | return
         |   <record>
         |     <header>
-        |       <identifier>{data($$rec/$BOX/@id)}</identifier>
-        |       <datestamp>{data($$rec/$BOX/@mod)}</datestamp>
+        |       <identifier>{data($$rec/$RECORD_CONTAINER/@id)}</identifier>
+        |       <datestamp>{data($$rec/$RECORD_CONTAINER/@mod)}</datestamp>
         |       <setSpec>${datasetRepo.name}</setSpec>
         |     </header>
         |     <metadata>
-        |      {$$box/$BOX/*}
+        |      {$$box/$RECORD_CONTAINER/*}
         |     </metadata>
         |   </record>
         |
@@ -210,7 +210,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         |
-        | let $$selection := collection('$recordDb')/$BOX${dateSelector(from, until)}
+        | let $$selection := collection('$recordDb')/$RECORD_CONTAINER${dateSelector(from, until)}
         |
         | let $$boxes :=
         |   for $$box in subsequence($$selection, $start, $pageSize)

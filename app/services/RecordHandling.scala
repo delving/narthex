@@ -41,7 +41,8 @@ object RecordHandling {
 
 trait RecordHandling extends BaseXTools {
 
-  var BOX = "narthex"
+  val RECORD_LIST_CONTAINER = "pockets"
+  val RECORD_CONTAINER = "pocket"
 
   class RawRecordParser(recordRootPath: String, uniqueIdPath: String) {
     val path = new mutable.Stack[(String, StringBuilder)]
@@ -135,13 +136,13 @@ trait RecordHandling extends BaseXTools {
             recordCount += 1
             sendProgress()
             indent()
-            recordText.append(s"</$tag>\n</$BOX>\n")
+            recordText.append(s"</$tag>\n</$RECORD_CONTAINER>\n")
             val mod = toXSDString(new DateTime())
             val record = uniqueId.map { id =>
               if (id.isEmpty) throw new RuntimeException("Empty unique id!")
               if (avoidIds.contains(id)) None else {
                 val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
-                recordText.insert(0, s"""<$BOX id="$id" mod="$mod" $scope>\n""")
+                recordText.insert(0, s"""<$RECORD_CONTAINER id="$id" mod="$mod" $scope>\n""")
                 Some(RawRecord(id, recordText.toString()))
               }
             } getOrElse {
@@ -173,7 +174,7 @@ trait RecordHandling extends BaseXTools {
           case EvEntityRef(entity) => addFieldText(s"&$entity;")
           case EvElemEnd(pre, label) => pop(FileHandling.tag(pre, label))
           case EvComment(text) => FileHandling.stupidParser(text, entity => addFieldText(s"&$entity;"))
-          case x => Logger.warn("EVENT? " + x) // todo: record these in an error file for later
+          case x => Logger.error("EVENT? " + x)
         }
       }
       running
@@ -271,9 +272,9 @@ trait RecordHandling extends BaseXTools {
 
         case EvElemStart(pre, label, attrs, scope) =>
           val tag = FileHandling.tag(pre, label)
-          if (tag == BOX) {
-            val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$BOX element missing id"))
-            val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$BOX element missing mod"))
+          if (tag == RECORD_CONTAINER) {
+            val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$RECORD_CONTAINER element missing id"))
+            val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$RECORD_CONTAINER element missing mod"))
             record = Some(StoredRecord(id, fromXSDDateTime(mod), scope))
           }
           else record match {
@@ -343,7 +344,7 @@ trait RecordHandling extends BaseXTools {
 
   def parseStoredRecords(xmlString: String): List[StoredRecord] = {
     val wrappedRecord = scala.xml.XML.loadString(xmlString)
-    (wrappedRecord \ BOX).map {
+    (wrappedRecord \ RECORD_CONTAINER).map {
       box =>
         StoredRecord(
           id = (box \ "@id").text,

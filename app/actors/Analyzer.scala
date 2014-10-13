@@ -68,7 +68,12 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
 
     case AnalyzeRepo(repo, sourceFile) =>
       if (!sourceFile.exists() || sourceFile.lastModified() < repo.lastModified) {
-        repo.generateSourceFile(sourceFile)
+        def sendProgress(percent: Int): Boolean = {
+          if (bomb.isDefined) return false
+          // send the progress out
+          true
+        }
+        repo.generateSourceFile(sourceFile, sendProgress)
       }
       self ! AnalyzeFile(sourceFile)
 

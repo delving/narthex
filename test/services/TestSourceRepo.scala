@@ -90,7 +90,7 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
     
-    sourceRepo.generateSourceFile(gitFile)
+    sourceRepo.generateSourceFile(gitFile, percent => true)
 
     FileHandling.gitCommit(gitFile, "TestSourceRepo") should be(true)
   }
