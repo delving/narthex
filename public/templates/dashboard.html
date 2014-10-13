@@ -3,6 +3,9 @@
         <div class="tabbable">
             <!-- Nav tabs -->
             <div data-ng-if="!sipFiles">
+                <button data-ng-show="activeTab === 'files'" class="btn btn-default btn-sm pull-right" data-ng-click="setNewFileOpen(true)">
+                    <i class="fa fa-plus"></i> Create a new file
+                </button>
                 <h4>Datasets</h4>
             </div>
             <ul data-ng-if="sipFiles" class="nav nav-tabs" role="tablist">
