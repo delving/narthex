@@ -11,7 +11,7 @@ import scala.collection.mutable
 import scala.xml.XML
 
 
-class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
+class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
 
   val recordRoot = "/envelope/list/thing"
   val uniqueId = s"$recordRoot/@which"
@@ -37,24 +37,25 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
   List("a", "b", "c").map(resourceFile).foreach(f => FileUtils.copyFile(f, new File(incoming, f.getName)))
 //  deleteQuietly(incoming)
 
-  def incomingFile(letter: String): File = {
+  def incomingPage(letter: String): String = {
     val name = s"source-$letter.xml"
-    new File(incoming, name)
+    val file = new File(incoming, name)
+    FileUtils.readFileToString(file)
   }
 
-  val sourceRepo = new SourceRepo(sourceDir, recordRoot, uniqueId, gitFile)
+  val harvestRepo = new HarvestRepo(sourceDir, recordRoot, uniqueId, gitFile)
 
   "A Source Repository" should "accept files and pages" in {
 
-    sourceRepo.countFiles should be(0)
-    sourceRepo.acceptFile(incomingFile("a"), percent => true).get
-    sourceRepo.countFiles should be(3)
-    sourceRepo.acceptFile(incomingFile("b"), percent => true).get
-    sourceRepo.countFiles should be(7)
-    sourceRepo.acceptFile(incomingFile("c"), percent => true).get
-    sourceRepo.countFiles should be(11)
+    harvestRepo.countFiles should be(0)
+    harvestRepo.acceptPage(incomingPage("a")).get
+    harvestRepo.countFiles should be(3)
+    harvestRepo.acceptPage(incomingPage("b")).get
+    harvestRepo.countFiles should be(7)
+    harvestRepo.acceptPage(incomingPage("c")).get
+    harvestRepo.countFiles should be(11)
 
-    sourceRepo.acceptPage(s"""
+    harvestRepo.acceptPage(s"""
       |<envelope>
       |  <list>
       |    <thing which="3">
@@ -64,7 +65,7 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
       |</envelope>
       """.stripMargin.trim).get
 
-    sourceRepo.countFiles should be(16)
+    harvestRepo.countFiles should be(16)
 
     val seenIds = mutable.HashSet[String]()
     var recordCount = 0
@@ -84,13 +85,13 @@ class TestSourceRepo extends FlatSpec with Matchers with RecordHandling {
       true
     }
 
-    sourceRepo.parse(receiveRecord, sendProgress)
+    harvestRepo.parse(receiveRecord, sendProgress)
 
     recordCount should be(4)
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
     
-    sourceRepo.generateSourceFile(percent => true, map => Unit)
+    harvestRepo.generateSourceFile(percent => true, map => Unit)
 
     FileHandling.gitCommit(gitFile, "Several words of message") should be(true)
   }

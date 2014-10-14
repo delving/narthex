@@ -24,7 +24,6 @@ import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
 import services.DatasetState._
-import services.FileHandling.clearDir
 import services.Repo.repo
 import services._
 
@@ -41,23 +40,23 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def upload(spec: String) = Secure(parse.multipartFormData) {
+  def upload(fileName: String) = Secure(parse.multipartFormData) {
     token => implicit request => {
       request.body.file("file") match {
         case Some(file) =>
-          Logger.info(s"upload ${file.filename} (${file.contentType}) to $spec")
+          Logger.info(s"upload ${file.filename} (${file.contentType}) to $fileName")
           RepoUtil.acceptableFile(file.filename, file.contentType) match {
             case Some(suffix) =>
               println(s"Acceptable ${file.filename}")
-              val datasetRepo = repo.datasetRepo(s"$spec$suffix")
-              datasetRepo.datasetDb.createDataset(EMPTY)
+              val datasetRepo = repo.datasetRepo(s"$fileName$suffix")
+              // todo: sourceFile is probably not right
+              file.ref.moveTo(datasetRepo.sourceFile, replace = true)
+              datasetRepo.datasetDb.createDataset(DatasetState.READY)
               datasetRepo.datasetDb.setOrigin(DatasetOrigin.DROP, "?") // find out who
-              file.ref.moveTo(datasetRepo.createIncomingFile(file.filename), replace = true)
-              datasetRepo.consumeIncoming()
               Ok(datasetRepo.name)
             case None =>
               println(s"NOT Acceptable ${file.filename}")
-              NotAcceptable(Json.obj("problem" -> "File must be .xml, .xml.gz, or .xml.zip"))
+              NotAcceptable(Json.obj("problem" -> "File must be .xml or .xml.gz"))
           }
         case None =>
           NotAcceptable(Json.obj("problem" -> "Missing file"))
@@ -197,7 +196,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       var uniqueId = (request.body \ "uniqueId").as[String]
       var recordCount = (request.body \ "recordCount").as[Int]
       val datasetRepo = repo.datasetRepo(fileName)
-      clearDir(datasetRepo.analyzedDir)
+      FileHandling.clearDir(datasetRepo.analyzedDir)
       datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
       Ok

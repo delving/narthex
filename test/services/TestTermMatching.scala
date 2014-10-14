@@ -44,8 +44,8 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
     )
 
     val storedString =
-      """
-        |<narthex id="666" mod="2014-09-14T10:11:38.398+02:00" xmlns:very="http://veryother.org/#">
+      s"""
+        |<$RECORD_CONTAINER id="666" mod="2014-09-14T10:11:38.398+02:00" xmlns:very="http://veryother.org/#">
         |  <record>
         |    <inner>
         |      <content.subject>Glas in loodraam</content.subject>
@@ -53,7 +53,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
         |    <very:other>Ignore</very:other>
         |    <empty/>
         |  </record>
-        |</narthex>
+        |</$RECORD_CONTAINER>
       """.stripMargin.trim
 
     val expectedString =

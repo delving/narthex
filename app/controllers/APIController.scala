@@ -165,17 +165,17 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def uploadOutput(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      val uploaded: File = datasetRepo.createIncomingFile(fileName)
+      // todo: PROBLEMS HERE
+      val uploaded: File = datasetRepo.incomingDir
+//      deleteQuietly(uploaded)
       request.body.moveTo(uploaded)
-      val datasetDb = datasetRepo.datasetDb
-      datasetDb.createDataset(READY)
-      datasetDb.setOrigin(DatasetOrigin.SIP, "?")
-      datasetDb.setRecordDelimiter(
+      datasetRepo.datasetDb.createDataset(READY)
+      datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // todo: connect with sip somehow
+      datasetRepo.datasetDb.setRecordDelimiter(
         recordRoot = "/rdf:RDF/rdf:Description",
         uniqueId = "/rdf:RDF/rdf:Description/@rdf:about",
         recordCount = -1
       )
-      datasetRepo.consumeIncoming()
       Ok
     }
   }

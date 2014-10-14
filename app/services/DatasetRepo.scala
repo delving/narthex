@@ -19,7 +19,7 @@ import java.io.File
 
 import actors.Analyzer.InterruptAnalysis
 import actors.Harvester.{HarvestAdLib, HarvestPMH, InterruptHarvest}
-import actors.SourceActor.{InterruptCollecting, SaveRecords}
+import actors.Saver.SaveRecords
 import actors._
 import akka.actor.{PoisonPill, Props}
 import play.api.Logger
@@ -62,14 +62,14 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
     this
   }
 
-  def createSourceRepo: Option[SourceRepo] = {
+  def createSourceRepo: Option[HarvestRepo] = {
     datasetDb.getDatasetInfoOption match {
       case Some(info) =>
         val delim = info \ "delimit"
         val recordRoot = (delim \ "recordRoot").text
         val uniqueId = (delim \ "uniqueId").text
         if (recordRoot.nonEmpty && uniqueId.nonEmpty) {
-          Some(new SourceRepo(sourceDir, recordRoot, uniqueId, sourceFile))
+          Some(new HarvestRepo(sourceDir, recordRoot, uniqueId, sourceFile))
         }
         else {
           None
@@ -78,30 +78,30 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
     }
   }
 
-  def createIncomingFile(fileName: String) = new File(incomingDir, fileName)
-
-  def consumeIncoming(): Unit = {
-
-    val incomingFile: Option[File] = incomingDir.listFiles().toList.find(file => file.isFile)
-
-    incomingFile.foreach {
-      file =>
-        createSourceRepo match {
-          case Some(sourceRepo) =>
-            datasetDb.setStatus(COLLECTING, percent = 1)
-            val sorcerer = actor(SourceActor.props(this, sourceRepo))
-            Logger.info(s"Starting sorcerer $this")
-            sorcerer ! SourceActor.AcceptFile(file)
-
-          case None =>
-            clearDir(analyzedDir)
-            datasetDb.setStatus(SPLITTING, percent = 1)
-            val analyzer = actor(Analyzer.props(this))
-            analyzer ! Analyzer.AnalyzeFile(file)
-        }
-    }
-  }
-
+//  def createIncomingFile(fileName: String) = new File(incomingDir, fileName)
+//
+//  def consumeIncoming(): Unit = {
+//
+//    val incomingFile: Option[File] = incomingDir.listFiles().toList.find(file => file.isFile)
+//
+//    incomingFile.foreach {
+//      file =>
+//        createSourceRepo match {
+//          case Some(sourceRepo) =>
+//            datasetDb.setStatus(COLLECTING, percent = 1)
+//            val sorcerer = actor(SourceActor.props(this, sourceRepo))
+//            Logger.info(s"Starting sorcerer $this")
+//            sorcerer ! SourceActor.AcceptFile(file)
+//
+//          case None =>
+//            clearDir(analyzedDir)
+//            datasetDb.setStatus(SPLITTING, percent = 1)
+//            val analyzer = actor(Analyzer.props(this))
+//            analyzer ! Analyzer.AnalyzeFile(file)
+//        }
+//    }
+//  }
+//
   def startPmhHarvest(url: String, dataset: String, prefix: String) = {
 
     def startActor() = {
@@ -194,13 +194,15 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
   }
 
   def saveRecords() = {
-    createSourceRepo.map {
-      sourceRepo =>
-        // set status now so it's done before the actor starts
-        datasetDb.setStatus(SAVING, percent = 1)
-        val saver = actor(SourceActor.props(this, sourceRepo))
-        saver ! SaveRecords()
-    }
+    val delim = recordDb.getDatasetInfo \ "delimit"
+    val recordRoot = (delim \ "recordRoot").text
+    val uniqueId = (delim \ "uniqueId").text
+    val recordCountText = (delim \ "recordCount").text
+    val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
+    // set status now so it's done before the actor starts
+    datasetDb.setStatus(SAVING, percent = 1)
+    val saver = actor(Saver.props(this))
+    saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
   }
 
   def index = new File(analyzedDir, "index.json")
@@ -306,9 +308,10 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
 
       case ANALYZED =>
         if (currentState == SAVING) {
+          // todo: PROBLEMS HERE - REVIEW
           // what if there is no actor listening?
           Logger.info("Sending InterruptCollecting")
-          selection ! InterruptCollecting()
+          selection ! InterruptAnalysis()
         }
         else {
           selection ! PoisonPill

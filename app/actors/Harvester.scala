@@ -21,6 +21,7 @@ import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
 import play.api.Logger
 import services.DatasetState._
+import services.FileHandling._
 import services.Harvesting._
 import services._
 
@@ -39,12 +40,16 @@ object Harvester {
 
   case class InterruptHarvest()
 
-  def props(datasetRepo: DatasetRepo, sourceRepo: SourceRepo) = Props(new Harvester(datasetRepo, sourceRepo))
+  case class CollectSource()
+
+  case class CollectProgress(percent: Int)
+
+  def props(datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) = Props(new Harvester(datasetRepo, harvestRepo))
 
   global.getClass // to avoid optimizing the import away
 }
 
-class Harvester(val datasetRepo: DatasetRepo, sourceRepo: SourceRepo) extends Actor with RecordHandling with Harvesting {
+class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends Actor with RecordHandling with Harvesting {
   val log = Logger
   var bomb: Option[ActorRef] = None
 
@@ -67,7 +72,7 @@ class Harvester(val datasetRepo: DatasetRepo, sourceRepo: SourceRepo) extends Ac
         self ! HarvestComplete(Some("Interrupted while harvesting"))
       }
       else {
-        val pageName = sourceRepo.acceptPage(records)
+        val pageName = harvestRepo.acceptPage(records)
         log.info(s"Harvest Page: $pageName - $url $database to $datasetRepo: $diagnostic")
         if (diagnostic.isLast) {
           self ! HarvestComplete(None)
@@ -100,7 +105,7 @@ class Harvester(val datasetRepo: DatasetRepo, sourceRepo: SourceRepo) extends Ac
             self ! HarvestComplete(Some(errorString))
 
           case None =>
-            val pageNumber: Option[Int] = sourceRepo.acceptPage(records)
+            val pageNumber: Option[Int] = harvestRepo.acceptPage(records)
             log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
             resumptionToken match {
               case None =>
@@ -129,6 +134,35 @@ class Harvester(val datasetRepo: DatasetRepo, sourceRepo: SourceRepo) extends Ac
           datasetRepo.datasetDb.setStatus(READY)
       }
       context.stop(self)
+
+    case CollectSource() =>
+      val progress = context.actorOf(Props(new Actor() {
+        override def receive: Receive = {
+          case CollectProgress(percent) =>
+            datasetRepo.datasetDb.setStatus(COLLECTING, percent = percent)
+        }
+      }))
+      def sendProgress(percent: Int): Boolean = {
+        if (bomb.isDefined) return false
+        progress ! CollectProgress(percent)
+        true
+      }
+      val sourceFile = harvestRepo.generateSourceFile(sendProgress, datasetRepo.datasetDb.setNamespaceMap)
+      try {
+        gitCommit(sourceFile, "SourceActor did it")
+        datasetRepo.datasetDb.setStatus(READY)
+        // todo: complete message
+        context.stop(self)
+      }
+      catch {
+        case e: Exception =>
+          context.stop(self)
+          datasetRepo.datasetDb.setStatus(READY)
+          false
+      }
+      context.stop(progress)
+
+
   }
 }
 

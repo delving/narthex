@@ -16,15 +16,11 @@
 package services
 
 import java.io._
-import java.nio.file.Files
-import java.util.zip.{GZIPInputStream, ZipFile}
 
-import org.apache.commons.io.input.BOMInputStream
 import play.api.Logger
 import play.api.libs.Files._
 import services.RecordHandling.RawRecord
 
-import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.io.Source
 
@@ -45,7 +41,7 @@ import scala.io.Source
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String, val sourceFile: File) extends RecordHandling {
+class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, val sourceFile: File) extends RecordHandling {
   val MAX_FILES = 100
 
   private def numberString(number: Int): String = "%05d".format(number)
@@ -161,47 +157,6 @@ class SourceRepo(sourceDir: File, recordRoot: String, uniqueId: String, val sour
   // public things:
 
   def countFiles = fileList.size
-
-  def acceptFile(file: File, progress: Int => Boolean): Option[Int] = {
-    val name = file.getName
-    if (name.endsWith(".xml.gz")) {
-      processFile(progress, { targetFile =>
-        val is = new FileInputStream(file)
-        val gz = new GZIPInputStream(is)
-        val input = new BOMInputStream(gz)
-        Files.copy(input, targetFile.toPath)
-        file.delete()
-        targetFile
-      })
-    }
-    else if (name.endsWith(".xml")) {
-      processFile(progress, { targetFile =>
-        val is = new FileInputStream(file)
-        val input = new BOMInputStream(is)
-        Files.copy(input, targetFile.toPath)
-        file.delete()
-        targetFile
-      })
-    }
-    else if (name.endsWith(".zip")) {
-      val zipFile = new ZipFile(file)
-      val entries = zipFile.entries().toList
-      var lastNumber: Option[Int] = None
-      entries.foreach {
-        entry =>
-          val input = zipFile.getInputStream(entry)
-          lastNumber = processFile(progress, { targetFile =>
-            Files.copy(input, targetFile.toPath)
-            targetFile
-          })
-      }
-      file.delete()
-      lastNumber
-    }
-    else {
-      throw new RuntimeException(s"Unrecognized extension: $name")
-    }
-  }
 
   def acceptPage(page: String): Option[Int] = processFile(percent => true, { targetFile =>
     writeFile(targetFile, page)
