@@ -173,7 +173,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
 
   def lastModified = listXmlFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSourceFile(sourceFile: File, progress: Int => Boolean, setNamespaceMap: Map[String,String] => Unit): File = {
+  def generateSourceFile(sourceFile: File, progress: Int => Boolean, setNamespaceMap: Map[String,String] => Unit): Int = {
     Logger.info(s"Generating source from $sourceDir to $sourceFile")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
@@ -186,12 +186,12 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
         Logger.info(s"Generating record $recordCount")
       }
     }
-    val namespaceMap = parse(rawRecord => out.write(rawRecord.text), progress)
+    val namespaceMap = parse(writer, progress)
     out.write( s"""</$RECORD_LIST_CONTAINER>\n""")
     out.close()
     setNamespaceMap(namespaceMap)
     Logger.info(s"Finished generating source from $sourceDir")
-    sourceFile
+    recordCount
   }
 
 }

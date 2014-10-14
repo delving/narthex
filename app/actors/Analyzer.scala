@@ -61,11 +61,11 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
   def receive = {
 
     case InterruptAnalysis() =>
-      log.debug(s"Interrupted analysis $datasetRepo")
+      log.info(s"Interrupted analysis $datasetRepo")
       bomb = Some(sender)
 
     case AnalyzeFile(file) =>
-      log.debug(s"Analyzer on ${file.getName}")
+      log.info(s"Analyzer on ${file.getName}")
       val progress = context.actorOf(Props(new Actor() {
         override def receive: Receive = {
           case AnalysisProgress(percent) =>
@@ -108,7 +108,6 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       }
 
     case Counted(nodeRepo, uniqueCount, sampleSizes) =>
-      log.debug(s"Count finished : ${nodeRepo.counted.getAbsolutePath}")
       collators = collators.filter(collator => collator != sender)
       FileUtils.deleteQuietly(nodeRepo.sorted)
       nodeRepo.setStatus(Json.obj(
@@ -122,7 +121,6 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       }
 
     case Sorted(nodeRepo, sortedFile, sortType) =>
-      log.debug(s"Sort finished : ${sortedFile.getAbsolutePath}")
       sorters = sorters.filter(sorter => sender != sorter)
       sortType match {
         case SortType.VALUE_SORT =>
@@ -134,7 +132,6 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
           }
 
         case SortType.HISTOGRAM_SORT =>
-          log.debug(s"writing histograms : ${datasetRepo.analyzedDir.getAbsolutePath}")
           RepoUtil.updateJson(nodeRepo.status) {
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]

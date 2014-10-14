@@ -22,7 +22,6 @@ import actors.Merger._
 import actors.Sorter._
 import akka.actor.{Actor, Props}
 import org.apache.commons.io.FileUtils
-import play.api.Logger
 import services.NodeRepo
 
 /*
@@ -39,12 +38,10 @@ object Merger {
 }
 
 class Merger(val nodeRepo: NodeRepo) extends Actor {
-  val log = Logger
 
   def receive = {
 
     case Merge(inFileA, inFileB, mergeResultFile, sortType) =>
-      log.debug(s"Merge : ${inFileA.getName} and ${inFileB.getName}")
       val inputA = new BufferedReader(new FileReader(inFileA))
       val inputB = new BufferedReader(new FileReader(inFileB))
 

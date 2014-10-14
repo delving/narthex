@@ -21,7 +21,6 @@ import java.io._
 import actors.Merger._
 import actors.Sorter._
 import akka.actor.{Actor, Props}
-import play.api.Logger
 import services.NodeRepo
 
 import scala.language.postfixOps
@@ -43,7 +42,6 @@ object Sorter {
 }
 
 class Sorter(val nodeRepo: NodeRepo) extends Actor {
-  val log = Logger
   val linesToSort = 10000
   var sortFiles = List.empty[File]
   var merges = List.empty[Merge]
@@ -77,7 +75,6 @@ class Sorter(val nodeRepo: NodeRepo) extends Actor {
         case SortType.VALUE_SORT => (nodeRepo.values, nodeRepo.sorted)
         case SortType.HISTOGRAM_SORT => (nodeRepo.counted, nodeRepo.histogramText)
       }
-      log.debug(s"Sorter on ${inputFile.getName}")
       val input = new BufferedReader(new FileReader(inputFile))
 
       var lines = List.empty[String]
@@ -116,7 +113,6 @@ class Sorter(val nodeRepo: NodeRepo) extends Actor {
 
     case Merged(merge, file, sortType) =>
       merges = merges.filter(pending => pending != merge)
-      log.debug(s"Merged : ${file.getName} (size=${merges.size})")
       sortFiles = file :: sortFiles
       if (merges.isEmpty) {
         initiateMerges(merge.mergeResultFile, sortType)

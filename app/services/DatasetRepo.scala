@@ -109,7 +109,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
         datasetDb.setHarvestInfo("adlib", url, dataset, "adlib")
         datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
-        val harvestRepo = new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID)
+        val harvestRepo = new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
         val harvester = actor(Harvester.props(this, harvestRepo))
         val kickoff = HarvestAdLib(url, dataset)
         Logger.info(s"Harvest $kickoff")

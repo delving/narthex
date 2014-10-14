@@ -20,7 +20,6 @@ import java.io.{BufferedReader, File, FileReader, FileWriter}
 
 import actors.Collator._
 import akka.actor.{Actor, Props}
-import play.api.Logger
 import play.api.libs.json.Json
 import services.{NodeRepo, RepoUtil, TreeHandling}
 
@@ -38,12 +37,10 @@ object Collator {
 }
 
 class Collator(val nodeRepo: NodeRepo) extends Actor with TreeHandling {
-  val log = Logger
 
    def receive = {
 
      case Count() =>
-       log.debug(s"Count : ${nodeRepo.sorted.getName}")
        val sorted = new BufferedReader(new FileReader(nodeRepo.sorted))
 
        val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))

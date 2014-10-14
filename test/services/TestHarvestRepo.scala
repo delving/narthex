@@ -43,7 +43,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
     FileUtils.readFileToString(file)
   }
 
-  val harvestRepo = new HarvestRepo(sourceDir, recordRoot, uniqueId, gitFile)
+  val harvestRepo = new HarvestRepo(sourceDir, recordRoot, uniqueId)
 
   "A Source Repository" should "accept files and pages" in {
 
@@ -91,7 +91,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
     
-    harvestRepo.generateSourceFile(percent => true, map => Unit)
+    harvestRepo.generateSourceFile(gitFile, percent => true, map => Unit)
 
     FileHandling.gitCommit(gitFile, "Several words of message") should be(true)
   }

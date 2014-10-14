@@ -143,8 +143,12 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         true
       }
       val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
-      val sourceFile = harvestRepo.generateSourceFile(incomingFile, sendProgress, datasetRepo.datasetDb.setNamespaceMap)
+      val recordCount = harvestRepo.generateSourceFile(incomingFile, sendProgress, datasetRepo.datasetDb.setNamespaceMap)
       datasetRepo.datasetDb.setStatus(READY)
+      val info  = datasetRepo.datasetDb.getDatasetInfoOption.get
+      val recordRoot = (info \ "delimit" \ "recordRoot").text
+      val uniqueId = (info \ "delimit" \ "uniqueId").text
+      datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
       context.stop(self)
       context.stop(progress)
 

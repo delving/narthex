@@ -85,7 +85,8 @@ var STATE_BLOCK = {
         faIcon: 'fa-database',
         revertState: 'state-analyzed',
         revertPrompt: 'Delete saved records',
-        viewSchema: true
+        viewSchema: true,
+        viewTerminology: true
     }
 };
 

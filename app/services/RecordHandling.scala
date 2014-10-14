@@ -330,6 +330,10 @@ trait RecordHandling extends BaseXTools {
             val text = frame.text.toString().trim
             if (text.nonEmpty) {
               val path = s"$pathPrefix${frame.path}/${value(text)}"
+
+// for debugging:
+//              println(s"$path not found in $mappings")
+
               val mapping = mappings.get(path)
               val startString = mapping match {
                 case Some(TargetConcept(uri, vocabulary, prefLabel)) =>
