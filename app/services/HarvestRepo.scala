@@ -41,7 +41,7 @@ import scala.io.Source
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, val sourceFile: File) extends RecordHandling {
+class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends RecordHandling {
   val MAX_FILES = 100
 
   private def numberString(number: Int): String = "%05d".format(number)
@@ -59,11 +59,12 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, val sou
     dirs.flatMap(_.listFiles()) ++ files
   }
 
-  private def moveFiles() = {
+  private def moveFiles = {
     val all = sourceDir.listFiles()
     val (files, dirs) = all.partition(_.isFile)
     val sub = newSubdirectory(dirs)
-    files.foreach(moveFile(_, sub, replace = false))
+    files.foreach(file => moveFile(file, new File(sub, file.getName), replace = false))
+    Seq.empty[File]
   }
 
   private def getFileNumber(file: File): Int = {
@@ -108,14 +109,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, val sou
     }
     val xmlFiles = listXmlFiles
     val fileNumber = xmlFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
-    val files =
-      if (fileNumber % MAX_FILES < MAX_FILES - 1) {
-        xmlFiles
-      }
-      else {
-        moveFiles()
-        listXmlFiles
-      }
+    val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else xmlFiles
     val file = fillFile(createXmlFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
     val parser = new RawRecordParser(recordRoot, uniqueId)
@@ -179,8 +173,8 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, val sou
 
   def lastModified = listXmlFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSourceFile(progress: Int => Boolean, setNamespaceMap: Map[String,String] => Unit): File = {
-    Logger.info(s"Generating source from $sourceDir")
+  def generateSourceFile(sourceFile: File, progress: Int => Boolean, setNamespaceMap: Map[String,String] => Unit): File = {
+    Logger.info(s"Generating source from $sourceDir to $sourceFile")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
     out.write("<?xml version='1.0' encoding='UTF-8'?>\n")

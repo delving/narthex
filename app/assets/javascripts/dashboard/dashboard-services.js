@@ -72,6 +72,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                setPublication: function (fileName, publication) {
+                    return dash.setPublication(fileName).post(publication).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 harvest: function (fileName, harvestInfo) {
                     return dash.harvest(fileName).post(harvestInfo).then(
                         function (response) {

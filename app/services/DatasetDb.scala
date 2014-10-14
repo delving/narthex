@@ -145,4 +145,11 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
     "metadata", metadata.toSeq: _*
   )
 
+  def setPublication(publishOaiPmh: String, publishIndex: String, publishLoD: String) = setProperties(
+    "publication",
+    "oaipmh" -> publishOaiPmh,
+    "index" -> publishIndex,
+    "lod" -> publishLoD
+  )
+
 }

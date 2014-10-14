@@ -54,53 +54,56 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
 
     case SaveRecords(recordRoot, uniqueId, recordCount, collection) =>
       log.info(s"Saving $datasetRepo")
-      datasetRepo.recordDb.createDb
-      var tick = 0
-      var time = System.currentTimeMillis()
-      import context.dispatcher
-      val f = Future(datasetRepo.recordDb.db {
-        session =>
-          parser = new RawRecordParser(recordRoot, uniqueId)
-          // todo: sourceFile is probably not right
-          val (source, readProgress) = FileHandling.sourceFromFile(datasetRepo.sourceFile)
-          val progress = context.actorOf(Props(new Actor() {
-            override def receive: Receive = {
-              case SaveProgress(percent) =>
-                datasetRepo.datasetDb.setStatus(SAVING, percent = percent)
+      datasetRepo.getLatestIncomingFile.map { incomingFile =>
+        datasetRepo.recordDb.createDb
+        var tick = 0
+        var time = System.currentTimeMillis()
+        import context.dispatcher
+        val f = Future(datasetRepo.recordDb.db {
+          session =>
+            parser = new RawRecordParser(recordRoot, uniqueId)
+            val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
+            val progress = context.actorOf(Props(new Actor() {
+              override def receive: Receive = {
+                case SaveProgress(percent) =>
+                  datasetRepo.datasetDb.setStatus(SAVING, percent = percent)
+              }
+            }))
+            def sendProgress(percent: Int): Boolean = {
+              if (bomb.isDefined) return false
+              progress ! SaveProgress(percent)
+              true
             }
-          }))
-          def sendProgress(percent: Int): Boolean = {
-            if (bomb.isDefined) return false
-            progress ! SaveProgress(percent)
-            true
-          }
-          def receiveRecord(record: RawRecord) = {
-            tick += 1
-            if (tick % 10000 == 0) {
-              val now = System.currentTimeMillis()
-              Logger.info(s"$datasetRepo $tick: ${now - time}ms")
-              time = now
+            def receiveRecord(record: RawRecord) = {
+              tick += 1
+              if (tick % 10000 == 0) {
+                val now = System.currentTimeMillis()
+                Logger.info(s"$datasetRepo $tick: ${now - time}ms")
+                time = now
+              }
+              val hash = record.hash
+              val fileName = s"${datasetRepo.name}/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
+              session.add(fileName, bytesOf(record.text))
             }
-            session.add(hashRecordFileName(collection, record.text), bytesOf(record.text))
-          }
-          try {
-            if (parser.parse(source, Set.empty, receiveRecord, sendProgress, totalRecords = Some(recordCount))) {
-              self ! SaveComplete()
+            try {
+              if (parser.parse(source, Set.empty, receiveRecord, sendProgress, totalRecords = Some(recordCount))) {
+                self ! SaveComplete()
+              }
+              else {
+                self ! SaveError("Interrupted")
+              }
             }
-            else {
-              self ! SaveError("Interrupted")
+            catch {
+              case e: Exception =>
+                log.error(s"Unable to save $collection", e)
+                self ! SaveError(e.toString)
             }
-          }
-          catch {
-            case e: Exception =>
-              log.error(s"Unable to save $collection", e)
-              self ! SaveError(e.toString)
-          }
-          finally {
-            source.close()
-            context.stop(progress)
-          }
-      })
+            finally {
+              source.close()
+              context.stop(progress)
+            }
+        })
+      }
 
     case SaveError(error) =>
       datasetRepo.datasetDb.setStatus(ANALYZED, error = error)

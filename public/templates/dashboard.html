@@ -154,18 +154,33 @@
                 <label for="meta_description">Description</label>
                 <input id="meta_description" class="form-control" data-ng-model="file.info.metadata.description"/>
             </div>
-
-            <!--todo: here we need some publishing checkboxes-->
-            <!--<button class="btn btn-sm btn-default" data-ng-click="setPublished(file, true)" data-ng-show="allowPublish(file)">-->
-            <!--<i class="fa fa-unlock"></i>-->
-            <!--Publish-->
-            <!--</button>-->
-            <!--<button class="btn btn-sm btn-default" data-ng-click="setPublished(file, false)" data-ng-show="allowUnpublish(file)">-->
-            <!--<i class="fa fa-lock"></i>-->
-            <!--Un-Publish-->
-            <!--</button>-->
-
             <button typ="button" class="btn btn-success" data-ng-click="setMetadata(file)">
+                <i class="fa fa-save"></i>
+                <span>Save</span>
+            </button>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="publication-form.html">
+    <form name="form" class="form">
+        <fieldset>
+            <div class="form-group">
+                <label for="pub_oai">Publish via OAI-PMH</label>
+                <input id="pub_oai" type="checkbox" data-ng-model="file.info.publication.oaipmh"
+                        ng-true-value="true" ng-false-value="false"/>
+            </div>
+            <div class="form-group">
+                <label for="pub_index">Publish in the Index</label>
+                <input id="pub_index" type="checkbox" data-ng-model="file.info.publication.index"
+                       ng-true-value="true" ng-false-value="false"/>
+            </div>
+            <div class="form-group">
+                <label for="pub_lod">Publish as Linked Open Data</label>
+                <input id="pub_lod" type="checkbox" data-ng-model="file.info.publication.lod"
+                       ng-true-value="true" ng-false-value="false"/>
+            </div>
+            <button typ="button" class="btn btn-success" data-ng-click="setPublication(file)">
                 <i class="fa fa-save"></i>
                 <span>Save</span>
             </button>
@@ -215,11 +230,15 @@
         </button>
         <button class="btn btn-sm btn-default" data-ng-click="file.showMetadataForm = !file.showMetadataForm">
             <i class="fa fa-info-circle"></i>
-            Edit Metadata
+            Metadata
+        </button>
+        <button class="btn btn-sm btn-default" data-ng-click="file.showPublicationForm = !file.showPublicationForm">
+            <i class="fa fa-info-circle"></i>
+            Publication
         </button>
         <button class="btn btn-sm btn-default" data-ng-click="file.showInfo = !file.showInfo">
             <i class="fa fa-info-circle"></i>
-            View Details
+            Details
         </button>
         <button class="btn btn-sm btn-default" data-ng-click="startAnalysis(file)" data-ng-show="allowAnalysis(file)">
             <i class="fa fa-eye"></i>
@@ -233,13 +252,11 @@
             <i class="fa fa-download"></i>
             Terminology Mappings
         </a>
-        <!--todo: state-published is no more-->
-        <a class="btn btn-sm btn-default" data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListRecords}}" target="_blank">
+        <a class="btn btn-sm btn-default" data-ng-if="file.info.publication.oaipmh == 'true'" ng-href="{{file.oaiPmhListRecords}}" target="_blank">
             <i class="fa fa-download"></i>
             Raw Records
         </a>
-        <!--todo: state-published is no more-->
-        <a class="btn btn-sm btn-default" data-ng-if="file.info.status.state == 'state-published'" ng-href="{{file.oaiPmhListEnrichedRecords}}" target="_blank">
+        <a class="btn btn-sm btn-default" data-ng-if="file.info.publication.oaipmh == 'true'" ng-href="{{file.oaiPmhListEnrichedRecords}}" target="_blank">
             <i class="fa fa-download"></i>
             Enriched Records
         </a>
@@ -313,6 +330,8 @@
     <div data-ng-include="'harvest-form.html'" data-ng-if="file.showHarvestForm">harvest form</div>
 
     <div data-ng-include="'metadata-form.html'" data-ng-if="file.showMetadataForm">metadata form</div>
+
+    <div data-ng-include="'publication-form.html'" data-ng-if="file.showPublicationForm">publication form</div>
 
 </script>
 

@@ -115,7 +115,7 @@ object RepoUtil {
     fileName.substring(0, fileName.length - suffix.length)
   }
 
-  def isPublishedOaiPmh(elem: Elem): Boolean = (elem \ "metadata" \ "publishedOaiPmh").text == "true"
+  def isPublishedOaiPmh(elem: Elem): Boolean = (elem \ "publication" \ "oaipmh").text == "true"
 
 }
 
@@ -124,14 +124,11 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "dastasets")
   val sipZipDir = new File(orgRoot, "sip-zip")
-  val gitRepoDir = new File(orgRoot, "git-repo")
   val repoDb = new RepoDb(orgId)
 
   orgRoot.mkdirs()
   datasetsDir.mkdir()
   sipZipDir.mkdir()
-  gitRepoDir.mkdir()
-  FileHandling.ensureGitRepo(gitRepoDir)
 
   private def listFiles(directory: File): List[File] = {
     if (!directory.exists()) return List.empty
@@ -205,11 +202,11 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
 
   // === sip-zip
 
-  def sipZipFile(fileName: String) = new File(sipZipDir, fileName)
+  def createSipZipFile(fileName: String) = new File(sipZipDir, fileName)
 
-  def sipZipFactsFile(fileName: String) = new File(sipZipDir, s"$fileName.facts")
+  def createSipZipFactsFile(fileName: String) = new File(sipZipDir, s"$fileName.facts")
 
-  def sipZipHintsFile(fileName: String) = new File(sipZipDir, s"$fileName.hints")
+  def createSipZipHintsFile(fileName: String) = new File(sipZipDir, s"$fileName.hints")
 
   val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
 
@@ -237,9 +234,9 @@ class Repo(userHome: String, val orgId: String) extends RecordHandling {
     }
     ordered.reverse.map {
       file =>
-        val factsFile = sipZipFactsFile(file.getName)
+        val factsFile = createSipZipFactsFile(file.getName)
         val facts = readMapFile(factsFile)
-        val hintsFile = sipZipHintsFile(file.getName)
+        val hintsFile = createSipZipHintsFile(file.getName)
         val hints = readMapFile(hintsFile)
         val SipZipName(spec, year, month, day, hour, minute, uploadedBy) = file.getName
         val dateTime = new DateTime(year.toInt, month.toInt, day.toInt, hour.toInt, minute.toInt)

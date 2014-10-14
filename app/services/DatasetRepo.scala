@@ -37,8 +37,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
   val rootDir = new File(orgRepo.datasetsDir, name)
   val incomingDir = new File(rootDir, "incoming")
   val analyzedDir = new File(rootDir, "analyzed")
-  val sourceDir = new File(rootDir, "source")
-  val sourceFile = new File(orgRepo.gitRepoDir, s"$name.xml")
+  val harvestDir = new File(rootDir, "harvest")
 
   val rootNode = new NodeRepo(this, analyzedDir)
 
@@ -58,18 +57,18 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
     rootDir.mkdirs()
     incomingDir.mkdir()
     analyzedDir.mkdir()
-    sourceDir.mkdir()
+    harvestDir.mkdir()
     this
   }
 
-  def createSourceRepo: Option[HarvestRepo] = {
+  def createHarvestRepo: Option[HarvestRepo] = {
     datasetDb.getDatasetInfoOption match {
       case Some(info) =>
         val delim = info \ "delimit"
         val recordRoot = (delim \ "recordRoot").text
         val uniqueId = (delim \ "uniqueId").text
         if (recordRoot.nonEmpty && uniqueId.nonEmpty) {
-          Some(new HarvestRepo(sourceDir, recordRoot, uniqueId, sourceFile))
+          Some(new HarvestRepo(harvestDir, recordRoot, uniqueId))
         }
         else {
           None
@@ -78,119 +77,56 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
     }
   }
 
-//  def createIncomingFile(fileName: String) = new File(incomingDir, fileName)
-//
-//  def consumeIncoming(): Unit = {
-//
-//    val incomingFile: Option[File] = incomingDir.listFiles().toList.find(file => file.isFile)
-//
-//    incomingFile.foreach {
-//      file =>
-//        createSourceRepo match {
-//          case Some(sourceRepo) =>
-//            datasetDb.setStatus(COLLECTING, percent = 1)
-//            val sorcerer = actor(SourceActor.props(this, sourceRepo))
-//            Logger.info(s"Starting sorcerer $this")
-//            sorcerer ! SourceActor.AcceptFile(file)
-//
-//          case None =>
-//            clearDir(analyzedDir)
-//            datasetDb.setStatus(SPLITTING, percent = 1)
-//            val analyzer = actor(Analyzer.props(this))
-//            analyzer ! Analyzer.AnalyzeFile(file)
-//        }
-//    }
-//  }
-//
-  def startPmhHarvest(url: String, dataset: String, prefix: String) = {
+  def createIncomingFile(fileName: String) = new File(incomingDir, fileName)
 
-    def startActor() = {
-      createSourceRepo match {
-        case Some(sourceRepo) =>
-          val harvester = actor(Harvester.props(this, sourceRepo))
-          val kickoff = HarvestPMH(url, dataset, prefix)
-          Logger.info(s"Harvest $kickoff")
-          harvester ! kickoff
-        case None =>
+  def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
+
+  def startPmhHarvest(url: String, dataset: String, prefix: String) = datasetDb.getDatasetInfoOption map {
+    datasetInfo =>
+      val state = (datasetInfo \ "status" \ "state").text
+      if (!HARVESTING.matches(state)) {
+        datasetDb.setStatus(HARVESTING, percent = 1)
+        datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
+        datasetDb.setHarvestInfo("pmh", url, dataset, prefix)
+        datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
+        val harvestRepo = new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID)
+        val harvester = actor(Harvester.props(this, harvestRepo))
+        val kickoff = HarvestPMH(url, dataset, prefix)
+        Logger.info(s"Harvest $kickoff")
+        harvester ! kickoff
       }
-    }
-
-    datasetDb.getDatasetInfoOption map {
-      datasetInfo =>
-        val state = (datasetInfo \ "status" \ "state").text
-        if (!HARVESTING.matches(state)) {
-          datasetDb.setStatus(HARVESTING, percent = 1)
-          startActor()
-        }
-        else {
-          Logger.info("Harvest busy already")
-        }
-    } getOrElse {
-      Logger.info("Fresh database")
-      datasetDb.createDataset(HARVESTING, percent = 1)
-      datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
-      datasetDb.setHarvestInfo("pmh", url, dataset, prefix)
-      datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
-      startActor()
-    }
+      else {
+        Logger.info("Harvest busy already")
+      }
   }
 
-  def startAdLibHarvest(url: String, dataset: String) = {
-
-    def startActor() = {
-      createSourceRepo match {
-        case Some(sourceRepo) =>
-          val harvester = actor(Harvester.props(this, sourceRepo))
-          val kickoff = HarvestAdLib(url, dataset)
-          Logger.info(s"Harvest $kickoff")
-          harvester ! kickoff
-        case None =>
+  def startAdLibHarvest(url: String, dataset: String) = datasetDb.getDatasetInfoOption map {
+    datasetInfo =>
+      val state = (datasetInfo \ "status" \ "state").text
+      if (!HARVESTING.matches(state)) {
+        datasetDb.setStatus(HARVESTING, percent = 1)
+        datasetDb.createDataset(HARVESTING, percent = 1)
+        datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
+        datasetDb.setHarvestInfo("adlib", url, dataset, "adlib")
+        datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
+        val harvestRepo = new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID)
+        val harvester = actor(Harvester.props(this, harvestRepo))
+        val kickoff = HarvestAdLib(url, dataset)
+        Logger.info(s"Harvest $kickoff")
+        harvester ! kickoff
       }
-    }
-
-    datasetDb.getDatasetInfoOption map {
-      datasetInfo =>
-        val state = (datasetInfo \ "status" \ "state").text
-        if (!HARVESTING.matches(state)) {
-          datasetDb.setStatus(HARVESTING, percent = 1)
-          startActor()
-        }
-        else {
-          Logger.info("Harvest busy already")
-        }
-    } getOrElse {
-      Logger.info("Fresh database")
-      datasetDb.createDataset(HARVESTING, percent = 1)
-      datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
-      datasetDb.setHarvestInfo("adlib", url, dataset, "adlib")
-      datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
-      startActor()
-    }
-    datasetDb.setHarvestInfo("adlib", url, dataset, "")
+      else {
+        Logger.info("Harvest busy already")
+      }
   }
 
   def startAnalysis() = {
-    clearDir(analyzedDir)
-    datasetDb.setStatus(SPLITTING, percent = 1)
-    val analyzer = actor(Analyzer.props(this))
-    //    if (source.getName.endsWith(".repo")) {
-    //      datasetDb.getDatasetInfoOption match {
-    //        case Some(info) =>
-    //          val delimit = info \ "delimit"
-    //          ((delimit \ "recordRoot").text, (delimit \ "uniqueId").text) match {
-    //            case (recordRoot, uniqueId) if recordRoot.nonEmpty && uniqueId.nonEmpty =>
-    //              gitRepoDir.mkdirs()
-    //              val gitFile = new File(gitRepoDir, s"$name.xml")
-    //              analyzer ! Analyzer.AnalyzeRepo(new SourceRepo(source, recordRoot, uniqueId), gitFile)
-    //            case _ =>
-    //          }
-    //        case None =>
-    //          analyzer ! Analyzer.AnalyzeFile(source)
-    //      }
-    //    }
-    //    else {
-    analyzer ! Analyzer.AnalyzeFile(sourceFile)
-    //    }
+    getLatestIncomingFile.map { incomingFile =>
+      clearDir(analyzedDir)
+      datasetDb.setStatus(SPLITTING, percent = 1)
+      val analyzer = actor(Analyzer.props(this))
+      analyzer ! Analyzer.AnalyzeFile(incomingFile)
+    }
   }
 
   def saveRecords() = {
@@ -290,6 +226,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         recordDb.dropDb()
         clearDir(incomingDir)
         clearDir(analyzedDir)
+        clearDir(harvestDir)
         true
 
       case READY =>

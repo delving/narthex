@@ -16,7 +16,7 @@
 
 package controllers
 
-import java.io.{File, FileInputStream}
+import java.io.FileInputStream
 import java.util.zip.ZipFile
 
 import controllers.Application.{OkFile, OkXml}
@@ -38,7 +38,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
           Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
       }
-//      Ok(JsArray(datasets))
+      //      Ok(JsArray(datasets))
       Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
     }
   }
@@ -165,10 +165,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def uploadOutput(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      // todo: PROBLEMS HERE
-      val uploaded: File = datasetRepo.incomingDir
-//      deleteQuietly(uploaded)
-      request.body.moveTo(uploaded)
+      request.body.moveTo(datasetRepo.createIncomingFile(request.body.file.getName), replace = true)
       datasetRepo.datasetDb.createDataset(READY)
       datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP, "?") // todo: connect with sip somehow
       datasetRepo.datasetDb.setRecordDelimiter(
@@ -176,21 +173,22 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         uniqueId = "/rdf:RDF/rdf:Description/@rdf:about",
         recordCount = -1
       )
+      datasetRepo.startAnalysis()
       Ok
     }
   }
 
   def uploadSipZip(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request =>
-      val file = repo.sipZipFile(fileName)
+      val file = repo.createSipZipFile(fileName)
       request.body.moveTo(file, replace = true)
       val zip = new ZipFile(file)
       val factsEntry = zip.getEntry("dataset_facts.txt")
-      val factsFile = repo.sipZipFactsFile(fileName)
+      val factsFile = repo.createSipZipFactsFile(fileName)
       FileUtils.copyInputStreamToFile(zip.getInputStream(factsEntry), factsFile)
       val facts = repo.readMapFile(factsFile)
       val hintsEntry = zip.getEntry("hints.txt")
-      val hintsFile = repo.sipZipHintsFile(fileName)
+      val hintsFile = repo.createSipZipHintsFile(fileName)
       FileUtils.copyInputStreamToFile(zip.getInputStream(hintsEntry), hintsFile)
       val hints = repo.readMapFile(hintsFile)
       // have facts and hints - push them to datasetDb
@@ -248,7 +246,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
 
   def downloadSipZip(apiKey: String, fileName: String) = Action(parse.anyContent) {
     implicit request =>
-      OkFile(repo.sipZipFile(fileName))
+      OkFile(repo.createSipZipFile(fileName))
   }
 
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => SimpleResult): Action[A] = Action(p) {

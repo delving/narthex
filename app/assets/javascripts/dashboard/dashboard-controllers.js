@@ -301,6 +301,12 @@ define(["angular"], function () {
             });
         };
 
+        $scope.setPublication = function(file) {
+            dashboardService.setPublication(file.name, file.info.publication).then(function () {
+                fetchDatasetList();
+            });
+        };
+
         $scope.startHarvest = function (file) {
             dashboardService.harvest(file.name, file.info.harvest).then(function () {
                 fetchDatasetList();

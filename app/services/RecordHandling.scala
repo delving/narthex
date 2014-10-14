@@ -224,11 +224,6 @@ trait RecordHandling extends BaseXTools {
 
   def bytesOf(record: String) = new ByteArrayInputStream(record.getBytes("UTF-8"))
 
-  def hashRecordFileName(name: String, record: String) = {
-    val hash = hashString(record)
-    s"$name/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
-  }
-
   def hashString(record: String) = {
 
     def byteToHex(b: Byte): Char = {

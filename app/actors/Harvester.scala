@@ -21,7 +21,6 @@ import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
 import play.api.Logger
 import services.DatasetState._
-import services.FileHandling._
 import services.Harvesting._
 import services._
 
@@ -125,15 +124,11 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       log.info(s"Harvest complete $datasetRepo error: $error")
       error match {
         case Some(errorString) =>
-//          deleteQuietly(datasetRepo.source)
-//          deleteQuietly(tempFile)
-          datasetRepo.datasetDb.setStatus(EMPTY, error=errorString)
+          datasetRepo.datasetDb.setStatus(EMPTY, error = errorString)
+          context.stop(self)
         case None =>
-//          deleteQuietly(datasetRepo.source)
-//          moveFile(tempFile, datasetRepo.source)
-          datasetRepo.datasetDb.setStatus(READY)
+          self ! CollectSource()
       }
-      context.stop(self)
 
     case CollectSource() =>
       val progress = context.actorOf(Props(new Actor() {
@@ -147,19 +142,10 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         progress ! CollectProgress(percent)
         true
       }
-      val sourceFile = harvestRepo.generateSourceFile(sendProgress, datasetRepo.datasetDb.setNamespaceMap)
-      try {
-        gitCommit(sourceFile, "SourceActor did it")
-        datasetRepo.datasetDb.setStatus(READY)
-        // todo: complete message
-        context.stop(self)
-      }
-      catch {
-        case e: Exception =>
-          context.stop(self)
-          datasetRepo.datasetDb.setStatus(READY)
-          false
-      }
+      val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
+      val sourceFile = harvestRepo.generateSourceFile(incomingFile, sendProgress, datasetRepo.datasetDb.setNamespaceMap)
+      datasetRepo.datasetDb.setStatus(READY)
+      context.stop(self)
       context.stop(progress)
 
 

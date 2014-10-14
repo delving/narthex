@@ -24,6 +24,7 @@ GET         /narthex/dashboard/delete-sip/:fileName                   controller
 POST        /narthex/dashboard/:fileName/upload                       controllers.Dashboard.upload(fileName)
 POST        /narthex/dashboard/:fileName/harvest                      controllers.Dashboard.harvest(fileName)
 POST        /narthex/dashboard/:fileName/metadata                     controllers.Dashboard.setMetadata(fileName)
+POST        /narthex/dashboard/:fileName/publication                  controllers.Dashboard.setPublication(fileName)
 GET         /narthex/dashboard/:fileName/analyze                      controllers.Dashboard.analyze(fileName)
 GET         /narthex/dashboard/:fileName/index                        controllers.Dashboard.index(fileName)
 GET         /narthex/dashboard/:fileName/dataset-info                 controllers.Dashboard.datasetInfo(fileName)

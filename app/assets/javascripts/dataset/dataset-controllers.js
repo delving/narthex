@@ -76,6 +76,7 @@ define(["angular"], function () {
                     else {
                         var rootPart = node.path.substring(0, recordContainer.length);
                         if (rootPart != recordContainer) {
+                            console.log(rootPart + " != "+ recordContainer);
                             node.path = "";
                         }
                         else {
@@ -88,11 +89,20 @@ define(["angular"], function () {
                     }
                 }
 
-
                 var recordRoot = datasetInfo.delimit.recordRoot;
                 if (recordRoot) {
-                    var recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
+                    var recordContainer;
                     var uniqueId = datasetInfo.delimit.uniqueId;
+                    if (datasetInfo.origin && datasetInfo.origin.type == "origin-harvest") {
+                        recordContainer = "/pockets/pocket";
+                        var idExtension = uniqueId.substring(recordRoot.length);
+                        var recordTag = recordRoot.match(/[/][^/]+$/);
+                        recordRoot = recordContainer + recordTag;
+                        uniqueId = recordContainer + recordTag + idExtension;
+                    }
+                    else {
+                        recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
+                    }
                     setDelim(tree, recordRoot, recordContainer, uniqueId);
                     if (parseInt(datasetInfo.delimit.recordCount) <= 0 && $scope.uniqueIdNode) {
                         $scope.setUniqueIdNode($scope.uniqueIdNode); // trigger setting record count

@@ -49,10 +49,9 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
             case Some(suffix) =>
               println(s"Acceptable ${file.filename}")
               val datasetRepo = repo.datasetRepo(s"$fileName$suffix")
-              // todo: sourceFile is probably not right
-              file.ref.moveTo(datasetRepo.sourceFile, replace = true)
-              datasetRepo.datasetDb.createDataset(DatasetState.READY)
               datasetRepo.datasetDb.setOrigin(DatasetOrigin.DROP, "?") // find out who
+              file.ref.moveTo(datasetRepo.createIncomingFile(file.filename), replace = true)
+              datasetRepo.startAnalysis()
               Ok(datasetRepo.name)
             case None =>
               println(s"NOT Acceptable ${file.filename}")
@@ -91,10 +90,24 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     token => implicit request => {
       try {
         val obj = request.body.as[JsObject]
-        val meta: Map[String,String] = obj.value.map(nv => nv._1 -> nv._2.as[String]).toMap
+        val meta: Map[String, String] = obj.value.map(nv => nv._1 -> nv._2.as[String]).toMap
         Logger.info(s"saveMetadata: $meta")
         val datasetRepo = repo.datasetRepo(fileName)
         datasetRepo.datasetDb.setMetadata(meta)
+        Ok
+      } catch {
+        case e: IllegalArgumentException =>
+          NotAcceptable(Json.obj("problem" -> e.getMessage))
+      }
+    }
+  }
+
+  def setPublication(fileName: String) = Secure(parse.json) {
+    token => implicit request => {
+      def param(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
+      try {
+        val datasetRepo = repo.datasetRepo(fileName)
+        datasetRepo.datasetDb.setPublication(param("oaipmh"), param("index"), param("lod"))
         Ok
       } catch {
         case e: IllegalArgumentException =>
@@ -196,7 +209,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       var uniqueId = (request.body \ "uniqueId").as[String]
       var recordCount = (request.body \ "recordCount").as[Int]
       val datasetRepo = repo.datasetRepo(fileName)
-      FileHandling.clearDir(datasetRepo.analyzedDir)
       datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
       println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
       Ok
@@ -312,6 +324,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  val DATASET_PROPERTY_LISTS = List("origin", "metadata", "status", "delimit", "namespaces", "harvest", "sipFacts", "sipHints")
+  val DATASET_PROPERTY_LISTS = List("origin", "metadata", "publication", "status", "delimit", "namespaces", "harvest", "sipFacts", "sipHints")
 
 }
