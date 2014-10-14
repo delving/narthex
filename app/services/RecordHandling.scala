@@ -32,7 +32,7 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object RecordHandling {
 
-  case class RawRecord(id: String, text: String)
+  case class RawRecord(id: String, hash: String, text: String)
 
   case class StoredRecord(id: String, mod: DateTime, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
 
@@ -158,15 +158,17 @@ trait RecordHandling extends BaseXTools {
             recordCount += 1
             progressSender()
             indent()
-            recordText.append(s"</$tag>\n</$RECORD_CONTAINER>\n")
-            val mod = toXSDString(new DateTime())
+            recordText.append(s"</$tag>\n")
             val record = uniqueId.map { id =>
               if (id.isEmpty) throw new RuntimeException("Empty unique id!")
               if (avoidIds.contains(id)) None
               else {
+                val recordContent = recordText.toString()
+                val contentHash = hashString(recordContent)
                 val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
-                recordText.insert(0, s"""<$RECORD_CONTAINER id="$id" mod="$mod" $scope>\n""")
-                Some(RawRecord(id, recordText.toString()))
+                val mod = toXSDString(new DateTime())
+                val wrapped = s"""<$RECORD_CONTAINER id="$id" mod="$mod" hash="$contentHash" $scope>\n$recordContent</$RECORD_CONTAINER>\n"""
+                Some(RawRecord(id, contentHash, wrapped))
               }
             } getOrElse {
               throw new RuntimeException("Missing id!")

@@ -294,6 +294,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         if (currentState == SPLITTING || currentState == ANALYZING) {
           // what if there is no actor listening?
           Logger.info("Sending InterruptAnalysis")
+          // todo: what about InterruptCollection
           selection ! InterruptAnalysis()
         }
         else {
