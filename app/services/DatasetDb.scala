@@ -108,7 +108,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
   def setStatus(state: DatasetState, percent: Int = 0, workers: Int = 0, error: String = "") = setProperties(
     "status",
     "state" -> state,
-    "time" -> System.currentTimeMillis().toString,
+    "time" -> toXSDString(new DateTime()),
     "percent" -> percent,
     "workers" -> workers,
     "error" -> error

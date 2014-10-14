@@ -172,7 +172,7 @@ object OaiPmh extends Controller with BaseXTools {
       def paramString(key: String) = queryParams.get(key).map(_.headOption.getOrElse(""))
       def parseDate(dateString: String): Option[DateTime] = {
         try {
-          Some(fromXSDDateTime(dateString))
+          Some(fromUTCDateTime(dateString))
         }
         catch {
           case t: Throwable =>
