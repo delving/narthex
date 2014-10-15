@@ -62,21 +62,21 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
     this
   }
 
-  def createHarvestRepo: Option[HarvestRepo] = {
-    datasetDb.getDatasetInfoOption match {
-      case Some(info) =>
-        val delim = info \ "delimit"
-        val recordRoot = (delim \ "recordRoot").text
-        val uniqueId = (delim \ "uniqueId").text
-        if (recordRoot.nonEmpty && uniqueId.nonEmpty) {
-          Some(new HarvestRepo(harvestDir, recordRoot, uniqueId))
-        }
-        else {
-          None
-        }
-      case None => None
-    }
-  }
+//  def createHarvestRepo: Option[HarvestRepo] = {
+//    datasetDb.getDatasetInfoOption match {
+//      case Some(info) =>
+//        val delim = info \ "delimit"
+//        val recordRoot = (delim \ "recordRoot").text
+//        val uniqueId = (delim \ "uniqueId").text
+//        if (recordRoot.nonEmpty && uniqueId.nonEmpty) {
+//          Some(new HarvestRepo(harvestDir, recordRoot, uniqueId))
+//        }
+//        else {
+//          None
+//        }
+//      case None => None
+//    }
+//  }
 
   def createIncomingFile(fileName: String) = new File(incomingDir, fileName)
 
@@ -90,7 +90,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         datasetDb.setOrigin(HARVEST, "?")
         datasetDb.setHarvestInfo("pmh", url, dataset, prefix)
         datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
-        val harvestRepo = new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID)
+        val harvestRepo = new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID, Some(PMH_DEEP_RECORD_CONTAINER))
         val harvester = actor(Harvester.props(this, harvestRepo))
         val kickoff = HarvestPMH(url, dataset, prefix)
         Logger.info(s"Harvest $kickoff")
@@ -110,7 +110,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         datasetDb.setOrigin(HARVEST, "?")
         datasetDb.setHarvestInfo("adlib", url, dataset, "adlib")
         datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
-        val harvestRepo = new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
+        val harvestRepo = new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID, None)
         val harvester = actor(Harvester.props(this, harvestRepo))
         val kickoff = HarvestAdLib(url, dataset)
         Logger.info(s"Harvest $kickoff")
@@ -141,10 +141,10 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
       var recordContainer = s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
       var idExtension = uniqueId.substring(recordRoot.length)
       var recordTag = recordRoot.substring(recordRoot.lastIndexOf("/"))
-      SaveRecords(s"$recordContainer$recordTag", s"$recordContainer$recordTag$idExtension", recordCount, name)
+      SaveRecords(s"$recordContainer$recordTag", s"$recordContainer$recordTag$idExtension", recordCount)
     }
     else {
-      SaveRecords(recordRoot, uniqueId, recordCount, name)
+      SaveRecords(recordRoot, uniqueId, recordCount)
     }
     // set status now so it's done before the actor starts
     datasetDb.setStatus(SAVING, percent = 1)

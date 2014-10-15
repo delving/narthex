@@ -45,7 +45,7 @@ trait RecordHandling extends BaseXTools {
   val RECORD_LIST_CONTAINER = "pockets"
   val RECORD_CONTAINER = "pocket"
 
-  class RawRecordParser(recordRootPath: String, uniqueIdPath: String) {
+  class RawRecordParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
     val path = new mutable.Stack[(String, StringBuilder)]
     var percentWas = -1
     var lastProgress = 0l
@@ -134,18 +134,21 @@ trait RecordHandling extends BaseXTools {
           findUniqueId(attrs)
         }
         else if (string == recordRootPath) {
-          depth = 1
-          startElement = Some(startElementString(tag, attrs))
+          if (deepRecordContainer.isEmpty) {
+            depth = 1
+            startElement = Some(startElementString(tag, attrs))
+          }
           findUniqueId(attrs)
+        }
+        else deepRecordContainer.foreach { recordContainer =>
+          if (pathContainer(string) == recordContainer) {
+            depth = 1
+            startElement = Some(startElementString(tag, attrs))
+          }
         }
       }
 
-      def addFieldText(text: String) = {
-        if (depth > 0) {
-          val fieldText = path.head._2
-          fieldText.append(text)
-        }
-      }
+      def addFieldText(text: String) = path.headOption.foreach(_._2.append(text))
 
       def pop(tag: String) = {
         val string = pathString
@@ -154,7 +157,9 @@ trait RecordHandling extends BaseXTools {
         fieldText.clear()
         path.pop()
         if (depth > 0) {
-          if (string == recordRootPath) {
+          // deep record means check container instead
+          val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _).getOrElse(string == recordRootPath)
+          if (hitRecordRoot) {
             recordCount += 1
             progressSender()
             indent()
@@ -190,6 +195,10 @@ trait RecordHandling extends BaseXTools {
             recordText.append(s"</$tag>\n")
           }
         }
+        else if (deepRecordContainer.isDefined && string == uniqueIdPath) {
+          // if there is a deep record, we find the unique idea outside of it
+          uniqueId = Some(text)
+        }
       }
 
       while (events.hasNext && running) {
@@ -205,7 +214,9 @@ trait RecordHandling extends BaseXTools {
       running
     }
 
-    def pathString = "/" + path.reverse.map(_._1).mkString("/")
+    def pathString = path.reverse.map(_._1).mkString("/", "/", "")
+
+    def pathContainer(string: String) = string.substring(0, string.lastIndexOf("/"))
 
     def showPath() = Logger.info(pathString)
 
@@ -331,8 +342,8 @@ trait RecordHandling extends BaseXTools {
             if (text.nonEmpty) {
               val path = s"$pathPrefix${frame.path}/${value(text)}"
 
-// for debugging:
-//              println(s"$path not found in $mappings")
+              // for debugging:
+              //              println(s"$path not found in $mappings")
 
               val mapping = mappings.get(path)
               val startString = mapping match {

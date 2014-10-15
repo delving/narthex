@@ -42,7 +42,7 @@ import scala.io.Source
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends RecordHandling {
+class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String]) extends RecordHandling {
   val MAX_FILES = 100
 
   private def numberString(number: Int): String = "%05d".format(number)
@@ -113,7 +113,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = fillFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
-    val parser = new RawRecordParser(recordRoot, uniqueId)
+    val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
     def receiveRecord(record: RawRecord): Unit = idSet.add(record.id)
     val (source, readProgress) = FileHandling.sourceFromFile(file)
     try {
@@ -160,7 +160,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
   })
 
   def parse(output: RawRecord => Unit, sendProgress: Int => Boolean): Map[String, String] = {
-    val parser = new RawRecordParser(recordRoot, uniqueId)
+    val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(readFile).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)

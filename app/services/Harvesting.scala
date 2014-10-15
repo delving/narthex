@@ -27,6 +27,7 @@ object Harvesting {
 
   val PMH_RECORD_ROOT = "/OAI-PMH/ListRecords/record"
   val PMH_UNIQUE_ID = "/OAI-PMH/ListRecords/record/header/identifier"
+  val PMH_DEEP_RECORD_CONTAINER = "/OAI-PMH/ListRecords/record/metadata"
 
   val ADLIB_RECORD_ROOT = "/adlibXML/recordList/record"
   val ADLIB_UNIQUE_ID = "/adlibXML/recordList/record/@priref"
