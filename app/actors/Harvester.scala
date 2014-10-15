@@ -55,7 +55,6 @@ object Harvester {
 class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends Actor with RecordHandling with Harvesting {
   val log = Logger
   var tempFile = File.createTempFile("narthex-harvest", ".zip")
-  println(tempFile.getAbsolutePath) // todo: remove
   val zip = new ZipOutputStream(new FileOutputStream(tempFile))
   var pageCount = 0
   var bomb: Option[ActorRef] = None
@@ -145,7 +144,8 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
           datasetRepo.datasetDb.setStatus(EMPTY, error = errorString)
           context.stop(self)
         case None =>
-          harvestRepo.acceptZipFile(tempFile)
+          val file = harvestRepo.acceptZipFile(tempFile)
+          // todo: file should be parsed and cause basex updates
           self ! CollectSource()
       }
 

@@ -145,7 +145,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
           writeToFile(createActiveIdsFile(idsFile), activeCount.toString)
         }
       }
-      Some(fileNumber)
+      Some(file)
     }
   }
 
@@ -153,7 +153,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
 
   def countFiles = fileList.size
 
-  def acceptZipFile(file: File): Option[Int] = processFile(percent => true, { targetFile =>
+  def acceptZipFile(file: File): Option[File] = processFile(percent => true, { targetFile =>
     if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Requires zip file ${file.getName}")
     FileUtils.moveFile(file, targetFile)
     targetFile

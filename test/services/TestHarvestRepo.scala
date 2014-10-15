@@ -44,13 +44,13 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
   "A Source Repository" should "accept files and pages" in {
 
     harvestRepo.countFiles should be(0)
-    harvestRepo.acceptZipFile(incomingZip("a")).get
+    harvestRepo.acceptZipFile(incomingZip("a"))
     harvestRepo.countFiles should be(3)
-    harvestRepo.acceptZipFile(incomingZip("b")).get
+    harvestRepo.acceptZipFile(incomingZip("b"))
     harvestRepo.countFiles should be(7)
-    harvestRepo.acceptZipFile(incomingZip("c")).get
+    harvestRepo.acceptZipFile(incomingZip("c"))
     harvestRepo.countFiles should be(11)
-    harvestRepo.acceptZipFile(incomingZip("d")).get
+    harvestRepo.acceptZipFile(incomingZip("d"))
     harvestRepo.countFiles should be(16)
 
     val seenIds = mutable.HashSet[String]()

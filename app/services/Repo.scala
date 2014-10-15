@@ -46,6 +46,10 @@ object DatasetOrigin {
   val DROP = DatasetOrigin("origin-drop")
   val HARVEST = DatasetOrigin("origin-harvest")
   val SIP = DatasetOrigin("origin-sip")
+
+  val ALL_ORIGINS = List(DROP, HARVEST, SIP)
+
+  def fromString(string: String): Option[DatasetOrigin] = ALL_ORIGINS.find(s => s.matches(string))
 }
 
 case class DatasetState(name: String) {
@@ -69,9 +73,7 @@ object DatasetState {
   val ALL_STATES = List(DELETED, EMPTY, COLLECTING, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED)
   val BUSY_STATES = List(COLLECTING, SPLITTING, ANALYZING, SAVING)
 
-  def fromString(string: String): Option[DatasetState] = {
-    ALL_STATES.find(s => s.matches(string))
-  }
+  def fromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
 }
 
 object RepoUtil {

@@ -35,7 +35,28 @@ define(["angular"], function () {
         $scope.recordRootNode = null;
 
         datasetService.datasetInfo($scope.fileName).then(function (datasetInfo) {
+
             $scope.datasetInfo = datasetInfo;
+
+            if (datasetInfo.origin.type == 'origin-harvest') {
+                // use a different record root and unique id
+                $scope.recordContainer = "/pockets/pocket";
+                var idExtension = datasetInfo.delimit.uniqueId.substring(datasetInfo.delimit.recordRoot.length);
+                var recordTag = datasetInfo.delimit.recordRoot.match(/[/][^/]+$/);
+                $scope.recordRoot = $scope.recordContainer + recordTag;
+                $scope.uniqueId = $scope.recordContainer + recordTag + idExtension;
+                $scope.allowUniqueIdSet = false;
+            }
+            else if (datasetInfo.delimit.recordRoot) {
+                $scope.recordRoot = datasetInfo.delimit.recordRoot;
+                $scope.uniqueId = datasetInfo.delimit.uniqueId;
+                $scope.recordContainer = $scope.recordRoot.substring(0, $scope.recordRoot.lastIndexOf("/"));
+                $scope.allowUniqueIdSet = datasetInfo.origin.type == 'origin-drop'; // only for changing unique id
+            }
+            else {
+                $scope.allowUniqueIdSet = true
+            }
+
             datasetService.index($scope.fileName).then(function (tree) {
                 function sortKids(node) {
                     if (!node.kids.length) return;
@@ -46,8 +67,8 @@ define(["angular"], function () {
                         sortKids(node.kids[index]);
                     }
                 }
-
                 sortKids(tree);
+                $scope.tree = tree;
 
                 function selectNode(path, node) {
                     if (!path.length) {
@@ -63,62 +84,46 @@ define(["angular"], function () {
                         }
                     }
                 }
-                $scope.tree = tree;
                 if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
 
-                function setDelim(node, recordRoot, recordContainer, uniqueId) {
-                    if (node.path == recordRoot) {
+                function setDelim(node) {
+                    if (node.path == $scope.recordRoot) {
                         $scope.recordRootNode = node;
                     }
-                    else if (node.path == uniqueId) {
+                    else if (node.path == $scope.uniqueId) {
                         $scope.uniqueIdNode = node;
                     }
                     else {
-                        var rootPart = node.path.substring(0, recordContainer.length);
-                        if (rootPart != recordContainer) {
-                            console.log(rootPart + " != "+ recordContainer);
+                        var rootPart = node.path.substring(0, $scope.recordContainer.length);
+                        if (rootPart != $scope.recordContainer) {
+                            console.log(rootPart + " != "+ $scope.recordContainer);
                             node.path = "";
                         }
                         else {
-                            var recPath = node.path.substring(recordContainer.length);
+                            var recPath = node.path.substring($scope.recordContainer.length);
                             node.sourcePath = $rootScope.orgId + "/" + $scope.fileName + recPath;
                         }
                     }
                     for (var index = 0; index < node.kids.length; index++) {
-                        setDelim(node.kids[index], recordRoot, recordContainer, uniqueId);
+                        setDelim(node.kids[index]);
                     }
                 }
-
-                var recordRoot = datasetInfo.delimit.recordRoot;
-                if (recordRoot) {
-                    var recordContainer;
-                    var uniqueId = datasetInfo.delimit.uniqueId;
-                    if (datasetInfo.origin && datasetInfo.origin.type == "origin-harvest") {
-                        recordContainer = "/pockets/pocket";
-                        var idExtension = uniqueId.substring(recordRoot.length);
-                        var recordTag = recordRoot.match(/[/][^/]+$/);
-                        recordRoot = recordContainer + recordTag;
-                        uniqueId = recordContainer + recordTag + idExtension;
-                    }
-                    else {
-                        recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
-                    }
-                    setDelim(tree, recordRoot, recordContainer, uniqueId);
+                if ($scope.recordRoot) {
+                    setDelim(tree);
                     if (parseInt(datasetInfo.delimit.recordCount) <= 0 && $scope.uniqueIdNode) {
                         $scope.setUniqueIdNode($scope.uniqueIdNode); // trigger setting record count
                     }
                 }
 
-                function filterSourcePath(node, sourcePaths) {
-                    if (node.sourcePath && sourcePaths.indexOf(node.sourcePath) < 0) {
-                        delete node.sourcePath
-                    }
-                    for (var index = 0; index < node.kids.length; index++) {
-                        filterSourcePath(node.kids[index], sourcePaths);
-                    }
-                }
-
                 datasetService.getSourcePaths($scope.fileName).then(function (data) {
+                    function filterSourcePath(node, sourcePaths) {
+                        if (node.sourcePath && sourcePaths.indexOf(node.sourcePath) < 0) {
+                            delete node.sourcePath
+                        }
+                        for (var index = 0; index < node.kids.length; index++) {
+                            filterSourcePath(node.kids[index], sourcePaths);
+                        }
+                    }
                     filterSourcePath(tree, data.sourcePaths);
                 });
             });
