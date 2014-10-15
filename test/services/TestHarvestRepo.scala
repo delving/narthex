@@ -29,42 +29,28 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
   val gitFile = new File(gitDir, s"test-source-repo.xml")
 
   def resourceFile(letter: String): File = {
-    val name = s"source-$letter.xml"
-    val url = getClass.getResource(s"/source/$name")
+    val name = s"source-$letter.zip"
+    val url = getClass.getResource(s"/harvest/$name")
     new File(url.getFile)
   }
 
-  List("a", "b", "c").map(resourceFile).foreach(f => FileUtils.copyFile(f, new File(incoming, f.getName)))
+  List("a", "b", "c", "d").map(resourceFile).foreach(f => FileUtils.copyFile(f, new File(incoming, f.getName)))
 //  deleteQuietly(incoming)
 
-  def incomingPage(letter: String): String = {
-    val name = s"source-$letter.xml"
-    val file = new File(incoming, name)
-    FileUtils.readFileToString(file)
-  }
+  def incomingZip(letter: String): File = new File(incoming, s"source-$letter.zip")
 
   val harvestRepo = new HarvestRepo(sourceDir, recordRoot, uniqueId)
 
   "A Source Repository" should "accept files and pages" in {
 
     harvestRepo.countFiles should be(0)
-    harvestRepo.acceptPage(incomingPage("a")).get
+    harvestRepo.acceptZipFile(incomingZip("a")).get
     harvestRepo.countFiles should be(3)
-    harvestRepo.acceptPage(incomingPage("b")).get
+    harvestRepo.acceptZipFile(incomingZip("b")).get
     harvestRepo.countFiles should be(7)
-    harvestRepo.acceptPage(incomingPage("c")).get
+    harvestRepo.acceptZipFile(incomingZip("c")).get
     harvestRepo.countFiles should be(11)
-
-    harvestRepo.acceptPage(s"""
-      |<envelope>
-      |  <list>
-      |    <thing which="3">
-      |      <box>final</box>
-      |    </thing>
-      |  </list>
-      |</envelope>
-      """.stripMargin.trim).get
-
+    harvestRepo.acceptZipFile(incomingZip("d")).get
     harvestRepo.countFiles should be(16)
 
     val seenIds = mutable.HashSet[String]()

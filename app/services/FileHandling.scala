@@ -63,6 +63,13 @@ object FileHandling {
     override def getPercentRead: Int = ((100 * counter.getByteCount) / fileSize).toInt
   }
 
+  def sourceFromZipFile(file: File, totalSize: Long): Source = {
+    if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Not a zip: ${file.getName}")
+    val zc = new ZipConcatXML(new ZipFile(file))
+//    (zc, zc.readProgress)
+    zc
+  }
+
   def sourceFromFile(file: File): (Source, ReadProgress) = {
     val name = file.getName
     if (name.endsWith(".zip")) {
@@ -106,6 +113,15 @@ object FileHandling {
     case x => ""
   }
 
+  def getZipFileSize(zipFile: ZipFile) = {
+    val e = zipFile.entries()
+    var size = 0L
+    while (e.hasMoreElements) {
+      size += e.nextElement().getSize
+    }
+    size
+  }
+
   //  def createDigest = MessageDigest.getInstance("SHA1")
   //  def hex(digest: MessageDigest) = digest.digest().map("%02X" format _).mkString
 
@@ -115,15 +131,6 @@ object FileHandling {
   }
 
   class ZipConcatXML(val file: ZipFile) extends Source {
-
-    def getFileSize = {
-      val e = file.entries()
-      var size = 0L
-      while (e.hasMoreElements) {
-        size += e.nextElement().getSize
-      }
-      size
-    }
 
     var entries = file.entries()
     var entry: Option[ZipEntry] = None
@@ -173,7 +180,7 @@ object FileHandling {
 
     override protected val iter: Iterator[Char] = new ZipEntryIterator
 
-    def readProgress = new ZipReadProgress(getFileSize)
+    def readProgress = new ZipReadProgress(getZipFileSize(file))
   }
 
 }

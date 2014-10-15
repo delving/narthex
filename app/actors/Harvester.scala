@@ -16,9 +16,13 @@
 
 package actors
 
+import java.io.{File, FileOutputStream}
+import java.util.zip.{ZipEntry, ZipOutputStream}
+
 import actors.Harvester._
 import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
+import org.apache.commons.io.FileUtils.deleteQuietly
 import play.api.Logger
 import services.DatasetState._
 import services.Harvesting._
@@ -50,7 +54,19 @@ object Harvester {
 
 class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends Actor with RecordHandling with Harvesting {
   val log = Logger
+  var tempFile = File.createTempFile("narthex-harvest", ".zip")
+  println(tempFile.getAbsolutePath) // todo: remove
+  val zip = new ZipOutputStream(new FileOutputStream(tempFile))
+  var pageCount = 0
   var bomb: Option[ActorRef] = None
+
+  def addPage(page: String) = {
+    val fileName = s"harvest_$pageCount.xml"
+    zip.putNextEntry(new ZipEntry(fileName))
+    zip.write(page.getBytes("UTF-8"))
+    zip.closeEntry()
+    pageCount = pageCount + 1
+  }
 
   def receive = {
 
@@ -71,8 +87,8 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         self ! HarvestComplete(Some("Interrupted while harvesting"))
       }
       else {
-        val pageName = harvestRepo.acceptPage(records)
-        log.info(s"Harvest Page: $pageName - $url $database to $datasetRepo: $diagnostic")
+        val pageNumber = addPage(records)
+        log.info(s"Harvest Page: $pageNumber - $url $database to $datasetRepo: $diagnostic")
         if (diagnostic.isLast) {
           self ! HarvestComplete(None)
         }
@@ -104,7 +120,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
             self ! HarvestComplete(Some(errorString))
 
           case None =>
-            val pageNumber: Option[Int] = harvestRepo.acceptPage(records)
+            val pageNumber = addPage(records)
             log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
             resumptionToken match {
               case None =>
@@ -122,11 +138,14 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
 
     case HarvestComplete(error) =>
       log.info(s"Harvest complete $datasetRepo error: $error")
+      zip.close()
       error match {
         case Some(errorString) =>
+          deleteQuietly(tempFile)
           datasetRepo.datasetDb.setStatus(EMPTY, error = errorString)
           context.stop(self)
         case None =>
+          harvestRepo.acceptZipFile(tempFile)
           self ! CollectSource()
       }
 
@@ -145,7 +164,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
       val recordCount = harvestRepo.generateSourceFile(incomingFile, sendProgress, datasetRepo.datasetDb.setNamespaceMap)
       datasetRepo.datasetDb.setStatus(READY)
-      val info  = datasetRepo.datasetDb.getDatasetInfoOption.get
+      val info = datasetRepo.datasetDb.getDatasetInfoOption.get
       val recordRoot = (info \ "delimit" \ "recordRoot").text
       val uniqueId = (info \ "delimit" \ "uniqueId").text
       datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)

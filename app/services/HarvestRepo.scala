@@ -17,6 +17,7 @@ package services
 
 import java.io._
 
+import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.Files._
 import services.RecordHandling.RawRecord
@@ -73,13 +74,13 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
     num.toInt
   }
 
-  private def xmlName(number: Int): String = s"${numberString(number)}.xml"
+  private def zipName(number: Int): String = s"${numberString(number)}.zip"
 
   private def idsName(number: Int): String = s"${numberString(number)}.ids"
 
   private def activeIdsName(number: Int): String = s"${numberString(number)}.act"
 
-  private def createXmlFile(number: Int): File = new File(sourceDir, xmlName(number))
+  private def createZipFile(number: Int): File = new File(sourceDir, zipName(number))
 
   private def createIdsFile(number: Int): File = new File(sourceDir, idsName(number))
 
@@ -94,23 +95,23 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
     fileList.filter(f => f.getName.startsWith(prefix))
   }
 
-  private def avoidSet(xmlFile: File): Set[String] = {
+  private def avoidSet(zipFile: File): Set[String] = {
     var idSet = new mutable.HashSet[String]()
-    avoidFiles(xmlFile).foreach(Source.fromFile(_).getLines().foreach(idSet.add))
+    avoidFiles(zipFile).foreach(Source.fromFile(_).getLines().foreach(idSet.add))
     idSet.toSet
   }
 
-  private def listXmlFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".xml")).sortBy(_.getName)
+  private def listZipFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".zip")).sortBy(_.getName)
 
   private def processFile(progress: Int => Boolean, fillFile: File => File) = {
     def writeToFile(file: File, string: String): Unit = Some(new PrintWriter(file)).foreach { writer =>
       writer.println(string)
       writer.close()
     }
-    val xmlFiles = listXmlFiles
-    val fileNumber = xmlFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
-    val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else xmlFiles
-    val file = fillFile(createXmlFile(fileNumber))
+    val zipFiles = listZipFiles
+    val fileNumber = zipFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
+    val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
+    val file = fillFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
     val parser = new RawRecordParser(recordRoot, uniqueId)
     def receiveRecord(record: RawRecord): Unit = idSet.add(record.id)
@@ -152,8 +153,9 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
 
   def countFiles = fileList.size
 
-  def acceptPage(page: String): Option[Int] = processFile(percent => true, { targetFile =>
-    writeFile(targetFile, page)
+  def acceptZipFile(file: File): Option[Int] = processFile(percent => true, { targetFile =>
+    if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Requires zip file ${file.getName}")
+    FileUtils.moveFile(file, targetFile)
     targetFile
   })
 
@@ -162,16 +164,17 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String) extends
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(readFile).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
-    listXmlFiles.foreach { xmlFile =>
-      var idSet = avoidSet(xmlFile)
-      val source = Source.fromFile(xmlFile)
+    listZipFiles.foreach { zipFile =>
+      var idSet = avoidSet(zipFile)
+      val (source, readProgress) = FileHandling.sourceFromFile(zipFile)
+      // todo: perhaps use readProgress instead of total active ids
       parser.parse(source, idSet.toSet, output, sendProgress, totalRecords = Some(totalActiveIds))
       source.close()
     }
     parser.namespaceMap
   }
 
-  def lastModified = listXmlFiles.lastOption.map(_.lastModified()).getOrElse(0L)
+  def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
   def generateSourceFile(sourceFile: File, progress: Int => Boolean, setNamespaceMap: Map[String,String] => Unit): Int = {
     Logger.info(s"Generating source from $sourceDir to $sourceFile")
