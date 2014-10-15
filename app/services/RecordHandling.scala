@@ -44,6 +44,7 @@ trait RecordHandling extends BaseXTools {
 
   val RECORD_LIST_CONTAINER = "pockets"
   val RECORD_CONTAINER = "pocket"
+  val RECORD_UNIQUE_ID = "@id"
 
   class RawRecordParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
     val path = new mutable.Stack[(String, StringBuilder)]

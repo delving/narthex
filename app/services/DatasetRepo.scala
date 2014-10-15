@@ -135,16 +135,14 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
     val delim = info \ "delimit"
     val recordCountText = (delim \ "recordCount").text
     val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
-    val recordRoot = (delim \ "recordRoot").text
-    val uniqueId = (delim \ "uniqueId").text
     val message = if (HARVEST.matches((info \ "origin" \ "type").text)) {
-      var recordContainer = s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
-      var idExtension = uniqueId.substring(recordRoot.length)
-      var recordTag = recordRoot.substring(recordRoot.lastIndexOf("/"))
-      SaveRecords(s"$recordContainer$recordTag", s"$recordContainer$recordTag$idExtension", recordCount)
+      val recordRoot = s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
+      SaveRecords(recordRoot, s"$recordRoot/$RECORD_UNIQUE_ID", recordCount, Some(recordRoot))
     }
     else {
-      SaveRecords(recordRoot, uniqueId, recordCount)
+      val recordRoot = (delim \ "recordRoot").text
+      val uniqueId = (delim \ "uniqueId").text
+      SaveRecords(recordRoot, uniqueId, recordCount, None)
     }
     // set status now so it's done before the actor starts
     datasetDb.setStatus(SAVING, percent = 1)

@@ -29,7 +29,7 @@ import scala.language.postfixOps
 
 object Saver {
 
-  case class SaveRecords(recordRoot: String, uniqueId: String, recordCount: Long)
+  case class SaveRecords(recordRoot: String, uniqueId: String, recordCount: Long, deepRecordContainer: Option[String])
 
   case class SaveProgress(percent: Int)
 
@@ -52,7 +52,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
     case InterruptSaving() =>
       bomb = Some(sender)
 
-    case SaveRecords(recordRoot, uniqueId, recordCount) =>
+    case SaveRecords(recordRoot, uniqueId, recordCount, deepRecordContainer) =>
       log.info(s"Saving $datasetRepo")
       datasetRepo.getLatestIncomingFile.map { incomingFile =>
         datasetRepo.recordDb.createDb
@@ -61,7 +61,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
         import context.dispatcher
         val f = Future(datasetRepo.recordDb.db {
           session =>
-            parser = new RawRecordParser(recordRoot, uniqueId)
+            parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
             val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
             val progress = context.actorOf(Props(new Actor() {
               override def receive: Receive = {
