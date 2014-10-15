@@ -63,11 +63,15 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
   def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = {
     val datasetInfo = getDatasetInfo
     // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
-    val delim = datasetInfo \ "delimit"
-    val recordRoot = (delim \ "recordRoot").text
-    val prefix = recordRoot.substring(0, recordRoot.lastIndexOf("/"))
-    if (!path.startsWith(prefix)) throw new RuntimeException(s"$path must start with $prefix!")
-    val queryPathField = path.substring(prefix.length)
+    val recordContainer = if (DatasetOrigin.HARVEST.matches((datasetInfo \ "origin" \ "type").text)) {
+      s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
+    }
+    else {
+      val recordRoot = (datasetInfo \ "delimit" \ "recordRoot").text
+      recordRoot.substring(0, recordRoot.lastIndexOf("/"))
+    }
+    if (!path.startsWith(recordContainer)) throw new RuntimeException(s"$path must start with $recordContainer!")
+    val queryPathField = path.substring(recordContainer.length)
     val field = queryPathField.substring(queryPathField.lastIndexOf("/") + 1)
     val queryPath = queryPathField.substring(0, queryPathField.lastIndexOf("/"))
     db {

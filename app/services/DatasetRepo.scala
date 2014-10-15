@@ -26,6 +26,7 @@ import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.libs.Akka
+import services.DatasetOrigin.HARVEST
 import services.DatasetState._
 import services.FileHandling.clearDir
 import services.Harvesting._
@@ -86,7 +87,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
       val state = (datasetInfo \ "status" \ "state").text
       if (!HARVESTING.matches(state)) {
         datasetDb.setStatus(HARVESTING, percent = 1)
-        datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
+        datasetDb.setOrigin(HARVEST, "?")
         datasetDb.setHarvestInfo("pmh", url, dataset, prefix)
         datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
         val harvestRepo = new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID)
@@ -106,7 +107,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
       if (!HARVESTING.matches(state)) {
         datasetDb.setStatus(HARVESTING, percent = 1)
         datasetDb.createDataset(HARVESTING, percent = 1)
-        datasetDb.setOrigin(DatasetOrigin.HARVEST, "?")
+        datasetDb.setOrigin(HARVEST, "?")
         datasetDb.setHarvestInfo("adlib", url, dataset, "adlib")
         datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
         val harvestRepo = new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
@@ -130,15 +131,25 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
   }
 
   def saveRecords() = {
-    val delim = recordDb.getDatasetInfo \ "delimit"
-    val recordRoot = (delim \ "recordRoot").text
-    val uniqueId = (delim \ "uniqueId").text
+    val info = recordDb.getDatasetInfo
+    val delim = info \ "delimit"
     val recordCountText = (delim \ "recordCount").text
     val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
+    val recordRoot = (delim \ "recordRoot").text
+    val uniqueId = (delim \ "uniqueId").text
+    val message = if (HARVEST.matches((info \ "origin" \ "type").text)) {
+      var recordContainer = s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
+      var idExtension = uniqueId.substring(recordRoot.length)
+      var recordTag = recordRoot.substring(recordRoot.lastIndexOf("/"))
+      SaveRecords(s"$recordContainer$recordTag", s"$recordContainer$recordTag$idExtension", recordCount, name)
+    }
+    else {
+      SaveRecords(recordRoot, uniqueId, recordCount, name)
+    }
     // set status now so it's done before the actor starts
     datasetDb.setStatus(SAVING, percent = 1)
     val saver = actor(Saver.props(this))
-    saver ! SaveRecords(recordRoot, uniqueId, recordCount, name)
+    saver ! message
   }
 
   def index = new File(analyzedDir, "index.json")
