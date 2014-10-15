@@ -41,10 +41,8 @@ define(["angular"], function () {
             if (datasetInfo.origin.type == 'origin-harvest') {
                 // use a different record root and unique id
                 $scope.recordContainer = "/pockets/pocket";
-                var idExtension = datasetInfo.delimit.uniqueId.substring(datasetInfo.delimit.recordRoot.length);
-                var recordTag = datasetInfo.delimit.recordRoot.match(/[/][^/]+$/);
-                $scope.recordRoot = $scope.recordContainer + recordTag;
-                $scope.uniqueId = $scope.recordContainer + recordTag + idExtension;
+                $scope.recordRoot = $scope.recordContainer;
+                $scope.uniqueId = $scope.recordRoot + "/@id";
                 $scope.allowUniqueIdSet = false;
             }
             else if (datasetInfo.delimit.recordRoot) {
@@ -68,23 +66,6 @@ define(["angular"], function () {
                     }
                 }
                 sortKids(tree);
-                $scope.tree = tree;
-
-                function selectNode(path, node) {
-                    if (!path.length) {
-                        $scope.selectNode(node);
-                    }
-                    else {
-                        var tag = path.shift();
-                        for (var index = 0; index < node.kids.length; index++) {
-                            if (tag == node.kids[index].tag) {
-                                selectNode(path, node.kids[index]);
-                                return;
-                            }
-                        }
-                    }
-                }
-                if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
 
                 function setDelim(node) {
                     if (node.path == $scope.recordRoot) {
@@ -126,6 +107,24 @@ define(["angular"], function () {
                     }
                     filterSourcePath(tree, data.sourcePaths);
                 });
+
+                $scope.tree = tree;
+
+                function selectNode(path, node) {
+                    if (!path.length) {
+                        $scope.selectNode(node);
+                    }
+                    else {
+                        var tag = path.shift();
+                        for (var index = 0; index < node.kids.length; index++) {
+                            if (tag == node.kids[index].tag) {
+                                selectNode(path, node.kids[index]);
+                                return;
+                            }
+                        }
+                    }
+                }
+                if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
             });
         });
 
