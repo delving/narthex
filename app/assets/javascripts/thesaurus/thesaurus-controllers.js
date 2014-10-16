@@ -21,6 +21,7 @@ define(["angular"], function (angular) {
         $scope.thesaurusA = $routeParams.thesaurusA;
         $scope.thesaurusB = $routeParams.thesaurusB;
 
+        $scope.sought = "";
         $scope.soughtA = "";
         $scope.soughtB = "";
         $scope.conceptsA = [];
@@ -51,6 +52,10 @@ define(["angular"], function (angular) {
         $scope.selectSoughtB = function (value) {
             $scope.soughtB = value;
         };
+
+        $scope.$watch("sought", function (sought) {
+            if (sought) $scope.soughtA = $scope.soughtB = sought;
+        });
 
         $scope.$watch("soughtA", function (soughtA) {
             if (soughtA) searchSkosA(soughtA);
