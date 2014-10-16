@@ -26,7 +26,8 @@
             "dashboard",
             "dataset",
             "terms",
-            "categories"
+            "categories",
+            "thesaurus"
         ],
         shim: {
             "jsRoutes": {

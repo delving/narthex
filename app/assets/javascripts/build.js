@@ -26,7 +26,8 @@ requirejs.config({
         "dashboard",
         "dataset",
         "terms",
-        "categories"
+        "categories",
+        "thesaurus"
     ],
     paths: {
         // Make the optimizer ignore CDN assets
