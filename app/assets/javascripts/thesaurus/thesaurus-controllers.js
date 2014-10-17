@@ -54,7 +54,7 @@ define(["angular"], function (angular) {
         };
 
         $scope.$watch("sought", function (sought) {
-            if (sought) $scope.soughtA = $scope.soughtB = sought;
+            $scope.soughtA = $scope.soughtB = sought;
         });
 
         $scope.$watch("soughtA", function (soughtA) {
