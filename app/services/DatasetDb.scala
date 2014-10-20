@@ -20,6 +20,7 @@ import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json.{JsObject, JsString}
+import services.Harvesting.HarvestCron
 
 import scala.xml.{Elem, XML}
 
@@ -131,6 +132,13 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
     "url" -> url,
     "dataset" -> dataset,
     "prefix" -> prefix
+  )
+
+  def setHarvestCron(harvestCron: HarvestCron) = setProperties(
+    "harvestCron",
+    "previous" -> toBasicString(harvestCron.previous),
+    "delay" -> harvestCron.delay,
+    "unit" -> harvestCron.unit.toString
   )
 
   def setSipFacts(facts: Map[String, String]) = setProperties(

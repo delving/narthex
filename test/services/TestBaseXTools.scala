@@ -14,5 +14,6 @@ class TestBaseXTools extends FlatSpec with Matchers with BaseXTools {
     val utcDate = fromUTCDateTime("1957-03-20")
     utcDate.getMillis should be(-403491600000L)
     toXSDString(utcDate) should be("1957-03-20T00:00:00.000+01:00")
+    toBasicString(utcDate) should be("1957-03-20T00:00:00")
   }
 }

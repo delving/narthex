@@ -59,10 +59,13 @@ trait BaseXTools {
 
   val XSD_FORMATTER = ISODateTimeFormat.dateTime()
   val UTC_FORMATTER = ISODateTimeFormat.dateOptionalTimeParser()
+  val BASIC = ISODateTimeFormat.dateHourMinuteSecond()
 
   def toXSDString(dateTime: DateTime) = XSD_FORMATTER.print(dateTime)
 
   def fromXSDDateTime(dateString: String) = XSD_FORMATTER.parseDateTime(dateString)
+
+  def toBasicString(dateTime: DateTime) = BASIC.print(dateTime)
 
   def fromUTCDateTime(dateString: String) = UTC_FORMATTER.parseDateTime(dateString)
 

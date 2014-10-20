@@ -173,6 +173,7 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.list,
           routes.javascript.Dashboard.analyze,
           routes.javascript.Dashboard.harvest,
+          routes.javascript.Dashboard.setHarvestCron,
           routes.javascript.Dashboard.setMetadata,
           routes.javascript.Dashboard.setPublication,
           routes.javascript.Dashboard.datasetInfo,

@@ -62,22 +62,6 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
     this
   }
 
-//  def createHarvestRepo: Option[HarvestRepo] = {
-//    datasetDb.getDatasetInfoOption match {
-//      case Some(info) =>
-//        val delim = info \ "delimit"
-//        val recordRoot = (delim \ "recordRoot").text
-//        val uniqueId = (delim \ "uniqueId").text
-//        if (recordRoot.nonEmpty && uniqueId.nonEmpty) {
-//          Some(new HarvestRepo(harvestDir, recordRoot, uniqueId))
-//        }
-//        else {
-//          None
-//        }
-//      case None => None
-//    }
-//  }
-
   def createIncomingFile(fileName: String) = new File(incomingDir, fileName)
 
   def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
@@ -89,10 +73,12 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         datasetDb.setStatus(HARVESTING, percent = 1)
         datasetDb.setOrigin(HARVEST, "?")
         datasetDb.setHarvestInfo("pmh", url, dataset, prefix)
+        val harvestCron = Harvesting.harvestCron(datasetInfo)
+        datasetDb.setHarvestCron(harvestCron)
         datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
         val harvestRepo = new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID, Some(PMH_DEEP_RECORD_CONTAINER))
         val harvester = actor(Harvester.props(this, harvestRepo))
-        val kickoff = HarvestPMH(url, dataset, prefix)
+        val kickoff = HarvestPMH(url, dataset, prefix, None)
         Logger.info(s"Harvest $kickoff")
         harvester ! kickoff
       }
@@ -106,18 +92,58 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
       val state = (datasetInfo \ "status" \ "state").text
       if (!HARVESTING.matches(state)) {
         datasetDb.setStatus(HARVESTING, percent = 1)
-        datasetDb.createDataset(HARVESTING, percent = 1)
         datasetDb.setOrigin(HARVEST, "?")
         datasetDb.setHarvestInfo("adlib", url, dataset, "adlib")
+        val harvestCron = Harvesting.harvestCron(datasetInfo)
+        datasetDb.setHarvestCron(harvestCron)
         datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
-        val harvestRepo = new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID, None)
+        val harvestRepo = new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID, deepRecordContainer = None)
         val harvester = actor(Harvester.props(this, harvestRepo))
-        val kickoff = HarvestAdLib(url, dataset)
+        val kickoff = HarvestAdLib(url, dataset, modifiedAfter = None)
         Logger.info(s"Harvest $kickoff")
         harvester ! kickoff
       }
       else {
         Logger.info("Harvest busy already")
+      }
+  }
+
+  def nextHarvest() = datasetDb.getDatasetInfoOption map {
+    datasetInfo =>
+      val state = (datasetInfo \ "status" \ "state").text
+      val harvestCron = Harvesting.harvestCron(datasetInfo)
+      if (!HARVESTING.matches(state) && harvestCron.timeToWork) {
+        datasetDb.setStatus(HARVESTING, percent = 1)
+        datasetDb.setHarvestCron(harvestCron.next)
+        val harvest = datasetInfo \ "harvest"
+        val harvestType = (harvest \ "type").text
+        val (harvestRepo, kickoff) = harvestType match {
+          case "pmh" =>
+            (new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID, Some(PMH_DEEP_RECORD_CONTAINER)),
+              HarvestPMH(
+                url = (harvest \ "url").text,
+                set = (harvest \ "dataset").text,
+                prefix = (harvest \ "prefix").text,
+                modifiedAfter = Some(harvestCron.previous)
+              ))
+
+          case "adlib" =>
+            (new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID, deepRecordContainer = None),
+              HarvestAdLib(
+                url = (harvest \ "url").text,
+                database = (harvest \ "dataset").text,
+                modifiedAfter = Some(harvestCron.previous)
+              ))
+
+          case _ =>
+            throw new RuntimeException(s"Unknown harvest type: $harvestType")
+        }
+        val harvester = actor(Harvester.props(this, harvestRepo))
+        Logger.info(s"Re-harvest $kickoff")
+        harvester ! kickoff
+      }
+      else {
+        Logger.info(s"No re-harvest of $harvestCron")
       }
   }
 

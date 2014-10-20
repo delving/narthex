@@ -88,6 +88,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                setHarvestCron: function (fileName, harvestCron) {
+                    return dash.setHarvestCron(fileName).post(harvestCron).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 analyze: function (fileName) {
                     return dash.analyze(fileName).get().then(
                         function (response) {

@@ -133,6 +133,29 @@
     </form>
 </script>
 
+<script type="text/ng-template" id="harvest-cron-form.html">
+    <form name="form" class="form file-harvest">
+        <fieldset>
+            <div class="form-group">
+                <label for="hc_prev">Previous</label>
+                <input id="hc_prev" class="form-control" data-ng-model="file.info.harvestCron.previous"/>
+            </div>
+            <div class="form-group">
+                <label for="hc_delay">Delay</label>
+                <input id="hc_delay" class="form-control" data-ng-model="file.info.harvestCron.delay"/>
+            </div>
+            <div class="form-group">
+                <label for="hc_unit">Unit</label>
+                <input id="hc_unit" class="form-control" data-ng-model="file.info.harvestCron.unit"/>
+            </div>
+            <button typ="button" class="btn btn-success" data-ng-click="setHarvestCron(file)">
+                <i class="fa fa-refresh"></i>
+                <span>Save</span>
+            </button>
+        </fieldset>
+    </form>
+</script>
+
 <script type="text/ng-template" id="metadata-form.html">
     <form name="form" class="form file-harvest">
         <fieldset>
@@ -225,10 +248,16 @@
         <div class="col-md-3">
             <!-- harvest form -->
             <button class="btn btn-sm btn-default btn-block" data-ng-click="file.showHarvestForm = !file.showHarvestForm" data-ng-show="allowHarvest(file)">
-                <i class="fa fa-recycle"></i>
+                <i class="fa fa-download"></i>
                 Harvest from Server
             </button>
             <div data-ng-include="'harvest-form.html'" data-ng-if="file.showHarvestForm">harvest form</div>
+
+            <button class="btn btn-sm btn-default btn-block" data-ng-click="file.showHarvestCronForm = !file.showHarvestCronForm" data-ng-show="allowHarvest(file)">
+                <i class="fa fa-recycle"></i>
+                Scheduled Harvest
+            </button>
+            <div data-ng-include="'harvest-cron-form.html'" data-ng-if="file.showHarvestCronForm">harvest cron form</div>
 
             <!-- file drop -->
             <button class="btn btn-sm btn-default btn-block" data-ng-click="file.showDropForm = !file.showDropForm" data-ng-show="allowDrop(file)">

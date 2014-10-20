@@ -86,6 +86,22 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
+  def setHarvestCron(fileName: String) = Secure(parse.json) {
+    token => implicit request => {
+      def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
+      try {
+        val datasetRepo = repo.datasetRepo(fileName)
+        val cron = Harvesting.harvestCron(required("previous"), required("delay"), required("unit"))
+        Logger.info(s"harvest $cron")
+        datasetRepo.datasetDb.setHarvestCron(cron)
+        Ok
+      } catch {
+        case e: IllegalArgumentException =>
+          NotAcceptable(Json.obj("problem" -> e.getMessage))
+      }
+    }
+  }
+
   def setMetadata(fileName: String) = Secure(parse.json) {
     token => implicit request => {
       try {
@@ -324,6 +340,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  val DATASET_PROPERTY_LISTS = List("origin", "metadata", "publication", "status", "delimit", "namespaces", "harvest", "sipFacts", "sipHints")
+  val DATASET_PROPERTY_LISTS = List("origin", "metadata", "publication", "status", "delimit", "namespaces", "harvest", "harvestCron", "sipFacts", "sipHints")
 
 }

@@ -16,14 +16,16 @@
 
 package services
 
+import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.ws.WS
 import services.Harvesting._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.xml.Elem
 
-object Harvesting {
+object Harvesting extends BaseXTools {
 
   val PMH_RECORD_ROOT = "/OAI-PMH/ListRecords/record"
   val PMH_UNIQUE_ID = "/OAI-PMH/ListRecords/record/header/identifier"
@@ -41,18 +43,61 @@ object Harvesting {
     }
   }
 
-  case class AdLibHarvestPage(records: String, url: String, database: String, diagnostic: AdLibDiagnostic)
+  case class AdLibHarvestPage(records: String, url: String, database: String, modifiedAfter: Option[DateTime], diagnostic: AdLibDiagnostic)
+
+  case class DelayUnit(name: String, millis: Long) {
+    override def toString = name
+
+    def matches(otherName: String) = name == otherName
+
+    def after(previous: DateTime) = new DateTime(previous.getMillis + millis)
+  }
+
+  object DelayUnit {
+    val MINUTES = DelayUnit("minutes", 1000 * 60)
+    val HOURS = DelayUnit("hours", MINUTES.millis * 60)
+    val DAYS = DelayUnit("days", HOURS.millis * 24)
+    val WEEKS = DelayUnit("weeks", DAYS.millis * 7)
+
+    val ALL_UNITS = List(WEEKS, DAYS, HOURS, MINUTES)
+
+    def fromString(string: String): Option[DelayUnit] = ALL_UNITS.find(s => s.matches(string))
+  }
+
+  case class HarvestCron(previous: DateTime, delay: Int, unit: DelayUnit) {
+
+    def next = HarvestCron(unit.after(previous), delay, unit)
+
+    def timeToWork = unit.after(previous).isBeforeNow
+  }
+
+  def harvestCron(previousString: String, delayString: String, unitString: String): HarvestCron = {
+    val previous = if (previousString.nonEmpty) fromUTCDateTime(previousString) else new DateTime()
+    val delay = if (delayString.nonEmpty) delayString.toInt else 0
+    val unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS)
+    HarvestCron(previous, delay, unit)
+  }
+
+  def harvestCron(datasetInfo: Elem): HarvestCron = {
+    val hc = datasetInfo \ "harvestCron"
+    harvestCron(
+      previousString = (hc \ "previous").text,
+      delayString = (hc \ "delay").text,
+      unitString = (hc \ "unit").text
+    )
+  }
 
 }
 
 trait Harvesting extends BaseXTools {
 
-  def fetchAdLibPage(url: String, database: String, diagnostic: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
+  def fetchAdLibPage(url: String, database: String, modifiedAfter: Option[DateTime], diagnostic: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
     val startFrom = diagnostic.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
+    val search = modifiedAfter.map(after => s"modified greater '${toBasicString(after)}'").getOrElse("all")
     requestUrl.withQueryString(
       "database" -> database,
-      "search" -> "all",
+      "search" -> search,
       "xmltype" -> "grouped",
       "limit" -> "50",
       "startFrom" -> startFrom.toString
@@ -66,6 +111,7 @@ trait Harvesting extends BaseXTools {
           response.xml.toString(),
           url,
           database,
+          modifiedAfter,
           AdLibDiagnostic(
             totalItems = hits.toInt,
             current = firstItem.toInt,
@@ -75,21 +121,24 @@ trait Harvesting extends BaseXTools {
     }
   }
 
-  def fetchPMHPage(url: String, set: String, metadataPrefix: String, resumption: Option[PMHResumptionToken] = None) = {
+  def fetchPMHPage(url: String, set: String, metadataPrefix: String, modifiedAfter: Option[DateTime], resumption: Option[PMHResumptionToken] = None) = {
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
+    val from = modifiedAfter.map(toBasicString).getOrElse(toBasicString(new DateTime(0L)))
     val request = resumption match {
       case None =>
         if (set.isEmpty) {
           requestUrl.withQueryString(
             "verb" -> "ListRecords",
-            "metadataPrefix" -> metadataPrefix
+            "metadataPrefix" -> metadataPrefix,
+            "from" -> from
           )
         }
         else {
           requestUrl.withQueryString(
             "verb" -> "ListRecords",
             "set" -> set,
-            "metadataPrefix" -> metadataPrefix
+            "metadataPrefix" -> metadataPrefix,
+            "from" -> from
           )
         }
       case Some(token) =>
@@ -100,7 +149,7 @@ trait Harvesting extends BaseXTools {
     }
     request.get().map {
       response =>
-        val errorNode =  if (response.status != 200) {
+        val errorNode = if (response.status != 200) {
           Logger.info(s"response: ${response.body}")
           <error>HTTP Response: {response.statusText}</error>
         }

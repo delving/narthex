@@ -314,6 +314,12 @@ define(["angular"], function () {
             });
         };
 
+        $scope.setHarvestCron = function (file) {
+            dashboardService.setHarvestCron(file.name, file.info.harvestCron).then(function () {
+                fetchDatasetList();
+            });
+        };
+
         $scope.startAnalysis = function (file) {
             dashboardService.analyze(file.name).then(function () {
                 fetchDatasetList();

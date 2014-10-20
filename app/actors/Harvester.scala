@@ -23,6 +23,7 @@ import actors.Harvester._
 import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
 import org.apache.commons.io.FileUtils.deleteQuietly
+import org.joda.time.DateTime
 import play.api.Logger
 import services.DatasetState._
 import services.Harvesting._
@@ -33,9 +34,9 @@ import scala.language.postfixOps
 
 object Harvester {
 
-  case class HarvestAdLib(url: String, database: String)
+  case class HarvestAdLib(url: String, database: String, modifiedAfter: Option[DateTime])
 
-  case class HarvestPMH(url: String, set: String, prefix: String)
+  case class HarvestPMH(url: String, set: String, prefix: String, modifiedAfter: Option[DateTime])
 
   case class HarvestProgress(percent: Int)
 
@@ -73,15 +74,15 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       log.info(s"Interrupt harvesting $datasetRepo")
       bomb = Some(sender)
 
-    case HarvestAdLib(url, database) =>
+    case HarvestAdLib(url, database, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
-      val futurePage = fetchAdLibPage(url, database)
+      val futurePage = fetchAdLibPage(url, database, modifiedAfter)
       futurePage.onFailure {
         case e => self ! HarvestComplete(Some(e.toString))
       }
       futurePage pipeTo self
 
-    case AdLibHarvestPage(records, url, database, diagnostic) =>
+    case AdLibHarvestPage(records, url, database, modifiedAfter, diagnostic) =>
       if (bomb.isDefined) {
         self ! HarvestComplete(Some("Interrupted while harvesting"))
       }
@@ -93,7 +94,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         }
         else {
           datasetRepo.datasetDb.setStatus(HARVESTING, percent = diagnostic.percentComplete)
-          val futurePage = fetchAdLibPage(url, database, Some(diagnostic))
+          val futurePage = fetchAdLibPage(url, database, modifiedAfter, Some(diagnostic))
           futurePage.onFailure {
             case e => self ! HarvestComplete(Some(e.toString))
           }
@@ -101,9 +102,9 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         }
       }
 
-    case HarvestPMH(url, set, prefix) =>
+    case HarvestPMH(url, set, prefix, modifiedAfter) =>
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
-      val futurePage = fetchPMHPage(url, set, prefix)
+      val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter)
       futurePage.onFailure {
         case e => self ! HarvestComplete(Some(e.toString))
       }
@@ -126,7 +127,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
                 self ! HarvestComplete(None)
               case Some(token) =>
                 datasetRepo.datasetDb.setStatus(HARVESTING, percent = token.percentComplete)
-                val futurePage = fetchPMHPage(url, set, prefix, Some(token))
+                val futurePage = fetchPMHPage(url, set, prefix, None, Some(token))
                 futurePage.onFailure {
                   case e => self ! HarvestComplete(Some(e.toString))
                 }
