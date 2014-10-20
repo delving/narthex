@@ -15,9 +15,7 @@
 //===========================================================================
 package services
 
-import java.io.File
-
-import scala.io.Source
+import java.io.{File, FileInputStream}
 
 object SkosRepo {
   lazy val repo: SkosRepo = new SkosRepo(NarthexConfig.USER_HOME)
@@ -36,6 +34,6 @@ class SkosRepo(userHome: String) {
 
   def file(name: String) = new File(skos, name.replaceAll(" ", "_") + SUFFIX)
 
-  def vocabulary(name: String) = SkosVocabulary(Source.fromFile(file(name)))
+  def vocabulary(name: String) = SkosVocabulary(new FileInputStream(file(name)))
 
 }
