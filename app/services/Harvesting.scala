@@ -50,7 +50,10 @@ object Harvesting extends BaseXTools {
 
     def matches(otherName: String) = name == otherName
 
-    def after(previous: DateTime) = new DateTime(previous.getMillis + millis)
+    def after(previous: DateTime, delay: Int) = {
+      val nonzeroDelay = if (delay <= 0) 1 else delay
+      new DateTime(previous.getMillis + millis * nonzeroDelay)
+    }
   }
 
   object DelayUnit {
@@ -66,14 +69,16 @@ object Harvesting extends BaseXTools {
 
   case class HarvestCron(previous: DateTime, delay: Int, unit: DelayUnit) {
 
-    def next = HarvestCron(unit.after(previous), delay, unit)
+    def now = HarvestCron(new DateTime(), delay, unit)
 
-    def timeToWork = unit.after(previous).isBeforeNow
+    def next = HarvestCron(unit.after(previous, delay), delay, unit)
+
+    def timeToWork = unit.after(previous, delay).isBeforeNow
   }
 
   def harvestCron(previousString: String, delayString: String, unitString: String): HarvestCron = {
     val previous = if (previousString.nonEmpty) fromUTCDateTime(previousString) else new DateTime()
-    val delay = if (delayString.nonEmpty) delayString.toInt else 0
+    val delay = if (delayString.nonEmpty) delayString.toInt else 1
     val unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS)
     HarvestCron(previous, delay, unit)
   }

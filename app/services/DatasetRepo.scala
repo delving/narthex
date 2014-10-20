@@ -114,7 +114,8 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
       val harvestCron = Harvesting.harvestCron(datasetInfo)
       if (!HARVESTING.matches(state) && harvestCron.timeToWork) {
         datasetDb.setStatus(HARVESTING, percent = 1)
-        datasetDb.setHarvestCron(harvestCron.next)
+        val nextHarvestCron = harvestCron.next
+        datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
         val harvest = datasetInfo \ "harvest"
         val harvestType = (harvest \ "type").text
         val (harvestRepo, kickoff) = harvestType match {
