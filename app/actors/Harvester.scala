@@ -30,6 +30,7 @@ import services.Harvesting._
 import services._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.language.postfixOps
 
 object Harvester {
@@ -68,6 +69,14 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
     pageCount = pageCount + 1
   }
 
+  def handleFailure(future: Future[Any], message: String) = {
+    future.onFailure {
+      case e: Exception =>
+        log.warn(s"Harvest failure", e)
+        self ! HarvestComplete(Some(e.toString))
+    }
+  }
+
   def receive = {
 
     case InterruptHarvest() =>
@@ -77,12 +86,8 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
     case HarvestAdLib(url, database, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
       val futurePage = fetchAdLibPage(url, database, modifiedAfter)
+      handleFailure(futurePage, "adlib harvest")
       futurePage pipeTo self
-      futurePage.onFailure {
-        case e =>
-          self ! HarvestComplete(Some(e.toString))
-          log.info(s"Failure", e)
-      }
 
     case AdLibHarvestPage(records, error: Option[String], url, database, modifiedAfter, diagnostic) =>
       if (bomb.isDefined) {
@@ -100,9 +105,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         else {
           datasetRepo.datasetDb.setStatus(HARVESTING, percent = diagnostic.percentComplete)
           val futurePage = fetchAdLibPage(url, database, modifiedAfter, Some(diagnostic))
-          futurePage.onFailure {
-            case e => self ! HarvestComplete(Some(e.toString))
-          }
+          handleFailure(futurePage, "adlib harvest page")
           futurePage pipeTo self
         }
       }
@@ -110,9 +113,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
     case HarvestPMH(url, set, prefix, modifiedAfter) =>
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
       val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter)
-      futurePage.onFailure {
-        case e => self ! HarvestComplete(Some(e.toString))
-      }
+      handleFailure(futurePage, "pmh harvest")
       futurePage pipeTo self
 
     case PMHHarvestPage(records, url, set, prefix, total, error, resumptionToken) =>
@@ -133,9 +134,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
               case Some(token) =>
                 datasetRepo.datasetDb.setStatus(HARVESTING, percent = token.percentComplete)
                 val futurePage = fetchPMHPage(url, set, prefix, None, Some(token))
-                futurePage.onFailure {
-                  case e => self ! HarvestComplete(Some(e.toString))
-                }
+                handleFailure(futurePage, "pmh harvest page")
                 futurePage pipeTo self
             }
         }
@@ -171,8 +170,9 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       val recordCount = harvestRepo.generateSourceFile(incomingFile, sendProgress, datasetRepo.datasetDb.setNamespaceMap)
       datasetRepo.datasetDb.setStatus(READY)
       val info = datasetRepo.datasetDb.getDatasetInfoOption.get
-      val recordRoot = (info \ "delimit" \ "recordRoot").text
-      val uniqueId = (info \ "delimit" \ "uniqueId").text
+      val delimit = info \ "delimit"
+      val recordRoot = (delimit \ "recordRoot").text
+      val uniqueId = (delimit \ "uniqueId").text
       datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
       context.stop(self)
       context.stop(progress)

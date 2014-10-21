@@ -153,6 +153,8 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
 
   def countFiles = fileList.size
 
+  def clear() = FileHandling.clearDir(sourceDir)
+
   def acceptZipFile(file: File): Option[File] = processFile(percent => true, { targetFile =>
     if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Requires zip file ${file.getName}")
     FileUtils.moveFile(file, targetFile)

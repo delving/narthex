@@ -23,7 +23,7 @@ import services.Harvesting._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.xml.Elem
+import scala.xml.{Elem, NodeSeq}
 
 object Harvesting extends BaseXTools {
 
@@ -97,6 +97,17 @@ object Harvesting extends BaseXTools {
 
 trait Harvesting extends BaseXTools {
 
+  val FAKE_TOTAL_RECORDS = 10000
+
+  def tagToInt(nodeSeq: NodeSeq, tag: String, default: Int = 0) = try {
+    (nodeSeq \ tag).text.toInt
+  }
+  catch {
+    case e: Exception =>
+      Logger.warn(s"$tag: $e")
+      default
+  }
+
   def fetchAdLibPage(url: String, database: String, modifiedAfter: Option[DateTime], diagnostic: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
     val startFrom = diagnostic.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
@@ -111,14 +122,6 @@ trait Harvesting extends BaseXTools {
     ).get().map {
       response =>
         println(response.body)
-        def toInt(name: String, s: String) = try {
-          s.toInt
-        }
-        catch {
-          case e: Exception =>
-            Logger.warn(s"$name: $e")
-            0
-        }
         val diagnostic = response.xml \ "diagnostic"
         val error = diagnostic \ "error"
         if (error.nonEmpty) {
@@ -130,13 +133,10 @@ trait Harvesting extends BaseXTools {
             url,
             database,
             modifiedAfter,
-            AdLibDiagnostic(0,0,0)
+            AdLibDiagnostic(0, 0, 0)
           )
         }
         else {
-          val hits = (diagnostic \ "hits").text
-          val firstItem = (diagnostic \ "first_item").text
-          val hitsOnDisplay = (diagnostic \ "hits_on_display").text
           AdLibHarvestPage(
             response.xml.toString(),
             error = None,
@@ -144,9 +144,9 @@ trait Harvesting extends BaseXTools {
             database,
             modifiedAfter,
             AdLibDiagnostic(
-              totalItems = toInt("hits", hits),
-              current = toInt("first_item", firstItem),
-              pageItems = toInt("hits_on_display", hitsOnDisplay)
+              totalItems = tagToInt(diagnostic, "hits"),
+              current = tagToInt(diagnostic, "first_item"),
+              pageItems = tagToInt(diagnostic, "hits_on_display")
             )
           )
         }
@@ -155,6 +155,7 @@ trait Harvesting extends BaseXTools {
 
   def fetchPMHPage(url: String, set: String, metadataPrefix: String, modifiedAfter: Option[DateTime], resumption: Option[PMHResumptionToken] = None) = {
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
+    // 2014-09-15
     val from = modifiedAfter.map(toBasicString).getOrElse(toBasicString(new DateTime(0L)))
     val request = resumption match {
       case None =>
@@ -181,6 +182,7 @@ trait Harvesting extends BaseXTools {
     }
     request.get().map {
       response =>
+        println(response.body)
         val errorNode = if (response.status != 200) {
           Logger.info(s"response: ${response.body}")
           <error>HTTP Response: {response.statusText}</error>
@@ -190,9 +192,9 @@ trait Harvesting extends BaseXTools {
         }
         if (errorNode.isEmpty) {
           val tokenNode = response.xml \ "ListRecords" \ "resumptionToken"
-          val newToken = if (tokenNode.nonEmpty && tokenNode.text.nonEmpty) {
-            val completeListSize = (tokenNode \ "@completeListSize").text.toInt
-            val cursor = (tokenNode \ "@cursor").text.toInt
+          val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
+            val completeListSize = tagToInt(tokenNode, "@completeListSize", FAKE_TOTAL_RECORDS)
+            val cursor = tagToInt(tokenNode, "@cursor", 1)
             Some(PMHResumptionToken(
               value = tokenNode.text,
               currentRecord = cursor,
@@ -202,7 +204,11 @@ trait Harvesting extends BaseXTools {
           else {
             None
           }
-          val total = if (newToken.isDefined) newToken.get.totalRecords else resumption.get.totalRecords
+          Logger.info(s"new token: $newToken")
+          val total =
+            if (newToken.isDefined) newToken.get.totalRecords
+            else if (resumption.isDefined) resumption.get.totalRecords
+            else FAKE_TOTAL_RECORDS
           PMHHarvestPage(
             records = response.xml.toString(),
             url = url,
