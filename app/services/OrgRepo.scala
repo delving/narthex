@@ -269,6 +269,9 @@ case class SipZip
 }
 
 case class PMHResumptionToken(value: String, currentRecord: Int, totalRecords: Int) {
+
+  def hasPercentComplete: Boolean = totalRecords > 0 && currentRecord > 0 && currentRecord < totalRecords
+
   def percentComplete: Int = {
     val pc = (100 * currentRecord) / totalRecords
     if (pc < 1) 1 else pc

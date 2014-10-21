@@ -127,7 +127,13 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
             case None =>
               self ! HarvestComplete(None)
             case Some(token) =>
-              if (progressReporter.sendPage(pageCount)) {
+              val keepHarvesting = if (token.hasPercentComplete) {
+                progressReporter.sendPercent(token.percentComplete)
+              }
+              else {
+                progressReporter.sendPage(pageCount)
+              }
+              if (keepHarvesting) {
                 val futurePage = fetchPMHPage(url, set, prefix, None, Some(token))
                 handleFailure(futurePage, "pmh harvest page")
                 futurePage pipeTo self

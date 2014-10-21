@@ -97,8 +97,6 @@ object Harvesting extends BaseXTools {
 
 trait Harvesting extends BaseXTools {
 
-  val FAKE_TOTAL_RECORDS = 10000
-
   def tagToInt(nodeSeq: NodeSeq, tag: String, default: Int = 0) = try {
     (nodeSeq \ tag).text.toInt
   }
@@ -191,7 +189,7 @@ trait Harvesting extends BaseXTools {
         if (errorNode.isEmpty) {
           val tokenNode = response.xml \ "ListRecords" \ "resumptionToken"
           val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
-            val completeListSize = tagToInt(tokenNode, "@completeListSize", FAKE_TOTAL_RECORDS)
+            val completeListSize = tagToInt(tokenNode, "@completeListSize")
             val cursor = tagToInt(tokenNode, "@cursor", 1)
             Some(PMHResumptionToken(
               value = tokenNode.text,
@@ -206,7 +204,7 @@ trait Harvesting extends BaseXTools {
           val total =
             if (newToken.isDefined) newToken.get.totalRecords
             else if (resumption.isDefined) resumption.get.totalRecords
-            else FAKE_TOTAL_RECORDS
+            else 0
           PMHHarvestPage(
             records = response.xml.toString(),
             url = url,
