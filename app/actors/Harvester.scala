@@ -77,14 +77,19 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
     case HarvestAdLib(url, database, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
       val futurePage = fetchAdLibPage(url, database, modifiedAfter)
-      futurePage.onFailure {
-        case e => self ! HarvestComplete(Some(e.toString))
-      }
       futurePage pipeTo self
+      futurePage.onFailure {
+        case e =>
+          self ! HarvestComplete(Some(e.toString))
+          log.info(s"Failure", e)
+      }
 
-    case AdLibHarvestPage(records, url, database, modifiedAfter, diagnostic) =>
+    case AdLibHarvestPage(records, error: Option[String], url, database, modifiedAfter, diagnostic) =>
       if (bomb.isDefined) {
         self ! HarvestComplete(Some("Interrupted while harvesting"))
+      }
+      else if (error.isDefined) {
+        self ! HarvestComplete(error)
       }
       else {
         val pageNumber = addPage(records)

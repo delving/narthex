@@ -43,7 +43,8 @@ object Harvesting extends BaseXTools {
     }
   }
 
-  case class AdLibHarvestPage(records: String, url: String, database: String, modifiedAfter: Option[DateTime], diagnostic: AdLibDiagnostic)
+  case class AdLibHarvestPage(records: String, error: Option[String], url: String, database: String,
+                              modifiedAfter: Option[DateTime], diagnostic: AdLibDiagnostic)
 
   case class DelayUnit(name: String, millis: Long) {
     override def toString = name
@@ -99,7 +100,8 @@ trait Harvesting extends BaseXTools {
   def fetchAdLibPage(url: String, database: String, modifiedAfter: Option[DateTime], diagnostic: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
     val startFrom = diagnostic.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
-    val search = modifiedAfter.map(after => s"modified greater '${toBasicString(after)}'").getOrElse("all")
+    // 2014-10-16T17:00
+    val search = modifiedAfter.map(after => s"modification greater '${toBasicString(after)}'").getOrElse("all")
     requestUrl.withQueryString(
       "database" -> database,
       "search" -> search,
@@ -108,21 +110,46 @@ trait Harvesting extends BaseXTools {
       "startFrom" -> startFrom.toString
     ).get().map {
       response =>
+        println(response.body)
+        def toInt(name: String, s: String) = try {
+          s.toInt
+        }
+        catch {
+          case e: Exception =>
+            Logger.warn(s"$name: $e")
+            0
+        }
         val diagnostic = response.xml \ "diagnostic"
-        val hits = (diagnostic \ "hits").text
-        val firstItem = (diagnostic \ "first_item").text
-        val hitsOnDisplay = (diagnostic \ "hits_on_display").text
-        AdLibHarvestPage(
-          response.xml.toString(),
-          url,
-          database,
-          modifiedAfter,
-          AdLibDiagnostic(
-            totalItems = hits.toInt,
-            current = firstItem.toInt,
-            pageItems = hitsOnDisplay.toInt
+        val error = diagnostic \ "error"
+        if (error.nonEmpty) {
+          val errorInfo = (error \ "info").text
+          val errorMessage = (error \ "message").text
+          AdLibHarvestPage(
+            response.xml.toString(),
+            error = Some(s"Error: $errorInfo, '$errorMessage'"),
+            url,
+            database,
+            modifiedAfter,
+            AdLibDiagnostic(0,0,0)
           )
-        )
+        }
+        else {
+          val hits = (diagnostic \ "hits").text
+          val firstItem = (diagnostic \ "first_item").text
+          val hitsOnDisplay = (diagnostic \ "hits_on_display").text
+          AdLibHarvestPage(
+            response.xml.toString(),
+            error = None,
+            url,
+            database,
+            modifiedAfter,
+            AdLibDiagnostic(
+              totalItems = toInt("hits", hits),
+              current = toInt("first_item", firstItem),
+              pageItems = toInt("hits_on_display", hitsOnDisplay)
+            )
+          )
+        }
     }
   }
 

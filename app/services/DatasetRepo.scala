@@ -117,7 +117,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         val nextHarvestCron = harvestCron.next
         datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
         val harvest = datasetInfo \ "harvest"
-        val harvestType = (harvest \ "type").text
+        val harvestType = (harvest \ "harvestType").text
         val (harvestRepo, kickoff) = harvestType match {
           case "pmh" =>
             (new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID, Some(PMH_DEEP_RECORD_CONTAINER)),

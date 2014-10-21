@@ -3,7 +3,7 @@ package services
 import org.basex.core.cmd._
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
 
 /**
  * Minimal connection with BaseX, wrapping the Java API
@@ -59,7 +59,7 @@ trait BaseXTools {
 
   val XSD_FORMATTER = ISODateTimeFormat.dateTime()
   val UTC_FORMATTER = ISODateTimeFormat.dateOptionalTimeParser()
-  val BASIC = ISODateTimeFormat.dateHourMinuteSecond()
+  val BASIC = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss")
 
   def toXSDString(dateTime: DateTime) = XSD_FORMATTER.print(dateTime)
 
