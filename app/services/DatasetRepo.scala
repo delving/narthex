@@ -17,15 +17,12 @@ package services
 
 import java.io.File
 
-import actors.Analyzer.InterruptAnalysis
-import actors.Harvester.{HarvestAdLib, HarvestPMH, InterruptHarvest}
+import actors.Harvester.{HarvestAdLib, HarvestPMH}
 import actors.Saver.SaveRecords
 import actors._
-import akka.actor.{PoisonPill, Props}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
-import play.libs.Akka
 import services.DatasetOrigin.HARVEST
 import services.DatasetState._
 import services.FileHandling.clearDir
@@ -33,7 +30,7 @@ import services.Harvesting._
 import services.RecordHandling.{StoredRecord, TargetConcept}
 import services.RepoUtil.pathToDirectory
 
-class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
+class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling {
 
   val rootDir = new File(orgRepo.datasetsDir, name)
   val incomingDir = new File(rootDir, "incoming")
@@ -48,11 +45,6 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
   lazy val recordDb = new RecordDb(this, dbName)
 
   override def toString = name
-
-  def actor(props: Props) = {
-    Logger.info(s"Creating actor $name")
-    Akka.system.actorOf(props, name)
-  }
 
   def mkdirs = {
     rootDir.mkdirs()
@@ -78,10 +70,9 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
         val harvestRepo = new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID, Some(PMH_DEEP_RECORD_CONTAINER))
         harvestRepo.clear()
-        val harvester = actor(Harvester.props(this, harvestRepo))
         val kickoff = HarvestPMH(url, dataset, prefix, None)
         Logger.info(s"Harvest $kickoff")
-        harvester ! kickoff
+        OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
       }
       else {
         Logger.info("Harvest busy already")
@@ -100,10 +91,9 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
         val harvestRepo = new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID, deepRecordContainer = None)
         harvestRepo.clear()
-        val harvester = actor(Harvester.props(this, harvestRepo))
         val kickoff = HarvestAdLib(url, dataset, modifiedAfter = None)
         Logger.info(s"Harvest $kickoff")
-        harvester ! kickoff
+        OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
       }
       else {
         Logger.info("Harvest busy already")
@@ -141,9 +131,8 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
           case _ =>
             throw new RuntimeException(s"Unknown harvest type: $harvestType")
         }
-        val harvester = actor(Harvester.props(this, harvestRepo))
         Logger.info(s"Re-harvest $kickoff")
-        harvester ! kickoff
+        OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
       }
       else {
         Logger.info(s"No re-harvest of $harvestCron")
@@ -154,8 +143,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
     getLatestIncomingFile.map { incomingFile =>
       clearDir(analyzedDir)
       datasetDb.setStatus(SPLITTING, percent = 1)
-      val analyzer = actor(Analyzer.props(this))
-      analyzer ! Analyzer.AnalyzeFile(incomingFile)
+      OrgSupervisor.create(Analyzer.props(this), name, analyzer => analyzer ! Analyzer.AnalyzeFile(incomingFile))
     }
   }
 
@@ -175,8 +163,7 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
     }
     // set status now so it's done before the actor starts
     datasetDb.setStatus(SAVING, percent = 1)
-    val saver = actor(Saver.props(this))
-    saver ! message
+    OrgSupervisor.create(Saver.props(this), name, saver => saver ! message)
   }
 
   def index = new File(analyzedDir, "index.json")
@@ -243,8 +230,6 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
 
     Logger.info(s"$name: $currentState --> $newState")
 
-    val selection = Akka.system.actorSelection(s"akka://application/user/$name")
-
     if (newState != currentState) newState match {
 
       case DELETED =>
@@ -255,44 +240,28 @@ class DatasetRepo(val orgRepo: Repo, val name: String) extends RecordHandling {
         true
 
       case EMPTY =>
-        if (currentState == HARVESTING) {
-          // what if there is no actor listening?
-          Logger.info("Sending InterruptHarvest")
-          selection ! InterruptHarvest()
-        }
-        datasetDb.setStatus(newState)
-        recordDb.dropDb()
-        clearDir(incomingDir)
-        clearDir(analyzedDir)
-        clearDir(harvestDir)
+        OrgSupervisor.shutdownOr(name, {
+          datasetDb.setStatus(newState)
+          recordDb.dropDb()
+          clearDir(incomingDir)
+          clearDir(analyzedDir)
+          clearDir(harvestDir)
+        })
         true
 
       case READY =>
-        if (currentState == SPLITTING || currentState == ANALYZING) {
-          // what if there is no actor listening?
-          Logger.info("Sending InterruptAnalysis")
-          // todo: what about InterruptCollection
-          selection ! InterruptAnalysis()
-        }
-        else {
+        OrgSupervisor.shutdownOr(name, {
           datasetDb.setStatus(newState)
           recordDb.dropDb()
           clearDir(analyzedDir)
-        }
+        })
         true
 
       case ANALYZED =>
-        if (currentState == SAVING) {
-          // todo: PROBLEMS HERE - REVIEW
-          // what if there is no actor listening?
-          Logger.info("Sending InterruptCollecting")
-          selection ! InterruptAnalysis()
-        }
-        else {
-          selection ! PoisonPill
+        OrgSupervisor.shutdownOr(name, {
           datasetDb.setStatus(newState)
           recordDb.dropDb()
-        }
+        })
         true
 
       case SAVED =>

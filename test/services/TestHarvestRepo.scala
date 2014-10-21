@@ -2,6 +2,7 @@ package services
 
 import java.io.File
 
+import actors.ProgressReporter
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
@@ -65,7 +66,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
       content should be("final")
     }
 
-    harvestRepo.parse(receiveRecord, sendProgress)
+    harvestRepo.parse(receiveRecord, ProgressReporter())
 
     recordCount should be(4)
 
@@ -74,7 +75,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
     
-    harvestRepo.generateSourceFile(gitFile, percent => true, map => Unit)
+    harvestRepo.generateSourceFile(gitFile, ProgressReporter(), map => Unit)
 
     FileHandling.gitCommit(gitFile, "Several words of message") should be(true)
   }
@@ -109,7 +110,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
       content should be("final")
     }
 
-    harvestRepo.parse(receiveRecord, sendProgress)
+    harvestRepo.parse(receiveRecord, ProgressReporter())
 
     recordCount should be(4)
   }

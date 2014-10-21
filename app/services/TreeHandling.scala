@@ -18,11 +18,12 @@ package services
 
 import java.io.{BufferedWriter, FileWriter}
 
+import actors.ProgressReporter
 import org.apache.commons.io.FileUtils
+import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
-import services.FileHandling.ReadProgress
 
 import scala.collection.mutable
 import scala.io.Source
@@ -104,62 +105,65 @@ trait TreeHandling {
 
   object TreeNode {
 
-    def apply(source: Source, length: Long, readProgress: ReadProgress, directory: DatasetRepo, progress: Int => Boolean): Option[TreeNode] = {
-      val base = new TreeNode(directory.rootNode, null, null)
+    def apply(source: Source, length: Long, datasetRepo: DatasetRepo, progressReporter: ProgressReporter): Option[TreeNode] = {
+      val base = new TreeNode(datasetRepo.rootNode, null, null)
       var node = base
-      var percentWas = -1
-      var lastProgress = 0l
       val events = new XMLEventReader(source)
-      var running = true
 
-      def sendProgress() = {
-        val percentZero = readProgress.getPercentRead
-        val percent = if (percentZero == 0) 1 else percentZero
-        if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
-          running = progress(percent)
-          percentWas = percent
-          lastProgress = System.currentTimeMillis()
+      try {
+        while (events.hasNext && progressReporter.keepReading) {
+
+          events.next() match {
+
+            case EvElemStart(pre, label, attrs, scope) =>
+              node = node.kid(FileHandling.tag(pre, label)).start()
+              attrs.foreach {
+                attr =>
+                  val kid = node.kid(s"@${attr.prefixedKey}").start()
+                  kid.value(attr.value.toString())
+                  kid.end()
+              }
+
+            case EvText(text) =>
+              node.value(text)
+
+            case EvEntityRef(entity) => node.value(FileHandling.translateEntity(entity))
+
+            case EvElemEnd(pre, label) =>
+              node.end()
+              node = node.parent
+
+            case EvComment(text) =>
+              FileHandling.stupidParser(text, string => node.value(FileHandling.translateEntity(string)))
+
+            case x =>
+              println("EVENT? " + x) // todo: record these in an error file for later
+          }
         }
       }
-
-      while (events.hasNext && running) {
-
-        events.next() match {
-
-          case EvElemStart(pre, label, attrs, scope) =>
-            node = node.kid(FileHandling.tag(pre, label)).start()
-            attrs.foreach {
-              attr =>
-                val kid = node.kid(s"@${attr.prefixedKey}").start()
-                kid.value(attr.value.toString())
-                kid.end()
-            }
-
-          case EvText(text) =>
-            node.value(text)
-
-          case EvEntityRef(entity) => node.value(FileHandling.translateEntity(entity))
-
-          case EvElemEnd(pre, label) =>
-            sendProgress()
-            node.end()
-            node = node.parent
-
-          case EvComment(text) =>
-            FileHandling.stupidParser(text, string => node.value(FileHandling.translateEntity(string)))
-
-          case x =>
-            println("EVENT? " + x) // todo: record these in an error file for later
-        }
+//      catch {
+//        case e:Exception =>
+//          if (progressReporter.keepReading) {
+//            Logger.info(s"keep reading so.. $e")
+//            throw e
+//          }
+//          else {
+//            Logger.info(s"Eating exception $e")
+//          }
+//      }
+      finally {
+        Logger.info(s"Stopping events $datasetRepo")
+        events.stop()
       }
-      if (running) {
+      if (progressReporter.keepReading) {
         val root = base.kids.values.head
         base.finish()
         val pretty = Json.prettyPrint(Json.toJson(root))
-        FileUtils.writeStringToFile(directory.index, pretty, "UTF-8")
+        FileUtils.writeStringToFile(datasetRepo.index, pretty, "UTF-8")
         Some(root)
       }
       else {
+        Logger.info(s"Interrupted TreeNode $datasetRepo")
         None
       }
     }

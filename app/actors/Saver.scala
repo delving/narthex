@@ -16,8 +16,9 @@
 
 package actors
 
+import actors.OrgSupervisor.ActorShutdown
 import actors.Saver._
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, Props}
 import org.basex.core.cmd.Optimize
 import play.api.Logger
 import services.DatasetState._
@@ -37,20 +38,18 @@ object Saver {
 
   case class SaveError(error: String)
 
-  case class InterruptSaving()
-
   def props(datasetRepo: DatasetRepo) = Props(new Saver(datasetRepo))
 }
 
 class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
   var log = Logger
   var parser: RawRecordParser = null
-  var bomb: Option[ActorRef] = None
+  var progress : Option[ProgressReporter] = None
 
   def receive = {
 
-    case InterruptSaving() =>
-      bomb = Some(sender)
+    case ActorShutdown(name) =>
+      progress.foreach(_.bomb = Some(sender))
 
     case SaveRecords(recordRoot, uniqueId, recordCount, deepRecordContainer) =>
       log.info(s"Saving $datasetRepo")
@@ -63,17 +62,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
           session =>
             parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
             val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
-            val progress = context.actorOf(Props(new Actor() {
-              override def receive: Receive = {
-                case SaveProgress(percent) =>
-                  datasetRepo.datasetDb.setStatus(SAVING, percent = percent)
-              }
-            }))
-            def sendProgress(percent: Int): Boolean = {
-              if (bomb.isDefined) return false
-              progress ! SaveProgress(percent)
-              true
-            }
+            val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb, readProgress)
             def receiveRecord(record: RawRecord) = {
               tick += 1
               if (tick % 10000 == 0) {
@@ -86,7 +75,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
               session.add(fileName, bytesOf(record.text))
             }
             try {
-              if (parser.parse(source, Set.empty, receiveRecord, sendProgress, totalRecords = Some(recordCount))) {
+              if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {
                 self ! SaveComplete()
               }
               else {
@@ -100,7 +89,6 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
             }
             finally {
               source.close()
-              context.stop(progress)
             }
         })
       }

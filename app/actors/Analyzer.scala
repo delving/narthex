@@ -20,6 +20,7 @@ import java.io.File
 
 import actors.Analyzer._
 import actors.Collator._
+import actors.OrgSupervisor.ActorShutdown
 import actors.Sorter._
 import akka.actor.{Actor, ActorRef, Props}
 import org.apache.commons.io.FileUtils
@@ -38,15 +39,11 @@ object Analyzer {
 
   case class AnalyzeFile(file: File)
 
-  case class AnalysisProgress(percent: Int)
-
   case class AnalysisTreeComplete(json: JsValue)
 
   case class AnalysisError(error: String)
 
   case class AnalysisComplete()
-
-  case class InterruptAnalysis()
 
   def props(datasetRepo: DatasetRepo) = Props(new Analyzer(datasetRepo))
 }
@@ -54,33 +51,24 @@ object Analyzer {
 class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
   val log = Logger
   val LINE = """^ *(\d*) (.*)$""".r
-  var bomb: Option[ActorRef] = None
+  var progress: Option[ProgressReporter] = None
   var sorters = List.empty[ActorRef]
   var collators = List.empty[ActorRef]
 
   def receive = {
 
-    case InterruptAnalysis() =>
+    case ActorShutdown(name) =>
       log.info(s"Interrupted analysis $datasetRepo")
-      bomb = Some(sender)
+      progress.foreach(_.bomb = Some(sender))
 
     case AnalyzeFile(file) =>
       log.info(s"Analyzer on ${file.getName}")
-      val progress = context.actorOf(Props(new Actor() {
-        override def receive: Receive = {
-          case AnalysisProgress(percent) =>
-            datasetRepo.datasetDb.setStatus(SPLITTING, percent = percent)
-        }
-      }))
-      def sendProgress(percent: Int): Boolean = {
-        if (bomb.isDefined) return false
-        progress ! AnalysisProgress(percent)
-        true
-      }
       val (source, readProgress) = FileHandling.sourceFromFile(file)
       import context.dispatcher
       val f = future {
-        TreeNode(source, file.length, readProgress, datasetRepo, sendProgress) match {
+        val progressReporter = ProgressReporter(SPLITTING, datasetRepo.datasetDb, readProgress)
+        progress = Some(progressReporter)
+        TreeNode(source, file.length, datasetRepo, progressReporter) match {
           case Some(tree) =>
             tree.launchSorters {
               node =>
@@ -98,6 +86,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
           case None =>
             self ! AnalysisError(s"Interrupted while splitting ${file.getName}")
         }
+        Logger.info(s"Closing source $datasetRepo")
         source.close()
       }
       f.onFailure {
@@ -107,6 +96,12 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
           self ! AnalysisError(s"Unable to read ${file.getName}: $ex")
       }
 
+    case AnalysisTreeComplete(json) =>
+      val progressReporter = ProgressReporter(ANALYZING, datasetRepo.datasetDb)
+      progress = Some(progressReporter)
+      progressReporter.sendWorkers(sorters.size + collators.size)
+      log.info(s"Tree Complete at ${datasetRepo.analyzedDir.getName}")
+
     case Counted(nodeRepo, uniqueCount, sampleSizes) =>
       collators = collators.filter(collator => collator != sender)
       FileUtils.deleteQuietly(nodeRepo.sorted)
@@ -114,10 +109,12 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
         "uniqueCount" -> uniqueCount,
         "samples" -> sampleSizes
       ))
-      if (!bomb.isDefined) {
-        val sorter = context.actorOf(Sorter.props(nodeRepo))
-        sorters = sorter :: sorters
-        sorter ! Sort(SortType.HISTOGRAM_SORT)
+      progress.foreach { p =>
+        if (p.keepWorking) {
+          val sorter = context.actorOf(Sorter.props(nodeRepo))
+          sorters = sorter :: sorters
+          sorter ! Sort(SortType.HISTOGRAM_SORT)
+        }
       }
 
     case Sorted(nodeRepo, sortedFile, sortType) =>
@@ -125,10 +122,12 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       sortType match {
         case SortType.VALUE_SORT =>
           FileUtils.deleteQuietly(nodeRepo.values)
-          if (!bomb.isDefined) {
-            val collator = context.actorOf(Collator.props(nodeRepo))
-            collators = collator :: collators
-            collator ! Count()
+          progress.foreach { p =>
+            if (p.keepWorking) {
+              val collator = context.actorOf(Collator.props(nodeRepo))
+              collators = collator :: collators
+              collator ! Count()
+            }
           }
 
         case SortType.HISTOGRAM_SORT =>
@@ -148,22 +147,22 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
             self ! AnalysisComplete()
           }
           else {
-            datasetRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
+            progress.foreach { p =>
+              p.sendWorkers(sorters.size + collators.size)
+            }
           }
       }
 
-    case AnalysisTreeComplete(json) =>
-      datasetRepo.datasetDb.setStatus(ANALYZING, workers = sorters.size + collators.size)
-      log.info(s"Tree Complete at ${datasetRepo.analyzedDir.getName}")
-
     case AnalysisComplete() =>
-      if (bomb.isDefined) {
-        self ! AnalysisError("Interrupted")
-      }
-      else {
-        log.info(s"Analysis Complete, kill: ${self.toString()}")
-        datasetRepo.datasetDb.setStatus(ANALYZED)
-        context.stop(self)
+      progress.foreach { p =>
+        if (p.keepWorking) {
+          log.info(s"Analysis Complete, kill: ${self.toString()}")
+          datasetRepo.datasetDb.setStatus(ANALYZED)
+          context.stop(self)
+        }
+        else {
+          self ! AnalysisError("Interrupted")
+        }
       }
 
     case AnalysisError(error) =>

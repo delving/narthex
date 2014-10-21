@@ -57,11 +57,11 @@ object OaiPmh extends Controller with BaseXTools {
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
 
     def getFormats(identifier: Option[String]): Seq[RepoMetadataFormat] = {
-      Repo.repo.getMetadataFormats
+      OrgRepo.repo.getMetadataFormats
     }
 
     def getDataSets: Seq[PublishedDataset] = {
-      Repo.repo.getPublishedDatasets
+      OrgRepo.repo.getPublishedDatasets
     }
 
     def exists(set: String, prefix: String): Boolean = {
@@ -69,16 +69,16 @@ object OaiPmh extends Controller with BaseXTools {
     }
 
     def getFirstToken(set: String, prefix: String, headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = {
-      val datasetRepo = Repo.repo.datasetRepo(set)
+      val datasetRepo = OrgRepo.repo.datasetRepo(set)
       datasetRepo.recordDb.createHarvest(headersOnly, from, until)
     }
 
     def getHarvestValues(token: PMHResumptionToken, enriched: Boolean): (List[StoredRecord], Option[PMHResumptionToken]) = {
-      Repo.repo.getHarvest(token, enriched)
+      OrgRepo.repo.getHarvest(token, enriched)
     }
 
     def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
-      Repo.repo.datasetRepoOption(set) match {
+      OrgRepo.repo.datasetRepoOption(set) match {
         case Some(datasetRepo) =>
           datasetRepo.recordDb.recordPmh(identifier)
         case None =>

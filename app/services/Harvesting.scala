@@ -121,7 +121,6 @@ trait Harvesting extends BaseXTools {
       "startFrom" -> startFrom.toString
     ).get().map {
       response =>
-        println(response.body)
         val diagnostic = response.xml \ "diagnostic"
         val error = diagnostic \ "error"
         if (error.nonEmpty) {
@@ -182,7 +181,6 @@ trait Harvesting extends BaseXTools {
     }
     request.get().map {
       response =>
-        println(response.body)
         val errorNode = if (response.status != 200) {
           Logger.info(s"response: ${response.body}")
           <error>HTTP Response: {response.statusText}</error>

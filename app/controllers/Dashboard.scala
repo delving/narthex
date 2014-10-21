@@ -24,7 +24,7 @@ import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
 import services.DatasetState._
-import services.Repo.repo
+import services.OrgRepo.repo
 import services._
 
 object Dashboard extends Controller with Security with TreeHandling with SkosJson {

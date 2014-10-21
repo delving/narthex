@@ -17,6 +17,7 @@ package services
 
 import java.io._
 
+import actors.ProgressReporter
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.Files._
@@ -103,7 +104,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
 
   private def listZipFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".zip")).sortBy(_.getName)
 
-  private def processFile(progress: Int => Boolean, fillFile: File => File) = {
+  private def processFile(progressReporter: ProgressReporter, fillFile: File => File) = {
     def writeToFile(file: File, string: String): Unit = Some(new PrintWriter(file)).foreach { writer =>
       writer.println(string)
       writer.close()
@@ -117,7 +118,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
     def receiveRecord(record: RawRecord): Unit = idSet.add(record.id)
     val (source, readProgress) = FileHandling.sourceFromFile(file)
     try {
-      parser.parse(source, Set.empty, receiveRecord, progress, readProgress = Some(readProgress))
+      parser.parse(source, Set.empty, receiveRecord, progressReporter)
     }
     finally {
       source.close()
@@ -155,13 +156,13 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
 
   def clear() = FileHandling.clearDir(sourceDir)
 
-  def acceptZipFile(file: File): Option[File] = processFile(percent => true, { targetFile =>
+  def acceptZipFile(file: File): Option[File] = processFile(ProgressReporter(), { targetFile =>
     if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Requires zip file ${file.getName}")
     FileUtils.moveFile(file, targetFile)
     targetFile
   })
 
-  def parse(output: RawRecord => Unit, sendProgress: Int => Boolean): Map[String, String] = {
+  def parse(output: RawRecord => Unit, progressReporter: ProgressReporter): Map[String, String] = {
     val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(readFile).map(s => s.trim.toInt)
@@ -170,7 +171,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
       var idSet = avoidSet(zipFile)
       val (source, readProgress) = FileHandling.sourceFromFile(zipFile)
       // todo: perhaps use readProgress instead of total active ids
-      parser.parse(source, idSet.toSet, output, sendProgress, totalRecords = Some(totalActiveIds))
+      parser.parse(source, idSet.toSet, output, progressReporter)
       source.close()
     }
     parser.namespaceMap
@@ -178,7 +179,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSourceFile(sourceFile: File, progress: Int => Boolean, setNamespaceMap: Map[String,String] => Unit): Int = {
+  def generateSourceFile(sourceFile: File, progressReporter: ProgressReporter, setNamespaceMap: Map[String,String] => Unit): Int = {
     Logger.info(s"Generating source from $sourceDir to $sourceFile")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
@@ -191,7 +192,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
         Logger.info(s"Generating record $recordCount")
       }
     }
-    val namespaceMap = parse(writer, progress)
+    val namespaceMap = parse(writer, progressReporter)
     out.write( s"""</$RECORD_LIST_CONTAINER>\n""")
     out.close()
     setNamespaceMap(namespaceMap)

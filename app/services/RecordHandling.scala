@@ -20,9 +20,9 @@ import java.io.ByteArrayInputStream
 import java.net.URLEncoder
 import java.security.MessageDigest
 
+import actors.ProgressReporter
 import org.joda.time.DateTime
 import play.Logger
-import services.FileHandling.ReadProgress
 import services.RecordHandling.{RawRecord, StoredRecord, TargetConcept}
 
 import scala.collection.mutable
@@ -58,9 +58,7 @@ trait RecordHandling extends BaseXTools {
       source: Source,
       avoidIds: Set[String],
       output: RawRecord => Unit,
-      progress: Int => Boolean,
-      readProgress: Option[ReadProgress] = None,
-      totalRecords: Option[Long] = None
+      progressReporter: ProgressReporter
       ): Boolean = {
 
       val events = new XMLEventReader(source)
@@ -77,31 +75,6 @@ trait RecordHandling extends BaseXTools {
           countdown -= 1
         }
       }
-
-      def sendProgressRead: Unit => Unit = { x =>
-        val percentZero = readProgress.get.getPercentRead
-        val percent = if (percentZero == 0) 1 else percentZero
-        if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
-          running = progress(percent)
-          percentWas = percent
-          lastProgress = System.currentTimeMillis()
-        }
-      }
-
-      def sendProgressRecords: Unit => Unit = { x =>
-        val realPercent = ((recordCount * 100) / totalRecords.get).toInt
-        val percent = if (realPercent > 0) realPercent else 1
-        if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > 333) {
-          if (percent < 100) {
-            running = progress(percent)
-          }
-          percentWas = percent
-          lastProgress = System.currentTimeMillis()
-        }
-      }
-
-      // todo: wow this is pretty complicated, maybe there's a better way
-      var progressSender: Unit => Unit = totalRecords.map(total => sendProgressRecords).getOrElse(sendProgressRead)
 
       def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
         def recordNamespace(binding: NamespaceBinding): Unit = {
@@ -162,7 +135,6 @@ trait RecordHandling extends BaseXTools {
           val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _).getOrElse(string == recordRootPath)
           if (hitRecordRoot) {
             recordCount += 1
-            progressSender()
             indent()
             recordText.append(s"</$tag>\n")
             val record = uniqueId.map { id =>
@@ -202,7 +174,7 @@ trait RecordHandling extends BaseXTools {
         }
       }
 
-      while (events.hasNext && running) {
+      while (events.hasNext && progressReporter.keepReading) {
         events.next() match {
           case EvElemStart(pre, label, attrs, scope) => push(FileHandling.tag(pre, label), attrs, scope)
           case EvText(text) => addFieldText(text)
@@ -212,7 +184,7 @@ trait RecordHandling extends BaseXTools {
           case x => Logger.error("EVENT? " + x)
         }
       }
-      running
+      progressReporter.keepWorking
     }
 
     def pathString = path.reverse.map(_._1).mkString("/", "/", "")

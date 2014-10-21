@@ -32,8 +32,8 @@ import scala.language.postfixOps
 import scala.util.Random
 import scala.xml.Elem
 
-object Repo {
-  lazy val repo = new Repo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
+object OrgRepo {
+  lazy val repo = new OrgRepo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
 }
 
 case class DatasetOrigin(name: String) {
@@ -121,7 +121,7 @@ object RepoUtil {
 
 }
 
-class Repo(userHome: String, val orgId: String) extends RecordHandling {
+class OrgRepo(userHome: String, val orgId: String) extends RecordHandling {
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "dastasets")

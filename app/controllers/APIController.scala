@@ -26,7 +26,7 @@ import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import services.DatasetState._
-import services.Repo.repo
+import services.OrgRepo.repo
 import services._
 
 object APIController extends Controller with TreeHandling with RecordHandling {
