@@ -111,7 +111,7 @@ trait TreeHandling {
       val events = new XMLEventReader(source)
 
       try {
-        while (events.hasNext && progressReporter.keepReading) {
+        while (events.hasNext && progressReporter.keepReading()) {
 
           events.next() match {
 
@@ -155,7 +155,7 @@ trait TreeHandling {
         Logger.info(s"Stopping events $datasetRepo")
         events.stop()
       }
-      if (progressReporter.keepReading) {
+      if (progressReporter.keepWorking) {
         val root = base.kids.values.head
         base.finish()
         val pretty = Json.prettyPrint(Json.toJson(root))

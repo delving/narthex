@@ -117,6 +117,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
     val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
     def receiveRecord(record: RawRecord): Unit = idSet.add(record.id)
     val (source, readProgress) = FileHandling.sourceFromFile(file)
+    progressReporter.setReadProgress(readProgress)
     try {
       parser.parse(source, Set.empty, receiveRecord, progressReporter)
     }
@@ -156,7 +157,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
 
   def clear() = FileHandling.clearDir(sourceDir)
 
-  def acceptZipFile(file: File): Option[File] = processFile(ProgressReporter(), { targetFile =>
+  def acceptZipFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(progressReporter, { targetFile =>
     if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Requires zip file ${file.getName}")
     FileUtils.moveFile(file, targetFile)
     targetFile
@@ -167,10 +168,11 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(readFile).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
+    progressReporter.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
       var idSet = avoidSet(zipFile)
       val (source, readProgress) = FileHandling.sourceFromFile(zipFile)
-      // todo: perhaps use readProgress instead of total active ids
+      // ignore this read progress because it's one of many files
       parser.parse(source, idSet.toSet, output, progressReporter)
       source.close()
     }
@@ -179,7 +181,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSourceFile(sourceFile: File, progressReporter: ProgressReporter, setNamespaceMap: Map[String,String] => Unit): Int = {
+  def generateSourceFile(sourceFile: File, setNamespaceMap: Map[String,String] => Unit, progressReporter: ProgressReporter): Int = {
     Logger.info(s"Generating source from $sourceDir to $sourceFile")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")

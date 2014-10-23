@@ -50,16 +50,10 @@ trait RecordHandling extends BaseXTools {
     val path = new mutable.Stack[(String, StringBuilder)]
     var percentWas = -1
     var lastProgress = 0l
-    var recordCount = 0L
+    var recordCount = 0
     var namespaceMap: Map[String, String] = Map.empty
 
-    def parse
-    (
-      source: Source,
-      avoidIds: Set[String],
-      output: RawRecord => Unit,
-      progressReporter: ProgressReporter
-      ): Boolean = {
+    def parse(source: Source, avoidIds: Set[String], output: RawRecord => Unit, progressReporter: ProgressReporter): Boolean = {
 
       val events = new XMLEventReader(source)
       var depth = 0
@@ -134,7 +128,6 @@ trait RecordHandling extends BaseXTools {
           // deep record means check container instead
           val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _).getOrElse(string == recordRootPath)
           if (hitRecordRoot) {
-            recordCount += 1
             indent()
             recordText.append(s"</$tag>\n")
             val record = uniqueId.map { id =>
@@ -151,7 +144,10 @@ trait RecordHandling extends BaseXTools {
             } getOrElse {
               throw new RuntimeException("Missing id!")
             }
-            record.map(output)
+            record.foreach { r =>
+              output(r)
+              recordCount += 1
+            }
             recordText.clear()
             depth = 0
           }
@@ -174,7 +170,7 @@ trait RecordHandling extends BaseXTools {
         }
       }
 
-      while (events.hasNext && progressReporter.keepReading) {
+      while (events.hasNext && progressReporter.keepReading(recordCount)) {
         events.next() match {
           case EvElemStart(pre, label, attrs, scope) => push(FileHandling.tag(pre, label), attrs, scope)
           case EvText(text) => addFieldText(text)

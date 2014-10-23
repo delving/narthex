@@ -228,10 +228,6 @@
     </ul>
 </script>
 
-<script type="text/ng-template" id="percent-progress.html">
-    <progressbar class="progress-striped active" animate="true" value="file.info.status.percent" max="100" type="success"> {{file.info.status.percent}}%</progressbar>
-</script>
-
 <script type="text/ng-template" id="file-open.html">
 
     <div data-ng-if="file.info.status.error" class="alert alert-explain alert-dismissible" role="alert">
@@ -391,9 +387,23 @@
         <span>&nbsp;&nbsp;&nbsp;</span>
         <span class="label {{ file.stateBlock.css }}">{{ file.stateBlock.label }}</span>
 
-        <progressbar class="progress-striped active" animate="true" data-ng-if="file.info.status.percent > 0" value="file.info.status.percent" max="100" type="success"> {{file.info.status.percent}}%</progressbar>
+        <div data-ng-if="file.info.status.workers == 0">
+            <progressbar class="progress-striped active" animate="true"
+                         data-ng-if="file.info.status.percent > 0" value="file.info.status.percent" max="100" type="success">
+                {{file.info.status.percent}}%
+            </progressbar>
+        </div>
 
-        <code class="process" data-ng-if="file.info.status.workers > 0">({{file.info.status.workers}} workers)</code>
+        <div data-ng-if="file.info.status.workers == 1">
+            <progressbar class="progress-striped active" animate="true"
+                         data-ng-if="file.info.status.percent > 0" value="1 + file.info.status.percent % 100" max="100" type="success">
+                Page {{file.info.status.percent}}
+            </progressbar>
+        </div>
+
+        <code class="process" data-ng-if="file.info.status.workers > 0 && file.info.status.percent == 0">
+            ({{file.info.status.workers}} workers)
+        </code>
 
         <div data-ng-include="'file-open.html'" data-ng-show="fileOpen == file.name">file open</div>
     </div>

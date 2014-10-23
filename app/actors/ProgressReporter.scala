@@ -26,11 +26,7 @@ import services.{DatasetDb, DatasetState}
  */
 
 object ProgressReporter {
-  def apply(datasetState: DatasetState, datasetDb: DatasetDb): ProgressReporter =
-    new UpdatingProgressReporter(datasetState, datasetDb, None)
-
-  def apply(datasetState: DatasetState, datasetDb: DatasetDb, readProgress: ReadProgress): ProgressReporter =
-    new UpdatingProgressReporter(datasetState, datasetDb, Some(readProgress))
+  def apply(datasetState: DatasetState, datasetDb: DatasetDb) = new UpdatingProgressReporter(datasetState, datasetDb)
 
   def apply(): ProgressReporter = new FakeProgressReporter
 }
@@ -38,7 +34,7 @@ object ProgressReporter {
 trait ProgressReporter {
   var bomb: Option[ActorRef]
 
-  def keepReading: Boolean
+  def keepReading(value: Int = -1): Boolean
 
   def keepWorking: Boolean
 
@@ -47,52 +43,52 @@ trait ProgressReporter {
   def sendWorkers(workerCount: Int): Boolean
 
   def sendPage(page: Int): Boolean
+
+  def setMaximum(max: Int): Unit
+  
+  def setReadProgress(readProgress: ReadProgress): Unit
+
 }
 
 class FakeProgressReporter extends ProgressReporter {
   var bomb: Option[ActorRef] = None
 
-  override def keepReading: Boolean = true
+  override def keepReading(value: Int): Boolean = true
 
   override def keepWorking: Boolean = true
 
   override def sendPercent(percent: Int): Boolean = true
-  
+
   override def sendWorkers(workerCount: Int): Boolean = true
 
   override def sendPage(page: Int): Boolean = true
+
+  override def setMaximum(max: Int): Unit = {}
+
+  override def setReadProgress(readProgress: ReadProgress): Unit = {}
 }
 
-class UpdatingProgressReporter(datasetState: DatasetState, datasetDb: DatasetDb, readProgressOption: Option[ReadProgress] = None) extends ProgressReporter {
+class UpdatingProgressReporter(datasetState: DatasetState, datasetDb: DatasetDb) extends ProgressReporter {
   val PATIENCE_MILLIS = 333
   var bomb: Option[ActorRef] = None
-  var pageCount = 0
+  var readProgressOption: Option[ReadProgress] = None
+  var maximumOption: Option[Int] = None
   var percentWas = -1
   var lastProgress = 0l
 
-  def sendPercent(percent: Int): Boolean = {
-    if (bomb.isDefined) {
-      // maybe use the actor ref
-      false
-    }
-    else {
-      datasetDb.setStatus(datasetState, percent = percent)
-      true
-    }
+  private def mindTheBomb(setStatus: => Unit): Boolean = {
+    if (keepWorking) setStatus
+    keepWorking
   }
 
-  def sendWorkers(workerCount: Int): Boolean = {
-    if (bomb.isDefined) {
-      // maybe use the actor ref
-      false
-    }
-    else {
-      datasetDb.setStatus(datasetState, workers = workerCount)
-      true
-    }
-  }
+  def sendPercent(percent: Int) = mindTheBomb(datasetDb.setStatus(datasetState, percent = percent))
 
-  def keepReading: Boolean = {
+  // trick here: workers=1 indicates to the HTML template that it's pages.  could be better.
+  def sendPageNumber(percent: Int) = mindTheBomb(datasetDb.setStatus(datasetState, percent = percent, workers = 1))
+
+  def sendWorkers(workerCount: Int) = mindTheBomb(datasetDb.setStatus(datasetState, workers = workerCount))
+
+  def keepReading(value: Int): Boolean = {
     readProgressOption.map { readProgress =>
       val percentZero = readProgress.getPercentRead
       val percent = if (percentZero == 0) 1 else percentZero
@@ -103,28 +99,45 @@ class UpdatingProgressReporter(datasetState: DatasetState, datasetDb: DatasetDb,
         running
       }
       else {
-        !bomb.isDefined
+        keepWorking
       }
     } getOrElse {
-      Logger.warn("Expecting readProgress")
-      false
+      maximumOption.map { maximum =>
+        val percentZero = (100 * value) / maximum
+        val percent = if (percentZero == 0) 1 else percentZero
+        if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > PATIENCE_MILLIS) {
+          val running = sendPercent(percent)
+          percentWas = percent
+          lastProgress = System.currentTimeMillis()
+          running
+        }
+        else {
+          keepWorking
+        }
+      } getOrElse {
+        Logger.warn("Expecting readProgress or maximum")
+        false
+      }
     }
   }
 
   def keepWorking: Boolean = !bomb.isDefined
 
-  override def sendPage(page: Int): Boolean = {
-    pageCount += 1
-    val percentZero = (pageCount % 1000) / 10
+  override def sendPage(pageNumber: Int): Boolean = {
+    val percentZero = pageNumber
     val percent = if (percentZero == 0) 1 else percentZero
     if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > PATIENCE_MILLIS) {
-      val running = sendPercent(percent)
+      val running = sendPageNumber(percent)
       percentWas = percent
       lastProgress = System.currentTimeMillis()
       running
     }
     else {
-      !bomb.isDefined
+      keepWorking
     }
   }
+
+  override def setMaximum(max: Int): Unit = maximumOption = Some(max)
+
+  override def setReadProgress(readProgress: ReadProgress): Unit = readProgressOption = Some(readProgress)
 }

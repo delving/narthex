@@ -98,7 +98,9 @@ object Harvesting extends BaseXTools {
 trait Harvesting extends BaseXTools {
 
   def tagToInt(nodeSeq: NodeSeq, tag: String, default: Int = 0) = try {
-    (nodeSeq \ tag).text.toInt
+    val int = (nodeSeq \ tag).text.toInt
+    Logger.info(s"diagnostic($tag) = $int")
+    int
   }
   catch {
     case e: Exception =>
@@ -106,8 +108,8 @@ trait Harvesting extends BaseXTools {
       default
   }
 
-  def fetchAdLibPage(url: String, database: String, modifiedAfter: Option[DateTime], diagnostic: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
-    val startFrom = diagnostic.map(d => d.current + d.pageItems).getOrElse(1)
+  def fetchAdLibPage(url: String, database: String, modifiedAfter: Option[DateTime], diagnosticOption: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
+    val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // 2014-10-16T17:00
     val search = modifiedAfter.map(after => s"modification greater '${toBasicString(after)}'").getOrElse("all")

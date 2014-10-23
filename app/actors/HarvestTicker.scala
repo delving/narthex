@@ -17,6 +17,7 @@
 package actors
 
 import akka.actor.{Actor, Props}
+import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.libs.Akka
 import services.{Harvesting, OrgRepo}
@@ -40,13 +41,15 @@ object HarvestTicker {
 
 class HarvestTicker extends Actor {
 
+  val log = Logger.logger
+
   def receive = {
 
     case "tick" =>
       OrgRepo.repo.repoDb.listDatasets.foreach { dataset =>
         val harvestCron = Harvesting.harvestCron(dataset.info)
         if (harvestCron.timeToWork) {
-          println(s"Time to work on ${dataset.name}")
+          log.info(s"Time to work on ${dataset.name}")
           val datasetRepo = OrgRepo.repo.datasetRepo(dataset.name)
           datasetRepo.nextHarvest()
         }

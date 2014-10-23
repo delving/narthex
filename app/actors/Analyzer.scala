@@ -66,7 +66,8 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       val (source, readProgress) = FileHandling.sourceFromFile(file)
       import context.dispatcher
       val f = future {
-        val progressReporter = ProgressReporter(SPLITTING, datasetRepo.datasetDb, readProgress)
+        val progressReporter = ProgressReporter(SPLITTING, datasetRepo.datasetDb)
+        progressReporter.setReadProgress(readProgress)
         progress = Some(progressReporter)
         TreeNode(source, file.length, datasetRepo, progressReporter) match {
           case Some(tree) =>

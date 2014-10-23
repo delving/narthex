@@ -56,14 +56,15 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
   var tempFile = File.createTempFile("narthex-harvest", ".zip")
   val zip = new ZipOutputStream(new FileOutputStream(tempFile))
   var pageCount = 0
-  var progress: Option[ProgressReporter] = None
+  var harvestProgress: Option[ProgressReporter] = None
 
-  def addPage(page: String) = {
+  def addPage(page: String): Int = {
     val fileName = s"harvest_$pageCount.xml"
     zip.putNextEntry(new ZipEntry(fileName))
     zip.write(page.getBytes("UTF-8"))
     zip.closeEntry()
-    pageCount = pageCount + 1
+    pageCount += 1
+    pageCount
   }
 
   def handleFailure(future: Future[Any], message: String) = {
@@ -78,20 +79,20 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
 
     case ActorShutdown(name) =>
       log.info(s"Interrupt harvesting $datasetRepo")
-      progress.foreach(_.bomb = Some(sender))
+      harvestProgress.foreach(_.bomb = Some(sender))
 
     case HarvestAdLib(url, database, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
       val futurePage = fetchAdLibPage(url, database, modifiedAfter)
       handleFailure(futurePage, "adlib harvest")
-      progress = Some(ProgressReporter(HARVESTING, datasetRepo.datasetDb))
+      harvestProgress = Some(ProgressReporter(HARVESTING, datasetRepo.datasetDb))
       futurePage pipeTo self
 
     case AdLibHarvestPage(records, error: Option[String], url, database, modifiedAfter, diagnostic) =>
       if (error.isDefined) {
         self ! HarvestComplete(error)
       }
-      else progress.foreach { progressReporter =>
+      else harvestProgress.foreach { progressReporter =>
         val pageNumber = addPage(records)
         if (progressReporter.sendPercent(diagnostic.percentComplete)) {
           log.info(s"Harvest Page: $pageNumber - $url $database to $datasetRepo: $diagnostic")
@@ -111,6 +112,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
 
     case HarvestPMH(url, set, prefix, modifiedAfter) =>
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
+      harvestProgress = Some(ProgressReporter(HARVESTING, datasetRepo.datasetDb))
       val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter)
       handleFailure(futurePage, "pmh harvest")
       futurePage pipeTo self
@@ -122,7 +124,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       else {
         val pageNumber = addPage(records)
         log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
-        progress.foreach { progressReporter =>
+        harvestProgress.foreach { progressReporter =>
           resumptionToken match {
             case None =>
               self ! HarvestComplete(None)
@@ -154,16 +156,16 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
           datasetRepo.datasetDb.setStatus(EMPTY, error = errorString)
           context.stop(self)
         case None =>
-          val file = harvestRepo.acceptZipFile(tempFile)
+          val progressReporter = ProgressReporter(COLLECTING, datasetRepo.datasetDb)
+          val file = harvestRepo.acceptZipFile(tempFile, progressReporter)
           // todo: file should be parsed and cause basex updates
           self ! CollectSource()
       }
 
     case CollectSource() =>
       val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
-      val progressReporter = ProgressReporter(COLLECTING, datasetRepo.datasetDb) // todo: no read progress
-      progress = Some(progressReporter)
-      val recordCount = harvestRepo.generateSourceFile(incomingFile, progressReporter, datasetRepo.datasetDb.setNamespaceMap)
+      val progressReporter = ProgressReporter(COLLECTING, datasetRepo.datasetDb)
+      val recordCount = harvestRepo.generateSourceFile(incomingFile, datasetRepo.datasetDb.setNamespaceMap, progressReporter)
       datasetRepo.datasetDb.setStatus(READY)
       val info = datasetRepo.datasetDb.getDatasetInfoOption.get
       val delimit = info \ "delimit"
