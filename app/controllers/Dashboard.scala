@@ -24,6 +24,7 @@ import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
 import services.DatasetState._
+import services.Harvesting.HarvestType
 import services.OrgRepo.repo
 import services._
 
@@ -70,15 +71,13 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       try {
         val datasetRepo = repo.datasetRepo(fileName)
         Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $fileName")
-        required("harvestType") match {
-          case "pmh" =>
-            datasetRepo.startPmhHarvest(required("url"), optional("dataset"), required("prefix"))
-          case "adlib" =>
-            datasetRepo.startAdLibHarvest(required("url"), required("dataset"))
-          case _ =>
-            throw new IllegalArgumentException("Missing harvestType [pmh,adlib]")
+        HarvestType.fromString(required("harvestType")) map { harvestType =>
+          val prefix = if (harvestType == HarvestType.PMH) required("prefix") else ""
+          datasetRepo.startHarvest(harvestType, required("url"), optional("dataset"), prefix)
+          Ok
+        } getOrElse {
+          NotAcceptable(Json.obj("problem" -> s"unknown harvest type: ${optional("harvestType")}"))
         }
-        Ok
       } catch {
         case e: IllegalArgumentException =>
           NotAcceptable(Json.obj("problem" -> e.getMessage))

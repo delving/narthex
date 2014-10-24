@@ -27,12 +27,30 @@ import scala.xml.{Elem, NodeSeq}
 
 object Harvesting extends BaseXTools {
 
-  val PMH_RECORD_ROOT = "/OAI-PMH/ListRecords/record"
-  val PMH_UNIQUE_ID = "/OAI-PMH/ListRecords/record/header/identifier"
-  val PMH_DEEP_RECORD_CONTAINER = "/OAI-PMH/ListRecords/record/metadata"
+  case class HarvestType(name: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String] = None) {
+    override def toString = name
 
-  val ADLIB_RECORD_ROOT = "/adlibXML/recordList/record"
-  val ADLIB_UNIQUE_ID = "/adlibXML/recordList/record/@priref"
+    def matches(otherName: String) = name == otherName
+  }
+
+  object HarvestType {
+    val PMH = HarvestType(
+      name = "pmh",
+      recordRoot = "/OAI-PMH/ListRecords/record",
+      uniqueId = "/OAI-PMH/ListRecords/record/header/identifier",
+      deepRecordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
+    )
+    val ADLIB = HarvestType(
+      name = "adlib",
+      recordRoot = "/adlibXML/recordList/record",
+      uniqueId = "/adlibXML/recordList/record/@priref",
+      deepRecordContainer = None
+    )
+
+    val ALL_ORIGINS = List(PMH, ADLIB)
+
+    def fromString(string: String): Option[HarvestType] = ALL_ORIGINS.find(s => s.matches(string))
+  }
 
   case class AdLibDiagnostic(totalItems: Int, current: Int, pageItems: Int) {
     def isLast = current + pageItems >= totalItems
@@ -98,9 +116,7 @@ object Harvesting extends BaseXTools {
 trait Harvesting extends BaseXTools {
 
   def tagToInt(nodeSeq: NodeSeq, tag: String, default: Int = 0) = try {
-    val int = (nodeSeq \ tag).text.toInt
-    Logger.info(s"diagnostic($tag) = $int")
-    int
+    (nodeSeq \ tag).text.toInt
   }
   catch {
     case e: Exception =>
@@ -202,7 +218,6 @@ trait Harvesting extends BaseXTools {
           else {
             None
           }
-          Logger.info(s"new token: $newToken")
           val total =
             if (newToken.isDefined) newToken.get.totalRecords
             else if (resumption.isDefined) resumption.get.totalRecords
@@ -213,6 +228,7 @@ trait Harvesting extends BaseXTools {
             set = set,
             metadataPrefix = metadataPrefix,
             totalRecords = total,
+            modifiedAfter = modifiedAfter,
             error = None,
             resumptionToken = newToken
           )
@@ -223,6 +239,7 @@ trait Harvesting extends BaseXTools {
             set = set,
             metadataPrefix = metadataPrefix,
             totalRecords = 0,
+            modifiedAfter = None,
             error = Some(errorNode.text),
             resumptionToken = None
           )

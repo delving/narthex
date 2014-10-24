@@ -21,6 +21,7 @@ import actors.ProgressReporter
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.Files._
+import services.Harvesting.HarvestType
 import services.RecordHandling.RawRecord
 
 import scala.collection.mutable
@@ -37,13 +38,12 @@ import scala.io.Source
  * Inserting a new file adds new intersection files to previous files, and updates the .act file accordingly.
  *
  * @param sourceDir where do we work
- * @param recordRoot delimit records
- * @param uniqueId identify records
+ * @param harvestType the type of harvest
  *
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String]) extends RecordHandling {
+class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandling {
   val MAX_FILES = 100
 
   private def numberString(number: Int): String = "%05d".format(number)
@@ -114,7 +114,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = fillFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
-    val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
+    val parser = new RawRecordParser(harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer)
     def receiveRecord(record: RawRecord): Unit = idSet.add(record.id)
     val (source, readProgress) = FileHandling.sourceFromFile(file)
     progressReporter.setReadProgress(readProgress)
@@ -164,7 +164,7 @@ class HarvestRepo(sourceDir: File, recordRoot: String, uniqueId: String, deepRec
   })
 
   def parse(output: RawRecord => Unit, progressReporter: ProgressReporter): Map[String, String] = {
-    val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
+    val parser = new RawRecordParser(harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(readFile).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)

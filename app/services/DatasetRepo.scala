@@ -26,6 +26,7 @@ import play.api.cache.Cache
 import services.DatasetOrigin.HARVEST
 import services.DatasetState.{fromString, _}
 import services.FileHandling.clearDir
+import services.Harvesting.HarvestType._
 import services.Harvesting._
 import services.RecordHandling.{StoredRecord, TargetConcept}
 import services.RepoUtil.pathToDirectory
@@ -58,84 +59,83 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
 
   def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
 
-  def startPmhHarvest(url: String, dataset: String, prefix: String) = datasetDb.getDatasetInfoOption map {
+  def startHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.getDatasetInfoOption map {
     datasetInfo =>
-      val state = (datasetInfo \ "status" \ "state").text
-      if (!HARVESTING.matches(state)) {
-        datasetDb.setStatus(HARVESTING)
-        datasetDb.setOrigin(HARVEST)
-        datasetDb.setHarvestInfo("pmh", url, dataset, prefix)
-        val harvestCron = Harvesting.harvestCron(datasetInfo)
-        datasetDb.setHarvestCron(harvestCron)
-        datasetDb.setRecordDelimiter(PMH_RECORD_ROOT, PMH_UNIQUE_ID)
-        val harvestRepo = new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID, Some(PMH_DEEP_RECORD_CONTAINER))
-        harvestRepo.clear()
-        val kickoff = HarvestPMH(url, dataset, prefix, None)
-        Logger.info(s"Harvest $kickoff")
-        OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
-      }
-      else {
-        Logger.info("Harvest busy already")
-      }
-  }
-
-  def startAdLibHarvest(url: String, dataset: String) = datasetDb.getDatasetInfoOption map {
-    datasetInfo =>
-      val state = (datasetInfo \ "status" \ "state").text
-      if (!HARVESTING.matches(state)) {
-        datasetDb.setStatus(HARVESTING)
-        datasetDb.setOrigin(HARVEST)
-        datasetDb.setHarvestInfo("adlib", url, dataset, "adlib")
-        val harvestCron = Harvesting.harvestCron(datasetInfo)
-        datasetDb.setHarvestCron(harvestCron)
-        datasetDb.setRecordDelimiter(ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID)
-        val harvestRepo = new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID, deepRecordContainer = None)
-        harvestRepo.clear()
-        val kickoff = HarvestAdLib(url, dataset, modifiedAfter = None)
-        Logger.info(s"Harvest $kickoff")
-        OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
-      }
-      else {
-        Logger.info("Harvest busy already")
+      DatasetState.fromDatasetInfo(datasetInfo).foreach { state =>
+        if (state == EMPTY) {
+          datasetDb.setStatus(HARVESTING)
+          datasetDb.setOrigin(HARVEST)
+          datasetDb.setHarvestInfo(harvestType.name, url, dataset, prefix)
+          val harvestCron = Harvesting.harvestCron(datasetInfo)
+          datasetDb.setHarvestCron(harvestCron)
+          datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
+          val harvestRepo = new HarvestRepo(harvestDir, harvestType)
+          harvestRepo.clear()
+          val kickoff = harvestType match {
+            case PMH =>
+              HarvestPMH(
+                url = url,
+                set = dataset,
+                prefix = prefix,
+                modifiedAfter = None
+              )
+            case ADLIB =>
+              HarvestAdLib(
+                url = url,
+                database = dataset,
+                modifiedAfter = None
+              )
+          }
+          Logger.info(s"Harvest $kickoff")
+          OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
+        }
+        else {
+          Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
+        }
       }
   }
 
   def nextHarvest() = datasetDb.getDatasetInfoOption map {
     datasetInfo =>
-      val state = (datasetInfo \ "status" \ "state").text
-      val harvestCron = Harvesting.harvestCron(datasetInfo)
-      if (!HARVESTING.matches(state) && harvestCron.timeToWork) {
-        datasetDb.setStatus(HARVESTING)
-        val nextHarvestCron = harvestCron.next
-        datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
-        val harvest = datasetInfo \ "harvest"
-        val harvestType = (harvest \ "harvestType").text
-        val (harvestRepo, kickoff) = harvestType match {
-          case "pmh" =>
-            (new HarvestRepo(harvestDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID, Some(PMH_DEEP_RECORD_CONTAINER)),
-              HarvestPMH(
-                url = (harvest \ "url").text,
-                set = (harvest \ "dataset").text,
-                prefix = (harvest \ "prefix").text,
-                modifiedAfter = Some(harvestCron.previous)
-              ))
-
-          case "adlib" =>
-            (new HarvestRepo(harvestDir, ADLIB_RECORD_ROOT, ADLIB_UNIQUE_ID, deepRecordContainer = None),
-              HarvestAdLib(
-                url = (harvest \ "url").text,
-                database = (harvest \ "dataset").text,
-                modifiedAfter = Some(harvestCron.previous)
-              ))
-
-          case _ =>
-            throw new RuntimeException(s"Unknown harvest type: $harvestType")
+      DatasetState.fromDatasetInfo(datasetInfo).foreach { state =>
+        if (state == SAVED) {
+          val harvestCron = Harvesting.harvestCron(datasetInfo)
+          if (harvestCron.timeToWork) {
+            datasetDb.setStatus(HARVESTING)
+            val nextHarvestCron = harvestCron.next
+            datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
+            val harvest = datasetInfo \ "harvest"
+            HarvestType.fromString((harvest \ "harvestType").text).map {
+              harvestType =>
+                val harvestRepo = new HarvestRepo(harvestDir, harvestType)
+                val kickoff = harvestType match {
+                  case PMH =>
+                    HarvestPMH(
+                      url = (harvest \ "url").text,
+                      set = (harvest \ "dataset").text,
+                      prefix = (harvest \ "prefix").text,
+                      modifiedAfter = Some(harvestCron.previous)
+                    )
+                  case ADLIB =>
+                    HarvestAdLib(
+                      url = (harvest \ "url").text,
+                      database = (harvest \ "dataset").text,
+                      modifiedAfter = Some(harvestCron.previous)
+                    )
+                }
+                Logger.info(s"Re-harvest $kickoff")
+                OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
+            } getOrElse {
+              Logger.warn(s"No re-harvest of $harvestCron because harvest type was not recognized $harvest")
+            }
+          }
+          else {
+            Logger.info(s"No re-harvest of $harvestCron")
+          }
         }
-        Logger.info(s"Re-harvest $kickoff")
-        OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
-      }
-      else {
-        Logger.info(s"No re-harvest of $harvestCron")
+        else {
+          Logger.warn(s"Incremental harvest can only be started in $SAVED, not $state")
+        }
       }
   }
 

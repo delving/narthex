@@ -23,7 +23,7 @@ import play.api.libs.json.{JsObject, JsString}
 import services.Harvesting.HarvestCron
 import services.ProgressType._
 
-import scala.xml.{Elem, XML}
+import scala.xml.{Elem, NodeSeq, XML}
 
 object DatasetDb {
   def toJsObjectEntryOption(datasetInfo: Elem, tag: String) = {
@@ -89,6 +89,8 @@ object DatasetState {
   val ALL_STATES = List(DELETED, EMPTY, COLLECTING, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED)
 
   def fromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
+
+  def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "status" \ "state").text)
 }
 
 class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {

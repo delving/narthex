@@ -16,10 +16,11 @@
 
 package actors
 
-import java.io.File
+import java.io.{BufferedReader, File, FileReader, FileWriter}
 
 import actors.Analyzer._
 import actors.Collator._
+import actors.Merger._
 import actors.OrgSupervisor.ActorShutdown
 import actors.Sorter._
 import akka.actor.{Actor, ActorRef, Props}
@@ -176,5 +177,227 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       FileUtils.deleteQuietly(datasetRepo.analyzedDir)
       context.stop(self)
 
+  }
+}
+
+object Collator {
+
+  case class Count()
+
+  case class Counted(nodeRepo: NodeRepo, uniqueCount: Int, sampleFiles: Seq[Int])
+
+  def props(nodeRepo: NodeRepo) = Props(new Collator(nodeRepo))
+}
+
+class Collator(val nodeRepo: NodeRepo) extends Actor with TreeHandling {
+
+  def receive = {
+
+    case Count() =>
+      val sorted = new BufferedReader(new FileReader(nodeRepo.sorted))
+
+      val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
+
+      def createSampleFile(randomSample: RandomSample, sampleFile: File) = {
+        RepoUtil.createJson(sampleFile, Json.obj("sample" -> randomSample.values))
+      }
+
+      def lineOption = {
+        val string = sorted.readLine()
+        if (string != null) Some(string) else None
+      }
+
+      val counted = new FileWriter(nodeRepo.counted)
+      val unique = new FileWriter(nodeRepo.uniqueText)
+      var occurrences = 0
+      var uniqueCount = 0
+
+      def writeValue(string: String) = {
+        counted.write(f"$occurrences%7d $string%s\n")
+        unique.write(string)
+        unique.write("\n")
+        samples.foreach(pair => pair._1.record(string))
+        uniqueCount += 1
+      }
+
+      var previous: Option[String] = None
+      var current = lineOption
+      while (current.isDefined) {
+        if (current == previous) {
+          occurrences += 1
+        }
+        else {
+          previous.foreach(writeValue)
+          previous = current
+          occurrences = 1
+        }
+        current = lineOption
+      }
+      previous.foreach(writeValue)
+      sorted.close()
+      counted.close()
+      unique.close()
+      val bigEnoughSamples = samples.filter(pair => uniqueCount > pair._1.size * 2)
+      val usefulSamples = if (bigEnoughSamples.isEmpty) List(samples.head) else bigEnoughSamples
+      usefulSamples.foreach(pair => createSampleFile(pair._1, pair._2))
+      sender ! Counted(nodeRepo, uniqueCount, usefulSamples.map(pair => pair._1.size))
+  }
+}
+
+object Sorter {
+
+  case class SortType(ordering: Ordering[String])
+
+  object SortType {
+    val VALUE_SORT = SortType(Ordering[String])
+    val HISTOGRAM_SORT: SortType = SortType(Ordering[String].reverse)
+  }
+
+  case class Sort(sortType: SortType)
+
+  case class Sorted(nodeRepo: NodeRepo, sortedFile: File, sortType: SortType)
+
+  def props(nodeRepo: NodeRepo) = Props(new Sorter(nodeRepo))
+}
+
+class Sorter(val nodeRepo: NodeRepo) extends Actor {
+  val linesToSort = 10000
+  var sortFiles = List.empty[File]
+  var merges = List.empty[Merge]
+
+  def initiateMerges(outFile: File, sortType: SortType): Unit = {
+    while (sortFiles.size > 1) {
+      sortFiles = sortFiles match {
+        case inFileA :: inFileB :: remainder =>
+          val merge: Merge = Merge(inFileA, inFileB, outFile, sortType)
+          merges = merge :: merges
+          val merger = context.actorOf(Merger.props(nodeRepo))
+          merger ! merge
+          remainder
+        case tooSmall =>
+          tooSmall
+
+      }
+    }
+  }
+
+  def reportSorted(sortedFile: File, sortType: SortType): Unit = {
+    sortFiles.head.renameTo(sortedFile)
+    sortFiles = List.empty
+    context.parent ! Sorted(nodeRepo, sortedFile, sortType)
+  }
+
+  def receive = {
+
+    case Sort(sortType) =>
+      val (inputFile, sortedFile) = sortType match {
+        case SortType.VALUE_SORT => (nodeRepo.values, nodeRepo.sorted)
+        case SortType.HISTOGRAM_SORT => (nodeRepo.counted, nodeRepo.histogramText)
+      }
+      val input = new BufferedReader(new FileReader(inputFile))
+
+      var lines = List.empty[String]
+      def dumpSortedToFile() = {
+        val outputFile = nodeRepo.tempSort
+        val output = new FileWriter(outputFile)
+        lines.sorted(sortType.ordering).foreach {
+          line =>
+            output.write(line)
+            output.write("\n")
+        }
+        output.close()
+        lines = List.empty[String]
+        sortFiles = outputFile :: sortFiles
+      }
+
+      var count = linesToSort
+      while (count > 0) {
+        val line = input.readLine()
+        if (line == null) {
+          if (lines.nonEmpty) dumpSortedToFile()
+          count = 0
+        }
+        else {
+          lines = line :: lines
+          count -= 1
+          if (count == 0) {
+            dumpSortedToFile()
+            count = linesToSort
+          }
+        }
+      }
+      input.close()
+      initiateMerges(sortedFile, sortType)
+      if (merges.isEmpty) reportSorted(sortedFile, sortType)
+
+    case Merged(merge, file, sortType) =>
+      merges = merges.filter(pending => pending != merge)
+      sortFiles = file :: sortFiles
+      if (merges.isEmpty) {
+        initiateMerges(merge.mergeResultFile, sortType)
+        if (merges.isEmpty) reportSorted(merge.mergeResultFile, sortType)
+      }
+  }
+}
+
+object Merger {
+
+  case class Merge(inFileA: File, inFileB: File, mergeResultFile: File, sortType: SortType)
+
+  case class Merged(merge: Merge, fileA: File, sortType: SortType)
+
+  def props(nodeRepo: NodeRepo) = Props(new Merger(nodeRepo))
+}
+
+class Merger(val nodeRepo: NodeRepo) extends Actor {
+
+  def receive = {
+
+    case Merge(inFileA, inFileB, mergeResultFile, sortType) =>
+      val inputA = new BufferedReader(new FileReader(inFileA))
+      val inputB = new BufferedReader(new FileReader(inFileB))
+
+      def lineOption(reader: BufferedReader) = {
+        val string = reader.readLine()
+        if (string != null) Some(string) else None
+      }
+
+      val outputFile = nodeRepo.tempSort
+      val output = new FileWriter(outputFile)
+
+      def write(line: Option[String]) = {
+        output.write(line.get)
+        output.write("\n")
+      }
+
+      var lineA: Option[String] = lineOption(inputA)
+      var lineB: Option[String] = lineOption(inputB)
+      while (lineA.isDefined || lineB.isDefined) {
+        if (lineA.isDefined && lineB.isDefined) {
+          val comparison = sortType.ordering.compare(lineA.get, lineB.get)
+          if (comparison < 0) {
+            write(lineA)
+            lineA = lineOption(inputA)
+          }
+          else {
+            write(lineB)
+            lineB = lineOption(inputB)
+          }
+        }
+        else if (lineA.isDefined) {
+          write(lineA)
+          lineA = lineOption(inputA)
+        }
+        else if (lineB.isDefined) {
+          write(lineB)
+          lineB = lineOption(inputB)
+        }
+      }
+      output.close()
+      inputA.close()
+      inputB.close()
+      FileUtils.deleteQuietly(inFileA)
+      FileUtils.deleteQuietly(inFileB)
+      sender ! Merged(Merge(inFileA, inFileB, mergeResultFile, sortType), outputFile, sortType)
   }
 }

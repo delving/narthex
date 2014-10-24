@@ -440,7 +440,8 @@ define(["angular"], function () {
         $scope.allowSaveRecords = function(file) {
             if ($scope.isEmpty(file.info.status)) return false;
             if ($scope.isEmpty(file.info.delimit)) return false;
-            return file.info.status.state == 'state-analyzed' && file.info.delimit.recordCount > 0;
+            var okState =  file.info.status.state == 'state-ready' || file.info.status.state == 'state-analyzed';
+            return okState && file.info.delimit.recordCount > 0;
         };
 
         $scope.revert = function(file) {

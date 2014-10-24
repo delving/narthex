@@ -26,12 +26,14 @@ import akka.pattern.pipe
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.joda.time.DateTime
 import play.api.Logger
+import play.libs.Akka
 import services.DatasetState._
 import services.Harvesting._
 import services._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object Harvester {
@@ -40,9 +42,7 @@ object Harvester {
 
   case class HarvestPMH(url: String, set: String, prefix: String, modifiedAfter: Option[DateTime])
 
-  case class HarvestProgress(percent: Int)
-
-  case class HarvestComplete(error: Option[String])
+  case class HarvestComplete(modifiedAfter: Option[DateTime], error: Option[String])
 
   case class CollectSource()
 
@@ -67,11 +67,11 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
     pageCount
   }
 
-  def handleFailure(future: Future[Any], message: String) = {
+  def handleFailure(future: Future[Any], modifiedAfter: Option[DateTime], message: String) = {
     future.onFailure {
       case e: Exception =>
         log.warn(s"Harvest failure", e)
-        self ! HarvestComplete(Some(e.toString))
+        self ! HarvestComplete(modifiedAfter, Some(e.toString))
     }
   }
 
@@ -84,29 +84,29 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
     case HarvestAdLib(url, database, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
       val futurePage = fetchAdLibPage(url, database, modifiedAfter)
-      handleFailure(futurePage, "adlib harvest")
+      handleFailure(futurePage, modifiedAfter, "adlib harvest")
       harvestProgress = Some(ProgressReporter(datasetRepo.datasetDb))
       futurePage pipeTo self
 
     case AdLibHarvestPage(records, error: Option[String], url, database, modifiedAfter, diagnostic) =>
       if (error.isDefined) {
-        self ! HarvestComplete(error)
+        self ! HarvestComplete(modifiedAfter, error)
       }
       else harvestProgress.foreach { progressReporter =>
         val pageNumber = addPage(records)
         if (progressReporter.sendPercent(diagnostic.percentComplete)) {
           log.info(s"Harvest Page: $pageNumber - $url $database to $datasetRepo: $diagnostic")
           if (diagnostic.isLast) {
-            self ! HarvestComplete(None)
+            self ! HarvestComplete(modifiedAfter, None)
           }
           else {
             val futurePage = fetchAdLibPage(url, database, modifiedAfter, Some(diagnostic))
-            handleFailure(futurePage, "adlib harvest page")
+            handleFailure(futurePage, modifiedAfter, "adlib harvest page")
             futurePage pipeTo self
           }
         }
         else {
-          self ! HarvestComplete(Some(s"Interrupted while processing $datasetRepo"))
+          self ! HarvestComplete(modifiedAfter, Some(s"Interrupted while processing $datasetRepo"))
         }
       }
 
@@ -114,12 +114,12 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
       harvestProgress = Some(ProgressReporter(datasetRepo.datasetDb))
       val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter)
-      handleFailure(futurePage, "pmh harvest")
+      handleFailure(futurePage, modifiedAfter, "pmh harvest")
       futurePage pipeTo self
 
-    case PMHHarvestPage(records, url, set, prefix, total, error, resumptionToken) =>
+    case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, error, resumptionToken) =>
       if (error.isDefined) {
-        self ! HarvestComplete(error)
+        self ! HarvestComplete(modifiedAfter, error)
       }
       else {
         val pageNumber = addPage(records)
@@ -127,7 +127,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         harvestProgress.foreach { progressReporter =>
           resumptionToken match {
             case None =>
-              self ! HarvestComplete(None)
+              self ! HarvestComplete(modifiedAfter, None)
             case Some(token) =>
               val keepHarvesting = if (token.hasPercentComplete) {
                 progressReporter.sendPercent(token.percentComplete)
@@ -137,29 +137,30 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
               }
               if (keepHarvesting) {
                 val futurePage = fetchPMHPage(url, set, prefix, None, Some(token))
-                handleFailure(futurePage, "pmh harvest page")
+                handleFailure(futurePage, modifiedAfter, "pmh harvest page")
                 futurePage pipeTo self
               }
               else {
-                self ! HarvestComplete(Some("Interrupted while harvesting"))
+                self ! HarvestComplete(modifiedAfter, Some("Interrupted while harvesting"))
               }
           }
         }
       }
 
-    case HarvestComplete(error) =>
+    case HarvestComplete(modifiedAfter, error) =>
       log.info(s"Harvest complete $datasetRepo error: $error")
       zip.close()
       error match {
         case Some(errorString) =>
           deleteQuietly(tempFile)
-          datasetRepo.datasetDb.setStatus(EMPTY, error = errorString)
+          val revertState = if (modifiedAfter.isDefined) SAVED else EMPTY
+          datasetRepo.datasetDb.setStatus(revertState, error = errorString)
           context.stop(self)
         case None =>
           datasetRepo.datasetDb.setStatus(COLLECTING)
           val progressReporter = ProgressReporter(datasetRepo.datasetDb)
           val file = harvestRepo.acceptZipFile(tempFile, progressReporter)
-          // todo: file should be parsed and cause basex updates
+          // todo: file should be parsed and saved (incremental)
           self ! CollectSource()
       }
 
@@ -173,15 +174,41 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       val recordRoot = (delimit \ "recordRoot").text
       val uniqueId = (delimit \ "uniqueId").text
       datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
-//      datasetRepo.startAnalysis()
+      // todo: trigger saving!
       context.stop(self)
-
 
   }
 }
 
 
+object HarvestTicker {
 
+  def props() = Props[HarvestTicker]
+
+  def startTicker() = {
+    val harvestTicker = Akka.system.actorOf(props(), "HarvestTicker")
+    Akka.system.scheduler.schedule(10.seconds, 10.seconds, harvestTicker, "tick")
+  }
+
+}
+
+class HarvestTicker extends Actor {
+
+  val log = Logger.logger
+
+  def receive = {
+
+    case "tick" =>
+      OrgRepo.repo.repoDb.listDatasets.foreach { dataset =>
+        val harvestCron = Harvesting.harvestCron(dataset.info)
+        if (harvestCron.timeToWork) {
+          log.info(s"Time to work on ${dataset.name}")
+          val datasetRepo = OrgRepo.repo.datasetRepo(dataset.name)
+          datasetRepo.nextHarvest()
+        }
+      }
+  }
+}
 
 
 

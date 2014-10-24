@@ -244,6 +244,7 @@ case class PMHHarvestPage
   set: String,
   metadataPrefix: String,
   totalRecords: Int,
+  modifiedAfter: Option[DateTime],
   error: Option[String],
   resumptionToken: Option[PMHResumptionToken])
 

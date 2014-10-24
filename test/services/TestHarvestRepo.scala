@@ -41,7 +41,9 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
     val uniqueId = s"$recordRoot/@which"
     val sourceDir = fresh("/tmp/test-source-repo-regular")
 
-    val harvestRepo = new HarvestRepo(sourceDir, recordRoot, uniqueId, None)
+    val harvestType = new HarvestType("gumby", recordRoot, uniqueId, None)
+
+    val harvestRepo = new HarvestRepo(sourceDir, harvestType)
 
     harvestRepo.countFiles should be(0)
     harvestRepo.acceptZipFile(incomingZip("a"), ProgressReporter())
@@ -85,7 +87,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
     List("aa", "bb", "cc", "dd").map(resourceFile).foreach(f => FileUtils.copyFile(f, new File(incoming, f.getName)))
 
     val sourceDir = fresh("/tmp/test-source-repo-pmh")
-    val harvestRepo = new HarvestRepo(sourceDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID, Some(PMH_DEEP_RECORD_CONTAINER))
+    val harvestRepo = new HarvestRepo(sourceDir, HarvestType.PMH)
 
     harvestRepo.countFiles should be(0)
     harvestRepo.acceptZipFile(incomingZip("aa"), ProgressReporter())
