@@ -231,17 +231,17 @@
 <script type="text/ng-template" id="downloads.html">
     <ul class="list-unstyled">
         <li>
-            <a class="fa-2x" ng-href="{{file.apiMappings}}" target="_blank" data-ng-show="file.stateBlock.viewTerminology">
+            <a class="fa-2x" ng-href="{{file.apiMappings}}" target="_blank">
                 <i class="fa fa-download"></i> Terminology Mappings
             </a>
         </li>
         <li>
-            <a class="fa-2x" data-ng-if="file.info.status.state == 'state-saved'" ng-href="{{file.oaiPmhListRecords}}" target="_blank">
+            <a class="fa-2x" ng-href="{{file.oaiPmhListRecords}}" target="_blank">
                 <i class="fa fa-download"></i> Raw Records
             </a>
         </li>
         <li>
-            <a class="fa-2x" data-ng-if="file.info.status.state == 'state-saved'" ng-href="{{file.oaiPmhListEnrichedRecords}}" target="_blank">
+            <a class="fa-2x" ng-href="{{file.oaiPmhListEnrichedRecords}}" target="_blank">
                 <i class="fa fa-download"></i> Enriched Records
             </a>
         </li>
@@ -318,7 +318,7 @@
         <span class="label {{ file.stateBlock.css }}">{{ file.stateBlock.label }}</span>
 
         <span>&nbsp;&nbsp;&nbsp;</span>
-        <button class="label label-info" data-ng-click="viewFile(file)" data-ng-show="file.stateBlock.viewSchema">
+        <button class="label label-info" data-ng-click="viewFile(file)" data-ng-show="file.info.analysis.present == 'true'">
             <i class="fa fa-eye"></i> Explore analysis
         </button>
 
@@ -349,7 +349,6 @@
             </div>
         </div>
 
-        <!--<div data-ng-include="'file-open.html'" data-ng-show="fileOpen == file.name">file open</div>-->
         <div data-ng-if="fileOpen == file.name">
             <div data-ng-if="file.info.status.error" class="alert alert-explain alert-dismissible" role="alert">
                 <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>

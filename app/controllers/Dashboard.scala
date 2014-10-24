@@ -146,10 +146,13 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def datasetInfo(fileName: String) = Secure() {
     token => implicit request => {
-      repo.datasetRepo(fileName).datasetDb.getDatasetInfoOption match {
+      val datasetRepo = repo.datasetRepo(fileName)
+      datasetRepo.datasetDb.getDatasetInfoOption match {
         case Some(datasetInfo) =>
-          val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(datasetInfo, name))
-          Ok(JsObject(lists))
+          val lists: List[(String, JsObject)] = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(datasetInfo, name))
+          val analysisPresence = if (datasetRepo.index.exists()) "true" else "false"
+          val listsWithAnalysis = ("analysis", JsObject(Seq("present" -> JsString(analysisPresence)))) :: lists
+          Ok(JsObject(listsWithAnalysis))
         case None =>
           NotFound(Json.obj("problem" -> s"Not found $fileName"))
       }

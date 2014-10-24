@@ -68,16 +68,14 @@ var STATE_BLOCK = {
         css: 'label-success',
         faIcon: 'fa-folder',
         revertState: 'state-ready',
-        revertPrompt: 'Discard analysis',
-        viewSchema: true
+        revertPrompt: 'Discard analysis'
     },
     'state-saving': {
         label: 'Saving',
         css: 'label-warning',
         faIcon: 'fa-cogs',
         revertState: 'state-analyzed',
-        revertPrompt: 'Cancel record saving',
-        viewSchema: true
+        revertPrompt: 'Cancel record saving'
     },
     'state-saved': {
         label: 'Saved',
@@ -85,7 +83,6 @@ var STATE_BLOCK = {
         faIcon: 'fa-database',
         revertState: 'state-analyzed',
         revertPrompt: 'Delete saved records',
-        viewSchema: true,
         viewTerminology: true
     }
 };
@@ -415,13 +412,13 @@ define(["angular"], function () {
             switch (tabName) {
                 case 'drop':
                     if ($scope.isEmpty(file.info.origin)) return true;
-                    return file.info.origin.type == 'origin-drop' && file.info.status.state == 'state-empty'
+                    return file.info.origin.type == 'origin-drop' && file.info.status.state == 'state-empty';
                 case 'harvest':
                     if ($scope.isEmpty(file.info.origin)) return true;
-                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-empty'
+                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-empty';
                 case 'harvest-cron':
                     if ($scope.isEmpty(file.info.origin)) return true;
-                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-saved'
+                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-saved';
                 case 'publication':
                     if ($scope.isEmpty(file.info.status)) return false;
                     return file.info.status.state == 'state-saved';
@@ -429,14 +426,15 @@ define(["angular"], function () {
                     if ($scope.isEmpty(file.info.status)) return false;
                     return file.info.status.state == 'state-saved';
                 default:
-                    console.log("ALLOW TAB "+tabName)
+                    console.log("ALLOW TAB "+tabName);
                     return false;
             }
         };
 
         $scope.allowAnalysis = function(file) {
             if ($scope.isEmpty(file.info.status)) return false;
-            return file.info.status.state == 'state-ready';
+            var okState =  file.info.status.state == 'state-ready' || file.info.status.state == 'state-saved';
+            return okState && !(file.info.analysis.present == 'true')
         };
 
         $scope.allowSaveRecords = function(file) {
