@@ -44,13 +44,13 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
     val harvestRepo = new HarvestRepo(sourceDir, recordRoot, uniqueId, None)
 
     harvestRepo.countFiles should be(0)
-    harvestRepo.acceptZipFile(incomingZip("a"))
+    harvestRepo.acceptZipFile(incomingZip("a"), ProgressReporter())
     harvestRepo.countFiles should be(3)
-    harvestRepo.acceptZipFile(incomingZip("b"))
+    harvestRepo.acceptZipFile(incomingZip("b"), ProgressReporter())
     harvestRepo.countFiles should be(7)
-    harvestRepo.acceptZipFile(incomingZip("c"))
+    harvestRepo.acceptZipFile(incomingZip("c"), ProgressReporter())
     harvestRepo.countFiles should be(11)
-    harvestRepo.acceptZipFile(incomingZip("d"))
+    harvestRepo.acceptZipFile(incomingZip("d"), ProgressReporter())
     harvestRepo.countFiles should be(16)
 
     val seenIds = mutable.HashSet[String]()
@@ -75,7 +75,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
     
-    harvestRepo.generateSourceFile(gitFile, ProgressReporter(), map => Unit)
+    harvestRepo.generateSourceFile(gitFile, map => Unit, ProgressReporter())
 
     FileHandling.gitCommit(gitFile, "Several words of message") should be(true)
   }
@@ -88,13 +88,13 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
     val harvestRepo = new HarvestRepo(sourceDir, PMH_RECORD_ROOT, PMH_UNIQUE_ID, Some(PMH_DEEP_RECORD_CONTAINER))
 
     harvestRepo.countFiles should be(0)
-    harvestRepo.acceptZipFile(incomingZip("aa"))
+    harvestRepo.acceptZipFile(incomingZip("aa"), ProgressReporter())
     harvestRepo.countFiles should be(3)
-    harvestRepo.acceptZipFile(incomingZip("bb"))
+    harvestRepo.acceptZipFile(incomingZip("bb"), ProgressReporter())
     harvestRepo.countFiles should be(7)
-    harvestRepo.acceptZipFile(incomingZip("cc"))
+    harvestRepo.acceptZipFile(incomingZip("cc"), ProgressReporter())
     harvestRepo.countFiles should be(11)
-    harvestRepo.acceptZipFile(incomingZip("dd"))
+    harvestRepo.acceptZipFile(incomingZip("dd"), ProgressReporter())
     harvestRepo.countFiles should be(16)
 
     val seenIds = mutable.HashSet[String]()

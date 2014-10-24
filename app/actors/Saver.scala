@@ -62,7 +62,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
           session =>
             parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
             val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
-            val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
+            val progressReporter = ProgressReporter(datasetRepo.datasetDb)
             progressReporter.setReadProgress(readProgress)
             def receiveRecord(record: RawRecord) = {
               tick += 1

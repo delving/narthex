@@ -36,49 +36,8 @@ object OrgRepo {
   lazy val repo = new OrgRepo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
 }
 
-case class DatasetOrigin(name: String) {
-  override def toString = name
-
-  def matches(otherName: String) = name == otherName
-}
-
-object DatasetOrigin {
-  val DROP = DatasetOrigin("origin-drop")
-  val HARVEST = DatasetOrigin("origin-harvest")
-  val SIP = DatasetOrigin("origin-sip")
-
-  val ALL_ORIGINS = List(DROP, HARVEST, SIP)
-
-  def fromString(string: String): Option[DatasetOrigin] = ALL_ORIGINS.find(s => s.matches(string))
-}
-
-case class DatasetState(name: String) {
-  override def toString = name
-
-  def matches(otherName: String) = name == otherName
-}
-
-object DatasetState {
-  val DELETED = DatasetState("state-deleted")
-  val EMPTY = DatasetState("state-empty")
-  val HARVESTING = DatasetState("state-harvesting")
-  val READY = DatasetState("state-ready")
-  val COLLECTING = DatasetState("state-collecting")
-  val SPLITTING = DatasetState("state-splitting")
-  val ANALYZING = DatasetState("state-analyzing")
-  val ANALYZED = DatasetState("state-analyzed")
-  val SAVING = DatasetState("state-saving")
-  val SAVED = DatasetState("state-saved")
-
-  val ALL_STATES = List(DELETED, EMPTY, COLLECTING, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED)
-  val BUSY_STATES = List(COLLECTING, SPLITTING, ANALYZING, SAVING)
-
-  def fromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
-}
-
 object RepoUtil {
 
-  val ENRICHED_PREFIX = "enriched-"
   val SUFFIXES = List(".xml.gz", ".xml")
 
   def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")

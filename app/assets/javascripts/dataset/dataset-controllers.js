@@ -45,7 +45,7 @@ define(["angular"], function () {
                 $scope.uniqueId = $scope.recordRoot + "/@id";
                 $scope.allowUniqueIdSet = false;
             }
-            else if (datasetInfo.delimit.recordRoot) {
+            else if (datasetInfo.delimit && datasetInfo.delimit.recordRoot) {
                 $scope.recordRoot = datasetInfo.delimit.recordRoot;
                 $scope.uniqueId = datasetInfo.delimit.uniqueId;
                 $scope.recordContainer = $scope.recordRoot.substring(0, $scope.recordRoot.lastIndexOf("/"));

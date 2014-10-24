@@ -85,7 +85,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       log.info(s"Harvesting $url $database to $datasetRepo")
       val futurePage = fetchAdLibPage(url, database, modifiedAfter)
       handleFailure(futurePage, "adlib harvest")
-      harvestProgress = Some(ProgressReporter(HARVESTING, datasetRepo.datasetDb))
+      harvestProgress = Some(ProgressReporter(datasetRepo.datasetDb))
       futurePage pipeTo self
 
     case AdLibHarvestPage(records, error: Option[String], url, database, modifiedAfter, diagnostic) =>
@@ -112,7 +112,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
 
     case HarvestPMH(url, set, prefix, modifiedAfter) =>
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
-      harvestProgress = Some(ProgressReporter(HARVESTING, datasetRepo.datasetDb))
+      harvestProgress = Some(ProgressReporter(datasetRepo.datasetDb))
       val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter)
       handleFailure(futurePage, "pmh harvest")
       futurePage pipeTo self
@@ -156,7 +156,8 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
           datasetRepo.datasetDb.setStatus(EMPTY, error = errorString)
           context.stop(self)
         case None =>
-          val progressReporter = ProgressReporter(COLLECTING, datasetRepo.datasetDb)
+          datasetRepo.datasetDb.setStatus(COLLECTING)
+          val progressReporter = ProgressReporter(datasetRepo.datasetDb)
           val file = harvestRepo.acceptZipFile(tempFile, progressReporter)
           // todo: file should be parsed and cause basex updates
           self ! CollectSource()
@@ -164,7 +165,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
 
     case CollectSource() =>
       val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
-      val progressReporter = ProgressReporter(COLLECTING, datasetRepo.datasetDb)
+      val progressReporter = ProgressReporter(datasetRepo.datasetDb)
       val recordCount = harvestRepo.generateSourceFile(incomingFile, datasetRepo.datasetDb.setNamespaceMap, progressReporter)
       datasetRepo.datasetDb.setStatus(READY)
       val info = datasetRepo.datasetDb.getDatasetInfoOption.get
@@ -172,6 +173,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       val recordRoot = (delimit \ "recordRoot").text
       val uniqueId = (delimit \ "uniqueId").text
       datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
+//      datasetRepo.startAnalysis()
       context.stop(self)
 
 

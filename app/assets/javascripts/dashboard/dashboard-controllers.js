@@ -134,6 +134,10 @@ define(["angular"], function () {
             return !_.isEmpty(obj)
         };
 
+        $scope.isEmpty = function (obj) {
+            return _.isEmpty(obj)
+        };
+
         $scope.setFileOpen = function (file) {
             if ($scope.fileOpen == file.name) {
                 $scope.fileOpen = "";
@@ -179,7 +183,7 @@ define(["angular"], function () {
         };
 
         function isActive(file) {
-            return (file.info.status.percent > 0 || file.info.status.workers > 0)
+            return file.info.progress && file.info.progress.type != 'progress-idle';
         }
 
         function checkDatasetStatus(file) {
@@ -405,38 +409,40 @@ define(["angular"], function () {
 
     var FileEntryCtrl = function ($scope) {
 
-        $scope.allowHarvest = function(file) {
-            if (!file.info.origin) return true;
-            if (!$scope.nonEmpty(file.info.origin)) return true;
-            return file.info.origin.type == 'origin-harvest'
-        };
+        $scope.tab = "metadata";
 
-        $scope.allowDrop = function(file) {
-            if (!file.info.origin) return true;
-            if (!$scope.nonEmpty(file.info.origin)) return true;
-            return file.info.origin.type == 'origin-drop'
+        $scope.allowTab = function(file, tabName) {
+            switch (tabName) {
+                case 'drop':
+                    if ($scope.isEmpty(file.info.origin)) return true;
+                    return file.info.origin.type == 'origin-drop' && file.info.status.state == 'state-empty'
+                case 'harvest':
+                    if ($scope.isEmpty(file.info.origin)) return true;
+                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-empty'
+                case 'harvest-cron':
+                    if ($scope.isEmpty(file.info.origin)) return true;
+                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-saved'
+                case 'publication':
+                    if ($scope.isEmpty(file.info.status)) return false;
+                    return file.info.status.state == 'state-saved';
+                case 'downloads':
+                    if ($scope.isEmpty(file.info.status)) return false;
+                    return file.info.status.state == 'state-saved';
+                default:
+                    console.log("ALLOW TAB "+tabName)
+                    return false;
+            }
         };
 
         $scope.allowAnalysis = function(file) {
-            if (!file.info.status) return false;
+            if ($scope.isEmpty(file.info.status)) return false;
             return file.info.status.state == 'state-ready';
         };
 
         $scope.allowSaveRecords = function(file) {
-            if (!file.info.status || !file.info.delimit) return false;
+            if ($scope.isEmpty(file.info.status)) return false;
+            if ($scope.isEmpty(file.info.delimit)) return false;
             return file.info.status.state == 'state-analyzed' && file.info.delimit.recordCount > 0;
-        };
-
-        // todo: this must be removed
-        $scope.allowPublish = function(file) {
-            if (!file.info.status) return false;
-            return file.info.status.state == 'state-saved';
-        };
-
-        // todo: this must be removed
-        $scope.allowUnpublish = function(file) {
-            if (!file.info.status) return false;
-            return file.info.status.state == 'state-published';
         };
 
         $scope.revert = function(file) {

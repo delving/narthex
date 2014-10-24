@@ -66,7 +66,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       val (source, readProgress) = FileHandling.sourceFromFile(file)
       import context.dispatcher
       val f = future {
-        val progressReporter = ProgressReporter(SPLITTING, datasetRepo.datasetDb)
+        val progressReporter = ProgressReporter(datasetRepo.datasetDb)
         progressReporter.setReadProgress(readProgress)
         progress = Some(progressReporter)
         TreeNode(source, file.length, datasetRepo, progressReporter) match {
@@ -98,7 +98,8 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       }
 
     case AnalysisTreeComplete(json) =>
-      val progressReporter = ProgressReporter(ANALYZING, datasetRepo.datasetDb)
+      datasetRepo.datasetDb.setStatus(ANALYZING)
+      val progressReporter = ProgressReporter(datasetRepo.datasetDb)
       progress = Some(progressReporter)
       progressReporter.sendWorkers(sorters.size + collators.size)
       log.info(s"Tree Complete at ${datasetRepo.analyzedDir.getName}")
@@ -159,6 +160,9 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
         if (p.keepWorking) {
           log.info(s"Analysis Complete, kill: ${self.toString()}")
           datasetRepo.datasetDb.setStatus(ANALYZED)
+//          val delimit = datasetRepo.datasetDb.getDatasetInfoOption.get \ "delimit"
+//          val recordRoot = (delimit \ "recordRoot").text
+//          if (recordRoot.nonEmpty) datasetRepo.saveRecords()
           context.stop(self)
         }
         else {

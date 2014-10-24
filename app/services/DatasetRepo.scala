@@ -24,7 +24,7 @@ import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import services.DatasetOrigin.HARVEST
-import services.DatasetState._
+import services.DatasetState.{fromString, _}
 import services.FileHandling.clearDir
 import services.Harvesting._
 import services.RecordHandling.{StoredRecord, TargetConcept}
@@ -62,8 +62,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     datasetInfo =>
       val state = (datasetInfo \ "status" \ "state").text
       if (!HARVESTING.matches(state)) {
-        datasetDb.setStatus(HARVESTING, percent = 1)
-        datasetDb.setOrigin(HARVEST, "?")
+        datasetDb.setStatus(HARVESTING)
+        datasetDb.setOrigin(HARVEST)
         datasetDb.setHarvestInfo("pmh", url, dataset, prefix)
         val harvestCron = Harvesting.harvestCron(datasetInfo)
         datasetDb.setHarvestCron(harvestCron)
@@ -83,8 +83,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     datasetInfo =>
       val state = (datasetInfo \ "status" \ "state").text
       if (!HARVESTING.matches(state)) {
-        datasetDb.setStatus(HARVESTING, percent = 1)
-        datasetDb.setOrigin(HARVEST, "?")
+        datasetDb.setStatus(HARVESTING)
+        datasetDb.setOrigin(HARVEST)
         datasetDb.setHarvestInfo("adlib", url, dataset, "adlib")
         val harvestCron = Harvesting.harvestCron(datasetInfo)
         datasetDb.setHarvestCron(harvestCron)
@@ -105,7 +105,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
       val state = (datasetInfo \ "status" \ "state").text
       val harvestCron = Harvesting.harvestCron(datasetInfo)
       if (!HARVESTING.matches(state) && harvestCron.timeToWork) {
-        datasetDb.setStatus(HARVESTING, percent = 1)
+        datasetDb.setStatus(HARVESTING)
         val nextHarvestCron = harvestCron.next
         datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
         val harvest = datasetInfo \ "harvest"
@@ -142,27 +142,27 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
   def startAnalysis() = {
     getLatestIncomingFile.map { incomingFile =>
       clearDir(analyzedDir)
-      datasetDb.setStatus(SPLITTING, percent = 1)
+      datasetDb.setStatus(SPLITTING)
       OrgSupervisor.create(Analyzer.props(this), name, analyzer => analyzer ! Analyzer.AnalyzeFile(incomingFile))
     }
   }
 
   def saveRecords() = {
     val info = recordDb.getDatasetInfo
-    val delim = info \ "delimit"
-    val recordCountText = (delim \ "recordCount").text
+    val delimit = info \ "delimit"
+    val recordCountText = (delimit \ "recordCount").text
     val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
     val message = if (HARVEST.matches((info \ "origin" \ "type").text)) {
       val recordRoot = s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
       SaveRecords(recordRoot, s"$recordRoot/$RECORD_UNIQUE_ID", recordCount, Some(recordRoot))
     }
     else {
-      val recordRoot = (delim \ "recordRoot").text
-      val uniqueId = (delim \ "uniqueId").text
+      val recordRoot = (delimit \ "recordRoot").text
+      val uniqueId = (delimit \ "uniqueId").text
       SaveRecords(recordRoot, uniqueId, recordCount, None)
     }
     // set status now so it's done before the actor starts
-    datasetDb.setStatus(SAVING, percent = 1)
+    datasetDb.setStatus(SAVING)
     OrgSupervisor.create(Saver.props(this), name, saver => saver ! message)
   }
 

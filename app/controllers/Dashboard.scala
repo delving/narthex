@@ -49,7 +49,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
             case Some(suffix) =>
               println(s"Acceptable ${file.filename}")
               val datasetRepo = repo.datasetRepo(s"$fileName$suffix")
-              datasetRepo.datasetDb.setOrigin(DatasetOrigin.DROP, "?") // find out who
+              datasetRepo.datasetDb.setOrigin(DatasetOrigin.DROP)
               file.ref.moveTo(datasetRepo.createIncomingFile(file.filename), replace = true)
               datasetRepo.startAnalysis()
               Ok(datasetRepo.name)
@@ -340,6 +340,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  val DATASET_PROPERTY_LISTS = List("origin", "metadata", "publication", "status", "delimit", "namespaces", "harvest", "harvestCron", "sipFacts", "sipHints")
+  val DATASET_PROPERTY_LISTS = List("origin", "metadata", "publication", "status", "progress", "delimit", "namespaces", "harvest", "harvestCron", "sipFacts", "sipHints")
 
 }

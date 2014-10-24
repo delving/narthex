@@ -18,15 +18,16 @@ package actors
 
 import akka.actor.ActorRef
 import play.api.Logger
+import services.DatasetDb
 import services.FileHandling.ReadProgress
-import services.{DatasetDb, DatasetState}
+import services.ProgressType._
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
 object ProgressReporter {
-  def apply(datasetState: DatasetState, datasetDb: DatasetDb) = new UpdatingProgressReporter(datasetState, datasetDb)
+  def apply(datasetDb: DatasetDb) = new UpdatingProgressReporter(datasetDb)
 
   def apply(): ProgressReporter = new FakeProgressReporter
 }
@@ -68,7 +69,7 @@ class FakeProgressReporter extends ProgressReporter {
   override def setReadProgress(readProgress: ReadProgress): Unit = {}
 }
 
-class UpdatingProgressReporter(datasetState: DatasetState, datasetDb: DatasetDb) extends ProgressReporter {
+class UpdatingProgressReporter(datasetDb: DatasetDb) extends ProgressReporter {
   val PATIENCE_MILLIS = 333
   var bomb: Option[ActorRef] = None
   var readProgressOption: Option[ReadProgress] = None
@@ -81,12 +82,12 @@ class UpdatingProgressReporter(datasetState: DatasetState, datasetDb: DatasetDb)
     keepWorking
   }
 
-  def sendPercent(percent: Int) = mindTheBomb(datasetDb.setStatus(datasetState, percent = percent))
+  def sendPercent(percent: Int) = mindTheBomb(datasetDb.setProgress(PERCENT, percent))
 
   // trick here: workers=1 indicates to the HTML template that it's pages.  could be better.
-  def sendPageNumber(percent: Int) = mindTheBomb(datasetDb.setStatus(datasetState, percent = percent, workers = 1))
+  def sendPageNumber(pageNumber: Int) = mindTheBomb(datasetDb.setProgress(PAGES, pageNumber))
 
-  def sendWorkers(workerCount: Int) = mindTheBomb(datasetDb.setStatus(datasetState, workers = workerCount))
+  def sendWorkers(workerCount: Int) = mindTheBomb(datasetDb.setProgress(WORKERS, workerCount))
 
   def keepReading(value: Int): Boolean = {
     readProgressOption.map { readProgress =>
