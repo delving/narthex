@@ -14,15 +14,17 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package harvest
 
+import harvest.Harvesting.{AdLibDiagnostic, AdLibHarvestPage, PMHHarvestPage, PMHResumptionToken}
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.ws.WS
-import services.Harvesting._
+import services.{BaseXTools, NarthexConfig}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.Random
 import scala.xml.{Elem, NodeSeq}
 
 object Harvesting extends BaseXTools {
@@ -58,6 +60,62 @@ object Harvesting extends BaseXTools {
     def percentComplete: Int = {
       val pc = (100 * current) / totalItems
       if (pc < 1) 1 else pc
+    }
+  }
+
+  case class PMHResumptionToken(value: String, currentRecord: Int, totalRecords: Int) {
+
+    def hasPercentComplete: Boolean = totalRecords > 0 && currentRecord > 0 && currentRecord < totalRecords
+
+    def percentComplete: Int = {
+      val pc = (100 * currentRecord) / totalRecords
+      if (pc < 1) 1 else pc
+    }
+  }
+
+  case class PMHHarvestPage
+  (
+    records: String,
+    url: String,
+    set: String,
+    metadataPrefix: String,
+    totalRecords: Int,
+    modifiedAfter: Option[DateTime],
+    error: Option[String],
+    resumptionToken: Option[PMHResumptionToken])
+
+  case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
+
+  case class PublishedDataset
+  (
+    spec: String, prefix: String, name: String, description: String,
+    dataProvider: String, totalRecords: Int,
+    metadataFormat: RepoMetadataFormat)
+
+
+  case class Harvest
+  (
+    repoName: String,
+    headersOnly: Boolean,
+    from: Option[DateTime],
+    until: Option[DateTime],
+    totalPages: Int,
+    totalRecords: Int,
+    pageSize: Int,
+    random: String = Random.alphanumeric.take(10).mkString(""),
+    currentPage: Int = 1) {
+
+    def resumptionToken: PMHResumptionToken = PMHResumptionToken(
+      value = s"$random-$totalPages-$currentPage",
+      currentRecord = currentPage * NarthexConfig.OAI_PMH_PAGE_SIZE,
+      totalRecords = totalRecords
+    )
+
+    def next = {
+      if (currentPage >= totalPages)
+        None
+      else
+        Some(this.copy(currentPage = currentPage + 1))
     }
   }
 

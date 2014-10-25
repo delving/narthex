@@ -14,10 +14,11 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package org
 
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
+import services.BaseX
 
 import scala.xml.{Elem, XML}
 

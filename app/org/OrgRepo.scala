@@ -14,29 +14,29 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package org
 
 import java.io.File
 
+import dataset.DatasetRepo
+import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
+import org.OrgRepo._
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json.{JsObject, JsValue, Json}
-import services.RecordHandling.StoredRecord
-import services.RepoUtil._
+import record.RecordHandling
+import record.RecordHandling.StoredRecord
+import services._
 
 import scala.concurrent.duration._
 import scala.io.Source
 import scala.language.postfixOps
-import scala.util.Random
 import scala.xml.Elem
 
 object OrgRepo {
   lazy val repo = new OrgRepo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
-}
-
-object RepoUtil {
 
   val SUFFIXES = List(".xml.gz", ".xml")
 
@@ -77,6 +77,20 @@ object RepoUtil {
   }
 
   def isPublishedOaiPmh(elem: Elem): Boolean = (elem \ "publication" \ "oaipmh").text == "true"
+
+  case class SipZip
+  (
+    zipFile: File,
+    uploadedBy: String,
+    uploadedOn: String,
+    factsFile: File,
+    facts: Map[String, String],
+    hintsFile: File,
+    hints: Map[String, String]
+    ) {
+    override def toString = zipFile.getName
+  }
+
 
 }
 
@@ -213,73 +227,3 @@ class OrgRepo(userHome: String, val orgId: String) extends RecordHandling {
     }
   }
 }
-
-case class SipZip
-(
-  zipFile: File,
-  uploadedBy: String,
-  uploadedOn: String,
-  factsFile: File,
-  facts: Map[String, String],
-  hintsFile: File,
-  hints: Map[String, String]
-  ) {
-  override def toString = zipFile.getName
-}
-
-case class PMHResumptionToken(value: String, currentRecord: Int, totalRecords: Int) {
-
-  def hasPercentComplete: Boolean = totalRecords > 0 && currentRecord > 0 && currentRecord < totalRecords
-
-  def percentComplete: Int = {
-    val pc = (100 * currentRecord) / totalRecords
-    if (pc < 1) 1 else pc
-  }
-}
-
-case class PMHHarvestPage
-(
-  records: String,
-  url: String,
-  set: String,
-  metadataPrefix: String,
-  totalRecords: Int,
-  modifiedAfter: Option[DateTime],
-  error: Option[String],
-  resumptionToken: Option[PMHResumptionToken])
-
-case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
-
-case class PublishedDataset
-(
-  spec: String, prefix: String, name: String, description: String,
-  dataProvider: String, totalRecords: Int,
-  metadataFormat: RepoMetadataFormat)
-
-
-case class Harvest
-(
-  repoName: String,
-  headersOnly: Boolean,
-  from: Option[DateTime],
-  until: Option[DateTime],
-  totalPages: Int,
-  totalRecords: Int,
-  pageSize: Int,
-  random: String = Random.alphanumeric.take(10).mkString(""),
-  currentPage: Int = 1) {
-
-  def resumptionToken: PMHResumptionToken = PMHResumptionToken(
-    value = s"$random-$totalPages-$currentPage",
-    currentRecord = currentPage * NarthexConfig.OAI_PMH_PAGE_SIZE,
-    totalRecords = totalRecords
-  )
-
-  def next = {
-    if (currentPage >= totalPages)
-      None
-    else
-      Some(this.copy(currentPage = currentPage + 1))
-  }
-}
-

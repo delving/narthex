@@ -1,5 +1,6 @@
 package controllers
 
+import controllers.routes.{CdnWebJarAssets => WJA}
 import play.api.Play
 import play.api.Play.current
 
@@ -13,8 +14,8 @@ object CdnWebJarAssets extends WebJarAssets(Assets) {
 
     maybeContentUrl.map {
       contentUrl =>
-        contentUrl + controllers.routes.CdnWebJarAssets.at(file).url
-    } getOrElse controllers.routes.CdnWebJarAssets.at(file).url
+        contentUrl + WJA.at(file).url
+    } getOrElse WJA.at(file).url
   }
 
 }

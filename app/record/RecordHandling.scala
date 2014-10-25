@@ -14,16 +14,16 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package record
 
 import java.io.ByteArrayInputStream
 import java.net.URLEncoder
 import java.security.MessageDigest
 
-import actors.ProgressReporter
 import org.joda.time.DateTime
 import play.Logger
-import services.RecordHandling.{RawRecord, StoredRecord, TargetConcept}
+import record.RecordHandling.{RawRecord, StoredRecord, TargetConcept}
+import services.{BaseXTools, FileHandling, ProgressReporter}
 
 import scala.collection.mutable
 import scala.io.Source

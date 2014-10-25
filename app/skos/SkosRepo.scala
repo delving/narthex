@@ -13,9 +13,11 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 //===========================================================================
-package services
+package skos
 
 import java.io.{File, FileInputStream}
+
+import services.NarthexConfig
 
 object SkosRepo {
   lazy val repo: SkosRepo = new SkosRepo(NarthexConfig.USER_HOME)

@@ -14,20 +14,22 @@
 //    limitations under the License.
 //===========================================================================
 
-package actors
+package analysis
 
 import java.io.{BufferedReader, File, FileReader, FileWriter}
 
-import actors.Analyzer._
-import actors.Collator._
-import actors.Merger._
-import actors.OrgSupervisor.ActorShutdown
-import actors.Sorter._
 import akka.actor.{Actor, ActorRef, Props}
+import analysis.Analyzer._
+import analysis.Collator._
+import analysis.Merger._
+import analysis.Sorter._
+import dataset.DatasetState._
+import dataset.{DatasetRepo, DatasetState}
+import org.OrgActor.ActorShutdown
+import org.OrgRepo
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.json._
-import services.DatasetState._
 import services._
 
 import scala.concurrent._
@@ -134,7 +136,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
           }
 
         case SortType.HISTOGRAM_SORT =>
-          RepoUtil.updateJson(nodeRepo.status) {
+          OrgRepo.updateJson(nodeRepo.status) {
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]
               val samples = current \ "samples"
@@ -199,7 +201,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with TreeHandling {
       val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
 
       def createSampleFile(randomSample: RandomSample, sampleFile: File) = {
-        RepoUtil.createJson(sampleFile, Json.obj("sample" -> randomSample.values))
+        OrgRepo.createJson(sampleFile, Json.obj("sample" -> randomSample.values))
       }
 
       def lineOption = {

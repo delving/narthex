@@ -14,26 +14,26 @@
 //    limitations under the License.
 //===========================================================================
 
-package actors
+package harvest
 
 import java.io.{File, FileOutputStream}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
-import actors.Harvester._
-import actors.OrgSupervisor.ActorShutdown
 import akka.actor.{Actor, Props}
 import akka.pattern.pipe
-import org.apache.commons.io.FileUtils.deleteQuietly
+import dataset.DatasetState._
+import dataset.{DatasetRepo, DatasetState}
+import harvest.Harvester.{CollectSource, HarvestAdLib, HarvestComplete, HarvestPMH}
+import harvest.Harvesting.{AdLibHarvestPage, PMHHarvestPage}
+import org.OrgActor.ActorShutdown
+import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
-import play.libs.Akka
-import services.DatasetState._
-import services.Harvesting._
-import services._
+import record.RecordHandling
+import services.ProgressReporter
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object Harvester {
@@ -152,7 +152,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       zip.close()
       error match {
         case Some(errorString) =>
-          deleteQuietly(tempFile)
+          FileUtils.deleteQuietly(tempFile)
           val revertState = if (modifiedAfter.isDefined) SAVED else EMPTY
           datasetRepo.datasetDb.setStatus(revertState, error = errorString)
           context.stop(self)
@@ -179,38 +179,3 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
 
   }
 }
-
-
-object HarvestTicker {
-
-  def props() = Props[HarvestTicker]
-
-  def startTicker() = {
-    val harvestTicker = Akka.system.actorOf(props(), "HarvestTicker")
-    Akka.system.scheduler.schedule(10.seconds, 10.seconds, harvestTicker, "tick")
-  }
-
-}
-
-class HarvestTicker extends Actor {
-
-  val log = Logger.logger
-
-  def receive = {
-
-    case "tick" =>
-      OrgRepo.repo.repoDb.listDatasets.foreach { dataset =>
-        val harvestCron = Harvesting.harvestCron(dataset.info)
-        if (harvestCron.timeToWork) {
-          log.info(s"Time to work on ${dataset.name}")
-          val datasetRepo = OrgRepo.repo.datasetRepo(dataset.name)
-          datasetRepo.nextHarvest()
-        }
-      }
-  }
-}
-
-
-
-
-

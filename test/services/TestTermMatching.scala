@@ -2,9 +2,11 @@ package services
 
 import java.io.File
 
+import analysis.TreeHandling
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
-import services.RecordHandling.TargetConcept
+import record.RecordHandling
+import record.RecordHandling.TargetConcept
 
 class TestTermMatching extends FlatSpec with Matchers with TreeHandling with RecordHandling {
 

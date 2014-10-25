@@ -14,13 +14,13 @@
 //    limitations under the License.
 //===========================================================================
 
-package actors
+package services
 
 import akka.actor.ActorRef
+import dataset.ProgressType._
+import dataset.{DatasetDb, ProgressType}
 import play.api.Logger
-import services.DatasetDb
 import services.FileHandling.ReadProgress
-import services.ProgressType._
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>

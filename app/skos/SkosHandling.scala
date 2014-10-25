@@ -14,7 +14,7 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package skos
 
 import java.io.InputStream
 

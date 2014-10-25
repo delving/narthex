@@ -13,12 +13,16 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 //===========================================================================
-package services
+package record
 
+import dataset.{DatasetOrigin, DatasetRepo}
+import harvest.Harvesting.{Harvest, PMHResumptionToken}
+import org.OrgRepo
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
+import services._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -136,7 +140,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     val name = datasetRepo.name
     println(s"createHarvest: $name, $from, $until")
     val datasetInfo = getDatasetInfo
-    if (!RepoUtil.isPublishedOaiPmh(datasetInfo)) return None
+    if (!OrgRepo.isPublishedOaiPmh(datasetInfo)) return None
     val countString = db {
       session =>
         val queryForRecords = s"count(collection('$recordDb')/$RECORD_CONTAINER${dateSelector(from, until)})"
@@ -183,7 +187,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
   def recordPmh(identifier: String): Option[Elem] = db {
     session =>
       val datasetInfo = getDatasetInfo
-      if (!RepoUtil.isPublishedOaiPmh(datasetInfo)) return None
+      if (!OrgRepo.isPublishedOaiPmh(datasetInfo)) return None
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}

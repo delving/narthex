@@ -14,7 +14,7 @@
 //    limitations under the License.
 //===========================================================================
 
-package controllers
+package web
 
 import play.Logger
 import play.api.Play.current

@@ -13,16 +13,17 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 //===========================================================================
-package services
+package harvest
 
 import java.io._
 
-import actors.ProgressReporter
+import harvest.Harvesting.HarvestType
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.Files._
-import services.Harvesting.HarvestType
-import services.RecordHandling.RawRecord
+import record.RecordHandling
+import record.RecordHandling.RawRecord
+import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable
 import scala.io.Source

@@ -14,16 +14,17 @@
 //    limitations under the License.
 //===========================================================================
 
-package actors
+package record
 
-import actors.OrgSupervisor.ActorShutdown
-import actors.Saver._
 import akka.actor.{Actor, Props}
+import dataset.DatasetState._
+import dataset.{DatasetRepo, DatasetState}
+import org.OrgActor.ActorShutdown
 import org.basex.core.cmd.Optimize
 import play.api.Logger
-import services.DatasetState._
-import services.RecordHandling.RawRecord
-import services.{DatasetRepo, FileHandling, RecordHandling}
+import record.RecordHandling.RawRecord
+import record.Saver.{SaveComplete, SaveError, SaveRecords}
+import services.{FileHandling, ProgressReporter}
 
 import scala.concurrent.Future
 import scala.language.postfixOps

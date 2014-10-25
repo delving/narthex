@@ -14,14 +14,16 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package dataset
 
+import dataset.ProgressType._
+import harvest.Harvesting.HarvestCron
+import org.RepoDb
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json.{JsObject, JsString}
-import services.Harvesting.HarvestCron
-import services.ProgressType._
+import services.BaseXTools
 
 import scala.xml.{Elem, NodeSeq, XML}
 

@@ -1,5 +1,6 @@
 package services
 
+import analysis.TreeHandling
 import org.apache.commons.io.IOUtils
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.Json

@@ -14,19 +14,24 @@
 //    limitations under the License.
 //===========================================================================
 
-package controllers
+package web
 
-import controllers.Application.OkFile
+import analysis.TreeHandling
+import dataset.DatasetState._
+import dataset.{DatasetDb, DatasetOrigin, DatasetState}
+import harvest.Harvesting
+import harvest.Harvesting.HarvestType
+import org.OrgRepo
+import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
-import services.DatasetState._
-import services.Harvesting.HarvestType
-import services.OrgRepo.repo
 import services._
+import skos.{LabelSearch, SkosJson, SkosRepo, SkosVocabulary}
+import web.Application.OkFile
 
 object Dashboard extends Controller with Security with TreeHandling with SkosJson {
 
@@ -46,7 +51,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       request.body.file("file") match {
         case Some(file) =>
           Logger.info(s"upload ${file.filename} (${file.contentType}) to $fileName")
-          RepoUtil.acceptableFile(file.filename, file.contentType) match {
+          OrgRepo.acceptableFile(file.filename, file.contentType) match {
             case Some(suffix) =>
               println(s"Acceptable ${file.filename}")
               val datasetRepo = repo.datasetRepo(s"$fileName$suffix")

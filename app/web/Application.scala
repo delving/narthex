@@ -14,7 +14,7 @@
 //    limitations under the License.
 //===========================================================================
 
-package controllers
+package web
 
 import java.io.{File, FileInputStream, FileNotFoundException}
 

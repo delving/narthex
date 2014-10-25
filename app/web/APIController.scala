@@ -14,20 +14,23 @@
 //    limitations under the License.
 //===========================================================================
 
-package controllers
+package web
 
 import java.io.FileInputStream
 import java.util.zip.ZipFile
 
-import controllers.Application.{OkFile, OkXml}
-import controllers.Dashboard._
+import analysis.TreeHandling
+import dataset.DatasetState._
+import dataset.{DatasetDb, DatasetOrigin, DatasetState}
+import org.OrgRepo.repo
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import services.DatasetState._
-import services.OrgRepo.repo
+import record.RecordHandling
 import services._
+import web.Application.{OkFile, OkXml}
+import web.Dashboard._
 
 object APIController extends Controller with TreeHandling with RecordHandling {
 

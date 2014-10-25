@@ -2,12 +2,13 @@ package services
 
 import java.io.File
 
-import actors.ProgressReporter
+import harvest.Harvesting._
+import harvest.{HarvestRepo, Harvesting}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
-import services.Harvesting._
-import services.RecordHandling.RawRecord
+import record.RecordHandling
+import record.RecordHandling.RawRecord
 
 import scala.collection.mutable
 import scala.xml.XML

@@ -433,6 +433,7 @@ define(["angular"], function () {
 
         $scope.allowAnalysis = function(file) {
             if ($scope.isEmpty(file.info.status)) return false;
+            if ($scope.isEmpty(file.info.analysis)) return false;
             var okState =  file.info.status.state == 'state-ready' || file.info.status.state == 'state-saved';
             return okState && !(file.info.analysis.present == 'true')
         };

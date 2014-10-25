@@ -20,6 +20,8 @@ name := """narthex"""
 
 version := "0.8.7-SNAPSHOT"
 
+//scalacOptions += "-feature"
+
 libraryDependencies ++= Seq(
   "org.webjars" % "webjars-locator" % "0.14",
   "org.webjars" %% "webjars-play" % "2.2.1-2",

@@ -14,26 +14,25 @@
 //    limitations under the License.
 //===========================================================================
 
-package actors
+package org
 
-import actors.OrgSupervisor.{ActorKickoff, ActorShutdown}
 import akka.actor.{Actor, ActorRef, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
+import org.OrgActor.{ActorKickoff, ActorShutdown}
 import play.api.Logger
 import play.libs.Akka
-import services.OrgRepo
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-
+import scala.language.postfixOps
 /*
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-object OrgSupervisor {
+object OrgActor {
 
-  lazy val actor = Akka.system.actorOf(Props[OrgSupervisor], OrgRepo.repo.orgId)
+  lazy val actor = Akka.system.actorOf(Props[OrgActor], OrgRepo.repo.orgId)
 
   case class ActorKickoff(props: Props, name: String)
 
@@ -67,7 +66,7 @@ object OrgSupervisor {
 }
 
 
-class OrgSupervisor extends Actor {
+class OrgActor extends Actor {
 
   def receive = {
 

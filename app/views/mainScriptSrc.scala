@@ -1,9 +1,6 @@
-package views.html.helper
+package views
 
-import play.api.templates.Html
-import play.api.mvc.{Call}
-import play.api.{Play, Mode}
-import controllers.routes
+import play.api.Mode
 
 /** Make the app explicit for testing */
 trait RequiresApp {

@@ -14,20 +14,21 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package analysis
 
 import java.io.{BufferedReader, File, FileReader}
 import java.util.UUID
 
+import dataset.DatasetRepo
+import org.OrgRepo
 import play.api.libs.json.{JsArray, JsObject, Json}
-import services.RepoUtil._
 
 import scala.collection.mutable
 import scala.language.postfixOps
 
 object NodeRepo {
   def apply(parent: DatasetRepo, parentDir: File, tag: String) = {
-    val dir = if (tag == null) parentDir else new File(parentDir, pathToDirectory(tag))
+    val dir = if (tag == null) parentDir else new File(parentDir, OrgRepo.pathToDirectory(tag))
     dir.mkdirs()
     new NodeRepo(parent, dir)
   }
@@ -41,7 +42,7 @@ class NodeRepo(val parent: DatasetRepo, val dir: File) {
 
   def status = f("status.json")
 
-  def setStatus(content: JsObject) = createJson(status, content)
+  def setStatus(content: JsObject) = OrgRepo.createJson(status, content)
 
   def values = f("values.txt")
 
@@ -74,7 +75,7 @@ class NodeRepo(val parent: DatasetRepo, val dir: File) {
     }
 
     def createFile(maximum: Int, entries: mutable.ArrayBuffer[JsArray], histogramFile: File) = {
-      createJson(histogramFile, Json.obj(
+      OrgRepo.createJson(histogramFile, Json.obj(
         "uniqueCount" -> uniqueCount,
         "entries" -> entries.size,
         "maximum" -> maximum,

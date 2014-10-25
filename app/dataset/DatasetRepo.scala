@@ -13,23 +13,26 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 //===========================================================================
-package services
+package dataset
 
 import java.io.File
 
-import actors.Harvester.{HarvestAdLib, HarvestPMH}
-import actors.Saver.SaveRecords
-import actors._
+import analysis.{Analyzer, NodeRepo}
+import dataset.DatasetOrigin.HARVEST
+import dataset.DatasetState.{fromString, _}
+import harvest.Harvester.{HarvestAdLib, HarvestPMH}
+import harvest.Harvesting.HarvestType._
+import harvest.Harvesting._
+import harvest.{HarvestRepo, Harvester, Harvesting}
+import org.{OrgActor, OrgRepo}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
-import services.DatasetOrigin.HARVEST
-import services.DatasetState.{fromString, _}
+import record.RecordHandling.{StoredRecord, TargetConcept}
+import record.Saver.SaveRecords
+import record.{RecordDb, RecordHandling, Saver}
 import services.FileHandling.clearDir
-import services.Harvesting.HarvestType._
-import services.Harvesting._
-import services.RecordHandling.{StoredRecord, TargetConcept}
-import services.RepoUtil.pathToDirectory
+import services._
 
 class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling {
 
@@ -87,7 +90,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
               )
           }
           Logger.info(s"Harvest $kickoff")
-          OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
+          OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
         }
         else {
           Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
@@ -124,7 +127,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
                     )
                 }
                 Logger.info(s"Re-harvest $kickoff")
-                OrgSupervisor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
+                OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
             } getOrElse {
               Logger.warn(s"No re-harvest of $harvestCron because harvest type was not recognized $harvest")
             }
@@ -143,7 +146,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     getLatestIncomingFile.map { incomingFile =>
       clearDir(analyzedDir)
       datasetDb.setStatus(SPLITTING)
-      OrgSupervisor.create(Analyzer.props(this), name, analyzer => analyzer ! Analyzer.AnalyzeFile(incomingFile))
+      OrgActor.create(Analyzer.props(this), name, analyzer => analyzer ! Analyzer.AnalyzeFile(incomingFile))
     }
   }
 
@@ -163,13 +166,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     }
     // set status now so it's done before the actor starts
     datasetDb.setStatus(SAVING)
-    OrgSupervisor.create(Saver.props(this), name, saver => saver ! message)
+    OrgActor.create(Saver.props(this), name, saver => saver ! message)
   }
 
   def index = new File(analyzedDir, "index.json")
 
   def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(analyzedDir)((file, tag) => new File(file, pathToDirectory(tag)))
+    val nodeDir = path.split('/').toList.foldLeft(analyzedDir)((file, tag) => new File(file, OrgRepo.pathToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 
@@ -240,7 +243,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
         true
 
       case EMPTY =>
-        OrgSupervisor.shutdownOr(name, {
+        OrgActor.shutdownOr(name, {
           datasetDb.setStatus(newState)
           recordDb.dropDb()
           clearDir(incomingDir)
@@ -250,7 +253,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
         true
 
       case READY =>
-        OrgSupervisor.shutdownOr(name, {
+        OrgActor.shutdownOr(name, {
           datasetDb.setStatus(newState)
           recordDb.dropDb()
           clearDir(analyzedDir)
@@ -258,7 +261,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
         true
 
       case ANALYZED =>
-        OrgSupervisor.shutdownOr(name, {
+        OrgActor.shutdownOr(name, {
           datasetDb.setStatus(newState)
           recordDb.dropDb()
         })

@@ -14,16 +14,18 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package analysis
 
 import java.io.{BufferedWriter, FileWriter}
 
-import actors.ProgressReporter
+import dataset.DatasetRepo
+import org.OrgRepo
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
+import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -86,7 +88,7 @@ trait TreeHandling {
 
     def finish(): Unit = {
       flush()
-      val index = kids.values.map(kid => RepoUtil.pathToDirectory(kid.tag)).mkString("\n")
+      val index = kids.values.map(kid => OrgRepo.pathToDirectory(kid.tag)).mkString("\n")
       FileUtils.writeStringToFile(nodeRepo.indexText, index)
       kids.values.foreach(_.finish())
     }
@@ -258,7 +260,7 @@ trait TreeHandling {
   def gatherPaths(node: ReadTreeNode, requestUrl: String): List[PathNode] = {
     val list = node.kids.flatMap(n => gatherPaths(n, requestUrl)).toList
     if (node.lengths.length > 0 && node.count > 1) {
-      val path = RepoUtil.pathToDirectory(node.path)
+      val path = OrgRepo.pathToDirectory(node.path)
       PathNode(s"$requestUrl/histogram$path", node.count) :: list
     }
     else {
