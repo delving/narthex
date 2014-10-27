@@ -40,14 +40,13 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
 
   def createDataset(state: DatasetState, percent: Int = 0, workers: Int = 0) = db {
     session =>
-      val now = System.currentTimeMillis()
       val update = s"""
           |
           | let $$dataset :=
           |   <dataset name="$fileName">
           |     <status>
           |       <state>$state</state>
-          |       <time>$now</time>
+          |       <time>${toXSDString(new DateTime())}</time>
           |       <percent>$percent</percent>
           |       <workers>$workers</workers>
           |       <error/>
@@ -108,7 +107,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
   def setStatus(state: DatasetState, percent: Int = 0, workers: Int = 0, error: String = "") = setProperties(
     "status",
     "state" -> state,
-    "time" -> System.currentTimeMillis().toString,
+    "time" -> toXSDString(new DateTime()),
     "percent" -> percent,
     "workers" -> workers,
     "error" -> error
