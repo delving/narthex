@@ -232,6 +232,12 @@ trait RecordHandling extends BaseXTools {
 
   class StoredRecordEnricher(pathPrefix: String, mappings: Map[String, TargetConcept]) {
 
+    val ENRICHMENT_NAMESPACES = Seq(
+      "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "rdfs" -> "http://www.w3.org/2000/01/rdf-schema#",
+      "skos" -> "http://www.w3.org/2004/02/skos/core#"
+    )
+
     case class Frame(tag: String, path: String, text: mutable.StringBuilder = new mutable.StringBuilder())
 
     def parse(xmlString: String): List[StoredRecord] = {
@@ -274,7 +280,9 @@ trait RecordHandling extends BaseXTools {
           if (tag == BOX) {
             val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$BOX element missing id"))
             val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$BOX element missing mod"))
-            record = Some(StoredRecord(id, fromXSDDateTime(mod), scope))
+            var scopeEnriched = scope
+            ENRICHMENT_NAMESPACES.foreach(pn => if (scopeEnriched.getURI(pn._1) == null) scopeEnriched = NamespaceBinding(pn._1, pn._2, scopeEnriched))
+            record = Some(StoredRecord(id, fromXSDDateTime(mod), scopeEnriched))
           }
           else record match {
             case Some(r) =>
