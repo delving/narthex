@@ -324,17 +324,6 @@ trait RecordHandling extends BaseXTools {
                 s"$in${start.get}${frame.text}</$tag>\n"
               }
               record.get.text.append(tagText)
-
-
-//              val startString = mapping match {
-//                case Some(TargetConcept(uri, vocabulary, prefLabel)) =>
-//
-//
-//                  start.get.replaceFirst(tag, s"""$tag enrichmentUri="$uri" enrichmentVocabulary="$vocabulary" enrichmentPrefLabel="$prefLabel" """.trim)
-//                case None =>
-//                  start.get
-//              }
-//              record.get.text.append(s"$indent$startString${frame.text}</$tag>\n")
               start = None
             }
             else start match {
