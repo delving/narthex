@@ -22,11 +22,11 @@ import akka.actor.{Actor, ActorRef, Props}
 import analysis.Analyzer._
 import analysis.Collator._
 import analysis.Merger._
+import analysis.NodeRepo._
 import analysis.Sorter._
+import dataset.DatasetActor.InterruptWork
+import dataset.DatasetRepo
 import dataset.DatasetState._
-import dataset.{DatasetRepo, DatasetState}
-import org.OrgActor.ActorShutdown
-import org.OrgRepo
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.json._
@@ -49,6 +49,7 @@ object Analyzer {
   case class AnalysisComplete()
 
   def props(datasetRepo: DatasetRepo) = Props(new Analyzer(datasetRepo))
+
 }
 
 class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
@@ -60,7 +61,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
 
   def receive = {
 
-    case ActorShutdown(name) =>
+    case InterruptWork() =>
       log.info(s"Interrupted analysis $datasetRepo")
       progress.foreach(_.bomb = Some(sender))
 
@@ -88,7 +89,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
             }
             self ! AnalysisTreeComplete(Json.toJson(tree))
           case None =>
-            self ! AnalysisError(s"Interrupted while splitting ${file.getName}")
+            context.parent ! AnalysisError(s"Interrupted while splitting ${file.getName}")
         }
         Logger.info(s"Closing source $datasetRepo")
         source.close()
@@ -97,7 +98,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
         case ex: Exception =>
           source.close()
           log.error("Problem reading the file", ex)
-          self ! AnalysisError(s"Unable to read ${file.getName}: $ex")
+          context.parent ! AnalysisError(s"Unable to read ${file.getName}: $ex")
       }
 
     case AnalysisTreeComplete(json) =>
@@ -136,7 +137,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
           }
 
         case SortType.HISTOGRAM_SORT =>
-          OrgRepo.updateJson(nodeRepo.status) {
+          updateJson(nodeRepo.status) {
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]
               val samples = current \ "samples"
@@ -148,36 +149,22 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
               )
           }
           FileUtils.deleteQuietly(nodeRepo.counted)
-          if (sorters.isEmpty && collators.isEmpty) {
-            self ! AnalysisComplete()
-          }
-          else {
-            progress.foreach { p =>
+          progress.foreach { p =>
+            if (sorters.isEmpty && collators.isEmpty) {
+              if (p.keepWorking) {
+                log.info(s"Analysis Complete, kill: ${self.toString()}")
+                datasetRepo.datasetDb.setStatus(ANALYZED)
+                context.parent ! AnalysisComplete()
+              }
+              else {
+                context.parent ! AnalysisError("Interrupted")
+              }
+            }
+            else {
               p.sendWorkers(sorters.size + collators.size)
             }
           }
       }
-
-    case AnalysisComplete() =>
-      progress.foreach { p =>
-        if (p.keepWorking) {
-          log.info(s"Analysis Complete, kill: ${self.toString()}")
-          datasetRepo.datasetDb.setStatus(ANALYZED)
-//          val delimit = datasetRepo.datasetDb.getDatasetInfoOption.get \ "delimit"
-//          val recordRoot = (delimit \ "recordRoot").text
-//          if (recordRoot.nonEmpty) datasetRepo.saveRecords()
-          context.stop(self)
-        }
-        else {
-          self ! AnalysisError("Interrupted")
-        }
-      }
-
-    case AnalysisError(error) =>
-      log.info(s"Analysis error: $error")
-      datasetRepo.datasetDb.setStatus(READY, error = error)
-      FileUtils.deleteQuietly(datasetRepo.analyzedDir)
-      context.stop(self)
 
   }
 }
@@ -201,7 +188,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with TreeHandling {
       val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
 
       def createSampleFile(randomSample: RandomSample, sampleFile: File) = {
-        OrgRepo.createJson(sampleFile, Json.obj("sample" -> randomSample.values))
+        createJson(sampleFile, Json.obj("sample" -> randomSample.values))
       }
 
       def lineOption = {

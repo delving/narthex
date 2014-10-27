@@ -25,63 +25,54 @@ var STATE_BLOCK = {
         label: 'Empty',
         css: 'label-inverse',
         faIcon: 'fa-folder-o',
-        revertState: 'state-deleted',
         revertPrompt: 'Delete dataset'
     },
     'state-harvesting': {
         label: 'Harvesting',
         css: 'label-warning',
         faIcon: 'fa-cogs',
-        revertState: 'state-empty',
         revertPrompt: 'Cancel harvesting'
     },
     'state-collecting': {
         label: 'Collecting',
         css: 'label-warning',
         faIcon: 'fa-cogs',
-        revertState: 'state-empty',
         revertPrompt: 'Cancel collecting'
     },
     'state-ready': {
         label: 'Ready',
         css: 'label-info',
         faIcon: 'fa-folder',
-        revertState: 'state-empty',
         revertPrompt: 'Empty dataset'
     },
     'state-splitting': {
         label: 'Splitting',
         css: 'label-warning',
         faIcon: 'fa-cogs',
-        revertState: 'state-ready',
         revertPrompt: 'Cancel splitting'
     },
     'state-analyzing': {
         label: 'Analyzing',
         css: 'label-warning',
         faIcon: 'fa-cogs',
-        revertState: 'state-ready',
         revertPrompt: 'Cancel analyzing'
     },
     'state-analyzed': {
         label: 'Analyzed',
         css: 'label-success',
         faIcon: 'fa-folder',
-        revertState: 'state-ready',
         revertPrompt: 'Discard analysis'
     },
     'state-saving': {
         label: 'Saving',
         css: 'label-warning',
         faIcon: 'fa-cogs',
-        revertState: 'state-analyzed',
         revertPrompt: 'Cancel record saving'
     },
     'state-saved': {
         label: 'Saved',
         css: 'label-success',
         faIcon: 'fa-database',
-        revertState: 'state-analyzed',
         revertPrompt: 'Delete saved records',
         viewTerminology: true
     }
@@ -152,8 +143,8 @@ define(["angular"], function () {
 
         $scope.createDataset = function () {
             if ($scope.dataset.validFileName) {
-                // empty state means create a dataset if it's not there
-                dashboardService.goToState($scope.dataset.fileName, 'state-empty').then(function () {
+                // revert nothing means create
+                dashboardService.revertState($scope.dataset.fileName).then(function () {
                     $scope.setNewFileOpen(false);
                     $scope.fileOpen = $scope.dataset.fileName;
                     $scope.dataset.name = $scope.dataset.prefix = "";
@@ -199,21 +190,16 @@ define(["angular"], function () {
                 if (state != file.info.status.state || isActive(file)) {
                     var time = file.info.status.time || 0;
                     var now = new Date().getTime();
-                    if (now - time > 1000 * 60 * 3) { // stale in 10 minutes
-                        file.staleStatus = true;
+                    var interval = timeSinceStatusCheck();
+                    if (interval > 1000) { // don't change the scope thing too often
+                        $scope.lastStatusCheck = now;
                     }
-                    else {
-                        var interval = timeSinceStatusCheck();
-                        if (interval > 1000) { // don't change the scope thing too often
-                            $scope.lastStatusCheck = now;
-                        }
-                        file.checker = $timeout(
-                            function () {
-                                checkDatasetStatus(file)
-                            },
-                            $scope.checkDelay
-                        );
-                    }
+                    file.checker = $timeout(
+                        function () {
+                            checkDatasetStatus(file)
+                        },
+                        $scope.checkDelay
+                    );
                 }
             }, function (problem) {
                 if (problem.status == 404) {
@@ -327,15 +313,6 @@ define(["angular"], function () {
             });
         };
 
-        // todo: this must change!
-        $scope.setPublished = function (file, published) {
-            var toState = published ? 'state-published' : 'state-saved';
-            dashboardService.goToState(file.name, toState).then(function (data) {
-                file.info.status.state = data.state;
-                file.stateBlock = STATE_BLOCK[data.state];
-            });
-        };
-
         fetchDatasetList();
 
         $scope.setActiveTab = function (tab) {
@@ -349,9 +326,9 @@ define(["angular"], function () {
             $rootScope.addRecentDataset(file.name, $location.absUrl())
         };
 
-        $scope.revertToState = function (file, state, areYouSure) {
+        $scope.revertToState = function (file, areYouSure) {
             if (areYouSure && !confirm(areYouSure))return;
-            dashboardService.goToState(file.name, state).then(function () {
+            dashboardService.revertState(file.name).then(function () {
                 fetchDatasetList();
             });
         };
@@ -446,7 +423,7 @@ define(["angular"], function () {
         };
 
         $scope.revert = function(file) {
-            $scope.revertToState(file, file.stateBlock.revertState, file.stateBlock.revertPrompt + '?')
+            $scope.revertState(file, file.stateBlock.revertPrompt + '?')
         };
     };
 

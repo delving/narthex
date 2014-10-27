@@ -17,8 +17,8 @@
 package services
 
 import akka.actor.ActorRef
+import dataset.DatasetDb
 import dataset.ProgressType._
-import dataset.{DatasetDb, ProgressType}
 import play.api.Logger
 import services.FileHandling.ReadProgress
 
@@ -27,6 +27,7 @@ import services.FileHandling.ReadProgress
  */
 
 object ProgressReporter {
+
   def apply(datasetDb: DatasetDb) = new UpdatingProgressReporter(datasetDb)
 
   def apply(): ProgressReporter = new FakeProgressReporter
@@ -77,8 +78,8 @@ class UpdatingProgressReporter(datasetDb: DatasetDb) extends ProgressReporter {
   var percentWas = -1
   var lastProgress = 0l
 
-  private def mindTheBomb(setStatus: => Unit): Boolean = {
-    if (keepWorking) setStatus
+  private def mindTheBomb(setProgress: => Unit): Boolean = {
+    if (keepWorking) setProgress
     keepWorking
   }
 

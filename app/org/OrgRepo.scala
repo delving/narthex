@@ -21,11 +21,9 @@ import java.io.File
 import dataset.DatasetRepo
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
 import org.OrgRepo._
-import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
-import play.api.libs.json.{JsObject, JsValue, Json}
 import record.RecordHandling
 import record.RecordHandling.StoredRecord
 import services._
@@ -47,23 +45,6 @@ object OrgRepo {
     // todo: something with content-type
     println("content type " + contentType)
     SUFFIXES.find(suffix => fileName.endsWith(suffix))
-  }
-
-  def readJson(file: File) = Json.parse(readFileToString(file))
-
-  def createJson(file: File, content: JsObject) = writeStringToFile(file, Json.prettyPrint(content), "UTF-8")
-
-  def updateJson(file: File)(xform: JsValue => JsObject) = {
-    if (file.exists()) {
-      val value = readJson(file)
-      val tempFile = new File(file.getParentFile, s"${file.getName}.temp")
-      createJson(tempFile, xform(value))
-      deleteQuietly(file)
-      moveFile(tempFile, file)
-    }
-    else {
-      writeStringToFile(file, Json.prettyPrint(xform(Json.obj())), "UTF-8")
-    }
   }
 
   def getSuffix(fileName: String) = {
@@ -118,7 +99,7 @@ class OrgRepo(userHome: String, val orgId: String) extends RecordHandling {
 
   def datasetRepoOption(fileName: String): Option[DatasetRepo] = {
     val dr = datasetRepo(fileName)
-    if (dr.datasetDb.getDatasetInfoOption.isDefined) Some(dr) else None
+    if (dr.datasetDb.infoOption.isDefined) Some(dr) else None
   }
 
   def getPublishedDatasets: Seq[PublishedDataset] = {

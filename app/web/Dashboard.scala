@@ -17,13 +17,14 @@
 package web
 
 import analysis.TreeHandling
-import dataset.DatasetState._
-import dataset.{DatasetDb, DatasetOrigin, DatasetState}
+import dataset.DatasetActor.StartHarvest
+import dataset.{DatasetDb, DatasetOrigin}
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
-import org.OrgRepo
+import org.OrgActor.DatasetMessage
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
+import org.{OrgActor, OrgRepo}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -40,9 +41,33 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val datasets = repo.repoDb.listDatasets.map {
         dataset =>
           val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+          // todo: we don't have "analysis" in this list
           Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
       }
       Ok(JsArray(datasets))
+    }
+  }
+
+  def datasetInfo(fileName: String) = Secure() {
+    token => implicit request => {
+      val datasetRepo = repo.datasetRepo(fileName)
+      datasetRepo.datasetDb.infoOption match {
+        case Some(datasetInfo) =>
+          val lists: List[(String, JsObject)] = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(datasetInfo, name))
+          val analysisPresence = if (datasetRepo.index.exists()) "true" else "false"
+          val listsWithAnalysis = ("analysis", JsObject(Seq("present" -> JsString(analysisPresence)))) :: lists
+          Ok(JsObject(listsWithAnalysis))
+        case None =>
+          NotFound(Json.obj("problem" -> s"Not found $fileName"))
+      }
+    }
+  }
+
+  def revertState(fileName: String) = Secure() {
+    token => implicit request => {
+      val datasetRepo = repo.datasetRepo(fileName)
+      val revertedState = datasetRepo.revertState
+      Ok(Json.obj("state" -> revertedState.toString))
     }
   }
 
@@ -78,7 +103,8 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
         Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $fileName")
         HarvestType.fromString(required("harvestType")) map { harvestType =>
           val prefix = if (harvestType == HarvestType.PMH) required("prefix") else ""
-          datasetRepo.startHarvest(harvestType, required("url"), optional("dataset"), prefix)
+          datasetRepo.datasetDb.setHarvestInfo(harvestType, required("url"), optional("dataset"), prefix)
+          OrgActor.actor ! DatasetMessage(fileName, StartHarvest(None))
           Ok
         } getOrElse {
           NotAcceptable(Json.obj("problem" -> s"unknown harvest type: ${optional("harvestType")}"))
@@ -144,51 +170,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
           Ok
         case None =>
           NotFound(Json.obj("problem" -> s"Not found $fileName"))
-      }
-    }
-  }
-
-  def datasetInfo(fileName: String) = Secure() {
-    token => implicit request => {
-      val datasetRepo = repo.datasetRepo(fileName)
-      datasetRepo.datasetDb.getDatasetInfoOption match {
-        case Some(datasetInfo) =>
-          val lists: List[(String, JsObject)] = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(datasetInfo, name))
-          val analysisPresence = if (datasetRepo.index.exists()) "true" else "false"
-          val listsWithAnalysis = ("analysis", JsObject(Seq("present" -> JsString(analysisPresence)))) :: lists
-          Ok(JsObject(listsWithAnalysis))
-        case None =>
-          NotFound(Json.obj("problem" -> s"Not found $fileName"))
-      }
-    }
-  }
-
-  def goToState(fileName: String, state: String) = Secure() {
-    token => implicit request => {
-      fromString(state) match {
-        case Some(datasetState) =>
-          if (datasetState == DatasetState.EMPTY) {
-            repo.datasetRepoOption(fileName) map {
-              datasetRepo =>
-                if (datasetRepo.goToState(datasetState))
-                  Ok(Json.obj("state" -> datasetState.toString))
-                else
-                  NotAcceptable(Json.obj("problem" -> "Cannot revert to empty"))
-            } getOrElse {
-              repo.datasetRepo(fileName).datasetDb.createDataset(datasetState)
-              Ok(Json.obj("state" -> datasetState.toString))
-            }
-          }
-          else {
-            val datasetRepo = repo.datasetRepo(fileName)
-            if (datasetRepo.goToState(datasetState))
-              Ok(Json.obj("state" -> datasetState.toString))
-            else
-              NotAcceptable(Json.obj("problem" -> s"Cannot revert to nonempty state $datasetState"))
-          }
-
-        case None =>
-          NotAcceptable(Json.obj("problem" -> s"Cannot find state $state"))
       }
     }
   }

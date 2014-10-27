@@ -19,9 +19,11 @@ package analysis
 import java.io.{BufferedReader, File, FileReader}
 import java.util.UUID
 
+import analysis.NodeRepo._
 import dataset.DatasetRepo
 import org.OrgRepo
-import play.api.libs.json.{JsArray, JsObject, Json}
+import org.apache.commons.io.FileUtils._
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 
 import scala.collection.mutable
 import scala.language.postfixOps
@@ -31,6 +33,23 @@ object NodeRepo {
     val dir = if (tag == null) parentDir else new File(parentDir, OrgRepo.pathToDirectory(tag))
     dir.mkdirs()
     new NodeRepo(parent, dir)
+  }
+
+  def readJson(file: File) = Json.parse(readFileToString(file))
+
+  def createJson(file: File, content: JsObject) = writeStringToFile(file, Json.prettyPrint(content), "UTF-8")
+
+  def updateJson(file: File)(xform: JsValue => JsObject) = {
+    if (file.exists()) {
+      val value = readJson(file)
+      val tempFile = new File(file.getParentFile, s"${file.getName}.temp")
+      createJson(tempFile, xform(value))
+      deleteQuietly(file)
+      moveFile(tempFile, file)
+    }
+    else {
+      writeStringToFile(file, Json.prettyPrint(xform(Json.obj())), "UTF-8")
+    }
   }
 }
 
@@ -42,7 +61,7 @@ class NodeRepo(val parent: DatasetRepo, val dir: File) {
 
   def status = f("status.json")
 
-  def setStatus(content: JsObject) = OrgRepo.createJson(status, content)
+  def setStatus(content: JsObject) = createJson(status, content)
 
   def values = f("values.txt")
 
@@ -75,7 +94,7 @@ class NodeRepo(val parent: DatasetRepo, val dir: File) {
     }
 
     def createFile(maximum: Int, entries: mutable.ArrayBuffer[JsArray], histogramFile: File) = {
-      OrgRepo.createJson(histogramFile, Json.obj(
+      createJson(histogramFile, Json.obj(
         "uniqueCount" -> uniqueCount,
         "entries" -> entries.size,
         "maximum" -> maximum,

@@ -22,7 +22,7 @@ import java.security.MessageDigest
 
 import org.joda.time.DateTime
 import play.Logger
-import record.RecordHandling.{RawRecord, StoredRecord, TargetConcept}
+import record.RecordHandling.{RawRecord, StoredRecord, TargetConcept, _}
 import services.{BaseXTools, FileHandling, ProgressReporter}
 
 import scala.collection.mutable
@@ -31,6 +31,10 @@ import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object RecordHandling {
+
+  val RECORD_LIST_CONTAINER = "pockets"
+  val RECORD_CONTAINER = "pocket"
+  val RECORD_UNIQUE_ID = "@id"
 
   case class RawRecord(id: String, hash: String, text: String)
 
@@ -41,10 +45,6 @@ object RecordHandling {
 }
 
 trait RecordHandling extends BaseXTools {
-
-  val RECORD_LIST_CONTAINER = "pockets"
-  val RECORD_CONTAINER = "pocket"
-  val RECORD_UNIQUE_ID = "@id"
 
   class RawRecordParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
     val path = new mutable.Stack[(String, StringBuilder)]

@@ -22,7 +22,7 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.Files._
 import record.RecordHandling
-import record.RecordHandling.RawRecord
+import record.RecordHandling.{RawRecord, _}
 import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable

@@ -22,6 +22,7 @@ import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
+import record.RecordHandling._
 import services._
 
 import scala.concurrent.duration._
@@ -40,7 +41,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
 
   def dropDb() = BaseX.dropDatabase(recordDb)
 
-  def getDatasetInfo = datasetRepo.datasetDb.getDatasetInfoOption.getOrElse(throw new RuntimeException(s"Not found: $datasetRepo"))
+  def getDatasetInfo = datasetRepo.datasetDb.infoOption.getOrElse(throw new RuntimeException(s"Not found: $datasetRepo"))
 
   def db[T](block: ClientSession => T) = BaseX.withDbSession(recordDb)(block)
 

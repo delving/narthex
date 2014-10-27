@@ -17,7 +17,7 @@
 package dataset
 
 import dataset.ProgressType._
-import harvest.Harvesting.HarvestCron
+import harvest.Harvesting.{HarvestCron, HarvestType}
 import org.RepoDb
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
@@ -69,6 +69,27 @@ object ProgressType {
 
   def fromString(string: String): Option[ProgressType] = ALL_PROGRESS_TYPES.find(s => s.matches(string))
 }
+
+case class ProgressState(name: String) {
+  override def toString = name
+
+  def matches(otherName: String) = name == otherName
+}
+
+object ProgressState {
+  val HARVESTING = DatasetState("state-harvesting", busy = true)
+  val COLLECTING = DatasetState("state-collecting", busy = true)
+  val SPLITTING = DatasetState("state-splitting", busy = true)
+  val ANALYZING = DatasetState("state-analyzing", busy = true)
+  val SAVING = DatasetState("state-saving", busy = true)
+
+  val ALL_STATES = List(COLLECTING, HARVESTING, SPLITTING, ANALYZING, SAVING)
+
+  def fromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
+
+//  def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "progress" \ "state").text)
+}
+
 
 case class DatasetState(name: String, busy: Boolean = false) {
   override def toString = name
@@ -124,7 +145,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
       session.query(update).execute()
   }
 
-  def getDatasetInfoOption: Option[Elem] = db {
+  def infoOption: Option[Elem] = db {
     session =>
       val answer = session.query(datasetElement).execute()
       if (answer.nonEmpty) Some(XML.loadString(answer)) else None
@@ -192,9 +213,9 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
     "namespaces", namespaceMap.toSeq: _*
   )
 
-  def setHarvestInfo(harvestType: String, url: String, dataset: String, prefix: String) = setProperties(
+  def setHarvestInfo(harvestType: HarvestType, url: String, dataset: String, prefix: String) = setProperties(
     "harvest",
-    "harvestType" -> harvestType,
+    "harvestType" -> harvestType.name,
     "url" -> url,
     "dataset" -> dataset,
     "prefix" -> prefix

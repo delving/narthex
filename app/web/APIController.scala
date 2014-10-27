@@ -21,7 +21,7 @@ import java.util.zip.ZipFile
 
 import analysis.TreeHandling
 import dataset.DatasetState._
-import dataset.{DatasetDb, DatasetOrigin, DatasetState}
+import dataset.{DatasetDb, DatasetOrigin}
 import org.OrgRepo.repo
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.http.ContentTypes
@@ -202,7 +202,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
         val db = r.datasetDb
         db.setSipFacts(facts)
         db.setSipHints(hints)
-        db.getDatasetInfoOption.foreach { info =>
+        db.infoOption.foreach { info =>
           val description = info \ "description"
           if (description.isEmpty) {
             val initialMeta = Map(

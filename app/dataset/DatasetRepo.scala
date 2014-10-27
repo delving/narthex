@@ -17,20 +17,23 @@ package dataset
 
 import java.io.File
 
-import analysis.{Analyzer, NodeRepo}
+import akka.pattern.ask
+import akka.util.Timeout
+import analysis.NodeRepo
+import dataset.DatasetActor.{StartAnalysis, StartSaving}
 import dataset.DatasetOrigin.HARVEST
-import dataset.DatasetState.{fromString, _}
+import dataset.DatasetState._
 import harvest.Harvester.{HarvestAdLib, HarvestPMH}
 import harvest.Harvesting.HarvestType._
 import harvest.Harvesting._
-import harvest.{HarvestRepo, Harvester, Harvesting}
+import harvest.{HarvestRepo, Harvesting}
+import org.OrgActor.{DatasetMessage, InterruptDataset}
 import org.{OrgActor, OrgRepo}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import record.RecordHandling.{StoredRecord, TargetConcept}
-import record.Saver.SaveRecords
-import record.{RecordDb, RecordHandling, Saver}
+import record.{RecordDb, RecordHandling}
 import services.FileHandling.clearDir
 import services._
 
@@ -62,13 +65,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
 
   def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
 
-  def startHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.getDatasetInfoOption map {
+  def startHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.infoOption map {
     datasetInfo =>
       DatasetState.fromDatasetInfo(datasetInfo).foreach { state =>
         if (state == EMPTY) {
           datasetDb.setStatus(HARVESTING)
           datasetDb.setOrigin(HARVEST)
-          datasetDb.setHarvestInfo(harvestType.name, url, dataset, prefix)
+          datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
           val harvestCron = Harvesting.harvestCron(datasetInfo)
           datasetDb.setHarvestCron(harvestCron)
           datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
@@ -90,7 +93,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
               )
           }
           Logger.info(s"Harvest $kickoff")
-          OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
+          OrgActor.actor ! DatasetMessage(name, kickoff)
+          //          OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
         }
         else {
           Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
@@ -98,7 +102,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
       }
   }
 
-  def nextHarvest() = datasetDb.getDatasetInfoOption map {
+  def nextHarvest() = datasetDb.infoOption map {
     datasetInfo =>
       DatasetState.fromDatasetInfo(datasetInfo).foreach { state =>
         if (state == SAVED) {
@@ -127,7 +131,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
                     )
                 }
                 Logger.info(s"Re-harvest $kickoff")
-                OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
+                OrgActor.actor ! DatasetMessage(name, kickoff)
+              //                OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
             } getOrElse {
               Logger.warn(s"No re-harvest of $harvestCron because harvest type was not recognized $harvest")
             }
@@ -143,30 +148,14 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
   }
 
   def startAnalysis() = {
-    getLatestIncomingFile.map { incomingFile =>
-      clearDir(analyzedDir)
-      datasetDb.setStatus(SPLITTING)
-      OrgActor.create(Analyzer.props(this), name, analyzer => analyzer ! Analyzer.AnalyzeFile(incomingFile))
-    }
+    clearDir(analyzedDir)
+    datasetDb.setStatus(SPLITTING)
+    OrgActor.actor ! DatasetMessage(name, StartAnalysis())
   }
 
   def saveRecords() = {
-    val info = recordDb.getDatasetInfo
-    val delimit = info \ "delimit"
-    val recordCountText = (delimit \ "recordCount").text
-    val recordCount = if (recordCountText.isEmpty) 0 else recordCountText.toInt
-    val message = if (HARVEST.matches((info \ "origin" \ "type").text)) {
-      val recordRoot = s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
-      SaveRecords(recordRoot, s"$recordRoot/$RECORD_UNIQUE_ID", recordCount, Some(recordRoot))
-    }
-    else {
-      val recordRoot = (delimit \ "recordRoot").text
-      val uniqueId = (delimit \ "uniqueId").text
-      SaveRecords(recordRoot, uniqueId, recordCount, None)
-    }
-    // set status now so it's done before the actor starts
     datasetDb.setStatus(SAVING)
-    OrgActor.create(Saver.props(this), name, saver => saver ! message)
+    OrgActor.actor ! DatasetMessage(name, StartSaving(None))
   }
 
   def index = new File(analyzedDir, "index.json")
@@ -222,60 +211,37 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     }
   }
 
-  def goToState(newState: DatasetState): Boolean = {
-
-    val currentState = datasetDb.getDatasetInfoOption match {
-      case Some(info) =>
-        fromString((info \ "status" \ "state").text).getOrElse(DELETED)
-      case _ =>
-        DELETED
-    }
-
-    Logger.info(s"$name: $currentState --> $newState")
-
-    if (newState != currentState) newState match {
-
-      case DELETED =>
-        datasetDb.removeDataset()
-        recordDb.dropDb()
-        clearDir(incomingDir)
-        clearDir(analyzedDir)
-        true
-
-      case EMPTY =>
-        OrgActor.shutdownOr(name, {
-          datasetDb.setStatus(newState)
-          recordDb.dropDb()
+  def revertState: DatasetState  = {
+    val currentState = datasetDb.infoOption.flatMap(info => DatasetState.fromDatasetInfo(info)).getOrElse(DELETED)
+    Logger.info(s"Revert state of $name from $currentState")
+    def toRevertedState: DatasetState = {
+      val nextState = currentState match {
+        case DELETED =>
+          datasetDb.createDataset(EMPTY)
+          DELETED
+        case EMPTY =>
+          datasetDb.removeDataset()
+          DELETED
+        case READY =>
           clearDir(incomingDir)
+          EMPTY
+        case ANALYZED =>
           clearDir(analyzedDir)
-          clearDir(harvestDir)
-        })
-        true
-
-      case READY =>
-        OrgActor.shutdownOr(name, {
-          datasetDb.setStatus(newState)
+          READY
+        case SAVED =>
           recordDb.dropDb()
-          clearDir(analyzedDir)
-        })
-        true
-
-      case ANALYZED =>
-        OrgActor.shutdownOr(name, {
-          datasetDb.setStatus(newState)
-          recordDb.dropDb()
-        })
-        true
-
-      case SAVED =>
-        false
-
-      case _ =>
-        false
+          ANALYZED
+      }
+      datasetDb.setStatus(nextState)
+      nextState
+    }
+    if (currentState.busy) {
+      implicit val timeout = Timeout(50L)
+      val interrupted = (OrgActor.actor ? InterruptDataset(name)).asInstanceOf[Boolean]
+      if (interrupted) currentState else toRevertedState
     }
     else {
-      Logger.info("same state, do nothing")
-      false
+      toRevertedState
     }
   }
 

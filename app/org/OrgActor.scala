@@ -17,52 +17,27 @@
 package org
 
 import akka.actor.{Actor, ActorRef, Props, Terminated}
-import akka.pattern.ask
-import akka.util.Timeout
-import org.OrgActor.{ActorKickoff, ActorShutdown}
+import dataset.DatasetActor
+import dataset.DatasetActor.InterruptWork
+import org.OrgActor.{DatasetMessage, InterruptDataset}
+import org.OrgRepo.repo
 import play.api.Logger
 import play.libs.Akka
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 import scala.language.postfixOps
+
 /*
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
 object OrgActor {
 
-  lazy val actor = Akka.system.actorOf(Props[OrgActor], OrgRepo.repo.orgId)
+  lazy val actor: ActorRef = Akka.system.actorOf(Props[OrgActor], repo.orgId)
 
-  case class ActorKickoff(props: Props, name: String)
+  case class DatasetMessage(name: String, message: AnyRef)
 
-  case class ActorShutdown(name: String)
+  case class InterruptDataset(name: String)
 
-  implicit val timeout = Timeout(30 seconds)
-
-  def create(props: Props, name: String, receiver: ActorRef => Unit) = {
-    val futureActor = actor ? ActorKickoff(props, name)
-    futureActor.onFailure {
-      case e: Exception =>
-        Logger.error(s"Unable to create actor $name")
-    }
-    futureActor.onSuccess {
-      case a: ActorRef =>
-        receiver(a)
-    }
-  }
-
-  def shutdownOr(name: String, whenNoActor: => Unit) = {
-    val futureActor = actor ? ActorShutdown(name)
-    futureActor.onFailure {
-      case e: Exception =>
-        Logger.error(s"Unable to send to actor $name")
-    }
-    futureActor.onSuccess {
-      case sent: Boolean =>
-        if (!sent) whenNoActor
-    }
-  }
 }
 
 
@@ -70,19 +45,17 @@ class OrgActor extends Actor {
 
   def receive = {
 
-    case ActorKickoff(props, name) =>
-      sender ! context.child(name).getOrElse {
-        val ref = context.actorOf(props, name)
+    case DatasetMessage(name: String, message: AnyRef) =>
+      val datasetActor = context.child(name).getOrElse {
+        val ref = context.actorOf(DatasetActor.props(repo.datasetRepo(name)))
         Logger.info(s"Created $ref")
         context.watch(ref)
         ref
       }
+      datasetActor ! message
 
-    case ActorShutdown(name) =>
-      sender ! context.child(name).exists { ref =>
-        ref ! ActorShutdown(name)
-        true
-      }
+    case InterruptDataset(name) =>
+      context.child(name).foreach(_ ! InterruptWork())
 
     case Terminated(name) =>
       Logger.info(s"Demised $name")
