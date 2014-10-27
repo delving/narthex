@@ -85,9 +85,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
         } getOrElse(throw new RuntimeException(s"Unknown harvest type!"))
       }
 
-    case HarvestComplete(modifiedAfter, fileOption) =>
+    case HarvestComplete(modifiedAfter, fileOption, error) =>
       log.info(s"Harvest complete $datasetRepo")
-      fileOption.foreach { file: File =>
+      if (error.isDefined) {
+        val revertState = if (modifiedAfter.isDefined) SAVED else EMPTY
+        datasetRepo.datasetDb.setStatus(revertState, error = error.get)
+      }
+      else fileOption.foreach { file: File =>
         modifiedAfter match {
           case Some(after) =>
             clearDir(datasetRepo.analyzedDir)

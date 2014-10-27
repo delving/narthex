@@ -23,9 +23,8 @@ import akka.actor.{Actor, Props}
 import akka.pattern.pipe
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
-import dataset.DatasetState._
 import dataset.ProgressState._
-import harvest.Harvester.{CollectSource, HarvestAdLib, HarvestComplete, HarvestPMH}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.{AdLibHarvestPage, PMHHarvestPage}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
@@ -34,8 +33,9 @@ import record.RecordHandling
 import services.ProgressReporter
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent._
 import scala.language.postfixOps
+
 
 object Harvester {
 
@@ -43,9 +43,8 @@ object Harvester {
 
   case class HarvestPMH(url: String, set: String, prefix: String, modifiedAfter: Option[DateTime])
 
-  case class HarvestComplete(modifiedAfter: Option[DateTime], file: Option[File])
+  case class HarvestComplete(modifiedAfter: Option[DateTime], file: Option[File], error:Option[String])
 
-  case class CollectSource(modifiedAfter: Option[DateTime])
 
   def props(datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) = Props(new Harvester(datasetRepo, harvestRepo))
 
@@ -74,13 +73,30 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
     error match {
       case Some(errorString) =>
         FileUtils.deleteQuietly(tempFile)
-        val revertState = if (modifiedAfter.isDefined) SAVED else EMPTY
-        datasetRepo.datasetDb.setStatus(revertState, error = errorString)
-        context.parent ! HarvestComplete(modifiedAfter, None)
+        context.parent ! HarvestComplete(modifiedAfter, file = None, error = Some(errorString))
       case None =>
-        val progressReporter = ProgressReporter(COLLECTING, datasetRepo.datasetDb)
-        val fileOption = harvestRepo.acceptZipFile(tempFile, progressReporter)
-        context.parent ! HarvestComplete(modifiedAfter, fileOption)
+        val completion = future {
+          val acceptZipReporter = ProgressReporter(COLLECTING, datasetRepo.datasetDb)
+          val fileOption = harvestRepo.acceptZipFile(tempFile, acceptZipReporter)
+          if (fileOption.isDefined) { // new harvest so there's work to do
+            val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
+            val generateSourceReporter = ProgressReporter(COLLECTING, datasetRepo.datasetDb)
+            val newRecordCount = harvestRepo.generateSourceFile(incomingFile, datasetRepo.datasetDb.setNamespaceMap, generateSourceReporter)
+            val existingRecordCount = datasetRepo.recordDb.getRecordCount
+            log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
+            // set record count
+            val info = datasetRepo.datasetDb.infoOption.get
+            val delimit = info \ "delimit"
+            val recordRoot = (delimit \ "recordRoot").text
+            val uniqueId = (delimit \ "uniqueId").text
+            datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
+          }
+          context.parent ! HarvestComplete(modifiedAfter, fileOption, None)
+        }
+        completion.onFailure {
+          case e: Exception =>
+            context.parent ! HarvestComplete(modifiedAfter, file = None, error = Some(e.toString))
+        }
     }
   }
 
@@ -114,7 +130,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         if (progressReporter.sendPercent(diagnostic.percentComplete)) {
           log.info(s"Harvest Page: $pageNumber - $url $database to $datasetRepo: $diagnostic")
           if (diagnostic.isLast) {
-            self ! CollectSource(modifiedAfter)
+            finish(modifiedAfter, None)
           }
           else {
             val futurePage = fetchAdLibPage(url, database, modifiedAfter, Some(diagnostic))
@@ -144,7 +160,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         harvestProgress.foreach { progressReporter =>
           resumptionToken match {
             case None =>
-              self ! CollectSource(modifiedAfter)
+              finish(modifiedAfter, None)
             case Some(token) =>
               val keepHarvesting = if (token.hasPercentComplete) {
                 progressReporter.sendPercent(token.percentComplete)
@@ -163,21 +179,5 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
           }
         }
       }
-
-    case CollectSource(modifiedAfter) =>
-      val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
-      val progressReporter = ProgressReporter(COLLECTING, datasetRepo.datasetDb)
-      // todo: generate within a future?
-      val newRecordCount = harvestRepo.generateSourceFile(incomingFile, datasetRepo.datasetDb.setNamespaceMap, progressReporter)
-      val existingRecordCount = datasetRepo.recordDb.getRecordCount
-      log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
-      // set record count
-      val info = datasetRepo.datasetDb.infoOption.get
-      val delimit = info \ "delimit"
-      val recordRoot = (delimit \ "recordRoot").text
-      val uniqueId = (delimit \ "uniqueId").text
-      datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
-      finish(modifiedAfter, None)
-
   }
 }

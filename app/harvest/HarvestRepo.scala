@@ -181,7 +181,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
   def generateSourceFile(sourceFile: File, setNamespaceMap: Map[String,String] => Unit, progressReporter: ProgressReporter): Int = {
-    Logger.info(s"Generating source from $sourceDir to $sourceFile")
+    Logger.info(s"Generating source from $sourceDir to $sourceFile using $harvestType")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
     out.write("<?xml version='1.0' encoding='UTF-8'?>\n")
