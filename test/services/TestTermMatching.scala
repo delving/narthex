@@ -1,10 +1,12 @@
 package services
 
-import java.io.File
+import java.io.{ByteArrayInputStream, File}
+import javax.xml.parsers.DocumentBuilderFactory
 
 import analysis.TreeHandling
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
+import org.xml.sax.InputSource
 import record.RecordHandling
 import record.RecordHandling._
 
@@ -60,7 +62,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
 
     val expectedString =
       """
-        |<record xmlns:very="http://veryother.org/#">
+        |<record xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:very="http://veryother.org/#">
         |  <inner>
         |    <content.subject>
         |      <rdf:Description>
@@ -83,6 +85,11 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
 
     println("this is coming out ===")
     println(recordText)
+    val factory = DocumentBuilderFactory.newInstance()
+    factory.setValidating(false)
+    factory.setNamespaceAware(true)
+    val builder = factory.newDocumentBuilder()
+    val document = builder.parse(new InputSource(new ByteArrayInputStream(recordText.getBytes)))
     println("=== that was it")
 
     recordText should be(expectedString)
