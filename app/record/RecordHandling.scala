@@ -310,18 +310,21 @@ trait RecordHandling extends BaseXTools {
             val text = frame.text.toString().trim
             if (text.nonEmpty) {
               val path = s"$pathPrefix${frame.path}/${value(text)}"
-
-              // for debugging:
-              //              println(s"$path not found in $mappings")
-
-              val mapping = mappings.get(path)
-              val startString = mapping match {
-                case Some(TargetConcept(uri, vocabulary, prefLabel)) =>
-                  start.get.replaceFirst(tag, s"""$tag enrichmentUri="$uri" enrichmentVocabulary="$vocabulary" enrichmentPrefLabel="$prefLabel" """.trim)
-                case None =>
-                  start.get
+              val in = indent
+              val tagText = mappings.get(path).map { targetConcept =>
+                s"""$in${start.get}
+                   |$in  <rdf:Description>
+                   |$in    <rdfs:label>${frame.text}</rdfs:label>
+                   |$in    <skos:prefLabel>${targetConcept.prefLabel}</skos:prefLabel>
+                   |$in    <skos:exactMatch rdf:resource="${targetConcept.uri}"/>
+                   |$in    <skos:Collection>${targetConcept.vocabulary}</skos:Collection>
+                   |$in    <skos:note>From Narthex</skos:note>
+                   |$in  </rdf:Description>
+                   |$in</$tag>\n""".stripMargin
+              } getOrElse {
+                s"$in${start.get}${frame.text}</$tag>\n"
               }
-              record.get.text.append(s"$indent$startString${frame.text}</$tag>\n")
+              record.get.text.append(tagText)
               start = None
             }
             else start match {

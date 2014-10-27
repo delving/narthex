@@ -6,7 +6,7 @@ import analysis.TreeHandling
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
 import record.RecordHandling
-import record.RecordHandling.{TargetConcept, _}
+import record.RecordHandling._
 
 class TestTermMatching extends FlatSpec with Matchers with TreeHandling with RecordHandling {
 
@@ -62,7 +62,15 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
       """
         |<record xmlns:very="http://veryother.org/#">
         |  <inner>
-        |    <content.subject enrichmentUri="uri" enrichmentVocabulary="vocab" enrichmentPrefLabel="glasinloody">Glas in loodraam</content.subject>
+        |    <content.subject>
+        |      <rdf:Description>
+        |        <rdfs:label>Glas in loodraam</rdfs:label>
+        |        <skos:prefLabel>glasinloody</skos:prefLabel>
+        |        <skos:exactMatch rdf:resource="uri"/>
+        |        <skos:Collection>vocab</skos:Collection>
+        |        <skos:note>From Narthex</skos:note>
+        |      </rdf:Description>
+        |    </content.subject>
         |  </inner>
         |  <very:other>Ignore</very:other>
         |  <empty/>
@@ -72,6 +80,11 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
     val parser = new StoredRecordEnricher(filePrefix, mappings)
     val record = parser.parse(storedString)
     val recordText = record(0).text.toString().trim
+
+    println("this is coming out ===")
+    println(recordText)
+    println("=== that was it")
+
     recordText should be(expectedString)
   }
 }
