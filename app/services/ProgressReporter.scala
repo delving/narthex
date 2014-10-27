@@ -17,8 +17,8 @@
 package services
 
 import akka.actor.ActorRef
-import dataset.DatasetDb
 import dataset.ProgressType._
+import dataset.{DatasetDb, ProgressState}
 import play.api.Logger
 import services.FileHandling.ReadProgress
 
@@ -28,7 +28,7 @@ import services.FileHandling.ReadProgress
 
 object ProgressReporter {
 
-  def apply(datasetDb: DatasetDb) = new UpdatingProgressReporter(datasetDb)
+  def apply(progressState: ProgressState, datasetDb: DatasetDb) = new UpdatingProgressReporter(progressState, datasetDb)
 
   def apply(): ProgressReporter = new FakeProgressReporter
 }
@@ -47,7 +47,7 @@ trait ProgressReporter {
   def sendPage(page: Int): Boolean
 
   def setMaximum(max: Int): Unit
-  
+
   def setReadProgress(readProgress: ReadProgress): Unit
 
 }
@@ -70,7 +70,7 @@ class FakeProgressReporter extends ProgressReporter {
   override def setReadProgress(readProgress: ReadProgress): Unit = {}
 }
 
-class UpdatingProgressReporter(datasetDb: DatasetDb) extends ProgressReporter {
+class UpdatingProgressReporter(progressState: ProgressState, datasetDb: DatasetDb) extends ProgressReporter {
   val PATIENCE_MILLIS = 333
   var bomb: Option[ActorRef] = None
   var readProgressOption: Option[ReadProgress] = None
@@ -83,12 +83,11 @@ class UpdatingProgressReporter(datasetDb: DatasetDb) extends ProgressReporter {
     keepWorking
   }
 
-  def sendPercent(percent: Int) = mindTheBomb(datasetDb.setProgress(PERCENT, percent))
+  def sendPercent(percent: Int) = mindTheBomb(datasetDb.setProgress(progressState, PERCENT, percent))
 
-  // trick here: workers=1 indicates to the HTML template that it's pages.  could be better.
-  def sendPageNumber(pageNumber: Int) = mindTheBomb(datasetDb.setProgress(PAGES, pageNumber))
+  def sendPageNumber(pageNumber: Int) = mindTheBomb(datasetDb.setProgress(progressState, PAGES, pageNumber))
 
-  def sendWorkers(workerCount: Int) = mindTheBomb(datasetDb.setProgress(WORKERS, workerCount))
+  def sendWorkers(workerCount: Int) = mindTheBomb(datasetDb.setProgress(progressState, WORKERS, workerCount))
 
   def keepReading(value: Int): Boolean = {
     readProgressOption.map { readProgress =>

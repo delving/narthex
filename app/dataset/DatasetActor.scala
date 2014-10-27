@@ -51,6 +51,8 @@ object DatasetActor {
 
   case class InterruptWork()
 
+  case class InterruptChild(actorWaiting: ActorRef)
+
   def props(datasetRepo: DatasetRepo) = Props(new DatasetActor(datasetRepo))
 
 }
@@ -64,13 +66,14 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     // === harvest
 
     case StartHarvest(modifiedAfter) =>
+      log.info(s"Start harvest $datasetRepo modified=$modifiedAfter")
       datasetRepo.datasetDb.infoOption.foreach { info =>
         val harvest = info \ "harvest"
         HarvestType.fromString((harvest \ "harvestType").text).map { harvestType =>
           val harvestRepo = new HarvestRepo(datasetRepo.harvestDir, harvestType)
           val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo, harvestRepo)))
           val url = (harvest \ "url").text
-          val database = (harvest \ "database").text
+          val database = (harvest \ "dataset").text
           val prefix = (harvest \ "prefix").text
           val kickoff = harvestType match {
             case HarvestType.PMH =>
@@ -78,12 +81,12 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
             case HarvestType.ADLIB =>
               HarvestAdLib(url, database, modifiedAfter)
           }
-          datasetRepo.datasetDb.setStatus(HARVESTING)
           harvester ! kickoff
-        }
+        } getOrElse(throw new RuntimeException(s"Unknown harvest type!"))
       }
 
     case HarvestComplete(modifiedAfter, fileOption) =>
+      log.info(s"Harvest complete $datasetRepo")
       fileOption.foreach { file: File =>
         modifiedAfter match {
           case Some(after) =>
@@ -99,13 +102,17 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     // === analysis
 
     case StartAnalysis() =>
+      log.info(s"Start analysis $datasetRepo")
       // todo: delete before starting?
-      datasetRepo.getLatestIncomingFile.foreach { file =>
+      datasetRepo.getLatestIncomingFile.map { file =>
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo)))
         analyzer ! AnalyzeFile(file)
+      } getOrElse {
+        log.info(s"No latest incoming file for $datasetRepo")
       }
 
     case AnalysisComplete() =>
+      log.info(s"Analysis complete $datasetRepo")
       datasetRepo.datasetDb.setStatus(ANALYZED)
       val delimit = datasetRepo.datasetDb.infoOption.get \ "delimit"
       val recordRoot = (delimit \ "recordRoot").text
@@ -114,7 +121,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       sender ! PoisonPill
 
     case AnalysisError(error) =>
-      log.info(s"Analysis error: $error")
+      log.info(s"Analysis error $datasetRepo: $error")
       datasetRepo.datasetDb.setStatus(READY, error = error)
       FileUtils.deleteQuietly(datasetRepo.analyzedDir)
       sender ! PoisonPill
@@ -122,6 +129,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     // === saving
 
     case StartSaving(modifiedAfter) =>
+      log.info(s"Start saving $datasetRepo modified=$modifiedAfter")
       datasetRepo.datasetDb.infoOption.foreach { info =>
         val delimit = info \ "delimit"
         val recordCountText = (delimit \ "recordCount").text
@@ -145,21 +153,26 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       }
 
     case SaveError(error) =>
+      log.info(s"Save error $datasetRepo: $error")
       datasetRepo.datasetDb.setStatus(ANALYZED, error = error)
       sender ! PoisonPill
 
     case SaveComplete() =>
-      log.info(s"Optimized ${datasetRepo.analyzedDir.getName}.")
+      log.info(s"Save complete $datasetRepo")
       datasetRepo.datasetDb.setStatus(SAVED)
       sender ! PoisonPill
 
     // === stop stuff
 
-    case InterruptWork() => // return true if an interrupt happened
-      sender ! context.children.exists { child: ActorRef =>
+    case InterruptChild(actorWaiting) => // return true if an interrupt happened
+      val interrupted = context.children.exists { child: ActorRef =>
         child ! InterruptWork()
         true
       }
+      log.info(s"InterruptChild, report back to $actorWaiting interrupted=$interrupted")
+      actorWaiting ! interrupted
+
+    case _ => log.warn(s"strange message for $datasetRepo")
   }
 }
 

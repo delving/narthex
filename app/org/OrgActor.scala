@@ -18,7 +18,7 @@ package org
 
 import akka.actor.{Actor, ActorRef, Props, Terminated}
 import dataset.DatasetActor
-import dataset.DatasetActor.InterruptWork
+import dataset.DatasetActor.InterruptChild
 import org.OrgActor.{DatasetMessage, InterruptDataset}
 import org.OrgRepo.repo
 import play.api.Logger
@@ -47,7 +47,7 @@ class OrgActor extends Actor {
 
     case DatasetMessage(name: String, message: AnyRef) =>
       val datasetActor = context.child(name).getOrElse {
-        val ref = context.actorOf(DatasetActor.props(repo.datasetRepo(name)))
+        val ref = context.actorOf(DatasetActor.props(repo.datasetRepo(name)), name)
         Logger.info(s"Created $ref")
         context.watch(ref)
         ref
@@ -55,7 +55,7 @@ class OrgActor extends Actor {
       datasetActor ! message
 
     case InterruptDataset(name) =>
-      context.child(name).foreach(_ ! InterruptWork())
+      context.child(name).map(_ ! InterruptChild(sender)) getOrElse(sender ! false)
 
     case Terminated(name) =>
       Logger.info(s"Demised $name")

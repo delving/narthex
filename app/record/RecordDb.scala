@@ -20,6 +20,7 @@ import harvest.Harvesting.{Harvest, PMHResumptionToken}
 import org.OrgRepo
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import record.RecordHandling._
@@ -63,6 +64,26 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         }
     }
     declarations.mkString("\n")
+  }
+
+  def getRecordCount: Int = {
+    try {
+      db {
+        session =>
+          val queryCount = s"""
+          |
+          | let $$boxes := collection('$recordDb')/$RECORD_CONTAINER
+          | return count($$boxes)
+          |
+          |""".stripMargin.trim
+          session.query(queryCount).execute().toInt
+      }
+    }
+    catch {
+      case e: Exception =>
+        Logger.info(s"Database $recordDb does not exist $e")
+        0
+    }
   }
 
   def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = {

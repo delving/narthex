@@ -27,6 +27,7 @@ import analysis.Sorter._
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
 import dataset.DatasetState._
+import dataset.ProgressState._
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.json._
@@ -70,7 +71,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       val (source, readProgress) = FileHandling.sourceFromFile(file)
       import context.dispatcher
       val f = future {
-        val progressReporter = ProgressReporter(datasetRepo.datasetDb)
+        val progressReporter = ProgressReporter(ANALYZING, datasetRepo.datasetDb)
         progressReporter.setReadProgress(readProgress)
         progress = Some(progressReporter)
         TreeNode(source, file.length, datasetRepo, progressReporter) match {
@@ -102,8 +103,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
       }
 
     case AnalysisTreeComplete(json) =>
-      datasetRepo.datasetDb.setStatus(ANALYZING)
-      val progressReporter = ProgressReporter(datasetRepo.datasetDb)
+      val progressReporter = ProgressReporter(ANALYZING, datasetRepo.datasetDb)
       progress = Some(progressReporter)
       progressReporter.sendWorkers(sorters.size + collators.size)
       log.info(s"Tree Complete at ${datasetRepo.analyzedDir.getName}")

@@ -21,6 +21,12 @@ String.prototype.endsWith = function (suffix) {
 var API_ACCESS_KEY = "secret"; // todo: find a better way
 
 var STATE_BLOCK = {
+    'state-deleted': {
+        label: 'Deleted',
+        css: 'label-inverse',
+        faIcon: 'fa-folder-o',
+        revertPrompt: 'Restore'
+    },
     'state-empty': {
         label: 'Empty',
         css: 'label-inverse',
@@ -170,48 +176,6 @@ define(["angular"], function () {
             $scope.dropSupported = true;
         };
 
-        function isActive(file) {
-            return file.info.progress && file.info.progress.type != 'progress-idle';
-        }
-
-        function checkDatasetStatus(file) {
-            dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
-                if (!file.info || !file.info.status) {
-                    console.log("MISSING STATUS BEFORE", file);
-                    return
-                }
-                var state = file.info.status.state;
-                file.stateBlock = STATE_BLOCK[state];
-                file.info = datasetInfo;
-                if (!file.info || !file.info.status) {
-                    console.log("MISSING STATUS AFTER", file);
-                    return
-                }
-                if (state != file.info.status.state || isActive(file)) {
-                    var time = file.info.status.time || 0;
-                    var now = new Date().getTime();
-                    var interval = timeSinceStatusCheck();
-                    if (interval > 1000) { // don't change the scope thing too often
-                        $scope.lastStatusCheck = now;
-                    }
-                    file.checker = $timeout(
-                        function () {
-                            checkDatasetStatus(file)
-                        },
-                        $scope.checkDelay
-                    );
-                }
-            }, function (problem) {
-                if (problem.status == 404) {
-                    alert("Processing problem with " + file.name);
-                    fetchDatasetList()
-                }
-                else {
-                    alert("Network problem " + problem.status);
-                }
-            })
-        }
-
         function fileDropped(file, $files) {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
             if ($files.length && !file.uploading) {
@@ -248,14 +212,50 @@ define(["angular"], function () {
             }
         }
 
+        function checkDatasetStatus(file) {
+            var progressType = file.info.progress ? file.info.progress.type : 'progress-idle';
+            if (progressType == 'progress-idle') {
+                var state = file.info.status ? file.info.status.state : "state-deleted";
+                file.state = state;
+                file.stateBlock = STATE_BLOCK[state];
+                return;
+            }
+            dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
+                file.info = datasetInfo;
+                var state = file.info.progress ? file.info.progress.state : 'no-progress';
+                if (state != file.state) {
+                    file.state = state;
+                    file.stateBlock = STATE_BLOCK[file.info.progress.state];
+                }
+                var now = new Date().getTime();
+                var interval = timeSinceStatusCheck();
+                if (interval > 1000) { // don't change the scope thing too often
+                    $scope.lastStatusCheck = now;
+                }
+                file.checker = $timeout(
+                    function () {
+                        checkDatasetStatus(file)
+                    },
+                    $scope.checkDelay
+                );
+            }, function (problem) {
+                if (problem.status == 404) {
+                    alert("Processing problem with " + file.name);
+                    fetchDatasetList()
+                }
+                else {
+                    alert("Network problem " + problem.status);
+                }
+            })
+        }
+
         function fetchDatasetList() {
             dashboardService.list().then(function (data) {
                 _.forEach($scope.files, function (file) {
-                    file.stateBlock = STATE_BLOCK[file.info.status.state];
                     if (file.checker) {
                         $timeout.cancel(file.checker);
                         file.checker = undefined;
-                        console.log("cancelling " + file.name);
+                        console.log("cancelling checker " + file.name);
                     }
                 });
                 $scope.files = data;
@@ -283,13 +283,13 @@ define(["angular"], function () {
             });
         }
 
-        $scope.setMetadata = function(file) {
+        $scope.setMetadata = function (file) {
             dashboardService.setMetadata(file.name, file.info.metadata).then(function () {
                 fetchDatasetList();
             });
         };
 
-        $scope.setPublication = function(file) {
+        $scope.setPublication = function (file) {
             dashboardService.setPublication(file.name, file.info.publication).then(function () {
                 fetchDatasetList();
             });
@@ -327,7 +327,7 @@ define(["angular"], function () {
         };
 
         $scope.revertToState = function (file, areYouSure) {
-            if (areYouSure && !confirm(areYouSure))return;
+            if (areYouSure && !confirm(areYouSure)) return;
             dashboardService.revertState(file.name).then(function () {
                 fetchDatasetList();
             });
@@ -385,7 +385,7 @@ define(["angular"], function () {
 
         $scope.tab = "metadata";
 
-        $scope.allowTab = function(file, tabName) {
+        $scope.allowTab = function (file, tabName) {
             switch (tabName) {
                 case 'drop':
                     if ($scope.isEmpty(file.info.origin)) return true;
@@ -403,27 +403,27 @@ define(["angular"], function () {
                     if ($scope.isEmpty(file.info.status)) return false;
                     return file.info.status.state == 'state-saved';
                 default:
-                    console.log("ALLOW TAB "+tabName);
+                    console.log("ALLOW TAB " + tabName);
                     return false;
             }
         };
 
-        $scope.allowAnalysis = function(file) {
+        $scope.allowAnalysis = function (file) {
             if ($scope.isEmpty(file.info.status)) return false;
             if ($scope.isEmpty(file.info.analysis)) return false;
-            var okState =  file.info.status.state == 'state-ready' || file.info.status.state == 'state-saved';
+            var okState = file.info.status.state == 'state-ready' || file.info.status.state == 'state-saved';
             return okState && !(file.info.analysis.present == 'true')
         };
 
-        $scope.allowSaveRecords = function(file) {
+        $scope.allowSaveRecords = function (file) {
             if ($scope.isEmpty(file.info.status)) return false;
             if ($scope.isEmpty(file.info.delimit)) return false;
-            var okState =  file.info.status.state == 'state-ready' || file.info.status.state == 'state-analyzed';
+            var okState = file.info.status.state == 'state-ready' || file.info.status.state == 'state-analyzed';
             return okState && file.info.delimit.recordCount > 0;
         };
 
-        $scope.revert = function(file) {
-            $scope.revertState(file, file.stateBlock.revertPrompt + '?')
+        $scope.revert = function (file) {
+            $scope.revertToState(file, file.stateBlock.revertPrompt + '?')
         };
     };
 

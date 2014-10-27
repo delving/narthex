@@ -17,14 +17,12 @@
 package web
 
 import analysis.TreeHandling
-import dataset.DatasetActor.StartHarvest
 import dataset.{DatasetDb, DatasetOrigin}
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
-import org.OrgActor.DatasetMessage
+import org.OrgRepo
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
-import org.{OrgActor, OrgRepo}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -41,7 +39,9 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val datasets = repo.repoDb.listDatasets.map {
         dataset =>
           val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-          // todo: we don't have "analysis" in this list
+          val datasetRepo = repo.datasetRepo(dataset.name)
+          val analysisPresence = if (datasetRepo.index.exists()) "true" else "false"
+          val listsWithAnalysis = ("analysis", JsObject(Seq("present" -> JsString(analysisPresence)))) :: lists
           Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
       }
       Ok(JsArray(datasets))
@@ -103,8 +103,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
         Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $fileName")
         HarvestType.fromString(required("harvestType")) map { harvestType =>
           val prefix = if (harvestType == HarvestType.PMH) required("prefix") else ""
-          datasetRepo.datasetDb.setHarvestInfo(harvestType, required("url"), optional("dataset"), prefix)
-          OrgActor.actor ! DatasetMessage(fileName, StartHarvest(None))
+          datasetRepo.startHarvest(harvestType, required("url"), optional("dataset"), prefix)
           Ok
         } getOrElse {
           NotAcceptable(Json.obj("problem" -> s"unknown harvest type: ${optional("harvestType")}"))

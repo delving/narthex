@@ -16,6 +16,7 @@
 
 package dataset
 
+import dataset.ProgressState._
 import dataset.ProgressType._
 import harvest.Harvesting.{HarvestCron, HarvestType}
 import org.RepoDb
@@ -77,21 +78,22 @@ case class ProgressState(name: String) {
 }
 
 object ProgressState {
-  val HARVESTING = DatasetState("state-harvesting", busy = true)
-  val COLLECTING = DatasetState("state-collecting", busy = true)
-  val SPLITTING = DatasetState("state-splitting", busy = true)
-  val ANALYZING = DatasetState("state-analyzing", busy = true)
-  val SAVING = DatasetState("state-saving", busy = true)
+  val NO_PROGRESS = ProgressState("state-no-progress")
+  val HARVESTING = ProgressState("state-harvesting")
+  val COLLECTING = ProgressState("state-collecting")
+  val SPLITTING = ProgressState("state-splitting")
+  val ANALYZING = ProgressState("state-analyzing")
+  val SAVING = ProgressState("state-saving")
 
-  val ALL_STATES = List(COLLECTING, HARVESTING, SPLITTING, ANALYZING, SAVING)
+  val ALL_STATES = List(NO_PROGRESS, HARVESTING, COLLECTING, SPLITTING, ANALYZING, SAVING)
 
-  def fromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
+  def fromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
 
 //  def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "progress" \ "state").text)
 }
 
 
-case class DatasetState(name: String, busy: Boolean = false) {
+case class DatasetState(name: String) {
   override def toString = name
 
   def matches(otherName: String) = name == otherName
@@ -100,16 +102,11 @@ case class DatasetState(name: String, busy: Boolean = false) {
 object DatasetState {
   val DELETED = DatasetState("state-deleted")
   val EMPTY = DatasetState("state-empty")
-  val HARVESTING = DatasetState("state-harvesting", busy = true)
   val READY = DatasetState("state-ready")
-  val COLLECTING = DatasetState("state-collecting", busy = true)
-  val SPLITTING = DatasetState("state-splitting", busy = true)
-  val ANALYZING = DatasetState("state-analyzing", busy = true)
   val ANALYZED = DatasetState("state-analyzed")
-  val SAVING = DatasetState("state-saving", busy = true)
   val SAVED = DatasetState("state-saved")
 
-  val ALL_STATES = List(DELETED, EMPTY, COLLECTING, HARVESTING, READY, SPLITTING, ANALYZING, ANALYZED, SAVING, SAVED)
+  val ALL_STATES = List(DELETED, EMPTY, READY, ANALYZED, SAVED)
 
   def fromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
 
@@ -193,11 +190,14 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
       "time" -> toXSDString(new DateTime()),
       "error" -> error
     )
-    setProgress(if (state.busy && error.isEmpty) BUSY else IDLE, 0)
+    setProgress(NO_PROGRESS, IDLE, 0)
   }
 
-  def setProgress(progressType: ProgressType, count: Int) = setProperties(
+  def startProgress(progressState: ProgressState) = setProgress(progressState, BUSY, 0)
+
+  def setProgress(progressState: ProgressState, progressType: ProgressType, count: Int) = setProperties(
     "progress",
+    "state" -> progressState,
     "type" -> progressType,
     "count" -> count
   )

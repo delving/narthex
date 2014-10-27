@@ -156,8 +156,6 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
 
   def countFiles = fileList.size
 
-  def clear() = FileHandling.clearDir(sourceDir)
-
   def acceptZipFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(progressReporter, { targetFile =>
     if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Requires zip file ${file.getName}")
     FileUtils.moveFile(file, targetFile)

@@ -19,6 +19,7 @@ package record
 import akka.actor.{Actor, Props}
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
+import dataset.ProgressState.SAVING
 import org.basex.core.cmd.Optimize
 import org.joda.time.DateTime
 import play.api.Logger
@@ -65,7 +66,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
               session =>
                 parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
                 val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
-                val progressReporter = ProgressReporter(datasetRepo.datasetDb)
+                val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
                 progressReporter.setReadProgress(readProgress)
                 def receiveRecord(record: RawRecord) = {
                   tick += 1

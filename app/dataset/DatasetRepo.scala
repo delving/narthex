@@ -20,9 +20,10 @@ import java.io.File
 import akka.pattern.ask
 import akka.util.Timeout
 import analysis.NodeRepo
-import dataset.DatasetActor.{StartAnalysis, StartSaving}
+import dataset.DatasetActor.{StartAnalysis, StartHarvest, StartSaving}
 import dataset.DatasetOrigin.HARVEST
 import dataset.DatasetState._
+import dataset.ProgressState._
 import harvest.Harvester.{HarvestAdLib, HarvestPMH}
 import harvest.Harvesting.HarvestType._
 import harvest.Harvesting._
@@ -36,6 +37,8 @@ import record.RecordHandling.{StoredRecord, TargetConcept}
 import record.{RecordDb, RecordHandling}
 import services.FileHandling.clearDir
 import services._
+
+import scala.concurrent.Await
 
 class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling {
 
@@ -69,32 +72,44 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     datasetInfo =>
       DatasetState.fromDatasetInfo(datasetInfo).foreach { state =>
         if (state == EMPTY) {
-          datasetDb.setStatus(HARVESTING)
+
+//          datasetDb.setStatus(HARVESTING)
+//          datasetDb.setOrigin(HARVEST)
+//          datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
+//          val harvestCron = Harvesting.harvestCron(datasetInfo)
+//          datasetDb.setHarvestCron(harvestCron)
+//          datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
+//          val harvestRepo = new HarvestRepo(harvestDir, harvestType)
+//          harvestRepo.clear()
+//          val kickoff = harvestType match {
+//            case PMH =>
+//              HarvestPMH(
+//                url = url,
+//                set = dataset,
+//                prefix = prefix,
+//                modifiedAfter = None
+//              )
+//            case ADLIB =>
+//              HarvestAdLib(
+//                url = url,
+//                database = dataset,
+//                modifiedAfter = None
+//              )
+//          }
+//          Logger.info(s"Harvest $kickoff")
+//          OrgActor.actor ! DatasetMessage(name, kickoff)
+
+
           datasetDb.setOrigin(HARVEST)
           datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
+          datasetDb.startProgress(HARVESTING)
           val harvestCron = Harvesting.harvestCron(datasetInfo)
           datasetDb.setHarvestCron(harvestCron)
           datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
-          val harvestRepo = new HarvestRepo(harvestDir, harvestType)
-          harvestRepo.clear()
-          val kickoff = harvestType match {
-            case PMH =>
-              HarvestPMH(
-                url = url,
-                set = dataset,
-                prefix = prefix,
-                modifiedAfter = None
-              )
-            case ADLIB =>
-              HarvestAdLib(
-                url = url,
-                database = dataset,
-                modifiedAfter = None
-              )
-          }
-          Logger.info(s"Harvest $kickoff")
-          OrgActor.actor ! DatasetMessage(name, kickoff)
-          //          OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
+          Logger.info(s"clearing ${harvestDir.getAbsolutePath}")
+          FileHandling.clearDir(harvestDir)
+          Logger.info(s"Harvest $this")
+          OrgActor.actor ! DatasetMessage(name, StartHarvest(None))
         }
         else {
           Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
@@ -108,7 +123,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
         if (state == SAVED) {
           val harvestCron = Harvesting.harvestCron(datasetInfo)
           if (harvestCron.timeToWork) {
-            datasetDb.setStatus(HARVESTING)
             val nextHarvestCron = harvestCron.next
             datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
             val harvest = datasetInfo \ "harvest"
@@ -131,6 +145,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
                     )
                 }
                 Logger.info(s"Re-harvest $kickoff")
+                datasetDb.startProgress(HARVESTING)
                 OrgActor.actor ! DatasetMessage(name, kickoff)
               //                OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
             } getOrElse {
@@ -149,13 +164,48 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
 
   def startAnalysis() = {
     clearDir(analyzedDir)
-    datasetDb.setStatus(SPLITTING)
+    datasetDb.startProgress(ANALYZING)
     OrgActor.actor ! DatasetMessage(name, StartAnalysis())
   }
 
   def saveRecords() = {
-    datasetDb.setStatus(SAVING)
+    datasetDb.startProgress(SAVING)
+    // todo: here we assume that this is NOT incremental
     OrgActor.actor ! DatasetMessage(name, StartSaving(None))
+  }
+
+  def revertState: DatasetState = {
+    val currentState = datasetDb.infoOption.flatMap{info =>
+      val maybe = DatasetState.fromDatasetInfo(info)
+      if (maybe.isEmpty) Logger.warn(s"No current state?? $info")
+      maybe
+    }.getOrElse(DELETED)
+    Logger.info(s"Revert state of $name from $currentState")
+    def toRevertedState: DatasetState = {
+      val nextState = currentState match {
+        case DELETED =>
+          datasetDb.createDataset(EMPTY)
+          EMPTY
+        case EMPTY =>
+          // datasetDb.removeDataset()
+          DELETED
+        case READY =>
+          clearDir(incomingDir)
+          EMPTY
+        case ANALYZED =>
+          clearDir(analyzedDir)
+          READY
+        case SAVED =>
+          recordDb.dropDb()
+          ANALYZED
+      }
+      datasetDb.setStatus(nextState)
+      nextState
+    }
+    implicit val timeout = Timeout(100L)
+    val answer = OrgActor.actor ? InterruptDataset(name)
+    val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
+    if (interrupted) currentState else toRevertedState
   }
 
   def index = new File(analyzedDir, "index.json")
@@ -208,40 +258,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     nodeRepo(path) match {
       case None => None
       case Some(nodeRepo) => Some(nodeRepo.histogramText)
-    }
-  }
-
-  def revertState: DatasetState  = {
-    val currentState = datasetDb.infoOption.flatMap(info => DatasetState.fromDatasetInfo(info)).getOrElse(DELETED)
-    Logger.info(s"Revert state of $name from $currentState")
-    def toRevertedState: DatasetState = {
-      val nextState = currentState match {
-        case DELETED =>
-          datasetDb.createDataset(EMPTY)
-          DELETED
-        case EMPTY =>
-          datasetDb.removeDataset()
-          DELETED
-        case READY =>
-          clearDir(incomingDir)
-          EMPTY
-        case ANALYZED =>
-          clearDir(analyzedDir)
-          READY
-        case SAVED =>
-          recordDb.dropDb()
-          ANALYZED
-      }
-      datasetDb.setStatus(nextState)
-      nextState
-    }
-    if (currentState.busy) {
-      implicit val timeout = Timeout(50L)
-      val interrupted = (OrgActor.actor ? InterruptDataset(name)).asInstanceOf[Boolean]
-      if (interrupted) currentState else toRevertedState
-    }
-    else {
-      toRevertedState
     }
   }
 
