@@ -20,10 +20,9 @@ import java.io.File
 
 import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import analysis.Analyzer
-import analysis.Analyzer.{AnalysisComplete, AnalysisError, AnalyzeFile}
+import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DatasetOrigin._
-import dataset.DatasetState._
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType
 import harvest.{HarvestRepo, Harvester}
@@ -32,7 +31,7 @@ import org.joda.time.DateTime
 import play.api.Logger
 import record.RecordHandling._
 import record.Saver
-import record.Saver.{SaveComplete, SaveError, SaveRecords}
+import record.Saver.{SaveComplete, SaveRecords}
 import services.FileHandling._
 
 import scala.language.postfixOps
@@ -58,8 +57,8 @@ object DatasetActor {
 }
 
 class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
-
   val log = Logger
+  val db = datasetRepo.datasetDb
 
   def receive = {
 
@@ -67,7 +66,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
 
     case StartHarvest(modifiedAfter) =>
       log.info(s"Start harvest $datasetRepo modified=$modifiedAfter")
-      datasetRepo.datasetDb.infoOption.foreach { info =>
+      clearDir(datasetRepo.analyzedDir)
+      db.infoOption.foreach { info =>
         val harvest = info \ "harvest"
         HarvestType.fromString((harvest \ "harvestType").text).map { harvestType =>
           val harvestRepo = new HarvestRepo(datasetRepo.harvestDir, harvestType)
@@ -82,21 +82,16 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
               HarvestAdLib(url, database, modifiedAfter)
           }
           harvester ! kickoff
-        } getOrElse(throw new RuntimeException(s"Unknown harvest type!"))
+        } getOrElse (throw new RuntimeException(s"Unknown harvest type!"))
       }
 
-    case HarvestComplete(modifiedAfter, fileOption, error) =>
-      log.info(s"Harvest complete $datasetRepo")
-      if (error.isDefined) {
-        val revertState = if (modifiedAfter.isDefined) SAVED else EMPTY
-        datasetRepo.datasetDb.setStatus(revertState, error = error.get)
-      }
-      else fileOption.foreach { file: File =>
+    case HarvestComplete(modifiedAfter, fileOption, errorOption) =>
+      log.info(s"Harvest complete $datasetRepo, error=$errorOption")
+      db.endProgress(errorOption)
+      if (!errorOption.isDefined) fileOption.foreach { file: File =>
         modifiedAfter match {
           case Some(after) =>
-            clearDir(datasetRepo.analyzedDir)
             self ! StartSaving(modifiedAfter)
-          // todo: parse the file and adjust the database repo accordingly
           case None =>
             self ! StartAnalysis()
         }
@@ -107,27 +102,18 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
 
     case StartAnalysis() =>
       log.info(s"Start analysis $datasetRepo")
-      // todo: delete before starting?
       datasetRepo.getLatestIncomingFile.map { file =>
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo)))
         analyzer ! AnalyzeFile(file)
       } getOrElse {
-        log.info(s"No latest incoming file for $datasetRepo")
+        log.warn(s"No latest incoming file for $datasetRepo")
       }
 
-    case AnalysisComplete() =>
-      log.info(s"Analysis complete $datasetRepo")
-      datasetRepo.datasetDb.setStatus(ANALYZED)
-      val delimit = datasetRepo.datasetDb.infoOption.get \ "delimit"
-      val recordRoot = (delimit \ "recordRoot").text
-      // todo: if this is an incremental harvest?
-      if (recordRoot.nonEmpty) self ! StartSaving(None)
-      sender ! PoisonPill
-
-    case AnalysisError(error) =>
-      log.info(s"Analysis error $datasetRepo: $error")
-      datasetRepo.datasetDb.setStatus(READY, error = error)
-      FileUtils.deleteQuietly(datasetRepo.analyzedDir)
+    case AnalysisComplete(errorOption) =>
+      log.info(s"Analysis complete $datasetRepo, error=$errorOption")
+      db.endProgress(errorOption)
+      db.setTree(errorOption.isEmpty)
+      if (errorOption.isDefined) FileUtils.deleteQuietly(datasetRepo.analyzedDir)
       sender ! PoisonPill
 
     // === saving
@@ -156,14 +142,10 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
         }
       }
 
-    case SaveError(error) =>
-      log.info(s"Save error $datasetRepo: $error")
-      datasetRepo.datasetDb.setStatus(ANALYZED, error = error)
-      sender ! PoisonPill
-
-    case SaveComplete() =>
-      log.info(s"Save complete $datasetRepo")
-      datasetRepo.datasetDb.setStatus(SAVED)
+    case SaveComplete(errorOption) =>
+      log.info(s"Save complete $datasetRepo, error=$errorOption")
+      db.endProgress(errorOption)
+      db.setRecords(errorOption.isEmpty)
       sender ! PoisonPill
 
     // === stop stuff
@@ -171,12 +153,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     case InterruptChild(actorWaiting) => // return true if an interrupt happened
       val interrupted = context.children.exists { child: ActorRef =>
         child ! InterruptWork()
-        true
+        true // found one to interrupt
       }
       log.info(s"InterruptChild, report back to $actorWaiting interrupted=$interrupted")
       actorWaiting ! interrupted
 
-    case _ => log.warn(s"strange message for $datasetRepo")
+    case spurious =>
+      log.error(s"Spurious message $datasetRepo: $spurious")
   }
 }
 

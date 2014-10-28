@@ -60,15 +60,17 @@ case class ProgressType(name: String) {
 }
 
 object ProgressType {
-  val IDLE = ProgressType("progress-idle")
+  val TYPE_IDLE = ProgressType("progress-idle")
   val BUSY = ProgressType("progress-busy")
   val PERCENT = ProgressType("progress-percent")
   val WORKERS = ProgressType("progress-workers")
   val PAGES = ProgressType("progress-pages")
 
-  val ALL_PROGRESS_TYPES = List(IDLE, BUSY, PERCENT, WORKERS, PAGES)
+  val ALL_PROGRESS_TYPES = List(TYPE_IDLE, BUSY, PERCENT, WORKERS, PAGES)
 
   def fromString(string: String): Option[ProgressType] = ALL_PROGRESS_TYPES.find(s => s.matches(string))
+
+  def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "progress" \ "type").text)
 }
 
 case class ProgressState(name: String) {
@@ -78,18 +80,19 @@ case class ProgressState(name: String) {
 }
 
 object ProgressState {
-  val NO_PROGRESS = ProgressState("state-no-progress")
+  val STATE_IDLE = ProgressState("state-idle")
   val HARVESTING = ProgressState("state-harvesting")
   val COLLECTING = ProgressState("state-collecting")
   val SPLITTING = ProgressState("state-splitting")
   val ANALYZING = ProgressState("state-analyzing")
   val SAVING = ProgressState("state-saving")
+  val ERROR = ProgressState("state-error")
 
-  val ALL_STATES = List(NO_PROGRESS, HARVESTING, COLLECTING, SPLITTING, ANALYZING, SAVING)
+  val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, SPLITTING, ANALYZING, SAVING, ERROR)
 
   def fromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
 
-//  def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "progress" \ "state").text)
+  def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "progress" \ "state").text)
 }
 
 
@@ -102,11 +105,9 @@ case class DatasetState(name: String) {
 object DatasetState {
   val DELETED = DatasetState("state-deleted")
   val EMPTY = DatasetState("state-empty")
-  val READY = DatasetState("state-ready")
-  val ANALYZED = DatasetState("state-analyzed")
-  val SAVED = DatasetState("state-saved")
+  val SOURCED = DatasetState("state-sourced")
 
-  val ALL_STATES = List(DELETED, EMPTY, READY, ANALYZED, SAVED)
+  val ALL_STATES = List(DELETED, EMPTY, SOURCED)
 
   def fromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
 
@@ -115,26 +116,26 @@ object DatasetState {
 
 class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
 
+  def now: String = toXSDDateTime(new DateTime())
+
   def db[T](block: ClientSession => T): T = repoDb.db(block)
 
   def datasetElement = s"${repoDb.allDatasets}/dataset[@name=${quote(fileName)}]"
 
   def createDataset(state: DatasetState) = db {
     session =>
-      val now = System.currentTimeMillis()
       val update = s"""
           |
+          | let $$status :=
+          |   <status>
+          |     <state>$state</state>
+          |     <time>$now</time>
+          |   </status>
           | let $$dataset :=
-          |   <dataset name="$fileName">
-          |     <status>
-          |       <state>$state</state>
-          |       <time>$now</time>
-          |       <error/>
-          |     </status>
-          |   </dataset>
+          |   <dataset name="$fileName">$$status</dataset>
           | return
           |   if (exists($datasetElement))
-          |   then replace value of node $datasetElement/status/state with ${quote(state.toString)}
+          |   then replace node $datasetElement/status with $$status
           |   else insert node $$dataset into ${repoDb.allDatasets}
           |
           """.stripMargin.trim
@@ -158,7 +159,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
     session =>
       val replacementLines = List(
         List(s"  <$listName>"),
-        entries.map(pair => s"    <${pair._1}>${pair._2}</${pair._1}>"),
+        entries.filter(_._2.toString.nonEmpty).map(pair => s"    <${pair._1}>${pair._2}</${pair._1}>"),
         List(s"  </$listName>")
       ).flatten
       val replacement = replacementLines.mkString("\n")
@@ -177,29 +178,38 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
       session.query(update).execute()
   }
 
+  def setStatus(state: DatasetState) = setProperties(
+    "status",
+    "state" -> state,
+    "time" -> now
+  )
+
+  def setTree(ready: Boolean) = setProperties(
+    "tree",
+    "time" -> (if (ready) now else "")
+  )
+
+  def setRecords(ready: Boolean) = setProperties(
+    "records",
+    "time" -> (if (ready) now else "")
+  )
+
   def setOrigin(origin: DatasetOrigin) = setProperties(
     "origin",
     "type" -> origin,
-    "time" -> toXSDString(new DateTime())
+    "time" -> toXSDDateTime(new DateTime())
   )
-
-  def setStatus(state: DatasetState, error: String = "") = {
-    setProperties(
-      "status",
-      "state" -> state,
-      "time" -> toXSDString(new DateTime()),
-      "error" -> error
-    )
-    setProgress(NO_PROGRESS, IDLE, 0)
-  }
 
   def startProgress(progressState: ProgressState) = setProgress(progressState, BUSY, 0)
 
-  def setProgress(progressState: ProgressState, progressType: ProgressType, count: Int) = setProperties(
+  def endProgress(error: Option[String] = None) = setProgress(STATE_IDLE, TYPE_IDLE, 0, error)
+
+  def setProgress(progressState: ProgressState, progressType: ProgressType, count: Int, error: Option[String] = None) = setProperties(
     "progress",
     "state" -> progressState,
     "type" -> progressType,
-    "count" -> count
+    "count" -> count,
+    "error" -> error.getOrElse("")
   )
 
   def setRecordDelimiter(recordRoot: String = "", uniqueId: String = "", recordCount: Int = 0) = setProperties(
@@ -208,6 +218,15 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
     "uniqueId" -> uniqueId,
     "recordCount" -> recordCount
   )
+
+  def isDelimited(existingInfo: Option[NodeSeq]): Boolean = {
+    def check(info: NodeSeq) = {
+      val delimit = info \ "delimit"
+      val recordRoot = delimit \ "recordRoot"
+      recordRoot.nonEmpty
+    }
+    existingInfo.map(check).getOrElse(infoOption.exists(check))
+  }
 
   def setNamespaceMap(namespaceMap: Map[String, String]) = setProperties(
     "namespaces", namespaceMap.toSeq: _*

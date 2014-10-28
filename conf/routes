@@ -19,13 +19,12 @@ GET         /narthex/logout                                           web.Applic
 
 # File Handling
 GET         /narthex/dashboard/list                                   web.Dashboard.list
-GET         /narthex/dashboard/sip-list                               web.Dashboard.listSipFiles
-GET         /narthex/dashboard/delete-sip/:fileName                   web.Dashboard.deleteSipFile(fileName)
 POST        /narthex/dashboard/:fileName/upload                       web.Dashboard.upload(fileName)
 POST        /narthex/dashboard/:fileName/harvest                      web.Dashboard.harvest(fileName)
 POST        /narthex/dashboard/:fileName/set-harvest-cron             web.Dashboard.setHarvestCron(fileName)
-POST        /narthex/dashboard/:fileName/metadata                     web.Dashboard.setMetadata(fileName)
-POST        /narthex/dashboard/:fileName/publication                  web.Dashboard.setPublication(fileName)
+POST        /narthex/dashboard/:fileName/set-metadata                 web.Dashboard.setMetadata(fileName)
+POST        /narthex/dashboard/:fileName/set-publication              web.Dashboard.setPublication(fileName)
+POST        /narthex/dashboard/:fileName/set-delimiter                web.Dashboard.setRecordDelimiter(fileName)
 GET         /narthex/dashboard/:fileName/analyze                      web.Dashboard.analyze(fileName)
 GET         /narthex/dashboard/:fileName/index                        web.Dashboard.index(fileName)
 GET         /narthex/dashboard/:fileName/dataset-info                 web.Dashboard.datasetInfo(fileName)
@@ -33,14 +32,17 @@ GET         /narthex/dashboard/:fileName/revert                       web.Dashbo
 GET         /narthex/dashboard/:fileName/status/*path                 web.Dashboard.nodeStatus(fileName, path)
 GET         /narthex/dashboard/:fileName/sample/:size/*path           web.Dashboard.sample(fileName, path, size:Int)
 GET         /narthex/dashboard/:fileName/histogram/:size/*path        web.Dashboard.histogram(fileName, path, size:Int)
-POST        /narthex/dashboard/:fileName/record/set-delimiter         web.Dashboard.setRecordDelimiter(fileName)
-GET         /narthex/dashboard/:fileName/record/save                  web.Dashboard.saveRecords(fileName)
-POST        /narthex/dashboard/:fileName/record/query                 web.Dashboard.queryRecords(fileName)
+GET         /narthex/dashboard/:fileName/save-records                 web.Dashboard.saveRecords(fileName)
+
+POST        /narthex/dashboard/:fileName/query-records                web.Dashboard.queryRecords(fileName)
 GET         /narthex/dashboard/:fileName/get-source-paths             web.Dashboard.getSourcePaths(fileName)
 GET         /narthex/dashboard/:fileName/get-term-mappings            web.Dashboard.getTermMappings(fileName)
 POST        /narthex/dashboard/:fileName/set-term-mapping             web.Dashboard.setTermMapping(fileName)
 GET         /narthex/dashboard/:fileName/get-category-mappings        web.Dashboard.getCategoryMappings(fileName)
 POST        /narthex/dashboard/:fileName/set-category-mapping         web.Dashboard.setCategoryMapping(fileName)
+
+GET         /narthex/dashboard/sip-list                               web.Dashboard.listSipFiles
+GET         /narthex/dashboard/delete-sip/:fileName                   web.Dashboard.deleteSipFile(fileName)
 
 GET         /narthex/dashboard/skos/list                              web.Dashboard.listSkos
 GET         /narthex/dashboard/skos/:name/:sought                     web.Dashboard.searchSkos(name, sought)

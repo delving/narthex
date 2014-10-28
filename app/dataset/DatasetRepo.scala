@@ -68,144 +68,126 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
 
   def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
 
-  def startHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.infoOption map {
-    datasetInfo =>
-      DatasetState.fromDatasetInfo(datasetInfo).foreach { state =>
-        if (state == EMPTY) {
-
-//          datasetDb.setStatus(HARVESTING)
-//          datasetDb.setOrigin(HARVEST)
-//          datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
-//          val harvestCron = Harvesting.harvestCron(datasetInfo)
-//          datasetDb.setHarvestCron(harvestCron)
-//          datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
-//          val harvestRepo = new HarvestRepo(harvestDir, harvestType)
-//          harvestRepo.clear()
-//          val kickoff = harvestType match {
-//            case PMH =>
-//              HarvestPMH(
-//                url = url,
-//                set = dataset,
-//                prefix = prefix,
-//                modifiedAfter = None
-//              )
-//            case ADLIB =>
-//              HarvestAdLib(
-//                url = url,
-//                database = dataset,
-//                modifiedAfter = None
-//              )
-//          }
-//          Logger.info(s"Harvest $kickoff")
-//          OrgActor.actor ! DatasetMessage(name, kickoff)
-
-
-          datasetDb.setOrigin(HARVEST)
-          datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
-          datasetDb.startProgress(HARVESTING)
-          val harvestCron = Harvesting.harvestCron(datasetInfo)
-          datasetDb.setHarvestCron(harvestCron)
-          datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
-          Logger.info(s"clearing ${harvestDir.getAbsolutePath}")
-          FileHandling.clearDir(harvestDir)
-          Logger.info(s"Harvest $this")
-          OrgActor.actor ! DatasetMessage(name, StartHarvest(None))
-        }
-        else {
-          Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
-        }
+  def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.infoOption map { info =>
+    DatasetState.fromDatasetInfo(info).foreach { state =>
+      if (state == EMPTY) {
+        clearDir(harvestDir) // it's a first harvest
+        clearDir(analyzedDir) // just in case
+        datasetDb.startProgress(HARVESTING)
+        datasetDb.setOrigin(HARVEST)
+        datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
+        datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
+        datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
+        Logger.info(s"First Harvest $name")
+        OrgActor.actor ! DatasetMessage(name, StartHarvest(None))
       }
+      else {
+        Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
+      }
+    }
   }
 
-  def nextHarvest() = datasetDb.infoOption map {
-    datasetInfo =>
-      DatasetState.fromDatasetInfo(datasetInfo).foreach { state =>
-        if (state == SAVED) {
-          val harvestCron = Harvesting.harvestCron(datasetInfo)
-          if (harvestCron.timeToWork) {
-            val nextHarvestCron = harvestCron.next
-            datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
-            val harvest = datasetInfo \ "harvest"
-            HarvestType.fromString((harvest \ "harvestType").text).map {
-              harvestType =>
-                val harvestRepo = new HarvestRepo(harvestDir, harvestType)
-                val kickoff = harvestType match {
-                  case PMH =>
-                    HarvestPMH(
-                      url = (harvest \ "url").text,
-                      set = (harvest \ "dataset").text,
-                      prefix = (harvest \ "prefix").text,
-                      modifiedAfter = Some(harvestCron.previous)
-                    )
-                  case ADLIB =>
-                    HarvestAdLib(
-                      url = (harvest \ "url").text,
-                      database = (harvest \ "dataset").text,
-                      modifiedAfter = Some(harvestCron.previous)
-                    )
-                }
-                Logger.info(s"Re-harvest $kickoff")
-                datasetDb.startProgress(HARVESTING)
-                OrgActor.actor ! DatasetMessage(name, kickoff)
-              //                OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
-            } getOrElse {
-              Logger.warn(s"No re-harvest of $harvestCron because harvest type was not recognized $harvest")
+  def nextHarvest() = datasetDb.infoOption.map { info =>
+    val recordsTimeOption = fromXSDDateTime(info \ "records" \ "time")
+    recordsTimeOption.map { recordsTime =>
+      val harvestCron = Harvesting.harvestCron(info)
+      if (harvestCron.timeToWork) {
+        val nextHarvestCron = harvestCron.next
+        datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
+        val harvest = info \ "harvest"
+        HarvestType.fromString((harvest \ "harvestType").text).map {
+          harvestType =>
+            val harvestRepo = new HarvestRepo(harvestDir, harvestType)
+            val kickoff = harvestType match {
+              case PMH =>
+                HarvestPMH(
+                  url = (harvest \ "url").text,
+                  set = (harvest \ "dataset").text,
+                  prefix = (harvest \ "prefix").text,
+                  modifiedAfter = Some(harvestCron.previous)
+                )
+              case ADLIB =>
+                HarvestAdLib(
+                  url = (harvest \ "url").text,
+                  database = (harvest \ "dataset").text,
+                  modifiedAfter = Some(harvestCron.previous)
+                )
             }
-          }
-          else {
-            Logger.info(s"No re-harvest of $harvestCron")
-          }
-        }
-        else {
-          Logger.warn(s"Incremental harvest can only be started in $SAVED, not $state")
+            Logger.info(s"Re-harvest $kickoff")
+            datasetDb.startProgress(HARVESTING)
+            OrgActor.actor ! DatasetMessage(name, kickoff)
+          //                OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
+        } getOrElse {
+          Logger.warn(s"No re-harvest $name with cron $harvestCron because harvest type was not recognized $harvest")
         }
       }
+      else {
+        Logger.info(s"No re-harvest of $name with cron $harvestCron because it's not time $harvestCron")
+      }
+    } getOrElse {
+      Logger.warn(s"Incremental harvest of $name can only be started when there are saved records")
+    }
   }
 
-  def startAnalysis() = {
-    clearDir(analyzedDir)
-    datasetDb.startProgress(ANALYZING)
-    OrgActor.actor ! DatasetMessage(name, StartAnalysis())
+  def startAnalysis() = datasetDb.infoOption.map { info =>
+    DatasetState.fromDatasetInfo(info).map { state =>
+      if (state == SOURCED) {
+        clearDir(analyzedDir)
+        datasetDb.startProgress(ANALYZING)
+        OrgActor.actor ! DatasetMessage(name, StartAnalysis())
+      }
+      else {
+        Logger.warn(s"Analyzing $name can only be started when the state is sourced, but it's $state")
+      }
+    }
   }
 
-  def saveRecords() = {
-    datasetDb.startProgress(SAVING)
-    // todo: here we assume that this is NOT incremental
-    OrgActor.actor ! DatasetMessage(name, StartSaving(None))
+  def firstSaveRecords() = datasetDb.infoOption.map { info =>
+    DatasetState.fromDatasetInfo(info).map { state =>
+      val delimited = datasetDb.isDelimited(Some(info))
+      if (state == SOURCED && delimited) {
+        recordDb.createDb()
+        datasetDb.startProgress(SAVING)
+        OrgActor.actor ! DatasetMessage(name, StartSaving(None))
+      }
+      else {
+        Logger.warn(s"First save of $name can only be started with state sourced/delimited, but it's $state/$delimited ")
+      }
+    }
   }
 
   def revertState: DatasetState = {
-    val currentState = datasetDb.infoOption.flatMap{info =>
+    val currentState = datasetDb.infoOption.flatMap { info =>
       val maybe = DatasetState.fromDatasetInfo(info)
       if (maybe.isEmpty) Logger.warn(s"No current state?? $info")
       maybe
-    }.getOrElse(DELETED)
+    } getOrElse DELETED
     Logger.info(s"Revert state of $name from $currentState")
-    def toRevertedState: DatasetState = {
-      val nextState = currentState match {
+    datasetDb.infoOption.map { info =>
+      def toRevertedState: DatasetState = currentState match {
         case DELETED =>
           datasetDb.createDataset(EMPTY)
           EMPTY
         case EMPTY =>
-          // datasetDb.removeDataset()
+          datasetDb.setStatus(DELETED)
           DELETED
-        case READY =>
-          clearDir(incomingDir)
-          EMPTY
-        case ANALYZED =>
-          clearDir(analyzedDir)
-          READY
-        case SAVED =>
-          recordDb.dropDb()
-          ANALYZED
+        case SOURCED =>
+          val treeTimeOption = fromXSDDateTime(info \ "tree" \ "time")
+          val recordsTimeOption = fromXSDDateTime(info \ "records" \ "time")
+          if (treeTimeOption.isEmpty && recordsTimeOption.isEmpty) {
+            clearDir(incomingDir)
+            datasetDb.setStatus(EMPTY)
+            EMPTY
+          }
+          else {
+            SOURCED // no change
+          }
       }
-      datasetDb.setStatus(nextState)
-      nextState
-    }
-    implicit val timeout = Timeout(100L)
-    val answer = OrgActor.actor ? InterruptDataset(name)
-    val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
-    if (interrupted) currentState else toRevertedState
+      implicit val timeout = Timeout(100L)
+      val answer = OrgActor.actor ? InterruptDataset(name)
+      val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
+      if (interrupted) currentState else toRevertedState
+    } getOrElse currentState
   }
 
   def index = new File(analyzedDir, "index.json")
@@ -215,12 +197,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 
-  def status(path: String): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeDirectory) => Some(nodeDirectory.status)
-    }
-  }
+  def status(path: String): Option[File] = nodeRepo(path).map(_.status)
 
   def sample(path: String, size: Int): Option[File] = {
     nodeRepo(path) match {
@@ -231,35 +208,21 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     }
   }
 
-  def histogram(path: String, size: Int): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeRepo) =>
-        val fileList = nodeRepo.histogramJson.filter(pair => pair._1 == size)
-        if (fileList.isEmpty) None else Some(fileList.head._2)
-    }
-  }
+  def histograms(path: String, size: Int): Option[File] = nodeRepo(path).map { repo =>
+    val fileList = repo.histogramJson.filter(pair => pair._1 == size)
+    fileList.headOption.map(_._2)
+  } getOrElse None
 
-  def indexText(path: String): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeRepo) => Some(nodeRepo.indexText)
-    }
-  }
+  def histogram(path: String, size: Int): Option[File] = nodeRepo(path).map { repo =>
+    val fileList = repo.histogramJson.filter(pair => pair._1 == size)
+    fileList.headOption.map(_._2)
+  } getOrElse None
 
-  def uniqueText(path: String): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeRepo) => Some(nodeRepo.uniqueText)
-    }
-  }
+  def indexText(path: String): Option[File] = nodeRepo(path).map(_.indexText)
 
-  def histogramText(path: String): Option[File] = {
-    nodeRepo(path) match {
-      case None => None
-      case Some(nodeRepo) => Some(nodeRepo.histogramText)
-    }
-  }
+  def uniqueText(path: String): Option[File] = nodeRepo(path).map(_.uniqueText)
+
+  def histogramText(path: String): Option[File] = nodeRepo(path).map(_.histogramText)
 
   def enrichRecords(storedRecords: String): List[StoredRecord] = {
     val pathPrefix = s"${NarthexConfig.ORG_ID}/$name"
@@ -272,5 +235,5 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     parser.parse(storedRecords)
   }
 
-  def invalidateEnrichementCache() = Cache.remove(name)
+  def invalidateEnrichmentCache() = Cache.remove(name)
 }

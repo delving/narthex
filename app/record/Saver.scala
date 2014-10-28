@@ -24,47 +24,46 @@ import org.basex.core.cmd.Optimize
 import org.joda.time.DateTime
 import play.api.Logger
 import record.RecordHandling.RawRecord
-import record.Saver.{SaveComplete, SaveError, SaveRecords}
+import record.Saver.{SaveComplete, SaveRecords}
 import services.{FileHandling, ProgressReporter}
 
-import scala.concurrent.Future
+import scala.concurrent._
 import scala.language.postfixOps
 
 object Saver {
 
   case class SaveRecords(modifiedAfter: Option[DateTime], recordRoot: String, uniqueId: String, recordCount: Long, deepRecordContainer: Option[String])
 
-  case class SaveComplete()
-
-  case class SaveError(error: String)
+  case class SaveComplete(errorOption: Option[String] = None)
 
   def props(datasetRepo: DatasetRepo) = Props(new Saver(datasetRepo))
 }
 
 class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
+
+  import context.dispatcher
+
   var log = Logger
-  var parser: RawRecordParser = null
-  var progress : Option[ProgressReporter] = None
+  var progress: Option[ProgressReporter] = None
 
   def receive = {
 
     case InterruptWork() =>
-      progress.foreach(_.bomb = Some(sender))
+      progress.map(_.bomb = Some(sender)).getOrElse(context.stop(self))
 
     case SaveRecords(modifiedAfter: Option[DateTime], recordRoot, uniqueId, recordCount, deepRecordContainer) =>
       log.info(s"Saving $datasetRepo")
-      modifiedAfter match {
-        case Some(modified) =>
-          // todo: delete existing records and add new ones
-        case None =>
-          datasetRepo.getLatestIncomingFile.map { incomingFile =>
-            datasetRepo.recordDb.createDb
-            var tick = 0
-            var time = System.currentTimeMillis()
-            import context.dispatcher
-            val f = Future(datasetRepo.recordDb.db {
+      modifiedAfter.map { modified =>
+        // todo: replace existing records!
+      } getOrElse {
+        datasetRepo.getLatestIncomingFile.map { incomingFile =>
+          datasetRepo.recordDb.createDb()
+          var tick = 0
+          var time = System.currentTimeMillis()
+          future {
+            datasetRepo.recordDb.db {
               session =>
-                parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
+                val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
                 val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
                 val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
                 progressReporter.setReadProgress(readProgress)
@@ -87,19 +86,20 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
                     context.parent ! SaveComplete()
                   }
                   else {
-                    context.parent ! SaveError("Interrupted")
+                    context.parent ! SaveComplete(Some("Interrupted while saving"))
                   }
                 }
                 catch {
                   case e: Exception =>
                     log.error(s"Unable to save $datasetRepo", e)
-                    context.parent ! SaveError(e.toString)
+                    context.parent ! SaveComplete(Some(e.toString))
                 }
                 finally {
                   source.close()
                 }
-            })
+            }
           }
+        }
       }
   }
 }

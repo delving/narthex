@@ -24,7 +24,6 @@ import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.mvc._
-import record.RecordHandling
 import record.RecordHandling.StoredRecord
 import services.NarthexConfig._
 import services._
@@ -331,7 +330,7 @@ object OaiPmh extends Controller with BaseXTools {
               <record>
                 <header>
                   <identifier>{record.id}</identifier>
-                  <datestamp>{toXSDString(record.mod)}</datestamp>
+                  <datestamp>{toXSDDateTime(record.mod)}</datestamp>
                   <setSpec>{request.set}</setSpec>
                 </header>
               </record>
@@ -370,7 +369,7 @@ object OaiPmh extends Controller with BaseXTools {
               <record>
                 <header>
                   <identifier>{record.id}</identifier>
-                  <datestamp>{toXSDString(record.mod)}</datestamp>
+                  <datestamp>{toXSDDateTime(record.mod)}</datestamp>
                   <setSpec>{request.set}</setSpec>
                 </header>
                 <metadata>
@@ -463,13 +462,13 @@ object OaiPmh extends Controller with BaseXTools {
     }
 
 
-    def emptyOrDate(value: Option[DateTime]) = value.map(toXSDString).getOrElse("")
+    def emptyOrDate(value: Option[DateTime]) = value.map(toXSDDateTime).getOrElse("")
 
     def emptyOrString(value: Option[String]) = value.getOrElse("")
 
-    def currentDate = toXSDString(new DateTime())
+    def currentDate = toXSDDateTime(new DateTime())
 
-    def dateString(date: DateTime): String = if (date != null) toXSDString(date) else ""
+    def dateString(date: DateTime): String = if (date != null) toXSDDateTime(date) else ""
 
   }
 

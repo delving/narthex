@@ -169,7 +169,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
     implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
       request.body.moveTo(datasetRepo.createIncomingFile(request.body.file.getName), replace = true)
-      datasetRepo.datasetDb.createDataset(READY)
+      datasetRepo.datasetDb.createDataset(SOURCED)
       datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP)
       datasetRepo.datasetDb.setRecordDelimiter(
         recordRoot = "/rdf:RDF/rdf:Description",

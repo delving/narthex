@@ -38,7 +38,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
 
   val recordDb = s"${dbName}_records"
 
-  def createDb = BaseX.createDatabase(recordDb)
+  def createDb() = BaseX.createDatabase(recordDb)
 
   def dropDb() = BaseX.dropDatabase(recordDb)
 
@@ -148,11 +148,11 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
 
   def dateSelector(from: Option[DateTime], until: Option[DateTime]) = (from, until) match {
     case (Some(fromDate), Some(untilDate)) =>
-      s"[@mod >= '${toXSDString(fromDate)}' and @mod < '${toXSDString(untilDate)}']"
+      s"[@mod >= '${toXSDDateTime(fromDate)}' and @mod < '${toXSDDateTime(untilDate)}']"
     case (Some(fromDate), None) =>
-      s"[@mod >= '${toXSDString(fromDate)}']"
+      s"[@mod >= '${toXSDDateTime(fromDate)}']"
     case (None, Some(untilDate)) =>
-      s"[@mod < '${toXSDString(untilDate)}']"
+      s"[@mod < '${toXSDDateTime(untilDate)}']"
     case (None, None) =>
       ""
   }

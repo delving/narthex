@@ -26,7 +26,6 @@ import analysis.NodeRepo._
 import analysis.Sorter._
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
-import dataset.DatasetState._
 import dataset.ProgressState._
 import org.apache.commons.io.FileUtils
 import play.api.Logger
@@ -45,9 +44,7 @@ object Analyzer {
 
   case class AnalysisTreeComplete(json: JsValue)
 
-  case class AnalysisError(error: String)
-
-  case class AnalysisComplete()
+  case class AnalysisComplete(error: Option[String] = None)
 
   def props(datasetRepo: DatasetRepo) = Props(new Analyzer(datasetRepo))
 
@@ -55,6 +52,7 @@ object Analyzer {
 
 class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
   val log = Logger
+  val db = datasetRepo.datasetDb
   val LINE = """^ *(\d*) (.*)$""".r
   var progress: Option[ProgressReporter] = None
   var sorters = List.empty[ActorRef]
@@ -64,14 +62,14 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
 
     case InterruptWork() =>
       log.info(s"Interrupted analysis $datasetRepo")
-      progress.foreach(_.bomb = Some(sender))
+      progress.map(_.bomb = Some(sender)).getOrElse(context.stop(self))
 
     case AnalyzeFile(file) =>
       log.info(s"Analyzer on ${file.getName}")
       val (source, readProgress) = FileHandling.sourceFromFile(file)
       import context.dispatcher
       val f = future {
-        val progressReporter = ProgressReporter(ANALYZING, datasetRepo.datasetDb)
+        val progressReporter = ProgressReporter(ANALYZING, db)
         progressReporter.setReadProgress(readProgress)
         progress = Some(progressReporter)
         TreeNode(source, file.length, datasetRepo, progressReporter) match {
@@ -90,7 +88,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
             }
             self ! AnalysisTreeComplete(Json.toJson(tree))
           case None =>
-            context.parent ! AnalysisError(s"Interrupted while splitting ${file.getName}")
+            context.parent ! AnalysisComplete(Some(s"Interrupted while splitting ${file.getName}"))
         }
         Logger.info(s"Closing source $datasetRepo")
         source.close()
@@ -99,11 +97,11 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
         case ex: Exception =>
           source.close()
           log.error("Problem reading the file", ex)
-          context.parent ! AnalysisError(s"Unable to read ${file.getName}: $ex")
+          context.parent ! AnalysisComplete(Some(s"Unable to read ${file.getName}: $ex"))
       }
 
     case AnalysisTreeComplete(json) =>
-      val progressReporter = ProgressReporter(ANALYZING, datasetRepo.datasetDb)
+      val progressReporter = ProgressReporter(ANALYZING, db)
       progress = Some(progressReporter)
       progressReporter.sendWorkers(sorters.size + collators.size)
       log.info(s"Tree Complete at ${datasetRepo.analyzedDir.getName}")
@@ -153,11 +151,10 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
             if (sorters.isEmpty && collators.isEmpty) {
               if (p.keepWorking) {
                 log.info(s"Analysis Complete, kill: ${self.toString()}")
-                datasetRepo.datasetDb.setStatus(ANALYZED)
                 context.parent ! AnalysisComplete()
               }
               else {
-                context.parent ! AnalysisError("Interrupted")
+                context.parent ! AnalysisComplete(Some("Interrupted while analyzing"))
               }
             }
             else {
@@ -165,7 +162,6 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
             }
           }
       }
-
   }
 }
 

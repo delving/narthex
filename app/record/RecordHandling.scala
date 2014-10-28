@@ -137,7 +137,7 @@ trait RecordHandling extends BaseXTools {
                 val recordContent = recordText.toString()
                 val contentHash = hashString(recordContent)
                 val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
-                val mod = toXSDString(new DateTime())
+                val mod = toXSDDateTime(new DateTime())
                 val wrapped = s"""<$RECORD_CONTAINER id="$id" mod="$mod" hash="$contentHash" $scope>\n$recordContent</$RECORD_CONTAINER>\n"""
                 Some(RawRecord(id, contentHash, wrapped))
               }

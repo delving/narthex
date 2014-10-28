@@ -103,7 +103,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
         Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $fileName")
         HarvestType.fromString(required("harvestType")) map { harvestType =>
           val prefix = if (harvestType == HarvestType.PMH) required("prefix") else ""
-          datasetRepo.startHarvest(harvestType, required("url"), optional("dataset"), prefix)
+          datasetRepo.firstHarvest(harvestType, required("url"), optional("dataset"), prefix)
           Ok
         } getOrElse {
           NotAcceptable(Json.obj("problem" -> s"unknown harvest type: ${optional("harvestType")}"))
@@ -221,7 +221,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def saveRecords(fileName: String) = Secure() {
     token => implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      datasetRepo.saveRecords()
+      datasetRepo.firstSaveRecords()
       Ok
     }
   }
@@ -278,7 +278,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   def setTermMapping(fileName: String) = Secure(parse.json) {
     token => implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      datasetRepo.invalidateEnrichementCache()
+      datasetRepo.invalidateEnrichmentCache()
       if ((request.body \ "remove").asOpt[String].isDefined) {
         val sourceUri = (request.body \ "source").as[String]
         datasetRepo.termDb.removeMapping(sourceUri)
@@ -327,6 +327,20 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  val DATASET_PROPERTY_LISTS = List("origin", "metadata", "publication", "status", "progress", "delimit", "namespaces", "harvest", "harvestCron", "sipFacts", "sipHints")
+  val DATASET_PROPERTY_LISTS = List(
+    "origin",
+    "metadata",
+    "status",
+    "tree",
+    "records",
+    "publication",
+    "progress",
+    "delimit",
+    "namespaces",
+    "harvest",
+    "harvestCron",
+    "sipFacts",
+    "sipHints"
+  )
 
 }
