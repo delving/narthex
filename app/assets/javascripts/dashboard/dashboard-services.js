@@ -40,8 +40,8 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                revertState: function (fileName) {
-                    return dash.revertState(fileName).get().then(
+                revert: function (fileName, command) {
+                    return dash.revert(fileName, command).get().then(
                         function (response) {
                             return response.data;
                         },

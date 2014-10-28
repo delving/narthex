@@ -23,6 +23,7 @@ import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DatasetOrigin._
+import dataset.DatasetState.SOURCED
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType
 import harvest.{HarvestRepo, Harvester}
@@ -93,6 +94,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
           case Some(after) =>
             self ! StartSaving(modifiedAfter)
           case None =>
+            db.setStatus(SOURCED)
             self ! StartAnalysis()
         }
       }

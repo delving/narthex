@@ -83,12 +83,13 @@ object ProgressState {
   val STATE_IDLE = ProgressState("state-idle")
   val HARVESTING = ProgressState("state-harvesting")
   val COLLECTING = ProgressState("state-collecting")
+  val GENERATING = ProgressState("state-generating")
   val SPLITTING = ProgressState("state-splitting")
-  val ANALYZING = ProgressState("state-analyzing")
+  val COLLATING = ProgressState("state-collating")
   val SAVING = ProgressState("state-saving")
   val ERROR = ProgressState("state-error")
 
-  val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, SPLITTING, ANALYZING, SAVING, ERROR)
+  val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, GENERATING, SPLITTING, COLLATING, SAVING, ERROR)
 
   def fromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
 
@@ -202,7 +203,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
 
   def startProgress(progressState: ProgressState) = setProgress(progressState, BUSY, 0)
 
-  def endProgress(error: Option[String] = None) = setProgress(STATE_IDLE, TYPE_IDLE, 0, error)
+  def endProgress(error: Option[String] = None) = setProgress(if (error.isDefined) ERROR else STATE_IDLE, TYPE_IDLE, 0, error)
 
   def setProgress(progressState: ProgressState, progressType: ProgressType, count: Int, error: Option[String] = None) = setProperties(
     "progress",

@@ -14,75 +14,38 @@
 //    limitations under the License.
 //===========================================================================
 
+
+/*
+ file.origin:
+ origin-drop
+ origin-harvest
+ origin-sip
+ file.state:
+ state-deleted
+ state-empty
+ state-sourced
+ file.progressType:
+ progress-idle (here progressType is undefined)
+ progress-busy
+ progress-percent
+ progress-workers
+ progress-pages
+ file.progressState
+ state-idle
+ state-harvesting
+ state-collecting
+ state-generating
+ state-splitting
+ state-collating
+ state-saving
+ state-error
+ */
+
 String.prototype.endsWith = function (suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
 };
 
 var API_ACCESS_KEY = "secret"; // todo: find a better way
-
-var STATE_BLOCK = {
-    'state-deleted': {
-        label: 'Deleted',
-        css: 'label-inverse',
-        faIcon: 'fa-folder-o',
-        revertPrompt: 'Restore'
-    },
-    'state-empty': {
-        label: 'Empty',
-        css: 'label-inverse',
-        faIcon: 'fa-folder-o',
-        revertPrompt: 'Delete dataset'
-    },
-    'state-harvesting': {
-        label: 'Harvesting',
-        css: 'label-warning',
-        faIcon: 'fa-cogs',
-        revertPrompt: 'Cancel harvesting'
-    },
-    'state-collecting': {
-        label: 'Collecting',
-        css: 'label-warning',
-        faIcon: 'fa-cogs',
-        revertPrompt: 'Cancel collecting'
-    },
-    'state-ready': {
-        label: 'Ready',
-        css: 'label-info',
-        faIcon: 'fa-folder',
-        revertPrompt: 'Empty dataset'
-    },
-    'state-splitting': {
-        label: 'Splitting',
-        css: 'label-warning',
-        faIcon: 'fa-cogs',
-        revertPrompt: 'Cancel splitting'
-    },
-    'state-analyzing': {
-        label: 'Analyzing',
-        css: 'label-warning',
-        faIcon: 'fa-cogs',
-        revertPrompt: 'Cancel analyzing'
-    },
-    'state-analyzed': {
-        label: 'Analyzed',
-        css: 'label-success',
-        faIcon: 'fa-folder',
-        revertPrompt: 'Discard analysis'
-    },
-    'state-saving': {
-        label: 'Saving',
-        css: 'label-warning',
-        faIcon: 'fa-cogs',
-        revertPrompt: 'Cancel record saving'
-    },
-    'state-saved': {
-        label: 'Saved',
-        css: 'label-success',
-        faIcon: 'fa-database',
-        revertPrompt: 'Delete saved records',
-        viewTerminology: true
-    }
-};
 
 define(["angular"], function () {
     "use strict";
@@ -95,8 +58,6 @@ define(["angular"], function () {
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];
-        $scope.checkDelay = 1000;
-        $scope.lastStatusCheck = 0;
         $scope.percent = null;
         $scope.activeTab = $routeParams.tab || "files";
         $scope.fileOpen = $routeParams.open || $rootScope.fileOpen || "";
@@ -147,6 +108,11 @@ define(["angular"], function () {
             $scope.newFileOpen = value;
         };
 
+        $scope.setActiveTab = function (tab) {
+            $scope.activeTab = tab;
+            setSearch();
+        };
+
         $scope.createDataset = function () {
             if ($scope.dataset.validFileName) {
                 // revert nothing means create
@@ -167,76 +133,144 @@ define(["angular"], function () {
             return serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + fileName + "&metadataPrefix=" + fileNameParts[1];
         }
 
-        function timeSinceStatusCheck() {
-            var now = new Date().getTime();
-            return now - $scope.lastStatusCheck;
-        }
-
         $scope.setDropSupported = function () {
             $scope.dropSupported = true;
         };
 
         function fileDropped(file, $files) {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
-            if ($files.length && !file.uploading) {
-                var onlyFile = $files[0];
-                if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml'))) {
-                    alert("Sorry, the file must end with '.xml.gz' or '.xml'");
-                    return;
+            if (!($files.length && !file.uploading)) return;
+            var onlyFile = $files[0];
+            if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml'))) {
+                alert("Sorry, the file must end with '.xml.gz' or '.xml'");
+                return;
+            }
+            file.uploading = true;
+            $upload.upload({
+                url: '/narthex/dashboard/' + file.name + '/upload',
+                file: onlyFile
+            }).progress(
+                function (evt) {
+                    if (file.uploading) file.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
                 }
-                file.uploading = true;
-                $upload.upload({
-                    url: '/narthex/dashboard/' + file.name + '/upload',
-                    file: onlyFile
-                }).progress(
-                    function (evt) {
-                        if (file.uploading) file.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
-                    }
-                ).success(
-                    function () {
-                        file.uploading = false;
-                        file.uploadPercent = null;
-                        fetchDatasetList();
-                    }
-                ).error(
-                    function (data, status, headers, config) {
-                        file.uploading = false;
-                        file.uploadPercent = null;
-                        console.log("Failure during upload: data", data);
-                        console.log("Failure during upload: status", status);
-                        console.log("Failure during upload: headers", headers);
-                        console.log("Failure during upload: config", config);
-                        alert(data.problem);
-                    }
-                );
+            ).success(
+                function () {
+                    file.uploading = false;
+                    file.uploadPercent = null;
+                    fetchDatasetList();
+                }
+            ).error(
+                function (data, status, headers, config) {
+                    file.uploading = false;
+                    file.uploadPercent = null;
+                    console.log("Failure during upload: data", data);
+                    console.log("Failure during upload: status", status);
+                    console.log("Failure during upload: headers", headers);
+                    console.log("Failure during upload: config", config);
+                    alert(data.problem);
+                }
+            );
+        }
+
+        var stateNames = {
+            'state-harvesting': "Harvesting from server",
+            'state-collecting': "Collecting identifiers",
+            'state-generating': "Generating source",
+            'state-splitting': "Splitting fields",
+            'state-collating': "Collating values",
+            'state-saving': "Saving to database",
+            'state-error': "Error"
+        };
+
+        function createProgressMessage(p) {
+            if (p.count == 0) p.count = 1;
+            var pre = '';
+            var post = '';
+            var mid = p.count.toString();
+            if (p.count > 3) {
+                switch (p.type) {
+                    case "progress-busy":
+                        p.count = 100;
+                        mid = "Busy..";
+                        break;
+                    case "progress-percent":
+                        post = " %";
+                        break;
+                    case "progress-workers":
+                        p.count = 100;
+                        post = " workers";
+                        break;
+                    case "progress-pages":
+                        post = " pages";
+                        break;
+                }
+                if (p.count > 15) {
+                    pre = stateNames[p.state] + " ";
+                }
+            }
+            return pre + mid + post;
+        }
+
+        // progressState, progressType, treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
+        function decorateFile(file) {
+            var info = file.info;
+            if (info.progress && info.progress.type != 'progress-idle') {
+                file.progress = info.progress;
+                file.progress.message = createProgressMessage(info.progress);
+            }
+            else {
+                delete(file.progress);
+            }
+            file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
+            file.oaiPmhListRecords = oaiPmhListRecords(file.name, false);
+            file.oaiPmhListEnrichedRecords = oaiPmhListRecords(file.name, true);
+            file.fileDropped = function ($files) {
+                fileDropped(file, $files)
+            };
+            var parts = file.name.split(/__/);
+            file.identity = {
+                datasetName: parts[0],
+                prefix: parts[1]
+            };
+            if (info.status) {
+                file.state = info.status.state;
+            }
+            if (info.origin) {
+                file.origin = info.origin.type;
+            }
+            if (info.delimit && info.delimit.recordCount > 0) {
+                file.identity.recordCount = info.delimit.recordCount;
+            }
+            if (info.metadata) {
+                file.identity.name = info.metadata.name;
+                file.identity.dataProvider = info.metadata.dataProvider;
+            }
+            if (info.tree) {
+                file.treeTime = info.tree.time;
+            }
+            if (info.records) {
+                file.recordsTime = info.records.time;
             }
         }
 
-        function checkDatasetStatus(file) {
-            var progressType = file.info.progress ? file.info.progress.type : 'progress-idle';
-            if (progressType == 'progress-idle') {
-                var state = file.info.status ? file.info.status.state : "state-deleted";
-                file.state = state;
-                file.stateBlock = STATE_BLOCK[state];
-                return;
+        function cancelChecker(file) {
+            if (file.checker) {
+                $timeout.cancel(file.checker);
+                delete(file.checker);
+                console.log("cancelling checker " + file.name);
             }
-            dashboardService.datasetInfo(file.name).then(function (datasetInfo) {
-                file.info = datasetInfo;
-                var state = file.info.progress ? file.info.progress.state : 'no-progress';
-                if (state != file.state) {
-                    file.state = state;
-                    file.stateBlock = STATE_BLOCK[file.info.progress.state];
-                }
-                var now = new Date().getTime();
-                var interval = timeSinceStatusCheck();
-                if (interval > 1000) { // don't change the scope thing too often
-                    $scope.lastStatusCheck = now;
-                }
+        }
+
+        function checkProgress(file) {
+            dashboardService.datasetInfo(file.name).then(function (info) {
+                file.info = info;
+                decorateFile(file);
+                if (!file.progress) return;
                 file.checker = $timeout(
                     function () {
-                        checkDatasetStatus(file)
+                        checkProgress(file)
                     },
-                    $scope.checkDelay
+                    1000
                 );
             }, function (problem) {
                 if (problem.status == 404) {
@@ -250,38 +284,17 @@ define(["angular"], function () {
         }
 
         function fetchDatasetList() {
-            dashboardService.list().then(function (data) {
-                _.forEach($scope.files, function (file) {
-                    if (file.checker) {
-                        $timeout.cancel(file.checker);
-                        file.checker = undefined;
-                        console.log("cancelling checker " + file.name);
-                    }
+            dashboardService.list().then(function (files) {
+                _.forEach($scope.files, cancelChecker);
+                _.forEach(files, decorateFile);
+                $scope.files = files;
+                _.forEach(files, function(file) {
+                    if (file.progress) checkProgress(file)
                 });
-                $scope.files = data;
-                _.forEach($scope.files, checkDatasetStatus);
-                _.forEach($scope.files, function (file) {
-                    file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
-                    file.oaiPmhListRecords = oaiPmhListRecords(file.name, false);
-                    file.oaiPmhListEnrichedRecords = oaiPmhListRecords(file.name, true);
-                    file.fileDropped = function ($files) {
-                        fileDropped(file, $files)
-                    };
-                    var parts = file.name.split(/__/);
-                    file.identity = {
-                        datasetName: parts[0],
-                        prefix: parts[1]
-                    };
-                    if (file.info.delimit && file.info.delimit.recordCount > 0) {
-                        file.identity.recordCount = file.info.delimit.recordCount;
-                    }
-                    if (file.info.metadata) {
-                        file.identity.name = file.info.metadata.name;
-                        file.identity.dataProvider = file.info.metadata.dataProvider;
-                    }
-                })
             });
         }
+
+        fetchDatasetList();
 
         $scope.setMetadata = function (file) {
             dashboardService.setMetadata(file.name, file.info.metadata).then(function () {
@@ -295,14 +308,14 @@ define(["angular"], function () {
             });
         };
 
-        $scope.startHarvest = function (file) {
-            dashboardService.harvest(file.name, file.info.harvest).then(function () {
+        $scope.setHarvestCron = function (file) {
+            dashboardService.setHarvestCron(file.name, file.info.harvestCron).then(function () {
                 fetchDatasetList();
             });
         };
 
-        $scope.setHarvestCron = function (file) {
-            dashboardService.setHarvestCron(file.name, file.info.harvestCron).then(function () {
+        $scope.startHarvest = function (file) {
+            dashboardService.harvest(file.name, file.info.harvest).then(function () {
                 fetchDatasetList();
             });
         };
@@ -313,35 +326,28 @@ define(["angular"], function () {
             });
         };
 
-        fetchDatasetList();
+        $scope.saveRecords = function (file) {
+            dashboardService.saveRecords(file.name).then(function () {
+                $timeout(
+                    function () {
+                        checkProgress(file)
+                    },
+                    $scope.checkDelay
+                )
+            });
+        };
 
-        $scope.setActiveTab = function (tab) {
-            $scope.activeTab = tab;
-            setSearch();
+        $scope.revert = function(file, areYouSure, command) {
+            if (areYouSure && !confirm(areYouSure)) return;
+            dashboardService.revert(file.name, command).then(function () {
+                fetchDatasetList();
+            });
         };
 
         $scope.viewFile = function (file) {
             $location.path("/dataset/" + file.name);
             $location.search({});
             $rootScope.addRecentDataset(file.name, $location.absUrl())
-        };
-
-        $scope.revertToState = function (file, areYouSure) {
-            if (areYouSure && !confirm(areYouSure)) return;
-            dashboardService.revertState(file.name).then(function () {
-                fetchDatasetList();
-            });
-        };
-
-        $scope.saveRecords = function (file) {
-            dashboardService.saveRecords(file.name).then(function () {
-                $timeout(
-                    function () {
-                        checkDatasetStatus(file)
-                    },
-                    $scope.checkDelay
-                )
-            });
         };
 
         function fetchSipFileList() {
@@ -381,7 +387,7 @@ define(["angular"], function () {
         "$rootScope", "$scope", "user", "dashboardService", "$location", "$upload", "$timeout", "$routeParams"
     ];
 
-    var FileEntryCtrl = function ($scope) {
+    var FileEntryCtrl = function ($scope, dashboardService) {
 
         $scope.tab = "metadata";
 
@@ -395,39 +401,31 @@ define(["angular"], function () {
                     return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-empty';
                 case 'harvest-cron':
                     if ($scope.isEmpty(file.info.origin)) return true;
-                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-saved';
+                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-sourced';
                 case 'publication':
-                    if ($scope.isEmpty(file.info.status)) return false;
-                    return file.info.status.state == 'state-saved';
                 case 'downloads':
-                    if ($scope.isEmpty(file.info.status)) return false;
-                    return file.info.status.state == 'state-saved';
+                    return !!file.recordsTime;
                 default:
                     console.log("ALLOW TAB " + tabName);
                     return false;
             }
         };
 
-        $scope.allowAnalysis = function (file) {
-            if ($scope.isEmpty(file.info.status)) return false;
-            if ($scope.isEmpty(file.info.analysis)) return false;
-            var okState = file.info.status.state == 'state-ready' || file.info.status.state == 'state-saved';
-            return okState && !(file.info.analysis.present == 'true')
+        $scope.discardTree = function (file) {
+            $scope.revert(file, "Discard analysis?", "tree");
         };
 
-        $scope.allowSaveRecords = function (file) {
-            if ($scope.isEmpty(file.info.status)) return false;
-            if ($scope.isEmpty(file.info.delimit)) return false;
-            var okState = file.info.status.state == 'state-ready' || file.info.status.state == 'state-analyzed';
-            return okState && file.info.delimit.recordCount > 0;
+        $scope.discardRecords = function (file) {
+            $scope.revert(file, "Discard records?", "records");
         };
 
-        $scope.revert = function (file) {
-            $scope.revertToState(file, file.stateBlock.revertPrompt + '?')
+        $scope.discardSource = function (file) {
+            $scope.revert(file, "Discard source?", "source");
         };
+
     };
 
-    FileEntryCtrl.$inject = ["$scope"];
+    FileEntryCtrl.$inject = ["$scope", "dashboardService"];
 
     return {
         DashboardCtrl: DashboardCtrl,

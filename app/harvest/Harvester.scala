@@ -78,7 +78,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
           val fileOption = harvestRepo.acceptZipFile(tempFile, acceptZipReporter)
           if (fileOption.isDefined) { // new harvest so there's work to do
             val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
-            val generateSourceReporter = ProgressReporter(COLLECTING, db)
+            val generateSourceReporter = ProgressReporter(GENERATING, db)
             val newRecordCount = harvestRepo.generateSourceFile(incomingFile, db.setNamespaceMap, generateSourceReporter)
             val existingRecordCount = datasetRepo.recordDb.getRecordCount
             log.info(s"Collected source records from $existingRecordCount to $newRecordCount")

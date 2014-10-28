@@ -133,7 +133,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     DatasetState.fromDatasetInfo(info).map { state =>
       if (state == SOURCED) {
         clearDir(analyzedDir)
-        datasetDb.startProgress(ANALYZING)
+        datasetDb.startProgress(SPLITTING)
         OrgActor.actor ! DatasetMessage(name, StartAnalysis())
       }
       else {
