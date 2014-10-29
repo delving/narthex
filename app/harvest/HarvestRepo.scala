@@ -22,7 +22,7 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.Files._
 import record.RecordHandling
-import record.RecordHandling.{RawRecord, _}
+import record.RecordHandling.{Pocket, _}
 import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable
@@ -116,7 +116,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
     val file = fillFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
     val parser = new RawRecordParser(harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer)
-    def receiveRecord(record: RawRecord): Unit = idSet.add(record.id)
+    def receiveRecord(record: Pocket): Unit = idSet.add(record.id)
     val (source, readProgress) = FileHandling.sourceFromFile(file)
     progressReporter.setReadProgress(readProgress)
     try {
@@ -162,7 +162,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
     targetFile
   })
 
-  def parse(output: RawRecord => Unit, progressReporter: ProgressReporter): Map[String, String] = {
+  def parse(output: Pocket => Unit, progressReporter: ProgressReporter): Map[String, String] = {
     val parser = new RawRecordParser(harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(readFile).map(s => s.trim.toInt)
@@ -185,16 +185,16 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
     out.write("<?xml version='1.0' encoding='UTF-8'?>\n")
-    out.write( s"""<$RECORD_LIST_CONTAINER>\n""")
-    def writer(rawRecord: RawRecord) = {
+    out.write( s"""<$POCKET_LIST>\n""")
+    def pocketWriter(pocket: Pocket) = {
       recordCount += 1
-      out.write(rawRecord.text)
+      out.write(pocket.text)
       if (recordCount % 1000 == 0) {
         Logger.info(s"Generating record $recordCount")
       }
     }
-    val namespaceMap = parse(writer, progressReporter)
-    out.write( s"""</$RECORD_LIST_CONTAINER>\n""")
+    val namespaceMap = parse(pocketWriter, progressReporter)
+    out.write( s"""</$POCKET_LIST>\n""")
     out.close()
     setNamespaceMap(namespaceMap)
     Logger.info(s"Finished generating source from $sourceDir")

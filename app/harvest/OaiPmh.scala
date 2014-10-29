@@ -331,7 +331,7 @@ object OaiPmh extends Controller with BaseXTools {
                 <header>
                   <identifier>{record.id}</identifier>
                   <datestamp>{toXSDDateTime(record.mod)}</datestamp>
-                  <setSpec>{request.set}</setSpec>
+                  <setSpec>{request.set.getOrElse("Unknown")}</setSpec>
                 </header>
               </record>
             }
@@ -370,7 +370,7 @@ object OaiPmh extends Controller with BaseXTools {
                 <header>
                   <identifier>{record.id}</identifier>
                   <datestamp>{toXSDDateTime(record.mod)}</datestamp>
-                  <setSpec>{request.set}</setSpec>
+                  <setSpec>{request.set.getOrElse("Unknown")}</setSpec>
                 </header>
                 <metadata>
                   {recordNodes}

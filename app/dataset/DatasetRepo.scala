@@ -31,7 +31,7 @@ import org.{OrgActor, OrgRepo}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
-import record.RecordHandling.{StoredRecord, TargetConcept}
+import record.RecordHandling.{Pocket, StoredRecord, TargetConcept}
 import record.{RecordDb, RecordHandling}
 import services.FileHandling.clearDir
 import services._
@@ -60,6 +60,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     analyzedDir.mkdir()
     harvestDir.mkdir()
     this
+  }
+
+  def createPocketPath(pocket: Pocket) = {
+    val h = pocket.hash
+    s"$name/${h(0)}/${h(1)}/${h(2)}/$h.xml"
   }
 
   def createIncomingFile(fileName: String) = new File(incomingDir, fileName)

@@ -22,10 +22,10 @@ import akka.actor.{Actor, Props}
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
 import dataset.ProgressState.{SAVING, UPDATING}
-import org.basex.core.cmd.Optimize
+import org.basex.core.cmd.{Delete, Optimize}
 import org.joda.time.DateTime
 import play.api.Logger
-import record.RecordHandling.RawRecord
+import record.RecordHandling.Pocket
 import record.Saver.{SaveComplete, SaveRecords}
 import services.{FileHandling, ProgressReporter}
 
@@ -39,12 +39,14 @@ object Saver {
   case class SaveComplete(errorOption: Option[String] = None)
 
   def props(datasetRepo: DatasetRepo) = Props(new Saver(datasetRepo))
+
 }
 
 class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
 
   import context.dispatcher
 
+  var rdb = datasetRepo.recordDb
   var log = Logger
   var progress: Option[ProgressReporter] = None
 
@@ -62,10 +64,22 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
         progressReporter.setReadProgress(readProgress)
         progress = Some(progressReporter)
         future {
-          datasetRepo.recordDb.db { session =>
-            def receiveRecord(record: RawRecord) = {
-              // todo: replace existing record!
-              log.info(s"UPDATE ${record.id}")
+          rdb.db { session =>
+            def receiveRecord(pocket: Pocket): Unit = {
+              log.info(s"Updating ${pocket.id}")
+              rdb.findRecord(pocket.id, session).map { foundRecord =>
+                log.info(s"Record found $foundRecord, deleting it")
+                if (pocket.hash == foundRecord.hash) {
+                  log.info(s"The new record has the same hash, but ignoring that for now")
+                }
+                else {
+                  log.info(s"The new record has a fresh hash")
+                }
+                session.execute(new Delete(foundRecord.path))
+              }
+              val path = datasetRepo.createPocketPath(pocket)
+              log.info(s"Adding $path")
+              session.add(path, bytesOf(pocket.text))
             }
             try {
               parser.parse(source, Set.empty[String], receiveRecord, progressReporter)
@@ -93,16 +107,14 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
             val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
             progressReporter.setReadProgress(readProgress)
             progress = Some(progressReporter)
-            def receiveRecord(record: RawRecord) = {
+            def receiveRecord(pocket: Pocket) = {
               tick += 1
               if (tick % 10000 == 0) {
                 val now = System.currentTimeMillis()
                 Logger.info(s"$datasetRepo $tick: ${now - time}ms")
                 time = now
               }
-              val hash = record.hash
-              val fileName = s"${datasetRepo.name}/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
-              session.add(fileName, bytesOf(record.text))
+              session.add(datasetRepo.createPocketPath(pocket), bytesOf(pocket.text))
             }
             try {
               if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {

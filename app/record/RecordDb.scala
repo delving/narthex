@@ -23,6 +23,7 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
+import record.RecordDb.FoundRecord
 import record.RecordHandling._
 import services._
 
@@ -33,6 +34,13 @@ import scala.xml.{Elem, NodeSeq, XML}
 /**
  * @author Gerald de Jong <gerald@delving.eu
  */
+
+object RecordDb {
+
+  case class FoundRecord(id:String, path: String, hash: String)
+
+
+}
 
 class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling {
 
@@ -66,13 +74,33 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     declarations.mkString("\n")
   }
 
+  def findRecord(id: String, session: ClientSession) : Option[FoundRecord] = {
+    val queryForPath =
+      s"""
+         |
+         | let $$pocket := collection('$recordDb')/$POCKET[@id=${quote(id)}]
+         |
+         | return
+         |    if (exists($$pocket)) then
+         |      <result><path>{ db:path($$pocket) }</path><hash>{ string($$pocket/@hash) }</hash></result>
+         |    else
+         |      <result/>
+         |
+       """.stripMargin
+    val resultString = session.query(queryForPath).execute()
+    val result: Elem = XML.loadString(resultString)
+    val path = (result \ "path").text
+    val hash = (result \ "hash").text
+    if (path.nonEmpty) Some(FoundRecord(id, path, hash)) else None
+  }
+
   def getRecordCount: Int = {
     try {
       db {
         session =>
           val queryCount = s"""
           |
-          | let $$boxes := collection('$recordDb')/$RECORD_CONTAINER
+          | let $$boxes := collection('$recordDb')/$POCKET
           | return count($$boxes)
           |
           |""".stripMargin.trim
@@ -90,7 +118,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     val datasetInfo = getDatasetInfo
     // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
     val recordContainer = if (DatasetOrigin.HARVEST.matches((datasetInfo \ "origin" \ "type").text)) {
-      s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
+      s"/$POCKET_LIST/$POCKET"
     }
     else {
       val recordRoot = (datasetInfo \ "delimit" \ "recordRoot").text
@@ -105,7 +133,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         val queryForRecords = s"""
           |
           | ${namespaceDeclarations(datasetInfo)}
-          | let $$boxes := collection('$recordDb')[/$RECORD_CONTAINER$queryPath/$field=${quote(value)}]
+          | let $$boxes := collection('$recordDb')[/$POCKET$queryPath/$field=${quote(value)}]
           | let $$selected := subsequence($$boxes, $start, $max)
           | return <records>{ for $$box in $$selected return $$box/* }</records>
           |
@@ -120,7 +148,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
-        | let $$box := collection('$recordDb')[/$RECORD_CONTAINER/@id=${quote(identifier)}]
+        | let $$box := collection('$recordDb')[/$POCKET/@id=${quote(identifier)}]
         | return <record>{ $$box }</record>
         |
         """.stripMargin.trim
@@ -132,7 +160,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     session =>
       val q = s"""
         |
-        | let $$boxes := collection('$recordDb')/$RECORD_CONTAINER
+        | let $$boxes := collection('$recordDb')/$POCKET
         | return
         |    <ids>{
         |       for $$box in $$boxes
@@ -165,7 +193,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     if (!OrgRepo.isPublishedOaiPmh(datasetInfo)) return None
     val countString = db {
       session =>
-        val queryForRecords = s"count(collection('$recordDb')/$RECORD_CONTAINER${dateSelector(from, until)})"
+        val queryForRecords = s"count(collection('$recordDb')/$POCKET${dateSelector(from, until)})"
         println("asking:\n" + queryForRecords)
         session.query(queryForRecords).execute()
     }
@@ -191,7 +219,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         |
-        | let $$selection := collection('$recordDb')/$RECORD_CONTAINER${dateSelector(from, until)}
+        | let $$selection := collection('$recordDb')/$POCKET${dateSelector(from, until)}
         |
         | return
         |   <records>
@@ -213,16 +241,16 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
-        | let $$box := collection('$recordDb')[/$RECORD_CONTAINER/@id=${quote(identifier)}]
+        | let $$box := collection('$recordDb')[/$POCKET/@id=${quote(identifier)}]
         | return
         |   <record>
         |     <header>
-        |       <identifier>{data($$rec/$RECORD_CONTAINER/@id)}</identifier>
-        |       <datestamp>{data($$rec/$RECORD_CONTAINER/@mod)}</datestamp>
+        |       <identifier>{data($$rec/$POCKET/@id)}</identifier>
+        |       <datestamp>{data($$rec/$POCKET/@mod)}</datestamp>
         |       <setSpec>${datasetRepo.name}</setSpec>
         |     </header>
         |     <metadata>
-        |      {$$box/$RECORD_CONTAINER/*}
+        |      {$$box/$POCKET/*}
         |     </metadata>
         |   </record>
         |
@@ -237,7 +265,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         |
-        | let $$selection := collection('$recordDb')/$RECORD_CONTAINER${dateSelector(from, until)}
+        | let $$selection := collection('$recordDb')/$POCKET${dateSelector(from, until)}
         |
         | let $$boxes :=
         |   for $$box in subsequence($$selection, $start, $pageSize)

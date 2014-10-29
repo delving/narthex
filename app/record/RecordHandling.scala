@@ -22,7 +22,7 @@ import java.security.MessageDigest
 
 import org.joda.time.DateTime
 import play.Logger
-import record.RecordHandling.{RawRecord, StoredRecord, TargetConcept, _}
+import record.RecordHandling.{Pocket, StoredRecord, TargetConcept, _}
 import services.{BaseXTools, FileHandling, ProgressReporter}
 
 import scala.collection.mutable
@@ -32,11 +32,11 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object RecordHandling {
 
-  val RECORD_LIST_CONTAINER = "pockets"
-  val RECORD_CONTAINER = "pocket"
-  val RECORD_UNIQUE_ID = "@id"
+  val POCKET_LIST = "pockets"
+  val POCKET = "pocket"
+  val POCKET_ID = "@id"
 
-  case class RawRecord(id: String, hash: String, text: String)
+  case class Pocket(id: String, hash: String, text: String)
 
   case class StoredRecord(id: String, mod: DateTime, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
 
@@ -53,7 +53,7 @@ trait RecordHandling extends BaseXTools {
     var recordCount = 0
     var namespaceMap: Map[String, String] = Map.empty
 
-    def parse(source: Source, avoidIds: Set[String], output: RawRecord => Unit, progressReporter: ProgressReporter): Boolean = {
+    def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progressReporter: ProgressReporter): Boolean = {
 
       val events = new XMLEventReader(source)
       var depth = 0
@@ -138,8 +138,8 @@ trait RecordHandling extends BaseXTools {
                 val contentHash = hashString(recordContent)
                 val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
                 val mod = toXSDDateTime(new DateTime())
-                val wrapped = s"""<$RECORD_CONTAINER id="$id" mod="$mod" hash="$contentHash" $scope>\n$recordContent</$RECORD_CONTAINER>\n"""
-                Some(RawRecord(id, contentHash, wrapped))
+                val wrapped = s"""<$POCKET id="$id" mod="$mod" hash="$contentHash" $scope>\n$recordContent</$POCKET>\n"""
+                Some(Pocket(id, contentHash, wrapped))
               }
             } getOrElse {
               throw new RuntimeException("Missing id!")
@@ -278,9 +278,9 @@ trait RecordHandling extends BaseXTools {
 
         case EvElemStart(pre, label, attrs, scope) =>
           val tag = FileHandling.tag(pre, label)
-          if (tag == RECORD_CONTAINER) {
-            val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$RECORD_CONTAINER element missing id"))
-            val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$RECORD_CONTAINER element missing mod"))
+          if (tag == POCKET) {
+            val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$POCKET element missing id"))
+            val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$POCKET element missing mod"))
             var scopeEnriched = scope
             ENRICHMENT_NAMESPACES.foreach(pn => if (scopeEnriched.getURI(pn._1) == null) scopeEnriched = NamespaceBinding(pn._1, pn._2, scopeEnriched))
             record = Some(StoredRecord(id, fromXSDDateTime(mod), scopeEnriched))
@@ -359,7 +359,7 @@ trait RecordHandling extends BaseXTools {
 
   def parseStoredRecords(xmlString: String): List[StoredRecord] = {
     val wrappedRecord = scala.xml.XML.loadString(xmlString)
-    (wrappedRecord \ RECORD_CONTAINER).map {
+    (wrappedRecord \ POCKET).map {
       box =>
         StoredRecord(
           id = (box \ "@id").text,

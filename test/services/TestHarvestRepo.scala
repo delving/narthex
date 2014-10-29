@@ -2,13 +2,13 @@ package services
 
 import java.io.File
 
+import harvest.HarvestRepo
 import harvest.Harvesting._
-import harvest.{HarvestRepo, Harvesting}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
 import record.RecordHandling
-import record.RecordHandling.RawRecord
+import record.RecordHandling.Pocket
 
 import scala.collection.mutable
 import scala.xml.XML
@@ -59,7 +59,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
     val seenIds = mutable.HashSet[String]()
     var recordCount = 0
 
-    def receiveRecord(record: RawRecord): Unit = {
+    def receiveRecord(record: Pocket): Unit = {
       //      println(s"${record.id}: ${record.text}")
       if (seenIds.contains(record.id)) fail(s"seen id ${record.id}")
       recordCount += 1
@@ -103,7 +103,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
     val seenIds = mutable.HashSet[String]()
     var recordCount = 0
 
-    def receiveRecord(record: RawRecord): Unit = {
+    def receiveRecord(record: Pocket): Unit = {
       //      println(s"${record.id}: ${record.text}")
       if (seenIds.contains(record.id)) fail(s"seen id ${record.id}")
       recordCount += 1
