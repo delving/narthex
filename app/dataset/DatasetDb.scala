@@ -87,6 +87,7 @@ object ProgressState {
   val SPLITTING = ProgressState("state-splitting")
   val COLLATING = ProgressState("state-collating")
   val SAVING = ProgressState("state-saving")
+  val UPDATING = ProgressState("state-updating")
   val ERROR = ProgressState("state-error")
 
   val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, GENERATING, SPLITTING, COLLATING, SAVING, ERROR)

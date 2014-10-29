@@ -179,6 +179,7 @@ define(["angular"], function () {
             'state-splitting': "Splitting fields",
             'state-collating': "Collating values",
             'state-saving': "Saving to database",
+            'state-updating': "Updating database",
             'state-error': "Error"
         };
 
@@ -214,12 +215,18 @@ define(["angular"], function () {
         // progressState, progressType, treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
         function decorateFile(file) {
             var info = file.info;
-            if (info.progress && info.progress.type != 'progress-idle') {
-                file.progress = info.progress;
-                file.progress.message = createProgressMessage(info.progress);
-            }
-            else {
-                delete(file.progress);
+            delete(file.error);
+            if (info.progress) {
+                if (info.progress.type != 'progress-idle') {
+                    file.progress = info.progress;
+                    file.progress.message = createProgressMessage(info.progress);
+                }
+                else {
+                    if (info.progress.state == 'state-error') {
+                        file.error = info.progress.error;
+                    }
+                    delete(file.progress);
+                }
             }
             file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
             file.oaiPmhListRecords = oaiPmhListRecords(file.name, false);
@@ -339,7 +346,8 @@ define(["angular"], function () {
 
         $scope.revert = function(file, areYouSure, command) {
             if (areYouSure && !confirm(areYouSure)) return;
-            dashboardService.revert(file.name, command).then(function () {
+            dashboardService.revert(file.name, command).then(function (data) {
+                console.log("revert reply", data);
                 fetchDatasetList();
             });
         };
@@ -389,7 +397,7 @@ define(["angular"], function () {
 
     var FileEntryCtrl = function ($scope, dashboardService) {
 
-        $scope.tab = "metadata";
+        $scope.tab = "actions";
 
         $scope.allowTab = function (file, tabName) {
             switch (tabName) {
@@ -421,6 +429,10 @@ define(["angular"], function () {
 
         $scope.discardSource = function (file) {
             $scope.revert(file, "Discard source?", "source");
+        };
+
+        $scope.interruptProcessing = function (file) {
+            $scope.revert(file, "Interrupt processing?", "interrupt");
         };
 
     };

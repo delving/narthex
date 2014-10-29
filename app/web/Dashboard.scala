@@ -69,17 +69,23 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def revert(fileName: String, command:String) = Secure() { token => implicit request =>
     val datasetRepo = repo.datasetRepo(fileName)
-    command match {
+    val change = command match {
+      case "interrupt" =>
+        val interrupted = datasetRepo.interruptProgress
+        s"Interrupted: $interrupted"
       case "tree" =>
         clearDir(datasetRepo.analyzedDir)
         datasetRepo.datasetDb.setTree(ready = false)
+        "Tree removed"
       case "records" =>
         datasetRepo.recordDb.dropDb()
         datasetRepo.datasetDb.setRecords(ready = false)
+        "Records removed"
       case _ =>
         val revertedState = datasetRepo.revertState
+        s"Reverted to $revertedState"
     }
-    Ok
+    Ok(Json.obj("change" -> change))
   }
 
   def upload(fileName: String) = Secure(parse.multipartFormData) { token => implicit request =>
@@ -156,7 +162,6 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   }
 
   def analyze(fileName: String) = Secure() { token => implicit request =>
-
     repo.datasetRepoOption(fileName) match {
       case Some(datasetRepo) =>
         datasetRepo.startAnalysis()

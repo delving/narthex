@@ -16,10 +16,12 @@
 
 package record
 
+import java.io.File
+
 import akka.actor.{Actor, Props}
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
-import dataset.ProgressState.SAVING
+import dataset.ProgressState.{SAVING, UPDATING}
 import org.basex.core.cmd.Optimize
 import org.joda.time.DateTime
 import play.api.Logger
@@ -32,7 +34,7 @@ import scala.language.postfixOps
 
 object Saver {
 
-  case class SaveRecords(modifiedAfter: Option[DateTime], recordRoot: String, uniqueId: String, recordCount: Long, deepRecordContainer: Option[String])
+  case class SaveRecords(modifiedAfter: Option[DateTime], fileOption: Option[File], recordRoot: String, uniqueId: String, recordCount: Long, deepRecordContainer: Option[String])
 
   case class SaveComplete(errorOption: Option[String] = None)
 
@@ -51,52 +53,74 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
     case InterruptWork() =>
       progress.map(_.bomb = Some(sender)).getOrElse(context.stop(self))
 
-    case SaveRecords(modifiedAfter: Option[DateTime], recordRoot, uniqueId, recordCount, deepRecordContainer) =>
-      log.info(s"Saving $datasetRepo")
+    case SaveRecords(modifiedAfter: Option[DateTime], fileOption: Option[File], recordRoot, uniqueId, recordCount, deepRecordContainer) =>
+      log.info(s"Saving $datasetRepo modified=$modifiedAfter")
       modifiedAfter.map { modified =>
-        // todo: replace existing records!
+        val file = fileOption.get
+        val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
+        val (source, readProgress) = FileHandling.sourceFromFile(file)
+        val progressReporter = ProgressReporter(UPDATING, datasetRepo.datasetDb)
+        progressReporter.setReadProgress(readProgress)
+        future {
+          datasetRepo.recordDb.db { session =>
+            def receiveRecord(record: RawRecord) = {
+              // todo: replace existing record!
+              log.info(s"UPDATE ${record.id}")
+            }
+            try {
+              parser.parse(source, Set.empty[String], receiveRecord, progressReporter)
+            }
+            catch {
+              case e: Exception =>
+                log.error(s"Unable to update $datasetRepo", e)
+                context.parent ! SaveComplete(Some(e.toString))
+            }
+            finally {
+              source.close()
+            }
+          }
+        }
       } getOrElse {
         datasetRepo.getLatestIncomingFile.map { incomingFile =>
           datasetRepo.recordDb.createDb()
           var tick = 0
           var time = System.currentTimeMillis()
           future {
-            datasetRepo.recordDb.db {
-              session =>
-                val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
-                val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
-                val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
-                progressReporter.setReadProgress(readProgress)
-                def receiveRecord(record: RawRecord) = {
-                  tick += 1
-                  if (tick % 10000 == 0) {
-                    val now = System.currentTimeMillis()
-                    Logger.info(s"$datasetRepo $tick: ${now - time}ms")
-                    time = now
-                  }
-                  val hash = record.hash
-                  val fileName = s"${datasetRepo.name}/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
-                  session.add(fileName, bytesOf(record.text))
+            datasetRepo.recordDb.db { session =>
+              val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
+              val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
+              val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
+              progressReporter.setReadProgress(readProgress)
+              def receiveRecord(record: RawRecord) = {
+                tick += 1
+                if (tick % 10000 == 0) {
+                  val now = System.currentTimeMillis()
+                  Logger.info(s"$datasetRepo $tick: ${now - time}ms")
+                  time = now
                 }
-                try {
-                  if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {
-                    log.info(s"Saved ${datasetRepo.analyzedDir.getName}, optimizing..")
-                    datasetRepo.recordDb.db(_.execute(new Optimize()))
-                    datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
-                    context.parent ! SaveComplete()
-                  }
-                  else {
-                    context.parent ! SaveComplete(Some("Interrupted while saving"))
-                  }
+                val hash = record.hash
+                val fileName = s"${datasetRepo.name}/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
+                session.add(fileName, bytesOf(record.text))
+              }
+              try {
+                if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {
+                  log.info(s"Saved ${datasetRepo.analyzedDir.getName}, optimizing..")
+                  datasetRepo.recordDb.db(_.execute(new Optimize()))
+                  datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
+                  context.parent ! SaveComplete()
                 }
-                catch {
-                  case e: Exception =>
-                    log.error(s"Unable to save $datasetRepo", e)
-                    context.parent ! SaveComplete(Some(e.toString))
+                else {
+                  context.parent ! SaveComplete(Some("Interrupted while saving"))
                 }
-                finally {
-                  source.close()
-                }
+              }
+              catch {
+                case e: Exception =>
+                  log.error(s"Unable to save $datasetRepo", e)
+                  context.parent ! SaveComplete(Some(e.toString))
+              }
+              finally {
+                source.close()
+              }
             }
           }
         }

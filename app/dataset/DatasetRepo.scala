@@ -116,7 +116,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
             Logger.info(s"Re-harvest $kickoff")
             datasetDb.startProgress(HARVESTING)
             OrgActor.actor ! DatasetMessage(name, kickoff)
-          //                OrgActor.create(Harvester.props(this, harvestRepo), name, harvester => harvester ! kickoff)
         } getOrElse {
           Logger.warn(s"No re-harvest $name with cron $harvestCron because harvest type was not recognized $harvest")
         }
@@ -148,12 +147,20 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
       if (state == SOURCED && delimited) {
         recordDb.createDb()
         datasetDb.startProgress(SAVING)
-        OrgActor.actor ! DatasetMessage(name, StartSaving(None))
+        OrgActor.actor ! DatasetMessage(name, StartSaving(None, None))
       }
       else {
         Logger.warn(s"First save of $name can only be started with state sourced/delimited, but it's $state/$delimited ")
       }
     }
+  }
+
+  def interruptProgress: Boolean = {
+    implicit val timeout = Timeout(100L)
+    val answer = OrgActor.actor ? InterruptDataset(name)
+    val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
+    if (!interrupted) datasetDb.endProgress(Some("Terminated processing"))
+    interrupted
   }
 
   def revertState: DatasetState = {
@@ -164,7 +171,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
     } getOrElse DELETED
     Logger.info(s"Revert state of $name from $currentState")
     datasetDb.infoOption.map { info =>
-      def toRevertedState: DatasetState = currentState match {
+      currentState match {
         case DELETED =>
           datasetDb.createDataset(EMPTY)
           EMPTY
@@ -183,10 +190,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
             SOURCED // no change
           }
       }
-      implicit val timeout = Timeout(100L)
-      val answer = OrgActor.actor ? InterruptDataset(name)
-      val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
-      if (interrupted) currentState else toRevertedState
     } getOrElse currentState
   }
 

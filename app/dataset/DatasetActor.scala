@@ -47,7 +47,7 @@ object DatasetActor {
 
   case class StartAnalysis()
 
-  case class StartSaving(modifiedAfter: Option[DateTime])
+  case class StartSaving(modifiedAfter: Option[DateTime], file: Option[File])
 
   case class InterruptWork()
 
@@ -89,14 +89,11 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     case HarvestComplete(modifiedAfter, fileOption, errorOption) =>
       log.info(s"Harvest complete $datasetRepo, error=$errorOption")
       db.endProgress(errorOption)
-      if (!errorOption.isDefined) fileOption.foreach { file: File =>
-        modifiedAfter match {
-          case Some(after) =>
-            self ! StartSaving(modifiedAfter)
-          case None =>
-            db.setStatus(SOURCED)
-            self ! StartAnalysis()
-        }
+      if (!errorOption.isDefined) modifiedAfter.map { after =>
+        self ! StartSaving(modifiedAfter, fileOption)
+      } getOrElse {
+        db.setStatus(SOURCED)
+        self ! StartAnalysis()
       }
       sender ! PoisonPill
 
@@ -120,7 +117,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
 
     // === saving
 
-    case StartSaving(modifiedAfter) =>
+    case StartSaving(modifiedAfter, fileOption) =>
       log.info(s"Start saving $datasetRepo modified=$modifiedAfter")
       datasetRepo.datasetDb.infoOption.foreach { info =>
         val delimit = info \ "delimit"
@@ -128,13 +125,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
         val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
         val kickoff = if (HARVEST.matches((info \ "origin" \ "type").text)) {
           val recordRoot = s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
-          Some(SaveRecords(modifiedAfter, recordRoot, s"$recordRoot/$RECORD_UNIQUE_ID", recordCount, Some(recordRoot)))
+          Some(SaveRecords(modifiedAfter, fileOption, recordRoot, s"$recordRoot/$RECORD_UNIQUE_ID", recordCount, Some(recordRoot)))
         }
         else {
           val recordRoot = (delimit \ "recordRoot").text
           val uniqueId = (delimit \ "uniqueId").text
           if (recordRoot.trim.nonEmpty)
-            Some(SaveRecords(modifiedAfter, recordRoot, uniqueId, recordCount, None))
+            Some(SaveRecords(modifiedAfter, fileOption, recordRoot, uniqueId, recordCount, None))
           else
             None
         }
