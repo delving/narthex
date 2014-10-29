@@ -17,7 +17,9 @@
 package web
 
 import analysis.TreeHandling
-import dataset.{DatasetDb, DatasetOrigin}
+import dataset.DatasetDb
+import dataset.DatasetOrigin.DROP
+import dataset.DatasetState.SOURCED
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
 import org.OrgRepo
@@ -94,7 +96,8 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       OrgRepo.acceptableFile(file.filename, file.contentType).map { suffix =>
         println(s"Acceptable ${file.filename}")
         val datasetRepo = repo.datasetRepo(s"$fileName$suffix")
-        datasetRepo.datasetDb.setOrigin(DatasetOrigin.DROP)
+        datasetRepo.datasetDb.setOrigin(DROP)
+        datasetRepo.datasetDb.setStatus(SOURCED)
         file.ref.moveTo(datasetRepo.createIncomingFile(file.filename), replace = true)
         datasetRepo.startAnalysis()
         Ok(datasetRepo.name)

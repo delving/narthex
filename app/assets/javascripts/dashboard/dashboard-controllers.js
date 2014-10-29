@@ -94,13 +94,12 @@ define(["angular"], function () {
         };
 
         $scope.setFileOpen = function (file) {
-            if ($scope.fileOpen == file.name) {
+            if ($scope.fileOpen == file.name || file.progress) {
                 $scope.fileOpen = "";
             }
             else {
                 $scope.fileOpen = file.name;
             }
-//            $rootScope.saveFileOpen($scope.fileOpen);
             setSearch();
         };
 
@@ -322,18 +321,22 @@ define(["angular"], function () {
         };
 
         $scope.startHarvest = function (file) {
+            $scope.setFileOpen("");
             dashboardService.harvest(file.name, file.info.harvest).then(function () {
                 fetchDatasetList();
             });
         };
 
         $scope.startAnalysis = function (file) {
-            dashboardService.analyze(file.name).then(function () {
+            $scope.setFileOpen("");
+            dashboardService.analyze(file.name).then(function (data) {
+                console.log("start analysis reply", data);
                 fetchDatasetList();
             });
         };
 
         $scope.saveRecords = function (file) {
+            $scope.setFileOpen("");
             dashboardService.saveRecords(file.name).then(function () {
                 $timeout(
                     function () {
@@ -349,6 +352,11 @@ define(["angular"], function () {
             dashboardService.revert(file.name, command).then(function (data) {
                 console.log("revert reply", data);
                 fetchDatasetList();
+                if (command == 'interrupt') {
+                    console.log("interrupt", file);
+                    $scope.fileOpen = file.name;
+                    setSearch();
+                }
             });
         };
 
@@ -397,7 +405,7 @@ define(["angular"], function () {
 
     var FileEntryCtrl = function ($scope, dashboardService) {
 
-        $scope.tab = "actions";
+        $scope.tab = "metadata";
 
         $scope.allowTab = function (file, tabName) {
             switch (tabName) {

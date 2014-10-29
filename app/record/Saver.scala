@@ -42,9 +42,7 @@ object Saver {
 }
 
 class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
-
   import context.dispatcher
-
   var log = Logger
   var progress: Option[ProgressReporter] = None
 
@@ -61,6 +59,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
         val (source, readProgress) = FileHandling.sourceFromFile(file)
         val progressReporter = ProgressReporter(UPDATING, datasetRepo.datasetDb)
         progressReporter.setReadProgress(readProgress)
+        progress = Some(progressReporter)
         future {
           datasetRepo.recordDb.db { session =>
             def receiveRecord(record: RawRecord) = {
@@ -91,6 +90,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
               val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
               val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
               progressReporter.setReadProgress(readProgress)
+              progress = Some(progressReporter)
               def receiveRecord(record: RawRecord) = {
                 tick += 1
                 if (tick % 10000 == 0) {
