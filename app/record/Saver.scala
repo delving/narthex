@@ -34,7 +34,7 @@ import scala.language.postfixOps
 
 object Saver {
 
-  case class SaveRecords(modifiedAfter: Option[DateTime], fileOption: Option[File], recordRoot: String, uniqueId: String, recordCount: Long, deepRecordContainer: Option[String])
+  case class SaveRecords(modifiedAfter: Option[DateTime], file: File, recordRoot: String, uniqueId: String, recordCount: Long, deepRecordContainer: Option[String])
 
   case class SaveComplete(errorOption: Option[String] = None)
 
@@ -42,7 +42,9 @@ object Saver {
 }
 
 class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
+
   import context.dispatcher
+
   var log = Logger
   var progress: Option[ProgressReporter] = None
 
@@ -51,10 +53,9 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
     case InterruptWork() =>
       progress.map(_.bomb = Some(sender)).getOrElse(context.stop(self))
 
-    case SaveRecords(modifiedAfter: Option[DateTime], fileOption: Option[File], recordRoot, uniqueId, recordCount, deepRecordContainer) =>
-      log.info(s"Saving $datasetRepo modified=$modifiedAfter")
-      modifiedAfter.map { modified =>
-        val file = fileOption.get
+    case SaveRecords(modifiedAfter: Option[DateTime], file, recordRoot, uniqueId, recordCount, deepRecordContainer) =>
+      log.info(s"Saving $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath})")
+      modifiedAfter.map { after =>
         val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
         val (source, readProgress) = FileHandling.sourceFromFile(file)
         val progressReporter = ProgressReporter(UPDATING, datasetRepo.datasetDb)
@@ -68,6 +69,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
             }
             try {
               parser.parse(source, Set.empty[String], receiveRecord, progressReporter)
+              context.parent ! SaveComplete()
             }
             catch {
               case e: Exception =>
@@ -80,51 +82,52 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
           }
         }
       } getOrElse {
-        datasetRepo.getLatestIncomingFile.map { incomingFile =>
-          datasetRepo.recordDb.createDb()
-          var tick = 0
-          var time = System.currentTimeMillis()
-          future {
-            datasetRepo.recordDb.db { session =>
-              val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
-              val (source, readProgress) = FileHandling.sourceFromFile(incomingFile)
-              val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
-              progressReporter.setReadProgress(readProgress)
-              progress = Some(progressReporter)
-              def receiveRecord(record: RawRecord) = {
-                tick += 1
-                if (tick % 10000 == 0) {
-                  val now = System.currentTimeMillis()
-                  Logger.info(s"$datasetRepo $tick: ${now - time}ms")
-                  time = now
-                }
-                val hash = record.hash
-                val fileName = s"${datasetRepo.name}/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
-                session.add(fileName, bytesOf(record.text))
+        log.info(s"Processing latest incoming file $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath}")
+        datasetRepo.recordDb.createDb()
+        var tick = 0
+        var time = System.currentTimeMillis()
+        future {
+          datasetRepo.recordDb.db { session =>
+            val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
+            val (source, readProgress) = FileHandling.sourceFromFile(file)
+            val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
+            progressReporter.setReadProgress(readProgress)
+            progress = Some(progressReporter)
+            def receiveRecord(record: RawRecord) = {
+              tick += 1
+              if (tick % 10000 == 0) {
+                val now = System.currentTimeMillis()
+                Logger.info(s"$datasetRepo $tick: ${now - time}ms")
+                time = now
               }
-              try {
-                if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {
-                  log.info(s"Saved ${datasetRepo.analyzedDir.getName}, optimizing..")
-                  datasetRepo.recordDb.db(_.execute(new Optimize()))
-                  datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
-                  context.parent ! SaveComplete()
-                }
-                else {
-                  context.parent ! SaveComplete(Some("Interrupted while saving"))
-                }
+              val hash = record.hash
+              val fileName = s"${datasetRepo.name}/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
+              session.add(fileName, bytesOf(record.text))
+            }
+            try {
+              if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {
+                log.info(s"Saved ${datasetRepo.analyzedDir.getName}, optimizing..")
+                datasetRepo.recordDb.db(_.execute(new Optimize()))
+                datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
+                context.parent ! SaveComplete()
               }
-              catch {
-                case e: Exception =>
-                  log.error(s"Unable to save $datasetRepo", e)
-                  context.parent ! SaveComplete(Some(e.toString))
-              }
-              finally {
-                source.close()
+              else {
+                context.parent ! SaveComplete(Some("Interrupted while saving"))
               }
             }
+            catch {
+              case e: Exception =>
+                log.error(s"Unable to save $datasetRepo", e)
+                context.parent ! SaveComplete(Some(e.toString))
+            }
+            finally {
+              source.close()
+            }
           }
+
         }
       }
   }
+
 }
 

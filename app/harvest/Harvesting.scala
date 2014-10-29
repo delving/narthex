@@ -49,9 +49,11 @@ object Harvesting extends BaseXTools {
       deepRecordContainer = None
     )
 
-    val ALL_ORIGINS = List(PMH, ADLIB)
+    val ALL_TYPES = List(PMH, ADLIB)
 
-    def fromString(string: String): Option[HarvestType] = ALL_ORIGINS.find(s => s.matches(string))
+    def fromString(string: String): Option[HarvestType] = ALL_TYPES.find(s => s.matches(string))
+
+    def fromInfo(info: NodeSeq) = fromString((info \ "harvest" \ "harvestType").text)
   }
 
   case class AdLibDiagnostic(totalItems: Int, current: Int, pageItems: Int) {
@@ -185,7 +187,7 @@ trait Harvesting extends BaseXTools {
   def fetchAdLibPage(url: String, database: String, modifiedAfter: Option[DateTime], diagnosticOption: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
-    // 2014-10-16T17:00
+    // 2014-10-16T15:00
     val search = modifiedAfter.map(after => s"modification greater '${toBasicString(after)}'").getOrElse("all")
     requestUrl.withQueryString(
       "database" -> database,

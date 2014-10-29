@@ -24,10 +24,8 @@ import dataset.DatasetActor.{StartAnalysis, StartHarvest, StartSaving}
 import dataset.DatasetOrigin.HARVEST
 import dataset.DatasetState._
 import dataset.ProgressState._
-import harvest.Harvester.{HarvestAdLib, HarvestPMH}
-import harvest.Harvesting.HarvestType._
+import harvest.Harvesting
 import harvest.Harvesting._
-import harvest.{HarvestRepo, Harvesting}
 import org.OrgActor.{DatasetMessage, InterruptDataset}
 import org.{OrgActor, OrgRepo}
 import play.api.Logger
@@ -93,32 +91,10 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
       val harvestCron = Harvesting.harvestCron(info)
       if (harvestCron.timeToWork) {
         val nextHarvestCron = harvestCron.next
+        // if the next is also to take place immediately, force the harvest cron to now
         datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
-        val harvest = info \ "harvest"
-        HarvestType.fromString((harvest \ "harvestType").text).map {
-          harvestType =>
-            val harvestRepo = new HarvestRepo(harvestDir, harvestType)
-            val kickoff = harvestType match {
-              case PMH =>
-                HarvestPMH(
-                  url = (harvest \ "url").text,
-                  set = (harvest \ "dataset").text,
-                  prefix = (harvest \ "prefix").text,
-                  modifiedAfter = Some(harvestCron.previous)
-                )
-              case ADLIB =>
-                HarvestAdLib(
-                  url = (harvest \ "url").text,
-                  database = (harvest \ "dataset").text,
-                  modifiedAfter = Some(harvestCron.previous)
-                )
-            }
-            Logger.info(s"Re-harvest $kickoff")
-            datasetDb.startProgress(HARVESTING)
-            OrgActor.actor ! DatasetMessage(name, kickoff)
-        } getOrElse {
-          Logger.warn(s"No re-harvest $name with cron $harvestCron because harvest type was not recognized $harvest")
-        }
+        datasetDb.startProgress(HARVESTING)
+        OrgActor.actor ! DatasetMessage(name, StartHarvest(Some(harvestCron.previous)))
       }
       else {
         Logger.info(s"No re-harvest of $name with cron $harvestCron because it's not time $harvestCron")
@@ -143,14 +119,18 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
 
   def firstSaveRecords() = datasetDb.infoOption.map { info =>
     DatasetState.fromDatasetInfo(info).map { state =>
-      val delimited = datasetDb.isDelimited(Some(info))
-      if (state == SOURCED && delimited) {
-        recordDb.createDb()
-        datasetDb.startProgress(SAVING)
-        OrgActor.actor ! DatasetMessage(name, StartSaving(None, None))
-      }
-      else {
-        Logger.warn(s"First save of $name can only be started with state sourced/delimited, but it's $state/$delimited ")
+      getLatestIncomingFile.map { incoming =>
+        val delimited = datasetDb.isDelimited(Some(info))
+        if (state == SOURCED && delimited) {
+          recordDb.createDb()
+          datasetDb.startProgress(SAVING)
+          OrgActor.actor ! DatasetMessage(name, StartSaving(None, incoming))
+        }
+        else {
+          Logger.warn(s"First save of $name can only be started with state sourced/delimited, but it's $state/$delimited ")
+        }
+      } getOrElse {
+        Logger.warn(s"First save of $name needs an incoming file")
       }
     }
   }

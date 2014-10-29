@@ -194,7 +194,7 @@
             </div>
             <button typ="button" class="btn btn-success btn-xs" data-ng-click="setPublication(file)">
                 <i class="fa fa-save"></i>
-                <span>Publish</span>
+                <span>Save</span>
             </button>
         </fieldset>
     </form>
@@ -289,7 +289,7 @@
 <script type="text/ng-template" id="actions.html">
     <button class="btn btn-sm btn-success btn-block" data-ng-click="startAnalysis(file)" data-ng-show="!file.treeTime && !file.progress && file.state == 'state-sourced'">
         <i class="fa fa-eye"></i>
-        <span>Split and Analyze</span>
+        <span>Perform Analysis</span>
     </button>
     <button class="btn btn-sm btn-danger btn-block" data-ng-click="discardTree(file)" data-ng-show="file.treeTime && !file.progress">
         <i class="fa fa-trash-o"></i>
@@ -331,8 +331,8 @@
             </span>
             <span ng-if="file.state">
                 <span ng-switch="file.state">
-                    <span class="label label-info" ng-switch-when="state-deleted">Deleted</span>
-                    <span class="label label-info" ng-switch-when="state-empty">Empty</span>
+                    <span class="label label-warning" ng-switch-when="state-deleted">Deleted</span>
+                    <span class="label label-default" ng-switch-when="state-empty">Empty</span>
                     <span ng-switch-default>
                         <span class="label label-success" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
                         <span class="label label-success" data-ng-show="file.treeTime">Analyzed {{ file.treeTime }}</span>

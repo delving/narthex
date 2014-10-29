@@ -26,11 +26,11 @@ import dataset.DatasetOrigin._
 import dataset.DatasetState.SOURCED
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType
+import harvest.Harvesting.HarvestType.{ADLIB, PMH}
 import harvest.{HarvestRepo, Harvester}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
-import record.RecordHandling._
 import record.Saver
 import record.Saver.{SaveComplete, SaveRecords}
 import services.FileHandling._
@@ -47,7 +47,7 @@ object DatasetActor {
 
   case class StartAnalysis()
 
-  case class StartSaving(modifiedAfter: Option[DateTime], file: Option[File])
+  case class StartSaving(modifiedAfter: Option[DateTime], file: File)
 
   case class InterruptWork()
 
@@ -77,9 +77,9 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
           val database = (harvest \ "dataset").text
           val prefix = (harvest \ "prefix").text
           val kickoff = harvestType match {
-            case HarvestType.PMH =>
+            case PMH =>
               HarvestPMH(url, database, prefix, modifiedAfter)
-            case HarvestType.ADLIB =>
+            case ADLIB =>
               HarvestAdLib(url, database, modifiedAfter)
           }
           harvester ! kickoff
@@ -87,13 +87,15 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       }
 
     case HarvestComplete(modifiedAfter, fileOption, errorOption) =>
-      log.info(s"Harvest complete $datasetRepo, error=$errorOption")
+      log.info(s"Harvest complete $datasetRepo, error=$errorOption, file=$fileOption")
       db.endProgress(errorOption)
-      if (!errorOption.isDefined) modifiedAfter.map { after =>
-        self ! StartSaving(modifiedAfter, fileOption)
-      } getOrElse {
-        db.setStatus(SOURCED)
-        self ! StartAnalysis()
+      if (errorOption.isEmpty) {
+        fileOption.map {
+          if (modifiedAfter.isEmpty) db.setStatus(SOURCED) // first harvest
+          file => self ! StartSaving(modifiedAfter, file)
+        } getOrElse {
+          log.info(s"No file to save for $datasetRepo")
+        }
       }
       sender ! PoisonPill
 
@@ -117,27 +119,27 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
 
     // === saving
 
-    case StartSaving(modifiedAfter, fileOption) =>
+    case StartSaving(modifiedAfter, file) =>
       log.info(s"Start saving $datasetRepo modified=$modifiedAfter")
       datasetRepo.datasetDb.infoOption.foreach { info =>
         val delimit = info \ "delimit"
         val recordCountText = (delimit \ "recordCount").text
         val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
-        val kickoff = if (HARVEST.matches((info \ "origin" \ "type").text)) {
-          val recordRoot = s"/$RECORD_LIST_CONTAINER/$RECORD_CONTAINER"
-          Some(SaveRecords(modifiedAfter, fileOption, recordRoot, s"$recordRoot/$RECORD_UNIQUE_ID", recordCount, Some(recordRoot)))
+        val kickoffOption = if (HARVEST.matches((info \ "origin" \ "type").text)) {
+          val ht = HarvestType.fromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
+          Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer))
         }
         else {
           val recordRoot = (delimit \ "recordRoot").text
           val uniqueId = (delimit \ "uniqueId").text
           if (recordRoot.trim.nonEmpty)
-            Some(SaveRecords(modifiedAfter, fileOption, recordRoot, uniqueId, recordCount, None))
+            Some(SaveRecords(modifiedAfter, file, recordRoot, uniqueId, recordCount, None))
           else
             None
         }
-        kickoff.foreach { k =>
+        kickoffOption.foreach { kickoff =>
           val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
-          saver ! k
+          saver ! kickoff
         }
       }
 

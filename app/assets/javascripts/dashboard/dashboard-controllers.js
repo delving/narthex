@@ -263,7 +263,6 @@ define(["angular"], function () {
             if (file.checker) {
                 $timeout.cancel(file.checker);
                 delete(file.checker);
-                console.log("cancelling checker " + file.name);
             }
         }
 
@@ -350,10 +349,8 @@ define(["angular"], function () {
         $scope.revert = function(file, areYouSure, command) {
             if (areYouSure && !confirm(areYouSure)) return;
             dashboardService.revert(file.name, command).then(function (data) {
-                console.log("revert reply", data);
                 fetchDatasetList();
                 if (command == 'interrupt') {
-                    console.log("interrupt", file);
                     $scope.fileOpen = file.name;
                     setSearch();
                 }
