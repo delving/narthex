@@ -74,7 +74,7 @@ object Harvesting extends BaseXTools {
     }
   }
 
-  case class HarvestError(error:String, modifiedAfter: Option[DateTime])
+  case class HarvestError(error: String, modifiedAfter: Option[DateTime])
 
   case class PMHHarvestPage
   (
@@ -179,6 +179,7 @@ object Harvesting extends BaseXTools {
 }
 
 trait Harvesting extends BaseXTools {
+
   import harvest.Harvesting._
 
   def tagToInt(nodeSeq: NodeSeq, tag: String, default: Int = 0) = try {
@@ -196,33 +197,35 @@ trait Harvesting extends BaseXTools {
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // UMU 2014-10-16T15:00
     val search = modifiedAfter.map(after => s"modification greater '${toBasicString(after)}'").getOrElse("all")
-    requestUrl.withQueryString(
+    val request = requestUrl.withQueryString(
       "database" -> database,
       "search" -> search,
       "xmltype" -> "grouped",
       "limit" -> "50",
       "startFrom" -> startFrom.toString
-    ).get().map {
-      response =>
-        val diagnostic = response.xml \ "diagnostic"
-        val error = diagnostic \ "error"
-        if (error.isEmpty) {
-          AdLibHarvestPage(
-            response.xml.toString(),
-            url,
-            database,
-            modifiedAfter,
-            AdLibDiagnostic(
-              totalItems = tagToInt(diagnostic, "hits"),
-              current = tagToInt(diagnostic, "first_item"),
-              pageItems = tagToInt(diagnostic, "hits_on_display")
-            )
+    )
+    request.get().map { response =>
+      val diagnostic = response.xml \ "diagnostic"
+      val errorNode = diagnostic \ "error"
+      val error: Option[HarvestError] = if (errorNode.isEmpty) None
+      else {
+        val errorInfo = (errorNode \ "info").text
+        val errorMessage = (errorNode \ "message").text
+        Some(HarvestError(s"Error: $errorInfo, '$errorMessage'", modifiedAfter))
+      }
+      error getOrElse {
+        AdLibHarvestPage(
+          response.xml.toString(),
+          url,
+          database,
+          modifiedAfter,
+          AdLibDiagnostic(
+            totalItems = tagToInt(diagnostic, "hits"),
+            current = tagToInt(diagnostic, "first_item"),
+            pageItems = tagToInt(diagnostic, "hits_on_display")
           )
-        } else {
-          val errorInfo = (error \ "info").text
-          val errorMessage = (error \ "message").text
-          HarvestError(s"Error: $errorInfo, '$errorMessage'", modifiedAfter)
-        }
+        )
+      }
     }
   }
 
@@ -254,49 +257,53 @@ trait Harvesting extends BaseXTools {
           "resumptionToken" -> token.value
         )
     }
-    request.get().map {
-      response =>
-        val errorNode = if (response.status != 200) {
-          Logger.info(s"response: ${response.body}")
-          <error>HTTP Response: {response.statusText}</error>
-        }
-        else {
-          response.xml \ "error"
-          //          todo: handle this stupid error message
-          //            <error code="noRecordsMatch">
-          //                The combination of the values of the from, until, set and metadataPrefix arguments results in an empty list:
-          //            </error>
-        }
-        if (errorNode.isEmpty) {
-          val tokenNode = response.xml \ "ListRecords" \ "resumptionToken"
-          val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
-            val completeListSize = tagToInt(tokenNode, "@completeListSize")
-            val cursor = tagToInt(tokenNode, "@cursor", 1)
-            Some(PMHResumptionToken(
-              value = tokenNode.text,
-              currentRecord = cursor,
-              totalRecords = completeListSize
-            ))
-          }
-          else {
+    request.get().map { response =>
+      val error: Option[HarvestError] = if (response.status != 200) {
+        Logger.info(s"response: ${response.body}")
+        Some(HarvestError(s"HTTP Response: ${response.statusText}", modifiedAfter))
+      }
+      else {
+        val errorNode = response.xml \ "error"
+        if (errorNode.nonEmpty) {
+          val errorCode = (errorNode \ "@code").text
+          if ("noRecordsMatch" == errorCode) {
+            Logger.info("No PMH Records returned")
             None
           }
-          val total =
-            if (newToken.isDefined) newToken.get.totalRecords
-            else if (resumption.isDefined) resumption.get.totalRecords
-            else 0
-          PMHHarvestPage(
-            records = response.xml.toString(),
-            url = url,
-            set = set,
-            metadataPrefix = metadataPrefix,
-            totalRecords = total,
-            modifiedAfter = modifiedAfter,
-            resumptionToken = newToken
-          )
-        } else {
-          HarvestError(errorNode.text, modifiedAfter)
+          else {
+            Some(HarvestError(errorNode.text, modifiedAfter))
+          }
         }
+        else None
+      }
+      error getOrElse {
+        val tokenNode = response.xml \ "ListRecords" \ "resumptionToken"
+        val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
+          val completeListSize = tagToInt(tokenNode, "@completeListSize")
+          val cursor = tagToInt(tokenNode, "@cursor", 1)
+          Some(PMHResumptionToken(
+            value = tokenNode.text,
+            currentRecord = cursor,
+            totalRecords = completeListSize
+          ))
+        }
+        else {
+          None
+        }
+        val total =
+          if (newToken.isDefined) newToken.get.totalRecords
+          else if (resumption.isDefined) resumption.get.totalRecords
+          else 0
+        PMHHarvestPage(
+          records = response.xml.toString(),
+          url = url,
+          set = set,
+          metadataPrefix = metadataPrefix,
+          totalRecords = total,
+          modifiedAfter = modifiedAfter,
+          resumptionToken = newToken
+        )
+      }
     }
   }
 
