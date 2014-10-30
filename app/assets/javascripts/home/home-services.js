@@ -23,7 +23,7 @@ define(["angular", "common"], function (angular) {
         ["$http", "$q", "playRoutes",
             function ($http, $q, playRoutes) {
                 var user;
-                var app = playRoutes.controllers.Application;
+                var app = playRoutes.web.Application;
                 return {
                     loginUser: function (credentials) {
                         return app.login().post(credentials).then(

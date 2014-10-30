@@ -19,6 +19,7 @@ package services
 import java.io.{BufferedInputStream, File, FileInputStream, InputStream}
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipFile}
 
+import org.apache.commons.io.FileUtils._
 import org.apache.commons.io.input.{BOMInputStream, CountingInputStream}
 import play.api.Logger
 
@@ -26,6 +27,11 @@ import scala.io.Source
 import scala.sys.process._
 
 object FileHandling {
+
+  def clearDir(dir: File) = {
+    deleteQuietly(dir)
+    dir.mkdir()
+  }
 
   def ensureGitRepo(directory: File): Boolean = {
     val hiddenGit = new File(directory, ".git")
@@ -36,22 +42,32 @@ object FileHandling {
     hiddenGit.exists()
   }
 
-  def gitCommit(file: File, comment:String): Boolean = {
+  def gitCommit(file: File, comment: String): Boolean = {
+    // assuming all files are in the git root?
     val home = file.getParentFile.getAbsolutePath
     val name = file.getName
-    val add = s"git -C $home add $name".!!
-    Logger.info(s"git add: $add")
-    val commit = s"""git -C $home commit -m "$comment" $name""".!!
-    Logger.info(s"git commit: $commit")
+    val addCommand = Process(Seq("git", "-C", home, "add", name))
+    Logger.info(s"git add: $addCommand")
+    val add = addCommand.!!
+    val commitCommand = Process(Seq("git", "-C", home, "commit", "-m", comment, name))
+    Logger.info(s"git commit: $commitCommand")
+    val commit = commitCommand.!!
     true
   }
-  
+
   abstract class ReadProgress {
     def getPercentRead: Int
   }
 
   class FileReadProgress(fileSize: Long, counter: CountingInputStream) extends ReadProgress {
     override def getPercentRead: Int = ((100 * counter.getByteCount) / fileSize).toInt
+  }
+
+  def sourceFromZipFile(file: File, totalSize: Long): Source = {
+    if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Not a zip: ${file.getName}")
+    val zc = new ZipConcatXML(new ZipFile(file))
+//    (zc, zc.readProgress)
+    zc
   }
 
   def sourceFromFile(file: File): (Source, ReadProgress) = {
@@ -91,14 +107,23 @@ object FileHandling {
   def translateEntity(text: String) = text match {
     case "amp" => "&"
     case "quot" => "\""
-    case "lt" =>  "<"
-    case "gt" =>  ">"
-    case "apos" =>   "'"
+    case "lt" => "<"
+    case "gt" => ">"
+    case "apos" => "'"
     case x => ""
   }
 
-//  def createDigest = MessageDigest.getInstance("SHA1")
-//  def hex(digest: MessageDigest) = digest.digest().map("%02X" format _).mkString
+  def getZipFileSize(zipFile: ZipFile) = {
+    val e = zipFile.entries()
+    var size = 0L
+    while (e.hasMoreElements) {
+      size += e.nextElement().getSize
+    }
+    size
+  }
+
+  //  def createDigest = MessageDigest.getInstance("SHA1")
+  //  def hex(digest: MessageDigest) = digest.digest().map("%02X" format _).mkString
 
   private def unzipXML(file: File, inputStream: InputStream) = {
     val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(inputStream) else inputStream
@@ -107,19 +132,10 @@ object FileHandling {
 
   class ZipConcatXML(val file: ZipFile) extends Source {
 
-    def getFileSize = {
-      val e = file.entries()
-      var size = 0L
-      while (e.hasMoreElements) {
-        size += e.nextElement().getSize
-      }
-      size
-    }
-
     var entries = file.entries()
     var entry: Option[ZipEntry] = None
     var entryInputStream: InputStream = null
-    var nextChar : Int = -1
+    var nextChar: Int = -1
     var charCount = 0L
 
     class ZipReadProgress(size: Long) extends ReadProgress {
@@ -164,6 +180,7 @@ object FileHandling {
 
     override protected val iter: Iterator[Char] = new ZipEntryIterator
 
-    def readProgress = new ZipReadProgress(getFileSize)
+    def readProgress = new ZipReadProgress(getZipFileSize(file))
   }
+
 }

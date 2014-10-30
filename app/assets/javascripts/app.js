@@ -29,7 +29,8 @@ define(
         "dashboard",
         "dataset",
         "terms",
-        "categories"
+        "categories",
+        "thesaurus"
     ],
     function (angular) {
         "use strict";
@@ -44,6 +45,7 @@ define(
                 "narthex.dataset",
                 "narthex.terms",
                 "narthex.categories",
+                "narthex.thesaurus",
                 "angularFileUpload",
                 "ui.bootstrap.tpls",
                 "ui.bootstrap",

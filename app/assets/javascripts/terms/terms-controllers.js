@@ -53,12 +53,16 @@ define(["angular"], function (angular) {
 
         termsService.datasetInfo($scope.fileName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
-            var recordRoot = datasetInfo.delimit.recordRoot;
-            var lastSlash = recordRoot.lastIndexOf('/');
-            $scope.recordContainer = recordRoot.substring(0, lastSlash);
-            $scope.sourceUriPath = $scope.path.substring($scope.recordContainer.length);
-            var state = datasetInfo.status.state;
-            $scope.datasetRecordsSaved = (state == 'state-published' || state == 'state-saved');
+            var recordContainer;
+            if (datasetInfo.origin.type == 'origin-harvest') {
+                recordContainer = "/pockets/pocket";
+            }
+            else {
+                var recordRoot = datasetInfo.delimit.recordRoot;
+                recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
+            }
+            $scope.sourceUriPath = $scope.path.substring(recordContainer.length);
+            $scope.datasetRecordsSaved = datasetInfo.status.state == 'state-saved';
         });
 
         function filterHistogram() {

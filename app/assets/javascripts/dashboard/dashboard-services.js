@@ -22,7 +22,7 @@ define(["angular", "common"], function (angular) {
     mod.service("dashboardService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
-            var dash = playRoutes.controllers.Dashboard;
+            var dash = playRoutes.web.Dashboard;
 
             var rejection = function (reply) {
                 if (reply.status == 401) { // unauthorized
@@ -40,8 +40,8 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                goToState: function (fileName, state) {
-                    return dash.goToState(fileName, state).get().then(
+                revert: function (fileName, command) {
+                    return dash.revert(fileName, command).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -72,8 +72,24 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                setPublication: function (fileName, publication) {
+                    return dash.setPublication(fileName).post(publication).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 harvest: function (fileName, harvestInfo) {
                     return dash.harvest(fileName).post(harvestInfo).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                setHarvestCron: function (fileName, harvestCron) {
+                    return dash.setHarvestCron(fileName).post(harvestCron).then(
                         function (response) {
                             return response.data;
                         },

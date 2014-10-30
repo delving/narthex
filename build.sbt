@@ -18,7 +18,9 @@ import play.Project._
 
 name := """narthex"""
 
-version := "0.8.6-SNAPSHOT"
+version := "0.8.7-SNAPSHOT"
+
+//scalacOptions += "-feature"
 
 libraryDependencies ++= Seq(
   "org.webjars" % "webjars-locator" % "0.14",

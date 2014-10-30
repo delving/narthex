@@ -22,7 +22,7 @@ define(["angular", "common"], function (angular) {
     mod.service("termsService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
-            var dash = playRoutes.controllers.Dashboard;
+            var dash = playRoutes.web.Dashboard;
 
             var rejection = function (reply) {
                 if (reply.status == 401) { // unauthorized
