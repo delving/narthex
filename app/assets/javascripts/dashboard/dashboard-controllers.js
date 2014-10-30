@@ -115,7 +115,7 @@ define(["angular"], function () {
         $scope.createDataset = function () {
             if ($scope.dataset.validFileName) {
                 // revert nothing means create
-                dashboardService.revertState($scope.dataset.fileName).then(function () {
+                dashboardService.revert($scope.dataset.fileName, "new").then(function () {
                     $scope.setNewFileOpen(false);
                     $scope.fileOpen = $scope.dataset.fileName;
                     $scope.dataset.name = $scope.dataset.prefix = "";

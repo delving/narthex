@@ -19,7 +19,7 @@ package web
 import analysis.TreeHandling
 import dataset.DatasetDb
 import dataset.DatasetOrigin.DROP
-import dataset.DatasetState.SOURCED
+import dataset.DatasetState.{EMPTY, SOURCED}
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
 import org.OrgRepo
@@ -83,6 +83,9 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
         datasetRepo.recordDb.dropDb()
         datasetRepo.datasetDb.setRecords(ready = false)
         "Records removed"
+      case "new" =>
+        datasetRepo.datasetDb.createDataset(EMPTY)
+        "New dataset created"
       case _ =>
         val revertedState = datasetRepo.revertState
         s"Reverted to $revertedState"

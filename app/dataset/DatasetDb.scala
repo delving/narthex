@@ -134,7 +134,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
           |     <time>$now</time>
           |   </status>
           | let $$dataset :=
-          |   <dataset name="$fileName">$$status</dataset>
+          |   <dataset name="$fileName">{ $$status }</dataset>
           | return
           |   if (exists($datasetElement))
           |   then replace node $datasetElement/status with $$status
