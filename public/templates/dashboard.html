@@ -135,9 +135,6 @@
                 <label for="hc_prev">Previous</label>
                 <input id="hc_prev" class="form-control" data-ng-model="file.info.harvestCron.previous"/>
             </div>
-            <button data-ng-click="file.info.harvestCron.previous = '2014-10-16T15:00'">
-                UMU! TEST
-            </button>
             <div class="form-group">
                 <label for="hc_delay">Delay</label>
                 <input id="hc_delay" class="form-control" data-ng-model="file.info.harvestCron.delay"/>
@@ -251,6 +248,14 @@
         <h4 class="heading">Origin</h4>
         <ul class="list-unstyled">
             <li data-ng-repeat="(key, value) in file.info.origin">
+                <b>{{ key }}</b> = "{{ value }}"
+            </li>
+        </ul>
+    </div>
+    <div class="file-info-harvest" data-ng-show="nonEmpty(file.info.harvest)">
+        <h4 class="heading">Harvest</h4>
+        <ul class="list-unstyled">
+            <li data-ng-repeat="(key, value) in file.info.harvest">
                 <b>{{ key }}</b> = "{{ value }}"
             </li>
         </ul>

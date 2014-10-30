@@ -25,7 +25,7 @@ import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
 import dataset.ProgressState._
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
-import harvest.Harvesting.{AdLibHarvestPage, PMHHarvestPage}
+import harvest.Harvesting.{AdLibHarvestPage, HarvestError, PMHHarvestPage}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
@@ -42,7 +42,6 @@ object Harvester {
   case class HarvestPMH(url: String, set: String, prefix: String, modifiedAfter: Option[DateTime])
 
   case class HarvestComplete(modifiedAfter: Option[DateTime], file: Option[File], error: Option[String])
-
 
   def props(datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) = Props(new Harvester(datasetRepo, harvestRepo))
 }
@@ -122,11 +121,8 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       harvestProgress = Some(ProgressReporter(HARVESTING, db))
       futurePage pipeTo self
 
-    case AdLibHarvestPage(records, error: Option[String], url, database, modifiedAfter, diagnostic) =>
-      if (error.isDefined) {
-        finish(modifiedAfter, error)
-      }
-      else harvestProgress.foreach { progressReporter =>
+    case AdLibHarvestPage(records, url, database, modifiedAfter, diagnostic) =>
+      harvestProgress.foreach { progressReporter =>
         val pageNumber = addPage(records)
         val keepGoing = if (modifiedAfter.isDefined)
           progressReporter.sendPage(pageNumber) // This compensates for AdLib's failure to report number of hits
@@ -155,34 +151,32 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       handleFailure(futurePage, modifiedAfter, "pmh harvest")
       futurePage pipeTo self
 
-    case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, error, resumptionToken) =>
-      if (error.isDefined) {
-        finish(modifiedAfter, error)
-      }
-      else {
-        val pageNumber = addPage(records)
-        log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
-        harvestProgress.foreach { progressReporter =>
-          resumptionToken match {
-            case None =>
-              finish(modifiedAfter, None)
-            case Some(token) =>
-              val keepHarvesting = if (token.hasPercentComplete) {
-                progressReporter.sendPercent(token.percentComplete)
-              }
-              else {
-                progressReporter.sendPage(pageCount)
-              }
-              if (keepHarvesting) {
-                val futurePage = fetchPMHPage(url, set, prefix, None, Some(token))
-                handleFailure(futurePage, modifiedAfter, "pmh harvest page")
-                futurePage pipeTo self
-              }
-              else {
-                finish(modifiedAfter, Some("Interrupted while harvesting"))
-              }
+    case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, resumptionToken) =>
+      val pageNumber = addPage(records)
+      log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
+      harvestProgress.foreach { progressReporter =>
+        resumptionToken.map { token =>
+          val keepHarvesting = if (token.hasPercentComplete) {
+            progressReporter.sendPercent(token.percentComplete)
           }
+          else {
+            progressReporter.sendPage(pageCount)
+          }
+          if (keepHarvesting) {
+            val futurePage = fetchPMHPage(url, set, prefix, None, Some(token))
+            handleFailure(futurePage, modifiedAfter, "pmh harvest page")
+            futurePage pipeTo self
+          }
+          else {
+            finish(modifiedAfter, Some("Interrupted while harvesting"))
+          }
+        } getOrElse {
+          finish(modifiedAfter, None)
         }
       }
+
+    case HarvestError(error, modifiedAfter) =>
+      finish(modifiedAfter, Some(error))
+
   }
 }

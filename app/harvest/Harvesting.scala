@@ -16,7 +16,6 @@
 
 package harvest
 
-import harvest.Harvesting.{AdLibDiagnostic, AdLibHarvestPage, PMHHarvestPage, PMHResumptionToken}
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.ws.WS
@@ -75,6 +74,8 @@ object Harvesting extends BaseXTools {
     }
   }
 
+  case class HarvestError(error:String, modifiedAfter: Option[DateTime])
+
   case class PMHHarvestPage
   (
     records: String,
@@ -83,8 +84,15 @@ object Harvesting extends BaseXTools {
     metadataPrefix: String,
     totalRecords: Int,
     modifiedAfter: Option[DateTime],
-    error: Option[String],
     resumptionToken: Option[PMHResumptionToken])
+
+  case class AdLibHarvestPage
+  (
+    records: String,
+    url: String,
+    database: String,
+    modifiedAfter: Option[DateTime],
+    diagnostic: AdLibDiagnostic)
 
   case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
 
@@ -120,9 +128,6 @@ object Harvesting extends BaseXTools {
         Some(this.copy(currentPage = currentPage + 1))
     }
   }
-
-  case class AdLibHarvestPage(records: String, error: Option[String], url: String, database: String,
-                              modifiedAfter: Option[DateTime], diagnostic: AdLibDiagnostic)
 
   case class DelayUnit(name: String, millis: Long) {
     override def toString = name
@@ -174,6 +179,7 @@ object Harvesting extends BaseXTools {
 }
 
 trait Harvesting extends BaseXTools {
+  import harvest.Harvesting._
 
   def tagToInt(nodeSeq: NodeSeq, tag: String, default: Int = 0) = try {
     (nodeSeq \ tag).text.toInt
@@ -184,10 +190,11 @@ trait Harvesting extends BaseXTools {
       default
   }
 
-  def fetchAdLibPage(url: String, database: String, modifiedAfter: Option[DateTime], diagnosticOption: Option[AdLibDiagnostic] = None): Future[AdLibHarvestPage] = {
+  def fetchAdLibPage(url: String, database: String, modifiedAfter: Option[DateTime],
+                     diagnosticOption: Option[AdLibDiagnostic] = None): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
-    // 2014-10-16T15:00
+    // UMU 2014-10-16T15:00
     val search = modifiedAfter.map(after => s"modification greater '${toBasicString(after)}'").getOrElse("all")
     requestUrl.withQueryString(
       "database" -> database,
@@ -199,22 +206,9 @@ trait Harvesting extends BaseXTools {
       response =>
         val diagnostic = response.xml \ "diagnostic"
         val error = diagnostic \ "error"
-        if (error.nonEmpty) {
-          val errorInfo = (error \ "info").text
-          val errorMessage = (error \ "message").text
+        if (error.isEmpty) {
           AdLibHarvestPage(
             response.xml.toString(),
-            error = Some(s"Error: $errorInfo, '$errorMessage'"),
-            url,
-            database,
-            modifiedAfter,
-            AdLibDiagnostic(0, 0, 0)
-          )
-        }
-        else {
-          AdLibHarvestPage(
-            response.xml.toString(),
-            error = None,
             url,
             database,
             modifiedAfter,
@@ -224,13 +218,18 @@ trait Harvesting extends BaseXTools {
               pageItems = tagToInt(diagnostic, "hits_on_display")
             )
           )
+        } else {
+          val errorInfo = (error \ "info").text
+          val errorMessage = (error \ "message").text
+          HarvestError(s"Error: $errorInfo, '$errorMessage'", modifiedAfter)
         }
     }
   }
 
-  def fetchPMHPage(url: String, set: String, metadataPrefix: String, modifiedAfter: Option[DateTime], resumption: Option[PMHResumptionToken] = None) = {
+  def fetchPMHPage(url: String, set: String, metadataPrefix: String, modifiedAfter: Option[DateTime],
+                   resumption: Option[PMHResumptionToken] = None): Future[AnyRef] = {
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
-    // 2014-09-15
+    // Teylers 2014-09-15
     val from = modifiedAfter.map(toBasicString).getOrElse(toBasicString(new DateTime(0L)))
     val request = resumption match {
       case None =>
@@ -263,6 +262,10 @@ trait Harvesting extends BaseXTools {
         }
         else {
           response.xml \ "error"
+          //          todo: handle this stupid error message
+          //            <error code="noRecordsMatch">
+          //                The combination of the values of the from, until, set and metadataPrefix arguments results in an empty list:
+          //            </error>
         }
         if (errorNode.isEmpty) {
           val tokenNode = response.xml \ "ListRecords" \ "resumptionToken"
@@ -289,20 +292,10 @@ trait Harvesting extends BaseXTools {
             metadataPrefix = metadataPrefix,
             totalRecords = total,
             modifiedAfter = modifiedAfter,
-            error = None,
             resumptionToken = newToken
           )
         } else {
-          PMHHarvestPage(
-            records = "",
-            url = url,
-            set = set,
-            metadataPrefix = metadataPrefix,
-            totalRecords = 0,
-            modifiedAfter = None,
-            error = Some(errorNode.text),
-            resumptionToken = None
-          )
+          HarvestError(errorNode.text, modifiedAfter)
         }
     }
   }
