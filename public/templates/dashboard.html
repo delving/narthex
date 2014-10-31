@@ -324,7 +324,7 @@
 <script type="text/ng-template" id="file-entry.html">
     <div data-ng-controller="FileEntryCtrl" class="list-item-inner">
         <div>
-            <i class="fa fa-fw" data-ng-class="{ 'fa-folder':fileOpen != file.name, 'fa-folder-open':fileOpen == file.name }"></i>
+            <i class="fa fa-fw fa-2x" data-ng-class="{ 'fa-folder':fileOpen != file.name, 'fa-folder-open':fileOpen == file.name }"></i>
             <a href class="btn btn-inverse btn-link" data-ng-click="setFileOpen(file)" >
                 <span>{{ file.identity.datasetName }}</span><span>[{{ file.identity.prefix }}]</span>
                 <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
