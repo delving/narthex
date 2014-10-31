@@ -201,6 +201,7 @@ define(["angular"], function () {
                         post = " workers";
                         break;
                     case "progress-pages":
+                        p.count = p.count % 100;
                         post = " pages";
                         break;
                 }
@@ -365,6 +366,7 @@ define(["angular"], function () {
 
         function fetchSipFileList() {
             dashboardService.listSipFiles().then(function (data) {
+                if (!data) return;
                 var specs = {};
                 $scope.sipFiles = _.map(data.list, function (sipFile) {
                     var entry = { fileName: sipFile };

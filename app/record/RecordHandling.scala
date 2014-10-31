@@ -70,6 +70,15 @@ trait RecordHandling extends BaseXTools {
         }
       }
 
+      def flushStartElement() = {
+        if (startElement.isDefined) {
+          // todo: check if there was text, if so it's a violation
+          indent()
+          recordText.append(startElement.get).append("\n")
+          startElement = None
+        }
+      }
+
       def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
         def recordNamespace(binding: NamespaceBinding): Unit = {
           if (binding eq TopScope) return
@@ -77,14 +86,6 @@ trait RecordHandling extends BaseXTools {
           recordNamespace(binding.parent)
         }
         recordNamespace(scope)
-        def flushStartElement() = {
-          if (startElement.isDefined) {
-            // todo: check if there was text, if so it's a violation
-            indent()
-            recordText.append(startElement.get).append("\n")
-            startElement = None
-          }
-        }
         def findUniqueId(attrs: MetaData) = {
           attrs.foreach {
             attr =>
@@ -128,6 +129,7 @@ trait RecordHandling extends BaseXTools {
           // deep record means check container instead
           val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _).getOrElse(string == recordRootPath)
           if (hitRecordRoot) {
+            flushStartElement()
             indent()
             recordText.append(s"</$tag>\n")
             val record = uniqueId.map { id =>
