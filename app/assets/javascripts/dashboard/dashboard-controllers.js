@@ -442,6 +442,10 @@ define(["angular"], function () {
             $scope.revert(file, "Interrupt processing?", "interrupt");
         };
 
+        $scope.deleteDataset = function (file) {
+            $scope.revert(file, "Delete dataset?", "revert state");
+        };
+
     };
 
     FileEntryCtrl.$inject = ["$scope", "dashboardService"];

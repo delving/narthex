@@ -17,9 +17,9 @@
 package web
 
 import analysis.TreeHandling
-import dataset.DatasetDb
 import dataset.DatasetOrigin.DROP
 import dataset.DatasetState.{EMPTY, SOURCED}
+import dataset.{DatasetDb, DatasetState}
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
 import org.OrgRepo
@@ -55,9 +55,13 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
   )
 
   def list = Secure() { token => implicit request =>
-    val datasets = repo.repoDb.listDatasets.map { dataset =>
-      val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-      Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
+    val datasets = repo.repoDb.listDatasets.flatMap { dataset =>
+      DatasetState.fromDatasetInfo(dataset.info).map { state =>
+        if (state == DatasetState.DELETED) None else {
+          val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+          Some(Json.obj("name" -> dataset.name, "info" -> JsObject(lists)))
+        }
+      } getOrElse None
     }
     Ok(JsArray(datasets))
   }
@@ -69,7 +73,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     } getOrElse NotFound(Json.obj("problem" -> s"Not found $fileName"))
   }
 
-  def revert(fileName: String, command:String) = Secure() { token => implicit request =>
+  def revert(fileName: String, command: String) = Secure() { token => implicit request =>
     val datasetRepo = repo.datasetRepo(fileName)
     val change = command match {
       case "interrupt" =>

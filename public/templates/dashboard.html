@@ -315,6 +315,10 @@
         <i class="fa fa-trash-o"></i>
         <span>Discard Source</span>
     </button>
+    <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="deleteDataset(file)" data-ng-show="!file.progress && file.state == 'state-empty'">
+        <i class="fa fa-trash-o"></i>
+        <span>Delete Dataset</span>
+    </button>
 </script>
 
 <script type="text/ng-template" id="file-entry.html">
