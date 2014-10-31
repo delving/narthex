@@ -188,6 +188,7 @@ define(["angular"], function () {
 
         $scope.setUniqueIdNode = function (node) {
             function selectFirstEmptyWithCount(node, count) {
+                if (!node) return undefined;
                 if (!node.lengths.length && node.count == count) {
                     return node;
                 }
