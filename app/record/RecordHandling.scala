@@ -23,7 +23,7 @@ import java.security.MessageDigest
 import org.joda.time.DateTime
 import play.Logger
 import record.RecordHandling.{Pocket, StoredRecord, TargetConcept, _}
-import services.{BaseXTools, FileHandling, ProgressReporter}
+import services.{BaseXTools, FileHandling, NarthexEventReader, ProgressReporter}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -54,8 +54,7 @@ trait RecordHandling extends BaseXTools {
     var namespaceMap: Map[String, String] = Map.empty
 
     def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progressReporter: ProgressReporter): Boolean = {
-
-      val events = new XMLEventReader(source)
+      val events = new NarthexEventReader(source)
       var depth = 0
       var recordText = new mutable.StringBuilder()
       var uniqueId: Option[String] = None
@@ -244,8 +243,8 @@ trait RecordHandling extends BaseXTools {
     case class Frame(tag: String, path: String, text: mutable.StringBuilder = new mutable.StringBuilder())
 
     def parse(xmlString: String): List[StoredRecord] = {
-
-      val events = new XMLEventReader(Source.fromString(xmlString))
+      // todo: find a way out of https://issues.scala-lang.org/browse/SI-4267
+      val events = new NarthexEventReader(Source.fromString(xmlString))
       val stack = new mutable.Stack[Frame]()
       var start: Option[String] = None
       var record: Option[StoredRecord] = None

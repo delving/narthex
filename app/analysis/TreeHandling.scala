@@ -25,7 +25,7 @@ import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
-import services.{FileHandling, ProgressReporter}
+import services.{FileHandling, NarthexEventReader, ProgressReporter}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -110,7 +110,8 @@ trait TreeHandling {
     def apply(source: Source, length: Long, datasetRepo: DatasetRepo, progressReporter: ProgressReporter): Option[TreeNode] = {
       val base = new TreeNode(datasetRepo.rootNode, null, null)
       var node = base
-      val events = new XMLEventReader(source)
+      // todo: find a way out of https://issues.scala-lang.org/browse/SI-4267
+      val events = new NarthexEventReader(source)
 
       try {
         while (events.hasNext && progressReporter.keepReading()) {

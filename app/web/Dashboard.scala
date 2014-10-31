@@ -56,7 +56,7 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
 
   def list = Secure() { token => implicit request =>
     val datasets = repo.repoDb.listDatasets.flatMap { dataset =>
-      DatasetState.fromDatasetInfo(dataset.info).map { state =>
+      DatasetState.fromDatasetInfo(dataset.info).map { state: DatasetState =>
         if (state == DatasetState.DELETED) None else {
           val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
           Some(Json.obj("name" -> dataset.name, "info" -> JsObject(lists)))
