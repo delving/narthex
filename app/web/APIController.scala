@@ -168,7 +168,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
   def uploadOutput(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
     implicit request => {
       val datasetRepo = repo.datasetRepo(fileName)
-      request.body.moveTo(datasetRepo.createIncomingFile(request.body.file.getName), replace = true)
+      request.body.moveTo(datasetRepo.createIncomingFile(fileName), replace = true)
       datasetRepo.datasetDb.createDataset(SOURCED)
       datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP)
       datasetRepo.datasetDb.setRecordDelimiter(

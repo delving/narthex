@@ -106,6 +106,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
       }
     } getOrElse {
       Logger.warn(s"Incremental harvest of $name can only be started when there are saved records")
+      val harvestCron = Harvesting.harvestCron(info)
+      datasetDb.setHarvestCron(harvestCron.now)
     }
   }
 
