@@ -3,16 +3,17 @@ package services
 import java.net.URLEncoder
 import java.util.concurrent.TimeoutException
 
+import play.api.Play.current
 import play.api.http.Status
 import play.api.libs.Crypto
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import play.api.libs.ws.{Response, WS}
+import play.api.libs.ws._
 import play.api.{Logger, Play}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.language.postfixOps
+import scala.language.postfixOps // todo: use the actor's execution context?
 
 /**
  * TODO harden this, error handling, logging... for now we always return the worst case scenario in case of an error. however we should make the clients
@@ -80,15 +81,15 @@ class CommonsServices(commonsHost: String, orgId: String, apiToken: String, node
     "apiNode" -> node
   )
 
-  private def get[T](path: String, queryParams: (String, String)*): Option[Response] = call(path, None, "GET", queryParams)
+  private def get[T](path: String, queryParams: (String, String)*): Option[WSResponse] = call(path, None, "GET", queryParams)
 
-  private def post[T](path: String, queryParams: (String, String)*): Option[Response] = call(path, None, "POST", queryParams)
+  private def post[T](path: String, queryParams: (String, String)*): Option[WSResponse] = call(path, None, "POST", queryParams)
 
-  private def delete[T](path: String, queryParams: (String, String)*): Option[Response] = call(path, None, "DELETE", queryParams)
+  private def delete[T](path: String, queryParams: (String, String)*): Option[WSResponse] = call(path, None, "DELETE", queryParams)
 
-  private def postWithBody[T <: JsValue](path: String, body: T, queryParams: (String, String)*): Option[Response] = call(path, Some(body), "POST", queryParams)
+  private def postWithBody[T <: JsValue](path: String, body: T, queryParams: (String, String)*): Option[WSResponse] = call(path, Some(body), "POST", queryParams)
 
-  private def call[T <: JsValue](path: String, body: Option[T], method: String = "GET", queryParams: Seq[(String, String)], retry: Int = 0): Option[Response] = {
+  private def call[T <: JsValue](path: String, body: Option[T], method: String = "GET", queryParams: Seq[(String, String)], retry: Int = 0): Option[WSResponse] = {
     val wsCall = WS.url(host + path).withQueryString(queryParams ++ apiQueryParams: _*)
     val callInvocation = method match {
       case "GET" => wsCall.get()

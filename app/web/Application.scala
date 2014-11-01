@@ -127,12 +127,12 @@ object Application extends Controller with Security {
       }
   }
 
-  def OkFile(file: File, attempt: Int = 0): SimpleResult = {
+  def OkFile(file: File, attempt: Int = 0): Result = {
     try {
       val input = new FileInputStream(file)
       val resourceData = Enumerator.fromStream(input)
       val contentType = if (file.getName.endsWith(".json")) "application/json" else "text/plain; charset=utf-8"
-      SimpleResult(
+      Result(
         ResponseHeader(OK, Map(
           CONTENT_LENGTH -> file.length().toString,
           CONTENT_TYPE -> contentType
@@ -149,8 +149,8 @@ object Application extends Controller with Security {
     }
   }
 
-  def OkXml(xml: String): SimpleResult = {
-    SimpleResult(
+  def OkXml(xml: String): Result = {
+    Result(
       ResponseHeader(OK, Map(
         CONTENT_LENGTH -> xml.length().toString,
         CONTENT_TYPE -> "application/xml"

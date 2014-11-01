@@ -72,8 +72,8 @@ GET         /narthex/oai-pmh/enriched/:accessKey                      harvest.Oa
 # ~~~~
 
 # Map static resources from the /public folder to the /assets URL path
-#GET     /lib/require.js         web.WebJarAssets.requirejs
+#GET     /lib/require.js         controllers.WebJarAssets
 ### Enable www.WebJars.org based resources to be returned
-GET         /narthex/webjars/*file                                    controllers.CdnWebJarAssets.at(file)
+GET         /narthex/webjars/*file                                    controllers.WebJarAssets.at(file)
 # Map static resources from the /public folder to the /assets URL path
 GET         /narthex/assets/*file                                     controllers.Assets.at(path="/public", file)

@@ -14,20 +14,22 @@
 //    limitations under the License.
 //===========================================================================
 
-import play.Project._
+lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
 
 name := "narthex"
 
-version := "0.9.1-SNAPSHOT"
+version := "0.9.2-SNAPSHOT"
+
+scalaVersion := "2.10.4"
 
 //scalacOptions += "-feature"
+//  "org.webjars" % "webjars-locator" % "0.14",
 
 libraryDependencies ++= Seq(
-  "org.webjars" % "webjars-locator" % "0.14",
-  "org.webjars" %% "webjars-play" % "2.2.1-2",
+  "org.webjars" %% "webjars-play" % "2.3.0-2",
+  "org.webjars" % "bootstrap" % "3.1.1-2",
   "org.webjars" % "underscorejs" % "1.6.0-3",
   "org.webjars" % "jquery" % "2.1.1",
-  "org.webjars" % "bootstrap" % "3.1.1-1" exclude("org.webjars", "jquery"),
   "org.webjars" % "angularjs" % "1.3.0-beta.7-2" exclude("org.webjars", "jquery"),
   "org.webjars" % "d3js" % "3.4.11",
   "org.webjars" % "nvd3" % "1.1.15-beta-2",
@@ -40,11 +42,12 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" % "akka-testkit_2.10" % "2.2.0" % "test",
   "commons-io" % "commons-io" % "2.4",
   "org.basex" % "basex" % "7.9",
-  "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
-  cache
+  "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2"
 )
 
-playScalaSettings
+libraryDependencies += cache
+
+libraryDependencies += ws
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 
@@ -54,9 +57,9 @@ resolvers += "Release" at "http://artifactory.delving.org/artifactory/libs-relea
 
 resolvers += "Snapshot" at "http://artifactory.delving.org/artifactory/libs-snapshot"
 
-requireJs += "main.js" // optimize this file and its dependencies
+//requireJs += "main.js" // optimize this file and its dependencies
 
-requireJsShim := "build.js" // http://requirejs.org/docs/optimization.html#mainConfigFile
+//requireJsShim := "build.js" // http://requirejs.org/docs/optimization.html#mainConfigFile
 
 resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"))(Resolver.ivyStylePatterns)
 

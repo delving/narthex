@@ -252,7 +252,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
       OkFile(repo.createSipZipFile(fileName))
   }
 
-  def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => SimpleResult): Action[A] = Action(p) {
+  def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) {
     implicit request =>
       if (NarthexConfig.apiKeyFits(apiKey)) {
         block(request)

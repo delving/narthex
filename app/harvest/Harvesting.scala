@@ -18,13 +18,14 @@ package harvest
 
 import org.joda.time.DateTime
 import play.api.Logger
+import play.api.Play.current
 import play.api.libs.ws.WS
 import services.{BaseXTools, NarthexConfig}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Random
-import scala.xml.{Elem, NodeSeq}
+import scala.xml.{Elem, NodeSeq} // todo: use the actor's execution context?
 
 object Harvesting extends BaseXTools {
 

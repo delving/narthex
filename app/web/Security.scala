@@ -36,7 +36,7 @@ trait Security { this: Controller =>
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => Request[A] => SimpleResult): Action[A] =
+  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => Request[A] => Result): Action[A] =
     Action(p) { implicit request =>
       val maybeToken = request.headers.get(TOKEN)
       maybeToken flatMap { token =>
@@ -49,7 +49,7 @@ trait Security { this: Controller =>
       }
     }
 
-  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Future[SimpleResult]): Action[A] =
+  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Future[Result]): Action[A] =
     Action.async(p) { implicit request =>
       request.headers.get(TOKEN) flatMap { token =>
         Cache.getAs[String](token) map { email =>
@@ -61,13 +61,13 @@ trait Security { this: Controller =>
       }
     }
 
-  implicit class ResultWithToken(result: SimpleResult) {
-    def withToken(token:String, email: String): SimpleResult = {
+  implicit class ResultWithToken(result: Result) {
+    def withToken(token:String, email: String): Result = {
       Cache.set(token, email, CACHE_EXPIRATION)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, token, None, httpOnly = false))
     }
 
-    def discardingToken(token: String): SimpleResult = {
+    def discardingToken(token: String): Result = {
       Logger.info(s"discarding token $token")
       Cache.remove(token)
       result.discardingCookies(DiscardingCookie(name = TOKEN_COOKIE_KEY))

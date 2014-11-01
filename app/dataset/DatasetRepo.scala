@@ -16,6 +16,7 @@
 package dataset
 
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 import akka.pattern.ask
 import akka.util.Timeout
@@ -28,7 +29,7 @@ import harvest.Harvesting
 import harvest.Harvesting._
 import org.OrgActor.{DatasetMessage, InterruptDataset}
 import org.{OrgActor, OrgRepo}
-import play.api.Logger
+import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import record.RecordHandling.{Pocket, StoredRecord, TargetConcept}
@@ -36,7 +37,7 @@ import record.{RecordDb, RecordHandling}
 import services.FileHandling.clearDir
 import services._
 
-import scala.concurrent.Await
+import scala.concurrent.Await // todo: use the actor's execution context?
 
 class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling {
 
@@ -143,7 +144,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
   }
 
   def interruptProgress: Boolean = {
-    implicit val timeout = Timeout(100L)
+    implicit val timeout = Timeout(100, TimeUnit.MILLISECONDS)
     val answer = OrgActor.actor ? InterruptDataset(name)
     val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
     if (!interrupted) datasetDb.endProgress(Some("Terminated processing"))
@@ -216,10 +217,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
 
   def enrichRecords(storedRecords: String): List[StoredRecord] = {
     val pathPrefix = s"${NarthexConfig.ORG_ID}/$name"
-    val mappings = Cache.getAs[Map[String, TargetConcept]](name).getOrElse {
-      val freshMap = termDb.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
-      Cache.set(name, freshMap, 60 * 5)
-      freshMap
+
+    val mappings: Map[String, TargetConcept] = Cache.getOrElse[Map[String, TargetConcept]](name) {
+      termDb.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
     }
     val parser = new StoredRecordEnricher(pathPrefix, mappings)
     parser.parse(storedRecords)

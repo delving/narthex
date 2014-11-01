@@ -16,11 +16,11 @@
 package harvest
 
 import java.io._
+import java.nio.file.Files
 
 import harvest.Harvesting.HarvestType
 import org.apache.commons.io.FileUtils
 import play.api.Logger
-import play.api.libs.Files._
 import record.RecordHandling
 import record.RecordHandling.{Pocket, _}
 import services.{FileHandling, ProgressReporter}
@@ -66,7 +66,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
     val all = sourceDir.listFiles()
     val (files, dirs) = all.partition(_.isFile)
     val sub = newSubdirectory(dirs)
-    files.foreach(file => moveFile(file, new File(sub, file.getName), replace = false))
+    files.foreach(file => Files.move(file.toPath, new File(sub, file.getName).toPath))
     Seq.empty[File]
   }
 
@@ -131,7 +131,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
     }
     else {
       val newIdsFile = createIdsFile(fileNumber)
-      writeFile(newIdsFile, idSet.toList.sorted.mkString("", "\n", "\n"))
+      FileUtils.writeStringToFile(newIdsFile, idSet.toList.sorted.mkString("", "\n", "\n"))
       writeToFile(createActiveIdsFile(newIdsFile), idSet.size.toString)
       val idsFiles = files.map(createIdsFile)
       idsFiles.foreach { idsFile =>
@@ -165,7 +165,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
   def parse(output: Pocket => Unit, progressReporter: ProgressReporter): Map[String, String] = {
     val parser = new RawRecordParser(harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
-    val activeIdCounts = actFiles.map(readFile).map(s => s.trim.toInt)
+    val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
     progressReporter.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
