@@ -16,9 +16,9 @@
 
 import play.Project._
 
-name := """narthex"""
+name := "narthex"
 
-version := "0.9.0-SNAPSHOT"
+version := "0.9.1-SNAPSHOT"
 
 //scalacOptions += "-feature"
 
