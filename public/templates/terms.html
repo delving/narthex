@@ -12,18 +12,13 @@
                 <span>Terms</span>
             </li>
             <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'">
-                <a href>All&#160;
-                    <span class="badge">{{ all }}</span></a>
+                <a href><span class="badge">{{ all }}</span></a>
             </li>
             <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'">
-                <a href>Mapped&#160;
-                    <span class="badge">{{ mapped }}</span>
-                </a>
+                <a href><span class="badge"><i class="fa fa-link"></i> {{ mapped }}</span></a>
             </li>
             <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'">
-                <a href>Unmapped&#160;
-                    <span class="badge">{{ unmapped }}</span>
-                </a>
+                <a href><span class="badge"><i class="fa fa-chain-broken"></i> {{ unmapped }}</span></a>
             </li>
         </ul>
 
