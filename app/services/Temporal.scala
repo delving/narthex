@@ -15,18 +15,18 @@
 //===========================================================================
 package services
 
-import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
+import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.xml.NodeSeq
 
 object Temporal {
 
-  private val UTC = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
-
   def timeToString(dateTime: DateTime) = ISODateTimeFormat.dateTimeNoMillis().print(dateTime)
 
-  def timeToUTCString(dateTime: DateTime) = UTC.print(dateTime.withZone(DateTimeZone.UTC))
+  def timeToUTCString(dateTime: DateTime) = timeToString(dateTime.withZone(DateTimeZone.UTC))
+
+  def timeToLocalString(dateTime: DateTime) = ISODateTimeFormat.dateTimeNoMillis().print(dateTime.toLocalDateTime)
 
   def stringToTime(dateString: String) = ISODateTimeFormat.dateOptionalTimeParser().parseDateTime(dateString)
 

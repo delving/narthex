@@ -200,7 +200,7 @@ trait Harvesting {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // UMU 2014-10-16T15:00
-    val search = modifiedAfter.map(after => s"modification greater '${timeToString(after)}'").getOrElse("all")
+    val search = modifiedAfter.map(after => s"modification greater '${timeToLocalString(after)}'").getOrElse("all")
     val request = requestUrl.withQueryString(
       "database" -> database,
       "search" -> search,
@@ -237,7 +237,7 @@ trait Harvesting {
                    resumption: Option[PMHResumptionToken] = None): Future[AnyRef] = {
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // Teylers 2014-09-15
-    val from = modifiedAfter.map(timeToString).getOrElse(timeToString(new DateTime(0L)))
+    val from = timeToUTCString(modifiedAfter.getOrElse(new DateTime(0L)))
     val request = resumption match {
       case None =>
         if (set.isEmpty) {
