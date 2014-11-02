@@ -26,11 +26,12 @@ import play.api.cache.Cache
 import play.api.mvc._
 import record.RecordHandling.StoredRecord
 import services.NarthexConfig._
+import services.Temporal._
 import services._
 
 import scala.xml.{Elem, NodeSeq, PrettyPrinter}
 
-object OaiPmh extends Controller with BaseXTools {
+object OaiPmh extends Controller {
 
   val PRETTY = new PrettyPrinter(300, 5)
 

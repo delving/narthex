@@ -1,8 +1,9 @@
 package services
 
 import org.scalatest.{FlatSpec, Matchers}
+import services.Temporal._
 
-class TestBaseXTools extends FlatSpec with Matchers with BaseXTools {
+class TestTemporal extends FlatSpec with Matchers{
 
   "date parsing" should "be tolerant" in {
     val xsdTime = fromXSDDateTime("2014-10-06T07:44:08.854+02:00")

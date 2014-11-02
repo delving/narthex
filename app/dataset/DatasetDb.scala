@@ -24,7 +24,8 @@ import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json.{JsObject, JsString}
-import services.BaseXTools
+import services.BaseX._
+import services.Temporal._
 
 import scala.xml.{Elem, NodeSeq, XML}
 
@@ -116,7 +117,7 @@ object DatasetState {
   def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "status" \ "state").text)
 }
 
-class DatasetDb(repoDb: RepoDb, fileName: String) extends BaseXTools {
+class DatasetDb(repoDb: RepoDb, fileName: String) {
 
   def now: String = toXSDDateTime(new DateTime())
 

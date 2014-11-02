@@ -26,6 +26,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import record.RecordHandling
 import record.RecordHandling.StoredRecord
+import services.Temporal._
 import services._
 
 import scala.concurrent.duration._
@@ -199,7 +200,7 @@ class OrgRepo(userHome: String, val orgId: String) extends RecordHandling {
         SipZip(
           zipFile = file,
           uploadedBy = uploadedBy,
-          uploadedOn = XSD_FORMATTER.print(dateTime),
+          uploadedOn = toXSDDateTime(dateTime),
           factsFile = factsFile,
           facts = facts,
           hintsFile = hintsFile,

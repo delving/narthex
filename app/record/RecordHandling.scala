@@ -23,7 +23,8 @@ import java.security.MessageDigest
 import org.joda.time.DateTime
 import play.Logger
 import record.RecordHandling.{Pocket, StoredRecord, TargetConcept, _}
-import services.{BaseXTools, FileHandling, NarthexEventReader, ProgressReporter}
+import services.Temporal._
+import services._
 
 import scala.collection.mutable
 import scala.io.Source
@@ -44,7 +45,7 @@ object RecordHandling {
 
 }
 
-trait RecordHandling extends BaseXTools {
+trait RecordHandling {
 
   class RawRecordParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
     val path = new mutable.Stack[(String, StringBuilder)]

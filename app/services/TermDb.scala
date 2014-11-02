@@ -18,6 +18,7 @@ package services
 
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
+import services.BaseX._
 import services.TermDb.TermMapping
 
 import scala.xml.XML
@@ -32,19 +33,19 @@ object TermDb {
 
 }
 
-class TermDb(dbName: String) extends BaseXTools {
+class TermDb(dbName: String) {
 
   val termDb = s"${dbName}_terminology"
 
   def db[T](block: ClientSession => T): T = {
     try {
-      BaseX.withDbSession[T](termDb)(block)
+      withDbSession[T](termDb)(block)
     }
     catch {
       case be: BaseXException =>
         if (be.getMessage.contains("not found")) {
-          BaseX.createDatabase(termDb, "<term-mappings/>")
-          BaseX.withDbSession[T](termDb)(block)
+          createDatabase(termDb, "<term-mappings/>")
+          withDbSession[T](termDb)(block)
         }
         else {
           throw be

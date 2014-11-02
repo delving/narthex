@@ -20,14 +20,17 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.ws.WS
-import services.{BaseXTools, NarthexConfig}
+import services.NarthexConfig
+import services.Temporal._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Random
-import scala.xml.{Elem, NodeSeq} // todo: use the actor's execution context?
+import scala.xml.{Elem, NodeSeq}
 
-object Harvesting extends BaseXTools {
+// todo: use the actor's execution context?
+
+object Harvesting {
 
   case class HarvestType(name: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String] = None) {
     override def toString = name
@@ -179,7 +182,7 @@ object Harvesting extends BaseXTools {
 
 }
 
-trait Harvesting extends BaseXTools {
+trait Harvesting {
 
   import harvest.Harvesting._
 

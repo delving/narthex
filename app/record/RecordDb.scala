@@ -25,6 +25,8 @@ import play.api.Play.current
 import play.api.cache.Cache
 import record.RecordDb.FoundRecord
 import record.RecordHandling._
+import services.BaseX._
+import services.Temporal._
 import services._
 
 import scala.concurrent.duration._
@@ -46,13 +48,13 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
 
   val recordDb = s"${dbName}_records"
 
-  def createDb() = BaseX.createDatabase(recordDb)
+  def createDb() = createDatabase(recordDb)
 
-  def dropDb() = BaseX.dropDatabase(recordDb)
+  def dropDb() = dropDatabase(recordDb)
 
   def getDatasetInfo = datasetRepo.datasetDb.infoOption.getOrElse(throw new RuntimeException(s"Not found: $datasetRepo"))
 
-  def db[T](block: ClientSession => T) = BaseX.withDbSession(recordDb)(block)
+  def db[T](block: ClientSession => T) = withDbSession(recordDb)(block)
 
   def childrenAsMap(nodeSeq: NodeSeq) = nodeSeq flatMap {
     case e: Elem => e.child
