@@ -90,9 +90,11 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       log.info(s"Harvest complete $datasetRepo, error=$errorOption, file=$fileOption")
       db.endProgress(errorOption)
       if (errorOption.isEmpty) {
-        fileOption.map {
+        fileOption.map { file =>
           if (modifiedAfter.isEmpty) db.setStatus(SOURCED) // first harvest
-          file => self ! StartSaving(modifiedAfter, file)
+          clearDir(datasetRepo.analyzedDir)
+          datasetRepo.datasetDb.setTree(ready = false)
+          self ! StartSaving(modifiedAfter, file)
         } getOrElse {
           log.info(s"No file to save for $datasetRepo")
         }
