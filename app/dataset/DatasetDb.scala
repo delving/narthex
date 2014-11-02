@@ -119,7 +119,7 @@ object DatasetState {
 
 class DatasetDb(repoDb: RepoDb, fileName: String) {
 
-  def now: String = toXSDDateTime(new DateTime())
+  def now: String = timeToString(new DateTime())
 
   def db[T](block: ClientSession => T): T = repoDb.db(block)
 
@@ -200,7 +200,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) {
   def setOrigin(origin: DatasetOrigin) = setProperties(
     "origin",
     "type" -> origin,
-    "time" -> toXSDDateTime(new DateTime())
+    "time" -> timeToString(new DateTime())
   )
 
   def startProgress(progressState: ProgressState) = setProgress(progressState, BUSY, 0)
@@ -245,7 +245,7 @@ class DatasetDb(repoDb: RepoDb, fileName: String) {
 
   def setHarvestCron(harvestCron: HarvestCron) = setProperties(
     "harvestCron",
-    "previous" -> toBasicString(harvestCron.previous),
+    "previous" -> timeToString(harvestCron.previous),
     "delay" -> harvestCron.delay,
     "unit" -> harvestCron.unit.toString
   )

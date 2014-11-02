@@ -165,7 +165,7 @@ object Harvesting {
   }
 
   def harvestCron(previousString: String, delayString: String, unitString: String): HarvestCron = {
-    val previous = if (previousString.nonEmpty) fromUTCDateTime(previousString) else new DateTime()
+    val previous = if (previousString.nonEmpty) stringToTime(previousString) else new DateTime()
     val delay = if (delayString.nonEmpty) delayString.toInt else 1
     val unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS)
     HarvestCron(previous, delay, unit)
@@ -200,7 +200,7 @@ trait Harvesting {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // UMU 2014-10-16T15:00
-    val search = modifiedAfter.map(after => s"modification greater '${toBasicString(after)}'").getOrElse("all")
+    val search = modifiedAfter.map(after => s"modification greater '${timeToString(after)}'").getOrElse("all")
     val request = requestUrl.withQueryString(
       "database" -> database,
       "search" -> search,
@@ -237,7 +237,7 @@ trait Harvesting {
                    resumption: Option[PMHResumptionToken] = None): Future[AnyRef] = {
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // Teylers 2014-09-15
-    val from = modifiedAfter.map(toBasicString).getOrElse(toBasicString(new DateTime(0L)))
+    val from = modifiedAfter.map(timeToString).getOrElse(timeToString(new DateTime(0L)))
     val request = resumption match {
       case None =>
         if (set.isEmpty) {

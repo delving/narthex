@@ -200,7 +200,7 @@ class OrgRepo(userHome: String, val orgId: String) extends RecordHandling {
         SipZip(
           zipFile = file,
           uploadedBy = uploadedBy,
-          uploadedOn = toXSDDateTime(dateTime),
+          uploadedOn = timeToString(dateTime),
           factsFile = factsFile,
           facts = facts,
           hintsFile = hintsFile,

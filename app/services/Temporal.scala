@@ -15,26 +15,21 @@
 //===========================================================================
 package services
 
-import org.joda.time.DateTime
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.xml.NodeSeq
 
 object Temporal {
 
+  private val UTC = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
 
-  val XSD_FORMATTER = ISODateTimeFormat.dateTime()
-  val UTC_FORMATTER = ISODateTimeFormat.dateOptionalTimeParser()
-  val BASIC = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
+  def timeToString(dateTime: DateTime) = ISODateTimeFormat.dateTimeNoMillis().print(dateTime)
 
-  def toXSDDateTime(dateTime: DateTime) = XSD_FORMATTER.print(dateTime)
+  def timeToUTCString(dateTime: DateTime) = UTC.print(dateTime.withZone(DateTimeZone.UTC))
 
-  def fromXSDDateTime(dateString: String) = XSD_FORMATTER.parseDateTime(dateString)
+  def stringToTime(dateString: String) = ISODateTimeFormat.dateOptionalTimeParser().parseDateTime(dateString)
 
-  def fromXSDDateTime(nodeSeq: NodeSeq): Option[DateTime] = if (nodeSeq.nonEmpty) Some(fromXSDDateTime(nodeSeq.text)) else None
-
-  def toBasicString(dateTime: DateTime) = BASIC.print(dateTime)
-
-  def fromUTCDateTime(dateString: String) = UTC_FORMATTER.parseDateTime(dateString)
+  def nodeSeqToTime(nodeSeq: NodeSeq): Option[DateTime] = if (nodeSeq.nonEmpty) Some(stringToTime(nodeSeq.text)) else None
 
 }

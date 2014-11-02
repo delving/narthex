@@ -178,11 +178,11 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
 
   def dateSelector(from: Option[DateTime], until: Option[DateTime]) = (from, until) match {
     case (Some(fromDate), Some(untilDate)) =>
-      s"[@mod >= '${toXSDDateTime(fromDate)}' and @mod < '${toXSDDateTime(untilDate)}']"
+      s"[@mod >= '${timeToString(fromDate)}' and @mod < '${timeToString(untilDate)}']"
     case (Some(fromDate), None) =>
-      s"[@mod >= '${toXSDDateTime(fromDate)}']"
+      s"[@mod >= '${timeToString(fromDate)}']"
     case (None, Some(untilDate)) =>
-      s"[@mod < '${toXSDDateTime(untilDate)}']"
+      s"[@mod < '${timeToString(untilDate)}']"
     case (None, None) =>
       ""
   }

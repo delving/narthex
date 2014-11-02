@@ -175,7 +175,7 @@ object OaiPmh extends Controller {
       def paramString(key: String) = queryParams.get(key).map(_.headOption.getOrElse(""))
       def parseDate(dateString: String): Option[DateTime] = {
         try {
-          Some(fromUTCDateTime(dateString))
+          Some(stringToTime(dateString))
         }
         catch {
           case t: Throwable =>
@@ -209,7 +209,7 @@ object OaiPmh extends Controller {
       Seq(queryParams.get("from").headOption, queryParams.get("until").headOption).filterNot(_.isEmpty).foreach {
         dateString =>
           try {
-            fromUTCDateTime(dateString.get.head)
+            stringToTime(dateString.get.head)
           }
           catch {
             case t: Throwable =>
@@ -331,7 +331,7 @@ object OaiPmh extends Controller {
               <record>
                 <header>
                   <identifier>{record.id}</identifier>
-                  <datestamp>{toXSDDateTime(record.mod)}</datestamp>
+                  <datestamp>{timeToString(record.mod)}</datestamp>
                   <setSpec>{request.set.getOrElse("Unknown")}</setSpec>
                 </header>
               </record>
@@ -370,7 +370,7 @@ object OaiPmh extends Controller {
               <record>
                 <header>
                   <identifier>{record.id}</identifier>
-                  <datestamp>{toXSDDateTime(record.mod)}</datestamp>
+                  <datestamp>{timeToString(record.mod)}</datestamp>
                   <setSpec>{request.set.getOrElse("Unknown")}</setSpec>
                 </header>
                 <metadata>
@@ -463,13 +463,13 @@ object OaiPmh extends Controller {
     }
 
 
-    def emptyOrDate(value: Option[DateTime]) = value.map(toXSDDateTime).getOrElse("")
+    def emptyOrDate(value: Option[DateTime]) = value.map(timeToString).getOrElse("")
 
     def emptyOrString(value: Option[String]) = value.getOrElse("")
 
-    def currentDate = toXSDDateTime(new DateTime())
+    def currentDate = timeToUTCString(new DateTime())
 
-    def dateString(date: DateTime): String = if (date != null) toXSDDateTime(date) else ""
+    def dateString(date: DateTime): String = if (date != null) timeToUTCString(date) else ""
 
   }
 

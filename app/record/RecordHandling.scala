@@ -139,7 +139,7 @@ trait RecordHandling {
                 val recordContent = recordText.toString()
                 val contentHash = hashString(recordContent)
                 val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
-                val mod = toXSDDateTime(new DateTime())
+                val mod = timeToString(new DateTime())
                 val wrapped = s"""<$POCKET id="$id" mod="$mod" hash="$contentHash" $scope>\n$recordContent</$POCKET>\n"""
                 Some(Pocket(id, contentHash, wrapped))
               }
@@ -285,7 +285,7 @@ trait RecordHandling {
             val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$POCKET element missing mod"))
             var scopeEnriched = scope
             ENRICHMENT_NAMESPACES.foreach(pn => if (scopeEnriched.getURI(pn._1) == null) scopeEnriched = NamespaceBinding(pn._1, pn._2, scopeEnriched))
-            record = Some(StoredRecord(id, fromXSDDateTime(mod), scopeEnriched))
+            record = Some(StoredRecord(id, stringToTime(mod), scopeEnriched))
           }
           else record match {
             case Some(r) =>
@@ -365,7 +365,7 @@ trait RecordHandling {
       box =>
         StoredRecord(
           id = (box \ "@id").text,
-          mod = fromXSDDateTime((box \ "@mod").text),
+          mod = stringToTime((box \ "@mod").text),
           box.scope,
           new mutable.StringBuilder((box \ "_").toString())
         )

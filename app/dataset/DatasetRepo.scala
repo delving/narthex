@@ -93,7 +93,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
   }
 
   def nextHarvest() = datasetDb.infoOption.map { info =>
-    val recordsTimeOption = fromXSDDateTime(info \ "records" \ "time")
+    val recordsTimeOption = nodeSeqToTime(info \ "records" \ "time")
     recordsTimeOption.map { recordsTime =>
       val harvestCron = Harvesting.harvestCron(info)
       if (harvestCron.timeToWork) {
@@ -168,8 +168,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
           datasetDb.setStatus(DELETED)
           DELETED
         case SOURCED =>
-          val treeTimeOption = fromXSDDateTime(info \ "tree" \ "time")
-          val recordsTimeOption = fromXSDDateTime(info \ "records" \ "time")
+          val treeTimeOption = nodeSeqToTime(info \ "tree" \ "time")
+          val recordsTimeOption = nodeSeqToTime(info \ "records" \ "time")
           if (treeTimeOption.isEmpty && recordsTimeOption.isEmpty) {
             clearDir(incomingDir)
             datasetDb.setStatus(EMPTY)
