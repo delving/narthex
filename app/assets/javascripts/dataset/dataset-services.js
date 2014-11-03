@@ -56,8 +56,16 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                getSourcePaths: function (fileName) {
-                    return dash.getSourcePaths(fileName).get().then(
+                getTermSourcePaths: function (fileName) {
+                    return dash.getTermSourcePaths(fileName).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                getCategorySourcePaths: function (fileName) {
+                    return dash.getCategorySourcePaths(fileName).get().then(
                         function (response) {
                             return response.data;
                         },

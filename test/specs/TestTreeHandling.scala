@@ -1,4 +1,4 @@
-package services
+package specs
 
 import analysis.TreeHandling
 import org.apache.commons.io.IOUtils

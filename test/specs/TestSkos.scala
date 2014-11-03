@@ -1,7 +1,8 @@
-package services
+package specs
 
+import mapping.SkosVocabulary
+import mapping.SkosVocabulary.LabelSearch
 import org.scalatest.{FlatSpec, Matchers}
-import skos.{LabelSearch, SkosVocabulary}
 
 class TestSkos extends FlatSpec with Matchers {
 

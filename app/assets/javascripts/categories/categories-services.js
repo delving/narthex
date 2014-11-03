@@ -48,8 +48,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                listSkos: function () {
-                    return dash.listSkos().get().then(
+                getCategoryList: function () {
+                    return dash.getCategoryList().get().then(
                         function (response) {
                             return response.data;
                         },
@@ -58,14 +58,6 @@ define(["angular", "common"], function (angular) {
                 },
                 histogram: function (fileName, path, size) {
                     return dash.histogram(fileName, path, size).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                searchSkos: function (name, sought) {
-                    return dash.searchSkos(name, sought).get().then(
                         function (response) {
                             return response.data;
                         },

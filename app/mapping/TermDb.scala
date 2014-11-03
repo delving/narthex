@@ -14,12 +14,12 @@
 //    limitations under the License.
 //===========================================================================
 
-package services
+package mapping
 
 import org.basex.core.BaseXException
 import org.basex.server.ClientSession
+import play.api.libs.json.{Json, Writes}
 import services.BaseX._
-import services.TermDb.TermMapping
 
 import scala.xml.XML
 
@@ -29,11 +29,21 @@ import scala.xml.XML
 
 object TermDb {
 
+  implicit val mappingWrites = new Writes[TermMapping] {
+    def writes(mapping: TermMapping) = Json.obj(
+      "source" -> mapping.source,
+      "target" -> mapping.target,
+      "vocabulary" -> mapping.vocabulary,
+      "prefLabel" -> mapping.prefLabel
+    )
+  }
+
   case class TermMapping(source: String, target: String, vocabulary: String, prefLabel: String)
 
 }
 
 class TermDb(dbName: String) {
+  import mapping.TermDb._
 
   val termDb = s"${dbName}_terminology"
 

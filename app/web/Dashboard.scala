@@ -22,6 +22,10 @@ import dataset.DatasetState.{EMPTY, SOURCED}
 import dataset.{DatasetDb, DatasetState}
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
+import mapping.CategoryDb._
+import mapping.SkosVocabulary._
+import mapping.TermDb._
+import mapping.{CategoryList, SkosRepo, SkosVocabulary}
 import org.OrgRepo
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
@@ -31,11 +35,9 @@ import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
 import services.FileHandling.clearDir
-import services._
-import skos.{LabelSearch, SkosJson, SkosRepo, SkosVocabulary}
 import web.Application.OkFile
 
-object Dashboard extends Controller with Security with TreeHandling with SkosJson {
+object Dashboard extends Controller with Security with TreeHandling {
 
   val DATASET_PROPERTY_LISTS = List(
     "origin",
@@ -247,16 +249,16 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
     }
   }
 
-  def getTermMappings(fileName: String) = Secure() { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
-    val mappings: scala.Seq[TermDb.TermMapping] = datasetRepo.termDb.getMappings
-    Ok(Json.obj("mappings" -> mappings))
-  }
-
-  def getSourcePaths(fileName: String) = Secure() { token => implicit request =>
+  def getTermSourcePaths(fileName: String) = Secure() { token => implicit request =>
     val datasetRepo = repo.datasetRepo(fileName)
     val sourcePaths = datasetRepo.termDb.getSourcePaths
     Ok(Json.obj("sourcePaths" -> sourcePaths))
+  }
+
+  def getTermMappings(fileName: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(fileName)
+    val mappings: scala.Seq[TermMapping] = datasetRepo.termDb.getMappings
+    Ok(Json.obj("mappings" -> mappings))
   }
 
   def setTermMapping(fileName: String) = Secure(parse.json) { token => implicit request =>
@@ -272,17 +274,45 @@ object Dashboard extends Controller with Security with TreeHandling with SkosJso
       val targetUri = (request.body \ "target").as[String]
       val vocabulary = (request.body \ "vocabulary").as[String]
       val prefLabel = (request.body \ "prefLabel").as[String]
-      datasetRepo.termDb.addMapping(TermDb.TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
+      datasetRepo.termDb.addMapping(TermMapping(sourceUri, targetUri, vocabulary, prefLabel))
       Ok("Mapping added")
     }
   }
 
+  def getCategoryList = Secure() { token => implicit request =>
+    CategoryList.listOption.map { list =>
+      Ok(Json.toJson(list))
+    } getOrElse {
+      NotFound(Json.obj("problem" -> "No category file"))
+    }
+  }
+
+  def getCategorySourcePaths(fileName: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(fileName)
+    val sourcePaths = datasetRepo.categoryDb.getSourcePaths
+    Ok(Json.obj("sourcePaths" -> sourcePaths))
+  }
+
   def getCategoryMappings(fileName: String) = Secure() { token => implicit request =>
-    val mappings: scala.Seq[TermDb.TermMapping] = Seq.empty[TermDb.TermMapping] // todo: categorydb etc!
+    val datasetRepo = repo.datasetRepo(fileName)
+    val mappings: scala.Seq[CategoryMapping] = datasetRepo.categoryDb.getMappings
     Ok(Json.obj("mappings" -> mappings))
   }
 
-  def setCategoryMapping(fileName: String) = Secure(parse.json) { token => implicit request => NotImplemented}
+  def setCategoryMapping(fileName: String) = Secure(parse.json) { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(fileName)
+    if ((request.body \ "remove").asOpt[String].isDefined) {
+      val sourceUri = (request.body \ "source").as[String]
+      datasetRepo.categoryDb.removeMapping(sourceUri)
+      Ok("Mapping removed")
+    }
+    else {
+      val sourceUri = (request.body \ "source").as[String]
+      val targetUri = (request.body \ "target").as[String]
+      datasetRepo.categoryDb.addMapping(CategoryMapping(sourceUri, targetUri))
+      Ok("Mapping added")
+    }
+  }
 
   def listSipFiles = Secure() { token => implicit request =>
     val fileNames = repo.listSipZips.map(_.toString)

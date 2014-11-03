@@ -12,62 +12,41 @@
         <script data-main="@routes.Assets.at("javascripts/main.js")" type="text/javascript" src="@routes.Assets.at("lib/requirejs/require.js")"></script>
     </head>
     <body>
-    @*-- Header -- *@
-    <header class="navbar navbar-inverse navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl" data-ng-init="setOrg('@orgId')" data-ng-cloak>
-      <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
-        <a href="#/" class="navbar-brand"><img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
-            NARTHEX <small>@orgId</small>
-        </a>
-
-        <div data-ng-switch-when="true">
-            <div class="navbar-left nav-app">
-                <a href="/narthex/#/dashboard" class="btn btn-primary">Dashboard</a>
-                <div class="btn-group">
-                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" data-ng-show="recent.dataset.length > 0">
-                        Recent datasets <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu" >
-                        <li data-ng-repeat="r in recent.dataset">
-                            <a href="{{ r.url }}">{{ r.show }}</a>
-                        </li>
-                    </ul>
-                </div>
-                <div class="btn-group">
-                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" data-ng-show="recent.terms.length > 0">
-                        Recent term mappings <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu" >
-                        <li data-ng-repeat="r in recent.terms">
-                            <a href="{{ r.url }}">{{ r.show }}</a>
+        <header class="navbar navbar-inverse navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl" data-ng-init="setOrg('@orgId')" data-ng-cloak>
+            <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
+                <a href="#/" class="navbar-brand"><img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
+                    NARTHEX <small>@orgId</small>
+                </a>
+                <div data-ng-switch-when="true">
+                    <div class="navbar-left nav-app">
+                        <a href="/narthex/#/dashboard" class="btn btn-primary">Dashboard</a>
+                        <a data-ng-show="breadcrumbs.dataset" href="/narthex/#/dataset/{{ breadcrumbs.dataset }}" class="btn btn-primary">
+                            Dataset "{{ breadcrumbs.dataset }}"
+                        </a>
+                    </div>
+                    <ul class="nav navbar-nav navbar-right">
+                        <li class="dropdown">
+                            <a href="" class="dropdown-toggle" data-toggle="dropdown">
+                                <span class="glyphicon glyphicon-user"></span> <span>{{user.email}}</span>
+                                <b class="caret"></b>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a href="" data-ng-click="logout()">
+                                        <span class="glyphicon glyphicon-off"></span> Logout
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     </ul>
                 </div>
             </div>
-
-          <ul class="nav navbar-nav navbar-right">
-            <li class="dropdown">
-              <a href="" class="dropdown-toggle" data-toggle="dropdown">
-                <span class="glyphicon glyphicon-user"></span> <span>{{user.email}}</span>
-                <b class="caret"></b>
-              </a>
-              <ul class="dropdown-menu">
-                <li>
-                  <a href="" data-ng-click="logout()">
-                    <span class="glyphicon glyphicon-off"></span> Logout
-                  </a>
-                </li>
-              </ul>
-            </li>
-          </ul>
-        </div>
-      </div>
-        @*<div>*@
+            @*<div>*@
             @*<button class="badge" data-ng-click="trySocket()">TRY SOCKET</button>*@
-        @*</div>*@
-    </header>
-    @* -- Main Content -- *@
-    <div class="container-fluid" data-ng-cloak>
-           <div class="main" data-ng-view></div>
-    </div>
-  </body>
+            @*</div>*@
+        </header>
+        <div class="container-fluid" data-ng-cloak>
+            <div class="main" data-ng-view></div>
+        </div>
+    </body>
 </html>

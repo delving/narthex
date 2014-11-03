@@ -49,7 +49,7 @@ define(["angular"], function (angular) {
     HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
 
     /** Controls the header */
-    var HeaderCtrl = function ($rootScope, $scope, userService, $location, $localStorage, $sessionStorage) {
+    var HeaderCtrl = function ($rootScope, $scope, userService, $location) {
 
         $scope.setOrg = function (orgId) {
             $rootScope.orgId = orgId;
@@ -75,32 +75,10 @@ define(["angular"], function (angular) {
             });
         };
 
-        $rootScope.recent = $localStorage.recent;
-
-        $rootScope.recent = {
-            dataset: [],
-            terms: []
-        };
-
-
-        $rootScope.addRecentDataset = function (show, url) {
-            if (!_.find($rootScope.recent.dataset, function (entry) {
-                return entry.show == show;
-            })) {
-                $rootScope.recent.dataset.push({ show: show, url: url });
-            }
-        };
-
-        $rootScope.addRecentTerms = function (show, url) {
-            if (!_.find($rootScope.recent.terms, function (entry) {
-                return entry.show == show;
-            })) {
-                $rootScope.recent.terms.push({ show: show, url: url });
-            }
-        };
+        $rootScope.breadcrumbs = {};
 
     };
-    HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location", "$localStorage", "$sessionStorage"];
+    HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
 
 
     return {

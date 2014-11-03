@@ -27,6 +27,7 @@ import dataset.DatasetState._
 import dataset.ProgressState._
 import harvest.Harvesting
 import harvest.Harvesting._
+import mapping.{CategoryDb, TermDb}
 import org.OrgActor.{DatasetMessage, InterruptDataset}
 import org.{OrgActor, OrgRepo}
 import play.Logger
@@ -52,6 +53,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
   val dbName = s"narthex_${orgRepo.orgId}___$name"
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, name)
   lazy val termDb = new TermDb(dbName)
+  lazy val categoryDb = new CategoryDb(dbName)
   lazy val recordDb = new RecordDb(this, dbName)
 
   override def toString = name

@@ -1,4 +1,4 @@
-package services
+package specs
 
 import java.io.{ByteArrayInputStream, File}
 import javax.xml.parsers.DocumentBuilderFactory

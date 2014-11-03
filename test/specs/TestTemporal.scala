@@ -1,4 +1,4 @@
-package services
+package specs
 
 import org.joda.time.{DateTime, LocalDateTime}
 import org.scalatest.{FlatSpec, Matchers}

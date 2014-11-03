@@ -2,8 +2,7 @@
 
     <div class="col-md-12">
         <div class="file-path-info breadcrumb">
-            <span class="file-name">{{fileName}}</span>
-            <span class="file-path">{{path}}</span>
+            <span class="file-name">{{fileName}}</span><span class="file-path">{{path}}</span>
         </div>
     </div>
     <div class="col-md-4">
@@ -43,7 +42,13 @@
 
     </div>
     <div class="col-md-8">
-        <h1>Show the categories here perhaps</h1>
+        <h1>Categories:</h1>
+        <ul>
+            <li data-ng-repeat="category in categoryList.categories">
+                <span>{{ category.name }}: </span>
+                <span>{{ category.details }}</span>
+            </li>
+        </ul>
     </div>
 
 </div>

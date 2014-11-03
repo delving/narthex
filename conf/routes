@@ -35,17 +35,21 @@ GET         /narthex/dashboard/:fileName/histogram/:size/*path        web.Dashbo
 GET         /narthex/dashboard/:fileName/save-records                 web.Dashboard.saveRecords(fileName)
 
 POST        /narthex/dashboard/:fileName/query-records                web.Dashboard.queryRecords(fileName)
-GET         /narthex/dashboard/:fileName/get-source-paths             web.Dashboard.getSourcePaths(fileName)
-GET         /narthex/dashboard/:fileName/get-term-mappings            web.Dashboard.getTermMappings(fileName)
-POST        /narthex/dashboard/:fileName/set-term-mapping             web.Dashboard.setTermMapping(fileName)
-GET         /narthex/dashboard/:fileName/get-category-mappings        web.Dashboard.getCategoryMappings(fileName)
-POST        /narthex/dashboard/:fileName/set-category-mapping         web.Dashboard.setCategoryMapping(fileName)
+
+GET         /narthex/dashboard/skos/list                              web.Dashboard.listSkos
+GET         /narthex/dashboard/skos/:name/:sought                     web.Dashboard.searchSkos(name, sought)
+GET         /narthex/dashboard/:fileName/term/source-paths            web.Dashboard.getTermSourcePaths(fileName)
+GET         /narthex/dashboard/:fileName/term/mappings                web.Dashboard.getTermMappings(fileName)
+POST        /narthex/dashboard/:fileName/term/set-mapping             web.Dashboard.setTermMapping(fileName)
+
+GET         /narthex/dashboard/categories                             web.Dashboard.getCategoryList
+GET         /narthex/dashboard/:fileName/category/source-paths        web.Dashboard.getCategorySourcePaths(fileName)
+GET         /narthex/dashboard/:fileName/category/mappings            web.Dashboard.getCategoryMappings(fileName)
+POST        /narthex/dashboard/:fileName/category/set-mapping         web.Dashboard.setCategoryMapping(fileName)
 
 GET         /narthex/dashboard/sip-list                               web.Dashboard.listSipFiles
 GET         /narthex/dashboard/delete-sip/:fileName                   web.Dashboard.deleteSipFile(fileName)
 
-GET         /narthex/dashboard/skos/list                              web.Dashboard.listSkos
-GET         /narthex/dashboard/skos/:name/:sought                     web.Dashboard.searchSkos(name, sought)
 
 GET         /narthex/api/:apiKey                                      web.APIController.listDatasets(apiKey)
 GET         /narthex/api/:apiKey/:fileName                            web.APIController.pathsJSON(apiKey, fileName)

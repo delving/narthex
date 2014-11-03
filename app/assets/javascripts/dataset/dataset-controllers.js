@@ -65,6 +65,7 @@ define(["angular"], function () {
                         sortKids(node.kids[index]);
                     }
                 }
+
                 sortKids(tree);
 
                 function setDelim(node) {
@@ -77,7 +78,7 @@ define(["angular"], function () {
                     else {
                         var rootPart = node.path.substring(0, $scope.recordContainer.length);
                         if (rootPart != $scope.recordContainer) {
-                            console.log(rootPart + " != "+ $scope.recordContainer);
+                            console.log(rootPart + " != " + $scope.recordContainer);
                             node.path = "";
                         }
                         else {
@@ -89,6 +90,7 @@ define(["angular"], function () {
                         setDelim(node.kids[index]);
                     }
                 }
+
                 if ($scope.recordRoot) {
                     setDelim(tree);
                     if (parseInt(datasetInfo.delimit.recordCount) <= 0 && $scope.uniqueIdNode) {
@@ -96,16 +98,22 @@ define(["angular"], function () {
                     }
                 }
 
-                datasetService.getSourcePaths($scope.fileName).then(function (data) {
-                    function filterSourcePath(node, sourcePaths) {
-                        if (node.sourcePath && sourcePaths.indexOf(node.sourcePath) < 0) {
-                            delete node.sourcePath
-                        }
-                        for (var index = 0; index < node.kids.length; index++) {
-                            filterSourcePath(node.kids[index], sourcePaths);
-                        }
+                datasetService.getTermSourcePaths($scope.fileName).then(function (data) {
+                    function recursive(node, sourcePaths) {
+                        if (sourcePaths.indexOf(node.sourcePath) >= 0) node.termMappings = true;
+                        for (var index = 0; index < node.kids.length; index++) recursive(node.kids[index], sourcePaths);
                     }
-                    filterSourcePath(tree, data.sourcePaths);
+
+                    recursive(tree, data.sourcePaths);
+                });
+
+                datasetService.getCategorySourcePaths($scope.fileName).then(function (data) {
+                    function recursive(node, sourcePaths) {
+                        if (sourcePaths.indexOf(node.sourcePath) >= 0) node.categoryMappings = true;
+                        for (var index = 0; index < node.kids.length; index++) recursive(node.kids[index], sourcePaths);
+                    }
+
+                    recursive(tree, data.sourcePaths);
                 });
 
                 $scope.tree = tree;
@@ -124,6 +132,7 @@ define(["angular"], function () {
                         }
                     }
                 }
+
                 if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
             });
         });
@@ -133,15 +142,14 @@ define(["angular"], function () {
             $location.search({});
         };
 
-        $scope.goToTerms = function (node) {
+        $scope.goToPage = function (node, page) {
             if (node && node != $scope.selectedNode) return;
-            $location.path("/terms/" + $scope.fileName);
+            $rootScope.breadcrumbs.dataset = $scope.fileName;
+            $location.path("/" + page + "/" + $scope.fileName);
             $location.search({
                 path: $routeParams.path,
                 size: $scope.status.histograms[$scope.status.histograms.length - 1]
             });
-            var lastPath = $routeParams.path.substring($routeParams.path.lastIndexOf("/"));
-            $rootScope.addRecentTerms($scope.fileName + " (" + lastPath + ")", $location.absUrl())
         };
 
         function setActiveView(activeView) {

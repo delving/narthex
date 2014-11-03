@@ -1,4 +1,4 @@
-package services
+package specs
 
 import java.io.File
 
@@ -9,6 +9,7 @@ import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
 import record.RecordHandling
 import record.RecordHandling.Pocket
+import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable
 import scala.xml.XML

@@ -58,6 +58,10 @@ define(["angular"], function (angular) {
             $scope.datasetRecordsSaved = (state == 'state-published' || state == 'state-saved');
         });
 
+        categoriesService.getCategoryList().then(function(categoryList) {
+            $scope.categoryList = categoryList;
+        });
+
         function filterHistogram() {
             var mapped = 0;
             var unmapped = 0;
