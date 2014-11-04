@@ -44,6 +44,14 @@ define(["angular"], function (angular) {
         $scope.histogram = [];
         $scope.histogramVisible = [];
 
+        $scope.myData = [{name: "Moroni", age: 50, fun: "true"},
+            {name: "Tiancum", age: 43, fun: "true"},
+            {name: "Jacob", age: 27, fun: "true"},
+            {name: "Nephi", age: 29, fun: "true"},
+            {name: "Enos", age: 34, fun: "true"}];
+
+        $scope.gridOptions = { data: 'myData' };
+
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
         };

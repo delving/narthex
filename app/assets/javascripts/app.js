@@ -49,6 +49,7 @@ define(
                 "angularFileUpload",
                 "ui.bootstrap.tpls",
                 "ui.bootstrap",
+                "ngGrid",
                 "nvd3ChartDirectives"
             ]
         );

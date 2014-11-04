@@ -60,6 +60,7 @@
                 "bootstrap",
                 "ui-bootstrap-tpls",
                 "ui-bootstrap",
+                "ng-grid",
                 "./app"
             ],
             function (angular) {
