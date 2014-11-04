@@ -23,34 +23,54 @@ define(["angular"], function (angular) {
             $scope.fileName = $routeParams.fileName;
             $scope.path = $routeParams.path;
             $scope.histogramSize = parseInt($routeParams.size || "100");
-            $scope.vocabulary = $routeParams.vocabulary;
         }
-
-        function updateSearchParams() {
-            $location.search({
-                path: $scope.path,
-                histogramSize: $scope.histogramSize,
-                vocabulary: $scope.vocabulary
-            });
-        }
-
         getSearchParams();
 
-        // local
-        $scope.sourceEntry = undefined; // list selection
         $scope.mappings = {};
-        $scope.show = "all";
-        $scope.concepts = [];
-        $scope.histogram = [];
-        $scope.histogramVisible = [];
+        $scope.columnDefs = [];
+        $scope.categoryGrid = {
+            data: 'gridData',
+            columnDefs: "columnDefs"
+        };
 
-        $scope.myData = [{name: "Moroni", age: 50, fun: "true"},
-            {name: "Tiancum", age: 43, fun: "true"},
-            {name: "Jacob", age: 27, fun: "true"},
-            {name: "Nephi", age: 29, fun: "true"},
-            {name: "Enos", age: 34, fun: "true"}];
-
-        $scope.gridOptions = { data: 'myData' };
+        categoriesService.getCategoryList().then(function(categoryList) {
+            $scope.categoryList = categoryList;
+            var categories = categoryList.categories;
+            function createArray() {
+                var array = new Array(categories.length);
+                for (var walk=0; walk<array.length; walk++) array[walk] = (Math.random() > 0.5)
+                return array;
+            }
+            categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
+                $scope.gridData = _.map(data.histogram, function (entry) {
+                    var sourceUri = $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(entry[1]);
+                    return {
+                        term: entry[1],
+                        count: entry[0],
+                        sourceUri: sourceUri,
+                        member: createArray()
+                    }
+                });
+                $scope.columnDefs.push({ field: 'term', displayName: 'Term', width: 300 });
+                $scope.columnDefs.push({ field: 'count', displayName: 'Count', width: 100 });
+                for (var walk=0; walk<categories.length; walk++) {
+                    var columnDef = {
+                        field: 'category'+walk,
+                        width: 40,
+                        index: walk + 2,
+                        displayName: walk.toString(),
+                        cellTemplate:
+                            '<div>'+
+                            '<input type="checkbox" '+
+                            'data-ng-model="row.entity.member['+walk+']" '+
+                            'data-ng-click="setGridValue(row.entity, '+walk+')"'+
+                            '/>'+
+                            '</div>'
+                    };
+                    $scope.columnDefs.push(columnDef)
+                }
+            });
+        });
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
@@ -62,89 +82,34 @@ define(["angular"], function (angular) {
             var lastSlash = recordRoot.lastIndexOf('/');
             $scope.recordContainer = recordRoot.substring(0, lastSlash);
             $scope.sourceUriPath = $scope.path.substring($scope.recordContainer.length);
-            var state = datasetInfo.status.state;
-            $scope.datasetRecordsSaved = (state == 'state-published' || state == 'state-saved');
         });
 
-        categoriesService.getCategoryList().then(function(categoryList) {
-            $scope.categoryList = categoryList;
-        });
+//        categoriesService.getCategoryMappings($scope.fileName).then(function (data) {
+//            _.forEach(data.mappings, function (mapping) {
+//                $scope.mappings[mapping.source] = {
+//                    target: mapping.target,
+//                    vocabulary: mapping.vocabulary,
+//                    prefLabel: mapping.prefLabel
+//                }
+//            });
+//            categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
+//                $scope.histogram = _.map(data.histogram, function (count) {
+//                    var sourceUri = $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(count[1]);
+//                    return {
+//                        value: count[1],
+//                        count: count[0],
+//                        sourceUri: sourceUri
+//                    }
+//                });
+//            });
+//        });
 
-        function filterHistogram() {
-            var mapped = 0;
-            var unmapped = 0;
-
-            function hasMapping(entry) {
-                var mapping = $scope.mappings[entry.sourceUri];
-                var number = parseInt(entry.count);
-                if (mapping) {
-                    mapped += number;
-                }
-                else {
-                    unmapped += number;
-                }
-                return mapping;
-            }
-
-            switch ($scope.show) {
-                case "mapped":
-                    $scope.histogramVisible = _.filter($scope.histogram, function (entry) {
-                        return hasMapping(entry);
-                    });
-                    break;
-                case "unmapped":
-                    $scope.histogramVisible = _.filter($scope.histogram, function (entry) {
-                        return !hasMapping(entry);
-                    });
-                    break;
-                default:
-                    $scope.histogramVisible = _.filter($scope.histogram, function (entry) {
-                        hasMapping(entry);
-                        return true;
-                    });
-                    break;
-            }
-            $scope.mapped = mapped;
-            $scope.unmapped = unmapped;
-            $scope.all = mapped + unmapped;
-        }
-
-        // preparations
-        categoriesService.getCategoryMappings($scope.fileName).then(function (data) {
-            _.forEach(data.mappings, function (mapping) {
-                $scope.mappings[mapping.source] = {
-                    target: mapping.target,
-                    vocabulary: mapping.vocabulary,
-                    prefLabel: mapping.prefLabel
-                }
-            });
-            categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
-                $scope.histogram = _.map(data.histogram, function (count) {
-                    var sourceUri = $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(count[1]);
-                    return {
-                        value: count[1],
-                        count: count[0],
-                        sourceUri: sourceUri
-                    }
-                });
-            });
-        });
-
-        $scope.selectSource = function (entry) {
-            $scope.sourceEntry = entry;
-            var mapping = $scope.mappings[entry.sourceUri];
-            // todo: more!
+        $scope.setGridValue = function(entity, index) {
+            console.log("setGridValue", entity.name, index, entity.fun[index]);
         };
 
-        $scope.$watch("show", function () {
-            filterHistogram();
-        });
-
-        $scope.$watch("histogram", function () {
-            filterHistogram();
-        });
-
         $scope.setMapping = function (category) {
+            /*
             if (!$scope.sourceEntry) return;
             var body = {
                 source: $scope.sourceEntry.sourceUri,
@@ -165,6 +130,7 @@ define(["angular"], function (angular) {
                 }
                 filterHistogram();
             });
+            */
         };
     };
 
