@@ -38,7 +38,7 @@ define(["angular"], function (angular) {
             var categories = categoryList.categories;
             function createArray() {
                 var array = new Array(categories.length);
-                for (var walk=0; walk<array.length; walk++) array[walk] = (Math.random() > 0.5)
+                for (var walk=0; walk<array.length; walk++) array[walk] = (Math.random() > 0.95)
                 return array;
             }
             categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
@@ -51,26 +51,34 @@ define(["angular"], function (angular) {
                         member: createArray()
                     }
                 });
-                $scope.columnDefs.push({ field: 'term', displayName: 'Term', width: 300 });
-                $scope.columnDefs.push({ field: 'count', displayName: 'Count', width: 100 });
+                $scope.columnDefs.push({ field: 'term', displayName: 'Term', width: 460 });
+                $scope.columnDefs.push({ field: 'count', displayName: 'Count', width: 100, cellClass: "category-count-cell" });
                 for (var walk=0; walk<categories.length; walk++) {
+                    if (walk == 0) console.log("cat", categories[walk]);
                     var columnDef = {
                         field: 'category'+walk,
-                        width: 40,
                         index: walk + 2,
-                        displayName: walk.toString(),
+                        displayName: categories[walk].code.toUpperCase(),
+                        headerCellTemplate:
+                            '<div class="category-header" data-ng-click="clickCategoryHeader($index)">'+
+                            ' <span class="category-header-text">{{col.displayName}}</span>'+
+                            '</div>',
                         cellTemplate:
-                            '<div>'+
-                            '<input type="checkbox" '+
-                            'data-ng-model="row.entity.member['+walk+']" '+
-                            'data-ng-click="setGridValue(row.entity, '+walk+')"'+
-                            '/>'+
+                            '<div class="category-cell">'+
+                            '  <input type="checkbox" '+
+                            '  data-ng-model="row.entity.member['+walk+']" '+
+                            '  data-ng-click="setGridValue(row.entity, '+walk+')"'+
+                            '  />'+
                             '</div>'
                     };
                     $scope.columnDefs.push(columnDef)
                 }
             });
         });
+
+        $scope.clickCategoryHeader = function(index) {
+            console.log("CLICK header", index);
+        };
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);

@@ -22,13 +22,13 @@ import org.OrgRepo
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 
-import scala.xml.{NodeSeq, XML}
+import scala.io.Source
+import scala.xml.NodeSeq
 
 object CategoryList {
 
   implicit val catWrites: Writes[Category] = (
     (JsPath \ "code").write[String] and
-      (JsPath \ "name").write[String] and
       (JsPath \ "details").write[String]
     )(unlift(Category.unapply))
 
@@ -38,12 +38,19 @@ object CategoryList {
     )(unlift(CategoryList.unapply))
 
   def load(file: File): CategoryList = {
-    val xml = XML.loadFile(file)
-    CategoryList((xml \ "@name").text, (xml \ "category").map(c => Category(c)))
+    val markdownChunks = Source.fromFile(file).mkString.split("##").toList
+    val title = markdownChunks(0).substring(1).trim
+    val categories = markdownChunks.tail.map { chunk =>
+      val lines = chunk.split('\n').toList
+      val code = lines.head
+      val details = lines.tail.mkString(" ").replaceAll("\\s+", " ").trim
+      Category(code, details)
+    }
+    CategoryList(title, categories)
   }
 
   lazy val listOption: Option[CategoryList] = {
-    val file = new File(OrgRepo.repo.categoriesDir, "categories.xml")
+    val file = new File(OrgRepo.repo.categoriesDir, "categories.md")
     if (file.exists()) {
       Some(CategoryList.load(file))
     } 
@@ -58,11 +65,10 @@ object Category {
   def apply(node: NodeSeq): Category = {
     Category(
       code = (node \ "@code").text,
-      name = (node \ "name").text.trim,
       details = (node \ "details").text.trim.replaceAll("\\s+", " ")
     )
   }
 }
 
-case class Category(code: String, name: String, details: String)
+case class Category(code: String, details: String)
 
