@@ -16,7 +16,6 @@
 
 package mapping
 
-import org.basex.core.BaseXException
 import org.basex.server.ClientSession
 import play.api.libs.json.{Json, Writes}
 import services.BaseX._
@@ -32,78 +31,61 @@ object CategoryDb {
   implicit val mappingWrites = new Writes[CategoryMapping] {
     def writes(mapping: CategoryMapping) = Json.obj(
       "source" -> mapping.source,
-      "target" -> mapping.target
+      "categories" -> mapping.categories
     )
   }
 
-  case class CategoryMapping(source: String, target: String)
+  case class CategoryMapping(source: String, categories: Seq[String])
 
 }
 
-class CategoryDb(dbName: String) {
+class CategoryDb(dbBaseName: String) {
+
   import mapping.CategoryDb._
-  val categoryDb = s"${dbName}_categories"
+  val name = "category-mappings"
+  val categoryDb = s"${dbBaseName}_categories"
+  val dbDoc = s"$categoryDb/$categoryDb.xml"
+  val dbPath = s"doc('$dbDoc')/$name"
 
-  def db[T](block: ClientSession => T): T = {
-    try {
-      withDbSession[T](categoryDb)(block)
-    }
-    catch {
-      case be: BaseXException =>
-        if (be.getMessage.contains("not found")) {
-          createDatabase(categoryDb, "<category-mappings/>")
-          withDbSession[T](categoryDb)(block)
-        }
-        else {
-          throw be
-        }
-    }
-  }
+  def withCategoryDb[T](block: ClientSession => T): T = withDbSession[T](categoryDb, Some(name))(block)
 
-  def addMapping(mapping: CategoryMapping) = db {
-    session =>
-      val upsert = s"""
+  def setMapping(categoryMapping: CategoryMapping, member: Boolean) = withCategoryDb { session =>
+    val category = categoryMapping.categories.head
+    val source = categoryMapping.source
+    val wrapped = s"<$category/>"
+    val upsert = s"""
       |
       | let $$freshMapping :=
       |   <category-mapping>
-      |     <source>${mapping.source}</source>
-      |     <target>${mapping.target}</target>
+      |     <source>$source</source>
+      |     <categories>${if (member) wrapped else ""}</categories>
       |   </category-mapping>
-      |
-      | let $$categoryMappings := doc('$categoryDb/$categoryDb.xml')/category-mappings
-      |
-      | let $$categoryMapping := $$categoryMappings/category-mapping[source=${quote(mapping.source)}]
+      | let $$categoryMapping := $dbPath/category-mapping[source=${quote(source)}]
+      | let $$categoryList := $$categoryMapping/categories
       |
       | return
       |   if (exists($$categoryMapping))
-      |   then replace node $$categoryMapping with $$freshMapping
-      |   else insert node $$freshMapping into $$categoryMappings
+      |   then
+      |      if (${!member}() and exists($$categoryList/$category))
+      |      then
+      |          delete node $$categoryList/$category
+      |      else
+      |          if ($member() and not(exists($$categoryList/$category)))
+      |          then
+      |              insert node $wrapped into $$categoryList
+      |          else
+      |              ()
+      |   else
+      |      insert node $$freshMapping into $dbPath
       |
-      """.stripMargin
-      session.query(upsert).execute()
+      """.stripMargin.trim
+    session.query(upsert).execute()
   }
 
-  def removeMapping(sourceUri: String) = db {
-    session =>
-      val upsert = s"""
+  def getSourcePaths: Seq[String] = withCategoryDb[Seq[String]] { session =>
+    val q = s"""
       |
-      | let $$categoryMappings := doc('$categoryDb/$categoryDb.xml')/category-mappings
-      | let $$categoryMapping := $$categoryMappings/category-mapping[source=${quote(sourceUri)}]
-      |
-      | return
-      |   if (exists($$categoryMapping))
-      |   then delete node $$categoryMapping
-      |   else ()
-      |
-      """.stripMargin
-      session.query(upsert).execute()
-  }
-
-  def getSourcePaths: Seq[String] = db[Seq[String]] {
-    session =>
-      val q = s"""
-      |
-      | let $$sources := doc('$categoryDb/$categoryDb.xml')/category-mappings/category-mapping/source
+      | let $$sources := $dbPath/category-mapping/source
       |
       | return
       |   <sources>{
@@ -112,21 +94,20 @@ class CategoryDb(dbName: String) {
       |   }</sources>
       |
       | """.stripMargin
-      val result = session.query(q).execute()
-      val xml = XML.loadString(result)
-      (xml \ "source").map(n => n.text.substring(0, n.text.lastIndexOf("/"))).distinct
+    val result = session.query(q).execute()
+    val xml = XML.loadString(result)
+    (xml \ "source").map(n => n.text.substring(0, n.text.lastIndexOf("/"))).distinct
   }
 
-  def getMappings: Seq[CategoryMapping] = db[Seq[CategoryMapping]] {
-    session =>
-      val mappings = session.query(s"doc('$categoryDb/$categoryDb.xml')/category-mappings").execute()
-      val xml = XML.loadString(mappings)
-      (xml \ "category-mapping").map { node =>
-        CategoryMapping(
-          (node \ "source").text,
-          (node \ "target").text
-        )
-      }
+  def getMappings: Seq[CategoryMapping] = withCategoryDb[Seq[CategoryMapping]] { session =>
+    val mappings = session.query(dbPath).execute()
+    val xml = XML.loadString(mappings)
+    (xml \ "category-mapping").map { mappingNode =>
+      CategoryMapping(
+        (mappingNode \ "source").text,
+        (mappingNode \ "categories" \ "_").map(_.label)
+      )
+    }
   }
 
 }

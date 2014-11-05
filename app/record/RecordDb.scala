@@ -20,7 +20,6 @@ import harvest.Harvesting.{Harvest, PMHResumptionToken}
 import org.OrgRepo
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
-import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import record.RecordDb.FoundRecord
@@ -39,7 +38,7 @@ import scala.xml.{Elem, NodeSeq, XML}
 
 object RecordDb {
 
-  case class FoundRecord(id:String, path: String, hash: String)
+  case class FoundRecord(id: String, path: String, hash: String)
 
 
 }
@@ -48,13 +47,13 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
 
   val recordDb = s"${dbName}_records"
 
-  def createDb() = createDatabase(recordDb)
+  def createDb() = createCleanDatabase(recordDb)
 
   def dropDb() = dropDatabase(recordDb)
 
   def getDatasetInfo = datasetRepo.datasetDb.infoOption.getOrElse(throw new RuntimeException(s"Not found: $datasetRepo"))
 
-  def db[T](block: ClientSession => T) = withDbSession(recordDb)(block)
+  def withRecordDb[T](block: ClientSession => T) = withDbSession(recordDb)(block)
 
   def childrenAsMap(nodeSeq: NodeSeq) = nodeSeq flatMap {
     case e: Elem => e.child
@@ -76,7 +75,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     declarations.mkString("\n")
   }
 
-  def findRecord(id: String, session: ClientSession) : Option[FoundRecord] = {
+  def findRecord(id: String, session: ClientSession): Option[FoundRecord] = {
     val queryForPath =
       s"""
          |
@@ -96,27 +95,17 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     if (path.nonEmpty) Some(FoundRecord(id, path, hash)) else None
   }
 
-  def getRecordCount: Int = {
-    try {
-      db {
-        session =>
-          val queryCount = s"""
+  def getRecordCount: Int = withRecordDb { session =>
+    val queryCount = s"""
           |
           | let $$boxes := collection('$recordDb')/$POCKET
           | return count($$boxes)
           |
           |""".stripMargin.trim
-          session.query(queryCount).execute().toInt
-      }
-    }
-    catch {
-      case e: Exception =>
-        Logger.info(s"Database $recordDb does not exist $e")
-        0
-    }
+    session.query(queryCount).execute().toInt
   }
 
-  def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = {
+  def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = withRecordDb { session =>
     val datasetInfo = getDatasetInfo
     // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
     val recordContainer = if (DatasetOrigin.HARVEST.matches((datasetInfo \ "origin" \ "type").text)) {
@@ -130,9 +119,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     val queryPathField = path.substring(recordContainer.length)
     val field = queryPathField.substring(queryPathField.lastIndexOf("/") + 1)
     val queryPath = queryPathField.substring(0, queryPathField.lastIndexOf("/"))
-    db {
-      session =>
-        val queryForRecords = s"""
+    val queryForRecords = s"""
           |
           | ${namespaceDeclarations(datasetInfo)}
           | let $$boxes := collection('$recordDb')[/$POCKET$queryPath/$field=${quote(value)}]
@@ -140,27 +127,24 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
           | return <records>{ for $$box in $$selected return $$box/* }</records>
           |
           """.stripMargin.trim
-        println("asking:\n" + queryForRecords)
-        session.query(queryForRecords).execute()
-    }
+    println("asking:\n" + queryForRecords)
+    session.query(queryForRecords).execute()
   }
 
-  def record(identifier: String): String = db {
-    session =>
-      val queryForRecord = s"""
+  def record(identifier: String): String = withRecordDb { session =>
+    val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         | let $$box := collection('$recordDb')[/$POCKET/@id=${quote(identifier)}]
         | return <record>{ $$box }</record>
         |
         """.stripMargin.trim
-      println("asking:\n" + queryForRecord)
-      session.query(queryForRecord).execute()
+    println("asking:\n" + queryForRecord)
+    session.query(queryForRecord).execute()
   }
 
-  def getIds(since: String): String = db {
-    session =>
-      val q = s"""
+  def getIds(since: String): String = withRecordDb { session =>
+    val q = s"""
         |
         | let $$boxes := collection('$recordDb')/$POCKET
         | return
@@ -173,7 +157,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         |    }</ids>
         |
         |""".stripMargin.trim
-      session.query(q).execute()
+    session.query(q).execute()
   }
 
   def dateSelector(from: Option[DateTime], until: Option[DateTime]) = (from, until) match {
@@ -187,18 +171,15 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
       ""
   }
 
-  def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = {
+  def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = withRecordDb { session =>
     val now = new DateTime()
     val name = datasetRepo.name
     println(s"createHarvest: $name, $from, $until")
     val datasetInfo = getDatasetInfo
     if (!OrgRepo.isPublishedOaiPmh(datasetInfo)) return None
-    val countString = db {
-      session =>
-        val queryForRecords = s"count(collection('$recordDb')/$POCKET${dateSelector(from, until)})"
-        println("asking:\n" + queryForRecords)
-        session.query(queryForRecords).execute()
-    }
+    val queryForRecords = s"count(collection('$recordDb')/$POCKET${dateSelector(from, until)})"
+    println("asking:\n" + queryForRecords)
+    val countString = session.query(queryForRecords).execute()
     val count = countString.toInt
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
     val pages = if (count % pageSize == 0) count / pageSize else count / pageSize + 1
@@ -215,9 +196,8 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
     Some(harvest.resumptionToken)
   }
 
-  def recordHarvest(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int): String = db {
-    session =>
-      val query = s"""
+  def recordHarvest(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int): String = withRecordDb { session =>
+    val query = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         |
@@ -233,14 +213,13 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         |   </records>
         |
         """.stripMargin.trim
-      session.query(query).execute()
+    session.query(query).execute()
   }
 
-  def recordPmh(identifier: String): Option[Elem] = db {
-    session =>
-      val datasetInfo = getDatasetInfo
-      if (!OrgRepo.isPublishedOaiPmh(datasetInfo)) return None
-      val queryForRecord = s"""
+  def recordPmh(identifier: String): Option[Elem] = withRecordDb { session =>
+    val datasetInfo = getDatasetInfo
+    if (!OrgRepo.isPublishedOaiPmh(datasetInfo)) return None
+    val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         | let $$box := collection('$recordDb')[/$POCKET/@id=${quote(identifier)}]
@@ -257,13 +236,12 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         |   </record>
         |
         """.stripMargin.trim
-      Some(XML.loadString(session.query(queryForRecord).execute()))
+    Some(XML.loadString(session.query(queryForRecord).execute()))
   }
 
-  def recordsPmh(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int, headersOnly: Boolean): Seq[String] = db {
-    session =>
-      val metadata = if (headersOnly) "" else "<metadata>{$box/*}</metadata>"
-      val query = s"""
+  def recordsPmh(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int, headersOnly: Boolean): Seq[String] = withRecordDb { session =>
+    val metadata = if (headersOnly) "" else "<metadata>{$box/*}</metadata>"
+    val query = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         |
@@ -288,8 +266,8 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling 
         |   </records>
         |
         """.stripMargin.trim
-      // todo: look at doing this with just string instead of via XML
-      val wrappedRecords: Elem = XML.loadString(session.query(query).execute())
-      (wrappedRecords \ "record").map(_.toString())
+    // todo: look at doing this with just string instead of via XML
+    val wrappedRecords: Elem = XML.loadString(session.query(query).execute())
+    (wrappedRecords \ "record").map(_.toString())
   }
 }

@@ -82,7 +82,7 @@ class OrgRepo(userHome: String, val orgId: String) extends RecordHandling {
   val datasetsDir = new File(orgRoot, "dastasets")
   val sipZipDir = new File(orgRoot, "sip-zip")
   val categoriesDir = new File(orgRoot, "categories")
-  val repoDb = new RepoDb(orgId)
+  val repoDb = new OrgDb(orgId)
 
   orgRoot.mkdirs()
   datasetsDir.mkdir()

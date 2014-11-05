@@ -2,7 +2,7 @@
 
 ## schi
 Schilderijen op doek, paneel, metaal, board, karton, papier, inclusief aquarel en pastel
-            
+
 ## tekn
 Tekeningen als unica, hoofdzakelijk op papier
 

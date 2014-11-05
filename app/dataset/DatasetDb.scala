@@ -19,7 +19,7 @@ package dataset
 import dataset.ProgressState._
 import dataset.ProgressType._
 import harvest.Harvesting.{HarvestCron, HarvestType}
-import org.RepoDb
+import org.OrgDb
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Logger
@@ -117,7 +117,7 @@ object DatasetState {
   def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "status" \ "state").text)
 }
 
-class DatasetDb(repoDb: RepoDb, fileName: String) {
+class DatasetDb(repoDb: OrgDb, fileName: String) {
 
   def now: String = timeToString(new DateTime())
 

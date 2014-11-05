@@ -16,7 +16,6 @@
 
 package org
 
-import org.basex.core.BaseXException
 import org.basex.server.ClientSession
 import services.BaseX
 
@@ -26,36 +25,21 @@ import scala.xml.{Elem, XML}
  * @author Gerald de Jong <gerald@delving.eu
  */
 
-class RepoDb(val orgId: String) {
+class OrgDb(val orgId: String) {
 
-  def datasetDb = s"narthex_$orgId"
-
-  def allDatasets = s"doc('$datasetDb/$datasetDb.xml')/narthex-datasets"
+  val datasetDb = s"narthex_$orgId"
+  val name = "narthex-datasets"
+  val allDatasets = s"doc('$datasetDb/$datasetDb.xml')/$name"
 
   case class Dataset(name: String, info: Elem)
 
-  def db[T](block: ClientSession => T): T = {
-    try {
-      BaseX.withDbSession[T](datasetDb)(block)
-    }
-    catch {
-      case be: BaseXException =>
-        if (be.getMessage.contains("not found")) {
-          BaseX.createDatabase(datasetDb, "<narthex-datasets/>")
-          BaseX.withDbSession[T](datasetDb)(block)
-        }
-        else {
-          throw be
-        }
-    }
-  }
+  def db[T](block: ClientSession => T): T = BaseX.withDbSession[T](datasetDb, Some(name))(block)
 
-  def listDatasets: Seq[Dataset] = db {
-    session =>
-      val answer = session.query(allDatasets).execute()
-      val wholeFile = XML.loadString(answer)
-      val datasets = wholeFile \ "dataset"
-      datasets.map(node => Dataset((node \ "@name").text, node.asInstanceOf[Elem])).sortBy(_.name.toLowerCase)
+  def listDatasets: Seq[Dataset] = db { session =>
+    val answer = session.query(allDatasets).execute()
+    val wholeFile = XML.loadString(answer)
+    val datasets = wholeFile \ "dataset"
+    datasets.map(node => Dataset((node \ "@name").text, node.asInstanceOf[Elem])).sortBy(_.name.toLowerCase)
   }
 
 }

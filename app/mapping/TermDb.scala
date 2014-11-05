@@ -16,7 +16,6 @@
 
 package mapping
 
-import org.basex.core.BaseXException
 import org.basex.server.ClientSession
 import play.api.libs.json.{Json, Writes}
 import services.BaseX._
@@ -42,30 +41,18 @@ object TermDb {
 
 }
 
-class TermDb(dbName: String) {
+class TermDb(dbBaseName: String) {
+
   import mapping.TermDb._
+  val name = "term-mappings"
+  val termDb = s"${dbBaseName}_terms"
+  val dbDoc = s"$termDb/$termDb.xml"
+  val dbPath = s"doc('$dbDoc')/$name"
 
-  val termDb = s"${dbName}_terminology"
+  def withTermDb[T](block: ClientSession => T): T = withDbSession[T](termDb, Some(name))(block)
 
-  def db[T](block: ClientSession => T): T = {
-    try {
-      withDbSession[T](termDb)(block)
-    }
-    catch {
-      case be: BaseXException =>
-        if (be.getMessage.contains("not found")) {
-          createDatabase(termDb, "<term-mappings/>")
-          withDbSession[T](termDb)(block)
-        }
-        else {
-          throw be
-        }
-    }
-  }
-
-  def addMapping(mapping: TermMapping) = db {
-    session =>
-      val upsert = s"""
+  def addMapping(mapping: TermMapping) = withTermDb { session =>
+    val upsert = s"""
       |
       | let $$freshMapping :=
       |   <term-mapping>
@@ -75,25 +62,21 @@ class TermDb(dbName: String) {
       |     <prefLabel>${mapping.prefLabel}</prefLabel>
       |   </term-mapping>
       |
-      | let $$termMappings := doc('$termDb/$termDb.xml')/term-mappings
-      |
-      | let $$termMapping := $$termMappings/term-mapping[source=${quote(mapping.source)}]
+      | let $$termMapping := $dbPath/term-mapping[source=${quote(mapping.source)}]
       |
       | return
       |   if (exists($$termMapping))
       |   then replace node $$termMapping with $$freshMapping
-      |   else insert node $$freshMapping into $$termMappings
+      |   else insert node $$freshMapping into $dbPath
       |
       """.stripMargin
-      session.query(upsert).execute()
+    session.query(upsert).execute()
   }
 
-  def removeMapping(sourceUri: String) = db {
-    session =>
-      val upsert = s"""
+  def removeMapping(sourceUri: String) = withTermDb { session =>
+    val upsert = s"""
       |
-      | let $$termMappings := doc('$termDb/$termDb.xml')/term-mappings
-      | let $$termMapping := $$termMappings/term-mapping[source=${quote(sourceUri)}]
+      | let $$termMapping := $dbPath/term-mapping[source=${quote(sourceUri)}]
       |
       | return
       |   if (exists($$termMapping))
@@ -101,14 +84,13 @@ class TermDb(dbName: String) {
       |   else ()
       |
       """.stripMargin
-      session.query(upsert).execute()
+    session.query(upsert).execute()
   }
 
-  def getSourcePaths: Seq[String] = db[Seq[String]] {
-    session =>
-      val q = s"""
+  def getSourcePaths: Seq[String] = withTermDb[Seq[String]] { session =>
+    val q = s"""
       |
-      | let $$sources := doc('$termDb/$termDb.xml')/term-mappings/term-mapping/source
+      | let $$sources := $dbPath/term-mapping/source
       |
       | return
       |   <sources>{
@@ -117,23 +99,22 @@ class TermDb(dbName: String) {
       |   }</sources>
       |
       | """.stripMargin
-      val result = session.query(q).execute()
-      val xml = XML.loadString(result)
-      (xml \ "source").map(n => n.text.substring(0, n.text.lastIndexOf("/"))).distinct
+    val result = session.query(q).execute()
+    val xml = XML.loadString(result)
+    (xml \ "source").map(n => n.text.substring(0, n.text.lastIndexOf("/"))).distinct
   }
 
-  def getMappings: Seq[TermMapping] = db[Seq[TermMapping]] {
-    session =>
-      val mappings = session.query(s"doc('$termDb/$termDb.xml')/term-mappings").execute()
-      val xml = XML.loadString(mappings)
-      (xml \ "term-mapping").map { node =>
-        TermMapping(
-          (node \ "source").text,
-          (node \ "target").text,
-          (node \ "vocabulary").text,
-          (node \ "prefLabel").text
-        )
-      }
+  def getMappings: Seq[TermMapping] = withTermDb[Seq[TermMapping]] { session =>
+    val mappings = session.query(dbPath).execute()
+    val xml = XML.loadString(mappings)
+    (xml \ "term-mapping").map { node =>
+      TermMapping(
+        (node \ "source").text,
+        (node \ "target").text,
+        (node \ "vocabulary").text,
+        (node \ "prefLabel").text
+      )
+    }
   }
 
 }

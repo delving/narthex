@@ -295,23 +295,19 @@ object Dashboard extends Controller with Security with TreeHandling {
 
   def getCategoryMappings(fileName: String) = Secure() { token => implicit request =>
     val datasetRepo = repo.datasetRepo(fileName)
-    val mappings: scala.Seq[CategoryMapping] = datasetRepo.categoryDb.getMappings
+    val mappings: Seq[CategoryMapping] = datasetRepo.categoryDb.getMappings
     Ok(Json.obj("mappings" -> mappings))
   }
 
   def setCategoryMapping(fileName: String) = Secure(parse.json) { token => implicit request =>
     val datasetRepo = repo.datasetRepo(fileName)
-    if ((request.body \ "remove").asOpt[String].isDefined) {
-      val sourceUri = (request.body \ "source").as[String]
-      datasetRepo.categoryDb.removeMapping(sourceUri)
-      Ok("Mapping removed")
-    }
-    else {
-      val sourceUri = (request.body \ "source").as[String]
-      val targetUri = (request.body \ "target").as[String]
-      datasetRepo.categoryDb.addMapping(CategoryMapping(sourceUri, targetUri))
-      Ok("Mapping added")
-    }
+    val categoryMapping = CategoryMapping(
+      (request.body \ "source").as[String],
+      Seq((request.body \ "category").as[String])
+    )
+    val member = (request.body \ "member").as[Boolean]
+    datasetRepo.categoryDb.setMapping(categoryMapping, member)
+    Ok("Mapping "+ (if (member) "added" else "removed"))
   }
 
   def listSipFiles = Secure() { token => implicit request =>

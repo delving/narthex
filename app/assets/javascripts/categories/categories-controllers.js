@@ -33,46 +33,58 @@ define(["angular"], function (angular) {
             columnDefs: "columnDefs"
         };
 
-        categoriesService.getCategoryList().then(function(categoryList) {
-            $scope.categoryList = categoryList;
-            var categories = categoryList.categories;
-            function createArray() {
-                var array = new Array(categories.length);
-                for (var walk=0; walk<array.length; walk++) array[walk] = (Math.random() > 0.95)
-                return array;
-            }
-            categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
-                $scope.gridData = _.map(data.histogram, function (entry) {
-                    var sourceUri = $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(entry[1]);
-                    return {
-                        term: entry[1],
-                        count: entry[0],
-                        sourceUri: sourceUri,
-                        member: createArray()
-                    }
-                });
+        categoriesService.datasetInfo($scope.fileName).then(function (datasetInfo) {
+            $scope.datasetInfo = datasetInfo;
+            var recordRoot = datasetInfo.delimit.recordRoot;
+            var lastSlash = recordRoot.lastIndexOf('/');
+            $scope.recordContainer = recordRoot.substring(0, lastSlash);
+            var sourceUriPath = $scope.path.substring($scope.recordContainer.length);
+
+            categoriesService.getCategoryList().then(function (categoryList) {
+                $scope.categories = categoryList.categories;
                 $scope.columnDefs.push({ field: 'term', displayName: 'Term', width: 460 });
                 $scope.columnDefs.push({ field: 'count', displayName: 'Count', width: 100, cellClass: "category-count-cell" });
-                for (var walk=0; walk<categories.length; walk++) {
-                    if (walk == 0) console.log("cat", categories[walk]);
-                    var columnDef = {
-                        field: 'category'+walk,
+                for (var walk = 0; walk < $scope.categories.length; walk++) {
+                    var code = $scope.categories[walk].code;
+                    var codeQuoted = "'"+code+"'";
+                    $scope.columnDefs.push({
+                        field: 'category' + walk,
                         index: walk + 2,
-                        displayName: categories[walk].code.toUpperCase(),
                         headerCellTemplate:
-                            '<div class="category-header" data-ng-click="clickCategoryHeader($index)">'+
-                            ' <span class="category-header-text">{{col.displayName}}</span>'+
+                            '<div class="category-header" data-ng-click="clickCategoryHeader($index)">' +
+                            '  <span class="category-header-text">' + code.toUpperCase() + '</span>' +
                             '</div>',
                         cellTemplate:
-                            '<div class="category-cell">'+
-                            '  <input type="checkbox" '+
-                            '  data-ng-model="row.entity.member['+walk+']" '+
-                            '  data-ng-click="setGridValue(row.entity, '+walk+')"'+
-                            '  />'+
+                            '<div class="category-cell">' +
+                            '  <input type="checkbox" data-ng-model="row.entity.memberOf[' + codeQuoted + ']" ' +
+                            '         data-ng-click="setGridValue(row.entity, ' + codeQuoted + ')"/>' +
                             '</div>'
-                    };
-                    $scope.columnDefs.push(columnDef)
+                    })
                 }
+                categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (histogramData) {
+                    $scope.gridData = _.map(histogramData.histogram, function (entry) {
+                        var sourceUri = $rootScope.orgId + "/" + $scope.fileName + sourceUriPath + "/" + encodeURIComponent(entry[1]);
+                        return {
+                            term: entry[1],
+                            count: entry[0],
+                            sourceUri: sourceUri,
+                            memberOf: {}
+                        }
+                    });
+
+                    categoriesService.getCategoryMappings($scope.fileName).then(function(mappingsData) {
+                        var mappingLookup = {};
+                        _.forEach(mappingsData.mappings, function(mapping) {
+                            mappingLookup[mapping.source] = mapping.categories;
+                        });
+                        _.forEach($scope.gridData, function (row) {
+                            var categories = mappingLookup[row.sourceUri];
+                            _.forEach(categories, function (category) {
+                                row.memberOf[category] = true;
+                            });
+                        });
+                    });
+                });
             });
         });
 
@@ -80,66 +92,20 @@ define(["angular"], function (angular) {
             console.log("CLICK header", index);
         };
 
-        $scope.scrollTo = function (options) {
-            pageScroll.scrollTo(options);
-        };
-
-        categoriesService.datasetInfo($scope.fileName).then(function (datasetInfo) {
-            $scope.datasetInfo = datasetInfo;
-            var recordRoot = datasetInfo.delimit.recordRoot;
-            var lastSlash = recordRoot.lastIndexOf('/');
-            $scope.recordContainer = recordRoot.substring(0, lastSlash);
-            $scope.sourceUriPath = $scope.path.substring($scope.recordContainer.length);
-        });
-
-//        categoriesService.getCategoryMappings($scope.fileName).then(function (data) {
-//            _.forEach(data.mappings, function (mapping) {
-//                $scope.mappings[mapping.source] = {
-//                    target: mapping.target,
-//                    vocabulary: mapping.vocabulary,
-//                    prefLabel: mapping.prefLabel
-//                }
-//            });
-//            categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
-//                $scope.histogram = _.map(data.histogram, function (count) {
-//                    var sourceUri = $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(count[1]);
-//                    return {
-//                        value: count[1],
-//                        count: count[0],
-//                        sourceUri: sourceUri
-//                    }
-//                });
-//            });
-//        });
-
-        $scope.setGridValue = function(entity, index) {
-            console.log("setGridValue", entity.name, index, entity.fun[index]);
-        };
-
-        $scope.setMapping = function (category) {
-            /*
-            if (!$scope.sourceEntry) return;
+        $scope.setGridValue = function(entity, code) {
             var body = {
-                source: $scope.sourceEntry.sourceUri,
-                target: category
+                source: entity.sourceUri,
+                category: code,
+                member: entity.memberOf[code]
             };
-            if ($scope.mappings[$scope.sourceEntry.sourceUri]) { // it already exists
-                body.remove = "yes";
-            }
             categoriesService.setCategoryMapping($scope.fileName, body).then(function (data) {
-                console.log("set mapping returns", data);
-                if (body.remove) {
-                    delete $scope.mappings[$scope.sourceEntry.sourceUri]
-                }
-                else {
-                    $scope.mappings[$scope.sourceEntry.sourceUri] = {
-                        target: category
-                    };
-                }
-                filterHistogram();
+//                console.log("set category mapping returns", data);
             });
-            */
         };
+
+//        $scope.scrollTo = function (options) {
+//            pageScroll.scrollTo(options);
+//        };
     };
 
     CategoriesCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "categoriesService", "$timeout", "pageScroll"];

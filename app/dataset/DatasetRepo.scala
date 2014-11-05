@@ -50,11 +50,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
 
   val rootNode = new NodeRepo(this, analyzedDir)
 
-  val dbName = s"narthex_${orgRepo.orgId}___$name"
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, name)
-  lazy val termDb = new TermDb(dbName)
-  lazy val categoryDb = new CategoryDb(dbName)
-  lazy val recordDb = new RecordDb(this, dbName)
+
+  val dbBaseName = s"narthex_${orgRepo.orgId}___$name"
+  lazy val recordDb = new RecordDb(this, dbBaseName)
+
+  lazy val termDb = new TermDb(dbBaseName)
+  lazy val categoryDb = new CategoryDb(dbBaseName)
 
   override def toString = name
 

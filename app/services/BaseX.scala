@@ -1,7 +1,9 @@
 package services
 
+import org.basex.core.BaseXException
 import org.basex.core.cmd._
 import org.basex.server.ClientSession
+import play.api.Logger
 
 /**
  * Minimal connection with BaseX, wrapping the Java API
@@ -17,22 +19,34 @@ object BaseX {
 
   def withSession[T](block: ClientSession => T): T = baseX.withSession(block)
 
-  def withDbSession[T](database: String)(block: ClientSession => T): T = baseX.withDbSession(database)(block)
-
-  def createDatabase(name: String) = withSession(_.execute(new CreateDB(name)))
-
-  def createDatabase(name: String, content: String) = withSession(_.execute(new CreateDB(name, content)))
-
-  def checkDatabase(name: String) = withSession(_.execute(new Check(name)))
-
-  def dropDatabase(name: String) = withSession(_.execute(new DropDB(name)))
-
-  def quote(value: String) = {
-    value match {
-      case "" => "''"
-      case string =>
-        "'" + string.replace("'", "\'\'") + "'"
+  def withDbSession[T](name: String, documentOpt: Option[String] = None)(block: ClientSession => T): T = {
+    try {
+      baseX.withDbSession[T](name, check = documentOpt.isEmpty)(block)
     }
+    catch {
+      case be: BaseXException =>
+        if (be.getMessage.contains("not found")) {
+          baseX.withSession { session =>
+            Logger.info(s"Creating database $name containing $documentOpt")
+            val create = documentOpt.map(document => new CreateDB(name, s"<$document/>")).getOrElse(new CreateDB(name))
+            session.execute(create)
+          }
+          baseX.withDbSession(name, check = false)(block)
+        }
+        else {
+          throw be
+        }
+    }
+  }
+
+  def createCleanDatabase(name: String) = baseX.withSession(_.execute(new CreateDB(name)))
+
+  def dropDatabase(name: String) = baseX.withSession(_.execute(new DropDB(name)))
+
+  def quote(value: String) = value match {
+    case "" => "''"
+    case string =>
+      "'" + string.replace("'", "\'\'") + "'"
   }
 }
 
@@ -48,14 +62,11 @@ class BaseX(host: String, port: Int, user: String, pass: String) {
     }
   }
 
-  def withDbSession[T](database: String)(block: ClientSession => T): T = {
-    withSession {
-      session =>
-        session.execute(new Open(database))
-        session.execute(new Set("autoflush", "false"))
-        val result = block(session)
-        session.execute(new Flush())
-        result
-    }
+  def withDbSession[T](name: String, check: Boolean)(block: ClientSession => T): T = withSession { session =>
+    session.execute(if (check) new Check(name) else new Open(name))
+    session.execute(new Set("autoflush", "false"))
+    val result = block(session)
+    session.execute(new Flush())
+    result
   }
 }

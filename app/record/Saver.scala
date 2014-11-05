@@ -64,7 +64,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
         progressReporter.setReadProgress(readProgress)
         progress = Some(progressReporter)
         future {
-          rdb.db { session =>
+          rdb.withRecordDb { session =>
             def receiveRecord(pocket: Pocket): Unit = {
               log.info(s"Updating ${pocket.id}")
               rdb.findRecord(pocket.id, session).map { foundRecord =>
@@ -101,7 +101,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
         var tick = 0
         var time = System.currentTimeMillis()
         future {
-          datasetRepo.recordDb.db { session =>
+          datasetRepo.recordDb.withRecordDb { session =>
             val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
             val (source, readProgress) = FileHandling.sourceFromFile(file)
             val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
@@ -119,7 +119,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
             try {
               if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {
                 log.info(s"Saved ${datasetRepo.analyzedDir.getName}, optimizing..")
-                datasetRepo.recordDb.db(_.execute(new Optimize()))
+                datasetRepo.recordDb.withRecordDb(_.execute(new Optimize()))
                 datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
                 context.parent ! SaveComplete()
               }
