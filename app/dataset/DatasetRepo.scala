@@ -39,7 +39,9 @@ import services.FileHandling.clearDir
 import services.Temporal._
 import services._
 
-import scala.concurrent.Await // todo: use the actor's execution context?
+import scala.concurrent.Await
+
+// todo: use the actor's execution context?
 
 class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling {
 
@@ -221,11 +223,10 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
   def histogramText(path: String): Option[File] = nodeRepo(path).map(_.histogramText)
 
   def enrichRecords(storedRecords: String): List[StoredRecord] = {
-    val pathPrefix = s"${NarthexConfig.ORG_ID}/$name"
-
     val mappings: Map[String, TargetConcept] = Cache.getOrElse[Map[String, TargetConcept]](name) {
       termDb.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
     }
+    val pathPrefix = s"${NarthexConfig.ORG_ID}/$name"
     val parser = new StoredRecordEnricher(pathPrefix, mappings)
     parser.parse(storedRecords)
   }

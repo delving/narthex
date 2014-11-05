@@ -20,6 +20,7 @@ import java.io.ByteArrayInputStream
 import java.net.URLEncoder
 import java.security.MessageDigest
 
+import mapping.CategoryDb.CategoryMapping
 import org.joda.time.DateTime
 import play.Logger
 import record.RecordHandling.{Pocket, StoredRecord, TargetConcept, _}
@@ -37,7 +38,7 @@ object RecordHandling {
   val POCKET = "pocket"
   val POCKET_ID = "@id"
 
-  case class Pocket(id: String, hash: String, text: String)
+  case class Pocket(id: String, hash: String, text: String, categories: Set[String])
 
   case class StoredRecord(id: String, mod: DateTime, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
 
@@ -47,7 +48,7 @@ object RecordHandling {
 
 trait RecordHandling {
 
-  class RawRecordParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
+  class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None, categoryMappings: Option[Map[String, CategoryMapping]] = None) {
     val path = new mutable.Stack[(String, StringBuilder)]
     var percentWas = -1
     var lastProgress = 0l
@@ -58,6 +59,7 @@ trait RecordHandling {
       val events = new NarthexEventReader(source)
       var depth = 0
       var recordText = new mutable.StringBuilder()
+      var recordCategories = new mutable.TreeSet[String]()
       var uniqueId: Option[String] = None
       var startElement: Option[String] = None
       var running = true
@@ -86,12 +88,18 @@ trait RecordHandling {
           recordNamespace(binding.parent)
         }
         recordNamespace(scope)
-        def findUniqueId(attrs: MetaData) = {
-          attrs.foreach {
-            attr =>
-              path.push((s"@${attr.prefixedKey}", new StringBuilder()))
-              if (pathString == uniqueIdPath) uniqueId = Some(attr.value.toString())
-              path.pop()
+        def findUniqueId(attrs: MetaData) = attrs.foreach { attr =>
+          path.push((s"@${attr.prefixedKey}", new StringBuilder()))
+          if (pathString == uniqueIdPath) uniqueId = Some(attr.value.toString())
+          path.pop()
+        }
+        def categoriesFromAttrs() = categoryMappings.map { lookup =>
+          recordCategories.clear()
+          attrs.foreach { attr =>
+            val value = "\"" + attr.value.toString() + "\""
+            // todo: generrate uri for comparison
+            val uri = s" ${attr.prefixedKey}=$value"
+            lookup.get(uri).map(_.categories.foreach(recordCategories += _))
           }
         }
         path.push((tag, new StringBuilder()))
@@ -101,11 +109,13 @@ trait RecordHandling {
           depth += 1
           startElement = Some(startElementString(tag, attrs))
           findUniqueId(attrs)
+          categoriesFromAttrs()
         }
         else if (string == recordRootPath) {
           if (deepRecordContainer.isEmpty) {
             depth = 1
             startElement = Some(startElementString(tag, attrs))
+            categoriesFromAttrs()
           }
           findUniqueId(attrs)
         }
@@ -113,6 +123,7 @@ trait RecordHandling {
           if (pathContainer(string) == recordContainer) {
             depth = 1
             startElement = Some(startElementString(tag, attrs))
+            categoriesFromAttrs()
           }
         }
       }
@@ -141,7 +152,7 @@ trait RecordHandling {
                 val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
                 val mod = timeToString(new DateTime())
                 val wrapped = s"""<$POCKET id="$id" mod="$mod" hash="$contentHash" $scope>\n$recordContent</$POCKET>\n"""
-                Some(Pocket(id, contentHash, wrapped))
+                Some(Pocket(id, contentHash, wrapped, recordCategories.toSet))
               }
             } getOrElse {
               throw new RuntimeException("Missing id!")
@@ -151,6 +162,7 @@ trait RecordHandling {
               recordCount += 1
             }
             recordText.clear()
+            recordCategories.clear()
             depth = 0
           }
           else {
@@ -161,6 +173,11 @@ trait RecordHandling {
               val start = startElement.get
               startElement = None
               recordText.append(s"$start$text")
+              categoryMappings.map { lookup =>
+                // todo generate uri for comparison
+                val uri = s"generated"
+                lookup.get(uri).map(_.categories.foreach(recordCategories += _))
+              }
             }
             else if (!text.isEmpty) throw new RuntimeException(s"expected no text for $tag")
             recordText.append(s"</$tag>\n")
@@ -193,10 +210,9 @@ trait RecordHandling {
 
     def startElementString(tag: String, attrs: MetaData) = {
       val attrString = new mutable.StringBuilder()
-      attrs.foreach {
-        attr =>
-          val value = "\"" + attr.value.toString() + "\""
-          attrString.append(s" ${attr.prefixedKey}=$value")
+      attrs.foreach { attr =>
+        val value = "\"" + attr.value.toString() + "\""
+        attrString.append(s" ${attr.prefixedKey}=$value")
       }
       s"<$tag$attrString>"
     }
@@ -233,7 +249,7 @@ trait RecordHandling {
     toHex(digest.digest(record.getBytes("UTF-8")))
   }
 
-  class StoredRecordEnricher(pathPrefix: String, mappings: Map[String, TargetConcept]) {
+  class StoredRecordEnricher(pathPrefix: String, termMappings: Map[String, TargetConcept]) {
 
     val ENRICHMENT_NAMESPACES = Seq(
       "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -321,7 +337,7 @@ trait RecordHandling {
             if (text.nonEmpty) {
               val path = s"$pathPrefix${frame.path}/${value(text)}"
               val in = indent
-              val tagText = mappings.get(path).map { targetConcept =>
+              val tagText = termMappings.get(path).map { targetConcept =>
                 s"""$in${start.get}
                    |$in  <rdf:Description>
                    |$in    <rdfs:label>${frame.text}</rdfs:label>

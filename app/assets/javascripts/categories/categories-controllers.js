@@ -47,6 +47,7 @@ define(["angular"], function (angular) {
                 for (var walk = 0; walk < $scope.categories.length; walk++) {
                     var code = $scope.categories[walk].code;
                     var codeQuoted = "'"+code+"'";
+                    var busyClassQuoted= "'category-cell-busy'";
                     $scope.columnDefs.push({
                         field: 'category' + walk,
                         index: walk + 2,
@@ -55,8 +56,8 @@ define(["angular"], function (angular) {
                             '  <span class="category-header-text">' + code.toUpperCase() + '</span>' +
                             '</div>',
                         cellTemplate:
-                            '<div class="category-cell">' +
-                            '  <input type="checkbox" data-ng-model="row.entity.memberOf[' + codeQuoted + ']" ' +
+                            '<div class="category-cell" data-ng-class="{ '+busyClassQuoted+': (row.entity.busyCode == '+codeQuoted+') }">' +
+                            '  <input type="checkbox" class="category-checkbox" data-ng-model="row.entity.memberOf[' + codeQuoted + ']" ' +
                             '         data-ng-click="setGridValue(row.entity, ' + codeQuoted + ')"/>' +
                             '</div>'
                     })
@@ -98,8 +99,9 @@ define(["angular"], function (angular) {
                 category: code,
                 member: entity.memberOf[code]
             };
+            entity.busyCode = code;
             categoriesService.setCategoryMapping($scope.fileName, body).then(function (data) {
-//                console.log("set category mapping returns", data);
+                delete entity.busyCode;
             });
         };
 

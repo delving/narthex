@@ -58,7 +58,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
     case SaveRecords(modifiedAfter: Option[DateTime], file, recordRoot, uniqueId, recordCount, deepRecordContainer) =>
       log.info(s"Saving $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath})")
       modifiedAfter.map { after =>
-        val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
+        val parser = new PocketParser(recordRoot, uniqueId, deepRecordContainer)
         val (source, readProgress) = FileHandling.sourceFromFile(file)
         val progressReporter = ProgressReporter(UPDATING, datasetRepo.datasetDb)
         progressReporter.setReadProgress(readProgress)
@@ -102,7 +102,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
         var time = System.currentTimeMillis()
         future {
           datasetRepo.recordDb.withRecordDb { session =>
-            val parser = new RawRecordParser(recordRoot, uniqueId, deepRecordContainer)
+            val parser = new PocketParser(recordRoot, uniqueId, deepRecordContainer)
             val (source, readProgress) = FileHandling.sourceFromFile(file)
             val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
             progressReporter.setReadProgress(readProgress)
