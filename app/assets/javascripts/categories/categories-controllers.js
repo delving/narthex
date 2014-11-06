@@ -26,11 +26,16 @@ define(["angular"], function (angular) {
         }
         getSearchParams();
 
+        $scope.categoryHelp = {
+            code: "Details",
+            details: "Click on a column header for details"
+        };
         $scope.mappings = {};
         $scope.columnDefs = [];
         $scope.categoryGrid = {
             data: 'gridData',
-            columnDefs: "columnDefs"
+            columnDefs: "columnDefs",
+            enableRowSelection: false
         };
 
         categoriesService.datasetInfo($scope.fileName).then(function (datasetInfo) {
@@ -52,7 +57,7 @@ define(["angular"], function (angular) {
                         field: 'category' + walk,
                         index: walk + 2,
                         headerCellTemplate:
-                            '<div class="category-header" data-ng-click="clickCategoryHeader($index)">' +
+                            '<div class="category-header" data-ng-click="clickCategoryHeader($index - 2)">' +
                             '  <span class="category-header-text">' + code.toUpperCase() + '</span>' +
                             '</div>',
                         cellTemplate:
@@ -90,7 +95,8 @@ define(["angular"], function (angular) {
         });
 
         $scope.clickCategoryHeader = function(index) {
-            console.log("CLICK header", index);
+            $scope.categoryHelp = $scope.categories[index];
+//            console.log("CLICK header", $scope.categories[index]);
         };
 
         $scope.setGridValue = function(entity, code) {
