@@ -58,7 +58,7 @@ class CategoryDb(dbBaseName: String) {
       | let $$freshMapping :=
       |   <category-mapping>
       |     <source>$source</source>
-      |     <categories>${if (member) wrapped else ""}</categories>
+      |     <categories>$wrapped</categories>
       |   </category-mapping>
       | let $$categoryMapping := $dbPath/category-mapping[source=${quote(source)}]
       | let $$categoryList := $$categoryMapping/categories
@@ -68,7 +68,11 @@ class CategoryDb(dbBaseName: String) {
       |   then
       |      if (${!member}() and exists($$categoryList/$category))
       |      then
-      |          delete node $$categoryList/$category
+      |          if (count($$categoryList) > 1)
+      |          then
+      |              delete node $$categoryList/$category
+      |          else
+      |              delete node $$categoryMapping
       |      else
       |          if ($member() and not(exists($$categoryList/$category)))
       |          then
@@ -76,7 +80,11 @@ class CategoryDb(dbBaseName: String) {
       |          else
       |              ()
       |   else
-      |      insert node $$freshMapping into $dbPath
+      |      if ($member())
+      |      then
+      |          insert node $$freshMapping into $dbPath
+      |      else
+      |          ()
       |
       """.stripMargin.trim
     session.query(upsert).execute()

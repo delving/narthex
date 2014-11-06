@@ -45,7 +45,7 @@ class CategoryParser(recordRootPath: String, uniqueIdPath: String, deepRecordCon
         startTag = true
         attrs.foreach { attr =>
           val value = "\"" + attr.value.toString() + "\""
-          // todo: generrate uri for comparison
+          // todo: generate uri for comparison
           val uri = s" ${attr.prefixedKey}=$value"
           categoryMappings.get(uri).map(_.categories.foreach(recordCategories += _))
         }
@@ -99,6 +99,7 @@ class CategoryParser(recordRootPath: String, uniqueIdPath: String, deepRecordCon
           if (string == uniqueIdPath) uniqueId = Some(text)
           depth -= 1
           if (startTag) {
+            // todo: generate uri for comparison
             val uri = s"generated"
             categoryMappings.get(uri).map(_.categories.foreach(recordCategories += _))
           }
