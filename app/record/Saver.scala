@@ -25,7 +25,7 @@ import dataset.ProgressState.{SAVING, UPDATING}
 import org.basex.core.cmd.{Delete, Optimize}
 import org.joda.time.DateTime
 import play.api.Logger
-import record.RecordHandling.Pocket
+import record.PocketParser.Pocket
 import record.Saver.{SaveComplete, SaveRecords}
 import services.{FileHandling, ProgressReporter}
 
@@ -42,7 +42,7 @@ object Saver {
 
 }
 
-class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
+class Saver(val datasetRepo: DatasetRepo) extends Actor {
 
   import context.dispatcher
 
@@ -53,7 +53,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
   def receive = {
 
     case InterruptWork() =>
-      progress.map(_.bomb = Some(sender)).getOrElse(context.stop(self))
+      progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
     case SaveRecords(modifiedAfter: Option[DateTime], file, recordRoot, uniqueId, recordCount, deepRecordContainer) =>
       log.info(s"Saving $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath})")
@@ -79,7 +79,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
               }
               val path = datasetRepo.createPocketPath(pocket)
               log.info(s"Adding $path")
-              session.add(path, bytesOf(pocket.text))
+              session.add(path, pocket.textBytes)
             }
             try {
               parser.parse(source, Set.empty[String], receiveRecord, progressReporter)
@@ -114,7 +114,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with RecordHandling {
                 Logger.info(s"$datasetRepo $tick: ${now - time}ms")
                 time = now
               }
-              session.add(datasetRepo.createPocketPath(pocket), bytesOf(pocket.text))
+              session.add(datasetRepo.createPocketPath(pocket), pocket.textBytes)
             }
             try {
               if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {

@@ -7,15 +7,14 @@ import harvest.Harvesting._
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
-import record.RecordHandling
-import record.RecordHandling.Pocket
+import record.PocketParser._
 import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable
 import scala.xml.XML
 
 
-class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
+class TestHarvestRepo extends FlatSpec with Matchers {
 
   def fresh(dir: String): File = {
     val file = new File(dir)
@@ -70,7 +69,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
       content should be("final")
     }
 
-    harvestRepo.parse(receiveRecord, ProgressReporter())
+    harvestRepo.parsePockets(receiveRecord, ProgressReporter())
 
     recordCount should be(4)
 
@@ -114,7 +113,7 @@ class TestHarvestRepo extends FlatSpec with Matchers with RecordHandling {
       content should be("final")
     }
 
-    harvestRepo.parse(receiveRecord, ProgressReporter())
+    harvestRepo.parsePockets(receiveRecord, ProgressReporter())
 
     recordCount should be(4)
   }

@@ -7,10 +7,11 @@ import analysis.TreeHandling
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
 import org.xml.sax.InputSource
-import record.RecordHandling
-import record.RecordHandling._
+import record.EnrichmentParser
+import record.EnrichmentParser._
+import record.PocketParser._
 
-class TestTermMatching extends FlatSpec with Matchers with TreeHandling with RecordHandling {
+class TestTermMatching extends FlatSpec with Matchers with TreeHandling {
 
     val userHome: String = "/tmp/narthex-user"
     System.setProperty("user.home", userHome)
@@ -79,7 +80,7 @@ class TestTermMatching extends FlatSpec with Matchers with TreeHandling with Rec
         |</record>
       """.stripMargin.trim
 
-    val parser = new StoredRecordEnricher(filePrefix, mappings)
+    val parser = new EnrichmentParser(filePrefix, mappings)
     val record = parser.parse(storedString)
     val recordText = record(0).text.toString().trim
 

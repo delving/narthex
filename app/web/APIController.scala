@@ -27,12 +27,12 @@ import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import record.RecordHandling
+import record.EnrichmentParser
 import services._
 import web.Application.{OkFile, OkXml}
 import web.Dashboard._
 
-object APIController extends Controller with TreeHandling with RecordHandling {
+object APIController extends Controller with TreeHandling {
 
   def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
@@ -114,7 +114,7 @@ object APIController extends Controller with TreeHandling with RecordHandling {
           }
         }
         else {
-          val records = parseStoredRecords(storedRecord)
+          val records = EnrichmentParser.parseStoredRecords(storedRecord)
           if (records.nonEmpty) {
             val record = records.head
             OkXml(record.text.toString())

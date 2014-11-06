@@ -21,8 +21,8 @@ import java.nio.file.Files
 import harvest.Harvesting.HarvestType
 import org.apache.commons.io.FileUtils
 import play.api.Logger
-import record.RecordHandling
-import record.RecordHandling.{Pocket, _}
+import record.PocketParser
+import record.PocketParser._
 import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable
@@ -44,7 +44,7 @@ import scala.io.Source
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandling {
+class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
   val MAX_FILES = 100
 
   private def numberString(number: Int): String = "%05d".format(number)
@@ -162,7 +162,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
     targetFile
   })
 
-  def parse(output: Pocket => Unit, progressReporter: ProgressReporter): Map[String, String] = {
+  def parsePockets(output: Pocket => Unit, progressReporter: ProgressReporter): Map[String, String] = {
     val parser = new PocketParser(harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
@@ -193,7 +193,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) extends RecordHandl
         Logger.info(s"Generating record $recordCount")
       }
     }
-    val namespaceMap = parse(pocketWriter, progressReporter)
+    val namespaceMap = parsePockets(pocketWriter, progressReporter)
     out.write( s"""</$POCKET_LIST>\n""")
     out.close()
     setNamespaceMap(namespaceMap)

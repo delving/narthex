@@ -33,8 +33,9 @@ import org.{OrgActor, OrgRepo}
 import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
-import record.RecordHandling.{Pocket, StoredRecord, TargetConcept}
-import record.{RecordDb, RecordHandling}
+import record.EnrichmentParser._
+import record.PocketParser._
+import record.{EnrichmentParser, RecordDb}
 import services.FileHandling.clearDir
 import services.Temporal._
 import services._
@@ -43,7 +44,7 @@ import scala.concurrent.Await
 
 // todo: use the actor's execution context?
 
-class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling {
+class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
 
   val rootDir = new File(orgRepo.datasetsDir, name)
   val incomingDir = new File(rootDir, "incoming")
@@ -227,7 +228,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) extends RecordHandling
       termDb.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
     }
     val pathPrefix = s"${NarthexConfig.ORG_ID}/$name"
-    val parser = new StoredRecordEnricher(pathPrefix, mappings)
+    val parser = new EnrichmentParser(pathPrefix, mappings)
     parser.parse(storedRecords)
   }
 

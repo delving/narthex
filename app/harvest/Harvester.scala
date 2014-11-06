@@ -29,7 +29,6 @@ import harvest.Harvesting.{AdLibHarvestPage, HarvestError, PMHHarvestPage}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
-import record.RecordHandling
 import services.ProgressReporter
 
 import scala.concurrent._
@@ -46,7 +45,7 @@ object Harvester {
   def props(datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) = Props(new Harvester(datasetRepo, harvestRepo))
 }
 
-class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends Actor with RecordHandling with Harvesting {
+class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends Actor with Harvesting {
 
   import context.dispatcher
 

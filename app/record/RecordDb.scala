@@ -22,8 +22,8 @@ import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
+import record.PocketParser._
 import record.RecordDb.FoundRecord
-import record.RecordHandling._
 import services.BaseX._
 import services.Temporal._
 import services._
@@ -43,7 +43,7 @@ object RecordDb {
 
 }
 
-class RecordDb(datasetRepo: DatasetRepo, dbName: String) extends RecordHandling {
+class RecordDb(datasetRepo: DatasetRepo, dbName: String) {
 
   val recordDb = s"${dbName}_records"
 

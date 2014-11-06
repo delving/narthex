@@ -24,7 +24,7 @@ import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.mvc._
-import record.RecordHandling.StoredRecord
+import record.EnrichmentParser._
 import services.NarthexConfig._
 import services.Temporal._
 import services._

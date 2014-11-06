@@ -24,8 +24,7 @@ import org.OrgRepo._
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
-import record.RecordHandling
-import record.RecordHandling.StoredRecord
+import record.EnrichmentParser._
 import services.Temporal._
 import services._
 
@@ -76,7 +75,7 @@ object OrgRepo {
 
 }
 
-class OrgRepo(userHome: String, val orgId: String) extends RecordHandling {
+class OrgRepo(userHome: String, val orgId: String) {
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "dastasets")
@@ -146,7 +145,7 @@ class OrgRepo(userHome: String, val orgId: String) extends RecordHandling {
       val start = 1 + (harvest.currentPage - 1) * pageSize
       val repo = datasetRepo(harvest.repoName)
       val storedRecords = repo.recordDb.recordHarvest(harvest.from, harvest.until, start, pageSize)
-      val records = if (enriched) repo.enrichRecords(storedRecords) else repo.parseStoredRecords(storedRecords)
+      val records = if (enriched) repo.enrichRecords(storedRecords) else parseStoredRecords(storedRecords)
       harvest.next.map { next =>
         Cache.set(next.resumptionToken.value, next, 2 minutes)
         (records, Some(next.resumptionToken))
