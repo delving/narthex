@@ -43,16 +43,16 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
   def output(recordCategories: List[String]) = {
     for (
       a <- recordCategories
-    ) yield increment(s"[$a]")
+    ) yield increment(a)
     for (
       a <- recordCategories;
       b <- recordCategories if b > a
-    ) yield increment(s"[$a,$b]")
+    ) yield increment(s"$a:$b")
     for (
       a <- recordCategories;
       b <- recordCategories if b > a;
       c <- recordCategories if c > b
-    ) yield increment(s"[$a,$b,$c]")
+    ) yield increment(s"$a:$b:$c")
     recordCount += 1
   }
 

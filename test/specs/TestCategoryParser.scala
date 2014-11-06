@@ -55,7 +55,9 @@ class TestCategoryParser extends FlatSpec with Matchers {
     println(s"cat map $countMap")
     reply should be(true)
     categoryParser.recordCount should be(4724)
-    val expected = "Map([bldh] -> 13, [grfk] -> 16, [schi] -> 280, [grfk,kemk] -> 16, [grfk,schi] -> 16, [kemk] -> 16, [schi,tekn] -> 23, [tekn] -> 24, [grfk,kemk,schi] -> 16, [kemk,schi] -> 16)"
+    val expected =
+      "Map(bldh -> 13, kemk -> 16, schi:tekn -> 23, grfk:kemk:schi -> 16, kemk:schi -> 16,"+
+      " grfk:kemk -> 16, schi -> 280, tekn -> 24, grfk:schi -> 16, grfk -> 16)"
     countMap.toString() should be(expected)
   }
 }
