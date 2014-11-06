@@ -3,7 +3,6 @@ package specs
 import java.io.{ByteArrayInputStream, File}
 import javax.xml.parsers.DocumentBuilderFactory
 
-import analysis.TreeHandling
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
 import org.xml.sax.InputSource
@@ -11,7 +10,7 @@ import record.EnrichmentParser
 import record.EnrichmentParser._
 import record.PocketParser._
 
-class TestTermMatching extends FlatSpec with Matchers with TreeHandling {
+class TestTermMatching extends FlatSpec with Matchers {
 
     val userHome: String = "/tmp/narthex-user"
     System.setProperty("user.home", userHome)

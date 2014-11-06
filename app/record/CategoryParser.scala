@@ -18,6 +18,7 @@ package record
 
 import mapping.CategoryDb.CategoryMapping
 import play.Logger
+import record.CategoryParser.Counter
 import services.{FileHandling, NarthexEventReader, ProgressReporter}
 
 import scala.collection.mutable
@@ -25,13 +26,38 @@ import scala.io.Source
 import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding}
 
-class CategoryParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None, categoryMappings: Map[String, CategoryMapping]) {
-  val path = new mutable.Stack[(String, StringBuilder)]
+object CategoryParser {
+
+  case class Counter(var count: Int)
+
+}
+
+class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None, categoryMappings: Map[String, CategoryMapping]) {
+  var countMap = new collection.mutable.HashMap[String, Counter]()
   var percentWas = -1
   var lastProgress = 0l
   var recordCount = 0
 
-  def parse(source: Source, avoidIds: Set[String], output: Set[String] => Unit, progressReporter: ProgressReporter) = {
+  def increment(key: String): Unit = countMap.getOrElseUpdate(key, new Counter(1)).count += 1
+
+  def output(recordCategories: List[String]) = {
+    for (
+      a <- recordCategories
+    ) yield increment(s"[$a]")
+    for (
+      a <- recordCategories;
+      b <- recordCategories if b > a
+    ) yield increment(s"[$a,$b]")
+    for (
+      a <- recordCategories;
+      b <- recordCategories if b > a;
+      c <- recordCategories if c > b
+    ) yield increment(s"[$a,$b,$c]")
+    recordCount += 1
+  }
+
+  def parse(source: Source, avoidIds: Set[String], progressReporter: ProgressReporter) = {
+    val path = new mutable.Stack[(String, StringBuilder)]
     val events = new NarthexEventReader(source)
     var depth = 0
     var recordCategories = new mutable.TreeSet[String]()
@@ -39,32 +65,50 @@ class CategoryParser(recordRootPath: String, uniqueIdPath: String, deepRecordCon
     var uniqueId: Option[String] = None
     var running = true
 
+    def pathString = path.reverse.map(_._1).mkString("/", "/", "")
+
+    def recordPathString = pathString.substring(pathContainer(recordRootPath).length)
+
+    def pathContainer(string: String) = string.substring(0, string.lastIndexOf("/"))
+
+    def generateUri(value: String) = s"$pathPrefix$recordPathString/${FileHandling.urlEncodeValue(value)}"
+
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
       def categoriesFromAttrs() = {
-        recordCategories.clear()
-        startTag = true
         attrs.foreach { attr =>
-          val value = "\"" + attr.value.toString() + "\""
-          // todo: generate uri for comparison
-          val uri = s" ${attr.prefixedKey}=$value"
+          path.push((s"@${attr.prefixedKey}", new StringBuilder()))
+          val uri = generateUri(attr.value.toString())
           categoryMappings.get(uri).map(_.categories.foreach(recordCategories += _))
+          path.pop()
         }
+      }
+      def findUniqueId(attrs: MetaData) = attrs.foreach { attr =>
+        path.push((s"@${attr.prefixedKey}", new StringBuilder()))
+        if (pathString == uniqueIdPath) uniqueId = Some(attr.value.toString())
+        path.pop()
       }
       path.push((tag, new StringBuilder()))
       val string = pathString
       if (depth > 0) {
         depth += 1
+        startTag = true
         categoriesFromAttrs()
+        findUniqueId(attrs)
       }
       else if (string == recordRootPath) {
         if (deepRecordContainer.isEmpty) {
           depth = 1
+          startTag = true
+          recordCategories.clear()
           categoriesFromAttrs()
         }
+        findUniqueId(attrs)
       }
       else deepRecordContainer.foreach { recordContainer =>
         if (pathContainer(string) == recordContainer) {
           depth = 1
+          recordCategories.clear()
+          startTag = true
           categoriesFromAttrs()
         }
       }
@@ -77,31 +121,30 @@ class CategoryParser(recordRootPath: String, uniqueIdPath: String, deepRecordCon
       val fieldText = path.head._2
       val text = FileHandling.crunchWhitespace(fieldText.toString())
       fieldText.clear()
-      path.pop()
       if (depth > 0) {
         // deep record means check container instead
         val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _).getOrElse(string == recordRootPath)
         if (hitRecordRoot) {
           val categorySet = uniqueId.map { id =>
             if (id.isEmpty) throw new RuntimeException("Empty unique id!")
-            if (avoidIds.contains(id)) None else Some(recordCategories.toSet)
+            if (avoidIds.contains(id)) None else Some(recordCategories.toList.sorted)
           } getOrElse {
             throw new RuntimeException("Missing id!")
           }
-          categorySet.foreach { categories =>
-            output(categories)
-            recordCount += 1
-          }
+          categorySet.foreach(output)
           recordCategories.clear()
           depth = 0
         }
         else {
           if (string == uniqueIdPath) uniqueId = Some(text)
           depth -= 1
-          if (startTag) {
-            // todo: generate uri for comparison
-            val uri = s"generated"
-            categoryMappings.get(uri).map(_.categories.foreach(recordCategories += _))
+          if (startTag && text.nonEmpty) {
+            val uri = generateUri(text)
+            categoryMappings.get(uri).map { mapping =>
+              mapping.categories.foreach { category =>
+                recordCategories += category
+              }
+            }
           }
         }
       }
@@ -109,6 +152,7 @@ class CategoryParser(recordRootPath: String, uniqueIdPath: String, deepRecordCon
         // if there is a deep record, we find the unique idea outside of it
         uniqueId = Some(text)
       }
+      path.pop()
     }
 
     while (events.hasNext && progressReporter.keepReading(recordCount)) {
@@ -124,9 +168,5 @@ class CategoryParser(recordRootPath: String, uniqueIdPath: String, deepRecordCon
     progressReporter.keepWorking
   }
 
-  def pathString = path.reverse.map(_._1).mkString("/", "/", "")
-
-  def pathContainer(string: String) = string.substring(0, string.lastIndexOf("/"))
-
-  def showPath() = Logger.info(pathString)
+  def categoryCounts: Map[String, Int] = countMap.map(entry => (entry._1, entry._2.count)).toList.sortBy(_._1).toMap
 }

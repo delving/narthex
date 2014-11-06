@@ -16,7 +16,6 @@
 
 package web
 
-import analysis.TreeHandling
 import dataset.DatasetOrigin.DROP
 import dataset.DatasetState.{EMPTY, SOURCED}
 import dataset.{DatasetDb, DatasetState}
@@ -37,7 +36,7 @@ import play.api.mvc._
 import services.FileHandling.clearDir
 import web.Application.OkFile
 
-object Dashboard extends Controller with Security with TreeHandling {
+object Dashboard extends Controller with Security {
 
   val DATASET_PROPERTY_LISTS = List(
     "origin",

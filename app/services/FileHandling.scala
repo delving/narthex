@@ -17,6 +17,7 @@
 package services
 
 import java.io.{BufferedInputStream, File, FileInputStream, InputStream}
+import java.net.URLEncoder
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipFile}
 
 import org.apache.commons.io.FileUtils._
@@ -111,6 +112,13 @@ object FileHandling {
     case "gt" => ">"
     case "apos" => "'"
     case x => ""
+  }
+
+  def urlEncodeValue(unencoded: String) = {
+    URLEncoder.encode(unencoded, "utf-8")
+      .replaceAll("[+]", "%20")
+      .replaceAll("[%]28", "(")
+      .replaceAll("[%]29", ")")
   }
 
   def getZipFileSize(zipFile: ZipFile) = {

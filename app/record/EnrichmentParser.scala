@@ -16,8 +16,6 @@
 
 package record
 
-import java.net.URLEncoder
-
 import org.joda.time.DateTime
 import play.Logger
 import record.EnrichmentParser.{StoredRecord, TargetConcept}
@@ -87,12 +85,6 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
 
     def pushText(text: String) = if (stack.nonEmpty) stack.head.text.append(text)
     def indent = "  " * (stack.size - 1)
-    def value(unencoded: String) = {
-      URLEncoder.encode(unencoded, "utf-8")
-        .replaceAll("[+]", "%20")
-        .replaceAll("[%]28", "(")
-        .replaceAll("[%]29", ")")
-    }
 
     while (events.hasNext) events.next() match {
 
@@ -137,7 +129,7 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
           val tag = frame.tag
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
-            val path = s"$pathPrefix${frame.path}/${value(text)}"
+            val path = s"$pathPrefix${frame.path}/${FileHandling.urlEncodeValue(text)}"
             val in = indent
             val tagText = termMappings.get(path).map { targetConcept =>
               s"""$in${start.get}

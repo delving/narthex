@@ -19,7 +19,8 @@ package web
 import java.io.FileInputStream
 import java.util.zip.ZipFile
 
-import analysis.TreeHandling
+import analysis.TreeNode
+import analysis.TreeNode.ReadTreeNode
 import dataset.DatasetState._
 import dataset.{DatasetDb, DatasetOrigin}
 import org.OrgRepo.repo
@@ -32,7 +33,7 @@ import services._
 import web.Application.{OkFile, OkXml}
 import web.Dashboard._
 
-object APIController extends Controller with TreeHandling {
+object APIController extends Controller {
 
   def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) {
     implicit request => {
@@ -53,7 +54,7 @@ object APIController extends Controller with TreeHandling {
       val string = IOUtils.toString(new FileInputStream(treeFile))
       val json = Json.parse(string)
       val tree = json.as[ReadTreeNode]
-      val paths = gatherPaths(tree, new Call(request.method, request.path).absoluteURL())
+      val paths = TreeNode.gatherPaths(tree, new Call(request.method, request.path).absoluteURL())
       val pathJson = Json.toJson(paths)
       Ok(Json.prettyPrint(pathJson)).as(ContentTypes.JSON)
     }

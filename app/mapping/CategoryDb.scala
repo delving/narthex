@@ -20,7 +20,7 @@ import org.basex.server.ClientSession
 import play.api.libs.json.{Json, Writes}
 import services.BaseX._
 
-import scala.xml.XML
+import scala.xml.{NodeSeq, XML}
 
 /**
  * @author Gerald de Jong <gerald@delving.eu
@@ -37,6 +37,14 @@ object CategoryDb {
 
   case class CategoryMapping(source: String, categories: Seq[String])
 
+  def getList(nodeSeq: NodeSeq): Seq[CategoryMapping] = {
+    (nodeSeq \ "category-mapping").map { mappingNode =>
+      CategoryMapping(
+        (mappingNode \ "source").text,
+        (mappingNode \ "categories" \ "_").map(_.label)
+      )
+    }
+  }
 }
 
 class CategoryDb(dbBaseName: String) {
@@ -110,12 +118,7 @@ class CategoryDb(dbBaseName: String) {
   def getMappings: Seq[CategoryMapping] = withCategoryDb[Seq[CategoryMapping]] { session =>
     val mappings = session.query(dbPath).execute()
     val xml = XML.loadString(mappings)
-    (xml \ "category-mapping").map { mappingNode =>
-      CategoryMapping(
-        (mappingNode \ "source").text,
-        (mappingNode \ "categories" \ "_").map(_.label)
-      )
-    }
+    CategoryDb.getList(xml)
   }
 
 }

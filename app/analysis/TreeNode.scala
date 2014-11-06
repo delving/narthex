@@ -18,6 +18,7 @@ package analysis
 
 import java.io.{BufferedWriter, FileWriter}
 
+import analysis.TreeNode.LengthHistogram
 import dataset.DatasetRepo
 import org.OrgRepo
 import org.apache.commons.io.FileUtils
@@ -32,145 +33,72 @@ import scala.io.Source
 import scala.util.Random
 import scala.xml.pull._
 
-trait TreeHandling {
+object TreeNode {
 
-  class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
-    val MAX_LIST = 10000
-    var kids = Map.empty[String, TreeNode]
-    var count = 0
-    var lengths = new LengthHistogram()
-    var valueBuilder = new StringBuilder
-    var valueListSize = 0
-    var valueList = List.empty[String]
+  def apply(source: Source, length: Long, datasetRepo: DatasetRepo, progressReporter: ProgressReporter): Option[TreeNode] = {
+    val base = new TreeNode(datasetRepo.rootNode, null, null)
+    var node = base
+    // todo: find a way out of https://issues.scala-lang.org/browse/SI-4267
+    val events = new NarthexEventReader(source)
 
-    def flush() = {
-      val writer = new BufferedWriter(new FileWriter(nodeRepo.values, true))
-      valueList.foreach {
-        line =>
-          writer.write(line)
-          writer.newLine()
-      }
-      valueList = List.empty[String]
-      valueListSize = 0
-      writer.close()
-    }
+    try {
+      while (events.hasNext && progressReporter.keepReading()) {
 
-    def kid(tag: String) = {
-      kids.get(tag) match {
-        case Some(kid) => kid
-        case None =>
-          val kid = new TreeNode(nodeRepo.child(tag), this, tag)
-          kids += tag -> kid
-          kid
-      }
-    }
+        events.next() match {
 
-    def start(): TreeNode = {
-      count += 1
-      valueBuilder.clear()
-      this
-    }
+          case EvElemStart(pre, label, attrs, scope) =>
+            node = node.kid(FileHandling.tag(pre, label)).start()
+            attrs.foreach {
+              attr =>
+                val kid = node.kid(s"@${attr.prefixedKey}").start()
+                kid.value(attr.value.toString())
+                kid.end()
+            }
 
-    def value(value: String): TreeNode = {
-      valueBuilder.append(value)
-      this
-    }
+          case EvText(text) =>
+            node.value(text)
 
-    def end() = {
-      var value = FileHandling.crunchWhitespace(valueBuilder.toString())
-      if (!value.isEmpty) {
-        lengths.record(value)
-        valueList = value :: valueList
-        valueListSize += 1
-        if (valueListSize >= MAX_LIST) flush()
-      }
-    }
+          case EvEntityRef(entity) => node.value(FileHandling.translateEntity(entity))
 
-    def finish(): Unit = {
-      flush()
-      val index = kids.values.map(kid => OrgRepo.pathToDirectory(kid.tag)).mkString("\n")
-      FileUtils.writeStringToFile(nodeRepo.indexText, index)
-      kids.values.foreach(_.finish())
-    }
+          case EvElemEnd(pre, label) =>
+            node.end()
+            node = node.parent
 
-    def launchSorters(sortStarter: TreeNode => Unit): Unit = {
-      sortStarter(this)
-      kids.values.foreach(_.launchSorters(sortStarter))
-    }
+          case EvComment(text) =>
+            FileHandling.stupidParser(text, string => node.value(FileHandling.translateEntity(string)))
 
-    def path: String = {
-      if (tag == null) "" else parent.path + s"/$tag"
-    }
-
-    override def toString = s"TreeNode($tag)"
-  }
-
-  object TreeNode {
-
-    def apply(source: Source, length: Long, datasetRepo: DatasetRepo, progressReporter: ProgressReporter): Option[TreeNode] = {
-      val base = new TreeNode(datasetRepo.rootNode, null, null)
-      var node = base
-      // todo: find a way out of https://issues.scala-lang.org/browse/SI-4267
-      val events = new NarthexEventReader(source)
-
-      try {
-        while (events.hasNext && progressReporter.keepReading()) {
-
-          events.next() match {
-
-            case EvElemStart(pre, label, attrs, scope) =>
-              node = node.kid(FileHandling.tag(pre, label)).start()
-              attrs.foreach {
-                attr =>
-                  val kid = node.kid(s"@${attr.prefixedKey}").start()
-                  kid.value(attr.value.toString())
-                  kid.end()
-              }
-
-            case EvText(text) =>
-              node.value(text)
-
-            case EvEntityRef(entity) => node.value(FileHandling.translateEntity(entity))
-
-            case EvElemEnd(pre, label) =>
-              node.end()
-              node = node.parent
-
-            case EvComment(text) =>
-              FileHandling.stupidParser(text, string => node.value(FileHandling.translateEntity(string)))
-
-            case x =>
-              println("EVENT? " + x) // todo: record these in an error file for later
-          }
+          case x =>
+            println("EVENT? " + x) // todo: record these in an error file for later
         }
       }
-//      catch {
-//        case e:Exception =>
-//          if (progressReporter.keepReading) {
-//            Logger.info(s"keep reading so.. $e")
-//            throw e
-//          }
-//          else {
-//            Logger.info(s"Eating exception $e")
-//          }
-//      }
-      finally {
-        Logger.info(s"Stopping events $datasetRepo")
-        events.stop()
-      }
-      if (progressReporter.keepWorking) {
-        val root = base.kids.values.head
-        base.finish()
-        val pretty = Json.prettyPrint(Json.toJson(root))
-        FileUtils.writeStringToFile(datasetRepo.index, pretty, "UTF-8")
-        Some(root)
-      }
-      else {
-        Logger.info(s"Interrupted TreeNode $datasetRepo")
-        None
-      }
+    }
+    //      catch {
+    //        case e:Exception =>
+    //          if (progressReporter.keepReading) {
+    //            Logger.info(s"keep reading so.. $e")
+    //            throw e
+    //          }
+    //          else {
+    //            Logger.info(s"Eating exception $e")
+    //          }
+    //      }
+    finally {
+      Logger.info(s"Stopping events $datasetRepo")
+      events.stop()
+    }
+    if (progressReporter.keepWorking) {
+      val root = base.kids.values.head
+      base.finish()
+      val pretty = Json.prettyPrint(Json.toJson(root))
+      FileUtils.writeStringToFile(datasetRepo.index, pretty, "UTF-8")
+      Some(root)
+    }
+    else {
+      Logger.info(s"Interrupted TreeNode $datasetRepo")
+      None
     }
   }
+
 
   case class LengthRange(from: Int, to: Int = 0) {
 
@@ -273,4 +201,78 @@ trait TreeHandling {
     (JsPath \ "path").write[String] and
       (JsPath \ "count").write[Int]
     )(unlift(PathNode.unapply))
+
 }
+
+
+class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
+  val MAX_LIST = 10000
+  var kids = Map.empty[String, TreeNode]
+  var count = 0
+  var lengths = new LengthHistogram()
+  var valueBuilder = new StringBuilder
+  var valueListSize = 0
+  var valueList = List.empty[String]
+
+  def flush() = {
+    val writer = new BufferedWriter(new FileWriter(nodeRepo.values, true))
+    valueList.foreach {
+      line =>
+        writer.write(line)
+        writer.newLine()
+    }
+    valueList = List.empty[String]
+    valueListSize = 0
+    writer.close()
+  }
+
+  def kid(tag: String) = {
+    kids.get(tag) match {
+      case Some(kid) => kid
+      case None =>
+        val kid = new TreeNode(nodeRepo.child(tag), this, tag)
+        kids += tag -> kid
+        kid
+    }
+  }
+
+  def start(): TreeNode = {
+    count += 1
+    valueBuilder.clear()
+    this
+  }
+
+  def value(value: String): TreeNode = {
+    valueBuilder.append(value)
+    this
+  }
+
+  def end() = {
+    var value = FileHandling.crunchWhitespace(valueBuilder.toString())
+    if (!value.isEmpty) {
+      lengths.record(value)
+      valueList = value :: valueList
+      valueListSize += 1
+      if (valueListSize >= MAX_LIST) flush()
+    }
+  }
+
+  def finish(): Unit = {
+    flush()
+    val index = kids.values.map(kid => OrgRepo.pathToDirectory(kid.tag)).mkString("\n")
+    FileUtils.writeStringToFile(nodeRepo.indexText, index)
+    kids.values.foreach(_.finish())
+  }
+
+  def launchSorters(sortStarter: TreeNode => Unit): Unit = {
+    sortStarter(this)
+    kids.values.foreach(_.launchSorters(sortStarter))
+  }
+
+  def path: String = {
+    if (tag == null) "" else parent.path + s"/$tag"
+  }
+
+  override def toString = s"TreeNode($tag)"
+}
+

@@ -163,8 +163,8 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
     targetFile
   })
 
-  def parseCategories(output: Set[String] => Unit, categoryMappings: Map[String, CategoryMapping], progressReporter: ProgressReporter) = {
-    val parser = new CategoryParser(harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer, categoryMappings)
+  def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progressReporter: ProgressReporter):Map[String, Int] = {
+    val parser = new CategoryParser(pathPrefix, harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer, categoryMappings)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
@@ -173,9 +173,10 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
       var idSet = avoidSet(zipFile)
       val (source, readProgress) = FileHandling.sourceFromFile(zipFile)
       // ignore this read progress because it's one of many files
-      parser.parse(source, idSet.toSet, output, progressReporter)
+      parser.parse(source, idSet.toSet, progressReporter)
       source.close()
     }
+    parser.categoryCounts
   }
 
   def parsePockets(output: Pocket => Unit, progressReporter: ProgressReporter): Map[String, String] = {

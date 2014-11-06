@@ -24,6 +24,7 @@ import analysis.Collator._
 import analysis.Merger._
 import analysis.NodeRepo._
 import analysis.Sorter._
+import analysis.TreeNode.RandomSample
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
 import dataset.ProgressState._
@@ -50,7 +51,7 @@ object Analyzer {
 
 }
 
-class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
+class Analyzer(val datasetRepo: DatasetRepo) extends Actor {
   val log = Logger
   val db = datasetRepo.datasetDb
   val LINE = """^ *(\d*) (.*)$""".r
@@ -62,7 +63,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with TreeHandling {
 
     case InterruptWork() =>
       log.info(s"Interrupted analysis $datasetRepo")
-      progress.map(_.bomb = Some(sender)).getOrElse(context.stop(self))
+      progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
     case AnalyzeFile(file) =>
       log.info(s"Analyzer on ${file.getName}")
@@ -174,7 +175,7 @@ object Collator {
   def props(nodeRepo: NodeRepo) = Props(new Collator(nodeRepo))
 }
 
-class Collator(val nodeRepo: NodeRepo) extends Actor with TreeHandling {
+class Collator(val nodeRepo: NodeRepo) extends Actor {
 
   def receive = {
 
