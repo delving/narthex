@@ -17,8 +17,9 @@
 package record
 
 import mapping.CategoryDb.CategoryMapping
+import org.apache.poi.xssf.usermodel._
 import play.Logger
-import record.CategoryParser.Counter
+import record.CategoryParser.{CategoryCount, Counter}
 import services.{FileHandling, NarthexEventReader, ProgressReporter}
 
 import scala.collection.mutable
@@ -29,6 +30,33 @@ import scala.xml.{MetaData, NamespaceBinding}
 object CategoryParser {
 
   case class Counter(var count: Int)
+
+  case class CategoryCount(category: String, count: Int, dataset: String)
+
+  case class CountCollection(list: List[CategoryCount]) {
+    val categories = list.map(_.category).distinct.sorted.zipWithIndex
+    val datasets = list.map(_.dataset).distinct.sorted.zipWithIndex
+
+    def categoriesPerDataset: XSSFWorkbook = {
+      val workbook = new XSSFWorkbook
+      val sheet = workbook.createSheet("Categories per Dataset")
+      val row = sheet.createRow(0)
+      categories.foreach { categoryI =>
+        row.createCell(categoryI._2 + 1).setCellValue(categoryI._1)
+      }
+      datasets.foreach { datasetI =>
+        val row = sheet.createRow(datasetI._2 + 1)
+        row.createCell(0).setCellValue(datasetI._1)
+        categories.foreach { categoryI =>
+          val cellOpt = list.find(count => count.category == categoryI._1 && count.dataset == datasetI._1)
+          cellOpt.foreach { cell =>
+            row.createCell(categoryI._2 + 1).setCellValue(cell.count)
+          }
+        }
+      }
+      workbook
+    }
+  }
 
 }
 
@@ -47,12 +75,12 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
     for (
       a <- recordCategories;
       b <- recordCategories if b > a
-    ) yield increment(s"$a:$b")
+    ) yield increment(s"$a-$b")
     for (
       a <- recordCategories;
       b <- recordCategories if b > a;
       c <- recordCategories if c > b
-    ) yield increment(s"$a:$b:$c")
+    ) yield increment(s"$a-$b-$c")
     recordCount += 1
   }
 
@@ -168,5 +196,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
     progressReporter.keepWorking
   }
 
-  def categoryCounts: Map[String, Int] = countMap.map(entry => (entry._1, entry._2.count)).toList.sortBy(_._1).toMap
+  def categoryCounts: List[CategoryCount] = countMap.map(
+    count => CategoryCount(count._1, count._2.count, pathPrefix)
+  ).toList
 }

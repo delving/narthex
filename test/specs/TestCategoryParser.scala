@@ -3,9 +3,9 @@ package specs
 import java.io.{File, FileOutputStream}
 
 import mapping.CategoryDb
-import org.apache.poi.xssf.usermodel._
 import org.scalatest.{FlatSpec, Matchers}
 import record.CategoryParser
+import record.CategoryParser.CountCollection
 import services.{FileHandling, ProgressReporter}
 
 class TestCategoryParser extends FlatSpec with Matchers {
@@ -52,33 +52,16 @@ class TestCategoryParser extends FlatSpec with Matchers {
     val categoryParser = new CategoryParser(pathPrefix, recordRoot, uniqueId, None, categoryMappings)
     case class Counter(var count: Int)
     val reply = categoryParser.parse(source, Set.empty[String], ProgressReporter())
-    val countMap = categoryParser.categoryCounts
-    println(s"cat map $countMap")
+    val countList = categoryParser.categoryCounts
+    println(s"cat map $countList")
     reply should be(true)
     categoryParser.recordCount should be(4724)
-    val expected =
-      "Map(bldh -> 13, kemk -> 16, schi:tekn -> 23, grfk:kemk:schi -> 16, kemk:schi -> 16," +
-        " grfk:kemk -> 16, schi -> 280, tekn -> 24, grfk:schi -> 16, grfk -> 16)"
-    countMap.toString() should be(expected)
+    countList.size should be(10)
 
-    val wb = new XSSFWorkbook
-    val sheet = wb.createSheet("Categories")
-    var rowNumber = 0
-    countMap.map { entry =>
-      var row = sheet.createRow(rowNumber)
-      row.createCell(0).setCellValue(entry._1)
-      row.createCell(1).setCellValue(entry._2)
-      rowNumber += 1
-    }
-
-    def createSpreadsheet() = {
-      val home = new File(System.getProperty("user.home"));
-      val excel = new File(home, "categories.xlsx")
-      val fos = new FileOutputStream(excel)
-      wb.write(fos)
-      fos.close()
-    }
-
-
+    val home = new File(System.getProperty("user.home"))
+    val excel = new File(home, "categories.xlsx")
+    val fos = new FileOutputStream(excel)
+    CountCollection(countList).categoriesPerDataset.write(fos)
+    fos.close()
   }
 }

@@ -22,6 +22,7 @@ import harvest.Harvesting.HarvestType
 import mapping.CategoryDb.CategoryMapping
 import org.apache.commons.io.FileUtils
 import play.api.Logger
+import record.CategoryParser.CategoryCount
 import record.PocketParser._
 import record.{CategoryParser, PocketParser}
 import services.{FileHandling, ProgressReporter}
@@ -163,7 +164,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
     targetFile
   })
 
-  def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progressReporter: ProgressReporter):Map[String, Int] = {
+  def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progressReporter: ProgressReporter): List[CategoryCount] = {
     val parser = new CategoryParser(pathPrefix, harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer, categoryMappings)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
@@ -197,7 +198,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSourceFile(sourceFile: File, setNamespaceMap: Map[String,String] => Unit, progressReporter: ProgressReporter): Int = {
+  def generateSourceFile(sourceFile: File, setNamespaceMap: Map[String, String] => Unit, progressReporter: ProgressReporter): Int = {
     Logger.info(s"Generating source from $sourceDir to $sourceFile using $harvestType")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
