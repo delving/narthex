@@ -30,7 +30,7 @@ define(["angular"], function (angular) {
                 function (response) {
                     if (response.profile) {
                         $cookies[USERNAME_COOKIE] = credentials.username;
-                        $location.path("/dashboard");
+                        $location.path("/datasets");
                     }
                     else {
                         $scope.credentials.password = "";
@@ -42,7 +42,7 @@ define(["angular"], function (angular) {
 
         if (userService.getUser()) {
             if (userService.checkLogin()) {
-                $location.path("/dashboard")
+                $location.path("/datasets")
             }
         }
     };

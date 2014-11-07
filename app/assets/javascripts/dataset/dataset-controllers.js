@@ -137,11 +137,6 @@ define(["angular"], function () {
             });
         });
 
-        $scope.goToDashboard = function () {
-            $location.path("/dashboard");
-            $location.search({});
-        };
-
         $scope.goToPage = function (node, page) {
             if (node && node != $scope.selectedNode) return;
             $rootScope.breadcrumbs.dataset = $scope.fileName;

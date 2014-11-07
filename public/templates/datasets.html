@@ -1,43 +1,23 @@
+
 <div class="row">
     <div class="col-sm-12">
-        <div class="tabbable">
-            <!-- Nav tabs -->
-            <ul class="nav nav-tabs" role="tablist">
-                <li ng-class="{'active':activeTab === 'files'}">
-                    <a href role="tab" data-ng-click="setActiveTab('files')">Datasets</a>
-                </li>
-                <li ng-class="{'active':activeTab === 'sips'}">
-                    <a href role="tab" data-ng-click="setActiveTab('sips')">SIP Files</a>
-                </li>
-                <li class="toolbar">
-                    <button data-ng-show="activeTab === 'files'" class="btn btn-default btn-sm" data-ng-click="setNewFileOpen(true)">
-                        <i class="fa fa-plus"></i> Create a new file
-                    </button>
+        <div>
+            <button class="btn btn-default btn-sm pull-right" data-ng-click="setNewFileOpen(true)">
+                <i class="fa fa-plus"></i> Create a new file
+            </button>
+            <h1>Datasets</h1>
+        </div>
+        <div class="file-list">
+            <ul class="list-group list-files">
+                <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.info.status">
+                    <div data-ng-include="'file-entry.html'">entry</div>
                 </li>
             </ul>
-            <!-- Tab panes -->
-            <div class="tab-content">
-                <div ng-switch="activeTab">
-                    <div ng-switch-when="files" class="file-list">
-                        <div data-ng-include="'file-list.html'">file list</div>
-                        <div data-ng-show="newFileOpen">
-                            <div data-ng-include="'new-file.html'">new file</div>
-                        </div>
-
-                    </div>
-                    <div ng-switch-when="sips">
-                        <div data-ng-include="'sip-list.html'">
-                            <!--todo: why can sip-list.html not be moved to parts.html, like the others?-->
-                        </div>
-                    </div>
-                </div>
+            <div data-ng-show="newFileOpen">
+                <div data-ng-include="'new-file.html'">new file</div>
             </div>
         </div>
     </div>
-</div>
-
-<div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
-    <h4>HTML5 Drop File is not supported! You need an HTML5 compliant browser.</h4>
 </div>
 
 <script type="text/ng-template" id="new-file.html">
@@ -214,29 +194,6 @@
             </button>
         </fieldset>
     </form>
-</script>
-
-<script type="text/ng-template" id="sip-list.html">
-    <ul class="list-group file-list">
-        <li class="list-group-item" data-ng-repeat="file in sipFiles">
-            <i class="fa fa-cube"></i>
-            <span data-ng-show="file.details">
-                <b>{{ file.details.spec }}</b>
-                <button type="button" class="btn btn-danger btn-xs" data-ng-show="file.expendable" data-ng-click="deleteSipZip(file)">
-                    <i class="fa fa-trash-o"></i>
-                </button>
-                <span class="pull-right">
-                    <i class="fa fa-male"></i>
-                    <b>{{ file.details.uploadedBy }}</b>
-                    <i class="fa fa-clock-o"></i>
-                    {{ file.details.date | date:"yyyy-MM-dd HH:mm:ss" }}
-                </span>
-            </span>
-            <span data-ng-show="!file.details">
-              <b>{{ file.fileName }}</b>
-            </span>
-        </li>
-    </ul>
 </script>
 
 <script type="text/ng-template" id="downloads.html">
@@ -441,12 +398,8 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="file-list.html">
-    <ul class="list-group list-files">
-        <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-class="" data-ng-show="file.info.status">
-            <div data-ng-include="'file-entry.html'">entry</div>
-        </li>
-    </ul>
-</script>
+<div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
+    <h4>HTML5 Drop File is not supported! You need an HTML5 compliant browser.</h4>
+</div>
 
 

@@ -30,9 +30,16 @@ define(
                 "$routeProvider", "userResolve",
                 function ($routeProvider, userResolve) {
                     $routeProvider.when(
-                        "/dashboard", {
-                            templateUrl: "/narthex/assets/templates/dashboard.html",
+                        "/datasets", {
+                            templateUrl: "/narthex/assets/templates/datasets.html",
                             controller: controllers.DashboardCtrl,
+                            resolve: userResolve,
+                            reloadOnSearch: false
+                        }
+                    ).when(
+                        "/sip-files", {
+                            templateUrl: "/narthex/assets/templates/sip-files.html",
+                            controller: controllers.SipCreatorCtrl,
                             resolve: userResolve,
                             reloadOnSearch: false
                         }

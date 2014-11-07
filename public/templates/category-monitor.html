@@ -1,0 +1,57 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1>Monitor</h1>
+        <h4>Datasets included in the category statistics:</h4>
+        <div class="file-list">
+            <ul class="list-group list-files">
+                <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.info.status">
+                    <div data-ng-include="'category-file-entry.html'">entry</div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-2" style="margin-top:15px">
+        <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="gatherCategoryCounts()" data-ng-disabled="datasetBusy">
+            <i class="fa fa-leaf"></i>
+            <span>Gather category counts</span>
+        </button>
+    </div>
+</div>
+
+<script type="text/ng-template" id="category-file-entry.html">
+    <div class="list-item-inner">
+        <div>
+            <i class="fa fa-fw fa-2x" data-ng-class="{ 'fa-folder-o':fileOpen != file.name, 'fa-folder-open-o':fileOpen == file.name }"></i>
+            <span class="">
+                <span>{{ file.identity.datasetName }}</span><span>[{{ file.identity.prefix }}]</span>
+                <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
+            </span>
+            <span data-ng-show="file.identity.name">
+                <span>"{{ file.identity.name }}"</span>
+                <span data-ng-show="file.identity.dataProvider">from "{{ file.identity.dataProvider }}": </span>
+            </span>
+            <span ng-if="file.origin">
+                <span ng-switch="file.origin">
+                    <span class="label label-default" ng-switch-when="origin-drop">Dropped file</span>
+                    <span class="label label-default" ng-switch-when="origin-harvest">Harvested dataset</span>
+                    <span class="label label-default" ng-switch-when="origin-sip">SIP-Creator uploaded</span>
+                    <span class="label label-default" ng-switch-default>Unknown origin</span>
+                </span>
+            </span>
+            <span ng-if="file.state">
+                <span ng-switch="file.state">
+                    <span class="label label-warning" ng-switch-when="state-deleted">Deleted</span>
+                    <span class="label label-default" ng-switch-when="state-empty">Empty</span>
+                    <span class="label label-success" ng-switch-default>Source available</span>
+                </span>
+            </span>
+        </div>
+        <div data-ng-if="file.progress" class="col-md-12">
+            <div class="col-md-11">
+                <progressbar class="progress-striped active" animate="true"
+                             value="file.progress.count" max="100" type="success"
+                        >{{ file.progress.message }}</progressbar>
+            </div>
+        </div>
+    </div>
+</script>

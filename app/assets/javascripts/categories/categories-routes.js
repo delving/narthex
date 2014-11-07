@@ -32,10 +32,17 @@ define(
                 $routeProvider.when(
                     "/categories/:fileName",
                     {
-                        templateUrl: "/narthex/assets/templates/categories.html",
-                        controller: controllers.CategoriesCtrl,
+                        templateUrl: "/narthex/assets/templates/category-set.html",
+                        controller: controllers.CategorySetCtrl,
                         resolve: userResolve,
                         reloadOnSearch: false
+                    }
+                ).when(
+                    "/categories",
+                    {
+                        templateUrl: "/narthex/assets/templates/category-monitor.html",
+                        controller: controllers.CategoryMonitorCtrl,
+                        resolve: userResolve
                     }
                 )
             }

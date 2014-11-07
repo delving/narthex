@@ -15,32 +15,6 @@
 //===========================================================================
 
 
-/*
- file.origin:
- origin-drop
- origin-harvest
- origin-sip
- file.state:
- state-deleted
- state-empty
- state-sourced
- file.progressType:
- progress-idle (here progressType is undefined)
- progress-busy
- progress-percent
- progress-workers
- progress-pages
- file.progressState
- state-idle
- state-harvesting
- state-collecting
- state-generating
- state-splitting
- state-collating
- state-saving
- state-error
- */
-
 String.prototype.endsWith = function (suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
 };
@@ -59,7 +33,6 @@ define(["angular"], function () {
         $scope.uploading = false;
         $scope.files = [];
         $scope.percent = null;
-        $scope.activeTab = $routeParams.tab || "files";
         $scope.fileOpen = $routeParams.open || $rootScope.fileOpen || "";
 
         var absUrl = $location.absUrl();
@@ -69,7 +42,7 @@ define(["angular"], function () {
         $scope.dataset = { name: "", prefix: "", fileName: ""};
 
         function setSearch() {
-            $location.search({ tab: $scope.activeTab, open: $scope.fileOpen });
+            $location.search({ open: $scope.fileOpen });
         }
 
         function setFileName() {
@@ -105,11 +78,6 @@ define(["angular"], function () {
 
         $scope.setNewFileOpen = function (value) {
             $scope.newFileOpen = value;
-        };
-
-        $scope.setActiveTab = function (tab) {
-            $scope.activeTab = tab;
-            setSearch();
         };
 
         $scope.createDataset = function () {
@@ -372,38 +340,6 @@ define(["angular"], function () {
             $rootScope.addRecentDataset(file.name, $location.absUrl())
         };
 
-        function fetchSipFileList() {
-            dashboardService.listSipFiles().then(function (data) {
-                if (!data) return;
-                var specs = {};
-                $scope.sipFiles = _.map(data.list, function (sipFile) {
-                    var entry = { fileName: sipFile };
-                    var part = sipFile.match(/sip_(.+)__(\d+)_(\d+)_(\d+)_(\d+)_(\d+)__(.*).zip/);
-                    if (part) {
-                        var spec = part[1];
-                        if (specs[spec]) entry.expendable = true;
-                        specs[spec] = true;
-                        entry.details = {
-                            spec: spec,
-                            date: new Date(
-                                parseInt(part[2]), parseInt(part[3]), parseInt(part[4]),
-                                parseInt(part[5]), parseInt(part[6]), 0),
-                            uploadedBy: part[7]
-                        };
-                    }
-                    return entry;
-                });
-                if (!$scope.sipFiles.length) $scope.sipFiles = undefined
-            });
-        }
-
-        fetchSipFileList();
-
-        $scope.deleteSipZip = function (file) {
-            dashboardService.deleteSipFile(file.fileName).then(function () {
-                fetchSipFileList();
-            });
-        };
     };
 
     DashboardCtrl.$inject = [
@@ -460,9 +396,50 @@ define(["angular"], function () {
 
     FileEntryCtrl.$inject = ["$scope", "dashboardService"];
 
+    var SipCreatorCtrl = function ($rootScope, $scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
+        function fetchSipFileList() {
+            dashboardService.listSipFiles().then(function (data) {
+                if (!data) return;
+                var specs = {};
+                $scope.sipFiles = _.map(data.list, function (sipFile) {
+                    var entry = { fileName: sipFile };
+                    var part = sipFile.match(/sip_(.+)__(\d+)_(\d+)_(\d+)_(\d+)_(\d+)__(.*).zip/);
+                    if (part) {
+                        var spec = part[1];
+                        if (specs[spec]) entry.expendable = true;
+                        specs[spec] = true;
+                        entry.details = {
+                            spec: spec,
+                            date: new Date(
+                                parseInt(part[2]), parseInt(part[3]), parseInt(part[4]),
+                                parseInt(part[5]), parseInt(part[6]), 0),
+                            uploadedBy: part[7]
+                        };
+                    }
+                    return entry;
+                });
+                if (!$scope.sipFiles.length) $scope.sipFiles = undefined
+            });
+        }
+
+        fetchSipFileList();
+
+        $scope.deleteSipZip = function (file) {
+            dashboardService.deleteSipFile(file.fileName).then(function () {
+                fetchSipFileList();
+            });
+        };
+    };
+
+    SipCreatorCtrl.$inject = [
+        "$rootScope", "$scope", "user", "dashboardService", "$location", "$upload", "$timeout", "$routeParams"
+    ];
+
+
     return {
         DashboardCtrl: DashboardCtrl,
-        FileEntryCtrl: FileEntryCtrl
+        FileEntryCtrl: FileEntryCtrl,
+        SipCreatorCtrl: SipCreatorCtrl
     };
 
 });

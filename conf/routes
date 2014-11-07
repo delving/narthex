@@ -43,10 +43,11 @@ GET         /narthex/dashboard/:fileName/term/source-paths            web.Dashbo
 GET         /narthex/dashboard/:fileName/term/mappings                web.Dashboard.getTermMappings(fileName)
 POST        /narthex/dashboard/:fileName/term/set-mapping             web.Dashboard.setTermMapping(fileName)
 
-GET         /narthex/dashboard/categories                             web.Dashboard.getCategoryList
+GET         /narthex/dashboard/category-list                          web.Dashboard.getCategoryList
 GET         /narthex/dashboard/:fileName/category/source-paths        web.Dashboard.getCategorySourcePaths(fileName)
 GET         /narthex/dashboard/:fileName/category/mappings            web.Dashboard.getCategoryMappings(fileName)
 POST        /narthex/dashboard/:fileName/category/set-mapping         web.Dashboard.setCategoryMapping(fileName)
+GET         /narthex/dashboard/categories/gather-counts               web.Dashboard.gatherCategoryCounts
 
 GET         /narthex/dashboard/sip-list                               web.Dashboard.listSipFiles
 GET         /narthex/dashboard/delete-sip/:fileName                   web.Dashboard.deleteSipFile(fileName)

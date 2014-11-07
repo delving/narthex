@@ -299,6 +299,11 @@ object Dashboard extends Controller with Security {
     }
   }
 
+  def gatherCategoryCounts  = Secure() { token => implicit request =>
+    Logger.info("Gather category counts!! (NOT IMPLEMENTED)")
+    Ok
+  }
+
   def getCategorySourcePaths(fileName: String) = Secure() { token => implicit request =>
     val datasetRepo = repo.datasetRepo(fileName)
     val sourcePaths = datasetRepo.categoryDb.getSourcePaths

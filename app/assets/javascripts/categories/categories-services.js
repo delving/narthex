@@ -40,6 +40,22 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
+                list: function () {
+                    return dash.list().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                gatherCategoryCounts: function () {
+                    return dash.gatherCategoryCounts().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 datasetInfo: function (fileName) {
                     return dash.datasetInfo(fileName).get().then(
                         function (response) {
