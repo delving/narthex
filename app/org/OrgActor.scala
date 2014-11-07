@@ -16,13 +16,17 @@
 
 package org
 
+import java.io.{File, FileOutputStream}
+
 import akka.actor.{Actor, ActorRef, Props, Terminated}
 import dataset.DatasetActor
-import dataset.DatasetActor.InterruptChild
-import org.OrgActor.{DatasetMessage, InterruptDataset}
+import dataset.DatasetActor.{InterruptChild, StartCategoryCounting}
+import mapping.CategoryCounter.CategoryCountComplete
+import org.OrgActor.{CountDatasetCategories, DatasetMessage, InterruptDataset}
 import org.OrgRepo.repo
 import play.api.Logger
 import play.libs.Akka
+import record.CategoryParser.{CategoryCount, CategoryCountCollection}
 
 import scala.language.postfixOps
 
@@ -35,6 +39,8 @@ object OrgActor {
   lazy val actor: ActorRef = Akka.system.actorOf(Props[OrgActor], repo.orgId)
 
   case class DatasetMessage(name: String, message: AnyRef)
+  
+  case class CountDatasetCategories(datasets: Seq[String])
 
   case class InterruptDataset(name: String)
 
@@ -42,6 +48,8 @@ object OrgActor {
 
 
 class OrgActor extends Actor {
+
+  var countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
 
   def receive = {
 
@@ -54,8 +62,26 @@ class OrgActor extends Actor {
       }
       datasetActor ! message
 
+    case CountDatasetCategories(datasets) =>
+      countsInProgress = datasets.map(name => (name, None)).toMap
+      datasets.foreach(name => self ! DatasetMessage(name, StartCategoryCounting()))
+
+    case CategoryCountComplete(dataset, categoryCounts, errorOption) =>
+      countsInProgress += dataset -> Some(categoryCounts)
+      Logger.info(s"$dataset complete, counts: $countsInProgress")
+      val countLists = countsInProgress.values.flatten
+      if (countLists.size == countsInProgress.size) {
+        val allCounts = CategoryCountCollection(countLists.flatten.toList)
+        val home = new File(System.getProperty("user.home"))
+        val excel = new File(home, "narthex_categories.xlsx")
+        val fos = new FileOutputStream(excel)
+        allCounts.categoriesPerDataset.write(fos)
+        fos.close()
+        countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
+      }
+
     case InterruptDataset(name) =>
-      context.child(name).map(_ ! InterruptChild(sender)) getOrElse(sender ! false)
+      context.child(name).map(_ ! InterruptChild(sender())) getOrElse(sender ! false)
 
     case Terminated(name) =>
       Logger.info(s"Demised $name")

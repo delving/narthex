@@ -5,7 +5,7 @@ import java.io.{File, FileOutputStream}
 import mapping.CategoryDb
 import org.scalatest.{FlatSpec, Matchers}
 import record.CategoryParser
-import record.CategoryParser.CountCollection
+import record.CategoryParser.CategoryCountCollection
 import services.{FileHandling, ProgressReporter}
 
 class TestCategoryParser extends FlatSpec with Matchers {
@@ -61,7 +61,7 @@ class TestCategoryParser extends FlatSpec with Matchers {
     val home = new File(System.getProperty("user.home"))
     val excel = new File(home, "categories.xlsx")
     val fos = new FileOutputStream(excel)
-    CountCollection(countList).categoriesPerDataset.write(fos)
+    CategoryCountCollection(countList).categoriesPerDataset.write(fos)
     fos.close()
   }
 }

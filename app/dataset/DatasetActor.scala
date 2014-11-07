@@ -153,12 +153,12 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
         log.warn(s"No latest incoming file for $datasetRepo")
       }
 
-    case CategoryCountComplete(categoryCounts, errorOption) =>
+    case CategoryCountComplete(dataset, categoryCounts, errorOption) =>
       log.info(s"Category Counts arrived: $categoryCounts")
-      // todo: handle the resulting counts!
       db.endProgress(errorOption)
+      context.parent ! CategoryCountComplete(datasetRepo.name, categoryCounts, errorOption)
       sender ! PoisonPill
-      
+
     // === saving
 
     case StartSaving(modifiedAfter, file) =>

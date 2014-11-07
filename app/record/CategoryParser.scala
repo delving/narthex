@@ -33,7 +33,7 @@ object CategoryParser {
 
   case class CategoryCount(category: String, count: Int, dataset: String)
 
-  case class CountCollection(list: List[CategoryCount]) {
+  case class CategoryCountCollection(list: List[CategoryCount]) {
     val categories = list.map(_.category).distinct.sorted.zipWithIndex
     val datasets = list.map(_.dataset).distinct.sorted.zipWithIndex
 

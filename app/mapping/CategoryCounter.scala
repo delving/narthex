@@ -33,7 +33,7 @@ object CategoryCounter {
 
   case class CountCategories(file: File, recordRoot: String, uniqueId: String)
 
-  case class CategoryCountComplete(categoryCounts: List[CategoryCount], errorOption: Option[String])
+  case class CategoryCountComplete(dataset: String, categoryCounts: List[CategoryCount], errorOption: Option[String])
 
   def props(datasetRepo: DatasetRepo) = Props(new CategoryCounter(datasetRepo))
 }
@@ -62,10 +62,10 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor {
           progress = Some(progressReporter)
           progressReporter.setReadProgress(readProgress)
           parser.parse(source, Set.empty[String], progressReporter)
-          context.parent ! CategoryCountComplete(parser.categoryCounts, None)
+          context.parent ! CategoryCountComplete(datasetRepo.name, parser.categoryCounts, None)
         }
         catch {
-          case e: Exception => context.parent ! CategoryCountComplete(List.empty[CategoryCount], Some(e.toString))
+          case e: Exception => context.parent ! CategoryCountComplete(datasetRepo.name, List.empty[CategoryCount], Some(e.toString))
         }
         finally {
           source.close()

@@ -18,8 +18,10 @@ package org
 
 import java.io.File
 
-import dataset.{DatasetRepo, DatasetState}
+import dataset.DatasetRepo
+import dataset.ProgressState._
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
+import org.OrgActor.CountDatasetCategories
 import org.OrgDb.Dataset
 import org.OrgRepo._
 import org.joda.time.DateTime
@@ -158,12 +160,9 @@ class OrgRepo(userHome: String, val orgId: String) {
       val included = (dataset.info \ "categories" \ "included").text
       if (included == "true") Some(dataset) else None
     }
-    categoryDatasets.foreach { dataset =>
-      val repo = datasetRepo(dataset.name)
-      DatasetState.fromDatasetInfo(dataset.info).map { state =>
-        repo.startCategoryCounts()
-      }
-    }
+    val datasets = categoryDatasets.map(_.name)
+    datasets.foreach(datasetRepo(_).datasetDb.startProgress(CATEGORIZING))
+    OrgActor.actor ! CountDatasetCategories(datasets)
   }
 
   // === sip-zip
