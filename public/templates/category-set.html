@@ -5,6 +5,14 @@
         </div>
     </div>
     <div class="col-md-12">
+        <div class="btn-toolbar">
+            <button class="btn " data-ng-class="{ 'btn-success': visible[category.code] == true }"
+                    data-ng-repeat="category in categories" data-ng-click="toggleCategory(category.code)">
+                <b>{{ category.code }}</b>
+            </button>
+        </div>
+    </div>
+    <div class="col-md-12">
         <div class="col-md-4" style="text-align: right; margin-bottom: 15px">
             <b>{{ categoryHelp.code.toUpperCase() }}:</b>
         </div>

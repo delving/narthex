@@ -72,6 +72,8 @@ class OrgActor extends Actor {
       val countLists = countsInProgress.values.flatten
       if (countLists.size == countsInProgress.size) {
         val allCounts = CategoryCountCollection(countLists.flatten.toList)
+        // todo: store the category counts as json
+        // todo: create files in the categories directory
         val home = new File(System.getProperty("user.home"))
         val excel = new File(home, "narthex_categories.xlsx")
         val fos = new FileOutputStream(excel)

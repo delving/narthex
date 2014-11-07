@@ -32,11 +32,45 @@ define(["angular"], function (angular) {
             details: "Click on a column header for details"
         };
         $scope.mappings = {};
-        $scope.columnDefs = [];
         $scope.categoryGrid = {
             data: 'gridData',
             columnDefs: "columnDefs",
             enableRowSelection: false
+        };
+        $scope.categories = [];
+        $scope.visible = {};
+
+        function columnDefinitionsFromCategories() {
+            $scope.columnDefs = [];
+            $scope.columnDefs.push({ field: 'term', displayName: 'Term', width: 460 });
+            $scope.columnDefs.push({ field: 'count', displayName: 'Count', width: 100, maxWidth: 100, cellClass: "category-count-cell" });
+            var numberVisible = 0;
+            for (var walk = 0; walk < $scope.categories.length; walk++) {
+                var code = $scope.categories[walk].code;
+                if (!$scope.visible[code]) continue;
+                numberVisible++;
+                var codeQuoted = "'" + code + "'";
+                var busyClassQuoted = "'category-cell-busy'";
+                $scope.columnDefs.push({
+                    field: 'category' + walk,
+                    index: walk + 2,
+                    headerCellTemplate:
+                        '<div class="category-header" data-ng-click="clickCategoryHeader($index - 2)">' +
+                        '  <span class="category-header-text">' + code.toUpperCase() + '</span>' +
+                        '</div>',
+                    cellTemplate:
+                        '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
+                        '  <input type="checkbox" class="category-checkbox" data-ng-model="row.entity.memberOf[' + codeQuoted + ']" ' +
+                        '         data-ng-click="setGridValue(row.entity, ' + codeQuoted + ')"/>' +
+                        '</div>'
+                })
+            }
+            if (!numberVisible) $scope.columnDefs.push({ field: 'boo', displayName: '', width: 1 });
+        }
+
+        $scope.toggleCategory = function(code) {
+            $scope.visible[code] = !$scope.visible[code];
+            columnDefinitionsFromCategories();
         };
 
         categoriesService.datasetInfo($scope.fileName).then(function (datasetInfo) {
@@ -57,24 +91,7 @@ define(["angular"], function (angular) {
 
             categoriesService.getCategoryList().then(function (categoryList) {
                 $scope.categories = categoryList.categories;
-                $scope.columnDefs.push({ field: 'term', displayName: 'Term', width: 460 });
-                $scope.columnDefs.push({ field: 'count', displayName: 'Count', width: 100, cellClass: "category-count-cell" });
-                for (var walk = 0; walk < $scope.categories.length; walk++) {
-                    var code = $scope.categories[walk].code;
-                    var codeQuoted = "'" + code + "'";
-                    var busyClassQuoted = "'category-cell-busy'";
-                    $scope.columnDefs.push({
-                        field: 'category' + walk,
-                        index: walk + 2,
-                        headerCellTemplate: '<div class="category-header" data-ng-click="clickCategoryHeader($index - 2)">' +
-                            '  <span class="category-header-text">' + code.toUpperCase() + '</span>' +
-                            '</div>',
-                        cellTemplate: '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
-                            '  <input type="checkbox" class="category-checkbox" data-ng-model="row.entity.memberOf[' + codeQuoted + ']" ' +
-                            '         data-ng-click="setGridValue(row.entity, ' + codeQuoted + ')"/>' +
-                            '</div>'
-                    })
-                }
+                columnDefinitionsFromCategories();
                 categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (histogramData) {
                     $scope.gridData = _.map(histogramData.histogram, function (entry) {
                         var sourceUri = $rootScope.orgId + "/" + $scope.fileName + sourceUriPath + "/" + encodeURIComponent(entry[1]);
