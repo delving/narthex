@@ -180,19 +180,35 @@
             <div class="form-group">
                 <label for="pub_oai">Publish via OAI-PMH</label>
                 <input id="pub_oai" type="checkbox" data-ng-model="file.info.publication.oaipmh"
-                        ng-true-value="true" ng-false-value="false"/>
+                       ng-true-value="'true'" ng-false-value="'false'"/>
             </div>
             <div class="form-group">
                 <label for="pub_index">Publish in the Index</label>
                 <input id="pub_index" type="checkbox" data-ng-model="file.info.publication.index"
-                       ng-true-value="true" ng-false-value="false"/>
+                       ng-true-value="'true'" ng-false-value="'false'"/>
             </div>
             <div class="form-group">
                 <label for="pub_lod">Publish as Linked Open Data</label>
                 <input id="pub_lod" type="checkbox" data-ng-model="file.info.publication.lod"
-                       ng-true-value="true" ng-false-value="false"/>
+                       ng-true-value="'true'" ng-false-value="'false'"/>
             </div>
             <button typ="button" class="btn btn-success btn-xs" data-ng-click="setPublication(file)">
+                <i class="fa fa-save"></i>
+                <span>Save</span>
+            </button>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="categories-form.html">
+    <form name="form" class="form">
+        <fieldset>
+            <div class="form-group">
+                <label for="cat">Include Categories in Monitor Statistics</label>
+                <input id="cat" type="checkbox" data-ng-model="file.info.categories.included"
+                        ng-true-value="'true'" ng-false-value="'false'"/>
+            </div>
+            <button typ="button" class="btn btn-success btn-xs" data-ng-click="setCategories(file)">
                 <i class="fa fa-save"></i>
                 <span>Save</span>
             </button>
@@ -352,9 +368,14 @@
                     </span>
                 </span>
             </span>
-            <button class="label label-info" data-ng-click="viewFile(file)" data-ng-show="file.treeTime">
-                <i class="fa fa-eye"></i> <span>Explore analysis</span>
-            </button>
+            <span class="label label-default" ng-if="file.info.categories.included == 'true'">
+                Included in Monitor Statistics
+            </span>
+            <span style="margin-left: 10px">
+                <button class="label label-info" data-ng-click="viewFile(file)" data-ng-show="file.treeTime">
+                    <i class="fa fa-eye"></i> <span>Explore analysis</span>
+                </button>
+            </span>
         </div>
         <div data-ng-if="file.progress" class="col-md-12">
             <div class="col-md-11">
@@ -390,6 +411,9 @@
                     <li ng-class="{'active':tab === 'publication'}" data-ng-show="allowTab(file, 'publication')">
                         <a href role="tab" data-ng-click="tab = 'publication'">Publication</a>
                     </li>
+                    <li ng-class="{'active':tab === 'categories'}" data-ng-show="allowTab(file, 'categories')">
+                        <a href role="tab" data-ng-click="tab = 'categories'">Categories</a>
+                    </li>
                     <li ng-class="{'active':tab === 'downloads'}" data-ng-show="allowTab(file, 'downloads')">
                         <a href role="tab" data-ng-click="tab = 'downloads'">Downloads</a>
                     </li>
@@ -404,6 +428,7 @@
                         <div ng-switch-when="harvest"><div data-ng-include="'harvest-form.html'">harvest form</div></div>
                         <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
                         <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
+                        <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
                         <div ng-switch-when="downloads"><div data-ng-include="'downloads.html'">downloads</div></div>
                         <div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>
                     </div>

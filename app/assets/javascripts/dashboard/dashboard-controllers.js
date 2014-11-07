@@ -258,6 +258,8 @@ define(["angular"], function () {
             if (info.records) {
                 file.recordsTime = info.records.time;
             }
+            if (!info.publication) info.publication = {};
+            if (!info.categories) info.categories = {};
         }
 
         function cancelChecker(file) {
@@ -310,6 +312,12 @@ define(["angular"], function () {
 
         $scope.setPublication = function (file) {
             dashboardService.setPublication(file.name, file.info.publication).then(function () {
+                fetchDatasetList();
+            });
+        };
+
+        $scope.setCategories = function (file) {
+            dashboardService.setCategories(file.name, file.info.categories).then(function () {
                 fetchDatasetList();
             });
         };
@@ -417,6 +425,8 @@ define(["angular"], function () {
                 case 'harvest-cron':
                     if ($scope.isEmpty(file.info.origin)) return true;
                     return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-sourced';
+                case 'categories':
+                    return file.info.status.state == 'state-sourced' && file.info.delimit.recordRoot;
                 case 'publication':
                 case 'downloads':
                     return !!file.recordsTime;

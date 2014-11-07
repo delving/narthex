@@ -62,9 +62,6 @@ define(["angular"], function (angular) {
                 recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
             }
             $scope.sourceUriPath = $scope.path.substring(recordContainer.length);
-
-            // todo: THIS IS NO LONGER VALID!
-            $scope.datasetRecordsSaved = datasetInfo.status.state == 'state-saved';
         });
 
         function filterHistogram() {

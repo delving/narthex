@@ -38,7 +38,6 @@ object TreeNode {
   def apply(source: Source, length: Long, datasetRepo: DatasetRepo, progressReporter: ProgressReporter): Option[TreeNode] = {
     val base = new TreeNode(datasetRepo.rootNode, null, null)
     var node = base
-    // todo: find a way out of https://issues.scala-lang.org/browse/SI-4267
     val events = new NarthexEventReader(source)
 
     try {

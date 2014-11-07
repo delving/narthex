@@ -269,4 +269,9 @@ class DatasetDb(repoDb: OrgDb, fileName: String) {
     "lod" -> publishLoD
   )
 
+  def setCategories(included: String) = setProperties(
+    "categories",
+    "included" -> included
+  )
+
 }

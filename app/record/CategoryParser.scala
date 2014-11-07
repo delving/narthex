@@ -42,15 +42,18 @@ object CategoryParser {
       val sheet = workbook.createSheet("Categories per Dataset")
       val row = sheet.createRow(0)
       categories.foreach { categoryI =>
-        row.createCell(categoryI._2 + 1).setCellValue(categoryI._1)
+        val colTitle = row.createCell(categoryI._2 + 1)
+        colTitle.setCellValue(categoryI._1)
       }
       datasets.foreach { datasetI =>
         val row = sheet.createRow(datasetI._2 + 1)
-        row.createCell(0).setCellValue(datasetI._1)
+        val rowTitle = row.createCell(0)
+        rowTitle.setCellValue(datasetI._1)
         categories.foreach { categoryI =>
-          val cellOpt = list.find(count => count.category == categoryI._1 && count.dataset == datasetI._1)
-          cellOpt.foreach { cell =>
-            row.createCell(categoryI._2 + 1).setCellValue(cell.count)
+          val countOpt = list.find(count => count.category == categoryI._1 && count.dataset == datasetI._1)
+          countOpt.foreach { count =>
+            val cell = row.createCell(categoryI._2 + 1)
+            cell.setCellValue(count.count)
           }
         }
       }

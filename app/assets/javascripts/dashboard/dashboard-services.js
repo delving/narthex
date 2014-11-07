@@ -80,6 +80,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                setCategories: function (fileName, categories) {
+                    return dash.setCategories(fileName).post(categories).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 harvest: function (fileName, harvestInfo) {
                     return dash.harvest(fileName).post(harvestInfo).then(
                         function (response) {

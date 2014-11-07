@@ -24,6 +24,7 @@ POST        /narthex/dashboard/:fileName/harvest                      web.Dashbo
 POST        /narthex/dashboard/:fileName/set-harvest-cron             web.Dashboard.setHarvestCron(fileName)
 POST        /narthex/dashboard/:fileName/set-metadata                 web.Dashboard.setMetadata(fileName)
 POST        /narthex/dashboard/:fileName/set-publication              web.Dashboard.setPublication(fileName)
+POST        /narthex/dashboard/:fileName/set-categories               web.Dashboard.setCategories(fileName)
 POST        /narthex/dashboard/:fileName/set-delimiter                web.Dashboard.setRecordDelimiter(fileName)
 GET         /narthex/dashboard/:fileName/analyze                      web.Dashboard.analyze(fileName)
 GET         /narthex/dashboard/:fileName/index                        web.Dashboard.index(fileName)

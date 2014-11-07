@@ -60,7 +60,6 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
   case class Frame(tag: String, path: String, text: mutable.StringBuilder = new mutable.StringBuilder())
 
   def parse(xmlString: String): List[StoredRecord] = {
-    // todo: find a way out of https://issues.scala-lang.org/browse/SI-4267
     val events = new NarthexEventReader(Source.fromString(xmlString))
     val stack = new mutable.Stack[Frame]()
     var start: Option[String] = None

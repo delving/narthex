@@ -46,6 +46,7 @@ object Dashboard extends Controller with Security {
     "tree",
     "records",
     "publication",
+    "categories",
     "progress",
     "delimit",
     "namespaces",
@@ -165,6 +166,18 @@ object Dashboard extends Controller with Security {
     try {
       val datasetRepo = repo.datasetRepo(fileName)
       datasetRepo.datasetDb.setPublication(param("oaipmh"), param("index"), param("lod"))
+      Ok
+    } catch {
+      case e: IllegalArgumentException =>
+        NotAcceptable(Json.obj("problem" -> e.getMessage))
+    }
+  }
+
+  def setCategories(fileName: String) = Secure(parse.json) { token => implicit request =>
+    def param(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
+    try {
+      val datasetRepo = repo.datasetRepo(fileName)
+      datasetRepo.datasetDb.setCategories(param("included"))
       Ok
     } catch {
       case e: IllegalArgumentException =>
