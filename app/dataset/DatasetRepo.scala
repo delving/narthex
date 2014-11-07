@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 import akka.pattern.ask
 import akka.util.Timeout
 import analysis.NodeRepo
-import dataset.DatasetActor.{StartAnalysis, StartHarvest, StartSaving}
+import dataset.DatasetActor.{StartAnalysis, StartCategoryCounting, StartHarvest, StartSaving}
 import dataset.DatasetOrigin.HARVEST
 import dataset.DatasetState._
 import dataset.ProgressState._
@@ -149,6 +149,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
         Logger.warn(s"First save of $name needs an incoming file")
       }
     }
+  }
+
+  def startCategoryCounts() = {
+    datasetDb.startProgress(CATEGORIZING)
+    OrgActor.actor ! DatasetMessage(name, StartCategoryCounting())
   }
 
   def interruptProgress: Boolean = {

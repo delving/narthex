@@ -18,8 +18,9 @@ package org
 
 import java.io.File
 
-import dataset.DatasetRepo
+import dataset.{DatasetRepo, DatasetState}
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
+import org.OrgDb.Dataset
 import org.OrgRepo._
 import org.joda.time.DateTime
 import play.api.Play.current
@@ -105,33 +106,28 @@ class OrgRepo(userHome: String, val orgId: String) {
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
     val FileName = "(.*)__(.*)".r
-    BaseX.withSession {
-      session =>
-        repoDb.listDatasets.flatMap {
-          dataset =>
-            val fr = datasetRepo(dataset.name)
-            val FileName(spec, prefix) = dataset.name
-            val publishedOaiPmh = isPublishedOaiPmh(dataset.info)
-            if (publishedOaiPmh) {
-              val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
-              val metadataFormat = namespaces.find(_._1 == prefix) match {
-                case Some(ns) => RepoMetadataFormat(prefix, ns._2)
-                case None => RepoMetadataFormat(prefix)
-              }
-              Some(PublishedDataset(
-                spec = dataset.name,
-                prefix = prefix,
-                name = (dataset.info \ "metadata" \ "name").text,
-                description = (dataset.info \ "metadata" \ "description").text,
-                dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
-                totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
-                metadataFormat = metadataFormat
-              ))
-            }
-            else {
-              None
-            }
+    repoDb.listDatasets.flatMap { dataset =>
+      val FileName(spec, prefix) = dataset.name
+      val publishedOaiPmh = isPublishedOaiPmh(dataset.info)
+      if (publishedOaiPmh) {
+        val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
+        val metadataFormat = namespaces.find(_._1 == prefix) match {
+          case Some(ns) => RepoMetadataFormat(prefix, ns._2)
+          case None => RepoMetadataFormat(prefix)
         }
+        Some(PublishedDataset(
+          spec = dataset.name,
+          prefix = prefix,
+          name = (dataset.info \ "metadata" \ "name").text,
+          description = (dataset.info \ "metadata" \ "description").text,
+          dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
+          totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
+          metadataFormat = metadataFormat
+        ))
+      }
+      else {
+        None
+      }
     }
   }
 
@@ -154,6 +150,19 @@ class OrgRepo(userHome: String, val orgId: String) {
       }
     } getOrElse {
       throw new RuntimeException(s"Resumption token not found: $resumptionToken")
+    }
+  }
+
+  def startCategoryCounts() = {
+    val categoryDatasets: Seq[Dataset] = repoDb.listDatasets.flatMap { dataset =>
+      val included = (dataset.info \ "categories" \ "included").text
+      if (included == "true") Some(dataset) else None
+    }
+    categoryDatasets.foreach { dataset =>
+      val repo = datasetRepo(dataset.name)
+      DatasetState.fromDatasetInfo(dataset.info).map { state =>
+        repo.startCategoryCounts()
+      }
     }
   }
 

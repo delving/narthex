@@ -41,10 +41,19 @@ define(["angular"], function (angular) {
 
         categoriesService.datasetInfo($scope.fileName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
-            var recordRoot = datasetInfo.delimit.recordRoot;
+            var recordRoot;
+            if (datasetInfo.origin.type == 'origin-harvest') {
+                recordRoot = '/pockets/pocket'
+            }
+            else {
+                recordRoot = datasetInfo.delimit.recordRoot;
+            }
             var lastSlash = recordRoot.lastIndexOf('/');
             $scope.recordContainer = recordRoot.substring(0, lastSlash);
             var sourceUriPath = $scope.path.substring($scope.recordContainer.length);
+
+//            console.log("recordContainer", $scope.recordContainer);
+//            console.log("sourceUriPath", sourceUriPath);
 
             categoriesService.getCategoryList().then(function (categoryList) {
                 $scope.categories = categoryList.categories;
@@ -69,6 +78,7 @@ define(["angular"], function (angular) {
                 categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (histogramData) {
                     $scope.gridData = _.map(histogramData.histogram, function (entry) {
                         var sourceUri = $rootScope.orgId + "/" + $scope.fileName + sourceUriPath + "/" + encodeURIComponent(entry[1]);
+//                        console.log("sourceUri " + entry[1], sourceUri);
                         return {
                             term: entry[1],
                             count: entry[0],
@@ -129,7 +139,7 @@ define(["angular"], function (angular) {
                     return file.info.categories && file.info.categories.included == 'true';
                 });
                 $scope.datasetBusy = false;
-                _.forEach(files, function(file) {
+                _.forEach(files, function (file) {
                     if (file.progress) {
                         checkProgress(file);
                         $scope.datasetBusy = true;
@@ -137,7 +147,50 @@ define(["angular"], function (angular) {
                 });
             });
         }
+
         fetchDatasetList();
+
+        var stateNames = {
+            'state-harvesting': "Harvesting from server",
+            'state-collecting': "Collecting identifiers",
+            'state-generating': "Generating source",
+            'state-splitting': "Splitting fields",
+            'state-collating': "Collating values",
+            'state-categorizing': "Categorizing records",
+            'state-saving': "Saving to database",
+            'state-updating': "Updating database",
+            'state-error': "Error"
+        };
+
+        function createProgressMessage(p) {
+            if (p.count == 0) p.count = 1;
+            var pre = '';
+            var post = '';
+            var mid = p.count.toString();
+            if (p.count > 3) {
+                switch (p.type) {
+                    case "progress-busy":
+                        p.count = 100;
+                        mid = "Busy..";
+                        break;
+                    case "progress-percent":
+                        post = " %";
+                        break;
+                    case "progress-workers":
+                        p.count = 100;
+                        post = " workers";
+                        break;
+                    case "progress-pages":
+                        p.count = p.count % 100;
+                        post = " pages";
+                        break;
+                }
+                if (p.count > 15) {
+                    pre = stateNames[p.state] + " ";
+                }
+            }
+            return pre + mid + post;
+        }
 
         function decorateFile(file) {
             var info = file.info;
@@ -185,7 +238,10 @@ define(["angular"], function (angular) {
             categoriesService.datasetInfo(file.name).then(function (info) {
                 file.info = info;
                 decorateFile(file);
-                if (!file.progress) return;
+                if (!file.progress) {
+                    fetchDatasetList();
+                    return;
+                }
                 file.checker = $timeout(
                     function () {
                         checkProgress(file)

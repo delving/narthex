@@ -160,22 +160,18 @@
             <div class="form-group">
                 <label for="pub_oai">Publish via OAI-PMH</label>
                 <input id="pub_oai" type="checkbox" data-ng-model="file.info.publication.oaipmh"
-                       ng-true-value="'true'" ng-false-value="'false'"/>
+                       ng-true-value="'true'" ng-false-value="'false'" data-ng-click="setPublication(file)"/>
             </div>
             <div class="form-group">
                 <label for="pub_index">Publish in the Index</label>
                 <input id="pub_index" type="checkbox" data-ng-model="file.info.publication.index"
-                       ng-true-value="'true'" ng-false-value="'false'"/>
+                       ng-true-value="'true'" ng-false-value="'false'" data-ng-click="setPublication(file)"/>
             </div>
             <div class="form-group">
                 <label for="pub_lod">Publish as Linked Open Data</label>
                 <input id="pub_lod" type="checkbox" data-ng-model="file.info.publication.lod"
-                       ng-true-value="'true'" ng-false-value="'false'"/>
+                       ng-true-value="'true'" ng-false-value="'false'" data-ng-click="setPublication(file)"/>
             </div>
-            <button typ="button" class="btn btn-success btn-xs" data-ng-click="setPublication(file)">
-                <i class="fa fa-save"></i>
-                <span>Save</span>
-            </button>
         </fieldset>
     </form>
 </script>
@@ -186,12 +182,8 @@
             <div class="form-group">
                 <label for="cat">Include Categories in Monitor Statistics</label>
                 <input id="cat" type="checkbox" data-ng-model="file.info.categories.included"
-                        ng-true-value="'true'" ng-false-value="'false'"/>
+                        ng-true-value="'true'" ng-false-value="'false'"  data-ng-click="setCategories(file)"/>
             </div>
-            <button typ="button" class="btn btn-success btn-xs" data-ng-click="setCategories(file)">
-                <i class="fa fa-save"></i>
-                <span>Save</span>
-            </button>
         </fieldset>
     </form>
 </script>

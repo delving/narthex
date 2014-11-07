@@ -145,6 +145,7 @@ define(["angular"], function () {
             'state-generating': "Generating source",
             'state-splitting': "Splitting fields",
             'state-collating': "Collating values",
+            'state-categorizing': "Categorizing records",
             'state-saving': "Saving to database",
             'state-updating': "Updating database",
             'state-error': "Error"
@@ -337,7 +338,6 @@ define(["angular"], function () {
         $scope.viewFile = function (file) {
             $location.path("/dataset/" + file.name);
             $location.search({});
-            $rootScope.addRecentDataset(file.name, $location.absUrl())
         };
 
     };

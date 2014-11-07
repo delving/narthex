@@ -16,6 +16,7 @@
 
 package org
 
+import org.OrgDb.Dataset
 import org.basex.server.ClientSession
 import services.BaseX
 
@@ -25,13 +26,17 @@ import scala.xml.{Elem, XML}
  * @author Gerald de Jong <gerald@delving.eu
  */
 
+object OrgDb {
+
+  case class Dataset(name: String, info: Elem)
+
+}
+
 class OrgDb(val orgId: String) {
 
   val datasetDb = s"narthex_$orgId"
   val name = "narthex-datasets"
   val allDatasets = s"doc('$datasetDb/$datasetDb.xml')/$name"
-
-  case class Dataset(name: String, info: Elem)
 
   def db[T](block: ClientSession => T): T = BaseX.withDbSession[T](datasetDb, Some(name))(block)
 

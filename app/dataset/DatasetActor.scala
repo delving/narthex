@@ -28,9 +28,12 @@ import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType
 import harvest.Harvesting.HarvestType.{ADLIB, PMH}
 import harvest.{HarvestRepo, Harvester}
+import mapping.CategoryCounter
+import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
+import record.PocketParser._
 import record.Saver
 import record.Saver.{SaveComplete, SaveRecords}
 import services.FileHandling._
@@ -48,6 +51,8 @@ object DatasetActor {
   case class StartAnalysis()
 
   case class StartSaving(modifiedAfter: Option[DateTime], file: File)
+
+  case class StartCategoryCounting()
 
   case class InterruptWork()
 
@@ -119,6 +124,41 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       if (errorOption.isDefined) FileUtils.deleteQuietly(datasetRepo.analyzedDir)
       sender ! PoisonPill
 
+    // == categorization
+
+    case StartCategoryCounting() =>
+      log.info(s"Start categorizing $datasetRepo")
+      datasetRepo.getLatestIncomingFile.map { file =>
+        datasetRepo.datasetDb.infoOption.foreach { info =>
+          val delimit = info \ "delimit"
+          val recordCountText = (delimit \ "recordCount").text
+          val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
+          val kickoffOption = if (HARVEST.matches((info \ "origin" \ "type").text)) {
+            Some(CountCategories(file, s"/$POCKET_LIST/$POCKET", s"/$POCKET_LIST/$POCKET/$POCKET_ID"))
+          }
+          else {
+            val recordRoot = (delimit \ "recordRoot").text
+            val uniqueId = (delimit \ "uniqueId").text
+            if (recordRoot.trim.nonEmpty)
+              Some(CountCategories(file, recordRoot, uniqueId))
+            else
+              None
+          }
+          kickoffOption.foreach { kickoff =>
+            val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo)))
+            categoryCounter ! kickoff
+          }
+        }
+      } getOrElse {
+        log.warn(s"No latest incoming file for $datasetRepo")
+      }
+
+    case CategoryCountComplete(categoryCounts, errorOption) =>
+      log.info(s"Category Counts arrived: $categoryCounts")
+      // todo: handle the resulting counts!
+      db.endProgress(errorOption)
+      sender ! PoisonPill
+      
     // === saving
 
     case StartSaving(modifiedAfter, file) =>

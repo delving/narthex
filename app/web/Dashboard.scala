@@ -301,6 +301,7 @@ object Dashboard extends Controller with Security {
 
   def gatherCategoryCounts  = Secure() { token => implicit request =>
     Logger.info("Gather category counts!! (NOT IMPLEMENTED)")
+    repo.startCategoryCounts()
     Ok
   }
 
