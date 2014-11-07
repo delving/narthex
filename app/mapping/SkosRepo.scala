@@ -26,7 +26,7 @@ object SkosRepo {
 class SkosRepo(userHome: String) {
 
   val SUFFIX = ".xml"
-  val root = new File(NarthexConfig.USER_HOME, "NarthexFiles")
+  val root = new File(userHome, "NarthexFiles")
   val skos = new File(root, "skos")
 
   def listFiles = {

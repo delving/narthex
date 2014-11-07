@@ -21,6 +21,7 @@ import java.io.File
 import dataset.DatasetRepo
 import dataset.ProgressState._
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
+import mapping.CategoriesRepo
 import org.OrgActor.CountDatasetCategories
 import org.OrgDb.Dataset
 import org.OrgRepo._
@@ -83,7 +84,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "dastasets")
   val sipZipDir = new File(orgRoot, "sip-zip")
-  val categoriesDir = new File(orgRoot, "categories")
+  val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
   val repoDb = new OrgDb(orgId)
 
   orgRoot.mkdirs()

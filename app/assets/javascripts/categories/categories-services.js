@@ -48,6 +48,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                listSheets: function () {
+                    return dash.listSheets().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 gatherCategoryCounts: function () {
                     return dash.gatherCategoryCounts().get().then(
                         function (response) {

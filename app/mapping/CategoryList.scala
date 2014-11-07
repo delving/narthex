@@ -18,7 +18,6 @@ package mapping
 
 import java.io.File
 
-import org.OrgRepo
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 
@@ -47,14 +46,6 @@ object CategoryList {
       Category(code, details)
     }
     CategoryList(title, categories)
-  }
-
-  lazy val listOption: Option[CategoryList] = {
-    val file = new File(OrgRepo.repo.categoriesDir, "categories.md")
-    if (file.exists()) {
-      Some(CategoryList.load(file))
-    } 
-    else None
   }
 
 }

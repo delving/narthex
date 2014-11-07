@@ -32,4 +32,5 @@ object Temporal {
 
   def nodeSeqToTime(nodeSeq: NodeSeq): Option[DateTime] = if (nodeSeq.nonEmpty) Some(stringToTime(nodeSeq.text)) else None
 
+  def nowFileName(name: String, extension: String) = s"${name}_${timeToLocalString(new DateTime()).replaceAll("[^\\d]","_")}$extension"
 }

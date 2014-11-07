@@ -24,7 +24,7 @@ import harvest.Harvesting.HarvestType
 import mapping.CategoryDb._
 import mapping.SkosVocabulary._
 import mapping.TermDb._
-import mapping.{CategoryList, SkosRepo, SkosVocabulary}
+import mapping.{SkosRepo, SkosVocabulary}
 import org.OrgRepo
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
@@ -246,6 +246,10 @@ object Dashboard extends Controller with Security {
     Ok(result)
   }
 
+  def listSheets = Secure() { token => implicit request =>
+    Ok(Json.obj("sheets" -> repo.categoriesRepo.listSheets))
+  }
+
   def listSkos = Secure() { token => implicit request =>
     Ok(Json.obj("list" -> SkosRepo.repo.listFiles))
   }
@@ -292,7 +296,7 @@ object Dashboard extends Controller with Security {
   }
 
   def getCategoryList = Secure() { token => implicit request =>
-    CategoryList.listOption.map { list =>
+    repo.categoriesRepo.listOption.map { list =>
       Ok(Json.toJson(list))
     } getOrElse {
       NotFound(Json.obj("problem" -> "No category file"))

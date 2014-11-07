@@ -16,8 +16,6 @@
 
 package org
 
-import java.io.{File, FileOutputStream}
-
 import akka.actor.{Actor, ActorRef, Props, Terminated}
 import dataset.DatasetActor
 import dataset.DatasetActor.{InterruptChild, StartCategoryCounting}
@@ -71,14 +69,9 @@ class OrgActor extends Actor {
       Logger.info(s"$dataset complete, counts: $countsInProgress")
       val countLists = countsInProgress.values.flatten
       if (countLists.size == countsInProgress.size) {
-        val allCounts = CategoryCountCollection(countLists.flatten.toList)
+        val collection = CategoryCountCollection(countLists.flatten.toList)
         // todo: store the category counts as json
-        // todo: create files in the categories directory
-        val home = new File(System.getProperty("user.home"))
-        val excel = new File(home, "narthex_categories.xlsx")
-        val fos = new FileOutputStream(excel)
-        allCounts.categoriesPerDataset.write(fos)
-        fos.close()
+        OrgRepo.repo.categoriesRepo.createSheet(collection)
         countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
       }
 

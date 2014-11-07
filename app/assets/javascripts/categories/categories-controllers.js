@@ -148,6 +148,13 @@ define(["angular"], function (angular) {
 
         $scope.datasetBusy = false;
 
+        function fetchSheetList() {
+            categoriesService.listSheets().then(function(list) {
+                $scope.sheets = list.sheets
+            });
+        }
+        fetchSheetList();
+
         function fetchDatasetList() {
             categoriesService.list().then(function (files) {
                 _.forEach($scope.files, cancelChecker);

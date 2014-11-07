@@ -16,6 +16,7 @@
 
 package services
 
+import java.io.File
 import java.util
 
 import play.api.Play
@@ -33,7 +34,9 @@ object NarthexConfig {
   )
   def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List[String]("secret"))
 
-  lazy val USER_HOME = System.getProperty("user.home")
+  val USER_HOME = System.getProperty("user.home")
+  val NARTHEX = new File(USER_HOME, "NarthexFiles")
+
   lazy val ORG_ID = configString("orgId")
 
   lazy val API_ACCESS_KEYS = secretList("api.accessKeys")

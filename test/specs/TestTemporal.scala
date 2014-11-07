@@ -36,5 +36,7 @@ class TestTemporal extends FlatSpec with Matchers{
     utc("2014-11-06T07:44:08+01:00") should be ("2014-11-06T06:44:08Z")
     utc("2014-11-06T07:44:08Z") should be ("2014-11-06T07:44:08Z")
     utc("2014-11-06") should be ("2014-11-05T23:00:00Z")
+
+    println(nowFileName("evil", ".hex"))
   }
 }
