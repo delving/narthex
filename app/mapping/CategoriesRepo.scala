@@ -15,17 +15,21 @@
 //===========================================================================
 package mapping
 
-import java.io.{File, FileOutputStream}
+import java.io.{File, FileOutputStream, FileWriter}
 
-import record.CategoryParser.CategoryCountCollection
+import play.api.libs.json.Json
+import record.CategoryParser._
 import services.{NarthexConfig, Temporal}
 
 class CategoriesRepo(root: File) {
   root.mkdirs()
   val MARKDOWN = ".md"
   val SPREADSHEET = ".xlsx"
+  val JSON = ".json"
   val sheets = new File(root, "sheets")
   sheets.mkdir()
+  val data = new File(root, "data")
+  data.mkdir()
 
   def listSheets = {
     val sheetFiles = sheets.listFiles.toList.sortBy(_.getName).reverse
@@ -36,13 +40,18 @@ class CategoriesRepo(root: File) {
 
   def sheet(name: String) = new File(sheets, name)
 
-  def createSheet(counts: CategoryCountCollection): File = {
-    val name = Temporal.nowFileName(NarthexConfig.ORG_ID, SPREADSHEET)
-    val file = new File(sheets, name)
-    val fos = new FileOutputStream(file)
+  def createSheet(counts: CategoryCountCollection) = {
+    val jsonName = Temporal.nowFileName(NarthexConfig.ORG_ID, JSON)
+    val jsonFile = new File(data, jsonName)
+    val jsonList = Json.arr(counts.list)
+    val fw = new FileWriter(jsonFile)
+    fw.write(Json.prettyPrint(jsonList))
+    fw.close()
+    val sheetName = Temporal.nowFileName(NarthexConfig.ORG_ID, SPREADSHEET)
+    val sheetFile = new File(sheets, sheetName)
+    val fos = new FileOutputStream(sheetFile)
     counts.categoriesPerDataset.write(fos)
     fos.close()
-    file
   }
 
   def categoryMarkdown(name: String) = new File(root, name.replaceAll(" ", "_") + MARKDOWN)

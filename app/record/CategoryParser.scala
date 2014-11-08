@@ -16,9 +16,14 @@
 
 package record
 
+import java.util.Date
+
 import mapping.CategoryDb.CategoryMapping
+import org.apache.poi.hssf.util.HSSFColor
+import org.apache.poi.ss.usermodel._
 import org.apache.poi.xssf.usermodel._
 import play.Logger
+import play.api.libs.json.{Json, Writes}
 import record.CategoryParser.{CategoryCount, Counter}
 import services.{FileHandling, NarthexEventReader, ProgressReporter}
 
@@ -31,32 +36,133 @@ object CategoryParser {
 
   case class Counter(var count: Int)
 
+  implicit val countWrites = new Writes[CategoryCount] {
+    def writes(count: CategoryCount) = Json.obj(
+      "category" -> count.category,
+      "count" -> count.count,
+      "dataset" -> count.dataset
+    )
+  }
+
   case class CategoryCount(category: String, count: Int, dataset: String)
 
   case class CategoryCountCollection(list: List[CategoryCount]) {
     val categories = list.map(_.category).distinct.sorted.zipWithIndex
     val datasets = list.map(_.dataset).distinct.sorted.zipWithIndex
 
-    def categoriesPerDataset: XSSFWorkbook = {
+    private def prep = {
       val workbook = new XSSFWorkbook
+      val helper = workbook.getCreationHelper
+      val boldColor = HSSFColor.GREY_25_PERCENT.index
+      val extraBoldColor = HSSFColor.GREY_40_PERCENT.index
+      val fillPattern = CellStyle.SOLID_FOREGROUND
+      val borderMedium = CellStyle.BORDER_MEDIUM
+      val borderThin = CellStyle.BORDER_THIN
+
+      val titleFont = workbook.createFont()
+      titleFont.setFamily(FontFamily.MODERN)
+      titleFont.setBold(true)
+      titleFont.setColor(HSSFColor.DARK_BLUE.index)
+
+      val cornerStyle = workbook.createCellStyle()
+      cornerStyle.setFont(titleFont)
+      cornerStyle.setAlignment(CellStyle.ALIGN_LEFT)
+      cornerStyle.setFillForegroundColor(extraBoldColor)
+      cornerStyle.setFillPattern(fillPattern)
+      cornerStyle.setBorderBottom(borderMedium)
+      cornerStyle.setBorderRight(borderMedium)
+//      cornerStyle.setBorderLeft(borderMedium)
+      cornerStyle.setBorderTop(borderMedium)
+      cornerStyle.setDataFormat(helper.createDataFormat().getFormat("yyyy-mm-dd hh:mm:ss"))
+
+      val categoryStyle = workbook.createCellStyle()
+      categoryStyle.setAlignment(CellStyle.ALIGN_CENTER)
+      categoryStyle.setFillForegroundColor(boldColor)
+      categoryStyle.setFillPattern(fillPattern)
+      categoryStyle.setBorderBottom(borderMedium)
+      categoryStyle.setBorderTop(borderMedium)
+      categoryStyle.setBorderRight(borderThin)
+      categoryStyle.setFont(titleFont)
+
+      val sumStyle = workbook.createCellStyle()
+      sumStyle.setAlignment(CellStyle.ALIGN_CENTER)
+      sumStyle.setFillForegroundColor(boldColor)
+      sumStyle.setFillPattern(fillPattern)
+      sumStyle.setBorderTop(borderMedium)
+      sumStyle.setBorderRight(borderThin)
+      sumStyle.setBorderBottom(borderMedium)
+      sumStyle.setFont(titleFont)
+
+      val totalStyle = workbook.createCellStyle()
+      totalStyle.setFillForegroundColor(extraBoldColor)
+      totalStyle.setFillPattern(fillPattern)
+      totalStyle.setAlignment(CellStyle.ALIGN_RIGHT)
+      totalStyle.setBorderTop(borderMedium)
+      totalStyle.setBorderRight(borderMedium)
+//      totalStyle.setBorderLeft(borderMedium)
+      totalStyle.setBorderBottom(borderMedium)
+      totalStyle.setFont(titleFont)
+
+      val datasetStyle = workbook.createCellStyle()
+      datasetStyle.setFillForegroundColor(boldColor)
+      datasetStyle.setFillPattern(fillPattern)
+      datasetStyle.setAlignment(CellStyle.ALIGN_RIGHT)
+      datasetStyle.setBorderRight(borderMedium)
+//      datasetStyle.setBorderLeft(borderMedium)
+      datasetStyle.setFont(titleFont)
+
+      val numberStyle = workbook.createCellStyle()
+      numberStyle.setAlignment(CellStyle.ALIGN_CENTER)
+
+      (workbook, cornerStyle, categoryStyle, datasetStyle, numberStyle, totalStyle, sumStyle)
+    }
+
+    def categoriesPerDataset: XSSFWorkbook = {
+      val (workbook, cornerStyle, categoryStyle, datasetStyle, numberStyle, totalStyle, sumStyle) = prep
       val sheet = workbook.createSheet("Categories per Dataset")
       val row = sheet.createRow(0)
+      val corner = row.createCell(0)
+      corner.setCellValue(new Date())
+      corner.setCellStyle(cornerStyle)
       categories.foreach { categoryI =>
-        val colTitle = row.createCell(categoryI._2 + 1)
-        colTitle.setCellValue(categoryI._1)
+        val col = categoryI._2 + 1
+        val colTitle = row.createCell(col)
+        colTitle.setCellValue(categoryI._1.toUpperCase.split("-").mkString("\n"))
+        colTitle.setCellStyle(categoryStyle)
+        sheet.autoSizeColumn(col)
       }
       datasets.foreach { datasetI =>
         val row = sheet.createRow(datasetI._2 + 1)
         val rowTitle = row.createCell(0)
         rowTitle.setCellValue(datasetI._1)
+        rowTitle.setCellStyle(datasetStyle)
         categories.foreach { categoryI =>
           val countOpt = list.find(count => count.category == categoryI._1 && count.dataset == datasetI._1)
           countOpt.foreach { count =>
             val cell = row.createCell(categoryI._2 + 1)
-            cell.setCellValue(count.count)
+            cell.setCellValue(count.count.toDouble)
+            cell.setCellStyle(numberStyle)
           }
         }
       }
+      val sumRow = sheet.createRow(datasets.last._2 + 2)
+      val totalCell = sumRow.createCell(0)
+      totalCell.setCellStyle(totalStyle)
+      totalCell.setCellValue("Total:")
+      categories.foreach { categoryI =>
+        val col = categoryI._2 + 1
+        val sumCell = sumRow.createCell(col)
+        def char(c: Int) = ('A' + c).toChar
+        val colName = if (col < 26) s"${char(col)}" else s"${char(col / 26)}${char(col % 26)}"
+        val topRow = 2
+        val bottomRow = datasets.last._2 + 2
+        val formula = s"SUM($colName$topRow:$colName$bottomRow)"
+        println(formula)
+        sumCell.setCellStyle(sumStyle)
+        sumCell.setCellFormula(formula)
+      }
+      sheet.autoSizeColumn(0)
+      sheet.createFreezePane(1, 1)
       workbook
     }
   }
