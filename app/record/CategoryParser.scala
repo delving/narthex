@@ -71,7 +71,6 @@ object CategoryParser {
       cornerStyle.setFillPattern(fillPattern)
       cornerStyle.setBorderBottom(borderMedium)
       cornerStyle.setBorderRight(borderMedium)
-//      cornerStyle.setBorderLeft(borderMedium)
       cornerStyle.setBorderTop(borderMedium)
       cornerStyle.setDataFormat(helper.createDataFormat().getFormat("yyyy-mm-dd hh:mm:ss"))
 
@@ -157,7 +156,6 @@ object CategoryParser {
         val topRow = 2
         val bottomRow = datasets.last._2 + 2
         val formula = s"SUM($colName$topRow:$colName$bottomRow)"
-        println(formula)
         sumCell.setCellStyle(sumStyle)
         sumCell.setCellFormula(formula)
       }

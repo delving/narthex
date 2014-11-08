@@ -8,20 +8,18 @@ define(
         "./services/playRoutes",
         "./filters",
         "./directives/scrollable",
-        "./directives/fileModel"
+        "./directives/fileModel",
+        "./venn" // todo: further integrate
     ],
     function (angular) {
         "use strict";
 
-        return angular.module(
-            "narthex.common",
-            [
-                "common.pageScroll",
-                "common.playRoutes",
-                "common.filters",
-                "common.directives.scrollable",
-                "common.directives.fileModel"
-            ]
-        );
+        return angular.module("narthex.common", [
+            "common.pageScroll",
+            "common.playRoutes",
+            "common.filters",
+            "common.directives.scrollable",
+            "common.directives.fileModel"
+        ]);
     }
 );
