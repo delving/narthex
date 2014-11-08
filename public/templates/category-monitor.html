@@ -18,9 +18,12 @@
     </div>
     <div class="col-md-8">
         <h4>sheets:</h4>
-        <ul>
+        <ul class="list-unstyled">
             <li ng-repeat="sheet in sheets">
-                {{ sheet }}
+                <a data-ng-class="{ 'fa-2x': $index == 0 }" ng-href="{{ sheetUrl(sheet) }}" target="_blank">
+                    <i class="fa fa-download"></i>
+                    {{ sheet }}
+                </a>
             </li>
         </ul>
     </div>

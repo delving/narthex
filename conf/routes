@@ -45,6 +45,7 @@ POST        /narthex/dashboard/:fileName/term/set-mapping             web.Dashbo
 
 GET         /narthex/dashboard/category-list                          web.Dashboard.getCategoryList
 GET         /narthex/dashboard/sheets-list                            web.Dashboard.listSheets
+GET         /narthex/dashboard/sheet/:fileName                        web.Dashboard.sheet(fileName)
 GET         /narthex/dashboard/:fileName/category/source-paths        web.Dashboard.getCategorySourcePaths(fileName)
 GET         /narthex/dashboard/:fileName/category/mappings            web.Dashboard.getCategoryMappings(fileName)
 POST        /narthex/dashboard/:fileName/category/set-mapping         web.Dashboard.setCategoryMapping(fileName)

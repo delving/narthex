@@ -35,99 +35,85 @@ import web.Dashboard._
 
 object APIController extends Controller {
 
-  def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-      val datasets = repo.repoDb.listDatasets.map {
-        dataset =>
-          val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-          Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
-      }
-      //      Ok(JsArray(datasets))
-      Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
+  def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val datasets = repo.repoDb.listDatasets.map {
+      dataset =>
+        val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+        Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
     }
+    //      Ok(JsArray(datasets))
+    Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
   }
 
 
-  def pathsJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-      val treeFile = repo.datasetRepo(fileName).index
-      val string = IOUtils.toString(new FileInputStream(treeFile))
-      val json = Json.parse(string)
-      val tree = json.as[ReadTreeNode]
-      val paths = TreeNode.gatherPaths(tree, new Call(request.method, request.path).absoluteURL())
-      val pathJson = Json.toJson(paths)
-      Ok(Json.prettyPrint(pathJson)).as(ContentTypes.JSON)
+  def pathsJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val treeFile = repo.datasetRepo(fileName).index
+    val string = IOUtils.toString(new FileInputStream(treeFile))
+    val json = Json.parse(string)
+    val tree = json.as[ReadTreeNode]
+    val paths = TreeNode.gatherPaths(tree, new Call(request.method, request.path).absoluteURL())
+    val pathJson = Json.toJson(paths)
+    Ok(Json.prettyPrint(pathJson)).as(ContentTypes.JSON)
+  }
+
+  def indexJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    OkFile(repo.datasetRepo(fileName).index)
+  }
+
+  def indexText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    repo.datasetRepo(fileName).indexText(path) match {
+      case None =>
+        NotFound(s"No index found for $path")
+      case Some(file) =>
+        OkFile(file)
     }
   }
 
-  def indexJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-      OkFile(repo.datasetRepo(fileName).index)
+  def uniqueText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    repo.datasetRepo(fileName).uniqueText(path) match {
+      case None =>
+        NotFound(s"No list found for $path")
+      case Some(file) =>
+        OkFile(file)
     }
   }
 
-  def indexText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-      repo.datasetRepo(fileName).indexText(path) match {
-        case None =>
-          NotFound(s"No index found for $path")
-        case Some(file) =>
-          OkFile(file)
-      }
+  def histogramText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    repo.datasetRepo(fileName).histogramText(path) match {
+      case None =>
+        NotFound(s"No list found for $path")
+      case Some(file) =>
+        OkFile(file)
     }
   }
 
-  def uniqueText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-      repo.datasetRepo(fileName).uniqueText(path) match {
-        case None =>
-          NotFound(s"No list found for $path")
-        case Some(file) =>
-          OkFile(file)
-      }
-    }
-  }
-
-  def histogramText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-      repo.datasetRepo(fileName).histogramText(path) match {
-        case None =>
-          NotFound(s"No list found for $path")
-        case Some(file) =>
-          OkFile(file)
-      }
-    }
-  }
-
-  def record(apiKey: String, fileName: String, id: String, enrich: Boolean = false) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-      val datasetRepo = repo.datasetRepo(fileName)
-      val storedRecord: String = datasetRepo.recordDb.record(id)
-      if (storedRecord.nonEmpty) {
-        if (enrich) {
-          val records = datasetRepo.enrichRecords(storedRecord)
-          if (records.nonEmpty) {
-            val record = records.head
-            OkXml(record.text.toString())
-          }
-          else {
-            NotFound(s"Parser gave no records")
-          }
+  def record(apiKey: String, fileName: String, id: String, enrich: Boolean = false) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val datasetRepo = repo.datasetRepo(fileName)
+    val storedRecord: String = datasetRepo.recordDb.record(id)
+    if (storedRecord.nonEmpty) {
+      if (enrich) {
+        val records = datasetRepo.enrichRecords(storedRecord)
+        if (records.nonEmpty) {
+          val record = records.head
+          OkXml(record.text.toString())
         }
         else {
-          val records = EnrichmentParser.parseStoredRecords(storedRecord)
-          if (records.nonEmpty) {
-            val record = records.head
-            OkXml(record.text.toString())
-          }
-          else {
-            NotFound(s"Parser gave no records")
-          }
+          NotFound(s"Parser gave no records")
         }
       }
       else {
-        NotFound(s"No record found for $id")
+        val records = EnrichmentParser.parseStoredRecords(storedRecord)
+        if (records.nonEmpty) {
+          val record = records.head
+          OkXml(record.text.toString())
+        }
+        else {
+          NotFound(s"Parser gave no records")
+        }
       }
+    }
+    else {
+      NotFound(s"No record found for $id")
     }
   }
 
@@ -135,20 +121,17 @@ object APIController extends Controller {
 
   def enrichedRecord(apiKey: String, fileName: String, id: String) = record(apiKey, fileName, id, enrich = true)
 
-  def ids(apiKey: String, fileName: String, since: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-      val datasetRepo = repo.datasetRepo(fileName)
-      val ids = datasetRepo.recordDb.getIds(since)
-      Ok(scala.xml.XML.loadString(ids))
-    }
+  def ids(apiKey: String, fileName: String, since: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val datasetRepo = repo.datasetRepo(fileName)
+    val ids = datasetRepo.recordDb.getIds(since)
+    Ok(scala.xml.XML.loadString(ids))
   }
 
-  def mappings(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request => {
-      repo.datasetRepoOption(fileName) match {
-        case Some(datasetRepo) =>
-          val mappings = datasetRepo.termDb.getMappings
-          val reply =
+  def mappings(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    repo.datasetRepoOption(fileName) match {
+      case Some(datasetRepo) =>
+        val mappings = datasetRepo.termDb.getMappings
+        val reply =
               <mappings>
                 {mappings.map { m =>
                 <mapping>
@@ -159,67 +142,62 @@ object APIController extends Controller {
                 </mapping>
               }}
               </mappings>
-          Ok(reply)
-        case None =>
-          NotFound(s"No mappings for $fileName")
-      }
+        Ok(reply)
+      case None =>
+        NotFound(s"No mappings for $fileName")
     }
   }
 
-  def uploadOutput(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
-    implicit request => {
-      val datasetRepo = repo.datasetRepo(fileName)
-      request.body.moveTo(datasetRepo.createIncomingFile(fileName), replace = true)
-      datasetRepo.datasetDb.createDataset(SOURCED)
-      datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP)
-      datasetRepo.datasetDb.setRecordDelimiter(
-        recordRoot = "/rdf:RDF/rdf:Description",
-        uniqueId = "/rdf:RDF/rdf:Description/@rdf:about",
-        recordCount = -1
-      )
-      datasetRepo.startAnalysis()
-      Ok
-    }
+  def uploadOutput(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
+    val datasetRepo = repo.datasetRepo(fileName)
+    request.body.moveTo(datasetRepo.createIncomingFile(fileName), replace = true)
+    datasetRepo.datasetDb.createDataset(SOURCED)
+    datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP)
+    datasetRepo.datasetDb.setRecordDelimiter(
+      recordRoot = "/rdf:RDF/rdf:Description",
+      uniqueId = "/rdf:RDF/rdf:Description/@rdf:about",
+      recordCount = -1
+    )
+    datasetRepo.startAnalysis()
+    Ok
   }
 
-  def uploadSipZip(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) {
-    implicit request =>
-      val file = repo.createSipZipFile(fileName)
-      request.body.moveTo(file, replace = true)
-      val zip = new ZipFile(file)
-      val factsEntry = zip.getEntry("dataset_facts.txt")
-      val factsFile = repo.createSipZipFactsFile(fileName)
-      FileUtils.copyInputStreamToFile(zip.getInputStream(factsEntry), factsFile)
-      val facts = repo.readMapFile(factsFile)
-      val hintsEntry = zip.getEntry("hints.txt")
-      val hintsFile = repo.createSipZipHintsFile(fileName)
-      FileUtils.copyInputStreamToFile(zip.getInputStream(hintsEntry), hintsFile)
-      val hints = repo.readMapFile(hintsFile)
-      // have facts and hints - push them to datasetDb
-      val prefixes = for (sv <- facts("schemaVersions").split(", *")) yield sv.split("_")(0)
-      val datasetNames = prefixes.map(p => s"${facts("spec")}__$p")
-      val datasetRepos = datasetNames.flatMap(repo.datasetRepoOption)
-      datasetRepos.foreach { r =>
-        val db = r.datasetDb
-        db.setSipFacts(facts)
-        db.setSipHints(hints)
-        db.infoOption.foreach { info =>
-          val description = info \ "description"
-          if (description.isEmpty) {
-            val initialMeta = Map(
-              "name" -> facts("name"),
-              "dataProvider" -> facts("dataProvider")
-            )
-            db.setMetadata(initialMeta)
-          }
+  def uploadSipZip(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
+    val file = repo.createSipZipFile(fileName)
+    request.body.moveTo(file, replace = true)
+    val zip = new ZipFile(file)
+    val factsEntry = zip.getEntry("dataset_facts.txt")
+    val factsFile = repo.createSipZipFactsFile(fileName)
+    FileUtils.copyInputStreamToFile(zip.getInputStream(factsEntry), factsFile)
+    val facts = repo.readMapFile(factsFile)
+    val hintsEntry = zip.getEntry("hints.txt")
+    val hintsFile = repo.createSipZipHintsFile(fileName)
+    FileUtils.copyInputStreamToFile(zip.getInputStream(hintsEntry), hintsFile)
+    val hints = repo.readMapFile(hintsFile)
+    // have facts and hints - push them to datasetDb
+    val prefixes = for (sv <- facts("schemaVersions").split(", *")) yield sv.split("_")(0)
+    val datasetNames = prefixes.map(p => s"${facts("spec")}__$p")
+    val datasetRepos = datasetNames.flatMap(repo.datasetRepoOption)
+    datasetRepos.foreach { r =>
+      val db = r.datasetDb
+      db.setSipFacts(facts)
+      db.setSipHints(hints)
+      db.infoOption.foreach { info =>
+        val description = info \ "description"
+        if (description.isEmpty) {
+          val initialMeta = Map(
+            "name" -> facts("name"),
+            "dataProvider" -> facts("dataProvider")
+          )
+          db.setMetadata(initialMeta)
         }
       }
-      Ok
+    }
+    Ok
   }
 
-  def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) {
-    implicit request =>
-      def reply =
+  def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    def reply =
         <sip-list>
           {for (sipZip <- repo.listSipZips)
         yield
@@ -245,21 +223,19 @@ object APIController extends Controller {
             </facts>
           </sip>}
         </sip-list>
-      Ok(reply)
+    Ok(reply)
   }
 
-  def downloadSipZip(apiKey: String, fileName: String) = Action(parse.anyContent) {
-    implicit request =>
-      OkFile(repo.createSipZipFile(fileName))
+  def downloadSipZip(apiKey: String, fileName: String) = Action(parse.anyContent) { implicit request =>
+    OkFile(repo.createSipZipFile(fileName))
   }
 
-  def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) {
-    implicit request =>
-      if (NarthexConfig.apiKeyFits(apiKey)) {
-        block(request)
-      }
-      else {
-        Unauthorized(Json.obj("err" -> "Invalid API Access key"))
-      }
+  def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>
+    if (NarthexConfig.apiKeyFits(apiKey)) {
+      block(request)
+    }
+    else {
+      Unauthorized(Json.obj("err" -> "Invalid API Access key"))
+    }
   }
 }

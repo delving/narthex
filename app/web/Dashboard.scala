@@ -250,6 +250,10 @@ object Dashboard extends Controller with Security {
     Ok(Json.obj("sheets" -> repo.categoriesRepo.listSheets))
   }
 
+  def sheet(fileName: String) = Action(parse.anyContent) { implicit request =>
+    OkFile(repo.categoriesRepo.sheet(fileName))
+  }
+
   def listSkos = Secure() { token => implicit request =>
     Ok(Json.obj("list" -> SkosRepo.repo.listFiles))
   }
@@ -296,7 +300,7 @@ object Dashboard extends Controller with Security {
   }
 
   def getCategoryList = Secure() { token => implicit request =>
-    repo.categoriesRepo.listOption.map { list =>
+    repo.categoriesRepo.categoryListOption.map { list =>
       Ok(Json.toJson(list))
     } getOrElse {
       NotFound(Json.obj("problem" -> "No category file"))

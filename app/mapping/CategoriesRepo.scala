@@ -23,14 +23,18 @@ import services.{NarthexConfig, Temporal}
 class CategoriesRepo(root: File) {
   root.mkdirs()
   val MARKDOWN = ".md"
-  val SPREADSHEET = ".xslx"
+  val SPREADSHEET = ".xlsx"
   val sheets = new File(root, "sheets")
   sheets.mkdir()
 
   def listSheets = {
     val sheetFiles = sheets.listFiles.toList.sortBy(_.getName).reverse
-    sheetFiles.map(file => file.getName)
+    val (show, kill) = sheetFiles.splitAt(10)
+    kill.foreach(_.delete())
+    show.map(file => file.getName)
   }
+
+  def sheet(name: String) = new File(sheets, name)
 
   def createSheet(counts: CategoryCountCollection): File = {
     val name = Temporal.nowFileName(NarthexConfig.ORG_ID, SPREADSHEET)
@@ -41,9 +45,9 @@ class CategoriesRepo(root: File) {
     file
   }
 
-  def file(name: String) = new File(root, name.replaceAll(" ", "_") + MARKDOWN)
+  def categoryMarkdown(name: String) = new File(root, name.replaceAll(" ", "_") + MARKDOWN)
 
-  lazy val listOption: Option[CategoryList] = {
+  lazy val categoryListOption: Option[CategoryList] = {
     val file = new File(root, "categories.md")
     if (file.exists()) Some(CategoryList.load(file)) else None
   }

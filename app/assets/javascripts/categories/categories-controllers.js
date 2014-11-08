@@ -54,12 +54,10 @@ define(["angular"], function (angular) {
                 $scope.columnDefs.push({
                     field: 'category' + walk,
                     index: walk + 2,
-                    headerCellTemplate:
-                        '<div class="category-header" data-ng-click="clickCategoryHeader($index - 2)">' +
+                    headerCellTemplate: '<div class="category-header" data-ng-click="clickCategoryHeader($index - 2)">' +
                         '  <span class="category-header-text">' + code.toUpperCase() + '</span>' +
                         '</div>',
-                    cellTemplate:
-                        '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
+                    cellTemplate: '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
                         '  <input type="checkbox" class="category-checkbox" data-ng-model="row.entity.memberOf[' + codeQuoted + ']" ' +
                         '         data-ng-click="setGridValue(row.entity, ' + codeQuoted + ')"/>' +
                         '</div>'
@@ -68,7 +66,7 @@ define(["angular"], function (angular) {
             if (!numberVisible) $scope.columnDefs.push({ field: 'boo', displayName: '', width: 1 });
         }
 
-        $scope.toggleCategory = function(code) {
+        $scope.toggleCategory = function (code) {
             $scope.visible[code] = !$scope.visible[code];
             columnDefinitionsFromCategories();
         };
@@ -149,10 +147,11 @@ define(["angular"], function (angular) {
         $scope.datasetBusy = false;
 
         function fetchSheetList() {
-            categoriesService.listSheets().then(function(list) {
+            categoriesService.listSheets().then(function (list) {
                 $scope.sheets = list.sheets
             });
         }
+
         fetchSheetList();
 
         function fetchDatasetList() {
@@ -264,14 +263,14 @@ define(["angular"], function (angular) {
                 decorateFile(file);
                 if (!file.progress) {
                     fetchDatasetList();
+                    $timeout(function () {
+                        fetchSheetList()
+                    }, 3000);
                     return;
                 }
-                file.checker = $timeout(
-                    function () {
-                        checkProgress(file)
-                    },
-                    1000
-                );
+                file.checker = $timeout(function () {
+                    checkProgress(file)
+                }, 1000);
             }, function (problem) {
                 if (problem.status == 404) {
                     alert("Processing problem with " + file.name);
@@ -287,6 +286,12 @@ define(["angular"], function (angular) {
             categoriesService.gatherCategoryCounts().then(function (files) {
                 fetchDatasetList();
             });
+        };
+
+        $scope.sheetUrl = function (name) {
+            var absUrl = $location.absUrl();
+            var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
+            return serverUrl + "dashboard/sheet/" + name;
         };
     };
 
