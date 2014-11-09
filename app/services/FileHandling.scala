@@ -82,13 +82,13 @@ object FileHandling {
       val cs = new CountingInputStream(is)
       val gz = new GZIPInputStream(cs)
       val bis = new BOMInputStream(gz)
-      (Source.fromInputStream(bis), new FileReadProgress(file.length(), cs))
+      (Source.fromInputStream(bis, "UTF-8"), new FileReadProgress(file.length(), cs))
     }
     else if (name.endsWith(".xml")) {
       val is = new FileInputStream(file)
       val cs = new CountingInputStream(is)
       val bis = new BOMInputStream(cs)
-      (Source.fromInputStream(bis), new FileReadProgress(file.length(), cs))
+      (Source.fromInputStream(bis, "UTF-8"), new FileReadProgress(file.length(), cs))
     }
     else {
       throw new RuntimeException(s"Unrecognized extension: $name")
