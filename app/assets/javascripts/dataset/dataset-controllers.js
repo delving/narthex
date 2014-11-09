@@ -40,8 +40,8 @@ define(["angular"], function () {
 
             if (datasetInfo.origin.type == 'origin-harvest') {
                 // use a different record root and unique id
-                $scope.recordContainer = "/pockets/pocket";
-                $scope.recordRoot = $scope.recordContainer;
+                $scope.recordContainer = "/pockets";
+                $scope.recordRoot = $scope.recordContainer + "/pocket";
                 $scope.uniqueId = $scope.recordRoot + "/@id";
                 $scope.allowUniqueIdSet = false;
             }
@@ -112,7 +112,6 @@ define(["angular"], function () {
                         if (sourcePaths.indexOf(node.sourcePath) >= 0) node.categoryMappings = true;
                         for (var index = 0; index < node.kids.length; index++) recursive(node.kids[index], sourcePaths);
                     }
-
                     recursive(tree, data.sourcePaths);
                 });
 

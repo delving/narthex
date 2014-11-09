@@ -241,6 +241,9 @@ define(["angular"], function (angular) {
             if (info.origin) {
                 file.origin = info.origin.type;
             }
+            if (info.tree) {
+                file.treeTime = info.tree.time;
+            }
             if (info.delimit && info.delimit.recordCount > 0) {
                 file.identity.recordCount = info.delimit.recordCount;
             }
@@ -292,6 +295,11 @@ define(["angular"], function (angular) {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
             return serverUrl + "dashboard/sheet/" + name;
+        };
+
+        $scope.viewFile = function (file) {
+            $location.path("/dataset/" + file.name);
+            $location.search({});
         };
     };
 

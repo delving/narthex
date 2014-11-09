@@ -56,6 +56,11 @@
                     <span class="label label-success" ng-switch-default>Source available</span>
                 </span>
             </span>
+            <span style="margin-left: 10px">
+                <button class="label label-info" data-ng-click="viewFile(file)" data-ng-show="file.treeTime">
+                    <i class="fa fa-eye"></i> <span>Explore</span>
+                </button>
+            </span>
         </div>
         <div data-ng-if="file.progress" class="col-md-12">
             <div class="col-md-11">
