@@ -37,7 +37,7 @@ object CategoryList {
     )(unlift(CategoryList.unapply))
 
   def load(file: File): CategoryList = {
-    val markdownChunks = Source.fromFile(file).mkString.split("##").toList
+    val markdownChunks = Source.fromFile(file, "UTF-8").mkString.split("##").toList
     val title = markdownChunks(0).substring(1).trim
     val categories = markdownChunks.tail.map { chunk =>
       val lines = chunk.split('\n').toList

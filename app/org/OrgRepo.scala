@@ -178,7 +178,7 @@ class OrgRepo(userHome: String, val orgId: String) {
 
   def readMapFile(factsFile: File): Map[String, String] = {
     if (!factsFile.exists()) return Map.empty
-    val lines = Source.fromFile(factsFile).getLines()
+    val lines = Source.fromFile(factsFile, "UTF-8").getLines()
     lines.flatMap {
       line =>
         val equals = line.indexOf("=")

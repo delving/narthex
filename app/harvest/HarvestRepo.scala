@@ -101,7 +101,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
 
   private def avoidSet(zipFile: File): Set[String] = {
     var idSet = new mutable.HashSet[String]()
-    avoidFiles(zipFile).foreach(Source.fromFile(_).getLines().foreach(idSet.add))
+    avoidFiles(zipFile).foreach(Source.fromFile(_, "UTF-8").getLines().foreach(idSet.add))
     idSet.toSet
   }
 
@@ -138,7 +138,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
       val idsFiles = files.map(createIdsFile)
       idsFiles.foreach { idsFile =>
         if (!idsFile.exists()) throw new RuntimeException(s"where the hell is $idsFile?")
-        val ids = Source.fromFile(idsFile).getLines()
+        val ids = Source.fromFile(idsFile, "UTF-8").getLines()
         val intersectionIds = ids.filter(idSet.contains)
         if (intersectionIds.nonEmpty) {
           // create an intersection file
