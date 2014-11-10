@@ -40,32 +40,32 @@ import scala.io.Source
  *
  * Inserting a new file adds new intersection files to previous files, and updates the .act file accordingly.
  *
- * @param sourceDir where do we work
+ * @param home where do we work
  * @param harvestType the type of harvest
  *
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
+class HarvestRepo(home: File, harvestType: HarvestType) {
   val MAX_FILES = 100
 
   private def numberString(number: Int): String = "%05d".format(number)
 
   private def newSubdirectory(dirs: Seq[File]): File = {
     val number = dirs.sortBy(_.getName).lastOption.map(_.getName.toInt + 1).getOrElse(0)
-    val sub = new File(sourceDir, numberString(number))
+    val sub = new File(home, numberString(number))
     sub.mkdir()
     sub
   }
 
   private def fileList: Seq[File] = {
-    val all = sourceDir.listFiles()
+    val all = home.listFiles()
     val (files, dirs) = all.partition(_.isFile)
     dirs.flatMap(_.listFiles()) ++ files
   }
 
   private def moveFiles = {
-    val all = sourceDir.listFiles()
+    val all = home.listFiles()
     val (files, dirs) = all.partition(_.isFile)
     val sub = newSubdirectory(dirs)
     files.foreach(file => Files.move(file.toPath, new File(sub, file.getName).toPath))
@@ -84,15 +84,15 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
 
   private def activeIdsName(number: Int): String = s"${numberString(number)}.act"
 
-  private def createZipFile(number: Int): File = new File(sourceDir, zipName(number))
+  private def createZipFile(number: Int): File = new File(home, zipName(number))
 
-  private def createIdsFile(number: Int): File = new File(sourceDir, idsName(number))
+  private def createIdsFile(number: Int): File = new File(home, idsName(number))
 
   private def createIdsFile(file: File): File = new File(file.getParentFile, idsName(getFileNumber(file)))
 
   private def createActiveIdsFile(file: File): File = new File(file.getParentFile, activeIdsName(getFileNumber(file)))
 
-  private def createIntersectionFile(oldFile: File, newFile: File): File = new File(sourceDir, s"${oldFile.getName}_${newFile.getName}")
+  private def createIntersectionFile(oldFile: File, newFile: File): File = new File(home, s"${oldFile.getName}_${newFile.getName}")
 
   private def avoidFiles(file: File): Seq[File] = {
     val prefix = s"${createIdsFile(file).getName}_"
@@ -199,7 +199,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
   def generateSourceFile(sourceFile: File, setNamespaceMap: Map[String, String] => Unit, progressReporter: ProgressReporter): Int = {
-    Logger.info(s"Generating source from $sourceDir to $sourceFile using $harvestType")
+    Logger.info(s"Generating source from $home to $sourceFile using $harvestType")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
     out.write("<?xml version='1.0' encoding='UTF-8'?>\n")
@@ -215,7 +215,7 @@ class HarvestRepo(sourceDir: File, harvestType: HarvestType) {
     out.write( s"""</$POCKET_LIST>\n""")
     out.close()
     setNamespaceMap(namespaceMap)
-    Logger.info(s"Finished generating source from $sourceDir")
+    Logger.info(s"Finished generating source from $home")
     recordCount
   }
 
