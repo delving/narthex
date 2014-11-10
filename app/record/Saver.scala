@@ -22,6 +22,8 @@ import akka.actor.{Actor, Props}
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
 import dataset.ProgressState.{SAVING, UPDATING}
+import eu.delving.metadata.RecDefModel
+import eu.delving.{MappingEngine, MappingEngineFactory, MappingResult}
 import org.basex.core.cmd.{Delete, Optimize}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -46,9 +48,20 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
 
   import context.dispatcher
 
+import scala.collection.JavaConversions._
+
   var rdb = datasetRepo.recordDb
   var log = Logger
   var progress: Option[ProgressReporter] = None
+  var detectedNeedForEngines = false
+  var mappingEngines: Seq[MappingEngine] = if (!detectedNeedForEngines) Seq.empty[MappingEngine]
+  else {
+    val namespaces = Map.empty[String, String]
+    val recDefModel: RecDefModel = null
+    val mapping = "<mapping-xml/>"
+    val engine = MappingEngineFactory.newInstance(getClass.getClassLoader, namespaces, recDefModel, mapping)
+    Seq.empty[MappingEngine]
+  }
 
   def receive = {
 
@@ -65,24 +78,27 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
         progress = Some(progressReporter)
         future {
           rdb.withRecordDb { session =>
-
-            // todo: transform the pocket with sip-core
-
             def receiveRecord(pocket: Pocket): Unit = {
-              log.info(s"Updating ${pocket.id}")
-              rdb.findRecord(pocket.id, session).map { foundRecord =>
-                log.info(s"Record found $foundRecord, deleting it")
-                if (pocket.hash == foundRecord.hash) {
-                  log.info(s"The new record has the same hash, but ignoring that for now")
+              if (mappingEngines.isEmpty) {
+                log.info(s"Updating ${pocket.id}")
+                rdb.findRecord(pocket.id, session).map { foundRecord =>
+                  log.info(s"Record found $foundRecord, deleting it")
+                  if (pocket.hash == foundRecord.hash) {
+                    log.info(s"The new record has the same hash, but ignoring that for now")
+                  }
+                  else {
+                    log.info(s"The new record has a fresh hash")
+                  }
+                  session.execute(new Delete(foundRecord.path))
                 }
-                else {
-                  log.info(s"The new record has a fresh hash")
-                }
-                session.execute(new Delete(foundRecord.path))
+                val path = datasetRepo.createPocketPath(pocket)
+                log.info(s"Adding $path")
+                session.add(path, pocket.textBytes)
               }
-              val path = datasetRepo.createPocketPath(pocket)
-              log.info(s"Adding $path")
-              session.add(path, pocket.textBytes)
+              else mappingEngines.map { engine =>
+                val result: MappingResult = engine.execute(pocket.id, pocket.text)
+                throw new RuntimeException("Mapping engine connection not yet implemented")
+              }
             }
             try {
               parser.parse(source, Set.empty[String], receiveRecord, progressReporter)
@@ -110,17 +126,20 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
             val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
             progressReporter.setReadProgress(readProgress)
             progress = Some(progressReporter)
-            def receiveRecord(pocket: Pocket) = {
-
-              // todo: transform the pocket with sip-core
-
+            def receiveRecord(pocket: Pocket): Unit = {
               tick += 1
               if (tick % 10000 == 0) {
                 val now = System.currentTimeMillis()
                 Logger.info(s"$datasetRepo $tick: ${now - time}ms")
                 time = now
               }
-              session.add(datasetRepo.createPocketPath(pocket), pocket.textBytes)
+              if (mappingEngines.isEmpty) {
+                session.add(datasetRepo.createPocketPath(pocket), pocket.textBytes)
+              }
+              else mappingEngines.map { engine =>
+                val result: MappingResult = engine.execute(pocket.id, pocket.text)
+                throw new RuntimeException("Mapping engine connection not yet implemented")
+              }
             }
             try {
               if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {

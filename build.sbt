@@ -45,7 +45,8 @@ libraryDependencies ++= Seq(
   "org.basex" % "basex" % "7.9",
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
   "org.apache.poi" % "poi" % "3.10.1",
-  "org.apache.poi" % "poi-ooxml" % "3.10.1"
+  "org.apache.poi" % "poi-ooxml" % "3.10.1",
+  "eu.delving" % "sip-core" % "14.09-SNAPSHOT"
 )
 
 libraryDependencies += cache
@@ -54,7 +55,7 @@ libraryDependencies += ws
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 
-//resolvers += "Delving" at "http://artifactory.delving.org/artifactory/delving"
+resolvers += "Delving" at "http://artifactory.delving.org/artifactory/delving"
 
 resolvers += "Release" at "http://artifactory.delving.org/artifactory/libs-release"
 
