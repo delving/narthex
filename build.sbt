@@ -46,7 +46,7 @@ libraryDependencies ++= Seq(
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
-  "eu.delving" % "sip-core" % "14.09-SNAPSHOT"
+  "eu.delving" % "sip-core" % "14.11-SNAPSHOT"
 )
 
 libraryDependencies += cache

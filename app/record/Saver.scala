@@ -31,6 +31,7 @@ import record.PocketParser.Pocket
 import record.Saver.{SaveComplete, SaveRecords}
 import services.{FileHandling, ProgressReporter}
 
+import scala.collection.JavaConversions._
 import scala.concurrent._
 import scala.language.postfixOps
 
@@ -47,8 +48,6 @@ object Saver {
 class Saver(val datasetRepo: DatasetRepo) extends Actor {
 
   import context.dispatcher
-
-import scala.collection.JavaConversions._
 
   var rdb = datasetRepo.recordDb
   var log = Logger

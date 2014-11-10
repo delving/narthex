@@ -18,6 +18,7 @@ package services
 import java.io._
 import java.util.zip.ZipFile
 
+import eu.delving.metadata.{RecDef, RecDefTree, RecMapping}
 import services.SipRepo.SipFile
 
 import scala.collection.JavaConversions._
@@ -30,7 +31,7 @@ import scala.io.Source
 object SipRepo {
 
 
-  case class SipMapping(prefix: String, version: String, recordDefinition: String, validationXSD: String, mappingText: String)
+  case class SipMapping(prefix: String, version: String, recDefTree: RecDefTree, validationXSD: String, recMapping: RecMapping)
 
   val PrefixVersion = "(.*)_(.*)".r
 
@@ -81,18 +82,34 @@ object SipRepo {
       entries.get(fileName).map { entry =>
         val inputStream = zipFile.getInputStream(entry)
         Source.fromInputStream(inputStream, "UTF-8").mkString
-      } getOrElse(throw new RuntimeException(s"Unable to read file $fileName from ${file.getAbsolutePath}"))
+      } getOrElse (throw new RuntimeException(s"Unable to read file $fileName from ${file.getAbsolutePath}"))
+    }
+
+    def recDefTree(fileName: String): RecDefTree = {
+      entries.get(fileName).map { entry =>
+        val inputStream = zipFile.getInputStream(entry)
+        val recDef = RecDef.read(inputStream)
+        RecDefTree.create(recDef)
+      } getOrElse (throw new RuntimeException(s"Unable to read rec def $fileName from ${file.getAbsolutePath}"))
+    }
+
+    def recMapping(fileName: String, recDefTree: RecDefTree): RecMapping = {
+      entries.get(fileName).map { entry =>
+        val inputStream = zipFile.getInputStream(entry)
+        RecMapping.read(inputStream, recDefTree)
+      } getOrElse (throw new RuntimeException(s"Unable to read rec def $fileName from ${file.getAbsolutePath}"))
     }
 
     lazy val sipMappings: Map[String, SipMapping] = schemaVersionSeq.map { sequence =>
       sequence.map { schemaVersion =>
         val PrefixVersion(prefix, version) = schemaVersion
+        val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
         prefix -> SipMapping(
           prefix = prefix,
           version = version,
-          recordDefinition = file(s"${schemaVersion}_record-definition.xml"),
-          validationXSD = file(s"${schemaVersion}_validation.xsd"),
-          mappingText = file(s"mapping_$prefix.xml")
+          recDefTree = tree,
+          validationXSD = "when you want to validate"/* file(s"${schemaVersion}_validation.xsd")*/,
+          recMapping = recMapping(s"mapping_$prefix.xml", tree)
         )
       }.toMap
     }.getOrElse(Map.empty[String, SipMapping])
