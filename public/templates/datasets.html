@@ -1,13 +1,11 @@
 
 <div class="row">
     <div class="col-sm-12">
-        <div>
-            <button class="btn btn-default btn-sm pull-right" data-ng-click="setNewFileOpen(true)">
-                <i class="fa fa-plus"></i> Create a new file
-            </button>
-            <h1>Datasets</h1>
-        </div>
-        <div class="file-list">
+        <h1>Datasets</h1>
+        <button class="btn btn-primary btn-sm pull-right" data-ng-click="setNewFileOpen(true)">
+            <i class="fa fa-plus"></i> Create a new file
+        </button>
+        <div class="file-list row">
             <ul class="list-group list-files">
                 <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.info.status">
                     <div data-ng-include="'file-entry.html'">entry</div>
@@ -288,44 +286,47 @@
 
 <script type="text/ng-template" id="file-entry.html">
     <div data-ng-controller="FileEntryCtrl" class="list-item-inner">
-        <div>
-            <i class="fa fa-fw fa-2x" data-ng-class="{ 'fa-folder-o':fileOpen != file.name, 'fa-folder-open-o':fileOpen == file.name }"></i>
-            <a href class="btn btn-inverse btn-link" data-ng-click="setFileOpen(file)" >
-                <span>{{ file.identity.datasetName }}</span><span>[{{ file.identity.prefix }}]</span>
-                <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
-            </a>
-            <span data-ng-show="file.identity.name">
-                <span>"{{ file.identity.name }}"</span>
-                <span data-ng-show="file.identity.dataProvider">from "{{ file.identity.dataProvider }}": </span>
+
+        <a href data-ng-click="setFileOpen(file)" class="file-open btn btn-default">
+            <i class="fa fa-fw" data-ng-class="{ 'fa-folder-o':fileOpen != file.name, 'fa-folder-open-o':fileOpen == file.name }"></i>
+            {{ file.identity.datasetName }} [{{ file.identity.prefix }}]
+            <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
+        </a>
+
+        <span data-ng-show="file.identity.name">
+            <span>"{{ file.identity.name }}"</span>
+            <span data-ng-show="file.identity.dataProvider">from "{{ file.identity.dataProvider }}": </span>
+        </span>
+
+        <span ng-if="file.origin">
+            <span ng-switch="file.origin">
+                <span class="label label-default" ng-switch-when="origin-drop">Dropped file</span>
+                <span class="label label-default" ng-switch-when="origin-harvest">Harvested dataset</span>
+                <span class="label label-default" ng-switch-when="origin-sip">SIP-Creator uploaded</span>
+                <span class="label label-default" ng-switch-default>Unknown origin</span>
             </span>
-            <span ng-if="file.origin">
-                <span ng-switch="file.origin">
-                    <span class="label label-default" ng-switch-when="origin-drop">Dropped file</span>
-                    <span class="label label-default" ng-switch-when="origin-harvest">Harvested dataset</span>
-                    <span class="label label-default" ng-switch-when="origin-sip">SIP-Creator uploaded</span>
-                    <span class="label label-default" ng-switch-default>Unknown origin</span>
+        </span>
+
+        <span ng-if="file.state">
+            <span ng-switch="file.state">
+                <span class="label label-warning" ng-switch-when="state-deleted">Deleted</span>
+                <span class="label label-default" ng-switch-when="state-empty">Empty</span>
+                <span ng-switch-default>
+                    <span class="label label-success" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
+                    <span class="label label-success" data-ng-show="file.treeTime">Analyzed {{ file.treeTime }}</span>
+                    <span class="label label-success" data-ng-show="file.recordsTime">Saved {{ file.recordsTime }}</span>
                 </span>
             </span>
-            <span ng-if="file.state">
-                <span ng-switch="file.state">
-                    <span class="label label-warning" ng-switch-when="state-deleted">Deleted</span>
-                    <span class="label label-default" ng-switch-when="state-empty">Empty</span>
-                    <span ng-switch-default>
-                        <span class="label label-success" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
-                        <span class="label label-success" data-ng-show="file.treeTime">Analyzed {{ file.treeTime }}</span>
-                        <span class="label label-success" data-ng-show="file.recordsTime">Saved {{ file.recordsTime }}</span>
-                    </span>
-                </span>
-            </span>
-            <span class="label label-default" ng-if="file.info.categories.included == 'true'">
-                Included in Monitor Statistics
-            </span>
-            <span style="margin-left: 10px">
-                <button class="label label-info" data-ng-click="viewFile(file)" data-ng-show="file.treeTime">
-                    <i class="fa fa-eye"></i> <span>Explore</span>
-                </button>
-            </span>
-        </div>
+        </span>
+        <span class="label label-default" ng-if="file.info.categories.included == 'true'">
+            Included in Monitor Statistics
+        </span>
+        <span style="margin-left: 10px">
+            <button class="btn btn-default" data-ng-click="viewFile(file)" data-ng-show="file.treeTime">
+                <i class="fa fa-eye"></i> <span>Explore</span>
+            </button>
+        </span>
+
         <div data-ng-if="file.progress" class="col-md-12">
             <div class="col-md-11">
                 <progressbar class="progress-striped active" animate="true"
