@@ -61,7 +61,7 @@ object OrgRepo {
     fileName.substring(0, fileName.length - suffix.length)
   }
 
-  def isPublishedOaiPmh(elem: Elem): Boolean = (elem \ "publication" \ "oaipmh").text == "true"
+  def getOaiPmhPrefix(elem: Elem) = (elem \ "publication" \ "oaipmhPrefix").text.trim
 
   case class SipZip
   (
@@ -108,11 +108,9 @@ class OrgRepo(userHome: String, val orgId: String) {
   }
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
-    val FileName = "(.*)__(.*)".r
     repoDb.listDatasets.flatMap { dataset =>
-      val FileName(spec, prefix) = dataset.name
-      val publishedOaiPmh = isPublishedOaiPmh(dataset.info)
-      if (publishedOaiPmh) {
+      val prefix = getOaiPmhPrefix(dataset.info)
+      if (prefix.nonEmpty) {
         val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
         val metadataFormat = namespaces.find(_._1 == prefix) match {
           case Some(ns) => RepoMetadataFormat(prefix, ns._2)

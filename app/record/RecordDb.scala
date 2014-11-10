@@ -176,7 +176,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) {
     val name = datasetRepo.name
     println(s"createHarvest: $name, $from, $until")
     val datasetInfo = getDatasetInfo
-    if (!OrgRepo.isPublishedOaiPmh(datasetInfo)) return None
+    if (OrgRepo.getOaiPmhPrefix(datasetInfo).isEmpty) return None
     val queryForRecords = s"count(collection('$recordDb')/$POCKET${dateSelector(from, until)})"
     println("asking:\n" + queryForRecords)
     val countString = session.query(queryForRecords).execute()
@@ -218,7 +218,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) {
 
   def recordPmh(identifier: String): Option[Elem] = withRecordDb { session =>
     val datasetInfo = getDatasetInfo
-    if (!OrgRepo.isPublishedOaiPmh(datasetInfo)) return None
+    if (OrgRepo.getOaiPmhPrefix(datasetInfo).isEmpty) return None
     val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}

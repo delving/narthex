@@ -162,10 +162,11 @@ object Dashboard extends Controller with Security {
   }
 
   def setPublication(fileName: String) = Secure(parse.json) { token => implicit request =>
-    def param(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
+    def boolParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
+    def stringParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     try {
       val datasetRepo = repo.datasetRepo(fileName)
-      datasetRepo.datasetDb.setPublication(param("oaipmh"), param("index"), param("lod"))
+      datasetRepo.datasetDb.setPublication(stringParam("oaipmhPrefix"), boolParam("index"), boolParam("lod"))
       Ok
     } catch {
       case e: IllegalArgumentException =>

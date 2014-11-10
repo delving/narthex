@@ -112,7 +112,7 @@ object Application extends Controller with Security {
               Ok(Json.obj("email" -> email)).withToken(token, email) // todo: there's more in the profile
           }
       } getOrElse {
-        Unauthorized(Json.obj("err" -> "No Token during check login")).discardingToken(TOKEN)
+        Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
       }
   }
 
@@ -123,7 +123,7 @@ object Application extends Controller with Security {
         case Some(token) =>
           Ok.discardingToken(token)
         case None =>
-          Unauthorized(Json.obj("err" -> "No Token during logout attempt"))
+          Unauthorized(Json.obj("err" -> "Logout failed"))
       }
   }
 

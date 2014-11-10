@@ -263,9 +263,9 @@ class DatasetDb(repoDb: OrgDb, fileName: String) {
     "metadata", metadata.toSeq: _*
   )
 
-  def setPublication(publishOaiPmh: String, publishIndex: String, publishLoD: String) = setProperties(
+  def setPublication(oaipmhPrefix: String, publishIndex: String, publishLoD: String) = setProperties(
     "publication",
-    "oaipmh" -> publishOaiPmh,
+    "oaipmhPrefix" -> oaipmhPrefix,
     "index" -> publishIndex,
     "lod" -> publishLoD
   )

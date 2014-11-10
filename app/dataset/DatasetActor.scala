@@ -63,6 +63,9 @@ object DatasetActor {
 }
 
 class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
+
+  // todo: supervisor strategy!
+
   val log = Logger
   val db = datasetRepo.datasetDb
 

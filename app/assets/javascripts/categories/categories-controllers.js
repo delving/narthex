@@ -230,11 +230,7 @@ define(["angular"], function (angular) {
                     delete(file.progress);
                 }
             }
-            var parts = file.name.split(/__/);
-            file.identity = {
-                datasetName: parts[0],
-                prefix: parts[1]
-            };
+            file.identity = { datasetName: file.name };
             if (info.status) {
                 file.state = info.status.state;
             }

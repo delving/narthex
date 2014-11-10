@@ -65,6 +65,9 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
         progress = Some(progressReporter)
         future {
           rdb.withRecordDb { session =>
+
+            // todo: transform the pocket with sip-core
+
             def receiveRecord(pocket: Pocket): Unit = {
               log.info(s"Updating ${pocket.id}")
               rdb.findRecord(pocket.id, session).map { foundRecord =>
@@ -108,6 +111,9 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
             progressReporter.setReadProgress(readProgress)
             progress = Some(progressReporter)
             def receiveRecord(pocket: Pocket) = {
+
+              // todo: transform the pocket with sip-core
+
               tick += 1
               if (tick % 10000 == 0) {
                 val now = System.currentTimeMillis()

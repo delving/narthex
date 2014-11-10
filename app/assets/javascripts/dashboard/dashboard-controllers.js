@@ -34,29 +34,34 @@ define(["angular"], function () {
         $scope.files = [];
         $scope.percent = null;
         $scope.fileOpen = $routeParams.open || $rootScope.fileOpen || "";
+        $scope.tabOpen = $routeParams.tab || $rootScope.tabOpen || "metadata";
 
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
-        $scope.dataset = { name: "", prefix: "", fileName: ""};
+        $scope.dataset = { name: "" };
 
         function setSearch() {
-            $location.search({ open: $scope.fileOpen });
+            $location.search({open: $scope.fileOpen, tab: $scope.tabOpen });
         }
 
-        function setFileName() {
+        $scope.$watch("dataset.name", function () {
             var ds = $scope.dataset;
             if (!ds.name) ds.name = "";
-            if (!ds.prefix) ds.prefix = "";
-            var name = ds.name.replace(/\W+/g, "_").replace(/_+/g, "_");
-            var prefix = ds.prefix.toLowerCase().replace(/\W/g, "").replace(/_+/g, "_");
-            ds.validFileName = name.length > 0 && prefix.length > 0 && prefix.length < 9;
-            ds.fileName = name + "__" + prefix
-        }
+            var name = ds.name.trim().replace(/\W+/g, "_").replace(/_+/g, "_");
+            ds.validName = (name.replace(/_/, "").length > 0) ? name : undefined;
+        });
 
-        $scope.$watch("dataset.name", setFileName);
-        $scope.$watch("dataset.prefix", setFileName);
+        $scope.createDataset = function () {
+            // revert nothing means create
+            dashboardService.revert($scope.dataset.validName, "new").then(function () {
+                $scope.setNewFileOpen(false);
+                $scope.fileOpen = $scope.dataset.validName;
+                $scope.dataset.name = undefined;
+                fetchDatasetList();
+            });
+        };
 
         $scope.nonEmpty = function (obj) {
             return !_.isEmpty(obj)
@@ -73,6 +78,7 @@ define(["angular"], function () {
             else {
                 $scope.fileOpen = file.name;
             }
+            $scope.tabOpen = 'metadata';
             setSearch();
         };
 
@@ -80,25 +86,10 @@ define(["angular"], function () {
             $scope.newFileOpen = value;
         };
 
-        $scope.createDataset = function () {
-            if ($scope.dataset.validFileName) {
-                // revert nothing means create
-                dashboardService.revert($scope.dataset.fileName, "new").then(function () {
-                    $scope.setNewFileOpen(false);
-                    $scope.fileOpen = $scope.dataset.fileName;
-                    $scope.dataset.name = $scope.dataset.prefix = "";
-                    fetchDatasetList();
-                });
-            }
+        $scope.setTabOpen = function(tab) {
+            $scope.tabOpen = tab;
+            setSearch();
         };
-
-        function oaiPmhListRecords(fileName, enriched) {
-            var absUrl = $location.absUrl();
-            var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-            var fileNameParts = fileName.split("__");
-            var start = enriched ? 'oai-pmh/enriched/' : 'oai-pmh/';
-            return serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + fileName + "&metadataPrefix=" + fileNameParts[1];
-        }
 
         $scope.setDropSupported = function () {
             $scope.dropSupported = true;
@@ -198,15 +189,11 @@ define(["angular"], function () {
                 }
             }
             file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
-            file.oaiPmhListRecords = oaiPmhListRecords(file.name, false);
-            file.oaiPmhListEnrichedRecords = oaiPmhListRecords(file.name, true);
             file.fileDropped = function ($files) {
                 fileDropped(file, $files)
             };
-            var parts = file.name.split(/__/);
             file.identity = {
-                datasetName: parts[0],
-                prefix: parts[1]
+                datasetName: file.name
             };
             if (info.status) {
                 file.state = info.status.state;
@@ -229,6 +216,19 @@ define(["angular"], function () {
             }
             if (!info.publication) info.publication = {};
             if (!info.categories) info.categories = {};
+
+            function oaiPmhListRecords(enriched) {
+                var absUrl = $location.absUrl();
+                var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
+                var start = enriched ? 'oai-pmh/enriched/' : 'oai-pmh/';
+                var prefix = info.publication.oaipmhPrefix;
+                return serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + prefix;
+            }
+
+            if (info.publication.oaipmhPrefix && info.publication.oaipmhPrefix.length) {
+                file.oaiPmhListRecords = oaiPmhListRecords(false);
+                file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
+            }
         }
 
         function cancelChecker(file) {
@@ -239,25 +239,25 @@ define(["angular"], function () {
         }
 
         function checkProgress(file) {
-            dashboardService.datasetInfo(file.name).then(function (info) {
-                file.info = info;
-                decorateFile(file);
-                if (!file.progress) return;
-                file.checker = $timeout(
-                    function () {
+            dashboardService.datasetInfo(file.name).then(
+                function (info) {
+                    file.info = info;
+                    decorateFile(file);
+                    if (!file.progress) return;
+                    file.checker = $timeout(function () {
                         checkProgress(file)
-                    },
-                    1000
-                );
-            }, function (problem) {
-                if (problem.status == 404) {
-                    alert("Processing problem with " + file.name);
-                    fetchDatasetList()
+                    }, 1000);
+                },
+                function (problem) {
+                    if (problem.status == 404) {
+                        alert("Processing problem with " + file.name);
+                        fetchDatasetList()
+                    }
+                    else {
+                        alert("Network problem " + problem.status);
+                    }
                 }
-                else {
-                    alert("Network problem " + problem.status);
-                }
-            })
+            )
         }
 
         function fetchDatasetList() {
@@ -265,7 +265,7 @@ define(["angular"], function () {
                 _.forEach($scope.files, cancelChecker);
                 _.forEach(files, decorateFile);
                 $scope.files = files;
-                _.forEach(files, function(file) {
+                _.forEach(files, function (file) {
                     if (file.progress) checkProgress(file)
                 });
             });
@@ -324,7 +324,7 @@ define(["angular"], function () {
             });
         };
 
-        $scope.revert = function(file, areYouSure, command) {
+        $scope.revert = function (file, areYouSure, command) {
             if (areYouSure && !confirm(areYouSure)) return;
             dashboardService.revert(file.name, command).then(function (data) {
                 fetchDatasetList();
@@ -347,8 +347,6 @@ define(["angular"], function () {
     ];
 
     var FileEntryCtrl = function ($scope, dashboardService) {
-
-        $scope.tab = "metadata";
 
         $scope.allowTab = function (file, tabName) {
             switch (tabName) {

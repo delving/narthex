@@ -34,8 +34,7 @@
         <div>
             <i class="fa fa-fw fa-2x" data-ng-class="{ 'fa-folder-o':fileOpen != file.name, 'fa-folder-open-o':fileOpen == file.name }"></i>
             <span class="">
-                <span>{{ file.identity.datasetName }}</span><span>[{{ file.identity.prefix }}]</span>
-                <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
+                <span>{{ file.identity.datasetName }}</span> <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
             </span>
             <span data-ng-show="file.identity.name">
                 <span>"{{ file.identity.name }}"</span>

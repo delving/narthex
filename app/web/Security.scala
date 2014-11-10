@@ -27,7 +27,7 @@ import scala.concurrent.Future
 trait Security { this: Controller =>
   val TOKEN = "X-XSRF-TOKEN"
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
-  lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60*60*4)
+  lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
 
   /*
     To make this work seamlessly with Angular, you should read the token from a header called
@@ -36,33 +36,29 @@ trait Security { this: Controller =>
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => Request[A] => Result): Action[A] =
-    Action(p) { implicit request =>
-      val maybeToken = request.headers.get(TOKEN)
-      maybeToken flatMap { token =>
-        Cache.getAs[String](token) map { email =>
-          block(token)(request).withToken(token, email)
-        }
-      } getOrElse {
-        Logger.info("No Token Secure!")
-        Unauthorized(Json.obj("err" -> "No Token in secure action"))
+  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => Request[A] => Result): Action[A] = Action(p) { implicit request =>
+    val maybeToken = request.headers.get(TOKEN)
+    maybeToken flatMap { token =>
+      Cache.getAs[String](token) map { email =>
+        block(token)(request).withToken(token, email)
       }
+    } getOrElse {
+      Unauthorized(Json.obj("err" -> "Secure session expired"))
     }
+  }
 
-  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Future[Result]): Action[A] =
-    Action.async(p) { implicit request =>
-      request.headers.get(TOKEN) flatMap { token =>
-        Cache.getAs[String](token) map { email =>
-          block(token)(email)(request)
-        }
-      } getOrElse {
-        Logger.info("No Token SecureAsync!")
-        Future.successful(Unauthorized(Json.obj("err" -> "No Token in secure async action")))
+  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
+    request.headers.get(TOKEN) flatMap { token =>
+      Cache.getAs[String](token) map { email =>
+        block(token)(email)(request)
       }
+    } getOrElse {
+      Future.successful(Unauthorized(Json.obj("err" -> "Secure async session expired")))
     }
+  }
 
   implicit class ResultWithToken(result: Result) {
-    def withToken(token:String, email: String): Result = {
+    def withToken(token: String, email: String): Result = {
       Cache.set(token, email, CACHE_EXPIRATION)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, token, None, httpOnly = false))
     }
