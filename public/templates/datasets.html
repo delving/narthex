@@ -288,7 +288,7 @@
 
         <a href data-ng-click="setFileOpen(file)" class="file-open btn btn-default">
             <i class="fa fa-fw" data-ng-class="{ 'fa-folder-o':fileOpen != file.name, 'fa-folder-open-o':fileOpen == file.name }"></i>
-            {{ file.identity.datasetName }} [{{ file.identity.prefix }}]
+            <span>{{ file.identity.datasetName }}</span>
             <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
         </a>
 
