@@ -1,10 +1,12 @@
 
 <div class="row">
     <div class="col-sm-12">
-        <h1>Datasets</h1>
-        <button class="btn btn-primary btn-sm pull-right" data-ng-click="setNewFileOpen(true)">
-            <i class="fa fa-plus"></i> Create a new file
-        </button>
+        <div>
+            <button class="btn btn-primary btn-sm pull-right" data-ng-click="setNewFileOpen(true)">
+                <i class="fa fa-plus"></i> Create a new file
+            </button>
+            <h1>Datasets</h1>
+        </div>
         <div class="file-list row">
             <ul class="list-group list-files">
                 <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.info.status">

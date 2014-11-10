@@ -96,7 +96,16 @@ object SipRepo {
     def recMapping(fileName: String, recDefTree: RecDefTree): RecMapping = {
       entries.get(fileName).map { entry =>
         val inputStream = zipFile.getInputStream(entry)
-        RecMapping.read(inputStream, recDefTree)
+        val mapping = RecMapping.read(inputStream, recDefTree)
+//        mapping.getNodeMappings.foreach { m =>
+//          val inputPath = m.inputPath.toString
+//          val oldPocket = "/input"
+//          if (inputPath.startsWith(oldPocket)) {
+//            m.inputPath = Path.create(s"/$POCKET${inputPath.substring(oldPocket.length)}")
+//          }
+//          println(s"transform this path: ${m.inputPath}")
+//        }
+        mapping
       } getOrElse (throw new RuntimeException(s"Unable to read rec def $fileName from ${file.getAbsolutePath}"))
     }
 

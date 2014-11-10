@@ -238,6 +238,9 @@ trait Harvesting {
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // Teylers 2014-09-15
     val from = timeToUTCString(modifiedAfter.getOrElse(new DateTime(0L)))
+//    val crippleFrom = from.substring(0, from.indexOf('T'))
+//    val crippleFrom = "2014-10-10"
+//    println(s"cripple from $crippleFrom")
     val request = resumption match {
       case None =>
         if (set.isEmpty) {
