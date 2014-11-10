@@ -2,7 +2,7 @@ package specs
 
 import java.io.File
 
-import eu.delving.groovy.{GroovyCodeResource, MappingRunner, MetadataRecordFactory, XmlSerializer}
+import eu.delving.groovy._
 import eu.delving.metadata.MappingResultImpl
 import harvest.HarvestRepo
 import harvest.Harvesting.HarvestType
@@ -50,11 +50,13 @@ class TestSipRepo extends FlatSpec with Matchers {
 
         def pocketCatcher(pocket: Pocket) = {
           if (!caught) {
-            println(pocket)
-            val metadataRecord = metadataRecordFactory.metadataRecordFrom(pocket.id, pocket.text)
-            val mappingResult = mappingRunner.runMapping(metadataRecord)
-            val result = new MappingResultImpl(serializer, pocket.id, mappingRunner.runMapping(metadataRecord), mappingRunner.getRecDefTree).resolve
-//            println(result)
+//            println(pocket)
+            val metadataRecord = metadataRecordFactory.metadataRecordFrom(pocket.id, pocket.text.replaceAll("pocket", "input"))
+            val child = metadataRecord.getRootNode.children().get(0).asInstanceOf[GroovyNode]
+            val mr = MetadataRecord.create(child, -1, -1)
+//            println(XmlNodePrinter.toXml(mr.getRootNode))
+            val result = new MappingResultImpl(serializer, pocket.id, mappingRunner.runMapping(mr), mappingRunner.getRecDefTree).resolve
+            println(result)
           }
           caught=true
         }

@@ -18,7 +18,7 @@ package services
 import java.io._
 import java.util.zip.ZipFile
 
-import eu.delving.metadata.{RecDef, RecDefTree, RecMapping}
+import eu.delving.metadata.{Path, RecDef, RecDefTree, RecMapping}
 import services.SipRepo.SipFile
 
 import scala.collection.JavaConversions._
@@ -97,14 +97,14 @@ object SipRepo {
       entries.get(fileName).map { entry =>
         val inputStream = zipFile.getInputStream(entry)
         val mapping = RecMapping.read(inputStream, recDefTree)
-//        mapping.getNodeMappings.foreach { m =>
-//          val inputPath = m.inputPath.toString
-//          val oldPocket = "/input"
-//          if (inputPath.startsWith(oldPocket)) {
-//            m.inputPath = Path.create(s"/$POCKET${inputPath.substring(oldPocket.length)}")
-//          }
+        mapping.getNodeMappings.foreach { m =>
+          val inputPath = m.inputPath.toString
+          val oldPocket = "/input"
+          if (inputPath.startsWith(oldPocket)) {
+            m.inputPath = Path.create(inputPath.replace("/metadata", ""))
+          }
 //          println(s"transform this path: ${m.inputPath}")
-//        }
+        }
         mapping
       } getOrElse (throw new RuntimeException(s"Unable to read rec def $fileName from ${file.getAbsolutePath}"))
     }
