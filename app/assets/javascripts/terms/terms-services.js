@@ -40,8 +40,8 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                datasetInfo: function (fileName) {
-                    return dash.datasetInfo(fileName).get().then(
+                datasetInfo: function (datasetName) {
+                    return dash.datasetInfo(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -56,16 +56,16 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                getMappings: function (fileName) {
-                    return dash.getTermMappings(fileName).get().then(
+                getMappings: function (datasetName) {
+                    return dash.getTermMappings(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                histogram: function (fileName, path, size) {
-                    return dash.histogram(fileName, path, size).get().then(
+                histogram: function (datasetName, path, size) {
+                    return dash.histogram(datasetName, path, size).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -80,8 +80,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                queryRecords: function (fileName, body) {
-                    return dash.queryRecords(fileName).post(body).then(
+                queryRecords: function (datasetName, body) {
+                    return dash.queryRecords(datasetName).post(body).then(
                         function (response) {
                             return response.data;
                         },

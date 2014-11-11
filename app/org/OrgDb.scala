@@ -28,7 +28,7 @@ import scala.xml.{Elem, XML}
 
 object OrgDb {
 
-  case class Dataset(name: String, info: Elem)
+  case class Dataset(datasetName: String, info: Elem)
 
 }
 
@@ -44,7 +44,7 @@ class OrgDb(val orgId: String) {
     val answer = session.query(allDatasets).execute()
     val wholeFile = XML.loadString(answer)
     val datasets = wholeFile \ "dataset"
-    datasets.map(node => Dataset((node \ "@name").text, node.asInstanceOf[Elem])).sortBy(_.name.toLowerCase)
+    datasets.map(node => Dataset((node \ "@name").text, node.asInstanceOf[Elem])).sortBy(_.datasetName.toLowerCase)
   }
 
 }

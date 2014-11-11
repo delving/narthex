@@ -21,6 +21,7 @@ import play.api.Logger
 import play.api.Play.current
 import play.api.libs.ws.WS
 import services.NarthexConfig
+import services.StringHandling.VERBATIM
 import services.Temporal._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -68,7 +69,7 @@ object Harvesting {
     }
   }
 
-  case class PMHResumptionToken(value: String, currentRecord: Int, totalRecords: Int) {
+  case class PMHResumptionToken(value: String, currentRecord: Int, totalRecords: Int, prefix: String) {
 
     def hasPercentComplete: Boolean = totalRecords > 0 && currentRecord > 0 && currentRecord < totalRecords
 
@@ -115,6 +116,7 @@ object Harvesting {
     until: Option[DateTime],
     totalPages: Int,
     totalRecords: Int,
+    prefix: String,
     pageSize: Int,
     random: String = Random.alphanumeric.take(10).mkString(""),
     currentPage: Int = 1) {
@@ -122,7 +124,8 @@ object Harvesting {
     def resumptionToken: PMHResumptionToken = PMHResumptionToken(
       value = s"$random-$totalPages-$currentPage",
       currentRecord = currentPage * NarthexConfig.OAI_PMH_PAGE_SIZE,
-      totalRecords = totalRecords
+      totalRecords = totalRecords,
+      prefix = prefix
     )
 
     def next = {
@@ -238,9 +241,9 @@ trait Harvesting {
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // Teylers 2014-09-15
     val from = timeToUTCString(modifiedAfter.getOrElse(new DateTime(0L)))
-//    val crippleFrom = from.substring(0, from.indexOf('T'))
-//    val crippleFrom = "2014-10-10"
-//    println(s"cripple from $crippleFrom")
+    //    val crippleFrom = from.substring(0, from.indexOf('T'))
+    //    val crippleFrom = "2014-10-10"
+    //    println(s"cripple from $crippleFrom")
     val request = resumption match {
       case None =>
         if (set.isEmpty) {
@@ -291,7 +294,8 @@ trait Harvesting {
           Some(PMHResumptionToken(
             value = tokenNode.text,
             currentRecord = cursor,
-            totalRecords = completeListSize
+            totalRecords = completeListSize,
+            prefix = VERBATIM
           ))
         }
         else {

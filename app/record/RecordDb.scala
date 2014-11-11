@@ -17,14 +17,15 @@ package record
 
 import dataset.{DatasetOrigin, DatasetRepo}
 import harvest.Harvesting.{Harvest, PMHResumptionToken}
-import org.OrgRepo
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import record.PocketParser._
 import record.RecordDb.FoundRecord
 import services.BaseX._
+import services.StringHandling._
 import services.Temporal._
 import services._
 
@@ -40,12 +41,11 @@ object RecordDb {
 
   case class FoundRecord(id: String, path: String, hash: String)
 
-
 }
 
-class RecordDb(datasetRepo: DatasetRepo, dbName: String) {
+class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
 
-  val recordDb = s"${dbName}_records"
+  val recordDb = s"${dbName}_records__$prefix"
 
   def createDb() = createCleanDatabase(recordDb)
 
@@ -173,27 +173,31 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) {
 
   def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = withRecordDb { session =>
     val now = new DateTime()
-    val name = datasetRepo.name
-    println(s"createHarvest: $name, $from, $until")
-    val datasetInfo = getDatasetInfo
-    if (OrgRepo.getOaiPmhPrefix(datasetInfo).isEmpty) return None
-    val queryForRecords = s"count(collection('$recordDb')/$POCKET${dateSelector(from, until)})"
-    println("asking:\n" + queryForRecords)
-    val countString = session.query(queryForRecords).execute()
-    val count = countString.toInt
-    val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
-    val pages = if (count % pageSize == 0) count / pageSize else count / pageSize + 1
-    val harvest = Harvest(
-      repoName = name,
-      headersOnly = headersOnly,
-      from = from,
-      until = until,
-      totalPages = pages,
-      totalRecords = count,
-      pageSize = pageSize
-    )
-    Cache.set(harvest.resumptionToken.value, harvest, 2 minutes)
-    Some(harvest.resumptionToken)
+    val name = datasetRepo.datasetName
+    val prefixesOpt = prefixesFromInfo(getDatasetInfo)
+    Logger.info(s"createHarvest: $name, $from, $until prefixes=$prefixesOpt recDbPrefix=$prefix")
+    prefixesOpt.flatMap { prefixes =>
+      prefixes.find(_ == prefix).map { matchingPrefix =>
+        val queryForRecords = s"count(collection('$recordDb')/$POCKET${dateSelector(from, until)})"
+        println("asking:\n" + queryForRecords)
+        val countString = session.query(queryForRecords).execute()
+        val count = countString.toInt
+        val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
+        val pages = if (count % pageSize == 0) count / pageSize else count / pageSize + 1
+        val harvest = Harvest(
+          repoName = name,
+          headersOnly = headersOnly,
+          from = from,
+          until = until,
+          totalPages = pages,
+          totalRecords = count,
+          pageSize = pageSize,
+          prefix = prefix
+        )
+        Cache.set(harvest.resumptionToken.value, harvest, 2 minutes)
+        harvest.resumptionToken
+      }
+    }
   }
 
   def recordHarvest(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int): String = withRecordDb { session =>
@@ -218,8 +222,8 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) {
 
   def recordPmh(identifier: String): Option[Elem] = withRecordDb { session =>
     val datasetInfo = getDatasetInfo
-    if (OrgRepo.getOaiPmhPrefix(datasetInfo).isEmpty) return None
-    val queryForRecord = s"""
+    prefixesFromInfo(getDatasetInfo).find(_ == prefix).map { matchingPrefix =>
+      val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}
         | let $$box := collection('$recordDb')[/$POCKET/@id=${quote(identifier)}]
@@ -228,7 +232,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) {
         |     <header>
         |       <identifier>{data($$rec/$POCKET/@id)}</identifier>
         |       <datestamp>{data($$rec/$POCKET/@mod)}</datestamp>
-        |       <setSpec>${datasetRepo.name}</setSpec>
+        |       <setSpec>${datasetRepo.datasetName}</setSpec>
         |     </header>
         |     <metadata>
         |      {$$box/$POCKET/*}
@@ -236,7 +240,8 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) {
         |   </record>
         |
         """.stripMargin.trim
-    Some(XML.loadString(session.query(queryForRecord).execute()))
+      XML.loadString(session.query(queryForRecord).execute())
+    }
   }
 
   def recordsPmh(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int, headersOnly: Boolean): Seq[String] = withRecordDb { session =>
@@ -255,7 +260,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String) {
         |         <header>
         |           <identifier>{data($$box/@id)}</identifier>
         |           <datestamp>{data($$box/@mod)}</datestamp>
-        |           <setSpec>${datasetRepo.name}</setSpec>
+        |           <setSpec>${datasetRepo.datasetName}</setSpec>
         |         </header>
         |         $metadata
         |       </record>

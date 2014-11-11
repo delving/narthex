@@ -72,21 +72,15 @@ object OaiPmh extends Controller {
     }
 
     def getFirstToken(set: String, prefix: String, headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = {
-      val datasetRepo = OrgRepo.repo.datasetRepo(set)
-      datasetRepo.recordDb.createHarvest(headersOnly, from, until)
+      OrgRepo.repo.datasetRepoOption(set).flatMap(repo => repo.recordDb(prefix).createHarvest(headersOnly, from, until))
     }
 
     def getHarvestValues(token: PMHResumptionToken, enriched: Boolean): (List[StoredRecord], Option[PMHResumptionToken]) = {
       OrgRepo.repo.getHarvest(token, enriched)
     }
 
-    def getRecord(set: String, format: String, identifier: String): Option[NodeSeq] = {
-      OrgRepo.repo.datasetRepoOption(set) match {
-        case Some(datasetRepo) =>
-          datasetRepo.recordDb.recordPmh(identifier)
-        case None =>
-          None
-      }
+    def getRecord(set: String, prefix: String, identifier: String): Option[NodeSeq] = {
+      OrgRepo.repo.datasetRepoOption(set).flatMap(repo => repo.recordDb(prefix).recordPmh(identifier))
     }
   }
 
@@ -304,8 +298,11 @@ object OaiPmh extends Controller {
           val set = request.set.getOrElse(throw new BadArgumentException(s"No set provided: $request"))
           val prefix = request.metadataPrefix.getOrElse(throw new BadArgumentException(s"No metadataPrefix provided: $request"))
           if (!RepoBridge.exists(set, prefix)) throw new DataSetNotFoundException(s"Set not found: [$set] [$prefix]")
-          val firstToken = RepoBridge.getFirstToken(set, prefix, headersOnly, request.from, request.until)
-          RepoBridge.getHarvestValues(firstToken.get, enriched)
+          RepoBridge.getFirstToken(set, prefix, headersOnly, request.from, request.until).map { token =>
+            RepoBridge.getHarvestValues(token, enriched)
+          } getOrElse {
+            throw new DataSetNotFoundException(s"Couldn't create first token: [$set] [$prefix]")
+          }
       }
     }
 

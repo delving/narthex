@@ -46,8 +46,8 @@ class PeriodicHarvest extends Actor {
       OrgRepo.repo.repoDb.listDatasets.foreach { dataset =>
         val harvestCron = Harvesting.harvestCron(dataset.info)
         if (harvestCron.timeToWork) {
-          log.info(s"Time to work on ${dataset.name}")
-          val datasetRepo = OrgRepo.repo.datasetRepo(dataset.name)
+          log.info(s"Time to work on ${dataset.datasetName}")
+          val datasetRepo = OrgRepo.repo.datasetRepo(dataset.datasetName)
           datasetRepo.nextHarvest()
         }
       }

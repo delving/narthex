@@ -3,79 +3,79 @@
 # ~~~~
 
 # Home page
-GET         /                                                         web.Application.root
-GET         /narthex/                                                 web.Application.index
+GET         /                                                            web.Application.root
+GET         /narthex/                                                    web.Application.index
 
 # JavaScript routes object
-GET         /narthex/jsroutes.js                                      web.Application.jsRoutes()
+GET         /narthex/jsroutes.js                                         web.Application.jsRoutes()
 
 # Routes used by Angular
 # ~~~~
 
 # Authentication
-GET         /narthex/checkLogin                                       web.Application.checkLogin
-POST        /narthex/login                                            web.Application.login
-GET         /narthex/logout                                           web.Application.logout
+GET         /narthex/checkLogin                                          web.Application.checkLogin
+POST        /narthex/login                                               web.Application.login
+GET         /narthex/logout                                              web.Application.logout
 
 # File Handling
-GET         /narthex/dashboard/list                                   web.Dashboard.list
-POST        /narthex/dashboard/:fileName/upload                       web.Dashboard.upload(fileName)
-POST        /narthex/dashboard/:fileName/harvest                      web.Dashboard.harvest(fileName)
-POST        /narthex/dashboard/:fileName/set-harvest-cron             web.Dashboard.setHarvestCron(fileName)
-POST        /narthex/dashboard/:fileName/set-metadata                 web.Dashboard.setMetadata(fileName)
-POST        /narthex/dashboard/:fileName/set-publication              web.Dashboard.setPublication(fileName)
-POST        /narthex/dashboard/:fileName/set-categories               web.Dashboard.setCategories(fileName)
-POST        /narthex/dashboard/:fileName/set-delimiter                web.Dashboard.setRecordDelimiter(fileName)
-GET         /narthex/dashboard/:fileName/analyze                      web.Dashboard.analyze(fileName)
-GET         /narthex/dashboard/:fileName/index                        web.Dashboard.index(fileName)
-GET         /narthex/dashboard/:fileName/dataset-info                 web.Dashboard.datasetInfo(fileName)
-GET         /narthex/dashboard/:fileName/revert/:command              web.Dashboard.revert(fileName, command)
-GET         /narthex/dashboard/:fileName/status/*path                 web.Dashboard.nodeStatus(fileName, path)
-GET         /narthex/dashboard/:fileName/sample/:size/*path           web.Dashboard.sample(fileName, path, size:Int)
-GET         /narthex/dashboard/:fileName/histogram/:size/*path        web.Dashboard.histogram(fileName, path, size:Int)
-GET         /narthex/dashboard/:fileName/save-records                 web.Dashboard.saveRecords(fileName)
+GET         /narthex/dashboard/list                                      web.Dashboard.list
+POST        /narthex/dashboard/:datasetName/upload                       web.Dashboard.upload(datasetName)
+POST        /narthex/dashboard/:datasetName/harvest                      web.Dashboard.harvest(datasetName)
+POST        /narthex/dashboard/:datasetName/set-harvest-cron             web.Dashboard.setHarvestCron(datasetName)
+POST        /narthex/dashboard/:datasetName/set-metadata                 web.Dashboard.setMetadata(datasetName)
+POST        /narthex/dashboard/:datasetName/set-publication              web.Dashboard.setPublication(datasetName)
+POST        /narthex/dashboard/:datasetName/set-categories               web.Dashboard.setCategories(datasetName)
+POST        /narthex/dashboard/:datasetName/set-delimiter                web.Dashboard.setRecordDelimiter(datasetName)
+GET         /narthex/dashboard/:datasetName/analyze                      web.Dashboard.analyze(datasetName)
+GET         /narthex/dashboard/:datasetName/index                        web.Dashboard.index(datasetName)
+GET         /narthex/dashboard/:datasetName/dataset-info                 web.Dashboard.datasetInfo(datasetName)
+GET         /narthex/dashboard/:datasetName/revert/:command              web.Dashboard.revert(datasetName, command)
+GET         /narthex/dashboard/:datasetName/status/*path                 web.Dashboard.nodeStatus(datasetName, path)
+GET         /narthex/dashboard/:datasetName/sample/:size/*path           web.Dashboard.sample(datasetName, path, size:Int)
+GET         /narthex/dashboard/:datasetName/histogram/:size/*path        web.Dashboard.histogram(datasetName, path, size:Int)
+GET         /narthex/dashboard/:datasetName/save-records                 web.Dashboard.saveRecords(datasetName)
 
-POST        /narthex/dashboard/:fileName/query-records                web.Dashboard.queryRecords(fileName)
+POST        /narthex/dashboard/:datasetName/query-records                web.Dashboard.queryRecords(datasetName)
 
-GET         /narthex/dashboard/skos/list                              web.Dashboard.listSkos
-GET         /narthex/dashboard/skos/:name/:sought                     web.Dashboard.searchSkos(name, sought)
-GET         /narthex/dashboard/:fileName/term/source-paths            web.Dashboard.getTermSourcePaths(fileName)
-GET         /narthex/dashboard/:fileName/term/mappings                web.Dashboard.getTermMappings(fileName)
-POST        /narthex/dashboard/:fileName/term/set-mapping             web.Dashboard.setTermMapping(fileName)
+GET         /narthex/dashboard/skos/list                                 web.Dashboard.listSkos
+GET         /narthex/dashboard/skos/:name/:sought                        web.Dashboard.searchSkos(name, sought)
+GET         /narthex/dashboard/:datasetName/term/source-paths            web.Dashboard.getTermSourcePaths(datasetName)
+GET         /narthex/dashboard/:datasetName/term/mappings                web.Dashboard.getTermMappings(datasetName)
+POST        /narthex/dashboard/:datasetName/term/set-mapping             web.Dashboard.setTermMapping(datasetName)
 
-GET         /narthex/dashboard/category-list                          web.Dashboard.getCategoryList
-GET         /narthex/dashboard/sheets-list                            web.Dashboard.listSheets
-GET         /narthex/dashboard/sheet/:fileName                        web.Dashboard.sheet(fileName)
-GET         /narthex/dashboard/:fileName/category/source-paths        web.Dashboard.getCategorySourcePaths(fileName)
-GET         /narthex/dashboard/:fileName/category/mappings            web.Dashboard.getCategoryMappings(fileName)
-POST        /narthex/dashboard/:fileName/category/set-mapping         web.Dashboard.setCategoryMapping(fileName)
-GET         /narthex/dashboard/categories/gather-counts               web.Dashboard.gatherCategoryCounts
+GET         /narthex/dashboard/category-list                             web.Dashboard.getCategoryList
+GET         /narthex/dashboard/sheets-list                               web.Dashboard.listSheets
+GET         /narthex/dashboard/sheet/:datasetName                        web.Dashboard.sheet(datasetName)
+GET         /narthex/dashboard/:datasetName/category/source-paths        web.Dashboard.getCategorySourcePaths(datasetName)
+GET         /narthex/dashboard/:datasetName/category/mappings            web.Dashboard.getCategoryMappings(datasetName)
+POST        /narthex/dashboard/:datasetName/category/set-mapping         web.Dashboard.setCategoryMapping(datasetName)
+GET         /narthex/dashboard/categories/gather-counts                  web.Dashboard.gatherCategoryCounts
 
-GET         /narthex/dashboard/sip-list                               web.Dashboard.listSipFiles
-GET         /narthex/dashboard/delete-sip/:fileName                   web.Dashboard.deleteSipFile(fileName)
+GET         /narthex/dashboard/sip-list                                  web.Dashboard.listSipFiles
+GET         /narthex/dashboard/delete-sip/:datasetName                   web.Dashboard.deleteSipFile(datasetName)
 
 
-GET         /narthex/api/:apiKey                                      web.APIController.listDatasets(apiKey)
-GET         /narthex/api/:apiKey/:fileName                            web.APIController.pathsJSON(apiKey, fileName)
-GET         /narthex/api/:apiKey/:fileName/tree                       web.APIController.indexJSON(apiKey, fileName)
-GET         /narthex/api/:apiKey/:fileName/index                      web.APIController.indexText(apiKey, fileName, path="")
-GET         /narthex/api/:apiKey/:fileName/mappings                   web.APIController.mappings(apiKey, fileName)
-GET         /narthex/api/:apiKey/:fileName/ids/:since                 web.APIController.ids(apiKey, fileName, since)
-GET         /narthex/api/:apiKey/:fileName/record/:id                 web.APIController.rawRecord(apiKey, fileName, id)
-GET         /narthex/api/:apiKey/:fileName/record/:id/enriched        web.APIController.enrichedRecord(apiKey, fileName, id)
-GET         /narthex/api/:apiKey/:fileName/index/*path                web.APIController.indexText(apiKey, fileName, path)
-GET         /narthex/api/:apiKey/:fileName/unique/*path               web.APIController.uniqueText(apiKey, fileName, path)
-GET         /narthex/api/:apiKey/:fileName/histogram/*path            web.APIController.histogramText(apiKey, fileName, path)
+GET         /narthex/api/:apiKey                                         web.APIController.listDatasets(apiKey)
+GET         /narthex/api/:apiKey/:datasetName                            web.APIController.pathsJSON(apiKey, datasetName)
+GET         /narthex/api/:apiKey/:datasetName/tree                       web.APIController.indexJSON(apiKey, datasetName)
+GET         /narthex/api/:apiKey/:datasetName/index                      web.APIController.indexText(apiKey, datasetName, path="")
+GET         /narthex/api/:apiKey/:datasetName/mappings                   web.APIController.mappings(apiKey, datasetName)
+GET         /narthex/api/:apiKey/:datasetName/ids/:since                 web.APIController.ids(apiKey, datasetName, since)
+GET         /narthex/api/:apiKey/:datasetName/record/:id                 web.APIController.rawRecord(apiKey, datasetName, id)
+GET         /narthex/api/:apiKey/:datasetName/record/:id/enriched        web.APIController.enrichedRecord(apiKey, datasetName, id)
+GET         /narthex/api/:apiKey/:datasetName/index/*path                web.APIController.indexText(apiKey, datasetName, path)
+GET         /narthex/api/:apiKey/:datasetName/unique/*path               web.APIController.uniqueText(apiKey, datasetName, path)
+GET         /narthex/api/:apiKey/:datasetName/histogram/*path            web.APIController.histogramText(apiKey, datasetName, path)
 
 # todo: these should use OAuth
-POST        /narthex/sip-creator/:apiKey/upload/:fileName             web.APIController.uploadOutput(apiKey, fileName)
-POST        /narthex/sip-creator/:apiKey/sip-zip/:fileName            web.APIController.uploadSipZip(apiKey, fileName)
-GET         /narthex/sip-creator/:apiKey/sip-zip/:fileName            web.APIController.downloadSipZip(apiKey, fileName)
-GET         /narthex/sip-creator/:apiKey/sip-zip                      web.APIController.listSipZips(apiKey)
+POST        /narthex/sip-creator/:apiKey/upload/:datasetName             web.APIController.uploadOutput(apiKey, datasetName)
+POST        /narthex/sip-creator/:apiKey/sip-zip/:datasetName            web.APIController.uploadSipZip(apiKey, datasetName)
+GET         /narthex/sip-creator/:apiKey/sip-zip/:datasetName            web.APIController.downloadSipZip(apiKey, datasetName)
+GET         /narthex/sip-creator/:apiKey/sip-zip                         web.APIController.listSipZips(apiKey)
 
-GET         /narthex/oai-pmh/:accessKey                               harvest.OaiPmh.service(accessKey)
-GET         /narthex/oai-pmh/enriched/:accessKey                      harvest.OaiPmh.serviceEnriched(accessKey)
+GET         /narthex/oai-pmh/:accessKey                                  harvest.OaiPmh.service(accessKey)
+GET         /narthex/oai-pmh/enriched/:accessKey                         harvest.OaiPmh.serviceEnriched(accessKey)
 
 # Static
-GET         /narthex/webjars/*file                                    controllers.WebJarAssets.at(file)
-GET         /narthex/assets/*file                                     controllers.Assets.at(path="/public", file)
+GET         /narthex/webjars/*file                                       controllers.WebJarAssets.at(file)
+GET         /narthex/assets/*file                                        controllers.Assets.at(path="/public", file)

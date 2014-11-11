@@ -20,7 +20,7 @@ define(["angular"], function (angular) {
     var CategorySetCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, pageScroll) {
 
         function getSearchParams() {
-            $scope.fileName = $routeParams.fileName;
+            $scope.datasetName = $routeParams.datasetName;
             $scope.path = $routeParams.path;
             $scope.histogramSize = parseInt($routeParams.size || "100");
         }
@@ -71,7 +71,7 @@ define(["angular"], function (angular) {
             columnDefinitionsFromCategories();
         };
 
-        categoriesService.datasetInfo($scope.fileName).then(function (datasetInfo) {
+        categoriesService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
             var recordRoot;
             if (datasetInfo.origin.type == 'origin-harvest') {
@@ -90,9 +90,9 @@ define(["angular"], function (angular) {
             categoriesService.getCategoryList().then(function (categoryList) {
                 $scope.categories = categoryList.categories;
                 columnDefinitionsFromCategories();
-                categoriesService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (histogramData) {
+                categoriesService.histogram($scope.datasetName, $scope.path, $scope.histogramSize).then(function (histogramData) {
                     $scope.gridData = _.map(histogramData.histogram, function (entry) {
-                        var sourceUri = $rootScope.orgId + "/" + $scope.fileName + sourceUriPath + "/" + encodeURIComponent(entry[1]);
+                        var sourceUri = $rootScope.orgId + "/" + $scope.datasetName + sourceUriPath + "/" + encodeURIComponent(entry[1]);
 //                        console.log("sourceUri " + entry[1], sourceUri);
                         return {
                             term: entry[1],
@@ -102,7 +102,7 @@ define(["angular"], function (angular) {
                         }
                     });
 
-                    categoriesService.getCategoryMappings($scope.fileName).then(function (mappingsData) {
+                    categoriesService.getCategoryMappings($scope.datasetName).then(function (mappingsData) {
                         var mappingLookup = {};
                         _.forEach(mappingsData.mappings, function (mapping) {
                             mappingLookup[mapping.source] = mapping.categories;
@@ -130,7 +130,7 @@ define(["angular"], function (angular) {
                 member: entity.memberOf[code]
             };
             entity.busyCode = code;
-            categoriesService.setCategoryMapping($scope.fileName, body).then(function (data) {
+            categoriesService.setCategoryMapping($scope.datasetName, body).then(function (data) {
                 delete entity.busyCode;
             });
         };

@@ -40,16 +40,16 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                revert: function (fileName, command) {
-                    return dash.revert(fileName, command).get().then(
+                revert: function (datasetName, command) {
+                    return dash.revert(datasetName, command).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                datasetInfo: function (fileName) {
-                    return dash.datasetInfo(fileName).get().then(
+                datasetInfo: function (datasetName) {
+                    return dash.datasetInfo(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -64,56 +64,56 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                setMetadata: function (fileName, metadata) {
-                    return dash.setMetadata(fileName).post(metadata).then(
+                setMetadata: function (datasetName, metadata) {
+                    return dash.setMetadata(datasetName).post(metadata).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setPublication: function (fileName, publication) {
-                    return dash.setPublication(fileName).post(publication).then(
+                setPublication: function (datasetName, publication) {
+                    return dash.setPublication(datasetName).post(publication).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setCategories: function (fileName, categories) {
-                    return dash.setCategories(fileName).post(categories).then(
+                setCategories: function (datasetName, categories) {
+                    return dash.setCategories(datasetName).post(categories).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                harvest: function (fileName, harvestInfo) {
-                    return dash.harvest(fileName).post(harvestInfo).then(
+                harvest: function (datasetName, harvestInfo) {
+                    return dash.harvest(datasetName).post(harvestInfo).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setHarvestCron: function (fileName, harvestCron) {
-                    return dash.setHarvestCron(fileName).post(harvestCron).then(
+                setHarvestCron: function (datasetName, harvestCron) {
+                    return dash.setHarvestCron(datasetName).post(harvestCron).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                analyze: function (fileName) {
-                    return dash.analyze(fileName).get().then(
+                analyze: function (datasetName) {
+                    return dash.analyze(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                saveRecords: function (fileName) {
-                    return dash.saveRecords(fileName).get().then(
+                saveRecords: function (datasetName) {
+                    return dash.saveRecords(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },

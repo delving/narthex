@@ -30,6 +30,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
 import services.ProgressReporter
+import services.StringHandling.VERBATIM
 
 import scala.concurrent._
 import scala.language.postfixOps
@@ -57,8 +58,8 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
   var harvestProgress: Option[ProgressReporter] = None
 
   def addPage(page: String): Int = {
-    val fileName = s"harvest_$pageCount.xml"
-    zip.putNextEntry(new ZipEntry(fileName))
+    val harvestPageName = s"harvest_$pageCount.xml"
+    zip.putNextEntry(new ZipEntry(harvestPageName))
     zip.write(page.getBytes("UTF-8"))
     zip.closeEntry()
     pageCount += 1
@@ -80,7 +81,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
           val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
           val generateSourceReporter = ProgressReporter(GENERATING, db)
           val newRecordCount = harvestRepo.generateSourceFile(incomingFile, db.setNamespaceMap, generateSourceReporter)
-          val existingRecordCount = datasetRepo.recordDb.getRecordCount
+          val existingRecordCount = datasetRepo.recordDb(VERBATIM).getRecordCount
           log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
           // set record count
           val info = db.infoOption.get
@@ -111,7 +112,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
 
     case InterruptWork() =>
       log.info(s"Interrupt harvesting $datasetRepo")
-      harvestProgress.map(_.bomb = Some(sender)).getOrElse(context.stop(self))
+      harvestProgress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
     case HarvestAdLib(url, database, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetRepo")

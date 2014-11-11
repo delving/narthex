@@ -40,64 +40,64 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                datasetInfo: function (fileName) {
-                    return dash.datasetInfo(fileName).get().then(
+                datasetInfo: function (datasetName) {
+                    return dash.datasetInfo(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                index: function (fileName) {
-                    return dash.index(fileName).get().then(
+                index: function (datasetName) {
+                    return dash.index(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                getTermSourcePaths: function (fileName) {
-                    return dash.getTermSourcePaths(fileName).get().then(
+                getTermSourcePaths: function (datasetName) {
+                    return dash.getTermSourcePaths(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                getCategorySourcePaths: function (fileName) {
-                    return dash.getCategorySourcePaths(fileName).get().then(
+                getCategorySourcePaths: function (datasetName) {
+                    return dash.getCategorySourcePaths(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                nodeStatus: function (fileName, path) {
-                    return dash.nodeStatus(fileName, path).get().then(
+                nodeStatus: function (datasetName, path) {
+                    return dash.nodeStatus(datasetName, path).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setRecordDelimiter: function (fileName, body) {
-                    return dash.setRecordDelimiter(fileName).post(body).then(
+                setRecordDelimiter: function (datasetName, body) {
+                    return dash.setRecordDelimiter(datasetName).post(body).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                sample: function (fileName, path, size) {
-                    return dash.sample(fileName, path, size).get().then(
+                sample: function (datasetName, path, size) {
+                    return dash.sample(datasetName, path, size).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                histogram: function (fileName, path, size) {
-                    return dash.histogram(fileName, path, size).get().then(
+                histogram: function (datasetName, path, size) {
+                    return dash.histogram(datasetName, path, size).get().then(
                         function (response) {
                             return response.data;
                         },

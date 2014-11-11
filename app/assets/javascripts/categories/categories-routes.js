@@ -30,7 +30,7 @@ define(
             "$routeProvider", "userResolve",
             function ($routeProvider, userResolve) {
                 $routeProvider.when(
-                    "/categories/:fileName",
+                    "/categories/:datasetName",
                     {
                         templateUrl: "/narthex/assets/templates/category-set.html",
                         controller: controllers.CategorySetCtrl,

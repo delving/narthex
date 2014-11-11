@@ -1,7 +1,7 @@
 <div class="row" ng-show="tree">
     <div class="col-md-12">
         <div class="file-path-info breadcrumb">
-            <span class="file-name">{{fileName}}</span><span class="file-path">{{activePath}}</span>
+            <span class="file-name">{{datasetName}}</span><span class="file-path">{{activePath}}</span>
         </div>
     </div>
 
@@ -15,8 +15,8 @@
                         <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" role="menu">
-                        <li><a data-ng-href="{{ apiPrefix }}/{{ fileName }}/tree" target="_blank">Tree</a></li>
-                        <li><a data-ng-href="{{ apiPrefix }}/{{ fileName }}" target="_blank">Paths</a></li>
+                        <li><a data-ng-href="{{ apiPrefix }}/{{ datasetName }}/tree" target="_blank">Tree</a></li>
+                        <li><a data-ng-href="{{ apiPrefix }}/{{ datasetName }}" target="_blank">Paths</a></li>
                     </ul>
                 </div>
             </div>

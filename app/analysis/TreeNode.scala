@@ -26,7 +26,8 @@ import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
-import services.{FileHandling, NarthexEventReader, ProgressReporter}
+import services.StringHandling._
+import services.{NarthexEventReader, ProgressReporter}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -46,7 +47,7 @@ object TreeNode {
         events.next() match {
 
           case EvElemStart(pre, label, attrs, scope) =>
-            node = node.kid(FileHandling.tag(pre, label)).start()
+            node = node.kid(tag(pre, label)).start()
             attrs.foreach {
               attr =>
                 val kid = node.kid(s"@${attr.prefixedKey}").start()
@@ -57,14 +58,14 @@ object TreeNode {
           case EvText(text) =>
             node.value(text)
 
-          case EvEntityRef(entity) => node.value(FileHandling.translateEntity(entity))
+          case EvEntityRef(entity) => node.value(translateEntity(entity))
 
           case EvElemEnd(pre, label) =>
             node.end()
             node = node.parent
 
           case EvComment(text) =>
-            FileHandling.stupidParser(text, string => node.value(FileHandling.translateEntity(string)))
+            stupidParser(text, string => node.value(translateEntity(string)))
 
           case x =>
             println("EVENT? " + x) // todo: record these in an error file for later
@@ -247,7 +248,7 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
   }
 
   def end() = {
-    var value = FileHandling.crunchWhitespace(valueBuilder.toString())
+    var value = crunchWhitespace(valueBuilder.toString())
     if (!value.isEmpty) {
       lengths.record(value)
       valueList = value :: valueList

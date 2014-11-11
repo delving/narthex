@@ -17,7 +17,6 @@
 package services
 
 import java.io.{BufferedInputStream, File, FileInputStream, InputStream}
-import java.net.URLEncoder
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipFile}
 
 import org.apache.commons.io.FileUtils._
@@ -93,32 +92,6 @@ object FileHandling {
     else {
       throw new RuntimeException(s"Unrecognized extension: $name")
     }
-  }
-
-  def tag(pre: String, label: String) = if (pre == null || pre.isEmpty) label else s"$pre:$label"
-
-  def stupidParser(comment: String, addEntity: String => Unit) = {
-    if (comment == " unknown entity apos; ") {
-      addEntity("apos")
-    }
-  }
-
-  def crunchWhitespace(text: String) = text.replaceAll("\\s+", " ").trim
-
-  def translateEntity(text: String) = text match {
-    case "amp" => "&"
-    case "quot" => "\""
-    case "lt" => "<"
-    case "gt" => ">"
-    case "apos" => "'"
-    case x => ""
-  }
-
-  def urlEncodeValue(unencoded: String) = {
-    URLEncoder.encode(unencoded, "utf-8")
-      .replaceAll("[+]", "%20")
-      .replaceAll("[%]28", "(")
-      .replaceAll("[%]29", ")")
   }
 
   def getZipFileSize(zipFile: ZipFile) = {

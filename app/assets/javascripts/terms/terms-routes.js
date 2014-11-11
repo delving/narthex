@@ -30,7 +30,7 @@ define(
             "$routeProvider", "userResolve",
             function ($routeProvider, userResolve) {
                 $routeProvider.when(
-                    "/terms/:fileName",
+                    "/terms/:datasetName",
                     {
                         templateUrl: "/narthex/assets/templates/terms.html",
                         controller: controllers.TermsCtrl,

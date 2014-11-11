@@ -61,22 +61,22 @@ object Dashboard extends Controller with Security {
       DatasetState.fromDatasetInfo(dataset.info).map { state: DatasetState =>
         if (state == DatasetState.DELETED) None else {
           val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-          Some(Json.obj("name" -> dataset.name, "info" -> JsObject(lists)))
+          Some(Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists)))
         }
       } getOrElse None
     }
     Ok(JsArray(datasets))
   }
 
-  def datasetInfo(fileName: String) = Secure() { token => implicit request =>
-    repo.datasetRepo(fileName).datasetDb.infoOption.map { info =>
+  def datasetInfo(datasetName: String) = Secure() { token => implicit request =>
+    repo.datasetRepo(datasetName).datasetDb.infoOption.map { info =>
       val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(info, name))
       Ok(JsObject(lists))
-    } getOrElse NotFound(Json.obj("problem" -> s"Not found $fileName"))
+    } getOrElse NotFound(Json.obj("problem" -> s"Not found $datasetName"))
   }
 
-  def revert(fileName: String, command: String) = Secure() { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
+  def revert(datasetName: String, command: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
     val change = command match {
       case "interrupt" =>
         val interrupted = datasetRepo.interruptProgress
@@ -86,7 +86,7 @@ object Dashboard extends Controller with Security {
         datasetRepo.datasetDb.setTree(ready = false)
         "Tree removed"
       case "records" =>
-        datasetRepo.recordDb.dropDb()
+        datasetRepo.recordDbFromName(datasetName).dropDb()
         datasetRepo.datasetDb.setRecords(ready = false)
         "Records removed"
       case "new" =>
@@ -99,27 +99,27 @@ object Dashboard extends Controller with Security {
     Ok(Json.obj("change" -> change))
   }
 
-  def upload(fileName: String) = Secure(parse.multipartFormData) { token => implicit request =>
+  def upload(datasetName: String) = Secure(parse.multipartFormData) { token => implicit request =>
     request.body.file("file").map { file =>
-      Logger.info(s"upload ${file.filename} (${file.contentType}) to $fileName")
+      Logger.info(s"upload ${file.filename} (${file.contentType}) to $datasetName")
       OrgRepo.acceptableFile(file.filename, file.contentType).map { suffix =>
         println(s"Acceptable ${file.filename}")
-        val datasetRepo = repo.datasetRepo(s"$fileName$suffix")
+        val datasetRepo = repo.datasetRepo(s"$datasetName$suffix")
         datasetRepo.datasetDb.setOrigin(DROP)
         datasetRepo.datasetDb.setStatus(SOURCED)
         file.ref.moveTo(datasetRepo.createIncomingFile(file.filename), replace = true)
         datasetRepo.startAnalysis()
-        Ok(datasetRepo.name)
+        Ok(datasetRepo.datasetName)
       } getOrElse NotAcceptable(Json.obj("problem" -> "File must be .xml or .xml.gz"))
     } getOrElse NotAcceptable(Json.obj("problem" -> "Missing file"))
   }
 
-  def harvest(fileName: String) = Secure(parse.json) { token => implicit request =>
+  def harvest(datasetName: String) = Secure(parse.json) { token => implicit request =>
     def optional(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
     try {
-      val datasetRepo = repo.datasetRepo(fileName)
-      Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $fileName")
+      val datasetRepo = repo.datasetRepo(datasetName)
+      Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $datasetName")
       HarvestType.fromString(required("harvestType")) map { harvestType =>
         val prefix = if (harvestType == HarvestType.PMH) required("prefix") else ""
         datasetRepo.firstHarvest(harvestType, required("url"), optional("dataset"), prefix)
@@ -133,10 +133,10 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setHarvestCron(fileName: String) = Secure(parse.json) { token => implicit request =>
+  def setHarvestCron(datasetName: String) = Secure(parse.json) { token => implicit request =>
     def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
     try {
-      val datasetRepo = repo.datasetRepo(fileName)
+      val datasetRepo = repo.datasetRepo(datasetName)
       val cron = Harvesting.harvestCron(required("previous"), required("delay"), required("unit"))
       Logger.info(s"harvest $cron")
       datasetRepo.datasetDb.setHarvestCron(cron)
@@ -147,12 +147,12 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setMetadata(fileName: String) = Secure(parse.json) { token => implicit request =>
+  def setMetadata(datasetName: String) = Secure(parse.json) { token => implicit request =>
     try {
       val obj = request.body.as[JsObject]
       val meta: Map[String, String] = obj.value.map(nv => nv._1 -> nv._2.as[String]).toMap
       Logger.info(s"saveMetadata: $meta")
-      val datasetRepo = repo.datasetRepo(fileName)
+      val datasetRepo = repo.datasetRepo(datasetName)
       datasetRepo.datasetDb.setMetadata(meta)
       Ok
     } catch {
@@ -161,12 +161,12 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setPublication(fileName: String) = Secure(parse.json) { token => implicit request =>
+  def setPublication(datasetName: String) = Secure(parse.json) { token => implicit request =>
     def boolParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
     def stringParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     try {
-      val datasetRepo = repo.datasetRepo(fileName)
-      datasetRepo.datasetDb.setPublication(stringParam("oaipmhPrefix"), boolParam("index"), boolParam("lod"))
+      val datasetRepo = repo.datasetRepo(datasetName)
+      datasetRepo.datasetDb.setPublication(stringParam("oaipmhPrefixes"), boolParam("index"), boolParam("lod"))
       Ok
     } catch {
       case e: IllegalArgumentException =>
@@ -174,10 +174,10 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setCategories(fileName: String) = Secure(parse.json) { token => implicit request =>
+  def setCategories(datasetName: String) = Secure(parse.json) { token => implicit request =>
     def param(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
     try {
-      val datasetRepo = repo.datasetRepo(fileName)
+      val datasetRepo = repo.datasetRepo(datasetName)
       datasetRepo.datasetDb.setCategories(param("included"))
       Ok
     } catch {
@@ -186,62 +186,62 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def analyze(fileName: String) = Secure() { token => implicit request =>
-    repo.datasetRepoOption(fileName) match {
+  def analyze(datasetName: String) = Secure() { token => implicit request =>
+    repo.datasetRepoOption(datasetName) match {
       case Some(datasetRepo) =>
         datasetRepo.startAnalysis()
         Ok
       case None =>
-        NotFound(Json.obj("problem" -> s"Not found $fileName"))
+        NotFound(Json.obj("problem" -> s"Not found $datasetName"))
     }
   }
 
-  def index(fileName: String) = Secure() { token => implicit request =>
-    OkFile(repo.datasetRepo(fileName).index)
+  def index(datasetName: String) = Secure() { token => implicit request =>
+    OkFile(repo.datasetRepo(datasetName).index)
   }
 
-  def nodeStatus(fileName: String, path: String) = Secure() { token => implicit request =>
-    repo.datasetRepo(fileName).status(path) match {
+  def nodeStatus(datasetName: String, path: String) = Secure() { token => implicit request =>
+    repo.datasetRepo(datasetName).status(path) match {
       case None => NotFound(Json.obj("path" -> path))
       case Some(file) => OkFile(file)
     }
   }
 
-  def sample(fileName: String, path: String, size: Int) = Secure() { token => implicit request =>
-    repo.datasetRepo(fileName).sample(path, size) match {
+  def sample(datasetName: String, path: String, size: Int) = Secure() { token => implicit request =>
+    repo.datasetRepo(datasetName).sample(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
       case Some(file) => OkFile(file)
     }
   }
 
-  def histogram(fileName: String, path: String, size: Int) = Secure() { token => implicit request =>
-    repo.datasetRepo(fileName).histogram(path, size) match {
+  def histogram(datasetName: String, path: String, size: Int) = Secure() { token => implicit request =>
+    repo.datasetRepo(datasetName).histogram(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
       case Some(file) => OkFile(file)
     }
   }
 
-  def setRecordDelimiter(fileName: String) = Secure(parse.json) { token => implicit request =>
+  def setRecordDelimiter(datsetName: String) = Secure(parse.json) { token => implicit request =>
     var recordRoot = (request.body \ "recordRoot").as[String]
     var uniqueId = (request.body \ "uniqueId").as[String]
     var recordCount = (request.body \ "recordCount").as[Int]
-    val datasetRepo = repo.datasetRepo(fileName)
+    val datasetRepo = repo.datasetRepo(datsetName)
     datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
     println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
     Ok
   }
 
-  def saveRecords(fileName: String) = Secure() { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
+  def saveRecords(datasetName: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
     datasetRepo.firstSaveRecords()
     Ok
   }
 
-  def queryRecords(fileName: String) = Secure(parse.json) { token => implicit request =>
+  def queryRecords(datasetName: String) = Secure(parse.json) { token => implicit request =>
     val path = (request.body \ "path").as[String]
     val value = (request.body \ "value").as[String]
-    val datasetRepo = repo.datasetRepo(fileName)
-    val recordsString = datasetRepo.recordDb.recordsWithValue(path, value)
+    val datasetRepo = repo.datasetRepo(datasetName)
+    val recordsString = datasetRepo.recordDbFromName(datasetName).recordsWithValue(path, value)
     val enrichedRecords = datasetRepo.enrichRecords(recordsString)
     val result = enrichedRecords.map(rec => rec.text).mkString("\n")
     Ok(result)
@@ -251,8 +251,8 @@ object Dashboard extends Controller with Security {
     Ok(Json.obj("sheets" -> repo.categoriesRepo.listSheets))
   }
 
-  def sheet(fileName: String) = Action(parse.anyContent) { implicit request =>
-    OkFile(repo.categoriesRepo.sheet(fileName))
+  def sheet(datasetName: String) = Action(parse.anyContent) { implicit request =>
+    OkFile(repo.categoriesRepo.sheet(datasetName))
   }
 
   def listSkos = Secure() { token => implicit request =>
@@ -270,20 +270,20 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def getTermSourcePaths(fileName: String) = Secure() { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
+  def getTermSourcePaths(datasetName: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
     val sourcePaths = datasetRepo.termDb.getSourcePaths
     Ok(Json.obj("sourcePaths" -> sourcePaths))
   }
 
-  def getTermMappings(fileName: String) = Secure() { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
+  def getTermMappings(datasetName: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
     val mappings: scala.Seq[TermMapping] = datasetRepo.termDb.getMappings
     Ok(Json.obj("mappings" -> mappings))
   }
 
-  def setTermMapping(fileName: String) = Secure(parse.json) { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
+  def setTermMapping(datasetName: String) = Secure(parse.json) { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
     datasetRepo.invalidateEnrichmentCache()
     if ((request.body \ "remove").asOpt[String].isDefined) {
       val sourceUri = (request.body \ "source").as[String]
@@ -314,20 +314,20 @@ object Dashboard extends Controller with Security {
     Ok
   }
 
-  def getCategorySourcePaths(fileName: String) = Secure() { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
+  def getCategorySourcePaths(datasetName: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
     val sourcePaths = datasetRepo.categoryDb.getSourcePaths
     Ok(Json.obj("sourcePaths" -> sourcePaths))
   }
 
-  def getCategoryMappings(fileName: String) = Secure() { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
+  def getCategoryMappings(datasetName: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
     val mappings: Seq[CategoryMapping] = datasetRepo.categoryDb.getMappings
     Ok(Json.obj("mappings" -> mappings))
   }
 
-  def setCategoryMapping(fileName: String) = Secure(parse.json) { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
+  def setCategoryMapping(datasetName: String) = Secure(parse.json) { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
     val categoryMapping = CategoryMapping(
       (request.body \ "source").as[String],
       Seq((request.body \ "category").as[String])
@@ -342,15 +342,15 @@ object Dashboard extends Controller with Security {
     Ok(Json.obj("list" -> fileNames))
   }
 
-  def deleteSipFile(fileName: String) = Secure() { token => implicit request =>
-    repo.listSipZips.find(_.zipFile.getName == fileName) match {
+  def deleteSipFile(zipFileName: String) = Secure() { token => implicit request =>
+    repo.listSipZips.find(_.zipFile.getName == zipFileName) match {
       case Some(sipZip) =>
         FileUtils.deleteQuietly(sipZip.zipFile)
         FileUtils.deleteQuietly(sipZip.factsFile)
         FileUtils.deleteQuietly(sipZip.hintsFile)
         Ok(Json.obj("deleted" -> sipZip.toString))
       case None =>
-        NotFound(Json.obj("problem" -> s"Could not delete $fileName"))
+        NotFound(Json.obj("problem" -> s"Could not delete $zipFileName"))
     }
   }
 }

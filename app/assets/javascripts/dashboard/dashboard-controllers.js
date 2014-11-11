@@ -221,11 +221,16 @@ define(["angular"], function () {
                 var absUrl = $location.absUrl();
                 var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
                 var start = enriched ? 'oai-pmh/enriched/' : 'oai-pmh/';
-                var prefix = info.publication.oaipmhPrefix;
-                return serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + prefix;
+                var parts = info.publication.oaipmhPrefixes.split(/[\s.;,]+/);
+                return _.map(parts, function(prefix) {
+                    return {
+                        prefix: prefix,
+                        url: serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + prefix
+                    }
+                });
             }
 
-            if (info.publication.oaipmhPrefix && info.publication.oaipmhPrefix.length) {
+            if (info.publication.oaipmhPrefixes && info.publication.oaipmhPrefixes.length) {
                 file.oaiPmhListRecords = oaiPmhListRecords(false);
                 file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
             }
@@ -400,7 +405,7 @@ define(["angular"], function () {
                 if (!data) return;
                 var specs = {};
                 $scope.sipFiles = _.map(data.list, function (sipFile) {
-                    var entry = { fileName: sipFile };
+                    var entry = { sipFileName: sipFile };
                     var part = sipFile.match(/sip_(.+)__(\d+)_(\d+)_(\d+)_(\d+)_(\d+)__(.*).zip/);
                     if (part) {
                         var spec = part[1];
@@ -423,7 +428,7 @@ define(["angular"], function () {
         fetchSipFileList();
 
         $scope.deleteSipZip = function (file) {
-            dashboardService.deleteSipFile(file.fileName).then(function () {
+            dashboardService.deleteSipFile(file.sipFileName).then(function () {
                 fetchSipFileList();
             });
         };

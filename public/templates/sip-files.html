@@ -5,21 +5,21 @@
             <ul class="list-group file-list">
                 <li class="list-group-item" data-ng-repeat="file in sipFiles">
                     <i class="fa fa-cube"></i>
-            <span data-ng-show="file.details">
-                <b>{{ file.details.spec }}</b>
-                <button type="button" class="btn btn-danger btn-xs" data-ng-show="file.expendable" data-ng-click="deleteSipZip(file)">
-                    <i class="fa fa-trash-o"></i>
-                </button>
-                <span class="pull-right">
-                    <i class="fa fa-male"></i>
-                    <b>{{ file.details.uploadedBy }}</b>
-                    <i class="fa fa-clock-o"></i>
-                    {{ file.details.date | date:"yyyy-MM-dd HH:mm:ss" }}
-                </span>
-            </span>
-            <span data-ng-show="!file.details">
-              <b>{{ file.fileName }}</b>
-            </span>
+                    <span data-ng-show="file.details">
+                        <b>{{ file.details.spec }}</b>
+                        <button type="button" class="btn btn-danger btn-xs" data-ng-show="file.expendable" data-ng-click="deleteSipZip(file)">
+                            <i class="fa fa-trash-o"></i>
+                        </button>
+                        <span class="pull-right">
+                            <i class="fa fa-male"></i>
+                            <b>{{ file.details.uploadedBy }}</b>
+                            <i class="fa fa-clock-o"></i>
+                            {{ file.details.date | date:"yyyy-MM-dd HH:mm:ss" }}
+                        </span>
+                    </span>
+                    <span data-ng-show="!file.details">
+                      <b>{{ file.sipFileName }}</b>
+                    </span>
                 </li>
             </ul>
         </div>

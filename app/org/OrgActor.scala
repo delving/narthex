@@ -20,7 +20,7 @@ import akka.actor.{Actor, ActorRef, Props, Terminated}
 import dataset.DatasetActor
 import dataset.DatasetActor.{InterruptChild, StartCategoryCounting}
 import mapping.CategoryCounter.CategoryCountComplete
-import org.OrgActor.{CountDatasetCategories, DatasetMessage, InterruptDataset}
+import org.OrgActor.{DatasetMessage, DatasetsCountCategories, InterruptDataset}
 import org.OrgRepo.repo
 import play.api.Logger
 import play.libs.Akka
@@ -38,7 +38,7 @@ object OrgActor {
 
   case class DatasetMessage(name: String, message: AnyRef)
   
-  case class CountDatasetCategories(datasets: Seq[String])
+  case class DatasetsCountCategories(datasets: Seq[String])
 
   case class InterruptDataset(name: String)
 
@@ -51,7 +51,7 @@ class OrgActor extends Actor {
 
   def receive = {
 
-    case DatasetMessage(name: String, message: AnyRef) =>
+    case DatasetMessage(name, message: AnyRef) =>
       val datasetActor = context.child(name).getOrElse {
         val ref = context.actorOf(DatasetActor.props(repo.datasetRepo(name)), name)
         Logger.info(s"Created $ref")
@@ -60,7 +60,7 @@ class OrgActor extends Actor {
       }
       datasetActor ! message
 
-    case CountDatasetCategories(datasets) =>
+    case DatasetsCountCategories(datasets) =>
       countsInProgress = datasets.map(name => (name, None)).toMap
       datasets.foreach(name => self ! DatasetMessage(name, StartCategoryCounting()))
 
@@ -70,7 +70,6 @@ class OrgActor extends Actor {
       val countLists = countsInProgress.values.flatten
       if (countLists.size == countsInProgress.size) {
         val collection = CategoryCountCollection(countLists.flatten.toList)
-        // todo: store the category counts as json
         OrgRepo.repo.categoriesRepo.createSheet(collection)
         countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
       }

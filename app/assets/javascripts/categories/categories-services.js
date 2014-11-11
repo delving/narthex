@@ -72,8 +72,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                datasetInfo: function (fileName) {
-                    return dash.datasetInfo(fileName).get().then(
+                datasetInfo: function (datasetName) {
+                    return dash.datasetInfo(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -88,16 +88,16 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                histogram: function (fileName, path, size) {
-                    return dash.histogram(fileName, path, size).get().then(
+                histogram: function (datasetName, path, size) {
+                    return dash.histogram(datasetName, path, size).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                getCategoryMappings: function (fileName) {
-                    return dash.getCategoryMappings(fileName).get().then(
+                getCategoryMappings: function (datasetName) {
+                    return dash.getCategoryMappings(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },

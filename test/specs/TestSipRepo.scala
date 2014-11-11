@@ -5,7 +5,10 @@ import java.io.File
 import harvest.HarvestRepo
 import harvest.Harvesting.HarvestType
 import org.scalatest.{FlatSpec, Matchers}
+import record.PocketParser.Pocket
 import services.{ProgressReporter, SipRepo}
+
+import scala.xml.XML
 
 class TestSipRepo extends FlatSpec with Matchers {
 
@@ -28,9 +31,26 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       sipFile.schemaVersionSeq.size should be(1)
 
+      var mappedPockets = List.empty[Pocket]
+
       sipFile.createSipMapper("tib") map { sipMapper =>
-        harvestRepo.parsePockets(pocket => println(sipMapper.map(pocket)), ProgressReporter())
+        def pocketCatcher(pocket: Pocket): Unit = {
+          var mappedPocket = sipMapper.map(pocket)
+          mappedPockets = mappedPocket :: mappedPockets
+        }
+        harvestRepo.parsePockets(pocketCatcher, ProgressReporter())
       }
+
+      mappedPockets.size should be (25)
+
+      val head = XML.loadString(mappedPockets.head.text)
+      val eglise = "L'Eglise collegiale de Notre Dame a Breda.Harrewijn fecit"
+
+      // filtered here because otherwise there would be two:
+      val titleText = (head \ "title").filter(_.prefix == "delving").text.trim
+
+      titleText should be(eglise)
+
     }
   }
 }

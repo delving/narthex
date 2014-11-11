@@ -22,46 +22,32 @@ import dataset.DatasetRepo
 import dataset.ProgressState._
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
 import mapping.CategoriesRepo
-import org.OrgActor.CountDatasetCategories
+import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
 import org.OrgRepo._
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
 import record.EnrichmentParser._
+import services.StringHandling._
 import services.Temporal._
 import services._
 
 import scala.concurrent.duration._
 import scala.io.Source
 import scala.language.postfixOps
-import scala.xml.Elem
 
 object OrgRepo {
   lazy val repo = new OrgRepo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
 
-  val SUFFIXES = List(".xml.gz", ".xml")
-
   def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
 
-  def acceptableFile(fileName: String, contentType: Option[String]) = {
+  def acceptableFile(uploadedFileName: String, contentType: Option[String]) = {
     // todo: be very careful about files matching a regex, so that they have spec__prefix form
     // todo: something with content-type
     println("content type " + contentType)
-    SUFFIXES.find(suffix => fileName.endsWith(suffix))
+    SUFFIXES.find(suffix => uploadedFileName.endsWith(suffix))
   }
-
-  def getSuffix(fileName: String) = {
-    val suffix = SUFFIXES.filter(suf => fileName.endsWith(suf))
-    if (suffix.isEmpty) "" else suffix.head
-  }
-
-  def stripSuffix(fileName: String) = {
-    val suffix = getSuffix(fileName)
-    fileName.substring(0, fileName.length - suffix.length)
-  }
-
-  def getOaiPmhPrefix(elem: Elem) = (elem \ "publication" \ "oaipmhPrefix").text.trim
 
   case class SipZip
   (
@@ -96,40 +82,39 @@ class OrgRepo(userHome: String, val orgId: String) {
     directory.listFiles.filter(f => f.isFile && SUFFIXES.filter(end => f.getName.endsWith(end)).nonEmpty).toList
   }
 
-  def datasetRepo(fileName: String): DatasetRepo = {
-    val dr = new DatasetRepo(this, stripSuffix(fileName))
+  def datasetRepo(datasetName: String): DatasetRepo = {
+    val dr = new DatasetRepo(this, stripSuffix(datasetName))
     dr.mkdirs
     dr
   }
 
-  def datasetRepoOption(fileName: String): Option[DatasetRepo] = {
-    val dr = datasetRepo(fileName)
+  def datasetRepoOption(datasetName: String): Option[DatasetRepo] = {
+    val dr = datasetRepo(datasetName)
     if (dr.datasetDb.infoOption.isDefined) Some(dr) else None
   }
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
     repoDb.listDatasets.flatMap { dataset =>
-      val prefix = getOaiPmhPrefix(dataset.info)
-      if (prefix.nonEmpty) {
-        val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
-        val metadataFormat = namespaces.find(_._1 == prefix) match {
-          case Some(ns) => RepoMetadataFormat(prefix, ns._2)
-          case None => RepoMetadataFormat(prefix)
+      val prefixes = prefixesFromInfo(dataset.info)
+      prefixes.map { prefixList =>
+        prefixList.map { prefix =>
+          val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
+          val metadataFormat = namespaces.find(_._1 == prefix) match {
+            case Some(ns) => RepoMetadataFormat(prefix, ns._2)
+            case None => RepoMetadataFormat(prefix)
+          }
+          PublishedDataset(
+            spec = dataset.datasetName,
+            prefix = prefix,
+            name = (dataset.info \ "metadata" \ "name").text,
+            description = (dataset.info \ "metadata" \ "description").text,
+            dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
+            totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
+            metadataFormat = metadataFormat
+          )
         }
-        Some(PublishedDataset(
-          spec = dataset.name,
-          prefix = prefix,
-          name = (dataset.info \ "metadata" \ "name").text,
-          description = (dataset.info \ "metadata" \ "description").text,
-          dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
-          totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
-          metadataFormat = metadataFormat
-        ))
       }
-      else {
-        None
-      }
-    }
+    }.flatten
   }
 
   def getMetadataFormats: Seq[RepoMetadataFormat] = {
@@ -141,7 +126,7 @@ class OrgRepo(userHome: String, val orgId: String) {
       val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
       val start = 1 + (harvest.currentPage - 1) * pageSize
       val repo = datasetRepo(harvest.repoName)
-      val storedRecords = repo.recordDb.recordHarvest(harvest.from, harvest.until, start, pageSize)
+      val storedRecords = repo.recordDb(harvest.prefix).recordHarvest(harvest.from, harvest.until, start, pageSize)
       val records = if (enriched) repo.enrichRecords(storedRecords) else parseStoredRecords(storedRecords)
       harvest.next.map { next =>
         Cache.set(next.resumptionToken.value, next, 2 minutes)
@@ -159,18 +144,21 @@ class OrgRepo(userHome: String, val orgId: String) {
       val included = (dataset.info \ "categories" \ "included").text
       if (included == "true") Some(dataset) else None
     }
-    val datasets = categoryDatasets.map(_.name)
+    val datasets = categoryDatasets.map(_.datasetName)
     datasets.foreach(datasetRepo(_).datasetDb.startProgress(CATEGORIZING))
-    OrgActor.actor ! CountDatasetCategories(datasets)
+    OrgActor.actor ! DatasetsCountCategories(datasets)
   }
 
   // === sip-zip
 
-  def createSipZipFile(fileName: String) = new File(sipZipDir, fileName)
+  // todo: obsolete now that sips are stored in each dataset repo
+  def createSipZipFile(zipFileName: String) = new File(sipZipDir, zipFileName)
 
-  def createSipZipFactsFile(fileName: String) = new File(sipZipDir, s"$fileName.facts")
+  // todo: obsolete now that sips are stored in each dataset repo
+  def createSipZipFactsFile(zipFileName: String) = new File(sipZipDir, s"$zipFileName.facts")
 
-  def createSipZipHintsFile(fileName: String) = new File(sipZipDir, s"$fileName.hints")
+  // todo: obsolete now that sips are stored in each dataset repo
+  def createSipZipHintsFile(zipFileName: String) = new File(sipZipDir, s"$zipFileName.hints")
 
   val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
 

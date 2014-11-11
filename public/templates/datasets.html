@@ -154,8 +154,8 @@
     <form name="form" class="form">
         <fieldset>
             <div class="form-group">
-                <label for="pub_pmh_prefix">Publish with OAI-PMH Metadata Prefix</label>
-                <input id="pub_pmh_prefix" class="form-control" data-ng-model="file.info.publication.oaipmhPrefix" placeholder="prefix"/>
+                <label for="pub_pmh_prefix">Publish with OAI-PMH Metadata Prefixes</label>
+                <input id="pub_pmh_prefix" class="form-control" data-ng-model="file.info.publication.oaipmhPrefixes" placeholder="prefix list or 'verbatim'"/>
             </div>
             <div class="form-group">
                 <label for="pub_index">Publish in the Index</label>
@@ -194,14 +194,14 @@
                 <i class="fa fa-download"></i> Terminology Mappings
             </a>
         </li>
-        <li data-ng-show="file.oaiPmhListRecords">
-            <a class="" ng-href="{{file.oaiPmhListRecords}}" target="_blank">
-                <i class="fa fa-download"></i> Raw Records
+        <li data-ng-repeat="prefixUrl in file.oaiPmhListRecords">
+            <a class="" ng-href="{{ prefixUrl.url }}" target="_blank">
+                <i class="fa fa-download"></i> Records with format "{{ prefixUrl.prefix }}"
             </a>
         </li>
-        <li data-ng-show="file.oaiPmhListEnrichedRecords">
-            <a class="" ng-href="{{file.oaiPmhListEnrichedRecords}}" target="_blank">
-                <i class="fa fa-download"></i> Enriched Records
+        <li data-ng-repeat="prefixUrl in file.oaiPmhListEnrichedRecords">
+            <a class="" ng-href="{{ prefixUrl.url }}" target="_blank">
+                <i class="fa fa-download"></i> Enriched Records with format "{{ prefixUrl.prefix }}"
             </a>
         </li>
     </ul>
@@ -259,27 +259,33 @@
 </script>
 
 <script type="text/ng-template" id="actions.html">
-    <button class="btn btn-sm btn-success btn-block" data-ng-click="startAnalysis(file)" data-ng-show="!file.treeTime && !file.progress && file.state == 'state-sourced'">
+    <button class="btn btn-sm btn-success btn-block" data-ng-click="startAnalysis(file)"
+            data-ng-show="!file.treeTime && !file.progress && file.state == 'state-sourced'">
         <i class="fa fa-eye"></i>
         <span>Perform Analysis</span>
     </button>
-    <button class="btn btn-sm btn-danger btn-block" data-ng-click="discardTree(file)" data-ng-show="file.treeTime && !file.progress">
+    <button class="btn btn-sm btn-danger btn-block" data-ng-click="discardTree(file)"
+            data-ng-show="file.treeTime && !file.progress">
         <i class="fa fa-trash-o"></i>
         <span>Discard Analysis</span>
     </button>
-    <button class="btn btn-sm btn-success btn-block" data-ng-click="saveRecords(file)" data-ng-show="!file.recordsTime && !file.progress && file.state == 'state-sourced'">
+    <button class="btn btn-sm btn-success btn-block" data-ng-click="saveRecords(file)"
+            data-ng-show="!file.recordsTime && !file.progress && file.state == 'state-sourced' && file.identity.recordCount">
         <i class="fa fa-eye"></i>
         <span>Save Records</span>
     </button>
-    <button class="btn btn-sm btn-danger btn-block" data-ng-click="discardRecords(file)" data-ng-show="file.recordsTime && !file.progress">
+    <button class="btn btn-sm btn-danger btn-block" data-ng-click="discardRecords(file)"
+            data-ng-show="file.recordsTime && !file.progress">
         <i class="fa fa-trash-o"></i>
         <span>Discard Records</span>
     </button>
-    <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="discardSource(file)" data-ng-show="!(file.treeTime || file.recordsTime || file.progress) && file.state != 'state-empty'">
+    <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="discardSource(file)"
+            data-ng-show="!(file.treeTime || file.recordsTime || file.progress) && file.state != 'state-empty'">
         <i class="fa fa-trash-o"></i>
         <span>Discard Source</span>
     </button>
-    <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="deleteDataset(file)" data-ng-show="!file.progress && file.state == 'state-empty'">
+    <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="deleteDataset(file)"
+            data-ng-show="!file.progress && file.state == 'state-empty'">
         <i class="fa fa-trash-o"></i>
         <span>Delete Dataset</span>
     </button>

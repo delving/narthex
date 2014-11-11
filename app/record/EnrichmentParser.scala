@@ -20,6 +20,7 @@ import org.joda.time.DateTime
 import play.Logger
 import record.EnrichmentParser.{StoredRecord, TargetConcept}
 import record.PocketParser._
+import services.StringHandling._
 import services.Temporal._
 import services._
 
@@ -88,7 +89,7 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
     while (events.hasNext) events.next() match {
 
       case EvElemStart(pre, label, attrs, scope) =>
-        val tag = FileHandling.tag(pre, label)
+        val tag = StringHandling.tag(pre, label)
         if (tag == POCKET) {
           val id = attrs.get("id").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$POCKET element missing id"))
           val mod = attrs.get("mod").headOption.map(_.text).getOrElse(throw new RuntimeException(s"$POCKET element missing mod"))
@@ -128,7 +129,7 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
           val tag = frame.tag
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
-            val path = s"$pathPrefix${frame.path}/${FileHandling.urlEncodeValue(text)}"
+            val path = s"$pathPrefix${frame.path}/${urlEncodeValue(text)}"
             val in = indent
             val tagText = termMappings.get(path).map { targetConcept =>
               s"""$in${start.get}
@@ -158,7 +159,7 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
         }
 
       case EvComment(text) =>
-        FileHandling.stupidParser(text, entity => pushText(s"&$entity;"))
+        stupidParser(text, entity => pushText(s"&$entity;"))
 
       case x =>
         Logger.warn("EVENT? " + x) // todo: record these in an error file for later

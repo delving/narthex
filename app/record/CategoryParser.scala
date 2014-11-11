@@ -25,7 +25,8 @@ import org.apache.poi.xssf.usermodel._
 import play.Logger
 import play.api.libs.json.{Json, Writes}
 import record.CategoryParser.{CategoryCount, Counter}
-import services.{FileHandling, NarthexEventReader, ProgressReporter}
+import services.StringHandling._
+import services.{NarthexEventReader, ProgressReporter}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -206,7 +207,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
 
     def pathContainer(string: String) = string.substring(0, string.lastIndexOf("/"))
 
-    def generateUri(value: String) = s"$pathPrefix$recordPathString/${FileHandling.urlEncodeValue(value)}"
+    def generateUri(value: String) = s"$pathPrefix$recordPathString/${urlEncodeValue(value)}"
 
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
       def categoriesFromAttrs() = {
@@ -254,7 +255,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
     def pop(tag: String) = {
       val string = pathString
       val fieldText = path.head._2
-      val text = FileHandling.crunchWhitespace(fieldText.toString())
+      val text = crunchWhitespace(fieldText.toString())
       fieldText.clear()
       if (depth > 0) {
         // deep record means check container instead
@@ -292,11 +293,11 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
 
     while (events.hasNext && progressReporter.keepReading(recordCount)) {
       events.next() match {
-        case EvElemStart(pre, label, attrs, scope) => push(FileHandling.tag(pre, label), attrs, scope)
+        case EvElemStart(pre, label, attrs, scope) => push(tag(pre, label), attrs, scope)
         case EvText(text) => addFieldText(text)
         case EvEntityRef(entity) => addFieldText(s"&$entity;")
-        case EvElemEnd(pre, label) => pop(FileHandling.tag(pre, label))
-        case EvComment(text) => FileHandling.stupidParser(text, entity => addFieldText(s"&$entity;"))
+        case EvElemEnd(pre, label) => pop(tag(pre, label))
+        case EvComment(text) => stupidParser(text, entity => addFieldText(s"&$entity;"))
         case x => Logger.error("EVENT? " + x)
       }
     }

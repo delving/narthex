@@ -37,6 +37,8 @@ import record.PocketParser._
 import record.Saver
 import record.Saver.{SaveComplete, SaveRecords}
 import services.FileHandling._
+import services.SipFile.SipMapper
+import services.StringHandling.prefixesFromInfo
 
 import scala.language.postfixOps
 
@@ -50,7 +52,7 @@ object DatasetActor {
 
   case class StartAnalysis()
 
-  case class StartSaving(modifiedAfter: Option[DateTime], file: File)
+  case class StartSaving(modifiedAfter: Option[DateTime], file: File, sipMappers: Option[Seq[SipMapper]])
 
   case class StartCategoryCounting()
 
@@ -97,12 +99,15 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     case HarvestComplete(modifiedAfter, fileOption, errorOption) =>
       log.info(s"Harvest complete $datasetRepo, error=$errorOption, file=$fileOption")
       db.endProgress(errorOption)
-      if (errorOption.isEmpty) {
+      if (errorOption.isEmpty) db.infoOption.foreach { info =>
         fileOption.map { file =>
           if (modifiedAfter.isEmpty) db.setStatus(SOURCED) // first harvest
           clearDir(datasetRepo.analyzedDir)
           datasetRepo.datasetDb.setTree(ready = false)
-          self ! StartSaving(modifiedAfter, file)
+          val sipMappers: Option[Seq[SipMapper]] = prefixesFromInfo(info).flatMap { prefixes =>
+            datasetRepo.sipRepo.latestSIPFile.map(sipFile => prefixes.flatMap(sipFile.createSipMapper))
+          }
+          self ! StartSaving(modifiedAfter, file, sipMappers)
         } getOrElse {
           log.info(s"No file to save for $datasetRepo")
         }
@@ -159,12 +164,12 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     case CategoryCountComplete(dataset, categoryCounts, errorOption) =>
       log.info(s"Category Counts arrived: $categoryCounts")
       db.endProgress(errorOption)
-      context.parent ! CategoryCountComplete(datasetRepo.name, categoryCounts, errorOption)
+      context.parent ! CategoryCountComplete(datasetRepo.datasetName, categoryCounts, errorOption)
       sender ! PoisonPill
 
     // === saving
 
-    case StartSaving(modifiedAfter, file) =>
+    case StartSaving(modifiedAfter, file, sipMappers) =>
       log.info(s"Start saving $datasetRepo modified=$modifiedAfter")
       datasetRepo.datasetDb.infoOption.foreach { info =>
         val delimit = info \ "delimit"
@@ -172,13 +177,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
         val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
         val kickoffOption = if (HARVEST.matches((info \ "origin" \ "type").text)) {
           val ht = HarvestType.fromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
-          Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer))
+          Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer, sipMappers))
         }
         else {
           val recordRoot = (delimit \ "recordRoot").text
           val uniqueId = (delimit \ "uniqueId").text
           if (recordRoot.trim.nonEmpty)
-            Some(SaveRecords(modifiedAfter, file, recordRoot, uniqueId, recordCount, None))
+            Some(SaveRecords(modifiedAfter, file, recordRoot, uniqueId, recordCount, None, sipMappers))
           else
             None
         }

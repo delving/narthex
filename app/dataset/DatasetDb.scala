@@ -118,13 +118,13 @@ object DatasetState {
   def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "status" \ "state").text)
 }
 
-class DatasetDb(repoDb: OrgDb, fileName: String) {
+class DatasetDb(repoDb: OrgDb, datasetName: String) {
 
   def now: String = timeToString(new DateTime())
 
   def db[T](block: ClientSession => T): T = repoDb.db(block)
 
-  def datasetElement = s"${repoDb.allDatasets}/dataset[@name=${quote(fileName)}]"
+  def datasetElement = s"${repoDb.allDatasets}/dataset[@name=${quote(datasetName)}]"
 
   def createDataset(state: DatasetState) = db {
     session =>
@@ -136,7 +136,7 @@ class DatasetDb(repoDb: OrgDb, fileName: String) {
           |     <time>$now</time>
           |   </status>
           | let $$dataset :=
-          |   <dataset name="$fileName">{ $$status }</dataset>
+          |   <dataset name="$datasetName">{ $$status }</dataset>
           | return
           |   if (exists($datasetElement))
           |   then replace node $datasetElement/status with $$status
@@ -178,7 +178,7 @@ class DatasetDb(repoDb: OrgDb, fileName: String) {
           |    else insert node $$replacement into $$dataset
           |
           """.stripMargin.trim
-      Logger.info(s"$fileName set $listName: ${entries.toMap}")
+      Logger.info(s"$datasetName set $listName: ${entries.toMap}")
       session.query(update).execute()
   }
 
@@ -263,9 +263,9 @@ class DatasetDb(repoDb: OrgDb, fileName: String) {
     "metadata", metadata.toSeq: _*
   )
 
-  def setPublication(oaipmhPrefix: String, publishIndex: String, publishLoD: String) = setProperties(
+  def setPublication(oaipmhPrefixes: String, publishIndex: String, publishLoD: String) = setProperties(
     "publication",
-    "oaipmhPrefix" -> oaipmhPrefix,
+    "oaipmhPrefixes" -> oaipmhPrefixes,
     "index" -> publishIndex,
     "lod" -> publishLoD
   )

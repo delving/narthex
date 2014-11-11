@@ -37,6 +37,8 @@ import record.EnrichmentParser._
 import record.PocketParser._
 import record.{EnrichmentParser, RecordDb}
 import services.FileHandling.clearDir
+import services.SipFile.SipMapper
+import services.StringHandling._
 import services.Temporal._
 import services._
 
@@ -44,24 +46,34 @@ import scala.concurrent.Await
 
 // todo: use the actor's execution context?
 
-class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
+class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
-  val rootDir = new File(orgRepo.datasetsDir, name)
+  val rootDir = new File(orgRepo.datasetsDir, datasetName)
   val incomingDir = new File(rootDir, "incoming")
   val analyzedDir = new File(rootDir, "analyzed")
   val harvestDir = new File(rootDir, "harvest")
+  val sipsDir = new File(rootDir, "sips")
 
   val rootNode = new NodeRepo(this, analyzedDir)
 
-  lazy val datasetDb = new DatasetDb(orgRepo.repoDb, name)
+  lazy val datasetDb = new DatasetDb(orgRepo.repoDb, datasetName)
 
-  val dbBaseName = s"narthex_${orgRepo.orgId}___$name"
-  lazy val recordDb = new RecordDb(this, dbBaseName)
+  val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetName"
 
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
+  lazy val sipRepo = new SipRepo(sipsDir)
 
-  override def toString = name
+  def prefixFromName(name: String):String = {
+    val sep = name.lastIndexOf("__")
+    if (sep > 0) name.substring(sep + 2) else VERBATIM
+  }
+
+  def recordDb(prefix: String) = new RecordDb(this, dbBaseName, prefix)
+
+  def recordDbFromName(name: String) = recordDb(prefixFromName(name))
+
+  override def toString = datasetName
 
   def mkdirs = {
     rootDir.mkdirs()
@@ -73,10 +85,10 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
 
   def createPocketPath(pocket: Pocket) = {
     val h = pocket.hash
-    s"$name/${h(0)}/${h(1)}/${h(2)}/$h.xml"
+    s"$datasetName/${h(0)}/${h(1)}/${h(2)}/$h.xml"
   }
 
-  def createIncomingFile(fileName: String) = new File(incomingDir, fileName)
+  def createIncomingFile(datasetName: String) = new File(incomingDir, datasetName)
 
   def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
 
@@ -90,8 +102,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
         datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
         datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
         datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
-        Logger.info(s"First Harvest $name")
-        OrgActor.actor ! DatasetMessage(name, StartHarvest(None))
+        Logger.info(s"First Harvest $datasetName")
+        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None))
       }
       else {
         Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
@@ -108,13 +120,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
         // if the next is also to take place immediately, force the harvest cron to now
         datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
         datasetDb.startProgress(HARVESTING)
-        OrgActor.actor ! DatasetMessage(name, StartHarvest(Some(harvestCron.previous)))
+        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(Some(harvestCron.previous)))
       }
       else {
-        Logger.info(s"No re-harvest of $name with cron $harvestCron because it's not time $harvestCron")
+        Logger.info(s"No re-harvest of $datasetName with cron $harvestCron because it's not time $harvestCron")
       }
     } getOrElse {
-      Logger.warn(s"Incremental harvest of $name can only be started when there are saved records")
+      Logger.warn(s"Incremental harvest of $datasetName can only be started when there are saved records")
       val harvestCron = Harvesting.harvestCron(info)
       datasetDb.setHarvestCron(harvestCron.now)
     }
@@ -125,10 +137,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
       if (state == SOURCED) {
         clearDir(analyzedDir)
         datasetDb.startProgress(SPLITTING)
-        OrgActor.actor ! DatasetMessage(name, StartAnalysis())
+        // todo: maybe for prefixes?
+        OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis())
       }
       else {
-        Logger.warn(s"Analyzing $name can only be started when the state is sourced, but it's $state")
+        Logger.warn(s"Analyzing $datasetName can only be started when the state is sourced, but it's $state")
       }
     }
   }
@@ -138,27 +151,34 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
       getLatestIncomingFile.map { incoming =>
         val delimited = datasetDb.isDelimited(Some(info))
         if (state == SOURCED && delimited) {
-          recordDb.createDb()
           datasetDb.startProgress(SAVING)
-          OrgActor.actor ! DatasetMessage(name, StartSaving(None, incoming))
+          val sipMappers: Option[Seq[SipMapper]] = prefixesFromInfo(info).flatMap { prefixes =>
+            sipRepo.latestSIPFile.map { sipFile =>
+              prefixes.flatMap { prefix =>
+                recordDb(prefix).createDb()
+                sipFile.createSipMapper(prefix)
+              }
+            }
+          }
+          OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, incoming, sipMappers))
         }
         else {
-          Logger.warn(s"First save of $name can only be started with state sourced/delimited, but it's $state/$delimited ")
+          Logger.warn(s"First save of $datasetName can only be started with state sourced/delimited, but it's $state/$delimited ")
         }
       } getOrElse {
-        Logger.warn(s"First save of $name needs an incoming file")
+        Logger.warn(s"First save of $datasetName needs an incoming file")
       }
     }
   }
 
   def startCategoryCounts() = {
     datasetDb.startProgress(CATEGORIZING)
-    OrgActor.actor ! DatasetMessage(name, StartCategoryCounting())
+    OrgActor.actor ! DatasetMessage(datasetName, StartCategoryCounting())
   }
 
   def interruptProgress: Boolean = {
     implicit val timeout = Timeout(100, TimeUnit.MILLISECONDS)
-    val answer = OrgActor.actor ? InterruptDataset(name)
+    val answer = OrgActor.actor ? InterruptDataset(datasetName)
     val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
     if (!interrupted) datasetDb.endProgress(Some("Terminated processing"))
     interrupted
@@ -170,7 +190,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
       if (maybe.isEmpty) Logger.warn(s"No current state?? $info")
       maybe
     } getOrElse DELETED
-    Logger.info(s"Revert state of $name from $currentState")
+    Logger.info(s"Revert state of $datasetName from $currentState")
     datasetDb.infoOption.map { info =>
       currentState match {
         case DELETED =>
@@ -229,13 +249,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val name: String) {
   def histogramText(path: String): Option[File] = nodeRepo(path).map(_.histogramText)
 
   def enrichRecords(storedRecords: String): List[StoredRecord] = {
-    val mappings: Map[String, TargetConcept] = Cache.getOrElse[Map[String, TargetConcept]](name) {
+    val mappings: Map[String, TargetConcept] = Cache.getOrElse[Map[String, TargetConcept]](datasetName) {
       termDb.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
     }
-    val pathPrefix = s"${NarthexConfig.ORG_ID}/$name"
+    val pathPrefix = s"${NarthexConfig.ORG_ID}/$datasetName"
     val parser = new EnrichmentParser(pathPrefix, mappings)
     parser.parse(storedRecords)
   }
 
-  def invalidateEnrichmentCache() = Cache.remove(name)
+  def invalidateEnrichmentCache() = Cache.remove(datasetName)
 }

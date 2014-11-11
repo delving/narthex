@@ -26,6 +26,10 @@ import scala.collection.JavaConversions._
 import scala.io.Source
 
 /**
+ * A repository of sip files which knows everything about what a sip means, revealing all of the contained
+ * attributes from the contained property files and able to produce a SipMapper which can transform pockets
+ * of data according to the SIP-Creator mappings.
+ *
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
@@ -44,7 +48,9 @@ object SipFile {
   case class SipMapping(prefix: String, version: String, recDefTree: RecDefTree, validationXSD: String, recMapping: RecMapping)
 
   trait SipMapper {
-    def map(pocket: Pocket): String
+    val prefix: String
+
+    def map(pocket: Pocket): Pocket
   }
 
   val PrefixVersion = "(.*)_(.*)".r
@@ -54,13 +60,15 @@ object SipFile {
 }
 
 class SipFile(file: File) {
+
   import services.SipFile._
+
   lazy val zipFile = new ZipFile(file)
 
   lazy val entries = zipFile.entries().map(entry => entry.getName -> entry).toMap
 
-  def readMap(fileName: String): Option[Map[String, String]] = {
-    entries.get(fileName).map { entry =>
+  def readMap(propertyFileName: String): Option[Map[String, String]] = {
+    entries.get(propertyFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val lines = Source.fromInputStream(inputStream, "UTF-8").getLines()
       lines.flatMap { line =>
@@ -96,23 +104,23 @@ class SipFile(file: File) {
 
   lazy val schemaVersionSeq: Option[Seq[String]] = schemaVersions.map(commas => commas.split(" *,").toSeq)
 
-  def file(fileName: String): String = {
-    entries.get(fileName).map { entry =>
+  def file(sipContentFileName: String): String = {
+    entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       Source.fromInputStream(inputStream, "UTF-8").mkString
-    } getOrElse (throw new RuntimeException(s"Unable to read file $fileName from ${file.getAbsolutePath}"))
+    } getOrElse (throw new RuntimeException(s"Unable to read file $sipContentFileName from ${file.getAbsolutePath}"))
   }
 
-  def recDefTree(fileName: String): RecDefTree = {
-    entries.get(fileName).map { entry =>
+  def recDefTree(sipContentFileName: String): RecDefTree = {
+    entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val recDef = RecDef.read(inputStream)
       RecDefTree.create(recDef)
-    } getOrElse (throw new RuntimeException(s"Unable to read rec def $fileName from ${file.getAbsolutePath}"))
+    } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from ${file.getAbsolutePath}"))
   }
 
-  def recMapping(fileName: String, recDefTree: RecDefTree): RecMapping = {
-    entries.get(fileName).map { entry =>
+  def recMapping(sipContentFileName: String, recDefTree: RecDefTree): RecMapping = {
+    entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val mapping = RecMapping.read(inputStream, recDefTree)
       mapping.getNodeMappings.foreach { nodeMapping =>
@@ -122,36 +130,41 @@ class SipFile(file: File) {
         }
       }
       mapping
-    } getOrElse (throw new RuntimeException(s"Unable to read rec def $fileName from ${file.getAbsolutePath}"))
+    } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from ${file.getAbsolutePath}"))
   }
 
-  lazy val sipMappings: Map[String, SipMapping] = schemaVersionSeq.map { sequence =>
+  lazy val sipMappings: Seq[SipMapping] = schemaVersionSeq.map { sequence =>
     sequence.map { schemaVersion =>
       val PrefixVersion(prefix, version) = schemaVersion
       val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
-      prefix -> SipMapping(
+      SipMapping(
         prefix = prefix,
         version = version,
         recDefTree = tree,
-        validationXSD = "when you want to validate"/* file(s"${schemaVersion}_validation.xsd")*/,
+        validationXSD = "when you want to validate" /* file(s"${schemaVersion}_validation.xsd")*/ ,
         recMapping = recMapping(s"mapping_$prefix.xml", tree)
       )
-    }.toMap
-  }.getOrElse(Map.empty[String, SipMapping])
+    }
+  }.getOrElse(Seq.empty[SipMapping])
 
   class MappingEngine(sipMapping: SipMapping) extends SipMapper {
     val groovy = new GroovyCodeResource(getClass.getClassLoader)
     val serializer = new XmlSerializer
-    val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
     val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
     val factory = new MetadataRecordFactory(namespaces)
+    val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
 
-    override def map(pocket: Pocket): String = {
+    override val prefix: String = sipMapping.prefix
+
+    override def map(pocket: Pocket): Pocket = {
       val metadataRecord = factory.metadataRecordFrom(pocket.id, pocket.text, false)
       val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
-      result.toXmlAugmented
+      val xml = result.toXmlAugmented
+      Pocket(pocket.id, pocket.hash, xml)
     }
+
   }
 
-  def createSipMapper(prefix:String): Option[SipMapper] = sipMappings.get(prefix).map(new MappingEngine(_))
+  def createSipMapper(prefix: String): Option[SipMapper] = sipMappings.find(_.prefix == prefix).map(new MappingEngine(_))
+
 }

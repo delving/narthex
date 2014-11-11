@@ -21,6 +21,7 @@ import java.security.MessageDigest
 
 import org.joda.time.DateTime
 import play.Logger
+import services.StringHandling._
 import services.Temporal._
 import services._
 
@@ -143,7 +144,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
     def pop(tag: String) = {
       val string = pathString
       val fieldText = path.head._2
-      val text = FileHandling.crunchWhitespace(fieldText.toString())
+      val text = crunchWhitespace(fieldText.toString())
       fieldText.clear()
       path.pop()
       if (depth > 0) {
@@ -195,11 +196,11 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
 
     while (events.hasNext && progressReporter.keepReading(recordCount)) {
       events.next() match {
-        case EvElemStart(pre, label, attrs, scope) => push(FileHandling.tag(pre, label), attrs, scope)
+        case EvElemStart(pre, label, attrs, scope) => push(tag(pre, label), attrs, scope)
         case EvText(text) => addFieldText(text)
         case EvEntityRef(entity) => addFieldText(s"&$entity;")
-        case EvElemEnd(pre, label) => pop(FileHandling.tag(pre, label))
-        case EvComment(text) => FileHandling.stupidParser(text, entity => addFieldText(s"&$entity;"))
+        case EvElemEnd(pre, label) => pop(tag(pre, label))
+        case EvComment(text) => stupidParser(text, entity => addFieldText(s"&$entity;"))
         case x => Logger.error("EVENT? " + x)
       }
     }

@@ -39,15 +39,15 @@ object APIController extends Controller {
     val datasets = repo.repoDb.listDatasets.map {
       dataset =>
         val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-        Json.obj("name" -> dataset.name, "info" -> JsObject(lists))
+        Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))
     }
     //      Ok(JsArray(datasets))
     Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
   }
 
 
-  def pathsJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val treeFile = repo.datasetRepo(fileName).index
+  def pathsJSON(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val treeFile = repo.datasetRepo(datasetName).index
     val string = IOUtils.toString(new FileInputStream(treeFile))
     val json = Json.parse(string)
     val tree = json.as[ReadTreeNode]
@@ -56,12 +56,12 @@ object APIController extends Controller {
     Ok(Json.prettyPrint(pathJson)).as(ContentTypes.JSON)
   }
 
-  def indexJSON(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    OkFile(repo.datasetRepo(fileName).index)
+  def indexJSON(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    OkFile(repo.datasetRepo(datasetName).index)
   }
 
-  def indexText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    repo.datasetRepo(fileName).indexText(path) match {
+  def indexText(apiKey: String, datasetName: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    repo.datasetRepo(datasetName).indexText(path) match {
       case None =>
         NotFound(s"No index found for $path")
       case Some(file) =>
@@ -69,8 +69,8 @@ object APIController extends Controller {
     }
   }
 
-  def uniqueText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    repo.datasetRepo(fileName).uniqueText(path) match {
+  def uniqueText(apiKey: String, datasetName: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    repo.datasetRepo(datasetName).uniqueText(path) match {
       case None =>
         NotFound(s"No list found for $path")
       case Some(file) =>
@@ -78,8 +78,8 @@ object APIController extends Controller {
     }
   }
 
-  def histogramText(apiKey: String, fileName: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    repo.datasetRepo(fileName).histogramText(path) match {
+  def histogramText(apiKey: String, datasetName: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    repo.datasetRepo(datasetName).histogramText(path) match {
       case None =>
         NotFound(s"No list found for $path")
       case Some(file) =>
@@ -87,9 +87,9 @@ object APIController extends Controller {
     }
   }
 
-  def record(apiKey: String, fileName: String, id: String, enrich: Boolean = false) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
-    val storedRecord: String = datasetRepo.recordDb.record(id)
+  def record(apiKey: String, datasetName: String, id: String, enrich: Boolean = false) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
+    val storedRecord: String = datasetRepo.recordDbFromName(datasetName).record(id)
     if (storedRecord.nonEmpty) {
       if (enrich) {
         val records = datasetRepo.enrichRecords(storedRecord)
@@ -117,18 +117,18 @@ object APIController extends Controller {
     }
   }
 
-  def rawRecord(apiKey: String, fileName: String, id: String) = record(apiKey, fileName, id, enrich = false)
+  def rawRecord(apiKey: String, datasetName: String, id: String) = record(apiKey, datasetName, id, enrich = false)
 
-  def enrichedRecord(apiKey: String, fileName: String, id: String) = record(apiKey, fileName, id, enrich = true)
+  def enrichedRecord(apiKey: String, datasetName: String, id: String) = record(apiKey, datasetName, id, enrich = true)
 
-  def ids(apiKey: String, fileName: String, since: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
-    val ids = datasetRepo.recordDb.getIds(since)
+  def ids(apiKey: String, datasetName: String, since: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
+    val ids = datasetRepo.recordDbFromName(datasetName).getIds(since)
     Ok(scala.xml.XML.loadString(ids))
   }
 
-  def mappings(apiKey: String, fileName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    repo.datasetRepoOption(fileName) match {
+  def mappings(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    repo.datasetRepoOption(datasetName) match {
       case Some(datasetRepo) =>
         val mappings = datasetRepo.termDb.getMappings
         val reply =
@@ -144,13 +144,14 @@ object APIController extends Controller {
               </mappings>
         Ok(reply)
       case None =>
-        NotFound(s"No mappings for $fileName")
+        NotFound(s"No mappings for $datasetName")
     }
   }
 
-  def uploadOutput(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
-    val datasetRepo = repo.datasetRepo(fileName)
-    request.body.moveTo(datasetRepo.createIncomingFile(fileName), replace = true)
+  // todo: obsolete, sips have moved to inside the dataset repo
+  def uploadOutput(apiKey: String, outputFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
+    val datasetRepo = repo.datasetRepo(outputFileName)
+    request.body.moveTo(datasetRepo.createIncomingFile(outputFileName), replace = true)
     datasetRepo.datasetDb.createDataset(SOURCED)
     datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP)
     datasetRepo.datasetDb.setRecordDelimiter(
@@ -162,16 +163,17 @@ object APIController extends Controller {
     Ok
   }
 
-  def uploadSipZip(apiKey: String, fileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
-    val file = repo.createSipZipFile(fileName)
+  // todo: obsolete, sips have moved to inside the dataset repo
+  def uploadSipZip(apiKey: String, zipFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
+    val file = repo.createSipZipFile(zipFileName)
     request.body.moveTo(file, replace = true)
     val zip = new ZipFile(file)
     val factsEntry = zip.getEntry("dataset_facts.txt")
-    val factsFile = repo.createSipZipFactsFile(fileName)
+    val factsFile = repo.createSipZipFactsFile(zipFileName)
     FileUtils.copyInputStreamToFile(zip.getInputStream(factsEntry), factsFile)
     val facts = repo.readMapFile(factsFile)
     val hintsEntry = zip.getEntry("hints.txt")
-    val hintsFile = repo.createSipZipHintsFile(fileName)
+    val hintsFile = repo.createSipZipHintsFile(zipFileName)
     FileUtils.copyInputStreamToFile(zip.getInputStream(hintsEntry), hintsFile)
     val hints = repo.readMapFile(hintsFile)
     // have facts and hints - push them to datasetDb
@@ -196,6 +198,7 @@ object APIController extends Controller {
     Ok
   }
 
+  // todo: obsolete, sips have moved to inside the dataset repo
   def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     def reply =
         <sip-list>
@@ -226,8 +229,9 @@ object APIController extends Controller {
     Ok(reply)
   }
 
-  def downloadSipZip(apiKey: String, fileName: String) = Action(parse.anyContent) { implicit request =>
-    OkFile(repo.createSipZipFile(fileName))
+  // todo: obsolete, sips have moved to inside the dataset repo
+  def downloadSipZip(apiKey: String, sipZipFileName: String) = Action(parse.anyContent) { implicit request =>
+    OkFile(repo.createSipZipFile(sipZipFileName))
   }
 
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>

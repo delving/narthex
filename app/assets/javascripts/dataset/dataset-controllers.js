@@ -21,7 +21,7 @@ define(["angular"], function () {
 
     var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll) {
         var MAX_FOR_VOCABULARY = 12500;
-        $scope.fileName = $routeParams.fileName;
+        $scope.datasetName = $routeParams.datasetName;
 
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
@@ -34,7 +34,7 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
-        datasetService.datasetInfo($scope.fileName).then(function (datasetInfo) {
+        datasetService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
 
             $scope.datasetInfo = datasetInfo;
 
@@ -55,7 +55,7 @@ define(["angular"], function () {
                 $scope.allowUniqueIdSet = true
             }
 
-            datasetService.index($scope.fileName).then(function (tree) {
+            datasetService.index($scope.datasetName).then(function (tree) {
                 function sortKids(node) {
                     if (!node.kids.length) return;
                     node.kids = _.sortBy(node.kids, function (kid) {
@@ -83,7 +83,7 @@ define(["angular"], function () {
                         }
                         else {
                             var recPath = node.path.substring($scope.recordContainer.length);
-                            node.sourcePath = $rootScope.orgId + "/" + $scope.fileName + recPath;
+                            node.sourcePath = $rootScope.orgId + "/" + $scope.datasetName + recPath;
                         }
                     }
                     for (var index = 0; index < node.kids.length; index++) {
@@ -98,7 +98,7 @@ define(["angular"], function () {
                     }
                 }
 
-                datasetService.getTermSourcePaths($scope.fileName).then(function (data) {
+                datasetService.getTermSourcePaths($scope.datasetName).then(function (data) {
                     function recursive(node, sourcePaths) {
                         if (sourcePaths.indexOf(node.sourcePath) >= 0) node.termMappings = true;
                         for (var index = 0; index < node.kids.length; index++) recursive(node.kids[index], sourcePaths);
@@ -107,7 +107,7 @@ define(["angular"], function () {
                     recursive(tree, data.sourcePaths);
                 });
 
-                datasetService.getCategorySourcePaths($scope.fileName).then(function (data) {
+                datasetService.getCategorySourcePaths($scope.datasetName).then(function (data) {
                     function recursive(node, sourcePaths) {
                         if (sourcePaths.indexOf(node.sourcePath) >= 0) node.categoryMappings = true;
                         for (var index = 0; index < node.kids.length; index++) recursive(node.kids[index], sourcePaths);
@@ -138,8 +138,8 @@ define(["angular"], function () {
 
         $scope.goToPage = function (node, page) {
             if (node && node != $scope.selectedNode) return;
-            $rootScope.breadcrumbs.dataset = $scope.fileName;
-            $location.path("/" + page + "/" + $scope.fileName);
+            $rootScope.breadcrumbs.dataset = $scope.datasetName;
+            $location.path("/" + page + "/" + $scope.datasetName);
             $location.search({
                 path: $routeParams.path,
                 size: $scope.status.histograms[$scope.status.histograms.length - 1]
@@ -167,11 +167,11 @@ define(["angular"], function () {
             if (node.lengths.length == 0 || node.path.length == 0) return;
             $scope.selectedNode = node;
             setActivePath(node.path);
-            datasetService.nodeStatus($scope.fileName, node.path).then(function (data) {
+            datasetService.nodeStatus($scope.datasetName, node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
-                $scope.apiPathUnique = $scope.apiPrefix + "/" + $scope.fileName + "/unique" + filePath;
-                $scope.apiPathHistogram = $scope.apiPrefix + "/" + $scope.fileName + "/histogram" + filePath;
+                $scope.apiPathUnique = $scope.apiPrefix + "/" + $scope.datasetName + "/unique" + filePath;
+                $scope.apiPathHistogram = $scope.apiPrefix + "/" + $scope.datasetName + "/histogram" + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
                 switch ($routeParams.view) {
@@ -210,7 +210,7 @@ define(["angular"], function () {
                     uniqueId: $scope.uniqueIdNode.path,
                     recordCount: $scope.uniqueIdNode.count
                 };
-                datasetService.setRecordDelimiter($scope.fileName, body).then(function () {
+                datasetService.setRecordDelimiter($scope.datasetName, body).then(function () {
                     console.log("record delimiter set");
                 });
             }
@@ -223,7 +223,7 @@ define(["angular"], function () {
         };
 
         $scope.fetchSample = function () {
-            datasetService.sample($scope.fileName, $routeParams.path, $scope.sampleSize).then(function (data) {
+            datasetService.sample($scope.datasetName, $routeParams.path, $scope.sampleSize).then(function (data) {
                 $scope.sample = data;
                 $scope.histogram = undefined;
             });
@@ -231,7 +231,7 @@ define(["angular"], function () {
         };
 
         $scope.fetchHistogram = function () {
-            datasetService.histogram($scope.fileName, $routeParams.path, $scope.histogramSize).then(function (data) {
+            datasetService.histogram($scope.datasetName, $routeParams.path, $scope.histogramSize).then(function (data) {
                 _.forEach(data.histogram, function (entry) {
                     var percent = (100 * entry[0]) / $scope.selectedNode.count;
                     entry.push(percent);

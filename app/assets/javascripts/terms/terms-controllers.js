@@ -20,7 +20,7 @@ define(["angular"], function (angular) {
     var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, termsService, $timeout, pageScroll) {
 
         function getSearchParams() {
-            $scope.fileName = $routeParams.fileName;
+            $scope.datasetName = $routeParams.datasetName;
             $scope.path = $routeParams.path;
             $scope.histogramSize = parseInt($routeParams.size || "100");
             $scope.activeView = $routeParams.view || "vocabulary";
@@ -51,7 +51,7 @@ define(["angular"], function (angular) {
             pageScroll.scrollTo(options);
         };
 
-        termsService.datasetInfo($scope.fileName).then(function (datasetInfo) {
+        termsService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
             var recordContainer;
             if (datasetInfo.origin.type == 'origin-harvest') {
@@ -110,7 +110,7 @@ define(["angular"], function (angular) {
                 $scope.selectVocabulary($scope.vocabularyList[0])
             }
         });
-        termsService.getMappings($scope.fileName).then(function (data) {
+        termsService.getMappings($scope.datasetName).then(function (data) {
             _.forEach(data.mappings, function (mapping) {
                 $scope.mappings[mapping.source] = {
                     target: mapping.target,
@@ -118,9 +118,9 @@ define(["angular"], function (angular) {
                     prefLabel: mapping.prefLabel
                 }
             });
-            termsService.histogram($scope.fileName, $scope.path, $scope.histogramSize).then(function (data) {
+            termsService.histogram($scope.datasetName, $scope.path, $scope.histogramSize).then(function (data) {
                 $scope.histogram = _.map(data.histogram, function (count) {
-                    var sourceUri = $rootScope.orgId + "/" + $scope.fileName + $scope.sourceUriPath + "/" + encodeURIComponent(count[1]);
+                    var sourceUri = $rootScope.orgId + "/" + $scope.datasetName + $scope.sourceUriPath + "/" + encodeURIComponent(count[1]);
                     return {
                         value: count[1],
                         count: count[0],
@@ -152,7 +152,7 @@ define(["angular"], function (angular) {
                 "path": $scope.path,
                 "value": value
             };
-            termsService.queryRecords($scope.fileName, body).then(function (data) {
+            termsService.queryRecords($scope.datasetName, body).then(function (data) {
                 $scope.records = data;
             });
         }
@@ -233,7 +233,7 @@ define(["angular"], function (angular) {
             if ($scope.mappings[$scope.sourceEntry.sourceUri]) { // it already exists
                 body.remove = "yes";
             }
-            termsService.setMapping($scope.fileName, body).then(function (data) {
+            termsService.setMapping($scope.datasetName, body).then(function (data) {
                 console.log("set mapping returns", data);
                 if (body.remove) {
                     delete $scope.mappings[$scope.sourceEntry.sourceUri]
