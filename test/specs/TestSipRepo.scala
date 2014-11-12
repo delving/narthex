@@ -44,10 +44,12 @@ class TestSipRepo extends FlatSpec with Matchers {
       mappedPockets.size should be (25)
 
       val head = XML.loadString(mappedPockets.head.text)
+
+//      println(head)
+
       val eglise = "L'Eglise collegiale de Notre Dame a Breda.Harrewijn fecit"
 
-      // filtered here because otherwise there would be two:
-      val titleText = (head \ "title").filter(_.prefix == "delving").text.trim
+      val titleText = (head \ "record" \ "title").filter(_.prefix == "dc").text.trim
 
       titleText should be(eglise)
 

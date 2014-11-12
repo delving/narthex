@@ -23,7 +23,7 @@ import eu.delving.groovy.{GroovyCodeResource, MappingRunner, MetadataRecordFacto
 import eu.delving.metadata._
 import org.OrgRepo.repo
 import org.joda.time.DateTime
-import play.api.Logger
+import org.w3c.dom.Element
 import record.PocketParser.Pocket
 import services.SipRepo.SipZipFile
 
@@ -184,6 +184,7 @@ class SipFile(val file: SipZipFile) {
   }.getOrElse(Seq.empty[SipMapping])
 
   class MappingEngine(sipMapping: SipMapping) extends SipMapper {
+    val now = new DateTime
     val groovy = new GroovyCodeResource(getClass.getClassLoader)
     val serializer = new XmlSerializer
     val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
@@ -195,10 +196,14 @@ class SipFile(val file: SipZipFile) {
     override def map(pocket: Pocket): Pocket = {
       val metadataRecord = factory.metadataRecordFrom(pocket.id, pocket.text, false)
       val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
-      val xml = result.toXmlAugmented
-
-      Logger.info(s"MappingEngine: $pocket => $xml")
-
+      val root = result.root().asInstanceOf[Element]
+      root.removeAttribute("xsi:schemaLocation")
+      val pocketedRoot = root.getOwnerDocument.createElement("pocket")
+      pocketedRoot.setAttribute("id", pocket.id)
+      pocketedRoot.setAttribute("hash", pocket.hash)
+      pocketedRoot.setAttribute("mod", Temporal.timeToString(now))
+      pocketedRoot.appendChild(root)
+      val xml = serializer.toXml(pocketedRoot, true)
       Pocket(pocket.id, pocket.hash, xml)
     }
 
