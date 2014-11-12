@@ -47,11 +47,14 @@ case class DatasetOrigin(name: String) {
 object DatasetOrigin {
   val DROP = DatasetOrigin("origin-drop")
   val HARVEST = DatasetOrigin("origin-harvest")
-  val SIP = DatasetOrigin("origin-sip")
+  val SIP_SOURCE = DatasetOrigin("origin-sip-source")
+  val SIP_HARVEST = DatasetOrigin("origin-sip-harvest")
 
-  val ALL_ORIGINS = List(DROP, HARVEST, SIP)
+  val ALL_ORIGINS = List(DROP, HARVEST, SIP_SOURCE, SIP_HARVEST)
 
-  def fromString(string: String): Option[DatasetOrigin] = ALL_ORIGINS.find(s => s.matches(string))
+  def originFromString(string: String): Option[DatasetOrigin] = ALL_ORIGINS.find(s => s.matches(string))
+
+  def originFromInfo(datasetInfo: NodeSeq) = originFromString((datasetInfo \ "origin" \ "type").text)
 }
 
 case class ProgressType(name: String) {
@@ -69,9 +72,9 @@ object ProgressType {
 
   val ALL_PROGRESS_TYPES = List(TYPE_IDLE, BUSY, PERCENT, WORKERS, PAGES)
 
-  def fromString(string: String): Option[ProgressType] = ALL_PROGRESS_TYPES.find(s => s.matches(string))
+  def progressTypeFromString(string: String): Option[ProgressType] = ALL_PROGRESS_TYPES.find(s => s.matches(string))
 
-  def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "progress" \ "type").text)
+  def progressTypeFromInfo(datasetInfo: NodeSeq) = progressTypeFromString((datasetInfo \ "progress" \ "type").text)
 }
 
 case class ProgressState(name: String) {
@@ -94,9 +97,9 @@ object ProgressState {
 
   val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, SAVING, ERROR)
 
-  def fromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
+  def progressStateFromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
 
-  def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "progress" \ "state").text)
+  def progressStateFromInfo(datasetInfo: NodeSeq) = progressStateFromString((datasetInfo \ "progress" \ "state").text)
 }
 
 
@@ -113,9 +116,9 @@ object DatasetState {
 
   val ALL_STATES = List(DELETED, EMPTY, SOURCED)
 
-  def fromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
+  def datasetStateFromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
 
-  def fromDatasetInfo(datasetInfo: NodeSeq) = fromString((datasetInfo \ "status" \ "state").text)
+  def datasetStateFromInfo(datasetInfo: NodeSeq) = datasetStateFromString((datasetInfo \ "status" \ "state").text).get
 }
 
 class DatasetDb(repoDb: OrgDb, datasetName: String) {

@@ -23,7 +23,7 @@ define(
             ]
         );
 
-        mod.controller('FileEntryCtrl', controllers.FileEntryCtrl);
+        mod.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);
         mod.config(function ($rootScopeProvider) {
             $rootScopeProvider.digestTtl(15);
         });

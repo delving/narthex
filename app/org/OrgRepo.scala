@@ -24,17 +24,13 @@ import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMe
 import mapping.CategoriesRepo
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
-import org.OrgRepo._
-import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
 import record.EnrichmentParser._
 import services.StringHandling._
-import services.Temporal._
 import services._
 
 import scala.concurrent.duration._
-import scala.io.Source
 import scala.language.postfixOps
 
 object OrgRepo {
@@ -49,33 +45,17 @@ object OrgRepo {
     SUFFIXES.find(suffix => uploadedFileName.endsWith(suffix))
   }
 
-  case class SipZip
-  (
-    zipFile: File,
-    uploadedBy: String,
-    uploadedOn: String,
-    factsFile: File,
-    facts: Map[String, String],
-    hintsFile: File,
-    hints: Map[String, String]
-    ) {
-    override def toString = zipFile.getName
-  }
-
-
 }
 
 class OrgRepo(userHome: String, val orgId: String) {
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "dastasets")
-  val sipZipDir = new File(orgRoot, "sip-zip")
   val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
   val repoDb = new OrgDb(orgId)
 
   orgRoot.mkdirs()
   datasetsDir.mkdir()
-  sipZipDir.mkdir()
 
   private def listFiles(directory: File): List[File] = {
     if (!directory.exists()) return List.empty
@@ -147,60 +127,5 @@ class OrgRepo(userHome: String, val orgId: String) {
     val datasets = categoryDatasets.map(_.datasetName)
     datasets.foreach(datasetRepo(_).datasetDb.startProgress(CATEGORIZING))
     OrgActor.actor ! DatasetsCountCategories(datasets)
-  }
-
-  // === sip-zip
-
-  // todo: obsolete now that sips are stored in each dataset repo
-  def createSipZipFile(zipFileName: String) = new File(sipZipDir, zipFileName)
-
-  // todo: obsolete now that sips are stored in each dataset repo
-  def createSipZipFactsFile(zipFileName: String) = new File(sipZipDir, s"$zipFileName.facts")
-
-  // todo: obsolete now that sips are stored in each dataset repo
-  def createSipZipHintsFile(zipFileName: String) = new File(sipZipDir, s"$zipFileName.hints")
-
-  val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
-
-  def readMapFile(factsFile: File): Map[String, String] = {
-    if (!factsFile.exists()) return Map.empty
-    val lines = Source.fromFile(factsFile, "UTF-8").getLines()
-    lines.flatMap {
-      line =>
-        val equals = line.indexOf("=")
-        if (equals < 0) None
-        else {
-          Some((line.substring(0, equals).trim, line.substring(equals + 1).trim))
-        }
-    }.toMap
-  }
-
-  def listSipZips: Seq[SipZip] = {
-    if (!sipZipDir.exists()) return Seq.empty
-    val fileList = sipZipDir.listFiles.filter(file => file.isFile && file.getName.endsWith(".zip")).toList
-    val ordered = fileList.sortBy {
-      f =>
-        val n = f.getName
-        val parts = n.split("__")
-        if (parts.length >= 2) parts(1) else parts(0)
-    }
-    ordered.reverse.map {
-      file =>
-        val factsFile = createSipZipFactsFile(file.getName)
-        val facts = readMapFile(factsFile)
-        val hintsFile = createSipZipHintsFile(file.getName)
-        val hints = readMapFile(hintsFile)
-        val SipZipName(spec, year, month, day, hour, minute, uploadedBy) = file.getName
-        val dateTime = new DateTime(year.toInt, month.toInt, day.toInt, hour.toInt, minute.toInt)
-        SipZip(
-          zipFile = file,
-          uploadedBy = uploadedBy,
-          uploadedOn = timeToString(dateTime),
-          factsFile = factsFile,
-          facts = facts,
-          hintsFile = hintsFile,
-          hints = hints
-        )
-    }
   }
 }

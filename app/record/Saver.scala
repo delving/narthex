@@ -61,7 +61,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
       progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
     case SaveRecords(modifiedAfter: Option[DateTime], file, recordRoot, uniqueId, recordCount, deepRecordContainer, sipMappers) =>
-      log.info(s"Saving $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath}) mappers=${sipMappers.map(_.size).getOrElse(0)}")
+      log.info(s"Saving $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath})")
       
       // create a non-empty list of contexts with record db and optional mapper
       val sipMappingContexts: Seq[MappingContext] = sipMappers.map(mapperList =>
@@ -69,7 +69,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
           MappingContext(datasetRepo.recordDb(mapper.prefix), Some(mapper))
         )
       ).getOrElse(Seq(MappingContext(datasetRepo.recordDb(VERBATIM), None)))
-      
+
       val f: Future[Unit] = future {
         
         sipMappingContexts.map { mappingContext =>
@@ -112,7 +112,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
               }
             }
           } getOrElse {
-            log.info(s"Processing latest incoming file $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath} mappers=${sipMappers.map(_.size).getOrElse(0)}")
+            log.info(s"Processing latest incoming file $datasetRepo")
             mappingContext.recordDb.createDb()
             var tick = 0
             var time = System.currentTimeMillis()

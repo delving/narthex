@@ -20,7 +20,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     val sipRepo = new SipRepo(new File(home, "sips"))
     val harvestRepo = new HarvestRepo(new File(home, "harvest"), HarvestType.PMH)
 
-    val sipFileOpt = sipRepo.latestSIPFile
+    val sipFileOpt = sipRepo.latestSipFile
     sipFileOpt.isDefined should be(true)
 
     sipFileOpt.foreach { sipFile =>

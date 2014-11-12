@@ -22,7 +22,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import analysis.NodeRepo
 import dataset.DatasetActor.{StartAnalysis, StartCategoryCounting, StartHarvest, StartSaving}
-import dataset.DatasetOrigin.HARVEST
+import dataset.DatasetOrigin._
 import dataset.DatasetState._
 import dataset.ProgressState._
 import harvest.Harvesting
@@ -64,7 +64,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir)
 
-  def prefixFromName(name: String):String = {
+  def prefixFromName(name: String): String = {
     val sep = name.lastIndexOf("__")
     if (sep > 0) name.substring(sep + 2) else VERBATIM
   }
@@ -93,21 +93,22 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
 
   def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.infoOption map { info =>
-    DatasetState.fromDatasetInfo(info).foreach { state =>
-      if (state == EMPTY) {
-        clearDir(harvestDir) // it's a first harvest
-        clearDir(analyzedDir) // just in case
-        datasetDb.startProgress(HARVESTING)
+    val state = DatasetState.datasetStateFromInfo(info)
+    if (state == EMPTY) {
+      clearDir(harvestDir) // it's a first harvest
+      clearDir(analyzedDir) // just in case
+      datasetDb.startProgress(HARVESTING)
+      if (originFromInfo(info).isEmpty) {
         datasetDb.setOrigin(HARVEST)
         datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
-        datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
         datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
-        Logger.info(s"First Harvest $datasetName")
-        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None))
       }
-      else {
-        Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
-      }
+      datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
+      Logger.info(s"First Harvest $datasetName")
+      OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None))
+    }
+    else {
+      Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
     }
   }
 
@@ -133,41 +134,44 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def startAnalysis() = datasetDb.infoOption.map { info =>
-    DatasetState.fromDatasetInfo(info).map { state =>
-      if (state == SOURCED) {
-        clearDir(analyzedDir)
-        datasetDb.startProgress(SPLITTING)
-        // todo: maybe for prefixes?
-        OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis())
-      }
-      else {
-        Logger.warn(s"Analyzing $datasetName can only be started when the state is sourced, but it's $state")
-      }
+    val state = DatasetState.datasetStateFromInfo(info)
+    if (state == SOURCED) {
+      clearDir(analyzedDir)
+      datasetDb.startProgress(SPLITTING)
+      // todo: maybe for prefixes?
+      OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis())
+    }
+    else {
+      Logger.warn(s"Analyzing $datasetName can only be started when the state is sourced, but it's $state")
     }
   }
 
   def firstSaveRecords() = datasetDb.infoOption.map { info =>
-    DatasetState.fromDatasetInfo(info).map { state =>
-      getLatestIncomingFile.map { incoming =>
-        val delimited = datasetDb.isDelimited(Some(info))
-        if (state == SOURCED && delimited) {
-          datasetDb.startProgress(SAVING)
-          val sipMappers: Option[Seq[SipMapper]] = prefixesFromInfo(info).flatMap { prefixes =>
-            sipRepo.latestSIPFile.map { sipFile =>
-              prefixes.flatMap { prefix =>
-                recordDb(prefix).createDb()
-                sipFile.createSipMapper(prefix)
-              }
-            }
+    val delimited = datasetDb.isDelimited(Some(info))
+    val state = DatasetState.datasetStateFromInfo(info)
+    if (state == SOURCED && delimited) {
+      datasetDb.startProgress(SAVING)
+      val sipMappers: Option[Seq[SipMapper]] = prefixesFromInfo(info).flatMap { prefixes =>
+        sipRepo.latestSipFile.map { sipFile =>
+          prefixes.flatMap { prefix =>
+            recordDb(prefix).createDb()
+            sipFile.createSipMapper(prefix)
           }
-          OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, incoming, sipMappers))
         }
-        else {
-          Logger.warn(s"First save of $datasetName can only be started with state sourced/delimited, but it's $state/$delimited ")
-        }
-      } getOrElse {
-        Logger.warn(s"First save of $datasetName needs an incoming file")
       }
+      // for a sip-harvest we have a single zip file in the harvest dir
+      val fileOpt: Option[File] = originFromInfo(info) match {
+        case Some(SIP_HARVEST) => harvestDir.listFiles.find(_.getName.endsWith("zip"))
+        case _ => getLatestIncomingFile
+      }
+      fileOpt.map { file =>
+        OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, file, sipMappers))
+      } getOrElse{
+        Logger.warn(s"Cannot find file to save for $datasetName")
+      }
+    }
+    else {
+      Logger.warn(s"First save of $datasetName can only be started with state sourced/delimited, but it's $state/$delimited")
     }
   }
 
@@ -185,11 +189,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def revertState: DatasetState = {
-    val currentState = datasetDb.infoOption.flatMap { info =>
-      val maybe = DatasetState.fromDatasetInfo(info)
-      if (maybe.isEmpty) Logger.warn(s"No current state?? $info")
-      maybe
-    } getOrElse DELETED
+    val currentState = datasetDb.infoOption.map(DatasetState.datasetStateFromInfo(_)) getOrElse DELETED
     Logger.info(s"Revert state of $datasetName from $currentState")
     datasetDb.infoOption.map { info =>
       currentState match {

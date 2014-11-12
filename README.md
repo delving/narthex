@@ -60,8 +60,7 @@ The document stored in BaseX for the datasets, which maintains their current sta
 	<narthex-datasets>
 		<narthex-dataset name="[Dataset Name]">
 			<origin>
-				<type>[origin-sip | origin-drop | origin-harvest]</type>
-				<who>[User responsible]</who>
+				<type>[origin-sip-source | orgin-sip-harvest | origin-drop | origin-harvest]</type>
 				<time>[when the dataset was acquired]</time>
 			</origin>
 			<status>

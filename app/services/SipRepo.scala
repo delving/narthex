@@ -18,9 +18,14 @@ package services
 import java.io._
 import java.util.zip.ZipFile
 
+import dataset.DatasetOrigin._
 import eu.delving.groovy.{GroovyCodeResource, MappingRunner, MetadataRecordFactory, XmlSerializer}
 import eu.delving.metadata._
+import org.OrgRepo.repo
+import org.joda.time.DateTime
+import play.api.Logger
 import record.PocketParser.Pocket
+import services.SipRepo.SipZipFile
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -33,13 +38,43 @@ import scala.io.Source
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
+object SipRepo {
+
+  val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
+
+  case class SipZipFile(zipFile: File) {
+    val SipZipName(spec, year, month, day, hour, minute, uploadedByName) = zipFile.getName
+    val datasetName = spec
+    val uploadedOn = new DateTime(year.toInt, month.toInt, day.toInt, hour.toInt, minute.toInt)
+    val uploadedBy = uploadedByName
+
+    override def toString = zipFile.getName
+  }
+
+  def listSipZips: Seq[SipFile] = {
+    repo.repoDb.listDatasets.flatMap { dataset =>
+      originFromInfo(dataset.info).flatMap { origin =>
+        if (origin == SIP_HARVEST || origin == SIP_SOURCE) {
+          var datasetRepo = repo.datasetRepo(dataset.datasetName)
+          datasetRepo.sipRepo.latestSipFile
+        }
+        else None
+      }
+    }
+  }
+}
+
 class SipRepo(home: File) {
   home.mkdir()
+  
+  def createSipZipFile(sipZipFileName: String) = new File(home, sipZipFileName)
 
-  def latestSIPFile: Option[SipFile] = {
-    val zipFIles = home.listFiles().filter(_.getName.endsWith("zip"))
-    zipFIles.sortBy(_.getName).lastOption.map(SipFile(_))
+  def listSipFiles: Seq[SipFile] = {
+    val zipFiles = home.listFiles().filter(_.getName.endsWith("zip"))
+    zipFiles.sortBy(_.getName).reverse.map(SipFile(_))
   }
+
+  def latestSipFile: Option[SipFile] = listSipFiles.headOption
 
 }
 
@@ -55,15 +90,15 @@ object SipFile {
 
   val PrefixVersion = "(.*)_(.*)".r
 
-  def apply(zipFile: File) = new SipFile(zipFile)
+  def apply(zipFile: File) = new SipFile(SipZipFile(zipFile))
 
 }
 
-class SipFile(file: File) {
+class SipFile(val file: SipZipFile) {
 
   import services.SipFile._
 
-  lazy val zipFile = new ZipFile(file)
+  lazy val zipFile = new ZipFile(file.zipFile)
 
   lazy val entries = zipFile.entries().map(entry => entry.getName -> entry).toMap
 
@@ -83,9 +118,10 @@ class SipFile(file: File) {
   def fact(name: String): Option[String] = facts.flatMap(_.get(name))
 
   lazy val spec = fact("spec")
+  lazy val name = fact("name")
   lazy val orgId = fact("orgId")
   lazy val provider = fact("provider")
-  lazy val datProvider = fact("dataProvider")
+  lazy val dataProvider = fact("dataProvider")
   lazy val country = fact("country")
   lazy val language = fact("language")
   lazy val rights = fact("rights")
@@ -93,7 +129,7 @@ class SipFile(file: File) {
 
   lazy val hints = readMap("hints.txt")
 
-  def hint(name: String): Option[String] = hints.flatMap(_.get(name))
+  private def hint(name: String): Option[String] = hints.flatMap(_.get(name))
 
   lazy val harvestUrl = hint("harvestUrl")
   lazy val harvestSpec = hint("harvestSpec")
@@ -104,22 +140,22 @@ class SipFile(file: File) {
 
   lazy val schemaVersionSeq: Option[Seq[String]] = schemaVersions.map(commas => commas.split(" *,").toSeq)
 
-  def file(sipContentFileName: String): String = {
+  private def file(sipContentFileName: String): String = {
     entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       Source.fromInputStream(inputStream, "UTF-8").mkString
-    } getOrElse (throw new RuntimeException(s"Unable to read file $sipContentFileName from ${file.getAbsolutePath}"))
+    } getOrElse (throw new RuntimeException(s"Unable to read file $sipContentFileName from $file"))
   }
 
-  def recDefTree(sipContentFileName: String): RecDefTree = {
+  private def recDefTree(sipContentFileName: String): RecDefTree = {
     entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val recDef = RecDef.read(inputStream)
       RecDefTree.create(recDef)
-    } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from ${file.getAbsolutePath}"))
+    } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from $file"))
   }
 
-  def recMapping(sipContentFileName: String, recDefTree: RecDefTree): RecMapping = {
+  private def recMapping(sipContentFileName: String, recDefTree: RecDefTree): RecMapping = {
     entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val mapping = RecMapping.read(inputStream, recDefTree)
@@ -130,7 +166,7 @@ class SipFile(file: File) {
         }
       }
       mapping
-    } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from ${file.getAbsolutePath}"))
+    } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from $file"))
   }
 
   lazy val sipMappings: Seq[SipMapping] = schemaVersionSeq.map { sequence =>
@@ -160,6 +196,9 @@ class SipFile(file: File) {
       val metadataRecord = factory.metadataRecordFrom(pocket.id, pocket.text, false)
       val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
       val xml = result.toXmlAugmented
+
+      Logger.info(s"MappingEngine: $pocket => $xml")
+
       Pocket(pocket.id, pocket.hash, xml)
     }
 

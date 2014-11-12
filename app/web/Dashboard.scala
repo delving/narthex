@@ -58,12 +58,12 @@ object Dashboard extends Controller with Security {
 
   def list = Secure() { token => implicit request =>
     val datasets = repo.repoDb.listDatasets.flatMap { dataset =>
-      DatasetState.fromDatasetInfo(dataset.info).map { state: DatasetState =>
-        if (state == DatasetState.DELETED) None else {
-          val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-          Some(Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists)))
-        }
-      } getOrElse None
+      val state = DatasetState.datasetStateFromInfo(dataset.info)
+      if (state == DatasetState.DELETED) None
+      else {
+        val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+        Some(Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists)))
+      }
     }
     Ok(JsArray(datasets))
   }
@@ -120,7 +120,7 @@ object Dashboard extends Controller with Security {
     try {
       val datasetRepo = repo.datasetRepo(datasetName)
       Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $datasetName")
-      HarvestType.fromString(required("harvestType")) map { harvestType =>
+      HarvestType.harvestTypeFromString(required("harvestType")) map { harvestType =>
         val prefix = if (harvestType == HarvestType.PMH) required("prefix") else ""
         datasetRepo.firstHarvest(harvestType, required("url"), optional("dataset"), prefix)
         Ok
@@ -308,7 +308,7 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def gatherCategoryCounts  = Secure() { token => implicit request =>
+  def gatherCategoryCounts = Secure() { token => implicit request =>
     Logger.info("Gather category counts!! (NOT IMPLEMENTED)")
     repo.startCategoryCounts()
     Ok
@@ -334,23 +334,24 @@ object Dashboard extends Controller with Security {
     )
     val member = (request.body \ "member").as[Boolean]
     datasetRepo.categoryDb.setMapping(categoryMapping, member)
-    Ok("Mapping "+ (if (member) "added" else "removed"))
+    Ok("Mapping " + (if (member) "added" else "removed"))
   }
 
-  def listSipFiles = Secure() { token => implicit request =>
-    val fileNames = repo.listSipZips.map(_.toString)
+  def listSipFiles(datasetName: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
+    val fileNames = datasetRepo.sipRepo.listSipFiles.map(_.file.toString)
     Ok(Json.obj("list" -> fileNames))
   }
 
-  def deleteSipFile(zipFileName: String) = Secure() { token => implicit request =>
-    repo.listSipZips.find(_.zipFile.getName == zipFileName) match {
-      case Some(sipZip) =>
-        FileUtils.deleteQuietly(sipZip.zipFile)
-        FileUtils.deleteQuietly(sipZip.factsFile)
-        FileUtils.deleteQuietly(sipZip.hintsFile)
-        Ok(Json.obj("deleted" -> sipZip.toString))
-      case None =>
-        NotFound(Json.obj("problem" -> s"Could not delete $zipFileName"))
+  def deleteLatestSipFile(datasetName: String) = Secure() { token => implicit request =>
+    val datasetRepo = repo.datasetRepo(datasetName)
+    val sipFiles = datasetRepo.sipRepo.listSipFiles
+    if (sipFiles.size < 2) {
+      NotFound(Json.obj("problem" -> s"Refusing to delete the last SIP file $datasetName"))
+    }
+    else {
+      FileUtils.deleteQuietly(sipFiles.head.file.zipFile)
+      Ok(Json.obj("deleted" -> sipFiles.head.file.toString))
     }
   }
 }

@@ -80,7 +80,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       clearDir(datasetRepo.analyzedDir)
       db.infoOption.foreach { info =>
         val harvest = info \ "harvest"
-        HarvestType.fromString((harvest \ "harvestType").text).map { harvestType =>
+        HarvestType.harvestTypeFromString((harvest \ "harvestType").text).map { harvestType =>
           val harvestRepo = new HarvestRepo(datasetRepo.harvestDir, harvestType)
           val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo, harvestRepo)))
           val url = (harvest \ "url").text
@@ -105,7 +105,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
           clearDir(datasetRepo.analyzedDir)
           datasetRepo.datasetDb.setTree(ready = false)
           val sipMappers: Option[Seq[SipMapper]] = prefixesFromInfo(info).flatMap { prefixes =>
-            datasetRepo.sipRepo.latestSIPFile.map(sipFile => prefixes.flatMap(sipFile.createSipMapper))
+            datasetRepo.sipRepo.latestSipFile.map(sipFile => prefixes.flatMap(sipFile.createSipMapper))
           }
           self ! StartSaving(modifiedAfter, file, sipMappers)
         } getOrElse {
@@ -175,11 +175,14 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
         val delimit = info \ "delimit"
         val recordCountText = (delimit \ "recordCount").text
         val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
-        val kickoffOption = if (HARVEST.matches((info \ "origin" \ "type").text)) {
-          val ht = HarvestType.fromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
-          Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer, sipMappers))
-        }
-        else {
+        val kickoffOption: Option[SaveRecords] = originFromInfo(info).map { origin =>
+          if (origin == HARVEST || origin == SIP_HARVEST) {
+            val ht = HarvestType.harvestTypeFromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
+            Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer, sipMappers))
+          }
+          else
+            None
+        } getOrElse {
           val recordRoot = (delimit \ "recordRoot").text
           val uniqueId = (delimit \ "uniqueId").text
           if (recordRoot.trim.nonEmpty)

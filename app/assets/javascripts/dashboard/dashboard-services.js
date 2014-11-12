@@ -120,16 +120,16 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                listSipFiles: function () {
-                    return dash.listSipFiles().get().then(
+                listSipFiles: function (datasetName) {
+                    return dash.listSipFiles(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                deleteSipFile: function (name) {
-                    return dash.deleteSipFile(name).get().then(
+                deleteLatestSipFile: function (datasetName) {
+                    return dash.deleteLatestSipFile(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },

@@ -193,13 +193,12 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.setTermMapping,
           routes.javascript.Dashboard.getCategoryList,
           routes.javascript.Dashboard.listSheets,
-//          routes.javascript.Dashboard.sheet,
           routes.javascript.Dashboard.getCategorySourcePaths,
           routes.javascript.Dashboard.getCategoryMappings,
           routes.javascript.Dashboard.setCategoryMapping,
           routes.javascript.Dashboard.gatherCategoryCounts,
           routes.javascript.Dashboard.listSipFiles,
-          routes.javascript.Dashboard.deleteSipFile
+          routes.javascript.Dashboard.deleteLatestSipFile
         )
       ).as(JAVASCRIPT)
   }

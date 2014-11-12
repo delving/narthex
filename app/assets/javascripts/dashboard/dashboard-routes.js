@@ -36,13 +36,13 @@ define(
                             resolve: userResolve,
                             reloadOnSearch: false
                         }
-                    ).when(
-                        "/sip-files", {
-                            templateUrl: "/narthex/assets/templates/sip-files.html",
-                            controller: controllers.SipCreatorCtrl,
-                            resolve: userResolve,
-                            reloadOnSearch: false
-                        }
+//                    ).when(
+//                        "/sip-files", {
+//                            templateUrl: "/narthex/assets/templates/sip-files.html",
+//                            controller: controllers.SipCreatorCtrl,
+//                            resolve: userResolve,
+//                            reloadOnSearch: false
+//                        }
                     );
                 }
             ]

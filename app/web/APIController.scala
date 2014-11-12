@@ -17,18 +17,18 @@
 package web
 
 import java.io.FileInputStream
-import java.util.zip.ZipFile
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
-import dataset.DatasetState._
 import dataset.{DatasetDb, DatasetOrigin}
+import harvest.Harvesting.HarvestType.PMH
 import org.OrgRepo.repo
-import org.apache.commons.io.{FileUtils, IOUtils}
+import org.apache.commons.io.IOUtils
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import record.EnrichmentParser
+import services.Temporal.timeToLocalString
 import services._
 import web.Application.{OkFile, OkXml}
 import web.Dashboard._
@@ -148,90 +148,69 @@ object APIController extends Controller {
     }
   }
 
-  // todo: obsolete, sips have moved to inside the dataset repo
-  def uploadOutput(apiKey: String, outputFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
-    val datasetRepo = repo.datasetRepo(outputFileName)
-    request.body.moveTo(datasetRepo.createIncomingFile(outputFileName), replace = true)
-    datasetRepo.datasetDb.createDataset(SOURCED)
-    datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP)
-    datasetRepo.datasetDb.setRecordDelimiter(
-      recordRoot = "/rdf:RDF/rdf:Description",
-      uniqueId = "/rdf:RDF/rdf:Description/@rdf:about",
-      recordCount = -1
-    )
-    datasetRepo.startAnalysis()
-    Ok
-  }
-
-  // todo: obsolete, sips have moved to inside the dataset repo
-  def uploadSipZip(apiKey: String, zipFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
-    val file = repo.createSipZipFile(zipFileName)
-    request.body.moveTo(file, replace = true)
-    val zip = new ZipFile(file)
-    val factsEntry = zip.getEntry("dataset_facts.txt")
-    val factsFile = repo.createSipZipFactsFile(zipFileName)
-    FileUtils.copyInputStreamToFile(zip.getInputStream(factsEntry), factsFile)
-    val facts = repo.readMapFile(factsFile)
-    val hintsEntry = zip.getEntry("hints.txt")
-    val hintsFile = repo.createSipZipHintsFile(zipFileName)
-    FileUtils.copyInputStreamToFile(zip.getInputStream(hintsEntry), hintsFile)
-    val hints = repo.readMapFile(hintsFile)
-    // have facts and hints - push them to datasetDb
-    val prefixes = for (sv <- facts("schemaVersions").split(", *")) yield sv.split("_")(0)
-    val datasetNames = prefixes.map(p => s"${facts("spec")}__$p")
-    val datasetRepos = datasetNames.flatMap(repo.datasetRepoOption)
-    datasetRepos.foreach { r =>
-      val db = r.datasetDb
-      db.setSipFacts(facts)
-      db.setSipHints(hints)
-      db.infoOption.foreach { info =>
-        val description = info \ "description"
-        if (description.isEmpty) {
-          val initialMeta = Map(
-            "name" -> facts("name"),
-            "dataProvider" -> facts("dataProvider")
-          )
-          db.setMetadata(initialMeta)
+  def uploadSipZip(apiKey: String, datasetName: String, zipFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
+    repo.datasetRepoOption(datasetName).map { datasetRepo =>
+      val sipZipFile = datasetRepo.sipRepo.createSipZipFile(zipFileName)
+      request.body.moveTo(sipZipFile, replace = true)
+      datasetRepo.sipRepo.latestSipFile.map { sipFile =>
+        (sipFile.harvestUrl, sipFile.harvestSpec, sipFile.harvestPrefix) match {
+          case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
+            datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP_HARVEST)
+            datasetRepo.datasetDb.setHarvestInfo(PMH, harvestUrl, harvestSpec, harvestPrefix)
+            datasetRepo.datasetDb.setRecordDelimiter(PMH.recordRoot, PMH.uniqueId, sipFile.recordCount.map(_.toInt).getOrElse(0))
+            // todo: maybe start harvest
+          case _ =>
+            datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP_SOURCE)
+            (sipFile.recordRootPath, sipFile.uniqueElementPath, sipFile.recordCount) match {
+              case (Some(recordRootPath), Some(uniqueElementPath), Some(recordCount)) =>
+                datasetRepo.datasetDb.setRecordDelimiter(recordRootPath, uniqueElementPath, recordCount.toInt)
+              case _ =>
+            }
+            // todo: consume the source and parse to record database(s)
+            // todo: mark as sourced
         }
       }
+      Ok
+    } getOrElse {
+      NotFound(s"No dataset named $datasetName")
     }
-    Ok
   }
 
-  // todo: obsolete, sips have moved to inside the dataset repo
   def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     def reply =
         <sip-list>
-          {for (sipZip <- repo.listSipZips)
-        yield
+          {for (sipZip <- SipRepo.listSipZips)
+        yield {
           <sip>
             <file>{sipZip.toString}</file>
             <facts>
-              <spec>{sipZip.facts("spec")}</spec>
-              <name>{sipZip.facts("name")}</name>
-              <provider>{sipZip.facts("provider")}</provider>
-              <dataProvider>{sipZip.facts("dataProvider")}</dataProvider>
-              <country>{sipZip.facts("country")}</country>
-              <orgId>{sipZip.facts("orgId")}</orgId>
-              <uploadedBy>{sipZip.uploadedBy}</uploadedBy>
-              <uploadedOn>{sipZip.uploadedOn}</uploadedOn>
+              <spec>{sipZip.spec.getOrElse("unknown spec")}</spec>
+              <name>{sipZip.name.getOrElse("unknown name")}</name>
+              <provider>{sipZip.provider.getOrElse("unknown provider")}</provider>
+              <dataProvider>{sipZip.dataProvider.getOrElse("unknown dataProvider")}</dataProvider>
+              <country>{sipZip.country.getOrElse("unknown country")}</country>
+              <orgId>{sipZip.orgId.getOrElse("unknown orgId")}</orgId>
+              <uploadedBy>{sipZip.file.uploadedBy}</uploadedBy>
+              <uploadedOn>{timeToLocalString(sipZip.file.uploadedOn)}</uploadedOn>
               <schemaVersions>
-                {for (sv <- sipZip.facts("schemaVersions").split(", *"))
-              yield
+                {for (sv: String <- sipZip.schemaVersionSeq.getOrElse(throw new RuntimeException("No schema versions!")))
+              yield {
                 <schemaVersion>
                   <prefix>{sv.split("_")(0)}</prefix>
                   <version>{sv.split("_")(1)}</version>
-                </schemaVersion>}
+                </schemaVersion>}}
               </schemaVersions>
             </facts>
-          </sip>}
+          </sip>}}
         </sip-list>
     Ok(reply)
   }
 
-  // todo: obsolete, sips have moved to inside the dataset repo
-  def downloadSipZip(apiKey: String, sipZipFileName: String) = Action(parse.anyContent) { implicit request =>
-    OkFile(repo.createSipZipFile(sipZipFileName))
+  def downloadSipZip(apiKey: String, datasetName: String) = Action(parse.anyContent) { implicit request =>
+    val latestSipFile = repo.datasetRepoOption(datasetName).flatMap { datasetRepo =>
+      datasetRepo.sipRepo.latestSipFile
+    }
+    latestSipFile.map(sipFile => OkFile(sipFile.file.zipFile)).getOrElse(NotFound(s"No SIP Zip file available for dataset $datasetName"))
   }
 
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>

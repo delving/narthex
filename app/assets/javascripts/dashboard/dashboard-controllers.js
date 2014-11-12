@@ -351,57 +351,64 @@ define(["angular"], function () {
         "$rootScope", "$scope", "user", "dashboardService", "$location", "$upload", "$timeout", "$routeParams"
     ];
 
-    var FileEntryCtrl = function ($scope, dashboardService) {
+    var DatasetEntryCtrl = function ($scope, dashboardService) {
 
-        $scope.allowTab = function (file, tabName) {
+        $scope.allowTab = function (tabName) {
+
+            function originIs(values, absenceValue) {
+                if ($scope.isEmpty($scope.file.info.origin)) return absenceValue;
+                var originType = $scope.file.info.origin.type;
+                return values.indexOf(originType) >= 0;
+            }
+            function stateIs(value, absenceValue) {
+                if ($scope.isEmpty($scope.file.info.status)) return absenceValue;
+                var state = $scope.file.info.status.state;
+                return value == state;
+            }
+
             switch (tabName) {
                 case 'drop':
-                    if ($scope.isEmpty(file.info.origin)) return true;
-                    return file.info.origin.type == 'origin-drop' && file.info.status.state == 'state-empty';
+                    return originIs(['origin-drop'], true) && stateIs('state-empty', true);
                 case 'harvest':
-                    if ($scope.isEmpty(file.info.origin)) return true;
-                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-empty';
+                    return originIs(['origin-harvest','origin-sip-harvest'], true) && stateIs('state-empty', true);
                 case 'harvest-cron':
-                    if ($scope.isEmpty(file.info.origin)) return true;
-                    return file.info.origin.type == 'origin-harvest' && file.info.status.state == 'state-sourced';
+                    return originIs(['origin-harvest', 'origin-sip-harvest'], false) && stateIs('state-sourced', false);
                 case 'categories':
-                    return file.info.status.state == 'state-sourced' && file.info.delimit.recordRoot;
+                    return stateIs('state-sourced', false) && $scope.file.info.delimit.recordRoot;
                 case 'publication':
+                    return originIs(['origin-sip-harvest'], false) || $scope.file.recordsTime;
                 case 'downloads':
-                    return !!file.recordsTime;
+                    return !!$scope.file.recordsTime;
+                case 'sip-zip':
+                    return originIs(['origin-sip-source', 'origin-sip-harvest'], false);
                 default:
                     console.log("ALLOW TAB " + tabName);
                     return false;
             }
         };
 
-        $scope.discardTree = function (file) {
-            $scope.revert(file, "Discard analysis?", "tree");
+        $scope.discardTree = function () {
+            $scope.revert($scope.file, "Discard analysis?", "tree");
         };
 
-        $scope.discardRecords = function (file) {
-            $scope.revert(file, "Discard records?", "records");
+        $scope.discardRecords = function () {
+            $scope.revert($scope.file, "Discard records?", "records");
         };
 
-        $scope.discardSource = function (file) {
-            $scope.revert(file, "Discard source?", "source");
+        $scope.discardSource = function () {
+            $scope.revert($scope.file, "Discard source?", "source");
         };
 
-        $scope.interruptProcessing = function (file) {
-            $scope.revert(file, "Interrupt processing?", "interrupt");
+        $scope.interruptProcessing = function () {
+            $scope.revert($scope.file, "Interrupt processing?", "interrupt");
         };
 
-        $scope.deleteDataset = function (file) {
-            $scope.revert(file, "Delete dataset?", "revert state");
+        $scope.deleteDataset = function () {
+            $scope.revert($scope.file, "Delete dataset?", "revert state");
         };
 
-    };
-
-    FileEntryCtrl.$inject = ["$scope", "dashboardService"];
-
-    var SipCreatorCtrl = function ($rootScope, $scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
         function fetchSipFileList() {
-            dashboardService.listSipFiles().then(function (data) {
+            dashboardService.listSipFiles($scope.file.name).then(function (data) {
                 if (!data) return;
                 var specs = {};
                 $scope.sipFiles = _.map(data.list, function (sipFile) {
@@ -424,25 +431,21 @@ define(["angular"], function () {
                 if (!$scope.sipFiles.length) $scope.sipFiles = undefined
             });
         }
-
         fetchSipFileList();
 
-        $scope.deleteSipZip = function (file) {
-            dashboardService.deleteSipFile(file.sipFileName).then(function () {
+        $scope.deleteSipZip = function () {
+            dashboardService.deleteLatestSipFile($scope.file.name).then(function () {
                 fetchSipFileList();
             });
         };
+
     };
 
-    SipCreatorCtrl.$inject = [
-        "$rootScope", "$scope", "user", "dashboardService", "$location", "$upload", "$timeout", "$routeParams"
-    ];
-
+    DatasetEntryCtrl.$inject = ["$scope", "dashboardService"];
 
     return {
         DashboardCtrl: DashboardCtrl,
-        FileEntryCtrl: FileEntryCtrl,
-        SipCreatorCtrl: SipCreatorCtrl
+        DatasetEntryCtrl: DatasetEntryCtrl
     };
 
 });

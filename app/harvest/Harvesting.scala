@@ -55,9 +55,9 @@ object Harvesting {
 
     val ALL_TYPES = List(PMH, ADLIB)
 
-    def fromString(string: String): Option[HarvestType] = ALL_TYPES.find(s => s.matches(string))
+    def harvestTypeFromString(string: String): Option[HarvestType] = ALL_TYPES.find(s => s.matches(string))
 
-    def fromInfo(info: NodeSeq) = fromString((info \ "harvest" \ "harvestType").text)
+    def harvestTypeFromInfo(info: NodeSeq) = harvestTypeFromString((info \ "harvest" \ "harvestType").text)
   }
 
   case class AdLibDiagnostic(totalItems: Int, current: Int, pageItems: Int) {
@@ -242,15 +242,15 @@ trait Harvesting {
     // Teylers 2014-09-15
     val from = timeToUTCString(modifiedAfter.getOrElse(new DateTime(0L)))
     //    val crippleFrom = from.substring(0, from.indexOf('T'))
-    //    val crippleFrom = "2014-10-10"
-    //    println(s"cripple from $crippleFrom")
+        val crippleFrom = "2014-10-10"
+        println(s"cripple from $crippleFrom")
     val request = resumption match {
       case None =>
         if (set.isEmpty) {
           requestUrl.withQueryString(
             "verb" -> "ListRecords",
             "metadataPrefix" -> metadataPrefix,
-            "from" -> from
+            "from" -> crippleFrom
           )
         }
         else {
