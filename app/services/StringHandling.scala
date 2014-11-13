@@ -50,12 +50,16 @@ object StringHandling {
 
   val VERBATIM = "verbatim"
 
+  def oaipmhPublishFromInfo(info: NodeSeq): Boolean = (info \ "publication" \ "oaipmh").text.trim == "true"
+
   def oaipmhPrefixesFromInfo(info: NodeSeq): Option[Seq[String]] = {
     val prefixes = (info \ "publication" \ "oaipmhPrefixes").text.trim
-    val publish = (info \ "publication" \ "oaipmh").text.trim
     if (prefixes.nonEmpty)
-      Some(prefixes.split("[\\s,;-]+").toSeq)
-    else if (publish == "true")
+      if (oaipmhPublishFromInfo(info))
+        Some(prefixes.split("[\\s,;-]+").toSeq)
+      else
+        None
+    else if (oaipmhPublishFromInfo(info))
       Some(Seq(VERBATIM))
     else
       None
