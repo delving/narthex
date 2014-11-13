@@ -392,7 +392,7 @@
                         <a href role="tab" data-ng-click="setTabOpen('info')">Info</a>
                     </li>
                 </ul>
-                <div class="tab-content col-md-6">
+                <div class="tab-content col-md-4">
                     <div ng-switch="tabOpen">
                         <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
                         <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>
@@ -405,7 +405,7 @@
                         <div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-2 pull-right">
                     <div data-ng-include="'actions.html'">actions</div>
                 </div>
             </div>

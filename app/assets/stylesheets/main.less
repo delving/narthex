@@ -259,10 +259,15 @@ a {
   }
 }
 
-.dataset-tabs ul {
+.dataset-tabs ul.nav-tabs {
   margin: 10px 0;
-  li a {
-    background: lighten(@bright-blue,40%);
+  li {
+    a {
+      background: lighten(@bright-blue,40%);
+    }
+    &.active a {
+      background: @white
+    }
   }
 }
 
