@@ -175,20 +175,19 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
         val delimit = info \ "delimit"
         val recordCountText = (delimit \ "recordCount").text
         val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
-        val kickoffOption: Option[SaveRecords] = originFromInfo(info).map { origin =>
+        val kickoffOption: Option[SaveRecords] = originFromInfo(info).flatMap { origin =>
           if (origin == HARVEST || origin == SIP_HARVEST) {
             val ht = HarvestType.harvestTypeFromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
             Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer, sipMappers))
           }
-          else
-            None
-        } getOrElse {
-          val recordRoot = (delimit \ "recordRoot").text
-          val uniqueId = (delimit \ "uniqueId").text
-          if (recordRoot.trim.nonEmpty)
-            Some(SaveRecords(modifiedAfter, file, recordRoot, uniqueId, recordCount, None, sipMappers))
-          else
-            None
+          else {
+            val recordRoot = (delimit \ "recordRoot").text
+            val uniqueId = (delimit \ "uniqueId").text
+            if (recordRoot.trim.nonEmpty)
+              Some(SaveRecords(modifiedAfter, file, recordRoot, uniqueId, recordCount, None, sipMappers))
+            else
+              None
+          }
         }
         kickoffOption.foreach { kickoff =>
           val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
