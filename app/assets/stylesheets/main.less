@@ -243,6 +243,19 @@ a {
   }
 }
 
+
+ul.nav-tabs {
+  margin: 10px 0;
+  li {
+    a {
+      background: lighten(@bright-blue,40%);
+    }
+    &.active a {
+      background: @white
+    }
+  }
+}
+
 .navbar-tools {
   background: @silver;
 }
@@ -256,18 +269,6 @@ a {
   .file-open i {
     text-decoration: none;
     font-size: 1.5em;
-  }
-}
-
-.dataset-tabs ul.nav-tabs {
-  margin: 10px 0;
-  li {
-    a {
-      background: lighten(@bright-blue,40%);
-    }
-    &.active a {
-      background: @white
-    }
   }
 }
 
@@ -299,8 +300,10 @@ a {
 /* dataset/schema view styles *****************************************/
 
 .file-path-info {
+  background: @silver;
   font-weight: normal;
   font-size: 100%;
+  margin: 0;
   .file-name {
     color: @gray-dark;
   }
