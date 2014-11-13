@@ -31,7 +31,7 @@ import scala.concurrent._
 
 object CategoryCounter {
 
-  case class CountCategories(file: File, recordRoot: String, uniqueId: String)
+  case class CountCategories(file: File, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
 
   case class CategoryCountComplete(dataset: String, categoryCounts: List[CategoryCount], errorOption: Option[String])
 
@@ -50,12 +50,12 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor {
     case InterruptWork() =>
       progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
-    case CountCategories(file, recordRoot, uniqueId) =>
-      log.info(s"Counting categories $datasetRepo: ${file.getAbsolutePath}, $recordRoot, $uniqueId")
+    case CountCategories(file, recordRoot, uniqueId, deepRecordContainer) =>
+      log.info(s"Counting categories $datasetRepo: ${file.getAbsolutePath}, $recordRoot, $uniqueId, $deepRecordContainer")
       val pathPrefix = s"${NarthexConfig.ORG_ID}/$datasetRepo"
       future {
         val categoryMappings = datasetRepo.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap
-        val parser = new CategoryParser(pathPrefix, recordRoot, uniqueId, None, categoryMappings)
+        val parser = new CategoryParser(pathPrefix, recordRoot, uniqueId, deepRecordContainer, categoryMappings)
         val (source, readProgress) = FileHandling.sourceFromFile(file)
         try {
           val progressReporter = ProgressReporter(ProgressState.CATEGORIZING, datasetRepo.datasetDb)

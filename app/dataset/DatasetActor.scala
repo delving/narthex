@@ -142,13 +142,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
           val recordCountText = (delimit \ "recordCount").text
           val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
           val kickoffOption = if (HARVEST.matches((info \ "origin" \ "type").text)) {
-            Some(CountCategories(file, s"/$POCKET_LIST/$POCKET", s"/$POCKET_LIST/$POCKET/$POCKET_ID"))
+            Some(CountCategories(file, s"/$POCKET_LIST/$POCKET", s"/$POCKET_LIST/$POCKET/$POCKET_ID", Some(s"/$POCKET_LIST/$POCKET")))
           }
           else {
             val recordRoot = (delimit \ "recordRoot").text
             val uniqueId = (delimit \ "uniqueId").text
             if (recordRoot.trim.nonEmpty)
-              Some(CountCategories(file, recordRoot, uniqueId))
+              Some(CountCategories(file, recordRoot, uniqueId, None))
             else
               None
           }

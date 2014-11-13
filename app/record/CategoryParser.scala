@@ -99,7 +99,7 @@ object CategoryParser {
       totalStyle.setAlignment(CellStyle.ALIGN_RIGHT)
       totalStyle.setBorderTop(borderMedium)
       totalStyle.setBorderRight(borderMedium)
-//      totalStyle.setBorderLeft(borderMedium)
+      //      totalStyle.setBorderLeft(borderMedium)
       totalStyle.setBorderBottom(borderMedium)
       totalStyle.setFont(titleFont)
 
@@ -108,7 +108,7 @@ object CategoryParser {
       datasetStyle.setFillPattern(fillPattern)
       datasetStyle.setAlignment(CellStyle.ALIGN_RIGHT)
       datasetStyle.setBorderRight(borderMedium)
-//      datasetStyle.setBorderLeft(borderMedium)
+      //      datasetStyle.setBorderLeft(borderMedium)
       datasetStyle.setFont(titleFont)
 
       val numberStyle = workbook.createCellStyle()
@@ -207,7 +207,12 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
 
     def pathString = path.reverse.map(_._1).mkString("/", "/", "")
 
-    def recordPathString = pathString.substring(pathContainer(recordRootPath).length)
+    def recordPathString = if (deepRecordContainer.isDefined && deepRecordContainer.get == recordRootPath) {
+      pathString.substring(recordRootPath.length)
+    }
+    else {
+      pathString.substring(pathContainer(recordRootPath).length)
+    }
 
     def pathContainer(string: String) = string.substring(0, string.lastIndexOf("/"))
 
@@ -263,7 +268,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
       fieldText.clear()
       if (depth > 0) {
         // deep record means check container instead
-        val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _).getOrElse(string == recordRootPath)
+        val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _ && !string.contains('@')).getOrElse(string == recordRootPath)
         if (hitRecordRoot) {
           val categorySet = uniqueId.map { id =>
             if (id.isEmpty) throw new RuntimeException("Empty unique id!")
@@ -280,6 +285,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
           depth -= 1
           if (startTag && text.nonEmpty) {
             val uri = generateUri(text)
+            Logger.info(s"generated $uri")
             categoryMappings.get(uri).map { mapping =>
               mapping.categories.foreach { category =>
                 recordCategories += category
