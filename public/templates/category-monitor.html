@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-md-12">
         <h1>Monitor</h1>
-        <h4>Datasets included in the category statistics:</h4>
+        <h4>Datasets included:</h4>
         <div class="file-list">
             <ul class="list-group list-files">
                 <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.info.status">
@@ -13,11 +13,11 @@
     <div class="col-md-2" style="margin-top:15px">
         <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="gatherCategoryCounts()" data-ng-disabled="datasetBusy">
             <i class="fa fa-leaf"></i>
-            <span>Gather category counts</span>
+            <span>Create new sheet</span>
         </button>
     </div>
     <div class="col-md-8">
-        <h4>sheets:</h4>
+        <h4>Sheets:</h4>
         <ul class="list-unstyled">
             <li ng-repeat="sheet in sheets">
                 <a data-ng-class="{ 'fa-2x': $index == 0 }" ng-href="{{ sheetUrl(sheet) }}" target="_blank">

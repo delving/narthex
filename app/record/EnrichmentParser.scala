@@ -130,6 +130,9 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
             val path = s"$pathPrefix${frame.path}/${urlEncodeValue(text)}"
+
+            Logger.info(s"lookup $path")
+
             val in = indent
             val tagText = termMappings.get(path).map { targetConcept =>
               s"""$in${start.get}

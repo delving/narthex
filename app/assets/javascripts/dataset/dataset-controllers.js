@@ -22,6 +22,7 @@ define(["angular"], function () {
     var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll) {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.datasetName = $routeParams.datasetName;
+        $rootScope.breadcrumbs.dataset = $scope.datasetName;
 
         var absUrl = $location.absUrl();
         $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
@@ -38,11 +39,11 @@ define(["angular"], function () {
 
             $scope.datasetInfo = datasetInfo;
 
-            if (datasetInfo.origin.type == 'origin-harvest') {
+            if (datasetInfo.origin.type == 'origin-harvest'|| datasetInfo.origin.type == 'origin-sip-harvest') {
                 // use a different record root and unique id
-                $scope.recordContainer = "/pockets";
-                $scope.recordRoot = $scope.recordContainer + "/pocket";
-                $scope.uniqueId = $scope.recordRoot + "/@id";
+                $scope.recordContainer = "/pockets/pocket";
+                $scope.recordRoot = $scope.recordContainer + "/?"; // set later in setDelim
+                $scope.uniqueId = "/pockets/pocket/@id";
                 $scope.allowUniqueIdSet = false;
             }
             else if (datasetInfo.delimit && datasetInfo.delimit.recordRoot) {
@@ -69,8 +70,10 @@ define(["angular"], function () {
                 sortKids(tree);
 
                 function setDelim(node) {
-                    if (node.path == $scope.recordRoot) {
+                    var nodePathContainer = node.path.substring(0, node.path.lastIndexOf("/"));
+                    if (nodePathContainer == $scope.recordContainer && node.tag.indexOf('@') < 0) {
                         $scope.recordRootNode = node;
+                        $scope.recordRoot = node.path;
                     }
                     else if (node.path == $scope.uniqueId) {
                         $scope.uniqueIdNode = node;
@@ -99,11 +102,11 @@ define(["angular"], function () {
                 }
 
                 datasetService.getTermSourcePaths($scope.datasetName).then(function (data) {
+                    console.log('get term source paths', data.sourcePaths);
                     function recursive(node, sourcePaths) {
-                        if (sourcePaths.indexOf(node.sourcePath) >= 0) node.termMappings = true;
+                        node.termMappings = sourcePaths.indexOf(node.sourcePath) >= 0;
                         for (var index = 0; index < node.kids.length; index++) recursive(node.kids[index], sourcePaths);
                     }
-
                     recursive(tree, data.sourcePaths);
                 });
 

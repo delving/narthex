@@ -118,6 +118,7 @@ object CategoryParser {
     }
 
     def categoriesPerDataset: XSSFWorkbook = {
+      // todo: empty data produces 0 size spreadsheet
       val (workbook, cornerStyle, categoryStyle, datasetStyle, numberStyle, totalStyle, sumStyle) = prep
       val sheet = workbook.createSheet("Categories per Dataset")
       val row = sheet.createRow(0)

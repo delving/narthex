@@ -82,19 +82,15 @@ define(["angular"], function (angular) {
 
         categoriesService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
-            var recordRoot;
-            if (datasetInfo.origin.type == 'origin-harvest') {
-                recordRoot = '/pockets/pocket'
+            if (datasetInfo.origin.type == 'origin-harvest') {// || datasetInfo.origin.type == 'origin-sip-harvest') {
+                $scope.recordContainer = '/pockets/pocket';
             }
             else {
-                recordRoot = datasetInfo.delimit.recordRoot;
+                var recordRoot = datasetInfo.delimit.recordRoot;
+                var lastSlash = recordRoot.lastIndexOf('/');
+                $scope.recordContainer = recordRoot.substring(0, lastSlash);
             }
-            var lastSlash = recordRoot.lastIndexOf('/');
-            $scope.recordContainer = recordRoot.substring(0, lastSlash);
             var sourceUriPath = $scope.path.substring($scope.recordContainer.length);
-
-//            console.log("recordContainer", $scope.recordContainer);
-//            console.log("sourceUriPath", sourceUriPath);
 
             categoriesService.getCategoryList().then(function (categoryList) {
                 $scope.categories = categoryList.categories;
