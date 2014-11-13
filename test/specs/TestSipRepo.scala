@@ -45,11 +45,11 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       val head = XML.loadString(mappedPockets.head.text)
 
-//      println(head)
+      println(head)
 
       val eglise = "L'Eglise collegiale de Notre Dame a Breda.Harrewijn fecit"
 
-      val titleText = (head \ "record" \ "title").filter(_.prefix == "dc").text.trim
+      val titleText = (head \ "Description" \ "title").filter(_.prefix == "dc").text.trim
 
       titleText should be(eglise)
 

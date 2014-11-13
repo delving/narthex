@@ -66,7 +66,7 @@ object SipRepo {
 
 class SipRepo(home: File) {
   home.mkdir()
-  
+
   def createSipZipFile(sipZipFileName: String) = new File(home, sipZipFileName)
 
   def listSipFiles: Seq[SipFile] = {
@@ -91,6 +91,24 @@ object SipFile {
   val PrefixVersion = "(.*)_(.*)".r
 
   def apply(zipFile: File) = new SipFile(SipZipFile(zipFile))
+
+  val XMLNS = "http://www.w3.org/2000/xmlns/"
+  val RDF_ROOT_TAG: String = "RDF"
+  val RDF_RECORD_TAG: String = "Description"
+  val RDF_ID_ATTRIBUTE: String = "about"
+  val RDF_PREFIX: String = "rdf"
+  val RDF_URI: String = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+
+  val NAMESPACES = Map(
+    "geo" -> "http://www.w3.org/2003/01/geo/wgs84_pos#",
+    "skos" -> "http://www.w3.org/2004/02/skos/core#",
+    "rdfs" -> "http://www.w3.org/2000/01/rdf-schema#",
+    "cc" -> "http://creativecommons.org/ns#",
+    "owl" -> "http://www.w3.org/2002/07/owl#",
+    "foaf" -> "http://xmlns.com/foaf/0.1/",
+    "dbpedia-owl" -> "http://dbpedia.org/ontology/",
+    "dbprop" -> "http://dbpedia.org/property/"
+  )
 
 }
 
@@ -197,13 +215,26 @@ class SipFile(val file: SipZipFile) {
       val metadataRecord = factory.metadataRecordFrom(pocket.id, pocket.text, false)
       val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
       val root = result.root().asInstanceOf[Element]
+      val doc = root.getOwnerDocument
       root.removeAttribute("xsi:schemaLocation")
-      val pocketedRoot = root.getOwnerDocument.createElement("pocket")
-      pocketedRoot.setAttribute("id", pocket.id)
-      pocketedRoot.setAttribute("hash", pocket.hash)
-      pocketedRoot.setAttribute("mod", Temporal.timeToString(now))
-      pocketedRoot.appendChild(root)
-      val xml = serializer.toXml(pocketedRoot, true)
+
+      val rdf = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
+      rdf.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ID_ATTRIBUTE", pocket.id)
+      val cn = root.getChildNodes
+      val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
+      kids.foreach(rdf.appendChild)
+
+      val pocketElement = doc.createElement("pocket")
+      pocketElement.setAttribute("id", pocket.id)
+      pocketElement.setAttribute("hash", pocket.hash)
+      pocketElement.setAttribute("mod", Temporal.timeToString(now))
+
+      NAMESPACES.foreach { entry => val (prefix, uri) = entry
+        pocketElement.setAttribute(s"xmlns:$prefix", uri)
+      }
+      pocketElement.appendChild(rdf)
+
+      val xml = serializer.toXml(pocketElement, true)
       Pocket(pocket.id, pocket.hash, xml)
     }
 
