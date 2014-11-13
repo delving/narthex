@@ -161,7 +161,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
       }
       // for a sip-harvest we have a single zip file in the harvest dir
       val fileOpt: Option[File] = originFromInfo(info) match {
-        case Some(SIP_HARVEST) => harvestDir.listFiles.find(_.getName.endsWith("zip"))
+        case Some(HARVEST) => harvestDir.listFiles.find(_.getName.endsWith("zip"))
         case _ => getLatestIncomingFile
       }
       fileOpt.map { file =>

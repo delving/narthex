@@ -112,7 +112,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
               }
             }
           } getOrElse {
-            log.info(s"Processing latest incoming file $datasetRepo")
+            log.info(s"Saving file for $datasetRepo: ${file.getAbsolutePath}")
             mappingContext.recordDb.createDb()
             var tick = 0
             var time = System.currentTimeMillis()
