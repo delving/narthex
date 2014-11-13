@@ -118,7 +118,6 @@ object CategoryParser {
     }
 
     def categoriesPerDataset: XSSFWorkbook = {
-      // todo: empty data produces 0 size spreadsheet
       val (workbook, cornerStyle, categoryStyle, datasetStyle, numberStyle, totalStyle, sumStyle) = prep
       val sheet = workbook.createSheet("Categories per Dataset")
       val row = sheet.createRow(0)
@@ -146,20 +145,22 @@ object CategoryParser {
           }
         }
       }
-      val sumRow = sheet.createRow(datasets.last._2 + 2)
-      val totalCell = sumRow.createCell(0)
-      totalCell.setCellStyle(totalStyle)
-      totalCell.setCellValue("Total:")
-      categories.foreach { categoryI =>
-        val col = categoryI._2 + 1
-        val sumCell = sumRow.createCell(col)
-        def char(c: Int) = ('A' + c).toChar
-        val colName = if (col < 26) s"${char(col)}" else s"${char(col / 26)}${char(col % 26)}"
-        val topRow = 2
-        val bottomRow = datasets.last._2 + 2
-        val formula = s"SUM($colName$topRow:$colName$bottomRow)"
-        sumCell.setCellStyle(sumStyle)
-        sumCell.setCellFormula(formula)
+      datasets.lastOption.foreach { lastDataset =>
+        val sumRow = sheet.createRow(lastDataset._2 + 2)
+        val totalCell = sumRow.createCell(0)
+        totalCell.setCellStyle(totalStyle)
+        totalCell.setCellValue("Total:")
+        categories.foreach { categoryI =>
+          val col = categoryI._2 + 1
+          val sumCell = sumRow.createCell(col)
+          def char(c: Int) = ('A' + c).toChar
+          val colName = if (col < 26) s"${char(col)}" else s"${char(col / 26)}${char(col % 26)}"
+          val topRow = 2
+          val bottomRow = lastDataset._2 + 2
+          val formula = s"SUM($colName$topRow:$colName$bottomRow)"
+          sumCell.setCellStyle(sumStyle)
+          sumCell.setCellFormula(formula)
+        }
       }
       sheet.autoSizeColumn(0)
       sheet.createFreezePane(1, 1)
@@ -174,6 +175,8 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
   var percentWas = -1
   var lastProgress = 0l
   var recordCount = 0
+
+  Logger.info(s"category mappings $categoryMappings")
 
   def increment(key: String): Unit = countMap.getOrElseUpdate(key, new Counter(1)).count += 1
 
