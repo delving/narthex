@@ -28,8 +28,8 @@ define(["angular"], function (angular) {
         getSearchParams();
 
         $scope.categoryHelp = {
-            code: "Details",
-            details: "Click on a column header for details"
+            code: "",
+            details: ""
         };
         $scope.mappings = {};
         $scope.categoryGrid = {
@@ -54,7 +54,7 @@ define(["angular"], function (angular) {
                 $scope.columnDefs.push({
                     field: 'category' + walk,
                     index: walk + 2,
-                    headerCellTemplate: '<div class="category-header" data-ng-click="clickCategoryHeader($index - 2)">' +
+                    headerCellTemplate: '<div class="category-header">' +
                         '  <span class="category-header-text">' + code.toUpperCase() + '</span>' +
                         '</div>',
                     cellTemplate: '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
@@ -69,6 +69,15 @@ define(["angular"], function (angular) {
         $scope.toggleCategory = function (code) {
             $scope.visible[code] = !$scope.visible[code];
             columnDefinitionsFromCategories();
+        };
+
+        $scope.showCategoryExplain = function (index) {
+            $scope.categoryHelp = $scope.categories[index];
+            angular.element(document.querySelector( '#category-explanation' )).addClass('visible');
+        };
+
+        $scope.hideCategoryExplain = function (index) {
+            angular.element(document.querySelector( '#category-explanation' )).removeClass('visible');
         };
 
         categoriesService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
@@ -117,11 +126,6 @@ define(["angular"], function (angular) {
                 });
             });
         });
-
-        $scope.clickCategoryHeader = function (index) {
-            $scope.categoryHelp = $scope.categories[index];
-//            console.log("CLICK header", $scope.categories[index]);
-        };
 
         $scope.setGridValue = function (entity, code) {
             var body = {

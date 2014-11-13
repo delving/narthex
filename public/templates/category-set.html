@@ -1,29 +1,28 @@
-<div class="row">
+<div class="row categories-panel">
     <div class="col-md-12">
         <div class="file-path-info breadcrumb">
             <span class="file-name">{{datasetName}}</span><span class="file-path">{{path}}</span>
         </div>
     </div>
+
+    <div id="category-explanation">
+        <div class="alert alert-info">
+            <strong>{{ categoryHelp.code.toUpperCase() }}:</strong> {{ categoryHelp.details }}
+        </div>
+    </div>
+
     <div class="col-md-12">
         <div class="btn-toolbar">
-            <button class="btn " data-ng-class="{ 'btn-success': visible[category.code] == true }"
-                    data-ng-repeat="category in categories" data-ng-click="toggleCategory(category.code)">
+            <button class="btn btn-default btn-xs" data-ng-class="{ 'btn-success': visible[category.code] == true }"
+                    data-ng-repeat="category in categories" data-ng-click="toggleCategory(category.code)" data-ng-mouseover="showCategoryExplain($index)" data-ng-mouseleave="hideCategoryExplain();">
                 <b>{{ category.code }}</b>
             </button>
         </div>
     </div>
+
     <div class="col-md-12">
-        <div class="col-md-4" style="text-align: right; margin-bottom: 15px">
-            <b>{{ categoryHelp.code.toUpperCase() }}:</b>
-        </div>
-        <div class="col-md-8">
-            {{ categoryHelp.details }}
-        </div>
-    </div>
-    <div class="col-md-12">
-        <div class="vertical-scroll" data-scrollable id="term-grid">
-            <div class="category-grid" ng-grid="categoryGrid">
-            </div>
+        <div class="vertical-scroll" data-scrollable id="term-grid" data-offset="220" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+            <div class="category-grid" ng-grid="categoryGrid"></div>
         </div>
     </div>
 </div>

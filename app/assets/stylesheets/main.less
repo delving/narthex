@@ -303,7 +303,7 @@ ul.nav-tabs {
   background: @silver;
   font-weight: normal;
   font-size: 100%;
-  margin: 0;
+  margin: 0 0 10px 0;
   .file-name {
     color: @gray-dark;
   }
@@ -397,175 +397,6 @@ code {
   }
 }
 
-//
-//.label-clear {
-//  background: @white;
-//  border: 1px solid @gray-dark;
-//  color: @gray-dark;
-//  font-weight: normal;
-//  display: inline-block;
-//}
-//
-
-//
-
-//
-//.tabs-small > li > a {
-//      padding: 2px 4px;
-//      font-size: 85%;
-//}
-//
-//.instructions {
-//  font-size: 14px;
-//}
-//
-
-//
-//.file-drop {
-////  background: @black;
-////  border: 2px dashed @gray;
-////  padding: @padding-base-vertical @padding-base-horizontal;
-//  text-align: center;
-//  color: white;
-//  background-color: #808080;
-//
-//  .img-holder {
-//    position: relative;
-//    display: inline-block;
-//  }
-//  .busy1 {
-//    position: absolute;
-//    top: 120px;
-//    left: 0px;
-//    right: 0px;
-//    color: @brand-warning;
-//  }
-//  .busy2 {
-//    position: absolute;
-//    top: 69px;
-//    left: 0px;
-//    right: 0px;
-//    color: @brand-primary;
-//  }
-//  .busy3 {
-//    position: absolute;
-//    top: 188px;
-//    left: 0px;
-//    right: 0px;
-//    color: @brand-success;
-//  }
-//}
-//
-
-
-
-
-
-//
-//.badge-warning {
-//  background: @alert-danger-bg;
-//  color: @alert-danger-text;
-//}
-//
-//.panel-lists {
-//  margin-bottom: 0px;
-//  .panel-heading {
-//    pre {
-//      margin-bottom: 0px;
-//    }
-//    code {
-//      display: inline-block;
-//      margin-top: 10px;
-//    }
-//  }
-//  .sub-controls {
-//    margin-left: 10px;
-//  }
-//  .panel-body {
-//    background: @gray-lighter;
-//    padding: 0 0 0 0;
-//  }
-//  .list-group {
-//    background: @gray-light;
-//  }
-//  .list-group-item {
-//    margin: 0 0 0 0;
-//    padding: 0 0 0 0;
-//    border: none;
-//    background: @gray-lighter;
-//    color: @gray-dark;
-//    padding: 2px 14px;
-//    border-bottom: 1px solid @gray-light;
-//    vertical-align: top;
-//    position: relative;
-//    .node-content {
-//       display: block;
-//       padding-right: 75px;
-//    }
-//    .node-count-int.badge {
-//      position: absolute;
-//      top: 4px;
-//      right: 60px;
-//      background: @brand-primary;
-//      color: @white;
-//    }
-//    .node-count-percent {
-//      background: @gray-light;
-//      .border-radius(2px);
-//      color: @gray-dark;
-//      display: inline-block;
-//      font-size: 75%;
-//      margin: 0 0 0 5px;
-//      padding: 1px 4px;
-//      vertical-align: 1px;
-//    }
-//
-//  }
-//  .navbar {
-//    margin: 0 0 0 0;
-//    //    max-height: 32px;
-//    .count-btn {
-//      background: transparent;
-//      color: @gray;
-//      cursor: default;
-//      &:hover {
-//        background: transparent;
-//        color: @gray;
-//      }
-//    }
-//  }
-//}
-//
-//.list-controls {
-//  .clearfix();
-//}
-//
-
-//
-//.nav-tab {
-//  background: @gray;
-//  .border-radius(0px, 4px, 4px, 0px);
-//  position: absolute;
-//  top: 0px;
-//  left: 42%;
-//  height: 32px;
-//  z-index: @zindex-navbar+100;
-//  border: 1px solid @gray-light;
-//  border-top: none;
-//  padding: 4px 8px;
-//  a {
-//    color: @white;
-//  }
-//
-//}
-//
-////.panel-primary {
-////  .panel-heading {
-////    background: @gray;
-////  }
-////}
-//
-//
 /****************************
   SKOS TERMS BROWSER
 ****************************/
@@ -724,3 +555,29 @@ textarea.code {
 //  -webkit-transform: rotate(-90deg); /* Chrome, Safari, Opera */
 //  transform: rotate(-90deg);
 }
+
+.categories-panel {
+  .btn-toolbar {
+    margin-bottom: 6px;
+    .btn {
+      margin-bottom: 4px;
+    }
+  }
+}
+
+#category-explanation {
+  display: none;
+  margin: auto;
+  position: absolute;
+  top: 200px; left: 0; right: 0;
+  width: 200px;
+  height: 50px;
+  z-index: @zindex-modal;
+  &.visible {
+    display: block;
+  }
+}
+
+
+
+
