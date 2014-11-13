@@ -174,7 +174,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
   def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = withRecordDb { session =>
     val now = new DateTime()
     val name = datasetRepo.datasetName
-    val prefixesOpt = prefixesFromInfo(getDatasetInfo)
+    val prefixesOpt = oaipmhPrefixesFromInfo(getDatasetInfo)
     Logger.info(s"createHarvest: $name, $from, $until prefixes=$prefixesOpt recDbPrefix=$prefix")
     prefixesOpt.flatMap { prefixes =>
       prefixes.find(_ == prefix).map { matchingPrefix =>
@@ -222,7 +222,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
 
   def recordPmh(identifier: String): Option[Elem] = withRecordDb { session =>
     val datasetInfo = getDatasetInfo
-    prefixesFromInfo(getDatasetInfo).find(_ == prefix).map { matchingPrefix =>
+    oaipmhPrefixesFromInfo(getDatasetInfo).find(_ == prefix).map { matchingPrefix =>
       val queryForRecord = s"""
         |
         | ${namespaceDeclarations(getDatasetInfo)}

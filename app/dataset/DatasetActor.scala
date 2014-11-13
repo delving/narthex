@@ -38,7 +38,7 @@ import record.Saver
 import record.Saver.{SaveComplete, SaveRecords}
 import services.FileHandling._
 import services.SipFile.SipMapper
-import services.StringHandling.prefixesFromInfo
+import services.StringHandling.oaipmhPrefixesFromInfo
 
 import scala.language.postfixOps
 
@@ -104,7 +104,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
           if (modifiedAfter.isEmpty) db.setStatus(SOURCED) // first harvest
           clearDir(datasetRepo.analyzedDir)
           datasetRepo.datasetDb.setTree(ready = false)
-          val sipMappers: Option[Seq[SipMapper]] = prefixesFromInfo(info).flatMap { prefixes =>
+          val sipMappers: Option[Seq[SipMapper]] = oaipmhPrefixesFromInfo(info).flatMap { prefixes =>
             datasetRepo.sipRepo.latestSipFile.map(sipFile => prefixes.flatMap(sipFile.createSipMapper))
           }
           self ! StartSaving(modifiedAfter, file, sipMappers)

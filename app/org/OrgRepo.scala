@@ -75,7 +75,7 @@ class OrgRepo(userHome: String, val orgId: String) {
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
     repoDb.listDatasets.flatMap { dataset =>
-      val prefixes = prefixesFromInfo(dataset.info)
+      val prefixes = oaipmhPrefixesFromInfo(dataset.info)
       prefixes.map { prefixList =>
         prefixList.map { prefix =>
           val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))

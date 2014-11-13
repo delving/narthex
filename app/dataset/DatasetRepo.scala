@@ -151,7 +151,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     val state = DatasetState.datasetStateFromInfo(info)
     if (state == SOURCED && delimited) {
       datasetDb.startProgress(SAVING)
-      val sipMappers: Option[Seq[SipMapper]] = prefixesFromInfo(info).flatMap { prefixes =>
+      val sipMappers: Option[Seq[SipMapper]] = oaipmhPrefixesFromInfo(info).flatMap { prefixes =>
         sipRepo.latestSipFile.map { sipFile =>
           prefixes.flatMap { prefix =>
             recordDb(prefix).createDb()

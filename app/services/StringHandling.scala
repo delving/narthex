@@ -50,9 +50,15 @@ object StringHandling {
 
   val VERBATIM = "verbatim"
 
-  def prefixesFromInfo(info: NodeSeq): Option[Seq[String]] = {
+  def oaipmhPrefixesFromInfo(info: NodeSeq): Option[Seq[String]] = {
     val prefixes = (info \ "publication" \ "oaipmhPrefixes").text.trim
-    if (prefixes.isEmpty) None else Some(prefixes.split("[\\s,;-]+").toSeq)
+    val publish = (info \ "publication" \ "oaipmh").text.trim
+    if (prefixes.nonEmpty)
+      Some(prefixes.split("[\\s,;-]+").toSeq)
+    else if (publish == "true")
+      Some(Seq(VERBATIM))
+    else
+      None
   }
 
   val SUFFIXES = List(".xml.gz", ".xml")

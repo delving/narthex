@@ -166,7 +166,7 @@ object Dashboard extends Controller with Security {
     def stringParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     try {
       val datasetRepo = repo.datasetRepo(datasetName)
-      datasetRepo.datasetDb.setPublication(stringParam("oaipmhPrefixes"), boolParam("index"), boolParam("lod"))
+      datasetRepo.datasetDb.setPublication(stringParam("oaipmhPrefixes"), boolParam("oaipmh"), boolParam("index"), boolParam("lod"))
       Ok
     } catch {
       case e: IllegalArgumentException =>

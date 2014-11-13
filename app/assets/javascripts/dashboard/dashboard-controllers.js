@@ -234,6 +234,11 @@ define(["angular"], function () {
                 file.oaiPmhListRecords = oaiPmhListRecords(false);
                 file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
             }
+            else if (info.publication.oaipmh == "true") {
+                info.publication.oaipmhPrefixes = "verbatim";
+                file.oaiPmhListRecords = oaiPmhListRecords(false);
+                file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
+            }
         }
 
         function cancelChecker(file) {

@@ -154,8 +154,13 @@
     <form name="form" class="form">
         <fieldset>
             <div class="form-group">
-                <label for="pub_pmh_prefix">Publish with OAI-PMH Metadata Prefixes</label>
-                <input id="pub_pmh_prefix" class="form-control" data-ng-model="file.info.publication.oaipmhPrefixes" placeholder="prefix list or 'verbatim'"/>
+                <label for="pub_pmh_prefix">Metadata Formats</label>
+                <input id="pub_pmh_prefix" class="form-control" data-ng-model="file.info.publication.oaipmhPrefixes" placeholder="prefix list"/>
+            </div>
+            <div class="checkbox">
+                <label for="pub_pmh">Publish via OAI-PMH
+                    <input id="pub_pmh" type="checkbox" data-ng-model="file.info.publication.oaipmh" ng-true-value="'true'" ng-false-value="'false'"/>
+                </label>
             </div>
             <div class="checkbox">
                 <label for="pub_index">Publish in the Index
