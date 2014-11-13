@@ -133,7 +133,7 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
             val in = indent
             val tagText = termMappings.get(path).map { targetConcept =>
               s"""$in${start.get}
-                   |$in  <rdf:Description>
+                   |$in  <rdf:Description rdf:about="$path">
                    |$in    <rdfs:label>${frame.text}</rdfs:label>
                    |$in    <skos:prefLabel>${targetConcept.prefLabel}</skos:prefLabel>
                    |$in    <skos:exactMatch rdf:resource="${targetConcept.uri}"/>
