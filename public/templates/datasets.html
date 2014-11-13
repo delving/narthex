@@ -157,15 +157,15 @@
                 <label for="pub_pmh_prefix">Publish with OAI-PMH Metadata Prefixes</label>
                 <input id="pub_pmh_prefix" class="form-control" data-ng-model="file.info.publication.oaipmhPrefixes" placeholder="prefix list or 'verbatim'"/>
             </div>
-            <div class="form-group">
-                <label for="pub_index">Publish in the Index</label>
-                <input id="pub_index" type="checkbox" data-ng-model="file.info.publication.index"
-                       ng-true-value="'true'" ng-false-value="'false'"/>
+            <div class="checkbox">
+                <label for="pub_index">Publish in the Index
+                    <input id="pub_index" type="checkbox" data-ng-model="file.info.publication.index" ng-true-value="'true'" ng-false-value="'false'"/>
+                </label>
             </div>
-            <div class="form-group">
-                <label for="pub_lod">Publish as Linked Open Data</label>
-                <input id="pub_lod" type="checkbox" data-ng-model="file.info.publication.lod"
-                       ng-true-value="'true'" ng-false-value="'false'"/>
+            <div class="checkbox">
+                <label for="pub_lod">Publish as Linked Open Data
+                    <input id="pub_lod" type="checkbox" data-ng-model="file.info.publication.lod" ng-true-value="'true'" ng-false-value="'false'"/>
+                </label>
             </div>
             <button typ="button" class="btn btn-success" data-ng-click="setPublication(file)">
                 <i class="fa fa-refresh"></i>
@@ -178,10 +178,10 @@
 <script type="text/ng-template" id="categories-form.html">
     <form name="form" class="form">
         <fieldset>
-            <div class="form-group">
-                <label for="cat">Include Categories in Monitor Statistics</label>
-                <input id="cat" type="checkbox" data-ng-model="file.info.categories.included"
-                        ng-true-value="'true'" ng-false-value="'false'"  data-ng-click="setCategories(file)"/>
+            <div class="checkbox">
+                <label for="cat">Include Categories in Monitor Statistics
+                    <input id="cat" type="checkbox" data-ng-model="file.info.categories.included" ng-true-value="'true'" ng-false-value="'false'"  data-ng-click="setCategories(file)"/>
+                </label>
             </div>
         </fieldset>
     </form>
@@ -349,9 +349,7 @@
 
         <div data-ng-if="file.progress" class="col-md-12">
             <div class="col-md-11">
-                <progressbar class="progress-striped active" animate="true"
-                             value="file.progress.count" max="100" type="success"
-                        >{{ file.progress.message }}</progressbar>
+                <progressbar class="progress-striped active" animate="true" value="file.progress.count" max="100" type="success">{{ file.progress.message }}</progressbar>
             </div>
             <div class="col-md-1">
                 <button type="button" class="btn btn-danger" data-ng-click="interruptProcessing(file)" data-ng-show="file.progress">
