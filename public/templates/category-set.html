@@ -14,7 +14,8 @@
     <div class="col-md-12">
         <div class="btn-toolbar">
             <button class="btn btn-default btn-xs" data-ng-class="{ 'btn-success': visible[category.code] == true }"
-                    data-ng-repeat="category in categories" data-ng-click="toggleCategory(category.code)" data-ng-mouseover="showCategoryExplain($index)" data-ng-mouseleave="hideCategoryExplain();">
+                    data-ng-repeat="category in categories" data-ng-click="setCategory(category.code)"
+                    data-ng-mouseover="showCategoryExplain($index)" data-ng-mouseleave="hideCategoryExplain();">
                 <b>{{ category.code }}</b>
             </button>
         </div>

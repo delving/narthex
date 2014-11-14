@@ -32,11 +32,7 @@ define(["angular"], function (angular) {
             details: ""
         };
         $scope.mappings = {};
-        $scope.categoryGrid = {
-            data: 'gridData',
-            columnDefs: "columnDefs",
-            enableRowSelection: false
-        };
+        $scope.gridData = [];
         $scope.categories = [];
         $scope.visible = {};
 
@@ -54,10 +50,12 @@ define(["angular"], function (angular) {
                 $scope.columnDefs.push({
                     field: 'category' + walk,
                     index: walk + 2,
-                    headerCellTemplate: '<div class="category-header">' +
+                    headerCellTemplate:
+                        '<div class="category-header">' +
                         '  <span class="category-header-text">' + code.toUpperCase() + '</span>' +
                         '</div>',
-                    cellTemplate: '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
+                    cellTemplate:
+                        '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
                         '  <input type="checkbox" class="category-checkbox" data-ng-model="row.entity.memberOf[' + codeQuoted + ']" ' +
                         '         data-ng-click="setGridValue(row.entity, ' + codeQuoted + ')"/>' +
                         '</div>'
@@ -66,8 +64,28 @@ define(["angular"], function (angular) {
             if (!numberVisible) $scope.columnDefs.push({ field: 'boo', displayName: '', width: 1 });
         }
 
-        $scope.toggleCategory = function (code) {
-            $scope.visible[code] = !$scope.visible[code];
+        $scope.categoryGrid = {
+            data: 'gridData',
+            columnDefs: "columnDefs",
+            afterSelectionChange: function(rowItem) {
+                var visible = {};
+                _.forEach($scope.categoryGrid.$gridScope.selectedItems, function(selectedItem) {
+                    _.forEach($scope.categories, function(category) {
+                        if (selectedItem.memberOf[category.code]) visible[category.code] = true;
+                    });
+                });
+                $scope.visible = visible;
+                columnDefinitionsFromCategories();
+            }
+        };
+
+        $scope.setCategory = function (code, visible) {
+            if (visible) {
+                $scope.visible[code] = visible;
+            }
+            else {
+                $scope.visible[code] = !$scope.visible[code];
+            }
             columnDefinitionsFromCategories();
         };
 
