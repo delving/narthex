@@ -105,7 +105,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
       }
       datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
       Logger.info(s"First Harvest $datasetName")
-      OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None))
+      OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None, justDate = false))
     }
     else {
       Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
@@ -121,7 +121,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         // if the next is also to take place immediately, force the harvest cron to now
         datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
         datasetDb.startProgress(HARVESTING)
-        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(Some(harvestCron.previous)))
+        val justDate = harvestCron.unit == DelayUnit.WEEKS
+        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(Some(harvestCron.previous),justDate))
       }
       else {
         Logger.info(s"No re-harvest of $datasetName with cron $harvestCron because it's not time $harvestCron")

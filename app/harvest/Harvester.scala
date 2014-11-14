@@ -39,7 +39,7 @@ object Harvester {
 
   case class HarvestAdLib(url: String, database: String, modifiedAfter: Option[DateTime])
 
-  case class HarvestPMH(url: String, set: String, prefix: String, modifiedAfter: Option[DateTime])
+  case class HarvestPMH(url: String, set: String, prefix: String, modifiedAfter: Option[DateTime], justDate: Boolean)
 
   case class HarvestComplete(modifiedAfter: Option[DateTime], file: Option[File], error: Option[String])
 
@@ -144,14 +144,14 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         }
       }
 
-    case HarvestPMH(url, set, prefix, modifiedAfter) =>
+    case HarvestPMH(url, set, prefix, modifiedAfter, justDate) =>
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
       harvestProgress = Some(ProgressReporter(HARVESTING, db))
-      val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter)
+      val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate)
       handleFailure(futurePage, modifiedAfter, "pmh harvest")
       futurePage pipeTo self
 
-    case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, resumptionToken) =>
+    case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, justDate, resumptionToken) =>
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
       harvestProgress.foreach { progressReporter =>
@@ -163,7 +163,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
             progressReporter.sendPage(pageCount)
           }
           if (keepHarvesting) {
-            val futurePage = fetchPMHPage(url, set, prefix, None, Some(token))
+            val futurePage = fetchPMHPage(url, set, prefix, None, justDate)
             handleFailure(futurePage, modifiedAfter, "pmh harvest page")
             futurePage pipeTo self
           }

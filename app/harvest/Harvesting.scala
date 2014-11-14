@@ -89,6 +89,7 @@ object Harvesting {
     metadataPrefix: String,
     totalRecords: Int,
     modifiedAfter: Option[DateTime],
+    justDate: Boolean,
     resumptionToken: Option[PMHResumptionToken])
 
   case class AdLibHarvestPage
@@ -134,28 +135,6 @@ object Harvesting {
       else
         Some(this.copy(currentPage = currentPage + 1))
     }
-  }
-
-  case class DelayUnit(name: String, millis: Long) {
-    override def toString = name
-
-    def matches(otherName: String) = name == otherName
-
-    def after(previous: DateTime, delay: Int) = {
-      val nonzeroDelay = if (delay <= 0) 1 else delay
-      new DateTime(previous.getMillis + millis * nonzeroDelay)
-    }
-  }
-
-  object DelayUnit {
-    val MINUTES = DelayUnit("minutes", 1000 * 60)
-    val HOURS = DelayUnit("hours", MINUTES.millis * 60)
-    val DAYS = DelayUnit("days", HOURS.millis * 24)
-    val WEEKS = DelayUnit("weeks", DAYS.millis * 7)
-
-    val ALL_UNITS = List(WEEKS, DAYS, HOURS, MINUTES)
-
-    def fromString(string: String): Option[DelayUnit] = ALL_UNITS.find(s => s.matches(string))
   }
 
   case class HarvestCron(previous: DateTime, delay: Int, unit: DelayUnit) {
@@ -236,21 +215,19 @@ trait Harvesting {
     }
   }
 
-  def fetchPMHPage(url: String, set: String, metadataPrefix: String, modifiedAfter: Option[DateTime],
+  def fetchPMHPage(url: String, set: String, metadataPrefix: String, modifiedAfter: Option[DateTime], justDate: Boolean,
                    resumption: Option[PMHResumptionToken] = None): Future[AnyRef] = {
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // Teylers 2014-09-15
-    val from = timeToUTCString(modifiedAfter.getOrElse(new DateTime(0L)))
-    val crippleFrom = from.substring(0, from.indexOf('T'))
-    //        val crippleFrom = "2014-10-10"
-    println(s"cripple from $crippleFrom")
+    val fromBase = timeToUTCString(modifiedAfter.getOrElse(new DateTime(0L)))
+    val from = if (justDate) fromBase.substring(0, fromBase.indexOf('T')) else fromBase
     val request = resumption match {
       case None =>
         if (set.isEmpty) {
           requestUrl.withQueryString(
             "verb" -> "ListRecords",
             "metadataPrefix" -> metadataPrefix,
-            "from" -> crippleFrom
+            "from" -> from
           )
         }
         else {
@@ -258,7 +235,7 @@ trait Harvesting {
             "verb" -> "ListRecords",
             "set" -> set,
             "metadataPrefix" -> metadataPrefix,
-            "from" -> from
+            "from" -> fromBase
           )
         }
       case Some(token) =>
@@ -312,6 +289,7 @@ trait Harvesting {
           metadataPrefix = metadataPrefix,
           totalRecords = total,
           modifiedAfter = modifiedAfter,
+          justDate = justDate,
           resumptionToken = newToken
         )
       }

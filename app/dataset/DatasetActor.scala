@@ -48,7 +48,7 @@ import scala.language.postfixOps
 
 object DatasetActor {
 
-  case class StartHarvest(modifiedAfter: Option[DateTime])
+  case class StartHarvest(modifiedAfter: Option[DateTime], justDate: Boolean)
 
   case class StartAnalysis()
 
@@ -75,7 +75,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
 
     // === harvest
 
-    case StartHarvest(modifiedAfter) =>
+    case StartHarvest(modifiedAfter, justDate) =>
       log.info(s"Start harvest $datasetRepo modified=$modifiedAfter")
       clearDir(datasetRepo.analyzedDir)
       db.infoOption.foreach { info =>
@@ -88,7 +88,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
           val prefix = (harvest \ "prefix").text
           val kickoff = harvestType match {
             case PMH =>
-              HarvestPMH(url, database, prefix, modifiedAfter)
+              HarvestPMH(url, database, prefix, modifiedAfter, justDate)
             case ADLIB =>
               HarvestAdLib(url, database, modifiedAfter)
           }

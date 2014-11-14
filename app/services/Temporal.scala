@@ -33,4 +33,28 @@ object Temporal {
   def nodeSeqToTime(nodeSeq: NodeSeq): Option[DateTime] = if (nodeSeq.nonEmpty) Some(stringToTime(nodeSeq.text)) else None
 
   def nowFileName(name: String, extension: String) = s"${name}_${timeToLocalString(new DateTime()).replaceAll("[^\\d]","_")}$extension"
+
+  object DelayUnit {
+    val MINUTES = DelayUnit("minutes", 1000 * 60)
+    val HOURS = DelayUnit("hours", MINUTES.millis * 60)
+    val DAYS = DelayUnit("days", HOURS.millis * 24)
+    val WEEKS = DelayUnit("weeks", DAYS.millis * 7)
+
+    val ALL_UNITS = List(WEEKS, DAYS, HOURS, MINUTES)
+
+    def fromString(string: String): Option[DelayUnit] = ALL_UNITS.find(s => s.matches(string))
+  }
+
+  case class DelayUnit(name: String, millis: Long) {
+    override def toString = name
+
+    def matches(otherName: String) = name == otherName
+
+    def after(previous: DateTime, delay: Int) = {
+      val nonzeroDelay = if (delay <= 0) 1 else delay
+      new DateTime(previous.getMillis + millis * nonzeroDelay)
+    }
+  }
+
+
 }
