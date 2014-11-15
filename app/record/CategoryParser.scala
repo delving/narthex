@@ -24,7 +24,7 @@ import org.apache.poi.ss.usermodel._
 import org.apache.poi.xssf.usermodel._
 import play.Logger
 import play.api.libs.json.{Json, Writes}
-import record.CategoryParser.{CategoryCount, Counter}
+import record.CategoryParser.{CategoryCount, Counter, NULL}
 import services.StringHandling._
 import services.{NarthexEventReader, ProgressReporter}
 
@@ -34,6 +34,8 @@ import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding}
 
 object CategoryParser {
+
+  val NULL = "NULL"
 
   case class Counter(var count: Int)
 
@@ -80,15 +82,6 @@ object CategoryParser {
     categoryStyle.setBorderRight(borderThin)
     categoryStyle.setFont(titleFont)
 
-    val sumStyle = workbook.createCellStyle()
-    sumStyle.setAlignment(CellStyle.ALIGN_CENTER)
-    sumStyle.setFillForegroundColor(boldColor)
-    sumStyle.setFillPattern(fillPattern)
-    sumStyle.setBorderTop(borderMedium)
-    sumStyle.setBorderRight(borderThin)
-    sumStyle.setBorderBottom(borderMedium)
-    sumStyle.setFont(titleFont)
-
     val totalStyle = workbook.createCellStyle()
     totalStyle.setFillForegroundColor(extraBoldColor)
     totalStyle.setFillPattern(fillPattern)
@@ -105,14 +98,27 @@ object CategoryParser {
     datasetStyle.setBorderRight(borderMedium)
     datasetStyle.setFont(titleFont)
 
-    val numberStyle = workbook.createCellStyle()
-    numberStyle.setAlignment(CellStyle.ALIGN_CENTER)
+    val countStyle = workbook.createCellStyle()
+    countStyle.setAlignment(CellStyle.ALIGN_CENTER)
+
+    val countPercentStyle = workbook.createCellStyle()
+    countPercentStyle.setAlignment(CellStyle.ALIGN_CENTER)
+    countPercentStyle.setDataFormat(workbook.createDataFormat().getFormat("0.00%"))
+
+    val countSumStyle = workbook.createCellStyle()
+    countSumStyle.setAlignment(CellStyle.ALIGN_CENTER)
+    countSumStyle.setFillForegroundColor(boldColor)
+    countSumStyle.setFillPattern(fillPattern)
+    countSumStyle.setBorderTop(borderMedium)
+    countSumStyle.setBorderRight(borderThin)
+    countSumStyle.setBorderBottom(borderMedium)
+    countSumStyle.setFont(titleFont)
 
     def sheet(title: String): XSSFSheet = workbook.createSheet(title)
   }
 
-  def sheet(title: String, list: List[CategoryCount], wb: WB): Unit = {
-    val categories = list.map(_.category).distinct.sorted.zipWithIndex
+  def sheet(title: String, list: List[CategoryCount], recordCountMap: Map[String, Int], percentages: Boolean, wb: WB): Unit = {
+    val categories = list.map(_.category).filter(!_.contains(NULL)).distinct.sorted.zipWithIndex
     val datasets = list.map(_.dataset).distinct.sorted.zipWithIndex
     val sheet = wb.sheet(title)
     val row = sheet.createRow(0)
@@ -129,32 +135,40 @@ object CategoryParser {
     datasets.foreach { datasetI =>
       val row = sheet.createRow(datasetI._2 + 1)
       val rowTitle = row.createCell(0)
-      rowTitle.setCellValue(datasetI._1)
+      val recordCount = recordCountMap.getOrElse(datasetI._1, 1d)
+      rowTitle.setCellValue(s"${datasetI._1} ($recordCount)")
       rowTitle.setCellStyle(wb.datasetStyle)
       categories.foreach { categoryI =>
         val countOpt = list.find(count => count.category == categoryI._1 && count.dataset == datasetI._1)
         countOpt.foreach { count =>
           val cell = row.createCell(categoryI._2 + 1)
-          cell.setCellValue(count.count.toDouble)
-          cell.setCellStyle(wb.numberStyle)
+          if (percentages) {
+            cell.setCellValue(count.count.toDouble / recordCountMap.getOrElse(datasetI._1, 1))
+            cell.setCellStyle(wb.countPercentStyle)
+          } else {
+            cell.setCellValue(count.count.toDouble)
+            cell.setCellStyle(wb.countStyle)
+          }
         }
       }
     }
-    datasets.lastOption.foreach { lastDataset =>
-      val sumRow = sheet.createRow(lastDataset._2 + 2)
-      val totalCell = sumRow.createCell(0)
-      totalCell.setCellStyle(wb.totalStyle)
-      totalCell.setCellValue("Total:")
-      categories.foreach { categoryI =>
-        val col = categoryI._2 + 1
-        val sumCell = sumRow.createCell(col)
-        def char(c: Int) = ('A' + c).toChar
-        val colName = if (col < 26) s"${char(col)}" else s"${char(col / 26)}${char(col % 26)}"
-        val topRow = 2
-        val bottomRow = lastDataset._2 + 2
-        val formula = s"SUM($colName$topRow:$colName$bottomRow)"
-        sumCell.setCellStyle(wb.sumStyle)
-        sumCell.setCellFormula(formula)
+    if (!percentages) {
+      datasets.lastOption.foreach { lastDataset =>
+        val sumRow = sheet.createRow(lastDataset._2 + 2)
+        val totalCell = sumRow.createCell(0)
+        totalCell.setCellStyle(wb.totalStyle)
+        totalCell.setCellValue("Total:")
+        categories.foreach { categoryI =>
+          val col = categoryI._2 + 1
+          val sumCell = sumRow.createCell(col)
+          def char(c: Int) = ('A' + c).toChar
+          val colName = if (col < 26) s"${char(col)}" else s"${char(col / 26)}${char(col % 26)}"
+          val topRow = 2
+          val bottomRow = lastDataset._2 + 2
+          val formula = s"SUM($colName$topRow:$colName$bottomRow)"
+          sumCell.setCellStyle(wb.countSumStyle)
+          sumCell.setCellFormula(formula)
+        }
       }
     }
     sheet.autoSizeColumn(0)
@@ -164,10 +178,14 @@ object CategoryParser {
   def generateWorkbook(list: List[CategoryCount]): XSSFWorkbook = {
     val wb = WB()
     val (multiple, single) = list.partition(cc => cc.category.contains("-"))
-    sheet("Single Categories", single, wb)
     val (triple, double) = multiple.partition(cc => cc.category.indexOf('-') < cc.category.lastIndexOf('-'))
-    sheet("Double Categories", double, wb)
-    sheet("Triple Categories", triple, wb)
+    val recordCountMap = list.filter(_.category == NULL).map(counter => counter.dataset -> counter.count).toMap
+    sheet("Single Category Counts", single, recordCountMap, percentages = false, wb)
+    sheet("Single Category Percentages", single, recordCountMap, percentages = true, wb)
+    sheet("Double Category Counts", double, recordCountMap, percentages = false, wb)
+    sheet("Double Category Percentages", double, recordCountMap, percentages = true, wb)
+    sheet("Triple Category Counts", triple, recordCountMap, percentages = false, wb)
+    sheet("Triple Category Percentages", triple, recordCountMap, percentages = true, wb)
     wb.workbook
   }
 
@@ -183,19 +201,22 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
 
   def increment(key: String): Unit = countMap.getOrElseUpdate(key, new Counter(1)).count += 1
 
-  def output(recordCategories: List[String]) = {
+  def output(categories: List[String]) = {
     for (
-      a <- recordCategories
+      a <- categories
     ) yield increment(a)
+    increment(s"$NULL")
     for (
-      a <- recordCategories;
-      b <- recordCategories if b > a
+      a <- categories;
+      b <- categories if b > a
     ) yield increment(s"$a-$b")
+    increment(s"$NULL-$NULL")
     for (
-      a <- recordCategories;
-      b <- recordCategories if b > a;
-      c <- recordCategories if c > b
+      a <- categories;
+      b <- categories if b > a;
+      c <- categories if c > b
     ) yield increment(s"$a-$b-$c")
+    increment(s"$NULL-$NULL-$NULL")
     recordCount += 1
   }
 
@@ -273,9 +294,9 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
         // deep record means check container instead
         val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _ && !string.contains('@')).getOrElse(string == recordRootPath)
         if (hitRecordRoot) {
-          val categorySet = uniqueId.map { id =>
+          val categorySet: Option[List[String]] = uniqueId.map { id =>
             if (id.isEmpty) throw new RuntimeException("Empty unique id!")
-            if (avoidIds.contains(id)) None else Some(recordCategories.toList.sorted)
+            if (avoidIds.contains(id)) None else Some(recordCategories.toList)
           } getOrElse {
             throw new RuntimeException("Missing id!")
           }
