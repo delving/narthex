@@ -18,6 +18,7 @@ package mapping
 import java.io.{File, FileOutputStream, FileWriter}
 
 import play.api.libs.json.Json
+import record.CategoryParser
 import record.CategoryParser._
 import services.{NarthexConfig, Temporal}
 
@@ -40,17 +41,17 @@ class CategoriesRepo(root: File) {
 
   def sheet(name: String) = new File(sheets, name)
 
-  def createSheet(counts: CategoryCountCollection) = {
+  def createSheet(counts: List[CategoryCount]) = {
     val jsonName = Temporal.nowFileName(NarthexConfig.ORG_ID, JSON)
     val jsonFile = new File(data, jsonName)
-    val jsonList = Json.arr(counts.list)
+    val jsonList = Json.arr(counts)
     val fw = new FileWriter(jsonFile)
     fw.write(Json.prettyPrint(jsonList))
     fw.close()
     val sheetName = Temporal.nowFileName(NarthexConfig.ORG_ID, SPREADSHEET)
     val sheetFile = new File(sheets, sheetName)
     val fos = new FileOutputStream(sheetFile)
-    counts.categoriesPerDataset.write(fos)
+    CategoryParser.generateWorkbook(counts).write(fos)
     fos.close()
   }
 

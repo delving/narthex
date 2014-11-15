@@ -24,7 +24,7 @@ import org.OrgActor.{DatasetMessage, DatasetsCountCategories, InterruptDataset}
 import org.OrgRepo.repo
 import play.api.Logger
 import play.libs.Akka
-import record.CategoryParser.{CategoryCount, CategoryCountCollection}
+import record.CategoryParser.CategoryCount
 
 import scala.language.postfixOps
 
@@ -69,8 +69,7 @@ class OrgActor extends Actor {
       Logger.info(s"$dataset complete, counts: $countsInProgress")
       val countLists = countsInProgress.values.flatten
       if (countLists.size == countsInProgress.size) {
-        val collection = CategoryCountCollection(countLists.flatten.toList)
-        OrgRepo.repo.categoriesRepo.createSheet(collection)
+        OrgRepo.repo.categoriesRepo.createSheet(countLists.flatten.toList)
         countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
       }
 
