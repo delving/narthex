@@ -25,7 +25,6 @@ import play.api.cache.Cache
 import record.PocketParser._
 import record.RecordDb.FoundRecord
 import services.BaseX._
-import services.StringHandling._
 import services.Temporal._
 import services._
 
@@ -51,7 +50,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
 
   def dropDb() = dropDatabase(recordDb)
 
-  def getDatasetInfo = datasetRepo.datasetDb.infoOption.getOrElse(throw new RuntimeException(s"Not found: $datasetRepo"))
+  def info = datasetRepo.datasetDb.infoOpt.getOrElse(throw new RuntimeException(s"Not found: $datasetRepo"))
 
   def withRecordDb[T](block: ClientSession => T) = withDbSession(recordDb)(block)
 
@@ -106,7 +105,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
   }
 
   def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = withRecordDb { session =>
-    val datasetInfo = getDatasetInfo
+    val datasetInfo = info
     // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
     val recordContainer = if (DatasetOrigin.HARVEST.matches((datasetInfo \ "origin" \ "type").text)) {
       s"/$POCKET_LIST/$POCKET"
@@ -134,7 +133,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
   def record(identifier: String): String = withRecordDb { session =>
     val queryForRecord = s"""
         |
-        | ${namespaceDeclarations(getDatasetInfo)}
+        | ${namespaceDeclarations(info)}
         | let $$box := collection('$recordDb')[/$POCKET/@id=${quote(identifier)}]
         | return <record>{ $$box }</record>
         |
@@ -171,39 +170,34 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
       ""
   }
 
-  def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = withRecordDb { session =>
+  def createHarvest(headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): PMHResumptionToken = withRecordDb { session =>
     val now = new DateTime()
     val name = datasetRepo.datasetName
-    val prefixesOpt = oaipmhPrefixesFromInfo(getDatasetInfo)
-    Logger.info(s"createHarvest: $name, $from, $until prefixes=$prefixesOpt recDbPrefix=$prefix")
-    prefixesOpt.flatMap { prefixes =>
-      prefixes.find(_ == prefix).map { matchingPrefix =>
-        val queryForRecords = s"count(collection('$recordDb')/$POCKET${dateSelector(from, until)})"
-        println("asking:\n" + queryForRecords)
-        val countString = session.query(queryForRecords).execute()
-        val count = countString.toInt
-        val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
-        val pages = if (count % pageSize == 0) count / pageSize else count / pageSize + 1
-        val harvest = Harvest(
-          repoName = name,
-          headersOnly = headersOnly,
-          from = from,
-          until = until,
-          totalPages = pages,
-          totalRecords = count,
-          pageSize = pageSize,
-          prefix = prefix
-        )
-        Cache.set(harvest.resumptionToken.value, harvest, 2 minutes)
-        harvest.resumptionToken
-      }
-    }
+    Logger.info(s"createHarvest: $name, $from, $until prefix=$prefix")
+    val queryForRecords = s"count(collection('$recordDb')/$POCKET${dateSelector(from, until)})"
+    println("asking:\n" + queryForRecords)
+    val countString = session.query(queryForRecords).execute()
+    val count = countString.toInt
+    val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
+    val pages = if (count % pageSize == 0) count / pageSize else count / pageSize + 1
+    val harvest = Harvest(
+      repoName = name,
+      headersOnly = headersOnly,
+      from = from,
+      until = until,
+      totalPages = pages,
+      totalRecords = count,
+      pageSize = pageSize,
+      prefix = prefix
+    )
+    Cache.set(harvest.resumptionToken.value, harvest, 2 minutes)
+    harvest.resumptionToken
   }
 
   def recordHarvest(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int): String = withRecordDb { session =>
     val query = s"""
         |
-        | ${namespaceDeclarations(getDatasetInfo)}
+        | ${namespaceDeclarations(info)}
         |
         | let $$selection := collection('$recordDb')/$POCKET${dateSelector(from, until)}
         |
@@ -220,12 +214,10 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
     session.query(query).execute()
   }
 
-  def recordPmh(identifier: String): Option[Elem] = withRecordDb { session =>
-    val datasetInfo = getDatasetInfo
-    oaipmhPrefixesFromInfo(getDatasetInfo).find(_ == prefix).map { matchingPrefix =>
-      val queryForRecord = s"""
+  def recordPmh(identifier: String): Elem = withRecordDb { session =>
+    val queryForRecord = s"""
         |
-        | ${namespaceDeclarations(getDatasetInfo)}
+        | ${namespaceDeclarations(info)}
         | let $$box := collection('$recordDb')[/$POCKET/@id=${quote(identifier)}]
         | return
         |   <record>
@@ -240,15 +232,14 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
         |   </record>
         |
         """.stripMargin.trim
-      XML.loadString(session.query(queryForRecord).execute())
-    }
+    XML.loadString(session.query(queryForRecord).execute())
   }
 
   def recordsPmh(from: Option[DateTime], until: Option[DateTime], start: Int, pageSize: Int, headersOnly: Boolean): Seq[String] = withRecordDb { session =>
     val metadata = if (headersOnly) "" else "<metadata>{$box/*}</metadata>"
     val query = s"""
         |
-        | ${namespaceDeclarations(getDatasetInfo)}
+        | ${namespaceDeclarations(info)}
         |
         | let $$selection := collection('$recordDb')/$POCKET${dateSelector(from, until)}
         |

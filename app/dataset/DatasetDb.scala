@@ -16,6 +16,7 @@
 
 package dataset
 
+import dataset.DatasetOrigin.originFromInfo
 import dataset.ProgressState._
 import dataset.ProgressType._
 import harvest.Harvesting.{HarvestCron, HarvestType}
@@ -38,23 +39,35 @@ object DatasetDb {
   }
 }
 
-case class DatasetOrigin(name: String) {
+case class DatasetOrigin(name: String, prefix: NodeSeq => String) {
   override def toString = name
 
   def matches(otherName: String) = name == otherName
 }
 
 object DatasetOrigin {
-  val DROP = DatasetOrigin("origin-drop")
-  val HARVEST = DatasetOrigin("origin-harvest")
-  val SIP_SOURCE = DatasetOrigin("origin-sip-source")
-  val SIP_HARVEST = DatasetOrigin("origin-sip-harvest")
+
+  val DROP = DatasetOrigin("origin-drop", { info =>
+    (info \ "origin" \ "prefix").text
+  })
+
+  val HARVEST = DatasetOrigin("origin-harvest", { info =>
+    (info \ "harvest" \ "prefix").text
+  })
+
+  val SIP_SOURCE = DatasetOrigin("origin-sip-source", { info =>
+    (info \ "sipFacts" \ "schemaVersions").text.split("_").head
+  })
+
+  val SIP_HARVEST = DatasetOrigin("origin-sip-harvest", { info =>
+    (info \ "sipFacts" \ "schemaVersions").text.split("_").head
+  })
 
   val ALL_ORIGINS = List(DROP, HARVEST, SIP_SOURCE, SIP_HARVEST)
 
-  def originFromString(string: String): Option[DatasetOrigin] = ALL_ORIGINS.find(s => s.matches(string))
+  private def originFromString(string: String): Option[DatasetOrigin] = ALL_ORIGINS.find(s => s.matches(string))
 
-  def originFromInfo(datasetInfo: NodeSeq) = originFromString((datasetInfo \ "origin" \ "type").text)
+  def originFromInfo(info: NodeSeq) = originFromString((info \ "origin" \ "type").text)
 }
 
 case class ProgressType(name: String) {
@@ -150,27 +163,28 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
       session.query(update).execute()
   }
 
-  def infoOption: Option[Elem] = db {
-    session =>
-      val answer = session.query(datasetElement).execute()
-      if (answer.nonEmpty) Some(XML.loadString(answer)) else None
+  def infoOpt: Option[Elem] = db { session =>
+    val answer = session.query(datasetElement).execute()
+    Option(answer).filter(_.trim.nonEmpty).map(XML.loadString)
   }
 
-  def removeDataset() = db {
-    session =>
-      val update = s"delete node $datasetElement"
-      session.query(update).execute()
+  def prefixOpt: Option[String] = infoOpt.flatMap { info =>
+    originFromInfo(info).map(origin => origin.prefix(info))
   }
 
-  def setProperties(listName: String, entries: (String, Any)*): Unit = db {
-    session =>
-      val replacementLines = List(
-        List(s"  <$listName>"),
-        entries.filter(_._2.toString.nonEmpty).map(pair => s"    <${pair._1}>${pair._2}</${pair._1}>"),
-        List(s"  </$listName>")
-      ).flatten
-      val replacement = replacementLines.mkString("\n")
-      val update = s"""
+  def removeDataset() = db { session =>
+    val update = s"delete node $datasetElement"
+    session.query(update).execute()
+  }
+
+  def setProperties(listName: String, entries: (String, Any)*): Unit = db { session =>
+    val replacementLines = List(
+      List(s"  <$listName>"),
+      entries.filter(_._2.toString.nonEmpty).map(pair => s"    <${pair._1}>${pair._2}</${pair._1}>"),
+      List(s"  </$listName>")
+    ).flatten
+    val replacement = replacementLines.mkString("\n")
+    val update = s"""
           |
           | let $$dataset := $datasetElement
           | let $$block := $$dataset/$listName
@@ -181,8 +195,8 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
           |    else insert node $$replacement into $$dataset
           |
           """.stripMargin.trim
-      Logger.info(s"$datasetName set $listName: ${entries.toMap}")
-      session.query(update).execute()
+    Logger.info(s"$datasetName set $listName: ${entries.toMap}")
+    session.query(update).execute()
   }
 
   def setStatus(state: DatasetState) = setProperties(
@@ -201,10 +215,11 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     "time" -> (if (ready) now else "")
   )
 
-  def setOrigin(origin: DatasetOrigin) = setProperties(
+  def setOrigin(origin: DatasetOrigin, prefix: String) = setProperties(
     "origin",
     "type" -> origin,
-    "time" -> timeToString(new DateTime())
+    "time" -> timeToString(new DateTime()),
+    "prefix" -> prefix
   )
 
   def startProgress(progressState: ProgressState) = setProgress(progressState, BUSY, 0)
@@ -232,7 +247,7 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
       val recordRoot = delimit \ "recordRoot"
       recordRoot.nonEmpty
     }
-    existingInfo.map(check).getOrElse(infoOption.exists(check))
+    existingInfo.map(check).getOrElse(infoOpt.exists(check))
   }
 
   def setNamespaceMap(namespaceMap: Map[String, String]) = setProperties(
@@ -266,9 +281,8 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     "metadata", metadata.toSeq: _*
   )
 
-  def setPublication(oaipmhPrefixes: String, publishOaiPmh: String, publishIndex: String, publishLoD: String) = setProperties(
+  def setPublication(publishOaiPmh: String, publishIndex: String, publishLoD: String) = setProperties(
     "publication",
-    "oaipmhPrefixes" -> oaipmhPrefixes,
     "oaipmh" -> publishOaiPmh,
     "index" -> publishIndex,
     "lod" -> publishLoD

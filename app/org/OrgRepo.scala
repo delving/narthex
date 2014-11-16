@@ -18,10 +18,10 @@ package org
 
 import java.io.File
 
-import dataset.DatasetRepo
 import dataset.ProgressState._
+import dataset.{DatasetOrigin, DatasetRepo}
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
-import mapping.CategoriesRepo
+import mapping.{CategoriesRepo, SkosRepo}
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
 import play.api.Play.current
@@ -52,6 +52,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "dastasets")
   val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
+  val skosRepo = new SkosRepo(new File(orgRoot, "skos"))
   val repoDb = new OrgDb(orgId)
 
   orgRoot.mkdirs()
@@ -70,15 +71,15 @@ class OrgRepo(userHome: String, val orgId: String) {
 
   def datasetRepoOption(datasetName: String): Option[DatasetRepo] = {
     val dr = datasetRepo(datasetName)
-    if (dr.datasetDb.infoOption.isDefined) Some(dr) else None
+    if (dr.datasetDb.infoOpt.isDefined) Some(dr) else None
   }
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
     repoDb.listDatasets.flatMap { dataset =>
-      val prefixes = oaipmhPrefixesFromInfo(dataset.info)
-      // todo: duplicate when there are multiple outputs!
-      prefixes.map { prefixList =>
-        prefixList.map { prefix =>
+      if (!oaipmhPublishFromInfo(dataset.info)) None
+      else {
+        DatasetOrigin.originFromInfo(dataset.info).map { origin =>
+          val prefix = origin.prefix(dataset.info)
           val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
           val metadataFormat = namespaces.find(_._1 == prefix) match {
             case Some(ns) => RepoMetadataFormat(prefix, ns._2)
@@ -95,7 +96,7 @@ class OrgRepo(userHome: String, val orgId: String) {
           )
         }
       }
-    }.flatten
+    }
   }
 
   def getMetadataFormats: Seq[RepoMetadataFormat] = {
@@ -107,7 +108,7 @@ class OrgRepo(userHome: String, val orgId: String) {
       val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
       val start = 1 + (harvest.currentPage - 1) * pageSize
       val repo = datasetRepo(harvest.repoName)
-      val storedRecords = repo.recordDb(harvest.prefix).recordHarvest(harvest.from, harvest.until, start, pageSize)
+      val storedRecords = repo.recordDbOpt.get.recordHarvest(harvest.from, harvest.until, start, pageSize)
       val records = if (enriched) repo.enrichRecords(storedRecords) else parseStoredRecords(storedRecords)
       harvest.next.map { next =>
         Cache.set(next.resumptionToken.value, next, 2 minutes)

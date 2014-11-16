@@ -38,7 +38,6 @@ import record.Saver
 import record.Saver.{SaveComplete, SaveRecords}
 import services.FileHandling._
 import services.SipFile.SipMapper
-import services.StringHandling.oaipmhPrefixesFromInfo
 
 import scala.language.postfixOps
 
@@ -52,7 +51,7 @@ object DatasetActor {
 
   case class StartAnalysis()
 
-  case class StartSaving(modifiedAfter: Option[DateTime], file: File, sipMappers: Option[Seq[SipMapper]])
+  case class StartSaving(modifiedAfter: Option[DateTime], file: File, sipMapperOpt: Option[SipMapper])
 
   case class StartCategoryCounting()
 
@@ -78,7 +77,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     case StartHarvest(modifiedAfter, justDate) =>
       log.info(s"Start harvest $datasetRepo modified=$modifiedAfter")
       clearDir(datasetRepo.analyzedDir)
-      db.infoOption.foreach { info =>
+      db.infoOpt.foreach { info =>
         val harvest = info \ "harvest"
         HarvestType.harvestTypeFromString((harvest \ "harvestType").text).map { harvestType =>
           val harvestRepo = new HarvestRepo(datasetRepo.harvestDir, harvestType)
@@ -99,15 +98,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     case HarvestComplete(modifiedAfter, fileOption, errorOption) =>
       log.info(s"Harvest complete $datasetRepo, error=$errorOption, file=$fileOption")
       db.endProgress(errorOption)
-      if (errorOption.isEmpty) db.infoOption.foreach { info =>
+      if (errorOption.isEmpty) db.infoOpt.foreach { info =>
         fileOption.map { file =>
           if (modifiedAfter.isEmpty) db.setStatus(SOURCED) // first harvest
           clearDir(datasetRepo.analyzedDir)
           datasetRepo.datasetDb.setTree(ready = false)
-          val sipMappers: Option[Seq[SipMapper]] = oaipmhPrefixesFromInfo(info).flatMap { prefixes =>
-            datasetRepo.sipRepo.latestSipFile.map(sipFile => prefixes.flatMap(sipFile.createSipMapper))
-          }
-          self ! StartSaving(modifiedAfter, file, sipMappers)
+          val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
+          self ! StartSaving(modifiedAfter, file, sipMapperOpt)
         } getOrElse {
           log.info(s"No file to save for $datasetRepo")
         }
@@ -137,7 +134,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     case StartCategoryCounting() =>
       log.info(s"Start categorizing $datasetRepo")
       datasetRepo.getLatestIncomingFile.map { file =>
-        datasetRepo.datasetDb.infoOption.foreach { info =>
+        datasetRepo.datasetDb.infoOpt.foreach { info =>
           val delimit = info \ "delimit"
           val recordCountText = (delimit \ "recordCount").text
           val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
@@ -169,22 +166,22 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
 
     // === saving
 
-    case StartSaving(modifiedAfter, file, sipMappers) =>
+    case StartSaving(modifiedAfter, file, sipMapperOpt) =>
       log.info(s"Start saving $datasetRepo modified=$modifiedAfter")
-      datasetRepo.datasetDb.infoOption.foreach { info =>
+      datasetRepo.datasetDb.infoOpt.foreach { info =>
         val delimit = info \ "delimit"
         val recordCountText = (delimit \ "recordCount").text
         val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
         val kickoffOption: Option[SaveRecords] = originFromInfo(info).flatMap { origin =>
           if (origin == HARVEST || origin == SIP_HARVEST) {
             val ht = HarvestType.harvestTypeFromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
-            Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer, sipMappers))
+            Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer, sipMapperOpt))
           }
           else {
             val recordRoot = (delimit \ "recordRoot").text
             val uniqueId = (delimit \ "uniqueId").text
             if (recordRoot.trim.nonEmpty)
-              Some(SaveRecords(modifiedAfter, file, recordRoot, uniqueId, recordCount, None, sipMappers))
+              Some(SaveRecords(modifiedAfter, file, recordRoot, uniqueId, recordCount, None, sipMapperOpt))
             else
               None
           }

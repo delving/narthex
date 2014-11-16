@@ -22,9 +22,9 @@ import dataset.{DatasetDb, DatasetState}
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
 import mapping.CategoryDb._
+import mapping.SkosVocabulary
 import mapping.SkosVocabulary._
 import mapping.TermDb._
-import mapping.{SkosRepo, SkosVocabulary}
 import org.OrgRepo
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
@@ -69,7 +69,7 @@ object Dashboard extends Controller with Security {
   }
 
   def datasetInfo(datasetName: String) = Secure() { token => implicit request =>
-    repo.datasetRepo(datasetName).datasetDb.infoOption.map { info =>
+    repo.datasetRepo(datasetName).datasetDb.infoOpt.map { info =>
       val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(info, name))
       Ok(JsObject(lists))
     } getOrElse NotFound(Json.obj("problem" -> s"Not found $datasetName"))
@@ -86,7 +86,7 @@ object Dashboard extends Controller with Security {
         datasetRepo.datasetDb.setTree(ready = false)
         "Tree removed"
       case "records" =>
-        datasetRepo.recordDbFromName(datasetName).dropDb()
+        datasetRepo.recordDbOpt.map(_.dropDb())
         datasetRepo.datasetDb.setRecords(ready = false)
         "Records removed"
       case "new" =>
@@ -99,13 +99,13 @@ object Dashboard extends Controller with Security {
     Ok(Json.obj("change" -> change))
   }
 
-  def upload(datasetName: String) = Secure(parse.multipartFormData) { token => implicit request =>
+  def upload(datasetName: String, prefix: String) = Secure(parse.multipartFormData) { token => implicit request =>
     request.body.file("file").map { file =>
       Logger.info(s"upload ${file.filename} (${file.contentType}) to $datasetName")
       OrgRepo.acceptableFile(file.filename, file.contentType).map { suffix =>
         println(s"Acceptable ${file.filename}")
         val datasetRepo = repo.datasetRepo(s"$datasetName$suffix")
-        datasetRepo.datasetDb.setOrigin(DROP)
+        datasetRepo.datasetDb.setOrigin(DROP, prefix)
         datasetRepo.datasetDb.setStatus(SOURCED)
         file.ref.moveTo(datasetRepo.createIncomingFile(file.filename), replace = true)
         datasetRepo.startAnalysis()
@@ -121,7 +121,7 @@ object Dashboard extends Controller with Security {
       val datasetRepo = repo.datasetRepo(datasetName)
       Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $datasetName")
       HarvestType.harvestTypeFromString(required("harvestType")) map { harvestType =>
-        val prefix = if (harvestType == HarvestType.PMH) required("prefix") else ""
+        val prefix = if (harvestType == HarvestType.PMH) required("prefix") else HarvestType.ADLIB.name
         datasetRepo.firstHarvest(harvestType, required("url"), optional("dataset"), prefix)
         Ok
       } getOrElse {
@@ -166,7 +166,7 @@ object Dashboard extends Controller with Security {
     def stringParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     try {
       val datasetRepo = repo.datasetRepo(datasetName)
-      datasetRepo.datasetDb.setPublication(stringParam("oaipmhPrefixes"), boolParam("oaipmh"), boolParam("index"), boolParam("lod"))
+      datasetRepo.datasetDb.setPublication(boolParam("oaipmh"), boolParam("index"), boolParam("lod"))
       Ok
     } catch {
       case e: IllegalArgumentException =>
@@ -241,10 +241,14 @@ object Dashboard extends Controller with Security {
     val path = (request.body \ "path").as[String]
     val value = (request.body \ "value").as[String]
     val datasetRepo = repo.datasetRepo(datasetName)
-    val recordsString = datasetRepo.recordDbFromName(datasetName).recordsWithValue(path, value)
-    val enrichedRecords = datasetRepo.enrichRecords(recordsString)
-    val result = enrichedRecords.map(rec => rec.text).mkString("\n")
-    Ok(result)
+    datasetRepo.recordDbOpt.map { recordDb =>
+      val recordsString = recordDb.recordsWithValue(path, value)
+      val enrichedRecords = datasetRepo.enrichRecords(recordsString)
+      val result = enrichedRecords.map(rec => rec.text).mkString("\n")
+      Ok(result)
+    } getOrElse {
+      NotFound(Json.obj("problem" -> "No record database found"))
+    }
   }
 
   def listSheets = Secure() { token => implicit request =>
@@ -256,7 +260,7 @@ object Dashboard extends Controller with Security {
   }
 
   def listSkos = Secure() { token => implicit request =>
-    Ok(Json.obj("list" -> SkosRepo.repo.listFiles))
+    Ok(Json.obj("list" -> repo.skosRepo.listFiles))
   }
 
   def searchSkos(name: String, sought: String) = Secure() { token => implicit request =>
@@ -264,7 +268,7 @@ object Dashboard extends Controller with Security {
     Cache.getAs[SkosVocabulary](name) map {
       vocabulary => Ok(Json.obj("search" -> searchVocabulary(vocabulary)))
     } getOrElse {
-      val vocabulary = SkosRepo.repo.vocabulary(name)
+      val vocabulary = repo.skosRepo.vocabulary(name)
       Cache.set(name, vocabulary, CACHE_EXPIRATION)
       Ok(Json.obj("search" -> searchVocabulary(vocabulary)))
     }

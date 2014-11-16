@@ -105,7 +105,7 @@ define(["angular"], function () {
             }
             file.uploading = true;
             $upload.upload({
-                url: '/narthex/dashboard/' + file.name + '/upload',
+                url: '/narthex/dashboard/' + file.name + '/upload/' + file.prefix,
                 file: onlyFile
             }).progress(
                 function (evt) {
@@ -200,6 +200,7 @@ define(["angular"], function () {
             }
             if (info.origin) {
                 file.origin = info.origin.type;
+                file.prefix = info.origin.prefix;
             }
             if (info.delimit && info.delimit.recordCount > 0) {
                 file.identity.recordCount = info.delimit.recordCount;
@@ -211,33 +212,23 @@ define(["angular"], function () {
             if (info.tree) {
                 file.treeTime = info.tree.time;
             }
-            if (info.records) {
-                file.recordsTime = info.records.time;
-            }
             if (!info.publication) info.publication = {};
             if (!info.categories) info.categories = {};
-
             function oaiPmhListRecords(enriched) {
                 var absUrl = $location.absUrl();
                 var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
                 var start = enriched ? 'oai-pmh/enriched/' : 'oai-pmh/';
-                var parts = info.publication.oaipmhPrefixes.split(/[\s.;,]+/);
-                return _.map(parts, function(prefix) {
-                    return {
-                        prefix: prefix,
-                        url: serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + prefix
-                    }
-                });
+                return {
+                    prefix: file.prefix,
+                    url: serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
+                }
             }
-
-            if (info.publication.oaipmhPrefixes && info.publication.oaipmhPrefixes.length) {
-                file.oaiPmhListRecords = oaiPmhListRecords(false);
-                file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
-            }
-            else if (info.publication.oaipmh == "true") {
-                info.publication.oaipmhPrefixes = "verbatim";
-                file.oaiPmhListRecords = oaiPmhListRecords(false);
-                file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
+            if (info.records) {
+                file.recordsTime = info.records.time;
+                if (file.prefix) {
+                    file.oaiPmhListRecords = oaiPmhListRecords(false);
+                    file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
+                }
             }
         }
 

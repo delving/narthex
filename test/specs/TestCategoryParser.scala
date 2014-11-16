@@ -5,7 +5,6 @@ import java.io.{File, FileOutputStream}
 import mapping.CategoryDb
 import org.scalatest.{FlatSpec, Matchers}
 import record.CategoryParser
-import record.CategoryParser.CategoryCountCollection
 import services.{FileHandling, ProgressReporter}
 
 class TestCategoryParser extends FlatSpec with Matchers {
@@ -56,12 +55,12 @@ class TestCategoryParser extends FlatSpec with Matchers {
     println(s"cat map $countList")
     reply should be(true)
     categoryParser.recordCount should be(4724)
-    countList.size should be(10)
+    countList.size should be(13)
 
     val home = new File(System.getProperty("user.home"))
     val excel = new File(home, "categories.xlsx")
     val fos = new FileOutputStream(excel)
-    CategoryCountCollection(countList).categoriesPerDataset.write(fos)
+    CategoryParser.generateWorkbook(countList).write(fos)
     fos.close()
   }
 }

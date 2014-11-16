@@ -30,7 +30,6 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
 import services.ProgressReporter
-import services.StringHandling.VERBATIM
 
 import scala.concurrent._
 import scala.language.postfixOps
@@ -81,14 +80,16 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
           val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
           val generateSourceReporter = ProgressReporter(GENERATING, db)
           val newRecordCount = harvestRepo.generateSourceFile(incomingFile, db.setNamespaceMap, generateSourceReporter)
-          val existingRecordCount = datasetRepo.recordDb(VERBATIM).getRecordCount
-          log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
-          // set record count
-          val info = db.infoOption.get
-          val delimit = info \ "delimit"
-          val recordRoot = (delimit \ "recordRoot").text
-          val uniqueId = (delimit \ "uniqueId").text
-          db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
+          datasetRepo.recordDbOpt.foreach { recordDb =>
+            val existingRecordCount = recordDb.getRecordCount
+            log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
+            // set record count
+            val info = db.infoOpt.get
+            val delimit = info \ "delimit"
+            val recordRoot = (delimit \ "recordRoot").text
+            val uniqueId = (delimit \ "uniqueId").text
+            db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
+          }
         }
         log.info(s"Zip file accepted: $fileOption")
         context.parent ! HarvestComplete(modifiedAfter, fileOption, None)
@@ -163,7 +164,7 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
             progressReporter.sendPage(pageCount)
           }
           if (keepHarvesting) {
-            val futurePage = fetchPMHPage(url, set, prefix, None, justDate)
+            val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate, resumptionToken)
             handleFailure(futurePage, modifiedAfter, "pmh harvest page")
             futurePage pipeTo self
           }
