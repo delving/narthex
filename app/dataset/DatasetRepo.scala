@@ -37,8 +37,6 @@ import record.EnrichmentParser._
 import record.PocketParser._
 import record.{EnrichmentParser, RecordDb}
 import services.FileHandling.clearDir
-import services.SipFile.SipMapper
-import services.StringHandling._
 import services.Temporal._
 import services._
 
@@ -64,14 +62,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir)
 
-  def prefixFromName(name: String): String = {
-    val sep = name.lastIndexOf("__")
-    if (sep > 0) name.substring(sep + 2) else VERBATIM
-  }
-
-  def recordDb(prefix: String) = new RecordDb(this, dbBaseName, prefix)
-
-  def recordDbFromName(name: String) = recordDb(prefixFromName(name))
+  lazy val recordDbOpt = datasetDb.prefixOpt.map(prefix => new RecordDb(this, dbBaseName, prefix))
 
   override def toString = datasetName
 
@@ -92,14 +83,14 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
 
-  def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.infoOption map { info =>
+  def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.infoOpt map { info =>
     val state = DatasetState.datasetStateFromInfo(info)
     if (state == EMPTY) {
       clearDir(harvestDir) // it's a first harvest
       clearDir(analyzedDir) // just in case
       datasetDb.startProgress(HARVESTING)
       if (originFromInfo(info).isEmpty) {
-        datasetDb.setOrigin(HARVEST)
+        datasetDb.setOrigin(HARVEST, prefix)
         datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
         datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
       }
@@ -112,7 +103,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     }
   }
 
-  def nextHarvest() = datasetDb.infoOption.map { info =>
+  def nextHarvest() = datasetDb.infoOpt.map { info =>
     val recordsTimeOption = nodeSeqToTime(info \ "records" \ "time")
     recordsTimeOption.map { recordsTime =>
       val harvestCron = Harvesting.harvestCron(info)
@@ -134,7 +125,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     }
   }
 
-  def startAnalysis() = datasetDb.infoOption.map { info =>
+  def startAnalysis() = datasetDb.infoOpt.map { info =>
     val state = DatasetState.datasetStateFromInfo(info)
     if (state == SOURCED) {
       clearDir(analyzedDir)
@@ -147,18 +138,15 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     }
   }
 
-  def firstSaveRecords() = datasetDb.infoOption.map { info =>
+  def firstSaveRecords() = datasetDb.infoOpt.map { info =>
     val delimited = datasetDb.isDelimited(Some(info))
     val state = DatasetState.datasetStateFromInfo(info)
     if (state == SOURCED && delimited) {
       datasetDb.startProgress(SAVING)
-      val sipMappers: Option[Seq[SipMapper]] = oaipmhPrefixesFromInfo(info).flatMap { prefixes =>
-        sipRepo.latestSipFile.map { sipFile =>
-          prefixes.flatMap { prefix =>
-            recordDb(prefix).createDb()
-            sipFile.createSipMapper(prefix)
-          }
-        }
+      val sipMapperOpt = sipRepo.latestSipFile.flatMap { sipFile =>
+        val mapperOpt = sipFile.createSipMapper
+        mapperOpt.foreach(mapper => recordDbOpt.get.createDb())
+        mapperOpt
       }
       // for a sip-harvest we have a single zip file in the harvest dir
       val fileOpt: Option[File] = originFromInfo(info) match {
@@ -166,7 +154,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         case _ => getLatestIncomingFile
       }
       fileOpt.map { file =>
-        OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, file, sipMappers))
+        OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, file, sipMapperOpt))
       } getOrElse{
         Logger.warn(s"Cannot find file to save for $datasetName")
       }
@@ -190,9 +178,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def revertState: DatasetState = {
-    val currentState = datasetDb.infoOption.map(DatasetState.datasetStateFromInfo(_)) getOrElse DELETED
+    val currentState = datasetDb.infoOpt.map(DatasetState.datasetStateFromInfo(_)) getOrElse DELETED
     Logger.info(s"Revert state of $datasetName from $currentState")
-    datasetDb.infoOption.map { info =>
+    datasetDb.infoOpt.map { info =>
       currentState match {
         case DELETED =>
           datasetDb.createDataset(EMPTY)

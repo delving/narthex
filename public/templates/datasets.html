@@ -54,17 +54,30 @@
 </script>
 
 <script type="text/ng-template" id="drop-file.html">
-    <div class="file-drop" ng-file-drop="file.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
-        <h6>Drag and drop your xml source file into this area</h6>
-        <div class="img-holder" data-ng-show="file.uploading">
-            <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
-            <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
-            <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
+    <div>
+        <div class="col-md-6">
+            <form name="form" class="form file-harvest">
+                <fieldset>
+                    <div class="form-group">
+                        <label for="drop_prefix">Metadata format prefix:</label>
+                        <input id="drop_prefix" class="form-control" data-ng-model="file.prefix" placeholder="prefix" required/>
+                    </div>
+                </fieldset>
+            </form>
         </div>
-        <div data-ng-if="file.uploadPercent">
-            <progressbar class="progress-striped active" animate="true" value="file.uploadPercent" max="100" type="success">
-                <b>{{ file.uploadPercent }}%</b>
-            </progressbar>
+        <div class="file-drop col-md-6" ng-file-drop="file.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
+            <span data-ng-show="!(file.prefix && file.prefix.length)">Prefix required</span>
+            <span data-ng-show="file.prefix && file.prefix.length">Drag and drop your xml source with <strong>"{{file.prefix}}"</strong> data into this area</span>
+            <div class="img-holder" data-ng-show="file.uploading">
+                <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
+                <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
+                <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
+            </div>
+            <div data-ng-if="file.uploadPercent">
+                <progressbar class="progress-striped active" animate="true" value="file.uploadPercent" max="100" type="success">
+                    <b>{{ file.uploadPercent }}%</b>
+                </progressbar>
+            </div>
         </div>
     </div>
 </script>
@@ -153,10 +166,6 @@
 <script type="text/ng-template" id="publication-form.html">
     <form name="form" class="form">
         <fieldset>
-            <div class="form-group">
-                <label for="pub_pmh_prefix">Metadata Formats</label>
-                <input id="pub_pmh_prefix" class="form-control" data-ng-model="file.info.publication.oaipmhPrefixes" placeholder="prefix list"/>
-            </div>
             <div class="checkbox">
                 <label for="pub_pmh">Publish via OAI-PMH
                     <input id="pub_pmh" type="checkbox" data-ng-model="file.info.publication.oaipmh" ng-true-value="'true'" ng-false-value="'false'"/>
@@ -199,14 +208,14 @@
                 <i class="fa fa-download"></i> Terminology Mappings
             </a>
         </li>
-        <li data-ng-repeat="prefixUrl in file.oaiPmhListRecords">
-            <a class="" ng-href="{{ prefixUrl.url }}" target="_blank">
-                <i class="fa fa-download"></i> Records with format "{{ prefixUrl.prefix }}"
+        <li data-ng-show="file.oaiPmhListRecords">
+            <a class="" ng-href="{{ file.oaiPmhListRecords.url }}" target="_blank">
+                <i class="fa fa-download"></i> Records with format "{{ file.oaiPmhListRecords.prefix }}"
             </a>
         </li>
-        <li data-ng-repeat="prefixUrl in file.oaiPmhListEnrichedRecords">
-            <a class="" ng-href="{{ prefixUrl.url }}" target="_blank">
-                <i class="fa fa-download"></i> Enriched Records with format "{{ prefixUrl.prefix }}"
+        <li data-ng-show="file.oaiPmhListEnrichedRecords">
+            <a class="" ng-href="{{ file.oaiPmhListEnrichedRecords.url }}" target="_blank">
+                <i class="fa fa-download"></i> Enriched Records with format "{{ file.oaiPmhListEnrichedRecords.prefix }}"
             </a>
         </li>
     </ul>
@@ -322,10 +331,10 @@
 
             <span ng-if="file.origin">
                 <span ng-switch="file.origin">
-                    <span class="label label-default" ng-switch-when="origin-drop">Dropped file</span>
-                    <span class="label label-default" ng-switch-when="origin-harvest">Harvested dataset</span>
-                    <span class="label label-default" ng-switch-when="origin-sip-source">SIP File with source</span>
-                    <span class="label label-default" ng-switch-when="origin-sip-harvest">SIP File with harvest</span>
+                    <span class="label label-default" ng-switch-when="origin-drop">Dropped file ({{ file.prefix }})</span>
+                    <span class="label label-default" ng-switch-when="origin-harvest">Harvested dataset ({{ file.prefix }})</span>
+                    <span class="label label-default" ng-switch-when="origin-sip-source">SIP File with source ({{ file.prefix }})</span>
+                    <span class="label label-default" ng-switch-when="origin-sip-harvest">SIP File with harvest ({{ file.prefix }})</span>
                     <span class="label label-default" ng-switch-default>Unknown origin</span>
                 </span>
             </span>
@@ -397,7 +406,7 @@
                         <a href role="tab" data-ng-click="setTabOpen('info')">Info</a>
                     </li>
                 </ul>
-                <div class="tab-content col-md-4">
+                <div class="tab-content col-md-6">
                     <div ng-switch="tabOpen">
                         <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
                         <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>

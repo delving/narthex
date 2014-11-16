@@ -17,24 +17,16 @@ package mapping
 
 import java.io.{File, FileInputStream}
 
-import services.NarthexConfig
-
-object SkosRepo {
-  lazy val repo: SkosRepo = new SkosRepo(NarthexConfig.USER_HOME)
-}
-
-class SkosRepo(userHome: String) {
+class SkosRepo(home: File) {
 
   val SUFFIX = ".xml"
-  val root = new File(userHome, "NarthexFiles")
-  val skos = new File(root, "skos")
 
   def listFiles = {
-    val files = if (skos.exists()) skos.listFiles.filter(file => file.getName.endsWith(SUFFIX)) else Array[File]()
+    val files = if (home.exists()) home.listFiles.filter(file => file.getName.endsWith(SUFFIX)) else Array[File]()
     files.map(file => file.getName.substring(0, file.getName.length - SUFFIX.length)).map(_.replaceAll("_", " "))
   }
 
-  def file(name: String) = new File(skos, name.replaceAll(" ", "_") + SUFFIX)
+  def file(name: String) = new File(home, name.replaceAll(" ", "_") + SUFFIX)
 
   def vocabulary(name: String) = SkosVocabulary(new FileInputStream(file(name)))
 

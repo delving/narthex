@@ -48,22 +48,7 @@ object StringHandling {
       .replaceAll("[%]29", ")")
   }
 
-  val VERBATIM = "verbatim"
-
   def oaipmhPublishFromInfo(info: NodeSeq): Boolean = (info \ "publication" \ "oaipmh").text.trim == "true"
-
-  def oaipmhPrefixesFromInfo(info: NodeSeq): Option[Seq[String]] = {
-    val prefixes = (info \ "publication" \ "oaipmhPrefixes").text.trim
-    if (prefixes.nonEmpty)
-      if (oaipmhPublishFromInfo(info))
-        Some(prefixes.split("[\\s,;-]+").toSeq)
-      else
-        None
-    else if (oaipmhPublishFromInfo(info))
-      Some(Seq(VERBATIM))
-    else
-      None
-  }
 
   val SUFFIXES = List(".xml.gz", ".xml")
 
@@ -76,17 +61,4 @@ object StringHandling {
     val suffix = getSuffix(uploadedFileName)
     uploadedFileName.substring(0, uploadedFileName.length - suffix.length)
   }
-
-  object DatasetName{
-    def apply(name: String): DatasetName =  {
-      val sep = name.lastIndexOf("__")
-      if (sep > 0)
-        DatasetName(spec = name.substring(0, sep), prefix = name.substring(sep + 2))
-      else
-        DatasetName(spec = name, prefix = VERBATIM)
-    }
-  }
-
-  case class DatasetName(spec: String, prefix: String)
-
 }

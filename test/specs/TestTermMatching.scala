@@ -65,7 +65,7 @@ class TestTermMatching extends FlatSpec with Matchers {
         |<record xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:very="http://veryother.org/#">
         |  <inner>
         |    <content.subject>
-        |      <rdf:Description>
+        |      <rdf:Description rdf:about="gerald_delving_eu/RCE_Beeldbank/record/inner/content.subject/Glas%20in%20loodraam">
         |        <rdfs:label>Glas in loodraam</rdfs:label>
         |        <skos:prefLabel>glasinloody</skos:prefLabel>
         |        <skos:exactMatch rdf:resource="uri"/>

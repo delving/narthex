@@ -89,31 +89,35 @@ object APIController extends Controller {
 
   def record(apiKey: String, datasetName: String, id: String, enrich: Boolean = false) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
-    val storedRecord: String = datasetRepo.recordDbFromName(datasetName).record(id)
-    if (storedRecord.nonEmpty) {
-      if (enrich) {
-        val records = datasetRepo.enrichRecords(storedRecord)
-        if (records.nonEmpty) {
-          val record = records.head
-          OkXml(record.text.toString())
+    datasetRepo.recordDbOpt.map { recordDb =>
+      val storedRecord: String = recordDb.record(id)
+      if (storedRecord.nonEmpty) {
+        if (enrich) {
+          val records = datasetRepo.enrichRecords(storedRecord)
+          if (records.nonEmpty) {
+            val record = records.head
+            OkXml(record.text.toString())
+          }
+          else {
+            NotFound(s"Parser gave no records")
+          }
         }
         else {
-          NotFound(s"Parser gave no records")
+          val records = EnrichmentParser.parseStoredRecords(storedRecord)
+          if (records.nonEmpty) {
+            val record = records.head
+            OkXml(record.text.toString())
+          }
+          else {
+            NotFound(s"Parser gave no records")
+          }
         }
       }
       else {
-        val records = EnrichmentParser.parseStoredRecords(storedRecord)
-        if (records.nonEmpty) {
-          val record = records.head
-          OkXml(record.text.toString())
-        }
-        else {
-          NotFound(s"Parser gave no records")
-        }
+        NotFound(s"No record found for $id")
       }
-    }
-    else {
-      NotFound(s"No record found for $id")
+    } getOrElse {
+      NotFound(s"No record database found for $datasetRepo")
     }
   }
 
@@ -123,8 +127,12 @@ object APIController extends Controller {
 
   def ids(apiKey: String, datasetName: String, since: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
-    val ids = datasetRepo.recordDbFromName(datasetName).getIds(since)
-    Ok(scala.xml.XML.loadString(ids))
+    datasetRepo.recordDbOpt.map { recordDb =>
+      val ids = recordDb.getIds(since)
+      Ok(scala.xml.XML.loadString(ids))
+    } getOrElse {
+      NotFound(s"No record database found for $datasetRepo")
+    }
   }
 
   def mappings(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
@@ -155,12 +163,13 @@ object APIController extends Controller {
       datasetRepo.sipRepo.latestSipFile.map { sipFile =>
         (sipFile.harvestUrl, sipFile.harvestSpec, sipFile.harvestPrefix) match {
           case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
-            datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP_HARVEST)
+            datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP_HARVEST, harvestPrefix)
             datasetRepo.datasetDb.setHarvestInfo(PMH, harvestUrl, harvestSpec, harvestPrefix)
             datasetRepo.datasetDb.setRecordDelimiter(PMH.recordRoot, PMH.uniqueId, sipFile.recordCount.map(_.toInt).getOrElse(0))
             // todo: maybe start harvest
           case _ =>
-            datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP_SOURCE)
+            // todo: taking a risk here with .get
+            datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP_SOURCE, sipFile.schemaVersionOpt.get)
             (sipFile.recordRootPath, sipFile.uniqueElementPath, sipFile.recordCount) match {
               case (Some(recordRootPath), Some(uniqueElementPath), Some(recordCount)) =>
                 datasetRepo.datasetDb.setRecordDelimiter(recordRootPath, uniqueElementPath, recordCount.toInt)
@@ -193,8 +202,7 @@ object APIController extends Controller {
               <uploadedBy>{sipZip.file.uploadedBy}</uploadedBy>
               <uploadedOn>{timeToLocalString(sipZip.file.uploadedOn)}</uploadedOn>
               <schemaVersions>
-                {for (sv: String <- sipZip.schemaVersionSeq.getOrElse(throw new RuntimeException("No schema versions!")))
-              yield {
+                { sipZip.schemaVersionOpt.map { sv =>
                 <schemaVersion>
                   <prefix>{sv.split("_")(0)}</prefix>
                   <version>{sv.split("_")(1)}</version>

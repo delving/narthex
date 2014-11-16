@@ -156,7 +156,7 @@ class SipFile(val file: SipZipFile) {
   lazy val recordRootPath = hint("recordRootPath")
   lazy val uniqueElementPath = hint("uniqueElementPath")
 
-  lazy val schemaVersionSeq: Option[Seq[String]] = schemaVersions.map(commas => commas.split(" *,").toSeq)
+  lazy val schemaVersionOpt: Option[String] = schemaVersions.flatMap(commas => commas.split(" *,").headOption)
 
   private def file(sipContentFileName: String): String = {
     entries.get(sipContentFileName).map { entry =>
@@ -187,19 +187,17 @@ class SipFile(val file: SipZipFile) {
     } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from $file"))
   }
 
-  lazy val sipMappings: Seq[SipMapping] = schemaVersionSeq.map { sequence =>
-    sequence.map { schemaVersion =>
-      val PrefixVersion(prefix, version) = schemaVersion
-      val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
-      SipMapping(
-        prefix = prefix,
-        version = version,
-        recDefTree = tree,
-        validationXSD = "when you want to validate" /* file(s"${schemaVersion}_validation.xsd")*/ ,
-        recMapping = recMapping(s"mapping_$prefix.xml", tree)
-      )
-    }
-  }.getOrElse(Seq.empty[SipMapping])
+  lazy val sipMappingOpt: Option[SipMapping] = schemaVersionOpt.map { schemaVersion =>
+    val PrefixVersion(prefix, version) = schemaVersion
+    val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
+    SipMapping(
+      prefix = prefix,
+      version = version,
+      recDefTree = tree,
+      validationXSD = "when you want to validate" /* file(s"${schemaVersion}_validation.xsd")*/ ,
+      recMapping = recMapping(s"mapping_$prefix.xml", tree)
+    )
+  }
 
   class MappingEngine(sipMapping: SipMapping) extends SipMapper {
     val now = new DateTime
@@ -240,6 +238,6 @@ class SipFile(val file: SipZipFile) {
 
   }
 
-  def createSipMapper(prefix: String): Option[SipMapper] = sipMappings.find(_.prefix == prefix).map(new MappingEngine(_))
+  def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
 
 }

@@ -18,7 +18,7 @@ package harvest
 
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
 import harvest.OaiPmh.Service.{QueryKey, Verb}
-import org.OrgRepo
+import org.OrgRepo.repo
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
@@ -60,11 +60,11 @@ object OaiPmh extends Controller {
     val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
 
     def getFormats(identifier: Option[String]): Seq[RepoMetadataFormat] = {
-      OrgRepo.repo.getMetadataFormats
+      repo.getMetadataFormats
     }
 
     def getDataSets: Seq[PublishedDataset] = {
-      OrgRepo.repo.getPublishedDatasets
+      repo.getPublishedDatasets
     }
 
     def exists(set: String, prefix: String): Boolean = {
@@ -72,15 +72,19 @@ object OaiPmh extends Controller {
     }
 
     def getFirstToken(set: String, prefix: String, headersOnly: Boolean, from: Option[DateTime], until: Option[DateTime]): Option[PMHResumptionToken] = {
-      OrgRepo.repo.datasetRepoOption(set).flatMap(repo => repo.recordDb(prefix).createHarvest(headersOnly, from, until))
+      repo.datasetRepoOption(set).flatMap { datasetRepo =>
+        datasetRepo.recordDbOpt.map(_.createHarvest(headersOnly, from, until))
+      }
     }
 
     def getHarvestValues(token: PMHResumptionToken, enriched: Boolean): (List[StoredRecord], Option[PMHResumptionToken]) = {
-      OrgRepo.repo.getHarvest(token, enriched)
+      repo.getHarvest(token, enriched)
     }
 
     def getRecord(set: String, prefix: String, identifier: String): Option[NodeSeq] = {
-      OrgRepo.repo.datasetRepoOption(set).flatMap(repo => repo.recordDb(prefix).recordPmh(identifier))
+      repo.datasetRepoOption(set).flatMap { datasetRepo =>
+        datasetRepo.recordDbOpt.map(_.recordPmh(identifier))
+      }
     }
   }
 

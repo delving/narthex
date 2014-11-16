@@ -21,7 +21,6 @@ import play.api.Logger
 import play.api.Play.current
 import play.api.libs.ws.WS
 import services.NarthexConfig
-import services.StringHandling.VERBATIM
 import services.Temporal._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -265,14 +264,14 @@ trait Harvesting {
       }
       error getOrElse {
         val tokenNode = response.xml \ "ListRecords" \ "resumptionToken"
-        val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
+        val newToken = if (tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
           val cursor = tagToInt(tokenNode, "@cursor", 1)
           Some(PMHResumptionToken(
             value = tokenNode.text,
             currentRecord = cursor,
             totalRecords = completeListSize,
-            prefix = VERBATIM
+            prefix = metadataPrefix
           ))
         }
         else {

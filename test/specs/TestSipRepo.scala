@@ -29,11 +29,11 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       sipFile.uniqueElementPath should be(Some("/harvest/OAI-PMH/ListRecords/record/metadata/arno:document/arno:document-admin/arno:doc_id"))
 
-      sipFile.schemaVersionSeq.size should be(1)
+      sipFile.schemaVersionOpt.isDefined should be(true)
 
       var mappedPockets = List.empty[Pocket]
 
-      sipFile.createSipMapper("tib") map { sipMapper =>
+      sipFile.createSipMapper map { sipMapper =>
         def pocketCatcher(pocket: Pocket): Unit = {
           var mappedPocket = sipMapper.map(pocket)
           mappedPockets = mappedPocket :: mappedPockets
