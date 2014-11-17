@@ -18,7 +18,7 @@ lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
 
 name := "narthex"
 
-version := "0.9.2-SNAPSHOT"
+version := "0.9.3-SNAPSHOT"
 
 scalaVersion := "2.10.4"
 
