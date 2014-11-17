@@ -370,7 +370,7 @@ define(["angular"], function () {
                 case 'harvest-cron':
                     return originIs(['origin-harvest', 'origin-sip-harvest'], false) && stateIs('state-sourced', false);
                 case 'categories':
-                    return stateIs('state-sourced', false) && $scope.file.info.delimit.recordRoot;
+                    return stateIs('state-sourced', false) && $scope.file.info.delimit && $scope.file.info.delimit.recordRoot;
                 case 'publication':
                     return originIs(['origin-sip-harvest'], false) || $scope.file.recordsTime;
                 case 'downloads':
