@@ -309,7 +309,6 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
           depth -= 1
           if (startTag && text.nonEmpty) {
             val uri = generateUri(text)
-            Logger.info(s"generated $uri")
             categoryMappings.get(uri).map { mapping =>
               mapping.categories.foreach { category =>
                 recordCategories += category

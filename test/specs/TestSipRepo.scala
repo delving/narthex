@@ -36,7 +36,7 @@ class TestSipRepo extends FlatSpec with Matchers {
       sipFile.createSipMapper map { sipMapper =>
         def pocketCatcher(pocket: Pocket): Unit = {
           var mappedPocket = sipMapper.map(pocket)
-          mappedPockets = mappedPocket :: mappedPockets
+          mappedPockets = mappedPocket.get :: mappedPockets
         }
         harvestRepo.parsePockets(pocketCatcher, ProgressReporter())
       }

@@ -125,7 +125,7 @@ class SipFile(val file: SipZipFile) {
 
   lazy val entries = zipFile.entries().map(entry => entry.getName -> entry).toMap
 
-  def readMap(propertyFileName: String): Option[Map[String, String]] = {
+  def readMap(propertyFileName: String): Map[String, String] = {
     entries.get(propertyFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val lines = Source.fromInputStream(inputStream, "UTF-8").getLines()
@@ -133,12 +133,12 @@ class SipFile(val file: SipZipFile) {
         val equals = line.indexOf("=")
         if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
       }.toMap
-    }
+    } getOrElse(throw new RuntimeException(s"No entry for $propertyFileName"))
   }
 
   lazy val facts = readMap("narthex_facts.txt")
 
-  def fact(name: String): Option[String] = facts.flatMap(_.get(name))
+  def fact(name: String): Option[String] = facts.get(name)
 
   lazy val spec = fact("spec")
   lazy val name = fact("name")
@@ -152,7 +152,7 @@ class SipFile(val file: SipZipFile) {
 
   lazy val hints = readMap("hints.txt")
 
-  private def hint(name: String): Option[String] = hints.flatMap(_.get(name))
+  private def hint(name: String): Option[String] = hints.get(name)
 
   lazy val harvestUrl = hint("harvestUrl")
   lazy val harvestSpec = hint("harvestSpec")

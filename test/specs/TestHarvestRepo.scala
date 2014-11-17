@@ -78,7 +78,7 @@ class TestHarvestRepo extends FlatSpec with Matchers {
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
     
-    harvestRepo.generateSourceFile(gitFile, map => Unit, ProgressReporter())
+    harvestRepo.generateSourceFile(gitFile, None, map => Unit, ProgressReporter())
 
     FileHandling.gitCommit(gitFile, "Several words of message") should be(true)
   }
