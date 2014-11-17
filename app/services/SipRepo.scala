@@ -19,11 +19,13 @@ import java.io._
 import java.util.zip.ZipFile
 
 import dataset.DatasetOrigin._
-import eu.delving.groovy.{GroovyCodeResource, MappingRunner, MetadataRecordFactory, XmlSerializer}
+import eu.delving.groovy._
 import eu.delving.metadata._
 import org.OrgRepo.repo
+import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.w3c.dom.Element
+import play.api.Logger
 import record.PocketParser.Pocket
 import services.SipRepo.SipZipFile
 
@@ -39,6 +41,9 @@ import scala.io.Source
  */
 
 object SipRepo {
+
+  val SIP_SOURCE_RECORD_ROOT = "/delving-sip-source/input"
+  val SIP_SOURCE_UNIQUE_ID = "/delving-sip-source/input/@id"
 
   val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
 
@@ -85,7 +90,7 @@ object SipFile {
   trait SipMapper {
     val prefix: String
 
-    def map(pocket: Pocket): Pocket
+    def map(pocket: Pocket): Option[Pocket]
   }
 
   val PrefixVersion = "(.*)_(.*)".r
@@ -131,7 +136,7 @@ class SipFile(val file: SipZipFile) {
     }
   }
 
-  lazy val facts = readMap("dataset_facts.txt")
+  lazy val facts = readMap("narthex_facts.txt")
 
   def fact(name: String): Option[String] = facts.flatMap(_.get(name))
 
@@ -199,6 +204,15 @@ class SipFile(val file: SipZipFile) {
     )
   }
 
+  def copySourceTo(file: File): Option[File] = {
+    entries.get("source.xml.gz").map { sourceXmlGz =>
+      val inputStream = zipFile.getInputStream(sourceXmlGz)
+      FileUtils.copyInputStreamToFile(inputStream, file)
+      inputStream.close()
+      file
+    }
+  }
+
   class MappingEngine(sipMapping: SipMapping) extends SipMapper {
     val now = new DateTime
     val groovy = new GroovyCodeResource(getClass.getClassLoader)
@@ -209,33 +223,34 @@ class SipFile(val file: SipZipFile) {
 
     override val prefix: String = sipMapping.prefix
 
-    override def map(pocket: Pocket): Pocket = {
-      val metadataRecord = factory.metadataRecordFrom(pocket.id, pocket.text, false)
-      val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
-      val root = result.root().asInstanceOf[Element]
-      val doc = root.getOwnerDocument
-      root.removeAttribute("xsi:schemaLocation")
-
-      val rdf = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-      rdf.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ID_ATTRIBUTE", pocket.id)
-      val cn = root.getChildNodes
-      val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
-      kids.foreach(rdf.appendChild)
-
-      val pocketElement = doc.createElement("pocket")
-      pocketElement.setAttribute("id", pocket.id)
-      pocketElement.setAttribute("hash", pocket.hash)
-      pocketElement.setAttribute("mod", Temporal.timeToString(now))
-
-      NAMESPACES.foreach { entry => val (prefix, uri) = entry
-        pocketElement.setAttribute(s"xmlns:$prefix", uri)
+    override def map(pocket: Pocket): Option[Pocket] = {
+      try {
+        val metadataRecord = factory.metadataRecordFrom(pocket.id, pocket.text, false)
+        val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
+        val root = result.root().asInstanceOf[Element]
+        val doc = root.getOwnerDocument
+        root.removeAttribute("xsi:schemaLocation")
+        val rdf = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
+        rdf.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ID_ATTRIBUTE", pocket.id)
+        val cn = root.getChildNodes
+        val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
+        kids.foreach(rdf.appendChild)
+        val pocketElement = doc.createElement("pocket")
+        pocketElement.setAttribute("id", pocket.id)
+        pocketElement.setAttribute("hash", pocket.hash)
+        pocketElement.setAttribute("mod", Temporal.timeToString(now))
+        NAMESPACES.foreach { entry => val (prefix, uri) = entry
+          pocketElement.setAttribute(s"xmlns:$prefix", uri)
+        }
+        pocketElement.appendChild(rdf)
+        val xml = serializer.toXml(pocketElement, true)
+        Some(Pocket(pocket.id, pocket.hash, xml))
+      } catch {
+        case discard: DiscardRecordException =>
+          Logger.info("Discarded record " + pocket.id, discard)
+          None
       }
-      pocketElement.appendChild(rdf)
-
-      val xml = serializer.toXml(pocketElement, true)
-      Pocket(pocket.id, pocket.hash, xml)
     }
-
   }
 
   def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))

@@ -78,10 +78,10 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       log.info(s"Start harvest $datasetRepo modified=$modifiedAfter")
       clearDir(datasetRepo.analyzedDir)
       db.infoOpt.foreach { info =>
-        val harvest = info \ "harvest"
-        HarvestType.harvestTypeFromString((harvest \ "harvestType").text).map { harvestType =>
+        HarvestType.harvestTypeFromInfo(info).map { harvestType =>
           val harvestRepo = new HarvestRepo(datasetRepo.harvestDir, harvestType)
           val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo, harvestRepo)))
+          val harvest = info \ "harvest"
           val url = (harvest \ "url").text
           val database = (harvest \ "dataset").text
           val prefix = (harvest \ "prefix").text
@@ -119,7 +119,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo)))
         analyzer ! AnalyzeFile(file)
       } getOrElse {
-        log.warn(s"No latest incoming file for $datasetRepo")
+        log.warn(s"No file to analyze for $datasetRepo")
       }
 
     case AnalysisComplete(errorOption) =>

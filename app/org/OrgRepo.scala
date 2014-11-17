@@ -76,25 +76,24 @@ class OrgRepo(userHome: String, val orgId: String) {
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
     repoDb.listDatasets.flatMap { dataset =>
-      if (!oaipmhPublishFromInfo(dataset.info)) None
+      if (!oaipmhPublishFromInfo(dataset.info))
+        None
       else {
-        DatasetOrigin.originFromInfo(dataset.info).map { origin =>
-          val prefix = origin.prefix(dataset.info)
-          val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
-          val metadataFormat = namespaces.find(_._1 == prefix) match {
-            case Some(ns) => RepoMetadataFormat(prefix, ns._2)
-            case None => RepoMetadataFormat(prefix)
-          }
-          PublishedDataset(
-            spec = dataset.datasetName,
-            prefix = prefix,
-            name = (dataset.info \ "metadata" \ "name").text,
-            description = (dataset.info \ "metadata" \ "description").text,
-            dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
-            totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
-            metadataFormat = metadataFormat
-          )
+        val prefix = DatasetOrigin.prefixFromInfo(dataset.info)
+        val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
+        val metadataFormat = namespaces.find(_._1 == prefix) match {
+          case Some(ns) => RepoMetadataFormat(prefix, ns._2)
+          case None => RepoMetadataFormat(prefix)
         }
+        Some(PublishedDataset(
+          spec = dataset.datasetName,
+          prefix = prefix,
+          name = (dataset.info \ "metadata" \ "name").text,
+          description = (dataset.info \ "metadata" \ "description").text,
+          dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
+          totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
+          metadataFormat = metadataFormat
+        ))
       }
     }
   }

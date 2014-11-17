@@ -77,9 +77,11 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
         val fileOption = harvestRepo.acceptZipFile(tempFile, acceptZipReporter)
         if (fileOption.isDefined) {
           // new harvest so there's work to do
-          val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo-${System.currentTimeMillis()}.xml")
+          val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo.xml")
           val generateSourceReporter = ProgressReporter(GENERATING, db)
-          val newRecordCount = harvestRepo.generateSourceFile(incomingFile, db.setNamespaceMap, generateSourceReporter)
+          val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
+          // todo: generating source is a big operation if there's a mapper, so see if it can be delayed (it's only for analysis)
+          val newRecordCount = harvestRepo.generateSourceFile(incomingFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
           datasetRepo.recordDbOpt.foreach { recordDb =>
             val existingRecordCount = recordDb.getRecordCount
             log.info(s"Collected source records from $existingRecordCount to $newRecordCount")

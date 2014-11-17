@@ -25,6 +25,7 @@ import play.api.Logger
 import record.CategoryParser.CategoryCount
 import record.PocketParser._
 import record.{CategoryParser, PocketParser}
+import services.SipFile.SipMapper
 import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable
@@ -198,17 +199,20 @@ class HarvestRepo(home: File, harvestType: HarvestType) {
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSourceFile(sourceFile: File, setNamespaceMap: Map[String, String] => Unit, progressReporter: ProgressReporter): Int = {
+  def generateSourceFile(sourceFile: File, sipMapperOpt: Option[SipMapper], setNamespaceMap: Map[String, String] => Unit, progressReporter: ProgressReporter): Int = {
     Logger.info(s"Generating source from $home to $sourceFile using $harvestType")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
     out.write("<?xml version='1.0' encoding='UTF-8'?>\n")
     out.write( s"""<$POCKET_LIST>\n""")
-    def pocketWriter(pocket: Pocket) = {
-      recordCount += 1
-      out.write(pocket.text)
-      if (recordCount % 1000 == 0) {
-        Logger.info(s"Generating record $recordCount")
+    def pocketWriter(rawPocket: Pocket): Unit = {
+      val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
+      pocketOpt.map { pocket =>
+        out.write(pocket.text)
+        recordCount += 1
+        if (recordCount % 1000 == 0) {
+          Logger.info(s"Generating record $recordCount")
+        }
       }
     }
     val namespaceMap = parsePockets(pocketWriter, progressReporter)

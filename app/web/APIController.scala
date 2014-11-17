@@ -20,7 +20,8 @@ import java.io.FileInputStream
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
-import dataset.{DatasetDb, DatasetOrigin}
+import dataset.DatasetOrigin._
+import dataset.{DatasetDb, DatasetOrigin, DatasetState}
 import harvest.Harvesting.HarvestType.PMH
 import org.OrgRepo.repo
 import org.apache.commons.io.IOUtils
@@ -28,6 +29,7 @@ import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import record.EnrichmentParser
+import services.SipRepo._
 import services.Temporal.timeToLocalString
 import services._
 import web.Application.{OkFile, OkXml}
@@ -44,7 +46,6 @@ object APIController extends Controller {
     //      Ok(JsArray(datasets))
     Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
   }
-
 
   def pathsJSON(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val treeFile = repo.datasetRepo(datasetName).index
@@ -160,26 +161,33 @@ object APIController extends Controller {
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       val sipZipFile = datasetRepo.sipRepo.createSipZipFile(zipFileName)
       request.body.moveTo(sipZipFile, replace = true)
-      datasetRepo.sipRepo.latestSipFile.map { sipFile =>
-        (sipFile.harvestUrl, sipFile.harvestSpec, sipFile.harvestPrefix) match {
-          case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
-            datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP_HARVEST, harvestPrefix)
-            datasetRepo.datasetDb.setHarvestInfo(PMH, harvestUrl, harvestSpec, harvestPrefix)
-            datasetRepo.datasetDb.setRecordDelimiter(PMH.recordRoot, PMH.uniqueId, sipFile.recordCount.map(_.toInt).getOrElse(0))
-            // todo: maybe start harvest
-          case _ =>
-            // todo: taking a risk here with .get
-            datasetRepo.datasetDb.setOrigin(DatasetOrigin.SIP_SOURCE, sipFile.schemaVersionOpt.get)
-            (sipFile.recordRootPath, sipFile.uniqueElementPath, sipFile.recordCount) match {
-              case (Some(recordRootPath), Some(uniqueElementPath), Some(recordCount)) =>
-                datasetRepo.datasetDb.setRecordDelimiter(recordRootPath, uniqueElementPath, recordCount.toInt)
-              case _ =>
-            }
-            // todo: consume the source and parse to record database(s)
-            // todo: mark as sourced
+      // new zip is now in the sipRepo
+      val originOpt: Option[DatasetOrigin] = datasetRepo.sipRepo.latestSipFile.flatMap { sipFile =>
+        sipFile.sipMappingOpt.map { sipMapping =>
+          (sipFile.harvestUrl, sipFile.harvestSpec, sipFile.harvestPrefix) match {
+            case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
+              datasetRepo.datasetDb.setOrigin(SIP_HARVEST, sipMapping.prefix)
+              datasetRepo.datasetDb.setHarvestInfo(PMH, harvestUrl, harvestSpec, harvestPrefix)
+              datasetRepo.datasetDb.setRecordDelimiter(PMH.recordRoot, PMH.uniqueId, sipFile.recordCount.map(_.toInt).getOrElse(0))
+              Some(SIP_HARVEST)
+            case _ =>
+              datasetRepo.datasetDb.setOrigin(SIP_SOURCE, sipMapping.prefix)
+              val recordCount = sipFile.recordCount.map(_.toInt).getOrElse(0)
+              datasetRepo.datasetDb.setRecordDelimiter(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, recordCount)
+              sipFile.copySourceTo(datasetRepo.createIncomingFile("source-from-sip.xml.gz"))
+              datasetRepo.datasetDb.setStatus(DatasetState.SOURCED)
+              Some(SIP_SOURCE)
+          }
+        } getOrElse {
+          None
         }
       }
-      Ok
+      if (originOpt.isDefined) {
+        Ok
+      }
+      else {
+        NotFound(s"Unable to determine origin for $datasetName")
+      }
     } getOrElse {
       NotFound(s"No dataset named $datasetName")
     }

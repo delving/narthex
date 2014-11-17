@@ -83,6 +83,12 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
 
+  def singleHarvestZip: Option[File] = {
+    val allZip = harvestDir.listFiles.filter(_.getName.endsWith("zip"))
+    if (allZip.size > 1) throw new RuntimeException(s"Multiple zip files where one was expected: $allZip")
+    allZip.headOption
+  }
+
   def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.infoOpt map { info =>
     val state = DatasetState.datasetStateFromInfo(info)
     if (state == EMPTY) {
@@ -96,7 +102,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
       }
       datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
       Logger.info(s"First Harvest $datasetName")
-      OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None, justDate = false))
+      OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None, justDate = true))
     }
     else {
       Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
@@ -150,7 +156,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
       }
       // for a sip-harvest we have a single zip file in the harvest dir
       val fileOpt: Option[File] = originFromInfo(info) match {
-        case Some(HARVEST) => harvestDir.listFiles.find(_.getName.endsWith("zip"))
+        case Some(SIP_HARVEST) => singleHarvestZip
+        case Some(HARVEST) => singleHarvestZip
         case _ => getLatestIncomingFile
       }
       fileOpt.map { file =>

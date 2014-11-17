@@ -16,7 +16,6 @@
 
 package dataset
 
-import dataset.DatasetOrigin.originFromInfo
 import dataset.ProgressState._
 import dataset.ProgressType._
 import harvest.Harvesting.{HarvestCron, HarvestType}
@@ -39,7 +38,7 @@ object DatasetDb {
   }
 }
 
-case class DatasetOrigin(name: String, prefix: NodeSeq => String) {
+case class DatasetOrigin(name: String) {
   override def toString = name
 
   def matches(otherName: String) = name == otherName
@@ -47,27 +46,21 @@ case class DatasetOrigin(name: String, prefix: NodeSeq => String) {
 
 object DatasetOrigin {
 
-  val DROP = DatasetOrigin("origin-drop", { info =>
-    (info \ "origin" \ "prefix").text
-  })
+  val DROP = DatasetOrigin("origin-drop")
 
-  val HARVEST = DatasetOrigin("origin-harvest", { info =>
-    (info \ "harvest" \ "prefix").text
-  })
+  val HARVEST = DatasetOrigin("origin-harvest")
 
-  val SIP_SOURCE = DatasetOrigin("origin-sip-source", { info =>
-    (info \ "sipFacts" \ "schemaVersions").text.split("_").head
-  })
+  val SIP_SOURCE = DatasetOrigin("origin-sip-source")
 
-  val SIP_HARVEST = DatasetOrigin("origin-sip-harvest", { info =>
-    (info \ "sipFacts" \ "schemaVersions").text.split("_").head
-  })
+  val SIP_HARVEST = DatasetOrigin("origin-sip-harvest")
 
   val ALL_ORIGINS = List(DROP, HARVEST, SIP_SOURCE, SIP_HARVEST)
 
   private def originFromString(string: String): Option[DatasetOrigin] = ALL_ORIGINS.find(s => s.matches(string))
 
   def originFromInfo(info: NodeSeq) = originFromString((info \ "origin" \ "type").text)
+
+  def prefixFromInfo(info: NodeSeq) = (info \ "origin" \ "prefix").text
 }
 
 case class ProgressType(name: String) {
@@ -168,9 +161,7 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     Option(answer).filter(_.trim.nonEmpty).map(XML.loadString)
   }
 
-  def prefixOpt: Option[String] = infoOpt.flatMap { info =>
-    originFromInfo(info).map(origin => origin.prefix(info))
-  }
+  def prefixOpt: Option[String] = infoOpt.map(DatasetOrigin.prefixFromInfo)
 
   def removeDataset() = db { session =>
     val update = s"delete node $datasetElement"

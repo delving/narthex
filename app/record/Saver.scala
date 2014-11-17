@@ -37,7 +37,7 @@ object Saver {
 
   case class SaveRecords(modifiedAfter: Option[DateTime], file: File,
                          recordRoot: String, uniqueId: String, recordCount: Long, deepRecordContainer: Option[String],
-                         sipMapper: Option[SipMapper])
+                         sipMapperOpt: Option[SipMapper])
 
   case class SaveComplete(errorOption: Option[String] = None)
 
@@ -59,7 +59,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
     case InterruptWork() =>
       progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
-    case SaveRecords(modifiedAfter: Option[DateTime], file, recordRoot, uniqueId, recordCount, deepRecordContainer, sipMapper) =>
+    case SaveRecords(modifiedAfter: Option[DateTime], file, recordRoot, uniqueId, recordCount, deepRecordContainer, sipMapperOpt) =>
       log.info(s"Saving $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath})")
       val recordDb = datasetRepo.recordDbOpt.getOrElse(throw new RuntimeException(s"Expected record db for $datasetRepo"))
 
@@ -73,21 +73,23 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
           progress = Some(progressReporter)
           recordDb.withRecordDb { session =>
             def receiveRecord(rawPocket: Pocket): Unit = {
-              val pocket = sipMapper.map(_.map(rawPocket)).getOrElse(rawPocket)
-              log.info(s"Updating ${pocket.id}")
-              recordDb.findRecord(pocket.id, session).map { foundRecord =>
-                log.info(s"Record found $foundRecord, deleting it")
-                if (pocket.hash == foundRecord.hash) {
-                  log.info(s"The new record has the same hash, but ignoring that for now")
+              val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
+              pocketOpt.map { pocket =>
+                log.info(s"Updating ${pocket.id}")
+                recordDb.findRecord(pocket.id, session).map { foundRecord =>
+                  log.info(s"Record found $foundRecord, deleting it")
+                  if (pocket.hash == foundRecord.hash) {
+                    log.info(s"The new record has the same hash, but ignoring that for now")
+                  }
+                  else {
+                    log.info(s"The new record has a fresh hash")
+                  }
+                  session.execute(new Delete(foundRecord.path))
                 }
-                else {
-                  log.info(s"The new record has a fresh hash")
-                }
-                session.execute(new Delete(foundRecord.path))
+                val path = datasetRepo.createPocketPath(pocket)
+                log.info(s"Adding $path")
+                session.add(path, pocket.textBytes)
               }
-              val path = datasetRepo.createPocketPath(pocket)
-              log.info(s"Adding $path")
-              session.add(path, pocket.textBytes)
             }
             try {
               parser.parse(source, Set.empty[String], receiveRecord, progressReporter)
@@ -114,13 +116,15 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
             progressReporter.setReadProgress(readProgress)
             progress = Some(progressReporter)
             def receiveRecord(rawPocket: Pocket): Unit = {
-              val pocket = sipMapper.map(_.map(rawPocket)).getOrElse(rawPocket)
-              session.add(datasetRepo.createPocketPath(pocket), pocket.textBytes)
-              tick += 1
-              if (tick % 10000 == 0) {
-                val now = System.currentTimeMillis()
-                Logger.info(s"$datasetRepo $tick: ${now - time}ms")
-                time = now
+              val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
+              pocketOpt.map { pocket =>
+                session.add(datasetRepo.createPocketPath(pocket), pocket.textBytes)
+                tick += 1
+                if (tick % 10000 == 0) {
+                  val now = System.currentTimeMillis()
+                  Logger.info(s"$datasetRepo $tick: ${now - time}ms")
+                  time = now
+                }
               }
             }
             try {
