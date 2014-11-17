@@ -44,6 +44,7 @@ object APIController extends Controller {
         Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))
     }
     //      Ok(JsArray(datasets))
+    // todo: this produces a list within a list.  fix it and inform Sjoerd
     Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
   }
 

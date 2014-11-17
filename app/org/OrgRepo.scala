@@ -24,6 +24,7 @@ import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMe
 import mapping.{CategoriesRepo, SkosRepo}
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
+import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import record.EnrichmentParser._
@@ -85,15 +86,20 @@ class OrgRepo(userHome: String, val orgId: String) {
           case Some(ns) => RepoMetadataFormat(prefix, ns._2)
           case None => RepoMetadataFormat(prefix)
         }
-        Some(PublishedDataset(
-          spec = dataset.datasetName,
-          prefix = prefix,
-          name = (dataset.info \ "metadata" \ "name").text,
-          description = (dataset.info \ "metadata" \ "description").text,
-          dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
-          totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
-          metadataFormat = metadataFormat
-        ))
+        Logger.info(s"info: ${dataset.info}")
+        val recordsPresent = (dataset.info \ "records" \ "time").nonEmpty
+        if (!recordsPresent)
+          None
+        else
+          Some(PublishedDataset(
+            spec = dataset.datasetName,
+            prefix = prefix,
+            name = (dataset.info \ "metadata" \ "name").text,
+            description = (dataset.info \ "metadata" \ "description").text,
+            dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
+            totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
+            metadataFormat = metadataFormat
+          ))
       }
     }
   }
