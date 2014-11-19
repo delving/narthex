@@ -32,7 +32,7 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object PocketParser {
 
-  case class Pocket(id: String, hash: String, text: String) {
+  case class Pocket(id: String, hash: String, text: String, namespaces: Map[String, String]) {
     def textBytes = new ByteArrayInputStream(text.getBytes("UTF-8"))
   }
 
@@ -82,7 +82,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
   var recordCount = 0
   var namespaceMap: Map[String, String] = Map.empty
 
-  def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progressReporter: ProgressReporter): Boolean = {
+  def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progressReporter: ProgressReporter): Int = {
     val events = new NarthexEventReader(source)
     var depth = 0
     var recordText = new mutable.StringBuilder()
@@ -167,7 +167,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
               val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
               val mod = timeToString(new DateTime())
               val wrapped = s"""<$POCKET id="$id" mod="$mod" hash="$contentHash" $scope>\n$recordContent</$POCKET>\n"""
-              Some(Pocket(id, contentHash, wrapped))
+              Some(Pocket(id, contentHash, wrapped, namespaceMap))
             }
           } getOrElse {
             throw new RuntimeException("Missing id!")
@@ -209,7 +209,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
         case x => Logger.error("EVENT? " + x)
       }
     }
-    progressReporter.keepWorking
+    recordCount
   }
 
   def pathString = path.reverse.map(_._1).mkString("/", "/", "")

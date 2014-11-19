@@ -100,13 +100,12 @@ define(["angular"], function (angular) {
 
         categoriesService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
-            if (datasetInfo.origin.type == 'origin-harvest') {// || datasetInfo.origin.type == 'origin-sip-harvest') {
-                $scope.recordContainer = '/pockets/pocket';
-            }
-            else {
+            if (datasetInfo.origin.type == 'origin-drop') {
                 var recordRoot = datasetInfo.delimit.recordRoot;
                 var lastSlash = recordRoot.lastIndexOf('/');
                 $scope.recordContainer = recordRoot.substring(0, lastSlash);
+            } else {
+                $scope.recordContainer = '/pockets/pocket';
             }
             var sourceUriPath = $scope.path.substring($scope.recordContainer.length);
 

@@ -137,10 +137,10 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
               }
             }
             try {
-              if (parser.parse(source, Set.empty, receiveRecord, progressReporter)) {
+              parser.parse(source, Set.empty, receiveRecord, progressReporter)
+              if (progress.isDefined) {
                 log.info(s"Saved ${datasetRepo.analyzedDir.getName}, optimizing..")
                 recordDb.withRecordDb(_.execute(new Optimize()))
-                datasetRepo.datasetDb.setNamespaceMap(parser.namespaceMap)
                 context.parent ! SaveComplete()
               }
               else {
@@ -192,9 +192,11 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
             val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo.xml")
             val generateSourceReporter = ProgressReporter(GENERATING, db)
             progress = Some(generateSourceReporter)
-            val newRecordCount = sipFile.generateSourceFile(incomingFile, generateSourceReporter)
+            val (recordCount, namespaceMap) = sipFile.generateSourceFile(incomingFile, generateSourceReporter)
+            log.info(s"Generated source, namespaces=$namespaceMap")
+            datasetRepo.datasetDb.setNamespaceMap(namespaceMap)
             datasetRepo.datasetDb.endProgress(None)
-            context.parent ! GenerationComplete(incomingFile, newRecordCount)
+            context.parent ! GenerationComplete(incomingFile, recordCount)
           }
           catch {
             case e:Exception => datasetRepo.datasetDb.endProgress(Some(e.toString))

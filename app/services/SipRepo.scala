@@ -86,7 +86,9 @@ class SipRepo(home: File) {
 
 object SipFile {
 
-  case class SipMapping(prefix: String, version: String, recDefTree: RecDefTree, validationXSD: String, recMapping: RecMapping)
+  case class SipMapping(prefix: String, version: String, recDefTree: RecDefTree, validationXSD: String, recMapping: RecMapping) {
+    def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns =>ns.prefix -> ns.uri).toMap
+  }
 
   trait SipMapper {
     val prefix: String
@@ -105,16 +107,17 @@ object SipFile {
   val RDF_PREFIX: String = "rdf"
   val RDF_URI: String = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
-  val NAMESPACES = Map(
-    "geo" -> "http://www.w3.org/2003/01/geo/wgs84_pos#",
-    "skos" -> "http://www.w3.org/2004/02/skos/core#",
-    "rdfs" -> "http://www.w3.org/2000/01/rdf-schema#",
-    "cc" -> "http://creativecommons.org/ns#",
-    "owl" -> "http://www.w3.org/2002/07/owl#",
-    "foaf" -> "http://xmlns.com/foaf/0.1/",
-    "dbpedia-owl" -> "http://dbpedia.org/ontology/",
-    "dbprop" -> "http://dbpedia.org/property/"
-  )
+//  val NAMESPACES = Map(
+//    "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+//    "geo" -> "http://www.w3.org/2003/01/geo/wgs84_pos#",
+//    "skos" -> "http://www.w3.org/2004/02/skos/core#",
+//    "rdfs" -> "http://www.w3.org/2000/01/rdf-schema#",
+//    "cc" -> "http://creativecommons.org/ns#",
+//    "owl" -> "http://www.w3.org/2002/07/owl#",
+//    "foaf" -> "http://xmlns.com/foaf/0.1/",
+//    "dbpedia-owl" -> "http://dbpedia.org/ontology/",
+//    "dbprop" -> "http://dbpedia.org/property/"
+//  )
 
 }
 
@@ -233,21 +236,21 @@ class SipFile(val file: SipZipFile) {
         val root = result.root().asInstanceOf[Element]
         val doc = root.getOwnerDocument
         root.removeAttribute("xsi:schemaLocation")
-        val rdf = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-        rdf.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ID_ATTRIBUTE", pocket.id)
-        val cn = root.getChildNodes
-        val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
-        kids.foreach(rdf.appendChild)
         val pocketElement = doc.createElement("pocket")
         pocketElement.setAttribute("id", pocket.id)
         pocketElement.setAttribute("hash", pocket.hash)
         pocketElement.setAttribute("mod", Temporal.timeToString(now))
-        NAMESPACES.foreach { entry => val (prefix, uri) = entry
-          pocketElement.setAttribute(s"xmlns:$prefix", uri)
-        }
+        pocketElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ID_ATTRIBUTE", pocket.id)
+        val cn = root.getChildNodes
+        val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
+        val rdf = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
+        kids.foreach(rdf.appendChild)
         pocketElement.appendChild(rdf)
         val xml = serializer.toXml(pocketElement, true)
-        Some(Pocket(pocket.id, pocket.hash, xml))
+//
+//        Logger.info(s"mapped record: $xml")
+//
+        Some(Pocket(pocket.id, pocket.hash, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
       } catch {
         case discard: DiscardRecordException =>
           Logger.info("Discarded record " + pocket.id, discard)
@@ -258,19 +261,21 @@ class SipFile(val file: SipZipFile) {
 
   def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
 
-  def generateSourceFile(sourceFile: File, progressReporter: ProgressReporter): Int = {
+  def generateSourceFile(sourceFile: File, progressReporter: ProgressReporter): (Int, Map[String, String]) = {
     Logger.info(s"Generating source from $file to $sourceFile")
     copySourceToTempFile.map { sourceXmlGz =>
       val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
       val parser = new PocketParser(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, Some(SIP_SOURCE_RECORD_ROOT))
       val sipMapperOpt = createSipMapper
       var recordCount = 0
+      var namespaces = Map.empty[String, String]
       def pocketWriter(rawPocket: Pocket): Unit = {
         val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
         pocketOpt.map { pocket =>
           // todo: fix this at an earlier stage
           val text = pocket.text.replace("<?xml version='1.0' encoding='UTF-8'?>\n", "")
           out.write(text)
+          namespaces ++= pocket.namespaces
           recordCount += 1
           if (recordCount % 1000 == 0) {
             Logger.info(s"Generating record $recordCount")
@@ -286,7 +291,7 @@ class SipFile(val file: SipZipFile) {
       out.close()
       source.close()
       Logger.info(s"Finished generating source from $file)")
-      recordCount
-    }.getOrElse(0)
+      (recordCount, namespaces)
+    } getOrElse(throw new RuntimeException(s"No source to read to generate $sourceFile"))
   }
 }
