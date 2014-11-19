@@ -78,3 +78,5 @@ publishArtifact in (Compile, packageSrc) := false
 publishTo := Some("Delving" at "http://artifactory.delving.org/artifactory/delving")
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+
+javaOptions += "-Djava.awt.headless=true"

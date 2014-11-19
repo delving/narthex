@@ -50,6 +50,8 @@ import scala.io.Source
 class HarvestRepo(home: File, harvestType: HarvestType) {
   val MAX_FILES = 100
 
+  // todo: a harvest repo should know its type!
+
   private def numberString(number: Int): String = "%05d".format(number)
 
   private def newSubdirectory(dirs: Seq[File]): File = {

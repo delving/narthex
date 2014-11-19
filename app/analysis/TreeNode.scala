@@ -67,21 +67,14 @@ object TreeNode {
           case EvComment(text) =>
             stupidParser(text, string => node.value(translateEntity(string)))
 
+          case EvProcInstr(target, text) =>
+            // do nothing
+
           case x =>
             println("EVENT? " + x) // todo: record these in an error file for later
         }
       }
     }
-    //      catch {
-    //        case e:Exception =>
-    //          if (progressReporter.keepReading) {
-    //            Logger.info(s"keep reading so.. $e")
-    //            throw e
-    //          }
-    //          else {
-    //            Logger.info(s"Eating exception $e")
-    //          }
-    //      }
     finally {
       Logger.info(s"Stopping events $datasetRepo")
       events.stop()

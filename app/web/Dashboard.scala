@@ -308,7 +308,7 @@ object Dashboard extends Controller with Security {
     repo.categoriesRepo.categoryListOption.map { list =>
       Ok(Json.toJson(list))
     } getOrElse {
-      NotFound(Json.obj("problem" -> "No category file"))
+      Ok(Json.obj("message" -> "No category file"))
     }
   }
 

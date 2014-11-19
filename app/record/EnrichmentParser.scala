@@ -164,6 +164,8 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
       case EvComment(text) =>
         stupidParser(text, entity => pushText(s"&$entity;"))
 
+      case EvProcInstr(target, text) =>
+
       case x =>
         Logger.warn("EVENT? " + x) // todo: record these in an error file for later
     }

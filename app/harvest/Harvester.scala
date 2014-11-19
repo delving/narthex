@@ -75,12 +75,12 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
       val completion = future {
         val acceptZipReporter = ProgressReporter(COLLECTING, db)
         val fileOption = harvestRepo.acceptZipFile(tempFile, acceptZipReporter)
+        // todo: this can be initiated by the DatasetActor upon HarvestComplete, delegating to Saver.GenerateSourceFromHarvest()
         if (fileOption.isDefined) {
           // new harvest so there's work to do
           val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo.xml")
           val generateSourceReporter = ProgressReporter(GENERATING, db)
           val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
-          // todo: generating source is a big operation if there's a mapper, so see if it can be delayed (it's only for analysis)
           val newRecordCount = harvestRepo.generateSourceFile(incomingFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
           datasetRepo.recordDbOpt.foreach { recordDb =>
             val existingRecordCount = recordDb.getRecordCount

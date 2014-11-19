@@ -54,14 +54,13 @@ define(["angular"], function (angular) {
         termsService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
             var recordContainer;
-            if (datasetInfo.origin.type == 'origin-harvest'){ // || datasetInfo.origin.type == 'origin-sip-harvest') {
-                recordContainer = "/pockets/pocket";
-            }
-            else {
+            if (datasetInfo.origin.type == 'origin-drop'){
                 var recordRoot = datasetInfo.delimit.recordRoot;
                 recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
             }
-            // todo: this works for harvested but not for dropped
+            else {
+                recordContainer = "/pockets/pocket";
+            }
             $scope.sourceUriPath = $scope.path.substring(recordContainer.length);
         });
 

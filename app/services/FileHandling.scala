@@ -63,13 +63,6 @@ object FileHandling {
     override def getPercentRead: Int = ((100 * counter.getByteCount) / fileSize).toInt
   }
 
-  def sourceFromZipFile(file: File, totalSize: Long): Source = {
-    if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Not a zip: ${file.getName}")
-    val zc = new ZipConcatXML(new ZipFile(file))
-//    (zc, zc.readProgress)
-    zc
-  }
-
   def sourceFromFile(file: File): (Source, ReadProgress) = {
     val name = file.getName
     if (name.endsWith(".zip")) {

@@ -331,7 +331,9 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
         case EvEntityRef(entity) => addFieldText(s"&$entity;")
         case EvElemEnd(pre, label) => pop(tag(pre, label))
         case EvComment(text) => stupidParser(text, entity => addFieldText(s"&$entity;"))
-        case x => Logger.error("EVENT? " + x)
+        case EvProcInstr(target, text) =>
+        case x =>
+          Logger.error("EVENT? " + x)
       }
     }
     progressReporter.keepWorking

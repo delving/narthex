@@ -36,24 +36,20 @@ define(["angular"], function () {
         $scope.recordRootNode = null;
 
         datasetService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
-
             $scope.datasetInfo = datasetInfo;
-
-            if (datasetInfo.origin.type == 'origin-harvest'|| datasetInfo.origin.type == 'origin-sip-harvest') {
-                // use a different record root and unique id
-                $scope.recordContainer = "/pockets/pocket";
-                $scope.recordRoot = $scope.recordContainer + "/?"; // set later in setDelim
-                $scope.uniqueId = "/pockets/pocket/@id";
-                $scope.allowUniqueIdSet = false;
-            }
-            else if (datasetInfo.delimit && datasetInfo.delimit.recordRoot) {
-                $scope.recordRoot = datasetInfo.delimit.recordRoot;
-                $scope.uniqueId = datasetInfo.delimit.uniqueId;
-                $scope.recordContainer = $scope.recordRoot.substring(0, $scope.recordRoot.lastIndexOf("/"));
-                $scope.allowUniqueIdSet = datasetInfo.origin.type == 'origin-drop'; // only for changing unique id
+            if (datasetInfo.origin.type == 'origin-drop') {
+                $scope.allowUniqueIdSet = true;
+                if (datasetInfo.delimit && datasetInfo.delimit.recordRoot) {
+                    $scope.recordRoot = datasetInfo.delimit.recordRoot;
+                    $scope.uniqueId = datasetInfo.delimit.uniqueId;
+                    $scope.recordContainer = $scope.recordRoot.substring(0, $scope.recordRoot.lastIndexOf("/"));
+                }
             }
             else {
-                $scope.allowUniqueIdSet = true
+                $scope.allowUniqueIdSet = false;
+                $scope.recordContainer = "/pockets/pocket";
+                $scope.uniqueId = "/pockets/pocket/@id";
+                $scope.recordRoot = $scope.recordContainer + "/?"; // discovered later in setDelim
             }
 
             datasetService.index($scope.datasetName).then(function (tree) {
@@ -71,6 +67,7 @@ define(["angular"], function () {
 
                 function setDelim(node) {
                     var nodePathContainer = node.path.substring(0, node.path.lastIndexOf("/"));
+                    // the only element under pocket will be the record root
                     if (nodePathContainer == $scope.recordContainer && node.tag.indexOf('@') < 0) {
                         $scope.recordRootNode = node;
                         $scope.recordRoot = node.path;

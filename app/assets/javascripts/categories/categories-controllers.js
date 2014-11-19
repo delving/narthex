@@ -112,6 +112,10 @@ define(["angular"], function (angular) {
 
             categoriesService.getCategoryList().then(function (categoryList) {
                 $scope.categories = categoryList.categories;
+                if (!$scope.categories) {
+                    alert("No categories!");
+                    return;
+                }
                 columnDefinitionsFromCategories();
                 categoriesService.histogram($scope.datasetName, $scope.path, $scope.histogramSize).then(function (histogramData) {
                     $scope.gridData = _.map(histogramData.histogram, function (entry) {

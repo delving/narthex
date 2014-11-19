@@ -23,12 +23,16 @@ import analysis.TreeNode.ReadTreeNode
 import dataset.DatasetOrigin._
 import dataset.{DatasetDb, DatasetOrigin, DatasetState}
 import harvest.Harvesting.HarvestType.PMH
+import org.OrgActor
+import org.OrgActor.DatasetMessage
 import org.OrgRepo.repo
 import org.apache.commons.io.IOUtils
+import play.api.Logger
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import record.EnrichmentParser
+import record.Saver.GenerateSourceFromSipFile
 import services.SipRepo._
 import services.Temporal.timeToLocalString
 import services._
@@ -159,6 +163,7 @@ object APIController extends Controller {
   }
 
   def uploadSipZip(apiKey: String, datasetName: String, zipFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
+    Logger.info(s"Upload sip zip $datasetName: $zipFileName")
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       val sipZipFile = datasetRepo.sipRepo.createSipZipFile(zipFileName)
       request.body.moveTo(sipZipFile, replace = true)
@@ -175,8 +180,10 @@ object APIController extends Controller {
               datasetRepo.datasetDb.setOrigin(SIP_SOURCE, sipMapping.prefix)
               val recordCount = sipFile.recordCount.map(_.toInt).getOrElse(0)
               datasetRepo.datasetDb.setRecordDelimiter(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, recordCount)
-              sipFile.copySourceTo(datasetRepo.createIncomingFile("source-from-sip.xml.gz"))
               datasetRepo.datasetDb.setStatus(DatasetState.SOURCED)
+              Logger.info(s"Triggering generate source from zip: $datasetName")
+              OrgActor.actor ! DatasetMessage(datasetName, GenerateSourceFromSipFile())
+              // todo: trigger saving?
               Some(SIP_SOURCE)
           }
         } getOrElse {

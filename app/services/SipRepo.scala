@@ -26,7 +26,8 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.w3c.dom.Element
 import play.api.Logger
-import record.PocketParser.Pocket
+import record.PocketParser
+import record.PocketParser._
 import services.SipRepo.SipZipFile
 
 import scala.collection.JavaConversions._
@@ -120,6 +121,7 @@ object SipFile {
 class SipFile(val file: SipZipFile) {
 
   import services.SipFile._
+  import services.SipRepo._
 
   lazy val zipFile = new ZipFile(file.zipFile)
 
@@ -204,12 +206,13 @@ class SipFile(val file: SipZipFile) {
     )
   }
 
-  def copySourceTo(file: File): Option[File] = {
+  def copySourceToTempFile: Option[File] = {
     entries.get("source.xml.gz").map { sourceXmlGz =>
+      val sourceFile = new File(file.zipFile.getParentFile, "source.xml.gz")
       val inputStream = zipFile.getInputStream(sourceXmlGz)
-      FileUtils.copyInputStreamToFile(inputStream, file)
+      FileUtils.copyInputStreamToFile(inputStream, sourceFile)
       inputStream.close()
-      file
+      sourceFile
     }
   }
 
@@ -255,4 +258,35 @@ class SipFile(val file: SipZipFile) {
 
   def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
 
+  def generateSourceFile(sourceFile: File, progressReporter: ProgressReporter): Int = {
+    Logger.info(s"Generating source from $file to $sourceFile")
+    copySourceToTempFile.map { sourceXmlGz =>
+      val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
+      val parser = new PocketParser(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, Some(SIP_SOURCE_RECORD_ROOT))
+      val sipMapperOpt = createSipMapper
+      var recordCount = 0
+      def pocketWriter(rawPocket: Pocket): Unit = {
+        val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
+        pocketOpt.map { pocket =>
+          // todo: fix this at an earlier stage
+          val text = pocket.text.replace("<?xml version='1.0' encoding='UTF-8'?>\n", "")
+          out.write(text)
+          recordCount += 1
+          if (recordCount % 1000 == 0) {
+            Logger.info(s"Generating record $recordCount")
+          }
+        }
+      }
+      val (source, readProgress) = FileHandling.sourceFromFile(sourceXmlGz)
+      progressReporter.setReadProgress(readProgress)
+      out.write("<?xml version='1.0' encoding='UTF-8'?>\n")
+      out.write( s"""<$POCKET_LIST>\n""")
+      parser.parse(source, Set.empty[String], pocketWriter, progressReporter)
+      out.write( s"""</$POCKET_LIST>\n""")
+      out.close()
+      source.close()
+      Logger.info(s"Finished generating source from $file)")
+      recordCount
+    }.getOrElse(0)
+  }
 }

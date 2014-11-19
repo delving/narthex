@@ -35,9 +35,10 @@ import org.joda.time.DateTime
 import play.api.Logger
 import record.PocketParser._
 import record.Saver
-import record.Saver.{SaveComplete, SaveRecords}
+import record.Saver._
 import services.FileHandling._
 import services.SipFile.SipMapper
+import services.SipRepo._
 
 import scala.language.postfixOps
 
@@ -105,6 +106,10 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
           datasetRepo.datasetDb.setTree(ready = false)
           val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
           self ! StartSaving(modifiedAfter, file, sipMapperOpt)
+
+          // todo: somehow send the saver a message to have it GenerateSourceFromHaervest
+
+
         } getOrElse {
           log.info(s"No file to save for $datasetRepo")
         }
@@ -139,7 +144,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
           val recordCountText = (delimit \ "recordCount").text
           val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
           val kickoffOption = if (HARVEST.matches((info \ "origin" \ "type").text)) {
-            Some(CountCategories(file, s"/$POCKET_LIST/$POCKET", s"/$POCKET_LIST/$POCKET/$POCKET_ID", Some(s"/$POCKET_LIST/$POCKET")))
+            Some(CountCategories(file, POCKET_RECORD_ROOT,POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT))
           }
           else {
             val recordRoot = (delimit \ "recordRoot").text
@@ -167,24 +172,31 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     // === saving
 
     case StartSaving(modifiedAfter, file, sipMapperOpt) =>
-      log.info(s"Start saving $datasetRepo modified=$modifiedAfter")
+      log.info(s"Start saving $datasetRepo from $file modified=$modifiedAfter")
       datasetRepo.datasetDb.infoOpt.foreach { info =>
         val delimit = info \ "delimit"
         val recordCountText = (delimit \ "recordCount").text
         val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
-        val kickoffOption: Option[SaveRecords] = originFromInfo(info).flatMap { origin =>
-          if (origin == HARVEST || origin == SIP_HARVEST) {
-            val ht = HarvestType.harvestTypeFromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
-            Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer, sipMapperOpt))
-          }
-          else {
+        val kickoffOption: Option[SaveRecords] = originFromInfo(info).flatMap {
+          case DROP =>
             val recordRoot = (delimit \ "recordRoot").text
             val uniqueId = (delimit \ "uniqueId").text
             if (recordRoot.trim.nonEmpty)
               Some(SaveRecords(modifiedAfter, file, recordRoot, uniqueId, recordCount, None, sipMapperOpt))
             else
               None
-          }
+          case HARVEST =>
+            val ht = HarvestType.harvestTypeFromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
+            Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer, sipMapperOpt))
+          case SIP_SOURCE =>
+            datasetRepo.sipRepo.latestSipFile.flatMap { sipFile =>
+              sipFile.copySourceToTempFile.map { sourceXmlGz =>
+                SaveRecords(modifiedAfter, sourceXmlGz, SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, recordCount, Some(SIP_SOURCE_RECORD_ROOT), sipMapperOpt)
+              }
+            }
+          case SIP_HARVEST =>
+            val ht = HarvestType.harvestTypeFromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
+            Some(SaveRecords(modifiedAfter, file, ht.recordRoot, ht.uniqueId, recordCount, ht.deepRecordContainer, sipMapperOpt))
         }
         kickoffOption.foreach { kickoff =>
           val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
@@ -196,6 +208,21 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       log.info(s"Save complete $datasetRepo, error=$errorOption")
       db.endProgress(errorOption)
       db.setRecords(errorOption.isEmpty)
+      sender ! PoisonPill
+
+    // === generating
+
+    case GenerateSourceFromSipFile() =>
+      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
+      saver ! GenerateSourceFromSipFile()
+
+    case GenerateSourceFromHarvest() =>
+      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
+      saver ! GenerateSourceFromHarvest()
+
+    case GenerationComplete(file, recordCount) =>
+      // todo: figure out if there are other things to trigger
+      log.info(s"Generated file $file with $recordCount records")
       sender ! PoisonPill
 
     // === stop stuff

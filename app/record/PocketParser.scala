@@ -39,6 +39,9 @@ object PocketParser {
   val POCKET_LIST = "pockets"
   val POCKET = "pocket"
   val POCKET_ID = "@id"
+  val POCKET_RECORD_ROOT = s"/$POCKET_LIST/$POCKET"
+  val POCKET_UNIQUE_ID = s"$POCKET_RECORD_ROOT/$POCKET_ID"
+  val POCKET_DEEP_RECORD_ROOT = Some(POCKET_RECORD_ROOT)
 
   val digest = MessageDigest.getInstance("MD5")
 
@@ -111,9 +114,10 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
         recordNamespace(binding.parent)
       }
       recordNamespace(scope)
-      def findUniqueId(attrs: MetaData) = attrs.foreach { attr =>
+      def findUniqueId(attrs: List[MetaData]) = attrs.foreach { attr =>
         path.push((s"@${attr.prefixedKey}", new StringBuilder()))
-        if (pathString == uniqueIdPath) uniqueId = Some(attr.value.toString())
+        val ps = pathString
+        if (ps == uniqueIdPath) uniqueId = Some(attr.value.toString())
         path.pop()
       }
       path.push((tag, new StringBuilder()))
@@ -122,14 +126,14 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
         flushStartElement()
         depth += 1
         startElement = Some(startElementString(tag, attrs))
-        findUniqueId(attrs)
+        findUniqueId(attrs.toList)
       }
       else if (string == recordRootPath) {
         if (deepRecordContainer.isEmpty) {
           depth = 1
           startElement = Some(startElementString(tag, attrs))
         }
-        findUniqueId(attrs)
+        findUniqueId(attrs.toList)
       }
       else deepRecordContainer.foreach { recordContainer =>
         if (pathContainer(string) == recordContainer) {
@@ -201,6 +205,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
         case EvEntityRef(entity) => addFieldText(s"&$entity;")
         case EvElemEnd(pre, label) => pop(tag(pre, label))
         case EvComment(text) => stupidParser(text, entity => addFieldText(s"&$entity;"))
+        case EvProcInstr(target, text) =>
         case x => Logger.error("EVENT? " + x)
       }
     }
