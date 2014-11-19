@@ -35,16 +35,10 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object OrgRepo {
+
   lazy val repo = new OrgRepo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
 
   def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
-
-  def acceptableFile(uploadedFileName: String, contentType: Option[String]) = {
-    // todo: be very careful about files matching a regex, so that they have spec__prefix form
-    // todo: something with content-type
-    println("content type " + contentType)
-    SUFFIXES.find(suffix => uploadedFileName.endsWith(suffix))
-  }
 
 }
 
@@ -59,13 +53,8 @@ class OrgRepo(userHome: String, val orgId: String) {
   orgRoot.mkdirs()
   datasetsDir.mkdir()
 
-  private def listFiles(directory: File): List[File] = {
-    if (!directory.exists()) return List.empty
-    directory.listFiles.filter(f => f.isFile && SUFFIXES.filter(end => f.getName.endsWith(end)).nonEmpty).toList
-  }
-
   def datasetRepo(datasetName: String): DatasetRepo = {
-    val dr = new DatasetRepo(this, stripSuffix(datasetName))
+    val dr = new DatasetRepo(this, datasetName)
     dr.mkdirs
     dr
   }

@@ -20,31 +20,22 @@ import java.io.FileInputStream
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
-import dataset.DatasetOrigin._
-import dataset.{DatasetDb, DatasetOrigin, DatasetState}
-import harvest.Harvesting.HarvestType.PMH
-import org.OrgActor
-import org.OrgActor.DatasetMessage
+import dataset.DatasetDb
 import org.OrgRepo.repo
 import org.apache.commons.io.IOUtils
-import play.api.Logger
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import record.EnrichmentParser
-import record.Saver.GenerateSourceFromSipFile
-import services.SipRepo._
-import services.Temporal.timeToLocalString
 import services._
 import web.Application.{OkFile, OkXml}
-import web.Dashboard._
 
 object APIController extends Controller {
 
   def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasets = repo.repoDb.listDatasets.map {
       dataset =>
-        val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+        val lists = Dashboard.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
         Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))
     }
     //      Ok(JsArray(datasets))
@@ -160,81 +151,6 @@ object APIController extends Controller {
       case None =>
         NotFound(s"No mappings for $datasetName")
     }
-  }
-
-  def uploadSipZip(apiKey: String, datasetName: String, zipFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
-    Logger.info(s"Upload sip zip $datasetName: $zipFileName")
-    repo.datasetRepoOption(datasetName).map { datasetRepo =>
-      val sipZipFile = datasetRepo.sipRepo.createSipZipFile(zipFileName)
-      request.body.moveTo(sipZipFile, replace = true)
-      // new zip is now in the sipRepo
-      val originOpt: Option[DatasetOrigin] = datasetRepo.sipRepo.latestSipFile.flatMap { sipFile =>
-        sipFile.sipMappingOpt.map { sipMapping =>
-          (sipFile.harvestUrl, sipFile.harvestSpec, sipFile.harvestPrefix) match {
-            case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
-              datasetRepo.datasetDb.setOrigin(SIP_HARVEST, sipMapping.prefix)
-              datasetRepo.datasetDb.setHarvestInfo(PMH, harvestUrl, harvestSpec, harvestPrefix)
-              datasetRepo.datasetDb.setRecordDelimiter(PMH.recordRoot, PMH.uniqueId, sipFile.recordCount.map(_.toInt).getOrElse(0))
-              Some(SIP_HARVEST)
-            case _ =>
-              datasetRepo.datasetDb.setOrigin(SIP_SOURCE, sipMapping.prefix)
-              val recordCount = sipFile.recordCount.map(_.toInt).getOrElse(0)
-              datasetRepo.datasetDb.setRecordDelimiter(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, recordCount)
-              datasetRepo.datasetDb.setStatus(DatasetState.SOURCED)
-              Logger.info(s"Triggering generate source from zip: $datasetName")
-              OrgActor.actor ! DatasetMessage(datasetName, GenerateSourceFromSipFile())
-              // todo: trigger saving?
-              Some(SIP_SOURCE)
-          }
-        } getOrElse {
-          None
-        }
-      }
-      if (originOpt.isDefined) {
-        Ok
-      }
-      else {
-        NotFound(s"Unable to determine origin for $datasetName")
-      }
-    } getOrElse {
-      NotFound(s"No dataset named $datasetName")
-    }
-  }
-
-  def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    def reply =
-        <sip-list>
-          {for (sipZip <- SipRepo.listSipZips)
-        yield {
-          <sip>
-            <file>{sipZip.toString}</file>
-            <facts>
-              <spec>{sipZip.spec.getOrElse("unknown spec")}</spec>
-              <name>{sipZip.name.getOrElse("unknown name")}</name>
-              <provider>{sipZip.provider.getOrElse("unknown provider")}</provider>
-              <dataProvider>{sipZip.dataProvider.getOrElse("unknown dataProvider")}</dataProvider>
-              <country>{sipZip.country.getOrElse("unknown country")}</country>
-              <orgId>{sipZip.orgId.getOrElse("unknown orgId")}</orgId>
-              <uploadedBy>{sipZip.file.uploadedBy}</uploadedBy>
-              <uploadedOn>{timeToLocalString(sipZip.file.uploadedOn)}</uploadedOn>
-              <schemaVersions>
-                { sipZip.schemaVersionOpt.map { sv =>
-                <schemaVersion>
-                  <prefix>{sv.split("_")(0)}</prefix>
-                  <version>{sv.split("_")(1)}</version>
-                </schemaVersion>}}
-              </schemaVersions>
-            </facts>
-          </sip>}}
-        </sip-list>
-    Ok(reply)
-  }
-
-  def downloadSipZip(apiKey: String, datasetName: String) = Action(parse.anyContent) { implicit request =>
-    val latestSipFile = repo.datasetRepoOption(datasetName).flatMap { datasetRepo =>
-      datasetRepo.sipRepo.latestSipFile
-    }
-    latestSipFile.map(sipFile => OkFile(sipFile.file.zipFile)).getOrElse(NotFound(s"No SIP Zip file available for dataset $datasetName"))
   }
 
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>

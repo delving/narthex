@@ -50,15 +50,4 @@ object StringHandling {
 
   def oaipmhPublishFromInfo(info: NodeSeq): Boolean = (info \ "publication" \ "oaipmh").text.trim == "true"
 
-  val SUFFIXES = List(".xml.gz", ".xml")
-
-  def getSuffix(uploadedFileName: String) = {
-    val suffix = SUFFIXES.filter(suf => uploadedFileName.endsWith(suf))
-    if (suffix.isEmpty) "" else suffix.head
-  }
-
-  def stripSuffix(uploadedFileName: String) = {
-    val suffix = getSuffix(uploadedFileName)
-    uploadedFileName.substring(0, uploadedFileName.length - suffix.length)
-  }
 }

@@ -16,16 +16,18 @@
 
 package web
 
-import dataset.DatasetOrigin.DROP
+import dataset.DatasetOrigin._
 import dataset.DatasetState.{EMPTY, SOURCED}
-import dataset.{DatasetDb, DatasetState}
+import dataset.{DatasetDb, DatasetOrigin, DatasetState}
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
+import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
 import mapping.SkosVocabulary
 import mapping.SkosVocabulary._
 import mapping.TermDb._
-import org.OrgRepo
+import org.OrgActor
+import org.OrgActor.DatasetMessage
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
 import play.api.Logger
@@ -33,10 +35,14 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
+import record.Saver.GenerateSourceFromSipFile
 import services.FileHandling.clearDir
+import services.SipRepo._
 import web.Application.OkFile
 
 object Dashboard extends Controller with Security {
+
+  val SOURCE_SUFFIXES = List(".xml.gz", ".xml")
 
   val DATASET_PROPERTY_LISTS = List(
     "origin",
@@ -100,18 +106,56 @@ object Dashboard extends Controller with Security {
   }
 
   def upload(datasetName: String, prefix: String) = Secure(parse.multipartFormData) { token => implicit request =>
-    request.body.file("file").map { file =>
-      Logger.info(s"upload ${file.filename} (${file.contentType}) to $datasetName")
-      OrgRepo.acceptableFile(file.filename, file.contentType).map { suffix =>
-        println(s"Acceptable ${file.filename}")
-        val datasetRepo = repo.datasetRepo(s"$datasetName$suffix")
-        datasetRepo.datasetDb.setOrigin(DROP, prefix)
-        datasetRepo.datasetDb.setStatus(SOURCED)
-        file.ref.moveTo(datasetRepo.createIncomingFile(file.filename), replace = true)
-        datasetRepo.startAnalysis()
-        Ok(datasetRepo.datasetName)
-      } getOrElse NotAcceptable(Json.obj("problem" -> "File must be .xml or .xml.gz"))
-    } getOrElse NotAcceptable(Json.obj("problem" -> "Missing file"))
+    repo.datasetRepoOption(datasetName).map { datasetRepo =>
+      request.body.file("file").map { file =>
+        val fileName = file.filename
+        Logger.info(s"Dropped file $fileName onto $datasetName")
+        val isSourceFile = SOURCE_SUFFIXES.exists(suffix => fileName.endsWith(suffix))
+        if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
+          datasetRepo.datasetDb.setOrigin(DROP, prefix)
+          datasetRepo.datasetDb.setStatus(SOURCED)
+          file.ref.moveTo(datasetRepo.createIncomingFile(fileName), replace = true)
+          datasetRepo.startAnalysis()
+          Ok(datasetRepo.datasetName)
+        }
+        else if (fileName.endsWith(".sip.zip")) {
+          val sipZipFile = datasetRepo.sipRepo.createSipZipFile(fileName)
+          file.ref.moveTo(sipZipFile, replace = true)
+          val originOpt: Option[DatasetOrigin] = datasetRepo.sipRepo.latestSipFile.flatMap { sipFile =>
+            sipFile.sipMappingOpt.map { sipMapping =>
+              (sipFile.harvestUrl, sipFile.harvestSpec, sipFile.harvestPrefix) match {
+                case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
+                  datasetRepo.datasetDb.setOrigin(SIP_HARVEST, sipMapping.prefix)
+                  datasetRepo.datasetDb.setHarvestInfo(PMH, harvestUrl, harvestSpec, harvestPrefix)
+                  datasetRepo.datasetDb.setRecordDelimiter(PMH.recordRoot, PMH.uniqueId, sipFile.recordCount.map(_.toInt).getOrElse(0))
+                  SIP_HARVEST
+                case _ =>
+                  datasetRepo.datasetDb.setOrigin(SIP_SOURCE, sipMapping.prefix)
+                  val recordCount = sipFile.recordCount.map(_.toInt).getOrElse(0)
+                  datasetRepo.datasetDb.setRecordDelimiter(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, recordCount)
+                  datasetRepo.datasetDb.setStatus(DatasetState.SOURCED)
+                  Logger.info(s"Triggering generate source from zip: $datasetName")
+                  OrgActor.actor ! DatasetMessage(datasetName, GenerateSourceFromSipFile())
+                  // todo: trigger saving?
+                  SIP_SOURCE
+              }
+            }
+          }
+          originOpt.map { origin =>
+            Ok(origin.toString)
+          } getOrElse {
+            NotAcceptable(s"Unable to determine origin for $datasetName")
+          }
+        }
+        else {
+          NotAcceptable(Json.obj("problem" -> s"Unrecognized file suffix: $fileName"))
+        }
+      } getOrElse {
+        NotAcceptable(Json.obj("problem" -> s"Cannot find file in the uploaded data $datasetName"))
+      }
+    } getOrElse {
+      NotAcceptable(Json.obj("problem" -> s"Cannot find dataset $datasetName"))
+    }
   }
 
   def harvest(datasetName: String) = Secure(parse.json) { token => implicit request =>
@@ -353,8 +397,8 @@ object Dashboard extends Controller with Security {
       NotFound(Json.obj("problem" -> s"Refusing to delete the last SIP file $datasetName"))
     }
     else {
-      FileUtils.deleteQuietly(sipFiles.head.file.zipFile)
-      Ok(Json.obj("deleted" -> sipFiles.head.file.toString))
+      FileUtils.deleteQuietly(sipFiles.head.file)
+      Ok(Json.obj("deleted" -> sipFiles.head.file.getName))
     }
   }
 }

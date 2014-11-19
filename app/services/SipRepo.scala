@@ -28,7 +28,6 @@ import org.w3c.dom.Element
 import play.api.Logger
 import record.PocketParser
 import record.PocketParser._
-import services.SipRepo.SipZipFile
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -45,17 +44,6 @@ object SipRepo {
 
   val SIP_SOURCE_RECORD_ROOT = "/delving-sip-source/input"
   val SIP_SOURCE_UNIQUE_ID = "/delving-sip-source/input/@id"
-
-  val SipZipName = "sip_(.+)__(\\d+)_(\\d+)_(\\d+)_(\\d+)_(\\d+)__(.*).zip".r
-
-  case class SipZipFile(zipFile: File) {
-    val SipZipName(spec, year, month, day, hour, minute, uploadedByName) = zipFile.getName
-    val datasetName = spec
-    val uploadedOn = new DateTime(year.toInt, month.toInt, day.toInt, hour.toInt, minute.toInt)
-    val uploadedBy = uploadedByName
-
-    override def toString = zipFile.getName
-  }
 
   def listSipZips: Seq[SipFile] = {
     repo.repoDb.listDatasets.flatMap { dataset =>
@@ -98,7 +86,7 @@ object SipFile {
 
   val PrefixVersion = "(.*)_(.*)".r
 
-  def apply(zipFile: File) = new SipFile(SipZipFile(zipFile))
+  def apply(zipFile: File) = new SipFile(zipFile)
 
   val XMLNS = "http://www.w3.org/2000/xmlns/"
   val RDF_ROOT_TAG: String = "RDF"
@@ -121,12 +109,12 @@ object SipFile {
 
 }
 
-class SipFile(val file: SipZipFile) {
+class SipFile(val file: File) {
 
   import services.SipFile._
   import services.SipRepo._
 
-  lazy val zipFile = new ZipFile(file.zipFile)
+  lazy val zipFile = new ZipFile(file)
 
   lazy val entries = zipFile.entries().map(entry => entry.getName -> entry).toMap
 
@@ -211,7 +199,7 @@ class SipFile(val file: SipZipFile) {
 
   def copySourceToTempFile: Option[File] = {
     entries.get("source.xml.gz").map { sourceXmlGz =>
-      val sourceFile = new File(file.zipFile.getParentFile, "source.xml.gz")
+      val sourceFile = new File(file.getParentFile, "source.xml.gz")
       val inputStream = zipFile.getInputStream(sourceXmlGz)
       FileUtils.copyInputStreamToFile(inputStream, sourceFile)
       inputStream.close()
