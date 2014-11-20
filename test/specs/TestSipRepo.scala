@@ -18,7 +18,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     val home = new File(resource.getFile)
 
     val sipRepo = new SipRepo(new File(home, "sips"))
-    val harvestRepo = new HarvestRepo(new File(home, "harvest"), HarvestType.PMH)
+    val harvestRepo = HarvestRepo.createClean(new File(home, "harvest"), HarvestType.PMH)
 
     val sipFileOpt = sipRepo.latestSipFile
     sipFileOpt.isDefined should be(true)

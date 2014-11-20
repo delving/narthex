@@ -22,8 +22,6 @@ import akka.actor.{Actor, Props}
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
 import dataset.ProgressState._
-import harvest.HarvestRepo
-import harvest.Harvesting.HarvestType
 import org.basex.core.cmd.{Delete, Optimize}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -139,7 +137,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
             try {
               parser.parse(source, Set.empty, receiveRecord, progressReporter)
               if (progress.isDefined) {
-                log.info(s"Saved ${datasetRepo.analyzedDir.getName}, optimizing..")
+                log.info(s"Saved $datasetRepo, optimizing..")
                 recordDb.withRecordDb(_.execute(new Optimize()))
                 context.parent ! SaveComplete()
               }
@@ -163,24 +161,21 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
       log.info(s"Generate source from harvest $datasetRepo")
       future {
         db.infoOpt.foreach { info =>
-          HarvestType.harvestTypeFromInfo(info).map { harvestType =>
-            val harvestRepo = new HarvestRepo(datasetRepo.harvestDir, harvestType)
-            val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo.xml")
-            val generateSourceReporter = ProgressReporter(GENERATING, db)
-            progress = Some(generateSourceReporter)
-            val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
-            val newRecordCount = harvestRepo.generateSourceFile(incomingFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
-            datasetRepo.recordDbOpt.foreach { recordDb =>
-              val existingRecordCount = recordDb.getRecordCount
-              log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
-              // set record count
-              val delimit = info \ "delimit"
-              val recordRoot = (delimit \ "recordRoot").text
-              val uniqueId = (delimit \ "uniqueId").text
-              db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
-            }
-            context.parent ! GenerationComplete(incomingFile, newRecordCount)
+          val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo.xml")
+          val generateSourceReporter = ProgressReporter(GENERATING, db)
+          progress = Some(generateSourceReporter)
+          val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
+          val newRecordCount = datasetRepo.harvestRepo.generateSourceFile(incomingFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
+          datasetRepo.recordDbOpt.foreach { recordDb =>
+            val existingRecordCount = recordDb.getRecordCount
+            log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
+            // set record count
+            val delimit = info \ "delimit"
+            val recordRoot = (delimit \ "recordRoot").text
+            val uniqueId = (delimit \ "uniqueId").text
+            db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
           }
+          context.parent ! GenerationComplete(incomingFile, newRecordCount)
         }
       }
 
@@ -199,7 +194,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
             context.parent ! GenerationComplete(incomingFile, recordCount)
           }
           catch {
-            case e:Exception => datasetRepo.datasetDb.endProgress(Some(e.toString))
+            case e: Exception => datasetRepo.datasetDb.endProgress(Some(e.toString))
           }
         }
       }

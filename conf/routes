@@ -66,6 +66,11 @@ GET         /narthex/api/:apiKey/:datasetName/index/*path                 web.AP
 GET         /narthex/api/:apiKey/:datasetName/unique/*path                web.APIController.uniqueText(apiKey, datasetName, path)
 GET         /narthex/api/:apiKey/:datasetName/histogram/*path             web.APIController.histogramText(apiKey, datasetName, path)
 
+# todo: these should be in the dashboard interface so that sip creator login can be the same way as narthex
+GET         /narthex/sip-creator/:apiKey                                  web.APIController.listSipZips(apiKey)
+GET         /narthex/sip-creator/:apiKey/:datasetName                     web.APIController.downloadSipZip(apiKey, datasetName)
+POST        /narthex/sip-creator/:apiKey/:datasetName/:zipFileName        web.APIController.uploadSipZip(apiKey, datasetName, zipFileName)
+
 GET         /narthex/oai-pmh/:accessKey                                   harvest.OaiPmh.service(accessKey)
 GET         /narthex/oai-pmh/enriched/:accessKey                          harvest.OaiPmh.serviceEnriched(accessKey)
 

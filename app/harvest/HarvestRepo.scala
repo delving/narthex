@@ -18,6 +18,7 @@ package harvest
 import java.io._
 import java.nio.file.Files
 
+import harvest.HarvestRepo.{HARVEST_FACTS_NAME, MAX_FILES}
 import harvest.Harvesting.HarvestType
 import mapping.CategoryDb.CategoryMapping
 import org.apache.commons.io.FileUtils
@@ -25,6 +26,7 @@ import play.api.Logger
 import record.CategoryParser.CategoryCount
 import record.PocketParser._
 import record.{CategoryParser, PocketParser}
+import services.FileHandling.clearDir
 import services.SipFile.SipMapper
 import services.{FileHandling, ProgressReporter}
 
@@ -41,16 +43,51 @@ import scala.io.Source
  *
  * Inserting a new file adds new intersection files to previous files, and updates the .act file accordingly.
  *
- * @param home where do we work
- * @param harvestType the type of harvest
- *
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-class HarvestRepo(home: File, harvestType: HarvestType) {
-  val MAX_FILES = 100
+object HarvestRepo {
 
-  // todo: a harvest repo should know its type!
+  val MAX_FILES = 100
+  val HARVEST_FACTS_NAME = "harvest_facts.txt"
+
+  case class HarvestFacts(harvestTypeName: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
+
+  def harvestFactsFile(home: File) = new File(home, HARVEST_FACTS_NAME)
+
+  def harvestFacts(home: File): HarvestFacts = {
+    val file = harvestFactsFile(home)
+    val lines = Source.fromFile(file).getLines()
+    val map = lines.flatMap { line =>
+      val equals = line.indexOf("=")
+      if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
+    }.toMap
+    val harvestTypeName = map.getOrElse("harvestTypeName", throw new RuntimeException(s"Harvest type missing!"))
+    val recordRoot = map.getOrElse("recordRoot", throw new RuntimeException(s"Record root missing!"))
+    val uniqueId = map.getOrElse("uniqueId", throw new RuntimeException(s"Unique ID missing!"))
+    val deepRecordContainer = map.getOrElse("deepRecordContainer", throw new RuntimeException(s"Record root missing!"))
+    HarvestFacts(harvestTypeName, recordRoot, uniqueId, Option(deepRecordContainer).find(_.nonEmpty))
+  }
+
+  def createClean(home: File, harvestType: HarvestType): HarvestRepo = {
+    clearDir(home)
+    val file = harvestFactsFile(home)
+    val facts =
+      s"""
+         |harvestTypeName=${harvestType.name}
+         |recordRoot=${harvestType.recordRoot}
+         |uniqueId=${harvestType.uniqueId}
+         |deepRecordContainer=${harvestType.deepRecordContainer.getOrElse("")}
+       """.stripMargin
+    FileUtils.write(file, facts)
+    apply(home)
+  }
+
+  def apply(home: File): HarvestRepo = new HarvestRepo(home)
+
+}
+
+class HarvestRepo(home: File) {
 
   private def numberString(number: Int): String = "%05d".format(number)
 
@@ -64,7 +101,7 @@ class HarvestRepo(home: File, harvestType: HarvestType) {
   private def fileList: Seq[File] = {
     val all = home.listFiles()
     val (files, dirs) = all.partition(_.isFile)
-    dirs.flatMap(_.listFiles()) ++ files
+    dirs.flatMap(_.listFiles()) ++ files.filter(_.getName != HARVEST_FACTS_NAME)
   }
 
   private def moveFiles = {
@@ -120,7 +157,7 @@ class HarvestRepo(home: File, harvestType: HarvestType) {
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = fillFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
-    val parser = new PocketParser(harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer)
+    val parser = new PocketParser(facts.recordRoot, facts.uniqueId, facts.deepRecordContainer)
     def receiveRecord(record: Pocket): Unit = idSet.add(record.id)
     val (source, readProgress) = FileHandling.sourceFromFile(file)
     progressReporter.setReadProgress(readProgress)
@@ -159,6 +196,8 @@ class HarvestRepo(home: File, harvestType: HarvestType) {
 
   // public things:
 
+  lazy val facts = HarvestRepo.harvestFacts(home)
+
   def countFiles = fileList.size
 
   def acceptZipFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(progressReporter, { targetFile =>
@@ -168,7 +207,7 @@ class HarvestRepo(home: File, harvestType: HarvestType) {
   })
 
   def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progressReporter: ProgressReporter): List[CategoryCount] = {
-    val parser = new CategoryParser(pathPrefix, harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer, categoryMappings)
+    val parser = new CategoryParser(pathPrefix, facts.recordRoot, facts.uniqueId, facts.deepRecordContainer, categoryMappings)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
@@ -184,7 +223,7 @@ class HarvestRepo(home: File, harvestType: HarvestType) {
   }
 
   def parsePockets(output: Pocket => Unit, progressReporter: ProgressReporter): Map[String, String] = {
-    val parser = new PocketParser(harvestType.recordRoot, harvestType.uniqueId, harvestType.deepRecordContainer)
+    val parser = new PocketParser(facts.recordRoot, facts.uniqueId, facts.deepRecordContainer)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
@@ -202,7 +241,7 @@ class HarvestRepo(home: File, harvestType: HarvestType) {
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
   def generateSourceFile(sourceFile: File, sipMapperOpt: Option[SipMapper], setNamespaceMap: Map[String, String] => Unit, progressReporter: ProgressReporter): Int = {
-    Logger.info(s"Generating source from $home to $sourceFile using $harvestType")
+    Logger.info(s"Generating source from $home to $sourceFile using $facts")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
     out.write("<?xml version='1.0' encoding='UTF-8'?>\n")

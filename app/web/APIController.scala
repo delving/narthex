@@ -153,6 +153,18 @@ object APIController extends Controller {
     }
   }
 
+  def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    NotImplemented
+  }
+
+  def downloadSipZip(apiKey: String, datasetName: String) = Action(parse.anyContent) { implicit request =>
+    NotImplemented
+  }
+
+  def uploadSipZip(apiKey: String, datasetName: String, zipFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
+    NotImplemented
+  }
+
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>
     if (NarthexConfig.apiKeyFits(apiKey)) {
       block(request)

@@ -56,6 +56,8 @@ object SipRepo {
       }
     }
   }
+
+  def apply(home: File): SipRepo = new SipRepo(home)
 }
 
 class SipRepo(home: File) {

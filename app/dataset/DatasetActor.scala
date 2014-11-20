@@ -24,19 +24,17 @@ import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DatasetOrigin._
 import dataset.DatasetState.SOURCED
+import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType
 import harvest.Harvesting.HarvestType.{ADLIB, PMH}
-import harvest.{HarvestRepo, Harvester}
 import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
-import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
 import record.PocketParser._
 import record.Saver
 import record.Saver._
-import services.FileHandling._
 import services.SipFile.SipMapper
 import services.SipRepo._
 
@@ -77,23 +75,21 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
 
     case StartHarvest(modifiedAfter, justDate) =>
       log.info(s"Start harvest $datasetRepo modified=$modifiedAfter")
-      clearDir(datasetRepo.analyzedDir)
+      datasetRepo.clearAnalyzedDir()
       db.infoOpt.foreach { info =>
-        HarvestType.harvestTypeFromInfo(info).map { harvestType =>
-          val harvestRepo = new HarvestRepo(datasetRepo.harvestDir, harvestType)
-          val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo, harvestRepo)))
-          val harvest = info \ "harvest"
-          val url = (harvest \ "url").text
-          val database = (harvest \ "dataset").text
-          val prefix = (harvest \ "prefix").text
-          val kickoff = harvestType match {
-            case PMH =>
-              HarvestPMH(url, database, prefix, modifiedAfter, justDate)
-            case ADLIB =>
-              HarvestAdLib(url, database, modifiedAfter)
-          }
-          harvester ! kickoff
-        } getOrElse (throw new RuntimeException(s"Unknown harvest type!"))
+        val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo)))
+        val harvest = info \ "harvest"
+        val url = (harvest \ "url").text
+        val database = (harvest \ "dataset").text
+        val prefix = (harvest \ "prefix").text
+        val kickoff = datasetRepo.harvestRepo.facts.harvestTypeName match {
+          case PMH.name =>
+            HarvestPMH(url, database, prefix, modifiedAfter, justDate)
+          case ADLIB.name =>
+            HarvestAdLib(url, database, modifiedAfter)
+          case _ => throw new RuntimeException("Unrecognized harvestTypeName")
+        }
+        harvester ! kickoff
       }
 
     case HarvestComplete(modifiedAfter, fileOption, errorOption) =>
@@ -102,7 +98,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       if (errorOption.isEmpty) db.infoOpt.foreach { info =>
         fileOption.map { file =>
           if (modifiedAfter.isEmpty) db.setStatus(SOURCED) // first harvest
-          clearDir(datasetRepo.analyzedDir)
+          datasetRepo.clearAnalyzedDir()
           datasetRepo.datasetDb.setTree(ready = false)
           val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
           self ! StartSaving(modifiedAfter, file, sipMapperOpt)
@@ -131,7 +127,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
       log.info(s"Analysis complete $datasetRepo, error=$errorOption")
       db.endProgress(errorOption)
       db.setTree(errorOption.isEmpty)
-      if (errorOption.isDefined) FileUtils.deleteQuietly(datasetRepo.analyzedDir)
+      if (errorOption.isDefined) datasetRepo.clearAnalyzedDir()
       sender ! PoisonPill
 
     // == categorization
@@ -144,7 +140,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
           val recordCountText = (delimit \ "recordCount").text
           val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
           val kickoffOption = if (HARVEST.matches((info \ "origin" \ "type").text)) {
-            Some(CountCategories(file, POCKET_RECORD_ROOT,POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT))
+            Some(CountCategories(file, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT))
           }
           else {
             val recordRoot = (delimit \ "recordRoot").text

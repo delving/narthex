@@ -25,8 +25,8 @@ import dataset.DatasetActor.{StartAnalysis, StartCategoryCounting, StartHarvest,
 import dataset.DatasetOrigin._
 import dataset.DatasetState._
 import dataset.ProgressState._
-import harvest.Harvesting
 import harvest.Harvesting._
+import harvest.{HarvestRepo, Harvesting}
 import mapping.{CategoryDb, TermDb}
 import org.OrgActor.{DatasetMessage, InterruptDataset}
 import org.{OrgActor, OrgRepo}
@@ -47,10 +47,11 @@ import scala.concurrent.Await
 class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   val rootDir = new File(orgRepo.datasetsDir, datasetName)
-  val incomingDir = new File(rootDir, "incoming")
-  val analyzedDir = new File(rootDir, "analyzed")
-  val harvestDir = new File(rootDir, "harvest")
-  val sipsDir = new File(rootDir, "sips")
+
+  private val analyzedDir = new File(rootDir, "analyzed")
+  private val incomingDir = new File(rootDir, "incoming")
+  private val harvestDir = new File(rootDir, "harvest")
+  private val sipsDir = new File(rootDir, "sips")
 
   val rootNode = new NodeRepo(this, analyzedDir)
 
@@ -60,7 +61,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
-  lazy val sipRepo = new SipRepo(sipsDir)
+  lazy val sipRepo = SipRepo(sipsDir)
+  lazy val harvestRepo = HarvestRepo(harvestDir)
 
   lazy val recordDbOpt = datasetDb.prefixOpt.map(prefix => new RecordDb(this, dbBaseName, prefix))
 
@@ -73,6 +75,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     harvestDir.mkdir()
     this
   }
+
+  def clearAnalyzedDir() = clearDir(analyzedDir)
 
   def createPocketPath(pocket: Pocket) = {
     val h = pocket.hash
@@ -100,6 +104,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
         datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
       }
+      HarvestRepo.createClean(harvestDir, harvestType)
       datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
       Logger.info(s"First Harvest $datasetName")
       OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None, justDate = true))

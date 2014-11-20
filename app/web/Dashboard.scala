@@ -36,7 +36,6 @@ import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
 import record.Saver.GenerateSourceFromSipFile
-import services.FileHandling.clearDir
 import services.SipRepo._
 import web.Application.OkFile
 
@@ -88,7 +87,7 @@ object Dashboard extends Controller with Security {
         val interrupted = datasetRepo.interruptProgress
         s"Interrupted: $interrupted"
       case "tree" =>
-        clearDir(datasetRepo.analyzedDir)
+        datasetRepo.clearAnalyzedDir()
         datasetRepo.datasetDb.setTree(ready = false)
         "Tree removed"
       case "records" =>
@@ -140,6 +139,7 @@ object Dashboard extends Controller with Security {
                   SIP_SOURCE
               }
             }
+            // todo: sipFacts & sipHints
           }
           originOpt.map { origin =>
             Ok(origin.toString)

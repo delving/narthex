@@ -105,7 +105,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor {
       val progressReporter = ProgressReporter(COLLATING, db)
       progress = Some(progressReporter)
       progressReporter.sendWorkers(sorters.size + collators.size)
-      log.info(s"Tree Complete at ${datasetRepo.analyzedDir.getName}")
+      log.info(s"Tree complete $datasetRepo")
 
     case Counted(nodeRepo, uniqueCount, sampleSizes) =>
       collators = collators.filter(collator => collator != sender)

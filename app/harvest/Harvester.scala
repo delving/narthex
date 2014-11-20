@@ -42,10 +42,10 @@ object Harvester {
 
   case class HarvestComplete(modifiedAfter: Option[DateTime], file: Option[File], error: Option[String])
 
-  def props(datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) = Props(new Harvester(datasetRepo, harvestRepo))
+  def props(datasetRepo: DatasetRepo) = Props(new Harvester(datasetRepo))
 }
 
-class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends Actor with Harvesting {
+class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
 
   import context.dispatcher
 
@@ -74,14 +74,14 @@ class Harvester(val datasetRepo: DatasetRepo, harvestRepo: HarvestRepo) extends 
     } getOrElse {
       val completion = future {
         val acceptZipReporter = ProgressReporter(COLLECTING, db)
-        val fileOption = harvestRepo.acceptZipFile(tempFile, acceptZipReporter)
+        val fileOption = datasetRepo.harvestRepo.acceptZipFile(tempFile, acceptZipReporter)
         // todo: this can be initiated by the DatasetActor upon HarvestComplete, delegating to Saver.GenerateSourceFromHarvest()
         if (fileOption.isDefined) {
           // new harvest so there's work to do
           val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo.xml")
           val generateSourceReporter = ProgressReporter(GENERATING, db)
           val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
-          val newRecordCount = harvestRepo.generateSourceFile(incomingFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
+          val newRecordCount = datasetRepo.harvestRepo.generateSourceFile(incomingFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
           datasetRepo.recordDbOpt.foreach { recordDb =>
             val existingRecordCount = recordDb.getRecordCount
             log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
