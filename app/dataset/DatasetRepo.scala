@@ -22,10 +22,9 @@ import akka.pattern.ask
 import akka.util.Timeout
 import analysis.NodeRepo
 import dataset.DatasetActor.{StartAnalysis, StartCategoryCounting, StartHarvest, StartSaving}
-import dataset.DatasetOrigin._
 import dataset.DatasetState._
 import dataset.ProgressState._
-import dataset.StagingRepo.StagingFacts
+import dataset.StagingRepo._
 import harvest.Harvesting
 import harvest.Harvesting._
 import mapping.{CategoryDb, TermDb}
@@ -63,7 +62,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = SipRepo(sipsDir)
-  lazy val stagingRepo = StagingRepo(stagingDir)
   lazy val recordDbOpt = datasetDb.prefixOpt.map(prefix => new RecordDb(this, dbBaseName, prefix))
 
   override def toString = datasetName
@@ -82,6 +80,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def createStagingRepo(stagingFacts: StagingFacts): StagingRepo = StagingRepo.createClean(stagingDir, stagingFacts)
+
+  def stagingRepoOpt: Option[StagingRepo] = if (stagingDir.exists()) Some(StagingRepo(stagingDir)) else None
 
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
@@ -106,11 +106,10 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
       clearDir(stagingDir) // it's a first harvest
       clearDir(treeDir) // just in case
       datasetDb.startProgress(HARVESTING)
-      if (originFromInfo(info).isEmpty) {
-        datasetDb.setOrigin(HARVEST, prefix)
-        datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
-        datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
-      }
+      datasetDb.setPrefix(prefix)
+      datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
+      // todo: do we have to set record delimiter?
+      datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
       StagingRepo.createClean(stagingDir, StagingFacts(harvestType))
       datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
       Logger.info(s"First Harvest $datasetName")
@@ -157,31 +156,15 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def firstSaveRecords() = datasetDb.infoOpt.map { info =>
-    val delimited = datasetDb.isDelimited(Some(info))
     val state = DatasetState.datasetStateFromInfo(info)
-    if (state == SOURCED && delimited) {
+    if (state == SOURCED && sourceFile.exists) {
       datasetDb.startProgress(SAVING)
-      val sipMapperOpt = sipRepo.latestSipFile.flatMap { sipFile =>
-        val mapperOpt = sipFile.createSipMapper
-        mapperOpt.foreach(mapper => recordDbOpt.get.createDb())
-        mapperOpt
-      }
-      val fileOpt = None
-      // todo:
-      //      // for a sip-harvest we have a single zip file in the harvest dir
-      //      val fileOpt: Option[File] = originFromInfo(info) match {
-      //        case Some(SIP_HARVEST) => singleHarvestZip
-      //        case Some(HARVEST) => singleHarvestZip
-      //        case _ => getLatestSourceFile
-      //      }
-      fileOpt.map { file =>
-        OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, file, sipMapperOpt))
-      } getOrElse {
-        Logger.warn(s"Cannot find file to save for $datasetName")
-      }
+      recordDbOpt.get.createDb()
+      val sipMapperOpt = sipRepo.latestSipFile.flatMap(_.createSipMapper)
+      OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, sourceFile, sipMapperOpt))
     }
     else {
-      Logger.warn(s"First save of $datasetName can only be started with state sourced/delimited, but it's $state/$delimited")
+      Logger.warn(s"First save of $datasetName can only be started with state sourced when there is a source file")
     }
   }
 

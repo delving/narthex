@@ -72,32 +72,36 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
       FileUtils.deleteQuietly(tempFile)
       context.parent ! HarvestComplete(modifiedAfter, file = None, error = Some(errorString))
     } getOrElse {
-      val completion = future {
-        val acceptZipReporter = ProgressReporter(COLLECTING, db)
-        val fileOption = datasetRepo.stagingRepo.acceptFile(tempFile, acceptZipReporter)
-        // todo: this can be initiated by the DatasetActor upon HarvestComplete, delegating to Saver.GenerateSourceFromHarvest()
-        if (fileOption.isDefined) {
-          // new harvest so there's work to do
-          val generateSourceReporter = ProgressReporter(GENERATING, db)
-          val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
-          val newRecordCount = datasetRepo.stagingRepo.generateSourceFile(datasetRepo.sourceFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
-          datasetRepo.recordDbOpt.foreach { recordDb =>
-            val existingRecordCount = recordDb.getRecordCount
-            log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
-            // set record count
-            val info = db.infoOpt.get
-            val delimit = info \ "delimit"
-            val recordRoot = (delimit \ "recordRoot").text
-            val uniqueId = (delimit \ "uniqueId").text
-            db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
+      datasetRepo.stagingRepoOpt.map { stagingRepo =>
+        val completion = future {
+          val acceptZipReporter = ProgressReporter(COLLECTING, db)
+          val fileOption = stagingRepo.acceptFile(tempFile, acceptZipReporter)
+          // todo: this can be initiated by the DatasetActor upon HarvestComplete, delegating to Saver.GenerateSourceFromHarvest()
+          if (fileOption.isDefined) {
+            // new harvest so there's work to do
+            val generateSourceReporter = ProgressReporter(GENERATING, db)
+            val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
+            val newRecordCount = stagingRepo.generateSourceFile(datasetRepo.sourceFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
+            datasetRepo.recordDbOpt.foreach { recordDb =>
+              val existingRecordCount = recordDb.getRecordCount
+              log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
+              // set record count
+              val info = db.infoOpt.get
+              val delimit = info \ "delimit"
+              val recordRoot = (delimit \ "recordRoot").text
+              val uniqueId = (delimit \ "uniqueId").text
+              db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
+            }
           }
+          log.info(s"Zip file accepted: $fileOption")
+          context.parent ! HarvestComplete(modifiedAfter, fileOption, None)
         }
-        log.info(s"Zip file accepted: $fileOption")
-        context.parent ! HarvestComplete(modifiedAfter, fileOption, None)
-      }
-      completion.onFailure {
-        case e: Exception =>
-          context.parent ! HarvestComplete(modifiedAfter, file = None, error = Some(e.toString))
+        completion.onFailure {
+          case e: Exception =>
+            context.parent ! HarvestComplete(modifiedAfter, file = None, error = Some(e.toString))
+        }
+      } getOrElse {
+        context.parent ! HarvestComplete(modifiedAfter, file = None, error = Some(s"No staging repo for $datasetRepo"))
       }
     }
   }

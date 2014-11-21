@@ -20,10 +20,9 @@ import java.io.File
 
 import akka.actor.{Actor, Props}
 import dataset.DatasetActor.InterruptWork
+import dataset.DatasetRepo
 import dataset.ProgressState._
 import dataset.SipFile.SipMapper
-import dataset.StagingRepo.StagingFacts
-import dataset.{DatasetRepo, SipFile}
 import org.basex.core.cmd.{Delete, Optimize}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -40,7 +39,7 @@ object Saver {
 
   case class SourceGenerationComplete(file: File, recordCount: Int)
 
-  case class SaveRecords(modifiedAfter: Option[DateTime], file: File, stagingFacts: StagingFacts, sipMapperOpt: Option[SipMapper])
+  case class SaveRecords(modifiedAfter: Option[DateTime], file: File, sipMapperOpt: Option[SipMapper])
 
   case class SaveComplete(errorOption: Option[String] = None)
 
@@ -63,7 +62,8 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
     case InterruptWork() =>
       progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
-    case SaveRecords(modifiedAfter: Option[DateTime], file, stagingFacts, sipMapperOpt) =>
+    case SaveRecords(modifiedAfter: Option[DateTime], file, sipMapperOpt) =>
+      val stagingFacts = datasetRepo.stagingRepoOpt.map(_.stagingFacts).getOrElse(throw new RuntimeException(s"No staging facts for $datasetRepo"))
       log.info(s"Saving $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath}) facts=$stagingFacts")
       val recordDb = datasetRepo.recordDbOpt.getOrElse(throw new RuntimeException(s"Expected record db for $datasetRepo"))
 
@@ -161,17 +161,21 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
           val generateSourceReporter = ProgressReporter(GENERATING, db)
           progress = Some(generateSourceReporter)
           val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
-          val newRecordCount = datasetRepo.stagingRepo.generateSourceFile(datasetRepo.sourceFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
-          datasetRepo.recordDbOpt.foreach { recordDb =>
-            val existingRecordCount = recordDb.getRecordCount
-            log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
-            // set record count
-            val delimit = info \ "delimit"
-            val recordRoot = (delimit \ "recordRoot").text
-            val uniqueId = (delimit \ "uniqueId").text
-            db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
+          datasetRepo.stagingRepoOpt.map { stagingRepo =>
+            val newRecordCount = stagingRepo.generateSourceFile(datasetRepo.sourceFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
+            datasetRepo.recordDbOpt.foreach { recordDb =>
+              val existingRecordCount = recordDb.getRecordCount
+              log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
+              // set record count
+              val delimit = info \ "delimit"
+              val recordRoot = (delimit \ "recordRoot").text
+              val uniqueId = (delimit \ "uniqueId").text
+              db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
+            }
+            context.parent ! SourceGenerationComplete(datasetRepo.sourceFile, newRecordCount)
+          } getOrElse {
+            Logger.warn(s"No staging repo for $datasetRepo")
           }
-          context.parent ! SourceGenerationComplete(datasetRepo.sourceFile, newRecordCount)
         }
       }
   }

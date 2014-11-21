@@ -15,7 +15,7 @@
 //===========================================================================
 package record
 
-import dataset.{DatasetOrigin, DatasetRepo}
+import dataset.DatasetRepo
 import harvest.Harvesting.{Harvest, PMHResumptionToken}
 import org.basex.server.ClientSession
 import org.joda.time.DateTime
@@ -106,13 +106,7 @@ class RecordDb(datasetRepo: DatasetRepo, dbName: String, prefix: String) {
 
   def recordsWithValue(path: String, value: String, start: Int = 1, max: Int = 10): String = withRecordDb { session =>
     val datasetInfo = info
-    // fetching the recordRoot here because we need to chop the path string.  can that be avoided?
-    val recordContainer = if (DatasetOrigin.DROP.matches((datasetInfo \ "origin" \ "type").text)) {
-      val recordRoot = (datasetInfo \ "delimit" \ "recordRoot").text
-      recordRoot.substring(0, recordRoot.lastIndexOf("/"))
-    } else {
-      s"/$POCKET_LIST/$POCKET"
-    }
+    val recordContainer = s"/$POCKET_LIST/$POCKET"
     if (!path.startsWith(recordContainer)) throw new RuntimeException(s"$path must start with $recordContainer!")
     val queryPathField = path.substring(recordContainer.length)
     val field = queryPathField.substring(queryPathField.lastIndexOf("/") + 1)

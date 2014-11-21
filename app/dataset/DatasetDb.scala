@@ -36,31 +36,10 @@ object DatasetDb {
     ) getOrElse Seq.empty
     if (fields.nonEmpty) Some(tag -> JsObject(fields)) else None
   }
-}
 
-case class DatasetOrigin(name: String) {
-  override def toString = name
+  // todo: shouldn't call this origin ultimately
+  def prefixOptFromInfo(info: Elem) = Option((info \ "origin" \ "prefix").text).find(_.trim.nonEmpty)
 
-  def matches(otherName: String) = name == otherName
-}
-
-object DatasetOrigin {
-
-  val DROP = DatasetOrigin("origin-drop")
-
-  val HARVEST = DatasetOrigin("origin-harvest")
-
-  val SIP_SOURCE = DatasetOrigin("origin-sip-source")
-
-  val SIP_HARVEST = DatasetOrigin("origin-sip-harvest")
-
-  val ALL_ORIGINS = List(DROP, HARVEST, SIP_SOURCE, SIP_HARVEST)
-
-  private def originFromString(string: String): Option[DatasetOrigin] = ALL_ORIGINS.find(s => s.matches(string))
-
-  def originFromInfo(info: NodeSeq) = originFromString((info \ "origin" \ "type").text)
-
-  def prefixFromInfo(info: NodeSeq) = (info \ "origin" \ "prefix").text
 }
 
 case class ProgressType(name: String) {
@@ -166,7 +145,7 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     Option(answer).filter(_.trim.nonEmpty).map(XML.loadString)
   }
 
-  def prefixOpt: Option[String] = infoOpt.map(DatasetOrigin.prefixFromInfo)
+  def prefixOpt: Option[String] = infoOpt.flatMap(DatasetDb.prefixOptFromInfo)
 
   def setProperties(listName: String, entries: (String, Any)*): Unit = db { session =>
     val replacementLines = List(
@@ -190,6 +169,11 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     session.query(update).execute()
   }
 
+  def setPrefix(prefix: String) = setProperties(
+    "origin",
+    "prefix" -> prefix
+  )
+
   def setStatus(state: DatasetState) = setProperties(
     "status",
     "state" -> state,
@@ -204,13 +188,6 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
   def setRecords(ready: Boolean) = setProperties(
     "records",
     "time" -> (if (ready) now else "")
-  )
-
-  def setOrigin(origin: DatasetOrigin, prefix: String) = setProperties(
-    "origin",
-    "type" -> origin,
-    "time" -> timeToString(new DateTime()),
-    "prefix" -> prefix
   )
 
   def startProgress(progressState: ProgressState) = setProgress(progressState, BUSY, 0)
@@ -232,6 +209,7 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     "recordCount" -> recordCount
   )
 
+  // todo: should be unnecessary
   def isDelimited(existingInfo: Option[NodeSeq]): Boolean = {
     def check(info: NodeSeq) = {
       val delimit = info \ "delimit"

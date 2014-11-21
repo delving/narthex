@@ -22,7 +22,6 @@ import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
-import dataset.DatasetOrigin._
 import dataset.DatasetState.SOURCED
 import dataset.SipFile.SipMapper
 import harvest.Harvester
@@ -32,7 +31,6 @@ import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import org.joda.time.DateTime
 import play.api.Logger
-import record.PocketParser._
 import record.Saver
 import record.Saver._
 
@@ -137,26 +135,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
     case StartCategoryCounting() =>
       log.info(s"Start categorizing $datasetRepo")
       if (datasetRepo.sourceFile.exists()) {
-        datasetRepo.datasetDb.infoOpt.foreach { info =>
-          val delimit = info \ "delimit"
-          val recordCountText = (delimit \ "recordCount").text
-          val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
-          val kickoffOption = if (HARVEST.matches((info \ "origin" \ "type").text)) {
-            Some(CountCategories(datasetRepo.sourceFile, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT))
-          }
-          else {
-            val recordRoot = (delimit \ "recordRoot").text
-            val uniqueId = (delimit \ "uniqueId").text
-            if (recordRoot.trim.nonEmpty)
-              Some(CountCategories(datasetRepo.sourceFile, recordRoot, uniqueId, None))
-            else
-              None
-          }
-          kickoffOption.foreach { kickoff =>
-            val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo)))
-            categoryCounter ! kickoff
-          }
-        }
+        val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo)))
+        categoryCounter ! CountCategories()
       }
       else {
         self ! CategoryCountComplete(datasetRepo.datasetName, List.empty, Some(s"No source file for categorizing $datasetRepo"))
@@ -172,39 +152,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor {
 
     case StartSaving(modifiedAfter, file, sipMapperOpt) =>
       log.info(s"Start saving $datasetRepo from $file modified=$modifiedAfter")
-      datasetRepo.datasetDb.infoOpt.foreach { info =>
-        val delimit = info \ "delimit"
-        val recordCountText = (delimit \ "recordCount").text
-        val recordCount = if (recordCountText.nonEmpty) recordCountText.toInt else 0
-        val stagingFacts = datasetRepo.stagingRepo.stagingFacts
-        val kickoffOption: Option[SaveRecords] = originFromInfo(info).flatMap {
-          case DROP =>
-            val recordRoot = (delimit \ "recordRoot").text
-            val uniqueId = (delimit \ "uniqueId").text
-            if (recordRoot.trim.nonEmpty)
-              Some(SaveRecords(modifiedAfter, file, stagingFacts, sipMapperOpt))
-            else
-              None
-          case HARVEST =>
-            val ht = harvestTypeFromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
-            Some(SaveRecords(modifiedAfter, file, stagingFacts, sipMapperOpt))
-          case SIP_SOURCE =>
-            datasetRepo.sipRepo.latestSipFile.flatMap { sipFile =>
-              sipFile.copySourceToTempFile.map { sourceXmlGz =>
-                SaveRecords(modifiedAfter, sourceXmlGz, stagingFacts, sipMapperOpt)
-              }
-            }
-          case SIP_HARVEST =>
-            val ht = harvestTypeFromInfo(info).getOrElse(throw new RuntimeException(s"Harvest origin but no harvest type!"))
-            Some(SaveRecords(modifiedAfter, file, stagingFacts, sipMapperOpt))
-        }
-        kickoffOption.map { kickoff =>
-          val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
-          saver ! kickoff
-        } getOrElse {
-          self ! SaveComplete(Some(s"Cannot save records $datasetRepo"))
-        }
-      }
+      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
+      saver ! SaveRecords(modifiedAfter, file, sipMapperOpt)
 
     case SaveComplete(errorOption) =>
       log.info(s"Save complete $datasetRepo, error=$errorOption")

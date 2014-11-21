@@ -19,7 +19,7 @@ package org
 import java.io.File
 
 import dataset.ProgressState._
-import dataset.{DatasetOrigin, DatasetRepo}
+import dataset.{DatasetDb, DatasetRepo}
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
 import mapping.{CategoriesRepo, SkosRepo}
 import org.OrgActor.DatasetsCountCategories
@@ -71,7 +71,7 @@ class OrgRepo(userHome: String, val orgId: String) {
       if (!oaipmhPublishFromInfo(dataset.info))
         None
       else {
-        val prefix = DatasetOrigin.prefixFromInfo(dataset.info)
+        val prefix = DatasetDb.prefixOptFromInfo(dataset.info).getOrElse(throw new RuntimeException(s"No prefix for $dataset)"))
         val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
         val metadataFormat = namespaces.find(_._1 == prefix) match {
           case Some(ns) => RepoMetadataFormat(prefix, ns._2)

@@ -18,7 +18,6 @@ package dataset
 import java.io._
 import java.util.zip.ZipFile
 
-import dataset.DatasetOrigin._
 import eu.delving.groovy._
 import eu.delving.metadata._
 import org.OrgRepo.repo
@@ -47,13 +46,8 @@ object SipRepo {
 
   def listSipZips: Seq[SipFile] = {
     repo.repoDb.listDatasets.flatMap { dataset =>
-      originFromInfo(dataset.info).flatMap { origin =>
-        if (origin == SIP_HARVEST || origin == SIP_SOURCE) {
-          var datasetRepo = repo.datasetRepo(dataset.datasetName)
-          datasetRepo.sipRepo.latestSipFile
-        }
-        else None
-      }
+      var datasetRepo = repo.datasetRepo(dataset.datasetName)
+      datasetRepo.sipRepo.latestSipFile
     }
   }
 
@@ -77,7 +71,7 @@ class SipRepo(home: File) {
 object SipFile {
 
   case class SipMapping(prefix: String, version: String, recDefTree: RecDefTree, validationXSD: String, recMapping: RecMapping) {
-    def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns =>ns.prefix -> ns.uri).toMap
+    def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
   }
 
   trait SipMapper {
@@ -97,21 +91,22 @@ object SipFile {
   val RDF_PREFIX: String = "rdf"
   val RDF_URI: String = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
-//  val NAMESPACES = Map(
-//    "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-//    "geo" -> "http://www.w3.org/2003/01/geo/wgs84_pos#",
-//    "skos" -> "http://www.w3.org/2004/02/skos/core#",
-//    "rdfs" -> "http://www.w3.org/2000/01/rdf-schema#",
-//    "cc" -> "http://creativecommons.org/ns#",
-//    "owl" -> "http://www.w3.org/2002/07/owl#",
-//    "foaf" -> "http://xmlns.com/foaf/0.1/",
-//    "dbpedia-owl" -> "http://dbpedia.org/ontology/",
-//    "dbprop" -> "http://dbpedia.org/property/"
-//  )
+  //  val NAMESPACES = Map(
+  //    "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+  //    "geo" -> "http://www.w3.org/2003/01/geo/wgs84_pos#",
+  //    "skos" -> "http://www.w3.org/2004/02/skos/core#",
+  //    "rdfs" -> "http://www.w3.org/2000/01/rdf-schema#",
+  //    "cc" -> "http://creativecommons.org/ns#",
+  //    "owl" -> "http://www.w3.org/2002/07/owl#",
+  //    "foaf" -> "http://xmlns.com/foaf/0.1/",
+  //    "dbpedia-owl" -> "http://dbpedia.org/ontology/",
+  //    "dbprop" -> "http://dbpedia.org/property/"
+  //  )
 
 }
 
 class SipFile(val file: File) {
+
   import dataset.SipFile._
 
   lazy val zipFile = new ZipFile(file)
@@ -126,7 +121,7 @@ class SipFile(val file: File) {
         val equals = line.indexOf("=")
         if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
       }.toMap
-    } getOrElse(throw new RuntimeException(s"No entry for $propertyFileName"))
+    } getOrElse (throw new RuntimeException(s"No entry for $propertyFileName"))
   }
 
   lazy val facts = readMap("narthex_facts.txt")
@@ -235,9 +230,9 @@ class SipFile(val file: File) {
         kids.foreach(rdf.appendChild)
         pocketElement.appendChild(rdf)
         val xml = serializer.toXml(pocketElement, true)
-//
-//        Logger.info(s"mapped record: $xml")
-//
+        //
+        //        Logger.info(s"mapped record: $xml")
+        //
         Some(Pocket(pocket.id, pocket.hash, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
       } catch {
         case discard: DiscardRecordException =>

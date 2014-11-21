@@ -16,8 +16,6 @@
 
 package mapping
 
-import java.io.File
-
 import akka.actor.{Actor, Props}
 import dataset.DatasetActor.InterruptWork
 import dataset.{DatasetRepo, ProgressState}
@@ -25,13 +23,14 @@ import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import play.api.Logger
 import record.CategoryParser
 import record.CategoryParser.CategoryCount
+import record.PocketParser._
 import services.{FileHandling, NarthexConfig, ProgressReporter}
 
 import scala.concurrent._
 
 object CategoryCounter {
 
-  case class CountCategories(file: File, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
+  case class CountCategories()
 
   case class CategoryCountComplete(dataset: String, categoryCounts: List[CategoryCount], errorOption: Option[String])
 
@@ -50,13 +49,13 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor {
     case InterruptWork() =>
       progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
-    case CountCategories(file, recordRoot, uniqueId, deepRecordContainer) =>
-      log.info(s"Counting categories $datasetRepo: ${file.getAbsolutePath}, $recordRoot, $uniqueId, $deepRecordContainer")
+    case CountCategories() =>
+      log.info(s"Counting categories $datasetRepo")
       val pathPrefix = s"${NarthexConfig.ORG_ID}/$datasetRepo"
       future {
         val categoryMappings = datasetRepo.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap
-        val parser = new CategoryParser(pathPrefix, recordRoot, uniqueId, deepRecordContainer, categoryMappings)
-        val (source, readProgress) = FileHandling.sourceFromFile(file)
+        val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT, categoryMappings)
+        val (source, readProgress) = FileHandling.sourceFromFile(datasetRepo.sourceFile)
         try {
           val progressReporter = ProgressReporter(ProgressState.CATEGORIZING, datasetRepo.datasetDb)
           progress = Some(progressReporter)

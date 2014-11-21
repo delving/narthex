@@ -16,7 +16,6 @@
 
 package web
 
-import dataset.DatasetOrigin._
 import dataset.DatasetState._
 import dataset.SipRepo._
 import dataset._
@@ -108,7 +107,6 @@ object Dashboard extends Controller with Security {
         Logger.info(s"Dropped file $fileName onto $datasetName")
         val isSourceFile = SOURCE_SUFFIXES.exists(suffix => fileName.endsWith(suffix))
         if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
-          datasetRepo.datasetDb.setOrigin(DROP, prefix)
           datasetRepo.datasetDb.setStatus(RAW)
           file.ref.moveTo(datasetRepo.createRawFile(fileName))
           datasetRepo.startAnalysis()
@@ -117,29 +115,25 @@ object Dashboard extends Controller with Security {
         else if (fileName.endsWith(".sip.zip")) {
           val sipZipFile = datasetRepo.sipRepo.createSipZipFile(fileName)
           file.ref.moveTo(sipZipFile, replace = true)
-          val originOpt: Option[DatasetOrigin] = datasetRepo.sipRepo.latestSipFile.flatMap { sipFile =>
+          datasetRepo.sipRepo.latestSipFile.map { sipFile =>
             sipFile.sipMappingOpt.map { sipMapping =>
               (sipFile.harvestUrl, sipFile.harvestSpec, sipFile.harvestPrefix) match {
                 case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
-                  datasetRepo.datasetDb.setOrigin(SIP_HARVEST, sipMapping.prefix)
+                  datasetRepo.datasetDb.setPrefix(sipMapping.prefix)
                   datasetRepo.datasetDb.setHarvestInfo(PMH, harvestUrl, harvestSpec, harvestPrefix)
                   datasetRepo.datasetDb.setRecordDelimiter(PMH.recordRoot, PMH.uniqueId, sipFile.recordCount.map(_.toInt).getOrElse(0))
-                  SIP_HARVEST
                 case _ =>
-                  datasetRepo.datasetDb.setOrigin(SIP_SOURCE, sipMapping.prefix)
+                  datasetRepo.datasetDb.setPrefix(sipMapping.prefix)
                   val recordCount = sipFile.recordCount.map(_.toInt).getOrElse(0)
                   datasetRepo.datasetDb.setRecordDelimiter(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, recordCount)
                   datasetRepo.datasetDb.setStatus(DatasetState.SOURCED)
                   Logger.info(s"Triggering generate source from zip: $datasetName")
                   OrgActor.actor ! DatasetMessage(datasetName, GenerateSource())
                   // todo: trigger saving?
-                  SIP_SOURCE
               }
             }
             // todo: sipFacts & sipHints
-          }
-          originOpt.map { origin =>
-            Ok(origin.toString)
+            Ok
           } getOrElse {
             NotAcceptable(s"Unable to determine origin for $datasetName")
           }
