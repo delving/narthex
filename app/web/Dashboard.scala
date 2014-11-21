@@ -17,8 +17,9 @@
 package web
 
 import dataset.DatasetOrigin._
-import dataset.DatasetState.{EMPTY, SOURCED}
-import dataset.{DatasetDb, DatasetOrigin, DatasetState}
+import dataset.DatasetState._
+import dataset.SipRepo._
+import dataset._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
 import harvest.Harvesting.HarvestType._
@@ -35,8 +36,7 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
-import record.Saver.GenerateSourceFromSipFile
-import services.SipRepo._
+import record.Saver.GenerateSource
 import web.Application.OkFile
 
 object Dashboard extends Controller with Security {
@@ -64,11 +64,8 @@ object Dashboard extends Controller with Security {
   def list = Secure() { token => implicit request =>
     val datasets = repo.repoDb.listDatasets.flatMap { dataset =>
       val state = DatasetState.datasetStateFromInfo(dataset.info)
-      if (state == DatasetState.DELETED) None
-      else {
-        val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-        Some(Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists)))
-      }
+      val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+      Some(Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists)))
     }
     Ok(JsArray(datasets))
   }
@@ -87,7 +84,7 @@ object Dashboard extends Controller with Security {
         val interrupted = datasetRepo.interruptProgress
         s"Interrupted: $interrupted"
       case "tree" =>
-        datasetRepo.clearAnalyzedDir()
+        datasetRepo.clearTreeDir()
         datasetRepo.datasetDb.setTree(ready = false)
         "Tree removed"
       case "records" =>
@@ -95,11 +92,11 @@ object Dashboard extends Controller with Security {
         datasetRepo.datasetDb.setRecords(ready = false)
         "Records removed"
       case "new" =>
-        datasetRepo.datasetDb.createDataset(EMPTY)
+        datasetRepo.datasetDb.createDataset
         "New dataset created"
       case _ =>
-        val revertedState = datasetRepo.revertState
-        s"Reverted to $revertedState"
+        val revertedStateOpt = datasetRepo.revertState
+        s"Reverted to $revertedStateOpt"
     }
     Ok(Json.obj("change" -> change))
   }
@@ -112,8 +109,8 @@ object Dashboard extends Controller with Security {
         val isSourceFile = SOURCE_SUFFIXES.exists(suffix => fileName.endsWith(suffix))
         if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
           datasetRepo.datasetDb.setOrigin(DROP, prefix)
-          datasetRepo.datasetDb.setStatus(SOURCED)
-          file.ref.moveTo(datasetRepo.createIncomingFile(fileName), replace = true)
+          datasetRepo.datasetDb.setStatus(RAW)
+          file.ref.moveTo(datasetRepo.createRawFile(fileName))
           datasetRepo.startAnalysis()
           Ok(datasetRepo.datasetName)
         }
@@ -134,7 +131,7 @@ object Dashboard extends Controller with Security {
                   datasetRepo.datasetDb.setRecordDelimiter(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, recordCount)
                   datasetRepo.datasetDb.setStatus(DatasetState.SOURCED)
                   Logger.info(s"Triggering generate source from zip: $datasetName")
-                  OrgActor.actor ! DatasetMessage(datasetName, GenerateSourceFromSipFile())
+                  OrgActor.actor ! DatasetMessage(datasetName, GenerateSource())
                   // todo: trigger saving?
                   SIP_SOURCE
               }

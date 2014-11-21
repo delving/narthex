@@ -13,7 +13,7 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 //===========================================================================
-package services
+package dataset
 
 import java.io._
 import java.util.zip.ZipFile
@@ -26,8 +26,8 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.w3c.dom.Element
 import play.api.Logger
-import record.PocketParser
 import record.PocketParser._
+import services.Temporal
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -112,9 +112,7 @@ object SipFile {
 }
 
 class SipFile(val file: File) {
-
-  import services.SipFile._
-  import services.SipRepo._
+  import dataset.SipFile._
 
   lazy val zipFile = new ZipFile(file)
 
@@ -250,38 +248,4 @@ class SipFile(val file: File) {
   }
 
   def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
-
-  def generateSourceFile(sourceFile: File, progressReporter: ProgressReporter): (Int, Map[String, String]) = {
-    Logger.info(s"Generating source from $file to $sourceFile")
-    copySourceToTempFile.map { sourceXmlGz =>
-      val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
-      val parser = new PocketParser(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, Some(SIP_SOURCE_RECORD_ROOT))
-      val sipMapperOpt = createSipMapper
-      var recordCount = 0
-      var namespaces = Map.empty[String, String]
-      def pocketWriter(rawPocket: Pocket): Unit = {
-        val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
-        pocketOpt.map { pocket =>
-          // todo: fix this at an earlier stage
-          val text = pocket.text.replace("<?xml version='1.0' encoding='UTF-8'?>\n", "")
-          out.write(text)
-          namespaces ++= pocket.namespaces
-          recordCount += 1
-          if (recordCount % 1000 == 0) {
-            Logger.info(s"Generating record $recordCount")
-          }
-        }
-      }
-      val (source, readProgress) = FileHandling.sourceFromFile(sourceXmlGz)
-      progressReporter.setReadProgress(readProgress)
-      out.write("<?xml version='1.0' encoding='UTF-8'?>\n")
-      out.write( s"""<$POCKET_LIST>\n""")
-      parser.parse(source, Set.empty[String], pocketWriter, progressReporter)
-      out.write( s"""</$POCKET_LIST>\n""")
-      out.close()
-      source.close()
-      Logger.info(s"Finished generating source from $file)")
-      (recordCount, namespaces)
-    } getOrElse(throw new RuntimeException(s"No source to read to generate $sourceFile"))
-  }
 }

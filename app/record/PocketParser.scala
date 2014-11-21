@@ -19,6 +19,7 @@ package record
 import java.io.ByteArrayInputStream
 import java.security.MessageDigest
 
+import dataset.StagingRepo.StagingFacts
 import org.joda.time.DateTime
 import play.Logger
 import services.StringHandling._
@@ -31,6 +32,8 @@ import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object PocketParser {
+
+  def apply(stagingFacts: StagingFacts) = new PocketParser(stagingFacts.recordRoot, stagingFacts.uniqueId, stagingFacts.deepRecordContainer)
 
   case class Pocket(id: String, hash: String, text: String, namespaces: Map[String, String]) {
     def textBytes = new ByteArrayInputStream(text.getBytes("UTF-8"))

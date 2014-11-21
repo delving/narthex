@@ -13,21 +13,22 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 //===========================================================================
-package harvest
+package dataset
 
 import java.io._
 import java.nio.file.Files
+import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
 
-import harvest.HarvestRepo.{HARVEST_FACTS_NAME, MAX_FILES}
+import dataset.SipFile.SipMapper
 import harvest.Harvesting.HarvestType
 import mapping.CategoryDb.CategoryMapping
-import org.apache.commons.io.FileUtils
+import org.apache.commons.io.input.BOMInputStream
+import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.Logger
 import record.CategoryParser.CategoryCount
 import record.PocketParser._
 import record.{CategoryParser, PocketParser}
 import services.FileHandling.clearDir
-import services.SipFile.SipMapper
 import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable
@@ -46,48 +47,65 @@ import scala.io.Source
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-object HarvestRepo {
+object StagingRepo {
 
   val MAX_FILES = 100
-  val HARVEST_FACTS_NAME = "harvest_facts.txt"
+  val STAGING_FACTS_NAME = "staging_facts.txt"
 
-  case class HarvestFacts(harvestTypeName: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
+  object StagingFacts {
+    def apply(harvestType: HarvestType): StagingFacts = StagingFacts(
+      harvestType.name,
+      harvestType.recordRoot,
+      harvestType.uniqueId,
+      harvestType.deepRecordContainer
+    )
+  }
 
-  def harvestFactsFile(home: File) = new File(home, HARVEST_FACTS_NAME)
+  case class StagingFacts(stagingType: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
 
-  def harvestFacts(home: File): HarvestFacts = {
-    val file = harvestFactsFile(home)
+  def DELVING_SIP_SOURCE = StagingFacts(
+    "delving-sip-source",
+    "/delving-sip-source/input",
+    "/delving-sip-source/input/@id",
+    None
+  )
+
+  def stagingFactsFile(home: File) = new File(home, STAGING_FACTS_NAME)
+
+  def stagingFacts(home: File): StagingFacts = {
+    val file = stagingFactsFile(home)
     val lines = Source.fromFile(file).getLines()
     val map = lines.flatMap { line =>
       val equals = line.indexOf("=")
       if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
     }.toMap
-    val harvestTypeName = map.getOrElse("harvestTypeName", throw new RuntimeException(s"Harvest type missing!"))
+    val stagingType = map.getOrElse("stagingType", throw new RuntimeException(s"Staging type missing!"))
     val recordRoot = map.getOrElse("recordRoot", throw new RuntimeException(s"Record root missing!"))
     val uniqueId = map.getOrElse("uniqueId", throw new RuntimeException(s"Unique ID missing!"))
     val deepRecordContainer = map.getOrElse("deepRecordContainer", throw new RuntimeException(s"Record root missing!"))
-    HarvestFacts(harvestTypeName, recordRoot, uniqueId, Option(deepRecordContainer).find(_.nonEmpty))
+    StagingFacts(stagingType, recordRoot, uniqueId, Option(deepRecordContainer).find(_.nonEmpty))
   }
 
-  def createClean(home: File, harvestType: HarvestType): HarvestRepo = {
+  def createClean(home: File, stagingFacts: StagingFacts): StagingRepo = {
     clearDir(home)
-    val file = harvestFactsFile(home)
+    val file = stagingFactsFile(home)
     val facts =
       s"""
-         |harvestTypeName=${harvestType.name}
-         |recordRoot=${harvestType.recordRoot}
-         |uniqueId=${harvestType.uniqueId}
-         |deepRecordContainer=${harvestType.deepRecordContainer.getOrElse("")}
+         |stagingType=${stagingFacts.stagingType}
+         |recordRoot=${stagingFacts.recordRoot}
+         |uniqueId=${stagingFacts.uniqueId}
+         |deepRecordContainer=${stagingFacts.deepRecordContainer.getOrElse("")}
        """.stripMargin
     FileUtils.write(file, facts)
     apply(home)
   }
 
-  def apply(home: File): HarvestRepo = new HarvestRepo(home)
+  def apply(home: File): StagingRepo = new StagingRepo(home)
 
 }
 
-class HarvestRepo(home: File) {
+class StagingRepo(home: File) {
+  import dataset.StagingRepo._
 
   private def numberString(number: Int): String = "%05d".format(number)
 
@@ -101,7 +119,7 @@ class HarvestRepo(home: File) {
   private def fileList: Seq[File] = {
     val all = home.listFiles()
     val (files, dirs) = all.partition(_.isFile)
-    dirs.flatMap(_.listFiles()) ++ files.filter(_.getName != HARVEST_FACTS_NAME)
+    dirs.flatMap(_.listFiles()) ++ files.filter(_.getName != STAGING_FACTS_NAME)
   }
 
   private def moveFiles = {
@@ -147,7 +165,7 @@ class HarvestRepo(home: File) {
 
   private def listZipFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".zip")).sortBy(_.getName)
 
-  private def processFile(progressReporter: ProgressReporter, fillFile: File => File) = {
+  private def processFile(progressReporter: ProgressReporter, provideZipFile: File => File) = {
     def writeToFile(file: File, string: String): Unit = Some(new PrintWriter(file)).foreach { writer =>
       writer.println(string)
       writer.close()
@@ -155,9 +173,9 @@ class HarvestRepo(home: File) {
     val zipFiles = listZipFiles
     val fileNumber = zipFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
-    val file = fillFile(createZipFile(fileNumber))
+    val file = provideZipFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
-    val parser = new PocketParser(facts.recordRoot, facts.uniqueId, facts.deepRecordContainer)
+    val parser = PocketParser(stagingFacts)
     def receiveRecord(record: Pocket): Unit = idSet.add(record.id)
     val (source, readProgress) = FileHandling.sourceFromFile(file)
     progressReporter.setReadProgress(readProgress)
@@ -196,18 +214,44 @@ class HarvestRepo(home: File) {
 
   // public things:
 
-  lazy val facts = HarvestRepo.harvestFacts(home)
+  lazy val stagingFacts = StagingRepo.stagingFacts(home)
 
   def countFiles = fileList.size
 
-  def acceptZipFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(progressReporter, { targetFile =>
-    if (!file.getName.endsWith(".zip")) throw new RuntimeException(s"Requires zip file ${file.getName}")
-    FileUtils.moveFile(file, targetFile)
-    targetFile
+  def acceptFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(progressReporter, { targetFile =>
+    val name = file.getName
+    if (name.endsWith(".zip")) {
+      FileUtils.moveFile(file, targetFile)
+      targetFile
+    }
+    else if (name.endsWith(".xml")) {
+      val zos = new ZipOutputStream(new FileOutputStream(targetFile))
+      zos.putNextEntry(new ZipEntry(file.getName.replace(".xml.gz", ".xml")))
+      val bis = new BOMInputStream(new FileInputStream(file))
+      IOUtils.copy(bis, zos)
+      bis.close()
+      zos.closeEntry()
+      zos.close()
+      targetFile
+    }
+    else if (name.endsWith(".xml.gz")) {
+      val zos = new ZipOutputStream(new FileOutputStream(targetFile))
+      zos.putNextEntry(new ZipEntry(file.getName.replace(".xml.gz", ".xml")))
+      val gis = new GZIPInputStream(new FileInputStream(file))
+      val bis = new BOMInputStream(gis)
+      IOUtils.copy(bis, zos)
+      bis.close()
+      zos.closeEntry()
+      zos.close()
+      targetFile
+    }
+    else {
+      throw new RuntimeException(s"StagingRepo can only accept .zip, .xml.gz, or .xml")
+    }
   })
 
   def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progressReporter: ProgressReporter): List[CategoryCount] = {
-    val parser = new CategoryParser(pathPrefix, facts.recordRoot, facts.uniqueId, facts.deepRecordContainer, categoryMappings)
+    val parser = new CategoryParser(pathPrefix, stagingFacts.recordRoot, stagingFacts.uniqueId, stagingFacts.deepRecordContainer, categoryMappings)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
@@ -223,7 +267,7 @@ class HarvestRepo(home: File) {
   }
 
   def parsePockets(output: Pocket => Unit, progressReporter: ProgressReporter): Map[String, String] = {
-    val parser = new PocketParser(facts.recordRoot, facts.uniqueId, facts.deepRecordContainer)
+    val parser = PocketParser(stagingFacts)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
@@ -241,7 +285,7 @@ class HarvestRepo(home: File) {
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
   def generateSourceFile(sourceFile: File, sipMapperOpt: Option[SipMapper], setNamespaceMap: Map[String, String] => Unit, progressReporter: ProgressReporter): Int = {
-    Logger.info(s"Generating source from $home to $sourceFile using $facts")
+    Logger.info(s"Generating source from $home to $sourceFile using $stagingFacts")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
     out.write("<?xml version='1.0' encoding='UTF-8'?>\n")

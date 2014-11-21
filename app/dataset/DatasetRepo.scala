@@ -25,10 +25,12 @@ import dataset.DatasetActor.{StartAnalysis, StartCategoryCounting, StartHarvest,
 import dataset.DatasetOrigin._
 import dataset.DatasetState._
 import dataset.ProgressState._
+import dataset.StagingRepo.StagingFacts
+import harvest.Harvesting
 import harvest.Harvesting._
-import harvest.{HarvestRepo, Harvesting}
 import mapping.{CategoryDb, TermDb}
 import org.OrgActor.{DatasetMessage, InterruptDataset}
+import org.apache.commons.io.FileUtils
 import org.{OrgActor, OrgRepo}
 import play.Logger
 import play.api.Play.current
@@ -46,49 +48,54 @@ import scala.concurrent.Await
 
 class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
-  val rootDir = new File(orgRepo.datasetsDir, datasetName)
+  private val rootDir = new File(orgRepo.datasetsDir, datasetName)
 
-  private val analyzedDir = new File(rootDir, "analyzed")
-  private val incomingDir = new File(rootDir, "incoming")
-  private val harvestDir = new File(rootDir, "harvest")
+  private val treeDir = new File(rootDir, "tree")
+  private val stagingDir = new File(rootDir, "staging")
   private val sipsDir = new File(rootDir, "sips")
+  private val rawDir = new File(rootDir, "raw")
 
-  val rootNode = new NodeRepo(this, analyzedDir)
+  val sourceFile = new File(orgRepo.sourceDir, s"$datasetName.xml")
+  val treeRoot = new NodeRepo(this, treeDir)
 
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, datasetName)
-
   val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetName"
-
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = SipRepo(sipsDir)
-  lazy val harvestRepo = HarvestRepo(harvestDir)
-
+  lazy val stagingRepo = StagingRepo(stagingDir)
   lazy val recordDbOpt = datasetDb.prefixOpt.map(prefix => new RecordDb(this, dbBaseName, prefix))
 
   override def toString = datasetName
 
   def mkdirs = {
     rootDir.mkdirs()
-    incomingDir.mkdir()
-    analyzedDir.mkdir()
-    harvestDir.mkdir()
+    treeDir.mkdir()
     this
   }
 
-  def clearAnalyzedDir() = clearDir(analyzedDir)
+  def clearTreeDir() = clearDir(treeDir)
 
   def createPocketPath(pocket: Pocket) = {
     val h = pocket.hash
     s"$datasetName/${h(0)}/${h(1)}/${h(2)}/$h.xml"
   }
 
-  def createIncomingFile(datasetName: String) = new File(incomingDir, datasetName)
+  def createStagingRepo(stagingFacts: StagingFacts): StagingRepo = StagingRepo.createClean(stagingDir, stagingFacts)
 
-  def getLatestIncomingFile = incomingDir.listFiles().toList.sortBy(_.lastModified()).lastOption
+  def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
+
+  def rawFile: Option[File] = {
+    if (rawDir.exists()) {
+      rawDir.listFiles.headOption
+    }
+    else {
+      None
+    }
+  }
 
   def singleHarvestZip: Option[File] = {
-    val allZip = harvestDir.listFiles.filter(_.getName.endsWith("zip"))
+    val allZip = stagingDir.listFiles.filter(_.getName.endsWith("zip"))
     if (allZip.size > 1) throw new RuntimeException(s"Multiple zip files where one was expected: $allZip")
     allZip.headOption
   }
@@ -96,15 +103,15 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.infoOpt map { info =>
     val state = DatasetState.datasetStateFromInfo(info)
     if (state == EMPTY) {
-      clearDir(harvestDir) // it's a first harvest
-      clearDir(analyzedDir) // just in case
+      clearDir(stagingDir) // it's a first harvest
+      clearDir(treeDir) // just in case
       datasetDb.startProgress(HARVESTING)
       if (originFromInfo(info).isEmpty) {
         datasetDb.setOrigin(HARVEST, prefix)
         datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
         datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
       }
-      HarvestRepo.createClean(harvestDir, harvestType)
+      StagingRepo.createClean(stagingDir, StagingFacts(harvestType))
       datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
       Logger.info(s"First Harvest $datasetName")
       OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None, justDate = true))
@@ -124,7 +131,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
         datasetDb.startProgress(HARVESTING)
         val justDate = harvestCron.unit == DelayUnit.WEEKS
-        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(Some(harvestCron.previous),justDate))
+        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(Some(harvestCron.previous), justDate))
       }
       else {
         Logger.info(s"No re-harvest of $datasetName with cron $harvestCron because it's not time $harvestCron")
@@ -139,7 +146,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   def startAnalysis() = datasetDb.infoOpt.map { info =>
     val state = DatasetState.datasetStateFromInfo(info)
     if (state == SOURCED) {
-      clearDir(analyzedDir)
+      clearDir(treeDir)
       datasetDb.startProgress(SPLITTING)
       // todo: maybe for prefixes?
       OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis())
@@ -159,15 +166,17 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         mapperOpt.foreach(mapper => recordDbOpt.get.createDb())
         mapperOpt
       }
-      // for a sip-harvest we have a single zip file in the harvest dir
-      val fileOpt: Option[File] = originFromInfo(info) match {
-        case Some(SIP_HARVEST) => singleHarvestZip
-        case Some(HARVEST) => singleHarvestZip
-        case _ => getLatestIncomingFile
-      }
+      val fileOpt = None
+      // todo:
+      //      // for a sip-harvest we have a single zip file in the harvest dir
+      //      val fileOpt: Option[File] = originFromInfo(info) match {
+      //        case Some(SIP_HARVEST) => singleHarvestZip
+      //        case Some(HARVEST) => singleHarvestZip
+      //        case _ => getLatestSourceFile
+      //      }
       fileOpt.map { file =>
         OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, file, sipMapperOpt))
-      } getOrElse{
+      } getOrElse {
         Logger.warn(s"Cannot find file to save for $datasetName")
       }
     }
@@ -189,36 +198,48 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     interrupted
   }
 
-  def revertState: DatasetState = {
-    val currentState = datasetDb.infoOpt.map(DatasetState.datasetStateFromInfo(_)) getOrElse DELETED
+  def revertState: Option[DatasetState] = {
+    val currentState = datasetDb.infoOpt.map(DatasetState.datasetStateFromInfo(_))
     Logger.info(s"Revert state of $datasetName from $currentState")
-    datasetDb.infoOpt.map { info =>
+    datasetDb.infoOpt.flatMap { info =>
       currentState match {
-        case DELETED =>
-          datasetDb.createDataset(EMPTY)
-          EMPTY
-        case EMPTY =>
-          datasetDb.setStatus(DELETED)
-          DELETED
-        case SOURCED =>
+        case None =>
+          datasetDb.createDataset
+          Some(EMPTY)
+        case Some(RAW) =>
+          FileUtils.deleteQuietly(rawDir)
+          datasetDb.dropDataset()
+          None
+        case Some(EMPTY) =>
+          if (rawDir.exists()) {
+            Some(RAW)
+          }
+          else {
+            datasetDb.dropDataset()
+            None
+          }
+        case Some(SOURCED) =>
           val treeTimeOption = nodeSeqToTime(info \ "tree" \ "time")
           val recordsTimeOption = nodeSeqToTime(info \ "records" \ "time")
           if (treeTimeOption.isEmpty && recordsTimeOption.isEmpty) {
-            clearDir(incomingDir)
-            datasetDb.setStatus(EMPTY)
-            EMPTY
+            FileUtils.deleteQuietly(sourceFile)
+            val nextStatus = if (rawDir.exists()) RAW else EMPTY
+            datasetDb.setStatus(nextStatus)
+            Some(nextStatus)
           }
           else {
-            SOURCED // no change
+            currentState
           }
+        case _ =>
+          currentState
       }
-    } getOrElse currentState
+    }
   }
 
-  def index = new File(analyzedDir, "index.json")
+  def index = new File(treeDir, "index.json")
 
   def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(analyzedDir)((file, tag) => new File(file, OrgRepo.pathToDirectory(tag)))
+    val nodeDir = path.split('/').toList.foldLeft(treeDir)((file, tag) => new File(file, OrgRepo.pathToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 

@@ -116,11 +116,11 @@ case class DatasetState(name: String) {
 }
 
 object DatasetState {
-  val DELETED = DatasetState("state-deleted")
   val EMPTY = DatasetState("state-empty")
+  val RAW = DatasetState("state-raw")
   val SOURCED = DatasetState("state-sourced")
 
-  val ALL_STATES = List(DELETED, EMPTY, SOURCED)
+  val ALL_STATES = List(EMPTY, RAW, SOURCED)
 
   def datasetStateFromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
 
@@ -135,13 +135,13 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
 
   def datasetElement = s"${repoDb.allDatasets}/dataset[@name=${quote(datasetName)}]"
 
-  def createDataset(state: DatasetState) = db {
+  def createDataset = db {
     session =>
       val update = s"""
           |
           | let $$status :=
           |   <status>
-          |     <state>$state</state>
+          |     <state>state-empty</state>
           |     <time>$now</time>
           |   </status>
           | let $$dataset :=
@@ -156,17 +156,17 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
       session.query(update).execute()
   }
 
+  def dropDataset() = db { session =>
+    val update = s"delete node $datasetElement"
+    session.query(update).execute()
+  }
+
   def infoOpt: Option[Elem] = db { session =>
     val answer = session.query(datasetElement).execute()
     Option(answer).filter(_.trim.nonEmpty).map(XML.loadString)
   }
 
   def prefixOpt: Option[String] = infoOpt.map(DatasetOrigin.prefixFromInfo)
-
-  def removeDataset() = db { session =>
-    val update = s"delete node $datasetElement"
-    session.query(update).execute()
-  }
 
   def setProperties(listName: String, entries: (String, Any)*): Unit = db { session =>
     val replacementLines = List(

@@ -2,23 +2,24 @@ package specs
 
 import java.io.File
 
-import harvest.HarvestRepo
+import dataset.StagingRepo.StagingFacts
+import dataset.{SipRepo, StagingRepo}
 import harvest.Harvesting.HarvestType
+import org.apache.commons.io.FileUtils
 import org.scalatest.{FlatSpec, Matchers}
 import record.PocketParser.Pocket
-import services.{ProgressReporter, SipRepo}
+import services.ProgressReporter
 
 import scala.xml.XML
 
 class TestSipRepo extends FlatSpec with Matchers {
 
-  "A SipRepo" should "fully understand the content of sip files" in {
+  "A SipRepo" should "handle a harvest sip" in {
 
-    val resource = getClass.getResource("/sip")
-    val home = new File(resource.getFile)
-
+    val home = new File(getClass.getResource("/sip").getFile)
     val sipRepo = new SipRepo(new File(home, "sips"))
-    val harvestRepo = HarvestRepo.createClean(new File(home, "harvest"), HarvestType.PMH)
+    val stagingSourceDir = new File(home, "staging")
+    val stagingDir = new File("/tmp/test-sip-repo-staging")
 
     val sipFileOpt = sipRepo.latestSipFile
     sipFileOpt.isDefined should be(true)
@@ -31,14 +32,17 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       sipFile.schemaVersionOpt.isDefined should be(true)
 
+      val stagingRepo = StagingRepo.createClean(stagingDir, StagingFacts(HarvestType.PMH))
+      FileUtils.copyDirectory(stagingSourceDir, stagingDir)
+
       var mappedPockets = List.empty[Pocket]
 
-      sipFile.createSipMapper map { sipMapper =>
+      sipFile.createSipMapper.map { sipMapper =>
         def pocketCatcher(pocket: Pocket): Unit = {
           var mappedPocket = sipMapper.map(pocket)
           mappedPockets = mappedPocket.get :: mappedPockets
         }
-        harvestRepo.parsePockets(pocketCatcher, ProgressReporter())
+        stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
       }
 
       mappedPockets.size should be (25)

@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<delving-sip-source xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms"
+                    xmlns:europeana="http://www.europeana.eu/schemas/ese/">
+<input id="SCH0081">
+<dc:creator>onbekend</dc:creator>
+<dc:subject>Amama, Sixtinus</dc:subject>
+<dc:publisher>Museum Martena</dc:publisher>
+<dc:description>Portret in olieverf van Sixtinus Amama, professor in de Oosterse talen aan de Franeker universiteit van 1616 tot 1629. Amama draagt een toga met een plooikraag, hij heeft bruine haren, een baard en een snor. Het portret is geschilderd in een ovaal met cartouche-omlijsting, waarin middenboven een wapenschild staat.</dc:description>
+<dc:type>portret</dc:type>
+<dc:type>schilderij</dc:type>
+<dc:format>Hoogte 78.5 cm</dc:format>
+<dc:format>Breedte 61.5 cm</dc:format>
+<dc:identifier>SCH0081</dc:identifier>
+<dc:source>Museum Martena</dc:source>
+<dc:language>Nederlands</dc:language>
+<dcterms:provenance>Gemeente Franekeradeel</dcterms:provenance>
+<europeana:provider>Museum Martena</europeana:provider>
+<europeana:type>IMAGE</europeana:type>
+<europeana:isShownBy>http://37.74.151.78/oaiserver/images/SCH0081.jpg</europeana:isShownBy>
+<europeana:dataProvider>Museum Martena</europeana:dataProvider>
+</input>
+<input id="SCH0019">
+<dc:creator>onbekend</dc:creator>
+<dc:subject>Arcerius, Sixtus</dc:subject>
+<dc:publisher>Museum Martena</dc:publisher>
+<dc:description>Portret in olieverf van Sixtus Arcerius, professor Grieks aan de Franeker universiteit van 1605 tot 1623. Arcerius is afgebeeld in een toga met een gepijpte plooikraag. Hij heeft donkere haren, een rossige baard en een snor. Hij staat in een geschilderd ovaal met een cartouche-omlijsting, waarin middenboven een wapenschild staat afgebeeld.</dc:description>
+<dc:type>portret</dc:type>
+<dc:type>schilderij</dc:type>
+<dc:format>Hoogte 64.5 cm</dc:format>
+<dc:format>Breedte 53 cm</dc:format>
+<dc:identifier>SCH0019</dc:identifier>
+<dc:source>Museum Martena</dc:source>
+<dc:language>Nederlands</dc:language>
+<dcterms:provenance>Gemeente Franekeradeel</dcterms:provenance>
+<europeana:provider>Museum Martena</europeana:provider>
+<europeana:type>IMAGE</europeana:type>
+<europeana:isShownBy>http://37.74.151.78/oaiserver/images/SCH0019.jpg</europeana:isShownBy>
+<europeana:dataProvider>Museum Martena</europeana:dataProvider>
+</input>
+<input id="SCH0007">
+<dc:creator>onbekend</dc:creator>
+<dc:subject>Arcerius Theodoretus, Johannes</dc:subject>
+<dc:publisher>Museum Martena</dc:publisher>
+<dc:description>Portret in olieverf van Johannes Arcerius Theodoretus, professor Grieks aan de Franeker universiteit van 1589 tot 1604.Theodoretus is afgebeeld in een donker kostuum met een kleine plooikraag en een muts. Hij heeft grijze haren, een baard en een snor.</dc:description>
+<dc:date>1600</dc:date>
+<dc:date>1604</dc:date>
+<dc:type>portret</dc:type>
+<dc:type>schilderij</dc:type>
+<dc:format>Hoogte 66 cm</dc:format>
+<dc:format>Breedte 53.5 cm</dc:format>
+<dc:identifier>SCH0007</dc:identifier>
+<dc:source>Museum Martena</dc:source>
+<dc:language>Nederlands</dc:language>
+<dcterms:provenance>Gemeente Franekeradeel</dcterms:provenance>
+<europeana:provider>Museum Martena</europeana:provider>
+<europeana:type>IMAGE</europeana:type>
+<europeana:isShownBy>http://37.74.151.78/oaiserver/images/SCH0007.jpg</europeana:isShownBy>
+<europeana:dataProvider>Museum Martena</europeana:dataProvider>
+</input>
+<input id="SCH0031">
+<dc:creator>onbekend</dc:creator>
+<dc:subject>Arnoldus, Nicolaus</dc:subject>
+<dc:publisher>Museum Martena</dc:publisher>
+<dc:description>Portret in olieverf van Nicolaus Arnoldus, professor in de godgeleerdheid aan de Franeker universiteit van 1651 tot 1680. Arnoldus staat afgebeeld in een toga met een bef. Hij heeft bruine haren en een snor en draagt een kalot. Linksboven op het schilderij staat een wapenschild afgebeeld.</dc:description>
+<dc:date>1600</dc:date>
+<dc:date>1700</dc:date>
+<dc:type>portret</dc:type>
+<dc:type>schilderij</dc:type>
+<dc:format>Hoogte 75 cm</dc:format>
+<dc:format>Breedte 63.5 cm</dc:format>
+<dc:identifier>SCH0031</dc:identifier>
+<dc:source>Museum Martena</dc:source>
+<dc:language>Nederlands</dc:language>
+<dcterms:provenance>Gemeente Franekeradeel</dcterms:provenance>
+<europeana:provider>Museum Martena</europeana:provider>
+<europeana:type>IMAGE</europeana:type>
+<europeana:isShownBy>http://37.74.151.78/oaiserver/images/SCH0031.jpg</europeana:isShownBy>
+<europeana:dataProvider>Museum Martena</europeana:dataProvider>
+</input>
+<input id="SCH0082">
+<dc:creator>Accama, Bernardus</dc:creator>
+<dc:subject>D&apos;Arnaud, Georgius Johannes Michael</dc:subject>
+<dc:publisher>Museum Martena</dc:publisher>
+<dc:description>Portret in olieverf van Georgius Johannes Michael D&apos;Arnaud, professor in de rechten aan de Franeker universiteit van 1740 tot 1740. D&apos;Arnaud staat afgebeeld in een toga met een witte bef, hij draagt een grijze krulpruik. De rechterhand rust op een boek dat op een tafel ligt.</dc:description>
+<dc:date>1743</dc:date>
+<dc:type>portret</dc:type>
+<dc:type>schilderij</dc:type>
+<dc:format>Hoogte 84.5 cm</dc:format>
+<dc:format>Breedte 67 cm</dc:format>
+<dc:identifier>SCH0082</dc:identifier>
+<dc:source>Museum Martena</dc:source>
+<dc:language>Nederlands</dc:language>
+<dcterms:provenance>Gemeente Franekeradeel</dcterms:provenance>
+<europeana:provider>Museum Martena</europeana:provider>
+<europeana:type>IMAGE</europeana:type>
+<europeana:isShownBy>http://37.74.151.78/oaiserver/images/SCH0082.jpg</europeana:isShownBy>
+<europeana:dataProvider>Museum Martena</europeana:dataProvider>
+</input>
+</delving-sip-source>

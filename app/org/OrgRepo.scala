@@ -46,12 +46,14 @@ class OrgRepo(userHome: String, val orgId: String) {
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "dastasets")
+  val sourceDir = new File(orgRoot, "source")
   val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
   val skosRepo = new SkosRepo(new File(orgRoot, "skos"))
   val repoDb = new OrgDb(orgId)
 
   orgRoot.mkdirs()
   datasetsDir.mkdir()
+  sourceDir.mkdirs()
 
   def datasetRepo(datasetName: String): DatasetRepo = {
     val dr = new DatasetRepo(this, datasetName)

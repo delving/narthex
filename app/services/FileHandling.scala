@@ -31,6 +31,7 @@ object FileHandling {
   def clearDir(dir: File) = {
     deleteQuietly(dir)
     dir.mkdir()
+    dir
   }
 
   def ensureGitRepo(directory: File): Boolean = {

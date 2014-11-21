@@ -20,14 +20,15 @@ import java.io.File
 
 import akka.actor.{Actor, Props}
 import dataset.DatasetActor.InterruptWork
-import dataset.DatasetRepo
 import dataset.ProgressState._
+import dataset.SipFile.SipMapper
+import dataset.StagingRepo.StagingFacts
+import dataset.{DatasetRepo, SipFile}
 import org.basex.core.cmd.{Delete, Optimize}
 import org.joda.time.DateTime
 import play.api.Logger
 import record.PocketParser.Pocket
 import record.Saver._
-import services.SipFile.SipMapper
 import services.{FileHandling, ProgressReporter}
 
 import scala.concurrent._
@@ -35,15 +36,11 @@ import scala.language.postfixOps
 
 object Saver {
 
-  case class GenerateSourceFromHarvest()
+  case class GenerateSource()
 
-  case class GenerateSourceFromSipFile()
+  case class SourceGenerationComplete(file: File, recordCount: Int)
 
-  case class GenerationComplete(file: File, recordCount: Int)
-
-  case class SaveRecords(modifiedAfter: Option[DateTime], file: File,
-                         recordRoot: String, uniqueId: String, recordCount: Long, deepRecordContainer: Option[String],
-                         sipMapperOpt: Option[SipMapper])
+  case class SaveRecords(modifiedAfter: Option[DateTime], file: File, stagingFacts: StagingFacts, sipMapperOpt: Option[SipMapper])
 
   case class SaveComplete(errorOption: Option[String] = None)
 
@@ -66,14 +63,14 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
     case InterruptWork() =>
       progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
-    case SaveRecords(modifiedAfter: Option[DateTime], file, recordRoot, uniqueId, recordCount, deepRecordContainer, sipMapperOpt) =>
-      log.info(s"Saving $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath}) root=$recordRoot deepRoot=$deepRecordContainer")
+    case SaveRecords(modifiedAfter: Option[DateTime], file, stagingFacts, sipMapperOpt) =>
+      log.info(s"Saving $datasetRepo modified=$modifiedAfter file=${file.getAbsolutePath}) facts=$stagingFacts")
       val recordDb = datasetRepo.recordDbOpt.getOrElse(throw new RuntimeException(s"Expected record db for $datasetRepo"))
 
       future {
 
         modifiedAfter.map { after =>
-          val parser = new PocketParser(recordRoot, uniqueId, deepRecordContainer)
+          val parser = PocketParser(stagingFacts)
           val (source, readProgress) = FileHandling.sourceFromFile(file)
           val progressReporter = ProgressReporter(UPDATING, datasetRepo.datasetDb)
           progressReporter.setReadProgress(readProgress)
@@ -117,7 +114,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
           var tick = 0
           var time = System.currentTimeMillis()
           recordDb.withRecordDb { session =>
-            val parser = new PocketParser(recordRoot, uniqueId, deepRecordContainer)
+            val parser = PocketParser(stagingFacts)
             val (source, readProgress) = FileHandling.sourceFromFile(file)
             val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
             progressReporter.setReadProgress(readProgress)
@@ -157,15 +154,14 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
         }
       }
 
-    case GenerateSourceFromHarvest() =>
-      log.info(s"Generate source from harvest $datasetRepo")
+    case GenerateSource() =>
+      log.info(s"Generate source from staging repo of $datasetRepo")
       future {
         db.infoOpt.foreach { info =>
-          val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo.xml")
           val generateSourceReporter = ProgressReporter(GENERATING, db)
           progress = Some(generateSourceReporter)
           val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
-          val newRecordCount = datasetRepo.harvestRepo.generateSourceFile(incomingFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
+          val newRecordCount = datasetRepo.stagingRepo.generateSourceFile(datasetRepo.sourceFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
           datasetRepo.recordDbOpt.foreach { recordDb =>
             val existingRecordCount = recordDb.getRecordCount
             log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
@@ -175,27 +171,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor {
             val uniqueId = (delimit \ "uniqueId").text
             db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
           }
-          context.parent ! GenerationComplete(incomingFile, newRecordCount)
-        }
-      }
-
-    case GenerateSourceFromSipFile() =>
-      log.info(s"Generate source from sip file $datasetRepo")
-      future {
-        datasetRepo.sipRepo.latestSipFile.map { sipFile =>
-          try {
-            val incomingFile = datasetRepo.createIncomingFile(s"$datasetRepo.xml")
-            val generateSourceReporter = ProgressReporter(GENERATING, db)
-            progress = Some(generateSourceReporter)
-            val (recordCount, namespaceMap) = sipFile.generateSourceFile(incomingFile, generateSourceReporter)
-            log.info(s"Generated source, namespaces=$namespaceMap")
-            datasetRepo.datasetDb.setNamespaceMap(namespaceMap)
-            datasetRepo.datasetDb.endProgress(None)
-            context.parent ! GenerationComplete(incomingFile, recordCount)
-          }
-          catch {
-            case e: Exception => datasetRepo.datasetDb.endProgress(Some(e.toString))
-          }
+          context.parent ! SourceGenerationComplete(datasetRepo.sourceFile, newRecordCount)
         }
       }
   }
