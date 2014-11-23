@@ -26,6 +26,7 @@ import dataset.DatasetState._
 import dataset.ProgressState._
 import dataset.StagingRepo._
 import harvest.Harvesting
+import harvest.Harvesting.HarvestType._
 import harvest.Harvesting._
 import mapping.{CategoryDb, TermDb}
 import org.OrgActor.{DatasetMessage, InterruptDataset}
@@ -35,15 +36,13 @@ import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import record.EnrichmentParser._
-import record.PocketParser._
+import record.Saver.AdoptSource
 import record.{EnrichmentParser, RecordDb}
 import services.FileHandling.clearDir
 import services.Temporal._
 import services._
 
 import scala.concurrent.Await
-
-// todo: use the actor's execution context?
 
 class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
@@ -72,18 +71,77 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     this
   }
 
-  def clearTreeDir() = clearDir(treeDir)
+  def createStagingRepo(stagingFacts: StagingFacts): StagingRepo = StagingRepo.createClean(stagingDir, stagingFacts)
 
-  def createPocketPath(pocket: Pocket) = {
-    val h = pocket.hash
-    s"$datasetName/${h(0)}/${h(1)}/${h(2)}/$h.xml"
+  def dropTree() = {
+    datasetDb.setTree(ready = false)
+    clearDir(treeDir)
   }
 
-  def createStagingRepo(stagingFacts: StagingFacts): StagingRepo = StagingRepo.createClean(stagingDir, stagingFacts)
+  def dropRecords() = {
+    recordDbOpt.map(_.dropDb())
+    datasetDb.setRecords(ready = false, 0)
+  }
+
+  def dropStagingRepo() = {
+    clearDir(stagingDir)
+    datasetDb.setStatus(EMPTY)
+    datasetDb.setSource(ready = false, 0)
+  }
 
   def stagingRepoOpt: Option[StagingRepo] = if (stagingDir.exists()) Some(StagingRepo(stagingDir)) else None
 
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
+
+  def setRawDelimiters(recordRoot: String, uniqueId: String) = {
+    createStagingRepo(StagingFacts("from-raw", recordRoot, uniqueId, None))
+    startAnalysis()
+  }
+
+  def acceptUpload(fileName: String, prefix: String, setTargetFile: File => File): Option[String] = {
+    val db = datasetDb
+    if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
+      db.setMetadataPrefix(prefix)
+      db.setStatus(RAW)
+      setTargetFile(createRawFile(fileName))
+      startAnalysis()
+      None
+    }
+    else if (fileName.endsWith(".sip.zip")) {
+      val sipZipFile = setTargetFile(sipRepo.createSipZipFile(fileName))
+      sipRepo.latestSipOpt.map { sip =>
+        db.setSipFacts(sip.facts)
+        db.setSipHints(sip.hints)
+        sip.sipMappingOpt.map { sipMapping =>
+          (sip.harvestUrl, sip.harvestSpec, sip.harvestPrefix) match {
+            case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
+              // the harvest information is in the Sip, but no source
+              firstHarvest(PMH, harvestUrl, harvestSpec, harvestPrefix)
+            case _ =>
+              // there is no harvest information so there must be source
+              val stagingRepo = createStagingRepo(DELVING_SIP_SOURCE)
+              db.setMetadataPrefix(sipMapping.prefix)
+              sip.copySourceToTempFile.map { sourceFile =>
+                OrgActor.actor ! DatasetMessage(datasetName, AdoptSource(sourceFile))
+                None
+              } getOrElse {
+                dropStagingRepo()
+                Some(s"No source found in $sipZipFile for $datasetName")
+              }
+          }
+        } getOrElse {
+          FileUtils.deleteQuietly(sipZipFile)
+          Some(s"No mapping found in $sipZipFile for $datasetName")
+        }
+      } getOrElse {
+        FileUtils.deleteQuietly(sipZipFile)
+        Some(s"Unable to use $sipZipFile.getName for $datasetName")
+      }
+    }
+    else {
+      Some(s"Unrecognized file suffix: $fileName")
+    }
+  }
 
   def rawFile: Option[File] = {
     if (rawDir.exists()) {
@@ -100,24 +158,25 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     allZip.headOption
   }
 
-  def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String) = datasetDb.infoOpt map { info =>
-    val state = DatasetState.datasetStateFromInfo(info)
-    if (state == EMPTY) {
-      clearDir(stagingDir) // it's a first harvest
-      clearDir(treeDir) // just in case
-      datasetDb.startProgress(HARVESTING)
-      datasetDb.setPrefix(prefix)
-      datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
-      // todo: do we have to set record delimiter?
-      datasetDb.setRecordDelimiter(harvestType.recordRoot, harvestType.uniqueId)
-      StagingRepo.createClean(stagingDir, StagingFacts(harvestType))
-      datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
-      Logger.info(s"First Harvest $datasetName")
-      OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None, justDate = true))
-    }
-    else {
-      Logger.warn(s"Harvest can only be started in $EMPTY, not $state")
-    }
+  def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String): Option[String] = {
+    datasetDb.infoOpt.map { info =>
+      val state = DatasetState.datasetStateFromInfo(info)
+      if (state == EMPTY) {
+        dropStagingRepo()
+        dropTree()
+        createStagingRepo(StagingFacts(harvestType))
+        datasetDb.startProgress(HARVESTING)
+        datasetDb.setMetadataPrefix(prefix)
+        datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
+        datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
+        Logger.info(s"First Harvest $datasetName")
+        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None, justDate = true))
+        None
+      }
+      else {
+        Some(s"Harvest can only be started in $EMPTY, not $state")
+      }
+    } getOrElse Some("Dataset not found!")
   }
 
   def nextHarvest() = datasetDb.infoOpt.map { info =>
@@ -143,25 +202,18 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def startAnalysis() = datasetDb.infoOpt.map { info =>
-    val state = DatasetState.datasetStateFromInfo(info)
-    if (state == SOURCED) {
-      clearDir(treeDir)
-      datasetDb.startProgress(SPLITTING)
-      // todo: maybe for prefixes?
-      OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis())
-    }
-    else {
-      Logger.warn(s"Analyzing $datasetName can only be started when the state is sourced, but it's $state")
-    }
+    dropTree()
+    datasetDb.startProgress(SPLITTING)
+    OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis())
   }
 
   def firstSaveRecords() = datasetDb.infoOpt.map { info =>
     val state = DatasetState.datasetStateFromInfo(info)
-    if (state == SOURCED && sourceFile.exists) {
+    if (state == SOURCED) {
       datasetDb.startProgress(SAVING)
       recordDbOpt.get.createDb()
-      val sipMapperOpt = sipRepo.latestSipFile.flatMap(_.createSipMapper)
-      OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, sourceFile, sipMapperOpt))
+      val sipMapperOpt = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
+      OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, sipMapperOpt))
     }
     else {
       Logger.warn(s"First save of $datasetName can only be started with state sourced when there is a source file")

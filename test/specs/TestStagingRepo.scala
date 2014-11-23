@@ -75,7 +75,7 @@ class TestStagingRepo extends FlatSpec with Matchers {
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
 
-    stagingRepo.generateSourceFile(gitFile, None, map => Unit, ProgressReporter())
+    stagingRepo.generateSource(gitFile, None, map => Unit, ProgressReporter())
 
     FileHandling.gitCommit(gitFile, "Several words of message") should be(true)
   }

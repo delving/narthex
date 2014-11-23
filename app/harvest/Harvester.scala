@@ -24,7 +24,7 @@ import akka.pattern.pipe
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
 import dataset.ProgressState._
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, PMHHarvestPage}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
@@ -40,7 +40,9 @@ object Harvester {
 
   case class HarvestPMH(url: String, set: String, prefix: String, modifiedAfter: Option[DateTime], justDate: Boolean)
 
-  case class HarvestComplete(modifiedAfter: Option[DateTime], file: Option[File], error: Option[String])
+  case class IncrementalHarvest(modifiedAfter: DateTime, fileOpt: Option[File])
+
+  case class HarvestComplete(incrementalOpt: Option[IncrementalHarvest], error: Option[String])
 
   def props(datasetRepo: DatasetRepo) = Props(new Harvester(datasetRepo))
 }
@@ -70,38 +72,22 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
     log.info(s"finished harvest modified=$modifiedAfter error=$error")
     error.map { errorString =>
       FileUtils.deleteQuietly(tempFile)
-      context.parent ! HarvestComplete(modifiedAfter, file = None, error = Some(errorString))
+      context.parent ! HarvestComplete(None, error = Some(errorString))
     } getOrElse {
       datasetRepo.stagingRepoOpt.map { stagingRepo =>
         val completion = future {
           val acceptZipReporter = ProgressReporter(COLLECTING, db)
           val fileOption = stagingRepo.acceptFile(tempFile, acceptZipReporter)
-          // todo: this can be initiated by the DatasetActor upon HarvestComplete, delegating to Saver.GenerateSourceFromHarvest()
-          if (fileOption.isDefined) {
-            // new harvest so there's work to do
-            val generateSourceReporter = ProgressReporter(GENERATING, db)
-            val sipMapperOpt = datasetRepo.sipRepo.latestSipFile.flatMap(_.createSipMapper)
-            val newRecordCount = stagingRepo.generateSourceFile(datasetRepo.sourceFile, sipMapperOpt, db.setNamespaceMap, generateSourceReporter)
-            datasetRepo.recordDbOpt.foreach { recordDb =>
-              val existingRecordCount = recordDb.getRecordCount
-              log.info(s"Collected source records from $existingRecordCount to $newRecordCount")
-              // set record count
-              val info = db.infoOpt.get
-              val delimit = info \ "delimit"
-              val recordRoot = (delimit \ "recordRoot").text
-              val uniqueId = (delimit \ "uniqueId").text
-              db.setRecordDelimiter(recordRoot, uniqueId, newRecordCount)
-            }
-          }
           log.info(s"Zip file accepted: $fileOption")
-          context.parent ! HarvestComplete(modifiedAfter, fileOption, None)
+          val incrementalOpt = modifiedAfter.map(IncrementalHarvest(_, fileOption))
+          context.parent ! HarvestComplete(incrementalOpt, None)
         }
         completion.onFailure {
           case e: Exception =>
-            context.parent ! HarvestComplete(modifiedAfter, file = None, error = Some(e.toString))
+            context.parent ! HarvestComplete(None, error = Some(e.toString))
         }
       } getOrElse {
-        context.parent ! HarvestComplete(modifiedAfter, file = None, error = Some(s"No staging repo for $datasetRepo"))
+        context.parent ! HarvestComplete(None, error = Some(s"No staging repo for $datasetRepo"))
       }
     }
   }

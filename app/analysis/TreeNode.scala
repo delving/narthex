@@ -76,7 +76,6 @@ object TreeNode {
       }
     }
     finally {
-      Logger.info(s"Stopping events $datasetRepo")
       events.stop()
     }
     if (progressReporter.keepWorking) {

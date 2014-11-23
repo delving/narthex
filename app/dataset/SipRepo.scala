@@ -44,10 +44,10 @@ object SipRepo {
   val SIP_SOURCE_RECORD_ROOT = "/delving-sip-source/input"
   val SIP_SOURCE_UNIQUE_ID = "/delving-sip-source/input/@id"
 
-  def listSipZips: Seq[SipFile] = {
+  def listSipZips: Seq[Sip] = {
     repo.repoDb.listDatasets.flatMap { dataset =>
       var datasetRepo = repo.datasetRepo(dataset.datasetName)
-      datasetRepo.sipRepo.latestSipFile
+      datasetRepo.sipRepo.latestSipOpt
     }
   }
 
@@ -59,16 +59,16 @@ class SipRepo(home: File) {
 
   def createSipZipFile(sipZipFileName: String) = new File(home, sipZipFileName)
 
-  def listSipFiles: Seq[SipFile] = {
+  def listSips: Seq[Sip] = {
     val zipFiles = home.listFiles().filter(_.getName.endsWith("zip"))
-    zipFiles.sortBy(_.getName).reverse.map(SipFile(_))
+    zipFiles.sortBy(_.getName).reverse.map(Sip(_))
   }
 
-  def latestSipFile: Option[SipFile] = listSipFiles.headOption
+  def latestSipOpt: Option[Sip] = listSips.headOption
 
 }
 
-object SipFile {
+object Sip {
 
   case class SipMapping(prefix: String, version: String, recDefTree: RecDefTree, validationXSD: String, recMapping: RecMapping) {
     def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
@@ -82,7 +82,7 @@ object SipFile {
 
   val PrefixVersion = "(.*)_(.*)".r
 
-  def apply(zipFile: File) = new SipFile(zipFile)
+  def apply(zipFile: File) = new Sip(zipFile)
 
   val XMLNS = "http://www.w3.org/2000/xmlns/"
   val RDF_ROOT_TAG: String = "RDF"
@@ -105,9 +105,9 @@ object SipFile {
 
 }
 
-class SipFile(val file: File) {
+class Sip(val file: File) {
 
-  import dataset.SipFile._
+  import dataset.Sip._
 
   lazy val zipFile = new ZipFile(file)
 

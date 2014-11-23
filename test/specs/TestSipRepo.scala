@@ -21,23 +21,23 @@ class TestSipRepo extends FlatSpec with Matchers {
     val stagingSourceDir = new File(home, "staging")
     val stagingDir = new File("/tmp/test-sip-repo-staging")
 
-    val sipFileOpt = sipRepo.latestSipFile
-    sipFileOpt.isDefined should be(true)
+    val sipOpt = sipRepo.latestSipOpt
+    sipOpt.isDefined should be(true)
 
-    sipFileOpt.foreach { sipFile =>
+    sipOpt.foreach { sip =>
 
-      sipFile.spec should be(Some("brabant-collectie-prent"))
+      sip.spec should be(Some("brabant-collectie-prent"))
 
-      sipFile.uniqueElementPath should be(Some("/harvest/OAI-PMH/ListRecords/record/metadata/arno:document/arno:document-admin/arno:doc_id"))
+      sip.uniqueElementPath should be(Some("/harvest/OAI-PMH/ListRecords/record/metadata/arno:document/arno:document-admin/arno:doc_id"))
 
-      sipFile.schemaVersionOpt.isDefined should be(true)
+      sip.schemaVersionOpt.isDefined should be(true)
 
       val stagingRepo = StagingRepo.createClean(stagingDir, StagingFacts(HarvestType.PMH))
       FileUtils.copyDirectory(stagingSourceDir, stagingDir)
 
       var mappedPockets = List.empty[Pocket]
 
-      sipFile.createSipMapper.map { sipMapper =>
+      sip.createSipMapper.map { sipMapper =>
         def pocketCatcher(pocket: Pocket): Unit = {
           var mappedPocket = sipMapper.map(pocket)
           mappedPockets = mappedPocket.get :: mappedPockets

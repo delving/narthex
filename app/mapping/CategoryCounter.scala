@@ -16,11 +16,10 @@
 
 package mapping
 
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.InterruptWork
 import dataset.{DatasetRepo, ProgressState}
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
-import play.api.Logger
 import record.CategoryParser
 import record.CategoryParser.CategoryCount
 import record.PocketParser._
@@ -37,11 +36,10 @@ object CategoryCounter {
   def props(datasetRepo: DatasetRepo) = Props(new CategoryCounter(datasetRepo))
 }
 
-class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor {
+class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
 
   import context.dispatcher
 
-  var log = Logger
   var progress: Option[ProgressReporter] = None
 
   def receive = {
@@ -50,7 +48,7 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor {
       progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
     case CountCategories() =>
-      log.info(s"Counting categories $datasetRepo")
+      log.info("Counting categories")
       val pathPrefix = s"${NarthexConfig.ORG_ID}/$datasetRepo"
       future {
         val categoryMappings = datasetRepo.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap

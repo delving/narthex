@@ -16,13 +16,12 @@
 
 package org
 
-import akka.actor.{Actor, ActorRef, Props, Terminated}
+import akka.actor._
 import dataset.DatasetActor
 import dataset.DatasetActor.{InterruptChild, StartCategoryCounting}
 import mapping.CategoryCounter.CategoryCountComplete
 import org.OrgActor.{DatasetMessage, DatasetsCountCategories, InterruptDataset}
 import org.OrgRepo.repo
-import play.api.Logger
 import play.libs.Akka
 import record.CategoryParser.CategoryCount
 
@@ -45,7 +44,7 @@ object OrgActor {
 }
 
 
-class OrgActor extends Actor {
+class OrgActor extends Actor with ActorLogging {
 
   var countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
 
@@ -54,7 +53,7 @@ class OrgActor extends Actor {
     case DatasetMessage(name, message: AnyRef) =>
       val datasetActor = context.child(name).getOrElse {
         val ref = context.actorOf(DatasetActor.props(repo.datasetRepo(name)), name)
-        Logger.info(s"Created $ref")
+        log.info(s"Created dataset actor $ref")
         context.watch(ref)
         ref
       }
@@ -66,7 +65,7 @@ class OrgActor extends Actor {
 
     case CategoryCountComplete(dataset, categoryCounts, errorOption) =>
       countsInProgress += dataset -> Some(categoryCounts)
-      Logger.info(s"$dataset complete, counts: $countsInProgress")
+      log.info(s"Category counting complete, counts: $countsInProgress")
       val countLists = countsInProgress.values.flatten
       if (countLists.size == countsInProgress.size) {
         OrgRepo.repo.categoriesRepo.createSheet(countLists.flatten.toList)
@@ -77,8 +76,8 @@ class OrgActor extends Actor {
       context.child(name).map(_ ! InterruptChild(sender())) getOrElse(sender ! false)
 
     case Terminated(name) =>
-      Logger.info(s"Demised $name")
-      Logger.info(s"Children: ${context.children}")
+      log.info(s"Demised $name")
+      log.info(s"Children: ${context.children}")
   }
 }
 

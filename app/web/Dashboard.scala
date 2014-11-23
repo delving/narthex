@@ -16,18 +16,13 @@
 
 package web
 
-import dataset.DatasetState._
-import dataset.SipRepo._
 import dataset._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType
-import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
 import mapping.SkosVocabulary
 import mapping.SkosVocabulary._
 import mapping.TermDb._
-import org.OrgActor
-import org.OrgActor.DatasetMessage
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
 import play.api.Logger
@@ -35,24 +30,20 @@ import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
-import record.Saver.GenerateSource
 import web.Application.OkFile
 
 object Dashboard extends Controller with Security {
 
-  val SOURCE_SUFFIXES = List(".xml.gz", ".xml")
-
   val DATASET_PROPERTY_LISTS = List(
-    "origin",
+    "character",
     "metadata",
     "status",
     "progress",
     "tree",
+    "source",
     "records",
     "publication",
     "categories",
-    "progress",
-    "delimit",
     "namespaces",
     "harvest",
     "harvestCron",
@@ -83,12 +74,13 @@ object Dashboard extends Controller with Security {
         val interrupted = datasetRepo.interruptProgress
         s"Interrupted: $interrupted"
       case "tree" =>
-        datasetRepo.clearTreeDir()
-        datasetRepo.datasetDb.setTree(ready = false)
+        datasetRepo.dropTree()
+        "Tree removed"
+      case "source" =>
+        datasetRepo.dropStagingRepo()
         "Tree removed"
       case "records" =>
-        datasetRepo.recordDbOpt.map(_.dropDb())
-        datasetRepo.datasetDb.setRecords(ready = false)
+        datasetRepo.dropRecords()
         "Records removed"
       case "new" =>
         datasetRepo.datasetDb.createDataset
@@ -103,46 +95,15 @@ object Dashboard extends Controller with Security {
   def upload(datasetName: String, prefix: String) = Secure(parse.multipartFormData) { token => implicit request =>
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       request.body.file("file").map { file =>
-        val fileName = file.filename
-        Logger.info(s"Dropped file $fileName onto $datasetName")
-        val isSourceFile = SOURCE_SUFFIXES.exists(suffix => fileName.endsWith(suffix))
-        if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
-          datasetRepo.datasetDb.setStatus(RAW)
-          file.ref.moveTo(datasetRepo.createRawFile(fileName))
-          datasetRepo.startAnalysis()
-          Ok(datasetRepo.datasetName)
-        }
-        else if (fileName.endsWith(".sip.zip")) {
-          val sipZipFile = datasetRepo.sipRepo.createSipZipFile(fileName)
-          file.ref.moveTo(sipZipFile, replace = true)
-          datasetRepo.sipRepo.latestSipFile.map { sipFile =>
-            sipFile.sipMappingOpt.map { sipMapping =>
-              (sipFile.harvestUrl, sipFile.harvestSpec, sipFile.harvestPrefix) match {
-                case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
-                  datasetRepo.datasetDb.setPrefix(sipMapping.prefix)
-                  datasetRepo.datasetDb.setHarvestInfo(PMH, harvestUrl, harvestSpec, harvestPrefix)
-                  datasetRepo.datasetDb.setRecordDelimiter(PMH.recordRoot, PMH.uniqueId, sipFile.recordCount.map(_.toInt).getOrElse(0))
-                case _ =>
-                  datasetRepo.datasetDb.setPrefix(sipMapping.prefix)
-                  val recordCount = sipFile.recordCount.map(_.toInt).getOrElse(0)
-                  datasetRepo.datasetDb.setRecordDelimiter(SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, recordCount)
-                  datasetRepo.datasetDb.setStatus(DatasetState.SOURCED)
-                  Logger.info(s"Triggering generate source from zip: $datasetName")
-                  OrgActor.actor ! DatasetMessage(datasetName, GenerateSource())
-                  // todo: trigger saving?
-              }
-            }
-            // todo: sipFacts & sipHints
-            Ok
-          } getOrElse {
-            NotAcceptable(s"Unable to determine origin for $datasetName")
-          }
-        }
-        else {
-          NotAcceptable(Json.obj("problem" -> s"Unrecognized file suffix: $fileName"))
-        }
+        val error = datasetRepo.acceptUpload(file.filename, prefix, { target =>
+          file.ref.moveTo(target)
+          Logger.info(s"Dropped file ${file.filename} on $datasetName: ${target.getAbsolutePath}")
+          datasetRepo.datasetDb.setProgress(ProgressState.ADOPTING, ProgressType.PERCENT, 1)
+          target
+        })
+        error.map(message => NotAcceptable(Json.obj("problem" -> message))).getOrElse(Ok)
       } getOrElse {
-        NotAcceptable(Json.obj("problem" -> s"Cannot find file in the uploaded data $datasetName"))
+        NotAcceptable(Json.obj("problem" -> "Cannot find file in upload"))
       }
     } getOrElse {
       NotAcceptable(Json.obj("problem" -> s"Cannot find dataset $datasetName"))
@@ -157,8 +118,8 @@ object Dashboard extends Controller with Security {
       Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $datasetName")
       HarvestType.harvestTypeFromString(required("harvestType")) map { harvestType =>
         val prefix = if (harvestType == HarvestType.PMH) required("prefix") else HarvestType.ADLIB.name
-        datasetRepo.firstHarvest(harvestType, required("url"), optional("dataset"), prefix)
-        Ok
+        val error = datasetRepo.firstHarvest(harvestType, required("url"), optional("dataset"), prefix)
+        error.map(message => NotAcceptable(Json.obj("problem" -> message))).getOrElse(Ok)
       } getOrElse {
         NotAcceptable(Json.obj("problem" -> s"unknown harvest type: ${optional("harvestType")}"))
       }
@@ -256,14 +217,16 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setRecordDelimiter(datsetName: String) = Secure(parse.json) { token => implicit request =>
+  def setRecordDelimiter(datasetName: String) = Secure(parse.json) { token => implicit request =>
     var recordRoot = (request.body \ "recordRoot").as[String]
     var uniqueId = (request.body \ "uniqueId").as[String]
-    var recordCount = (request.body \ "recordCount").as[Int]
-    val datasetRepo = repo.datasetRepo(datsetName)
-    datasetRepo.datasetDb.setRecordDelimiter(recordRoot, uniqueId, recordCount)
-    println(s"store recordRoot=$recordRoot uniqueId=$uniqueId recordCount=$recordCount")
-    Ok
+    // todo: make sure the client doesn't bother sending recordCount
+    repo.datasetRepoOption(datasetName).map { datasetRepo =>
+      datasetRepo.setRawDelimiters(recordRoot, uniqueId)
+      Ok
+    } getOrElse {
+      NotFound(Json.obj("problem" -> "Dataset not found"))
+    }
   }
 
   def saveRecords(datasetName: String) = Secure() { token => implicit request =>
@@ -377,19 +340,19 @@ object Dashboard extends Controller with Security {
 
   def listSipFiles(datasetName: String) = Secure() { token => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
-    val fileNames = datasetRepo.sipRepo.listSipFiles.map(_.file.toString)
+    val fileNames = datasetRepo.sipRepo.listSips.map(_.file.getName)
     Ok(Json.obj("list" -> fileNames))
   }
 
   def deleteLatestSipFile(datasetName: String) = Secure() { token => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
-    val sipFiles = datasetRepo.sipRepo.listSipFiles
-    if (sipFiles.size < 2) {
+    val sips = datasetRepo.sipRepo.listSips
+    if (sips.size < 2) {
       NotFound(Json.obj("problem" -> s"Refusing to delete the last SIP file $datasetName"))
     }
     else {
-      FileUtils.deleteQuietly(sipFiles.head.file)
-      Ok(Json.obj("deleted" -> sipFiles.head.file.getName))
+      FileUtils.deleteQuietly(sips.head.file)
+      Ok(Json.obj("deleted" -> sips.head.file.getName))
     }
   }
 }

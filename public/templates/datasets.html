@@ -9,6 +9,9 @@
         </div>
         <div class="file-list">
             <ul class="list-group list-files">
+                <li data-ng-if="!files.length">
+                    <h4>No datasets yet</h4>
+                </li>
                 <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.info.status">
                     <div data-ng-include="'dataset-entry.html'">entry</div>
                 </li>
@@ -107,7 +110,7 @@
                 <label for="pmh_prefix">Metadata Prefix</label>
                 <input id="pmh_prefix" class="form-control" data-ng-model="file.info.harvest.prefix" placeholder="prefix" required/>
             </div>
-            <button typ="button" class="btn btn-success" data-ng-click="startHarvest(file)">
+            <button typ="button" class="btn btn-success" data-ng-click="startHarvest()">
                 <i class="fa fa-refresh"></i>
                 <span>Harvest</span>
                 <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH</span>
@@ -132,7 +135,7 @@
                 <label for="hc_unit">Unit</label>
                 <input id="hc_unit" class="form-control" data-ng-model="file.info.harvestCron.unit"/>
             </div>
-            <button typ="button" class="btn btn-success" data-ng-click="setHarvestCron(file)">
+            <button typ="button" class="btn btn-success" data-ng-click="setHarvestCron()">
                 <i class="fa fa-refresh"></i>
                 <span>Save</span>
             </button>
@@ -155,7 +158,7 @@
                 <label for="meta_description">Description</label>
                 <input id="meta_description" class="form-control" data-ng-model="file.info.metadata.description"/>
             </div>
-            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setMetadata(file)">
+            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()">
                 <i class="fa fa-save"></i>
                 <span>Save</span>
             </button>
@@ -181,7 +184,7 @@
                     <input id="pub_lod" type="checkbox" data-ng-model="file.info.publication.lod" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
-            <button typ="button" class="btn btn-success" data-ng-click="setPublication(file)">
+            <button typ="button" class="btn btn-success" data-ng-click="setPublication()">
                 <i class="fa fa-refresh"></i>
                 <span>Save</span>
             </button>
@@ -194,7 +197,8 @@
         <fieldset>
             <div class="checkbox">
                 <label for="cat">Include Categories in Monitor Statistics
-                    <input id="cat" type="checkbox" data-ng-model="file.info.categories.included" ng-true-value="'true'" ng-false-value="'false'"  data-ng-click="setCategories(file)"/>
+                    <input id="cat" type="checkbox" data-ng-model="file.info.categories.included"
+                           ng-true-value="'true'" ng-false-value="'false'" data-ng-click="setCategories()"/>
                 </label>
             </div>
         </fieldset>
@@ -222,28 +226,12 @@
 </script>
 
 <script type="text/ng-template" id="info.html">
-    <div class="file-info-origin" data-ng-show="nonEmpty(file.info.origin)">
-        <h4 class="heading">Origin</h4>
-        <ul class="list-unstyled">
-            <li data-ng-repeat="(key, value) in file.info.origin">
-                <b>{{ key }}</b> = "{{ value }}"
-            </li>
-        </ul>
-    </div>
     <div class="file-info-harvest" data-ng-show="nonEmpty(file.info.harvest)">
         <h4 class="heading">Harvest</h4>
         <ul class="list-unstyled">
             <li data-ng-repeat="(key, value) in file.info.harvest">
                 <b>{{ key }}</b> = "{{ value }}"
             </li>
-        </ul>
-    </div>
-    <div class="file-info-delimit" data-ng-show="nonEmpty(file.info.delimit)">
-        <h4 class="heading">Record Identification</h4>
-        <ul class="list-unstyled">
-            <li><b>Record Root</b>:<code class="path">{{ file.info.delimit.recordRoot }}</code></li>
-            <li><b>Unique ID</b>: <code class="path">{{ file.info.delimit.uniqueId }}</code></li>
-            <li><b>Record Count</b>: <code class="path">{{ file.info.delimit.recordCount }}</code></li>
         </ul>
     </div>
     <div class="file-info-namespace" data-ng-show="nonEmpty(file.info.namespaces)">
@@ -273,7 +261,7 @@
 </script>
 
 <script type="text/ng-template" id="actions.html">
-    <button class="btn btn-sm btn-success btn-block" data-ng-click="startAnalysis(file)"
+    <button class="btn btn-sm btn-success btn-block" data-ng-click="startAnalysis()"
             data-ng-show="!file.treeTime && !file.progress && file.state == 'state-sourced'">
         <i class="fa fa-eye"></i>
         <span>Perform Analysis</span>
@@ -283,8 +271,8 @@
         <i class="fa fa-trash-o"></i>
         <span>Discard Analysis</span>
     </button>
-    <button class="btn btn-sm btn-success btn-block" data-ng-click="saveRecords(file)"
-            data-ng-show="!file.recordsTime && !file.progress && file.state == 'state-sourced' && file.identity.recordCount">
+    <button class="btn btn-sm btn-success btn-block" data-ng-click="saveRecords()"
+            data-ng-show="!file.recordsTime && !file.progress && file.state == 'state-sourced' && file.sourceTime">
         <i class="fa fa-eye"></i>
         <span>Save Records</span>
     </button>
@@ -309,7 +297,7 @@
     <h4 class="heading">SIP Files</h4>
     <ul>
         <li data-ng-repeat="sip in sipFiles">
-            {{ sip.sipFileName }}
+            {{ sip }}
         </li>
     </ul>
 </script>
@@ -320,23 +308,17 @@
         <a href data-ng-click="setFileOpen(file)" class="file-open btn btn-default">
             <i class="fa fa-fw" data-ng-class="{ 'fa-folder-o':fileOpen != file.name, 'fa-folder-open-o':fileOpen == file.name }"></i>
 
-            <span>{{ file.identity.datasetName }}</span>
+            <span class="fa-2x">{{ file.datasetName }}</span>
 
-            <span data-ng-show="file.identity.recordCount">({{ file.identity.recordCount }})</span>
+            <span data-ng-show="file.recordCount">({{ file.recordCount }})</span>
 
-            <span data-ng-show="file.identity.name">
-                <span>"{{ file.identity.name }}"</span>
-                <span data-ng-show="file.identity.dataProvider">from "{{ file.identity.dataProvider }}": </span>
+            <span data-ng-show="file.prefix">
+                <span class="label label-default">{{ file.prefix }}</span>
             </span>
 
-            <span ng-if="file.origin">
-                <span ng-switch="file.origin">
-                    <span class="label label-default" ng-switch-when="origin-drop">Dropped file ({{ file.prefix }})</span>
-                    <span class="label label-default" ng-switch-when="origin-harvest">Harvested dataset ({{ file.prefix }})</span>
-                    <span class="label label-default" ng-switch-when="origin-sip-source">SIP File with source ({{ file.prefix }})</span>
-                    <span class="label label-default" ng-switch-when="origin-sip-harvest">SIP File with harvest ({{ file.prefix }})</span>
-                    <span class="label label-default" ng-switch-default>Unknown origin</span>
-                </span>
+            <span data-ng-show="file.info.metadata.name">
+                <span>"{{ file.info.metadata.name }}"</span>
+                <span data-ng-show="file.info.metadata.dataProvider">from "{{ file.info.metadata.dataProvider }}": </span>
             </span>
 
             <span ng-if="file.state">
@@ -356,7 +338,7 @@
         </a>
 
         <span style="margin-left: 10px">
-            <button class="btn btn-default" data-ng-click="viewFile(file)" data-ng-show="file.treeTime">
+            <button class="btn btn-default" data-ng-click="viewFile()" data-ng-show="file.treeTime">
                 <i class="fa fa-eye"></i> <span>Explore</span>
             </button>
         </span>
@@ -381,25 +363,25 @@
                     <li ng-class="{'active':tabOpen === 'metadata'}" >
                         <a href role="tab" data-ng-click="setTabOpen('metadata')">Metadata</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="allowTab('drop') && dropSupported">
+                    <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="file.state == 'state-empty' && dropSupported">
                         <a href role="tab" data-ng-click="setTabOpen('drop')">File Drop</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'sip-zip'}" data-ng-show="allowTab('sip-zip')">
+                    <li ng-class="{'active':tabOpen === 'sip-zip'}" data-ng-show="file.info.sipFacts">
                         <a href role="tab" data-ng-click="setTabOpen('sip-zip')">SIP Files</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'harvest'}" data-ng-show="allowTab('harvest')">
+                    <li ng-class="{'active':tabOpen === 'harvest'}" data-ng-show="file.state == 'state-empty'">
                         <a href role="tab" data-ng-click="setTabOpen('harvest')">Harvest</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="allowTab('harvest-cron')">
+                    <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url">
                         <a href role="tab" data-ng-click="setTabOpen('harvest-cron')">Scheduled Harvest</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'publication'}" data-ng-show="allowTab('publication')">
+                    <li ng-class="{'active':tabOpen === 'publication'}" data-ng-show="file.recordsTime">
                         <a href role="tab" data-ng-click="setTabOpen('publication')">Publication</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="allowTab('categories')">
+                    <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="file.recordsTime">
                         <a href role="tab" data-ng-click="setTabOpen('categories')">Categories</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'downloads'}" data-ng-show="allowTab('downloads')">
+                    <li ng-class="{'active':tabOpen === 'downloads'}" data-ng-show="file.recordsTime">
                         <a href role="tab" data-ng-click="setTabOpen('downloads')">Downloads</a>
                     </li>
                     <li ng-class="{'active':tabOpen === 'info'}">

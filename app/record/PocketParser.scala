@@ -36,7 +36,11 @@ object PocketParser {
   def apply(stagingFacts: StagingFacts) = new PocketParser(stagingFacts.recordRoot, stagingFacts.uniqueId, stagingFacts.deepRecordContainer)
 
   case class Pocket(id: String, hash: String, text: String, namespaces: Map[String, String]) {
-    def textBytes = new ByteArrayInputStream(text.getBytes("UTF-8"))
+
+    def textBytes: ByteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"))
+
+    def path(datasetName:String): String = s"$datasetName/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
+
   }
 
   val POCKET_LIST = "pockets"

@@ -59,7 +59,7 @@ define(["angular"], function () {
                 $scope.setNewFileOpen(false);
                 $scope.fileOpen = $scope.dataset.validName;
                 $scope.dataset.name = undefined;
-                fetchDatasetList();
+                $scope.fetchDatasetList();
             });
         };
 
@@ -115,7 +115,8 @@ define(["angular"], function () {
                 function () {
                     file.uploading = false;
                     file.uploadPercent = null;
-                    fetchDatasetList();
+                    $scope.setFileOpen("");
+                    $scope.fetchDatasetList();
                 }
             ).error(
                 function (data, status, headers, config) {
@@ -133,6 +134,7 @@ define(["angular"], function () {
         var stateNames = {
             'state-harvesting': "Harvesting from server",
             'state-collecting': "Collecting identifiers",
+            'state-adopting': "Adopting data",
             'state-generating': "Generating source",
             'state-splitting': "Splitting fields",
             'state-collating': "Collating values",
@@ -174,6 +176,17 @@ define(["angular"], function () {
 
         // progressState, progressType, treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
         function decorateFile(file) {
+
+            function oaiPmhListRecords(enriched) {
+                var absUrl = $location.absUrl();
+                var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
+                var start = enriched ? 'oai-pmh/enriched/' : 'oai-pmh/';
+                return {
+                    prefix: file.prefix,
+                    url: serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
+                }
+            }
+
             var info = file.info;
             delete(file.error);
             if (info.progress) {
@@ -192,38 +205,22 @@ define(["angular"], function () {
             file.fileDropped = function ($files) {
                 fileDropped(file, $files)
             };
-            file.identity = {
-                datasetName: file.name
-            };
-            if (info.status) {
-                file.state = info.status.state;
-            }
-            if (info.origin) {
-                file.origin = info.origin.type;
-                file.prefix = info.origin.prefix;
-            }
-            if (info.delimit && info.delimit.recordCount > 0) {
-                file.identity.recordCount = info.delimit.recordCount;
-            }
-            if (info.metadata) {
-                file.identity.name = info.metadata.name;
-                file.identity.dataProvider = info.metadata.dataProvider;
-            }
-            if (info.tree) {
-                file.treeTime = info.tree.time;
-            }
+            file.state = info.status.state;
+            file.datasetName = file.name;
+            if (info.character) file.prefix = info.character.prefix;
+            if (!info.harvest) info.harvest = {};
+            if (!info.metadata) info.metadata = {};
             if (!info.publication) info.publication = {};
             if (!info.categories) info.categories = {};
-            function oaiPmhListRecords(enriched) {
-                var absUrl = $location.absUrl();
-                var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-                var start = enriched ? 'oai-pmh/enriched/' : 'oai-pmh/';
-                return {
-                    prefix: file.prefix,
-                    url: serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
-                }
+            if (info.tree && info.tree.ready == 'true') {
+                file.treeTime = info.tree.time;
             }
-            if (info.records) {
+            if (info.source && info.source.ready == 'true') {
+                file.sourceTime = info.source.time;
+                file.recordCount = info.source.recordCount;
+            }
+            if (info.records && info.records.ready == 'true') {
+                file.recordCount = info.records.recordCount;
                 file.recordsTime = info.records.time;
                 if (file.prefix) {
                     file.oaiPmhListRecords = oaiPmhListRecords(false);
@@ -252,7 +249,7 @@ define(["angular"], function () {
                 function (problem) {
                     if (problem.status == 404) {
                         alert("Processing problem with " + file.name);
-                        fetchDatasetList()
+                        $scope.fetchDatasetList()
                     }
                     else {
                         alert("Network problem " + problem.status);
@@ -261,7 +258,7 @@ define(["angular"], function () {
             )
         }
 
-        function fetchDatasetList() {
+        $scope.fetchDatasetList = function () {
             dashboardService.list().then(function (files) {
                 _.forEach($scope.files, cancelChecker);
                 _.forEach(files, decorateFile);
@@ -270,174 +267,105 @@ define(["angular"], function () {
                     if (file.progress) checkProgress(file)
                 });
             });
-        }
-
-        fetchDatasetList();
-
-        $scope.setMetadata = function (file) {
-            dashboardService.setMetadata(file.name, file.info.metadata).then(function () {
-                fetchDatasetList();
-            });
         };
 
-        $scope.setPublication = function (file) {
-            dashboardService.setPublication(file.name, file.info.publication).then(function () {
-                fetchDatasetList();
-            });
-        };
-
-        $scope.setCategories = function (file) {
-            dashboardService.setCategories(file.name, file.info.categories).then(function () {
-                fetchDatasetList();
-            });
-        };
-
-        $scope.setHarvestCron = function (file) {
-            dashboardService.setHarvestCron(file.name, file.info.harvestCron).then(function () {
-                fetchDatasetList();
-            });
-        };
-
-        $scope.startHarvest = function (file) {
-            $scope.setFileOpen("");
-            dashboardService.harvest(file.name, file.info.harvest).then(function () {
-                fetchDatasetList();
-            });
-        };
-
-        $scope.startAnalysis = function (file) {
-            $scope.setFileOpen("");
-            dashboardService.analyze(file.name).then(function (data) {
-                console.log("start analysis reply", data);
-                fetchDatasetList();
-            });
-        };
-
-        $scope.saveRecords = function (file) {
-            $scope.setFileOpen("");
-            dashboardService.saveRecords(file.name).then(function () {
-                $timeout(
-                    function () {
-                        checkProgress(file)
-                    },
-                    $scope.checkDelay
-                )
-            });
-        };
-
-        $scope.revert = function (file, areYouSure, command) {
-            if (areYouSure && !confirm(areYouSure)) return;
-            dashboardService.revert(file.name, command).then(function (data) {
-                fetchDatasetList();
-                if (command == 'interrupt') {
-                    $scope.fileOpen = file.name;
-                    setSearch();
-                }
-            });
-        };
-
-        $scope.viewFile = function (file) {
-            $location.path("/dataset/" + file.name);
-            $location.search({});
-        };
-
+        $scope.fetchDatasetList();
     };
 
     DashboardCtrl.$inject = [
         "$rootScope", "$scope", "user", "dashboardService", "$location", "$upload", "$timeout", "$routeParams"
     ];
 
-    var DatasetEntryCtrl = function ($scope, dashboardService) {
+    var DatasetEntryCtrl = function ($scope, dashboardService, $location, $timeout) {
 
-        $scope.allowTab = function (tabName) {
+        var file = $scope.file;
 
-            function originIs(values, absenceValue) {
-                if ($scope.isEmpty($scope.file.info.origin)) return absenceValue;
-                var originType = $scope.file.info.origin.type;
-                return values.indexOf(originType) >= 0;
-            }
-            function stateIs(value, absenceValue) {
-                if ($scope.isEmpty($scope.file.info.status)) return absenceValue;
-                var state = $scope.file.info.status.state;
-                return value == state;
-            }
+        function refresh() {
+            $scope.fetchDatasetList();
+        }
 
-            switch (tabName) {
-                case 'drop':
-                    return originIs(['origin-drop'], true) && stateIs('state-empty', true);
-                case 'harvest':
-                    return originIs(['origin-harvest','origin-sip-harvest'], true) && stateIs('state-empty', true);
-                case 'harvest-cron':
-                    return originIs(['origin-harvest', 'origin-sip-harvest'], false) && stateIs('state-sourced', false);
-                case 'categories':
-                    return stateIs('state-sourced', false) && $scope.file.info.delimit && $scope.file.info.delimit.recordRoot;
-                case 'publication':
-                    return originIs(['origin-sip-harvest'], false) || $scope.file.recordsTime;
-                case 'downloads':
-                    return !!$scope.file.recordsTime;
-                case 'sip-zip':
-                    return originIs(['origin-sip-source', 'origin-sip-harvest'], false);
-                default:
-                    console.log("ALLOW TAB " + tabName);
-                    return false;
-            }
+        $scope.setMetadata = function () {
+            dashboardService.setMetadata(file.name, file.info.metadata).then(refresh);
+        };
+
+        $scope.setPublication = function () {
+            // todo: publish in index implies publish oaipmh
+            dashboardService.setPublication(file.name, file.info.publication).then(refresh);
+            // todo: show the user it has happened!
+        };
+
+        $scope.setCategories = function () {
+            dashboardService.setCategories(file.name, file.info.categories).then(refresh);
+        };
+
+        $scope.setHarvestCron = function () {
+            dashboardService.setHarvestCron(file.name, file.info.harvestCron).then(refresh);
+        };
+
+        $scope.startHarvest = function () {
+            $scope.setFileOpen("");
+            dashboardService.harvest(file.name, file.info.harvest).then(refresh);
+        };
+
+        $scope.startAnalysis = function () {
+            $scope.setFileOpen("");
+            dashboardService.analyze(file.name).then(refresh);
+        };
+
+        $scope.saveRecords = function () {
+            $scope.setFileOpen("");
+            dashboardService.saveRecords(file.name).then(refresh);
+        };
+
+        $scope.revert = function (areYouSure, command) {
+            if (areYouSure && !confirm(areYouSure)) return;
+            dashboardService.revert(file.name, command).then(function (data) {
+                refresh();
+                if (command == 'interrupt') $scope.setFileOpen(file.name);
+            });
+        };
+
+        $scope.viewFile = function () {
+            $location.path("/dataset/" + file.name);
+            $location.search({});
         };
 
         $scope.discardTree = function () {
-            $scope.revert($scope.file, "Discard analysis?", "tree");
+            $scope.revert("Discard analysis?", "tree");
         };
 
         $scope.discardRecords = function () {
-            $scope.revert($scope.file, "Discard records?", "records");
+            $scope.revert("Discard records?", "records");
         };
 
         $scope.discardSource = function () {
-            $scope.revert($scope.file, "Discard source?", "source");
+            $scope.revert("Discard source?", "source");
         };
 
         $scope.interruptProcessing = function () {
-            $scope.revert($scope.file, "Interrupt processing?", "interrupt");
+            $scope.revert("Interrupt processing?", "interrupt");
         };
 
         $scope.deleteDataset = function () {
-            $scope.revert($scope.file, "Delete dataset?", "revert state");
+            $scope.revert("Delete dataset?", "revert state");
         };
 
         function fetchSipFileList() {
-            dashboardService.listSipFiles($scope.file.name).then(function (data) {
-                if (!data) return;
-                var specs = {};
-                $scope.sipFiles = _.map(data.list, function (sipFile) {
-                    var entry = { sipFileName: sipFile };
-                    var part = sipFile.match(/sip_(.+)__(\d+)_(\d+)_(\d+)_(\d+)_(\d+)__(.*).zip/);
-                    if (part) {
-                        var spec = part[1];
-                        if (specs[spec]) entry.expendable = true;
-                        specs[spec] = true;
-                        entry.details = {
-                            spec: spec,
-                            date: new Date(
-                                parseInt(part[2]), parseInt(part[3]), parseInt(part[4]),
-                                parseInt(part[5]), parseInt(part[6]), 0),
-                            uploadedBy: part[7]
-                        };
-                    }
-                    return entry;
-                });
-                if (!$scope.sipFiles.length) $scope.sipFiles = undefined
+            dashboardService.listSipFiles(file.name).then(function (data) {
+                $scope.sipFiles = (data && data.list && data.list.length)? data.list : undefined;
             });
         }
         fetchSipFileList();
 
         $scope.deleteSipZip = function () {
-            dashboardService.deleteLatestSipFile($scope.file.name).then(function () {
+            dashboardService.deleteLatestSipFile(file.name).then(function () {
                 fetchSipFileList();
             });
         };
 
     };
 
-    DatasetEntryCtrl.$inject = ["$scope", "dashboardService"];
+    DatasetEntryCtrl.$inject = ["$scope", "dashboardService", "$location", "$timeout"];
 
     return {
         DashboardCtrl: DashboardCtrl,

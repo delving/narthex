@@ -37,8 +37,7 @@ object DatasetDb {
     if (fields.nonEmpty) Some(tag -> JsObject(fields)) else None
   }
 
-  // todo: shouldn't call this origin ultimately
-  def prefixOptFromInfo(info: Elem) = Option((info \ "origin" \ "prefix").text).find(_.trim.nonEmpty)
+  def prefixOptFromInfo(info: Elem) = Option((info \ "character" \ "prefix").text).find(_.trim.nonEmpty)
 
 }
 
@@ -72,6 +71,7 @@ object ProgressState {
   val STATE_IDLE = ProgressState("state-idle")
   val HARVESTING = ProgressState("state-harvesting")
   val COLLECTING = ProgressState("state-collecting")
+  val ADOPTING = ProgressState("state-adopting")
   val GENERATING = ProgressState("state-generating")
   val SPLITTING = ProgressState("state-splitting")
   val COLLATING = ProgressState("state-collating")
@@ -80,7 +80,7 @@ object ProgressState {
   val UPDATING = ProgressState("state-updating")
   val ERROR = ProgressState("state-error")
 
-  val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, SAVING, ERROR)
+  val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, SAVING, ERROR)
 
   def progressStateFromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
 
@@ -169,8 +169,9 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     session.query(update).execute()
   }
 
-  def setPrefix(prefix: String) = setProperties(
-    "origin",
+  def setMetadataPrefix(prefix: String) = setProperties(
+    "character",
+    "type" -> "metadata",
     "prefix" -> prefix
   )
 
@@ -182,12 +183,22 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
 
   def setTree(ready: Boolean) = setProperties(
     "tree",
-    "time" -> (if (ready) now else "")
+    "ready" -> ready,
+    "time" -> now
   )
 
-  def setRecords(ready: Boolean) = setProperties(
+  def setSource(ready: Boolean, recordCount: Int) = setProperties(
+    "source",
+    "ready" -> ready,
+    "recordCount" -> recordCount,
+    "time" -> now
+  )
+
+  def setRecords(ready: Boolean, recordCount: Int) = setProperties(
     "records",
-    "time" -> (if (ready) now else "")
+    "ready" -> ready,
+    "recordCount" -> recordCount,
+    "time" -> now
   )
 
   def startProgress(progressState: ProgressState) = setProgress(progressState, BUSY, 0)
@@ -201,23 +212,6 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     "count" -> count,
     "error" -> error.getOrElse("")
   )
-
-  def setRecordDelimiter(recordRoot: String = "", uniqueId: String = "", recordCount: Int = 0) = setProperties(
-    "delimit",
-    "recordRoot" -> recordRoot,
-    "uniqueId" -> uniqueId,
-    "recordCount" -> recordCount
-  )
-
-  // todo: should be unnecessary
-  def isDelimited(existingInfo: Option[NodeSeq]): Boolean = {
-    def check(info: NodeSeq) = {
-      val delimit = info \ "delimit"
-      val recordRoot = delimit \ "recordRoot"
-      recordRoot.nonEmpty
-    }
-    existingInfo.map(check).getOrElse(infoOpt.exists(check))
-  }
 
   def setNamespaceMap(namespaceMap: Map[String, String]) = setProperties(
     "namespaces", namespaceMap.toSeq: _*

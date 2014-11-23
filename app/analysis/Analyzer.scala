@@ -18,7 +18,7 @@ package analysis
 
 import java.io.{BufferedReader, File, FileReader, FileWriter}
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import analysis.Analyzer._
 import analysis.Collator._
 import analysis.Merger._
@@ -29,7 +29,6 @@ import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
 import dataset.ProgressState._
 import org.apache.commons.io.FileUtils
-import play.api.Logger
 import play.api.libs.json._
 import services._
 
@@ -51,18 +50,18 @@ object Analyzer {
 
 }
 
-class Analyzer(val datasetRepo: DatasetRepo) extends Actor {
-  val log = Logger
+class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
   val db = datasetRepo.datasetDb
   val LINE = """^ *(\d*) (.*)$""".r
   var progress: Option[ProgressReporter] = None
   var sorters = List.empty[ActorRef]
   var collators = List.empty[ActorRef]
+  var recordCount = 0
 
   def receive = {
 
     case InterruptWork() =>
-      log.info(s"Interrupted analysis $datasetRepo")
+      log.info("Interrupted analysis")
       progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
 
     case AnalyzeFile(file) =>
@@ -91,7 +90,6 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor {
           case None =>
             context.parent ! AnalysisComplete(Some(s"Interrupted while splitting ${file.getName}"))
         }
-        Logger.info(s"Closing source $datasetRepo")
         source.close()
       }
       f.onFailure {
@@ -105,7 +103,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor {
       val progressReporter = ProgressReporter(COLLATING, db)
       progress = Some(progressReporter)
       progressReporter.sendWorkers(sorters.size + collators.size)
-      log.info(s"Tree complete $datasetRepo")
+      log.info(s"Tree complete")
 
     case Counted(nodeRepo, uniqueCount, sampleSizes) =>
       collators = collators.filter(collator => collator != sender)
@@ -151,7 +149,6 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor {
           progress.foreach { p =>
             if (sorters.isEmpty && collators.isEmpty) {
               if (p.keepWorking) {
-                log.info(s"Analysis Complete, kill: ${self.toString()}")
                 context.parent ! AnalysisComplete()
               }
               else {

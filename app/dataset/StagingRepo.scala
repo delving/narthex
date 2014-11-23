@@ -19,7 +19,8 @@ import java.io._
 import java.nio.file.Files
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
 
-import dataset.SipFile.SipMapper
+import dataset.Sip.SipMapper
+import dataset.SipRepo.{SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID}
 import harvest.Harvesting.HarvestType
 import mapping.CategoryDb.CategoryMapping
 import org.apache.commons.io.input.BOMInputStream
@@ -63,12 +64,7 @@ object StagingRepo {
 
   case class StagingFacts(stagingType: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
 
-  def DELVING_SIP_SOURCE = StagingFacts(
-    "delving-sip-source",
-    "/delving-sip-source/input",
-    "/delving-sip-source/input/@id",
-    None
-  )
+  def DELVING_SIP_SOURCE = StagingFacts("delving-sip-source", SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, None)
 
   def stagingFactsFile(home: File) = new File(home, STAGING_FACTS_NAME)
 
@@ -105,6 +101,7 @@ object StagingRepo {
 }
 
 class StagingRepo(home: File) {
+
   import dataset.StagingRepo._
 
   private def numberString(number: Int): String = "%05d".format(number)
@@ -284,7 +281,7 @@ class StagingRepo(home: File) {
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSourceFile(sourceFile: File, sipMapperOpt: Option[SipMapper], setNamespaceMap: Map[String, String] => Unit, progressReporter: ProgressReporter): Int = {
+  def generateSource(sourceFile: File, sipMapperOpt: Option[SipMapper], setNamespaceMap: Map[String, String] => Unit, progressReporter: ProgressReporter): Int = {
     Logger.info(s"Generating source from $home to $sourceFile using $stagingFacts")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
