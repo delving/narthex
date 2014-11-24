@@ -220,7 +220,6 @@ object Dashboard extends Controller with Security {
   def setRecordDelimiter(datasetName: String) = Secure(parse.json) { token => implicit request =>
     var recordRoot = (request.body \ "recordRoot").as[String]
     var uniqueId = (request.body \ "uniqueId").as[String]
-    // todo: make sure the client doesn't bother sending recordCount
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       datasetRepo.setRawDelimiters(recordRoot, uniqueId)
       Ok

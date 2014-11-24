@@ -35,24 +35,17 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
-        datasetService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
-            $scope.datasetInfo = datasetInfo;
-            if (datasetInfo.origin.type == 'origin-drop') {
-                $scope.allowUniqueIdSet = true;
-                if (datasetInfo.delimit && datasetInfo.delimit.recordRoot) {
-                    $scope.recordRoot = datasetInfo.delimit.recordRoot;
-                    $scope.uniqueId = datasetInfo.delimit.uniqueId;
-                    $scope.recordContainer = $scope.recordRoot.substring(0, $scope.recordRoot.lastIndexOf("/"));
-                }
-            }
-            else {
-                $scope.allowUniqueIdSet = false;
+        datasetService.datasetInfo($scope.datasetName).then(function (info) {
+
+            $scope.state = info.status.state;
+            $scope.rawState = $scope.state == 'state-raw';
+            if (!$scope.rawState) {
                 $scope.recordContainer = "/pockets/pocket";
                 $scope.uniqueId = "/pockets/pocket/@id";
-                $scope.recordRoot = $scope.recordContainer + "/?"; // discovered later in setDelim
             }
 
             datasetService.index($scope.datasetName).then(function (tree) {
+
                 function sortKids(node) {
                     if (!node.kids.length) return;
                     node.kids = _.sortBy(node.kids, function (kid) {
@@ -62,10 +55,9 @@ define(["angular"], function () {
                         sortKids(node.kids[index]);
                     }
                 }
-
                 sortKids(tree);
 
-                function setDelim(node) {
+                function setDelimiterNodes(node) {
                     var nodePathContainer = node.path.substring(0, node.path.lastIndexOf("/"));
                     // the only element under pocket will be the record root
                     if (nodePathContainer == $scope.recordContainer && node.tag.indexOf('@') < 0) {
@@ -87,16 +79,10 @@ define(["angular"], function () {
                         }
                     }
                     for (var index = 0; index < node.kids.length; index++) {
-                        setDelim(node.kids[index]);
+                        setDelimiterNodes(node.kids[index]);
                     }
                 }
-
-                if ($scope.recordRoot) {
-                    setDelim(tree);
-                    if (parseInt(datasetInfo.delimit.recordCount) <= 0 && $scope.uniqueIdNode) {
-                        $scope.setUniqueIdNode($scope.uniqueIdNode); // trigger setting record count
-                    }
-                }
+                if ($scope.recordContainer) setDelimiterNodes(tree);
 
                 datasetService.getTermSourcePaths($scope.datasetName).then(function (data) {
                     console.log('get term source paths', data.sourcePaths);
@@ -131,7 +117,6 @@ define(["angular"], function () {
                         }
                     }
                 }
-
                 if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
             });
         });
@@ -207,8 +192,7 @@ define(["angular"], function () {
                 $scope.uniqueIdNode = node;
                 var body = {
                     recordRoot: $scope.recordRootNode.path,
-                    uniqueId: $scope.uniqueIdNode.path,
-                    recordCount: $scope.uniqueIdNode.count
+                    uniqueId: $scope.uniqueIdNode.path
                 };
                 datasetService.setRecordDelimiter($scope.datasetName, body).then(function () {
                     console.log("record delimiter set");
