@@ -47,21 +47,16 @@ define(["angular"], function (angular) {
         $scope.histogram = [];
         $scope.histogramVisible = [];
 
+        var recordContainer = "/pockets/pocket";
+        if ($scope.path.substring(0, recordContainer.length) != recordContainer) console.warn("Missing record container!");
+        $scope.sourceUriPath = $scope.path.substring(recordContainer.length);
+
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
         };
 
         termsService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
             $scope.datasetInfo = datasetInfo;
-            var recordContainer;
-            if (datasetInfo.origin.type == 'origin-drop'){
-                var recordRoot = datasetInfo.delimit.recordRoot;
-                recordContainer = recordRoot.substring(0, recordRoot.lastIndexOf("/"));
-            }
-            else {
-                recordContainer = "/pockets/pocket";
-            }
-            $scope.sourceUriPath = $scope.path.substring(recordContainer.length);
         });
 
         function filterHistogram() {

@@ -36,6 +36,10 @@ define(["angular"], function (angular) {
         $scope.categories = [];
         $scope.visible = {};
 
+        var recordContainer = "/pockets/pocket";
+        if ($scope.path.substring(0, recordContainer.length) != recordContainer) console.warn("Missing record container!");
+        var sourceUriPath = $scope.path.substring(recordContainer.length);
+
         function columnDefinitionsFromCategories() {
             $scope.columnDefs = [];
             $scope.columnDefs.push({ field: 'term', displayName: 'Term', width: 460 });
@@ -63,6 +67,40 @@ define(["angular"], function (angular) {
             }
             if (!numberVisible) $scope.columnDefs.push({ field: 'boo', displayName: '', width: 1 });
         }
+
+        categoriesService.getCategoryList().then(function (categoryList) {
+            $scope.categories = categoryList.categories;
+            if (!$scope.categories) {
+                alert("No categories!");
+                return;
+            }
+            columnDefinitionsFromCategories();
+            categoriesService.histogram($scope.datasetName, $scope.path, $scope.histogramSize).then(function (histogramData) {
+                $scope.gridData = _.map(histogramData.histogram, function (entry) {
+                    var sourceUri = $rootScope.orgId + "/" + $scope.datasetName + sourceUriPath + "/" + encodeURIComponent(entry[1]);
+//                        console.log("sourceUri " + entry[1], sourceUri);
+                    return {
+                        term: entry[1],
+                        count: entry[0],
+                        sourceUri: sourceUri,
+                        memberOf: {}
+                    }
+                });
+
+                categoriesService.getCategoryMappings($scope.datasetName).then(function (mappingsData) {
+                    var mappingLookup = {};
+                    _.forEach(mappingsData.mappings, function (mapping) {
+                        mappingLookup[mapping.source] = mapping.categories;
+                    });
+                    _.forEach($scope.gridData, function (row) {
+                        var categories = mappingLookup[row.sourceUri];
+                        _.forEach(categories, function (category) {
+                            row.memberOf[category] = true;
+                        });
+                    });
+                });
+            });
+        });
 
         $scope.categoryGrid = {
             data: 'gridData',
@@ -98,51 +136,6 @@ define(["angular"], function (angular) {
             angular.element(document.querySelector( '#category-explanation' )).removeClass('visible');
         };
 
-        categoriesService.datasetInfo($scope.datasetName).then(function (datasetInfo) {
-            $scope.datasetInfo = datasetInfo;
-            if (datasetInfo.origin.type == 'origin-drop') {
-                var recordRoot = datasetInfo.delimit.recordRoot;
-                var lastSlash = recordRoot.lastIndexOf('/');
-                $scope.recordContainer = recordRoot.substring(0, lastSlash);
-            } else {
-                $scope.recordContainer = '/pockets/pocket';
-            }
-            var sourceUriPath = $scope.path.substring($scope.recordContainer.length);
-
-            categoriesService.getCategoryList().then(function (categoryList) {
-                $scope.categories = categoryList.categories;
-                if (!$scope.categories) {
-                    alert("No categories!");
-                    return;
-                }
-                columnDefinitionsFromCategories();
-                categoriesService.histogram($scope.datasetName, $scope.path, $scope.histogramSize).then(function (histogramData) {
-                    $scope.gridData = _.map(histogramData.histogram, function (entry) {
-                        var sourceUri = $rootScope.orgId + "/" + $scope.datasetName + sourceUriPath + "/" + encodeURIComponent(entry[1]);
-//                        console.log("sourceUri " + entry[1], sourceUri);
-                        return {
-                            term: entry[1],
-                            count: entry[0],
-                            sourceUri: sourceUri,
-                            memberOf: {}
-                        }
-                    });
-
-                    categoriesService.getCategoryMappings($scope.datasetName).then(function (mappingsData) {
-                        var mappingLookup = {};
-                        _.forEach(mappingsData.mappings, function (mapping) {
-                            mappingLookup[mapping.source] = mapping.categories;
-                        });
-                        _.forEach($scope.gridData, function (row) {
-                            var categories = mappingLookup[row.sourceUri];
-                            _.forEach(categories, function (category) {
-                                row.memberOf[category] = true;
-                            });
-                        });
-                    });
-                });
-            });
-        });
 
         $scope.setGridValue = function (entity, code) {
             var body = {

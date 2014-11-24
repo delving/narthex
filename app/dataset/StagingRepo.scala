@@ -297,10 +297,9 @@ class StagingRepo(home: File) {
         }
       }
     }
-    val namespaceMap = parsePockets(pocketWriter, progressReporter)
+    parsePockets(pocketWriter, progressReporter)
     out.write( s"""</$POCKET_LIST>\n""")
     out.close()
-    setNamespaceMap(namespaceMap)
     Logger.info(s"Finished generating source from $home")
     recordCount
   }

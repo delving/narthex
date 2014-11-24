@@ -24,6 +24,7 @@ import analysis.NodeRepo
 import dataset.DatasetActor.{StartAnalysis, StartCategoryCounting, StartHarvest, StartSaving}
 import dataset.DatasetState._
 import dataset.ProgressState._
+import dataset.Sip.{RDF_PREFIX, RDF_URI}
 import dataset.StagingRepo._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
@@ -113,6 +114,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         db.setSipFacts(sip.facts)
         db.setSipHints(sip.hints)
         sip.sipMappingOpt.map { sipMapping =>
+          // must add RDF since the mapping output uses it
+          val namespaces = sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)
+          db.setNamespaceMap(namespaces)
           (sip.harvestUrl, sip.harvestSpec, sip.harvestPrefix) match {
             case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
               // the harvest information is in the Sip, but no source
