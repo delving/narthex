@@ -26,7 +26,8 @@ import org.joda.time.DateTime
 import org.w3c.dom.Element
 import play.api.Logger
 import record.PocketParser._
-import services.Temporal
+import services.StringHandling.urlEncodeValue
+import services.{NarthexConfig, Temporal}
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -224,14 +225,13 @@ class Sip(val file: File) {
         pocketElement.setAttribute("id", pocket.id)
         pocketElement.setAttribute("hash", pocket.hash)
         pocketElement.setAttribute("mod", Temporal.timeToString(now))
-        // todo: make a string with the right prefix!
-        val rdfAbout = pocket.id
-        pocketElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
         val cn = root.getChildNodes
         val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
-        val rdf = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-        kids.foreach(rdf.appendChild)
-        pocketElement.appendChild(rdf)
+        val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
+        val rdfAbout = s"${NarthexConfig.RDF_ABOUT_PREFIX}${urlEncodeValue(pocket.id)}"
+        rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
+        kids.foreach(rdfElement.appendChild)
+        pocketElement.appendChild(rdfElement)
         val xml = serializer.toXml(pocketElement, true)
         Some(Pocket(pocket.id, pocket.hash, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
       } catch {

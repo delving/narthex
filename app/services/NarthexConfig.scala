@@ -37,8 +37,6 @@ object NarthexConfig {
   val USER_HOME = System.getProperty("user.home")
   val NARTHEX = new File(USER_HOME, "NarthexFiles")
 
-  lazy val ORG_ID = configString("orgId")
-
   lazy val API_ACCESS_KEYS = secretList("api.accessKeys")
 
   lazy val OAI_PMH_REPOSITORY_IDENTIFIER = configString("oai_pmh.repositoryIdentifier")
@@ -53,10 +51,8 @@ object NarthexConfig {
 
   def oaiPmhKeyFits(accessKey: String) = OAI_PMH_ACCESS_KEYS.contains(accessKey)
   def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
-}
 
-
-
-class CommonsConfig {
+  val ORG_ID = configString("orgId")
+  val RDF_ABOUT_PREFIX = configString("rdfAboutPrefix")
 
 }
