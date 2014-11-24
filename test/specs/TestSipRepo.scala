@@ -8,7 +8,7 @@ import harvest.Harvesting.HarvestType
 import org.apache.commons.io.FileUtils
 import org.scalatest.{FlatSpec, Matchers}
 import record.PocketParser.Pocket
-import services.ProgressReporter
+import services.{FileHandling, ProgressReporter}
 
 import scala.xml.XML
 
@@ -16,10 +16,10 @@ class TestSipRepo extends FlatSpec with Matchers {
 
   "A SipRepo" should "handle a harvest sip" in {
 
-    val home = new File(getClass.getResource("/sip").getFile)
+    val home = new File(getClass.getResource("/sip_harvest").getFile)
     val sipRepo = new SipRepo(new File(home, "sips"))
     val stagingSourceDir = new File(home, "staging")
-    val stagingDir = new File("/tmp/test-sip-repo-staging")
+    val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
 
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined should be(true)
@@ -45,18 +45,64 @@ class TestSipRepo extends FlatSpec with Matchers {
         stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
       }
 
-      mappedPockets.size should be (25)
+      mappedPockets.size should be(5)
 
       val head = XML.loadString(mappedPockets.head.text)
 
       println(head)
 
-      val eglise = "L'Eglise collegiale de Notre Dame a Breda.Harrewijn fecit"
+      val expectedTitle = "[Bezoek van Statenleden aan de electriciteitsfabriek te Geertruidenberg op 18 Juli 1917]."
 
       val titleText = (head \ "Description" \ "title").filter(_.prefix == "dc").text.trim
 
-      titleText should be(eglise)
+      titleText should be(expectedTitle)
 
+    }
+  }
+
+  "A SipRepo" should "handle a source sip" in {
+
+    val home = new File(getClass.getResource("/sip_source").getFile)
+    val sipsDir = FileHandling.clearDir(new File("/tmp/test-sip-source-sips"))
+    FileUtils.copyDirectory(home, sipsDir)
+    val sipRepo = new SipRepo(sipsDir)
+
+    val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-source-staging"))
+
+    val sipOpt = sipRepo.latestSipOpt
+    sipOpt.isDefined should be(true)
+    sipOpt.foreach { sip =>
+
+      sip.spec should be(Some("frans-hals-museum"))
+
+      val source = sip.copySourceToTempFile
+      source.isDefined should be(true)
+
+      val stagingRepo = StagingRepo.createClean(stagingDir, StagingRepo.DELVING_SIP_SOURCE)
+
+      stagingRepo.acceptFile(source.get, ProgressReporter())
+
+      var mappedPockets = List.empty[Pocket]
+
+      sip.createSipMapper.map { sipMapper =>
+        def pocketCatcher(pocket: Pocket): Unit = {
+          //          println(pocket)
+          var mappedPocket = sipMapper.map(pocket)
+          mappedPockets = mappedPocket.get :: mappedPockets
+        }
+        stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
+      }
+
+      mappedPockets.size should be(5)
+
+      val head = XML.loadString(mappedPockets.head.text)
+      val creator = "Kees Verwey"
+
+      println(head)
+
+      val creatorText = (head \ "Description" \ "creator").filter(_.prefix == "dc").text.trim
+
+      creatorText should be("Kees Verwey")
     }
   }
 }

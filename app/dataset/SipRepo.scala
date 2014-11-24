@@ -87,7 +87,7 @@ object Sip {
   val XMLNS = "http://www.w3.org/2000/xmlns/"
   val RDF_ROOT_TAG: String = "RDF"
   val RDF_RECORD_TAG: String = "Description"
-  val RDF_ID_ATTRIBUTE: String = "about"
+  val RDF_ABOUT_ATTRIBUTE: String = "about"
   val RDF_PREFIX: String = "rdf"
   val RDF_URI: String = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
@@ -170,10 +170,11 @@ class Sip(val file: File) {
     entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val mapping = RecMapping.read(inputStream, recDefTree)
-      mapping.getNodeMappings.foreach { nodeMapping =>
+      // in the case of a harvest sip, we strip off /metadata/<recordRoot>
+      if (harvestUrl.isDefined) mapping.getNodeMappings.foreach { nodeMapping =>
         val inputPath = nodeMapping.inputPath.toString
         if (inputPath.startsWith("/input")) {
-          nodeMapping.inputPath = Path.create(inputPath.replace("/metadata", ""))
+          nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/metadata/[^/]*", ""))
         }
       }
       mapping
@@ -214,7 +215,7 @@ class Sip(val file: File) {
 
     override def map(pocket: Pocket): Option[Pocket] = {
       try {
-        val metadataRecord = factory.metadataRecordFrom(pocket.id, pocket.text, false)
+        val metadataRecord = factory.metadataRecordFrom(pocket.id, pocket.recordXml, false)
         val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
         val root = result.root().asInstanceOf[Element]
         val doc = root.getOwnerDocument
@@ -223,16 +224,15 @@ class Sip(val file: File) {
         pocketElement.setAttribute("id", pocket.id)
         pocketElement.setAttribute("hash", pocket.hash)
         pocketElement.setAttribute("mod", Temporal.timeToString(now))
-        pocketElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ID_ATTRIBUTE", pocket.id)
+        // todo: make a string with the right prefix!
+        val rdfAbout = pocket.id
+        pocketElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
         val cn = root.getChildNodes
         val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
         val rdf = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
         kids.foreach(rdf.appendChild)
         pocketElement.appendChild(rdf)
         val xml = serializer.toXml(pocketElement, true)
-        //
-        //        Logger.info(s"mapped record: $xml")
-        //
         Some(Pocket(pocket.id, pocket.hash, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
       } catch {
         case discard: DiscardRecordException =>

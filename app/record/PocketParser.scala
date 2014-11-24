@@ -35,7 +35,14 @@ object PocketParser {
 
   def apply(stagingFacts: StagingFacts) = new PocketParser(stagingFacts.recordRoot, stagingFacts.uniqueId, stagingFacts.deepRecordContainer)
 
+  val PocketRegex = "(?s).*<pocket[^>]*>(.*)</pocket>.*".r
+
   case class Pocket(id: String, hash: String, text: String, namespaces: Map[String, String]) {
+
+    def recordXml: String = {
+      val PocketRegex(content) = text
+      content.trim
+    }
 
     def textBytes: ByteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"))
 
@@ -173,7 +180,8 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
               val contentHash = hashString(recordContent)
               val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
               val mod = timeToString(new DateTime())
-              val wrapped = s"""<$POCKET id="$id" mod="$mod" hash="$contentHash" $scope>\n$recordContent</$POCKET>\n"""
+              val scopedRecordContent = recordContent.replaceFirst(">",s" $scope>")
+              val wrapped = s"""<$POCKET id="$id" mod="$mod" hash="$contentHash">\n$scopedRecordContent</$POCKET>\n"""
               Some(Pocket(id, contentHash, wrapped, namespaceMap))
             }
           } getOrElse {
