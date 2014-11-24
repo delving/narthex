@@ -285,12 +285,11 @@ class StagingRepo(home: File) {
     Logger.info(s"Generating source from $home to $sourceFile using $stagingFacts")
     var recordCount = 0
     val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
-    out.write("<?xml version='1.0' encoding='UTF-8'?>\n")
     out.write( s"""<$POCKET_LIST>\n""")
     def pocketWriter(rawPocket: Pocket): Unit = {
       val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
       pocketOpt.map { pocket =>
-        out.write(pocket.text)
+        out.write(pocket.text.replaceFirst("<[?].*[?]>\n", ""))
         recordCount += 1
         if (recordCount % 1000 == 0) {
           Logger.info(s"Generating record $recordCount")

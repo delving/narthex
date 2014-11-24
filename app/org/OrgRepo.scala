@@ -24,7 +24,6 @@ import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMe
 import mapping.{CategoriesRepo, SkosRepo}
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
-import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import record.EnrichmentParser._
@@ -45,7 +44,7 @@ object OrgRepo {
 class OrgRepo(userHome: String, val orgId: String) {
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
-  val datasetsDir = new File(orgRoot, "dastasets")
+  val datasetsDir = new File(orgRoot, "datasets")
   val sourceDir = new File(orgRoot, "source")
   val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
   val skosRepo = new SkosRepo(new File(orgRoot, "skos"))
@@ -77,8 +76,8 @@ class OrgRepo(userHome: String, val orgId: String) {
           case Some(ns) => RepoMetadataFormat(prefix, ns._2)
           case None => RepoMetadataFormat(prefix)
         }
-        Logger.info(s"info: ${dataset.info}")
-        val recordsPresent = (dataset.info \ "records" \ "time").nonEmpty
+//        Logger.info(s"info: ${dataset.info}")
+        val recordsPresent = (dataset.info \ "records" \ "ready").text == "true"
         if (!recordsPresent)
           None
         else
@@ -88,7 +87,7 @@ class OrgRepo(userHome: String, val orgId: String) {
             name = (dataset.info \ "metadata" \ "name").text,
             description = (dataset.info \ "metadata" \ "description").text,
             dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
-            totalRecords = (dataset.info \ "delimit" \ "recordCount").text.toInt,
+            totalRecords = (dataset.info \ "records" \ "recordCount").text.toInt,
             metadataFormat = metadataFormat
           ))
       }
