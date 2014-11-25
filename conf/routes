@@ -29,7 +29,7 @@ POST        /narthex/dashboard/:datasetName/set-delimiter                 web.Da
 GET         /narthex/dashboard/:datasetName/analyze                       web.Dashboard.analyze(datasetName)
 GET         /narthex/dashboard/:datasetName/index                         web.Dashboard.index(datasetName)
 GET         /narthex/dashboard/:datasetName/dataset-info                  web.Dashboard.datasetInfo(datasetName)
-GET         /narthex/dashboard/:datasetName/revert/:command               web.Dashboard.revert(datasetName, command)
+GET         /narthex/dashboard/:datasetName/command/:command              web.Dashboard.command(datasetName, command)
 GET         /narthex/dashboard/:datasetName/status/*path                  web.Dashboard.nodeStatus(datasetName, path)
 GET         /narthex/dashboard/:datasetName/sample/:size/*path            web.Dashboard.sample(datasetName, path, size:Int)
 GET         /narthex/dashboard/:datasetName/histogram/:size/*path         web.Dashboard.histogram(datasetName, path, size:Int)

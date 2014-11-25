@@ -56,7 +56,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
   var tempFile = File.createTempFile("narthex-harvest", ".zip")
   val zip = new ZipOutputStream(new FileOutputStream(tempFile))
   var pageCount = 0
-  var harvestProgress: Option[ProgressReporter] = None
+  var progress: Option[ProgressReporter] = None
 
   def addPage(page: String): Int = {
     val harvestPageName = s"harvest_$pageCount.xml"
@@ -103,18 +103,17 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
   def receive = {
 
     case InterruptWork() =>
-      log.info(s"Interrupt harvesting $datasetRepo")
-      harvestProgress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
+      if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
 
     case HarvestAdLib(url, database, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
       val futurePage = fetchAdLibPage(url, database, modifiedAfter)
       handleFailure(futurePage, modifiedAfter, "adlib harvest")
-      harvestProgress = Some(ProgressReporter(HARVESTING, db))
+      progress = Some(ProgressReporter(HARVESTING, db))
       futurePage pipeTo self
 
     case AdLibHarvestPage(records, url, database, modifiedAfter, diagnostic) =>
-      harvestProgress.foreach { progressReporter =>
+      progress.foreach { progressReporter =>
         val pageNumber = addPage(records)
         val keepGoing = if (modifiedAfter.isDefined)
           progressReporter.sendPage(pageNumber) // This compensates for AdLib's failure to report number of hits
@@ -138,7 +137,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
 
     case HarvestPMH(url, set, prefix, modifiedAfter, justDate) =>
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
-      harvestProgress = Some(ProgressReporter(HARVESTING, db))
+      progress = Some(ProgressReporter(HARVESTING, db))
       val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate)
       handleFailure(futurePage, modifiedAfter, "pmh harvest")
       futurePage pipeTo self
@@ -146,7 +145,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
     case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, justDate, resumptionToken) =>
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
-      harvestProgress.foreach { progressReporter =>
+      progress.foreach { progressReporter =>
         resumptionToken.map { token =>
           val keepHarvesting = if (token.hasPercentComplete) {
             progressReporter.sendPercent(token.percentComplete)

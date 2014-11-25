@@ -31,7 +31,7 @@ import harvest.Harvesting.HarvestType._
 import harvest.Harvesting._
 import mapping.{CategoryDb, TermDb}
 import org.OrgActor.{DatasetMessage, InterruptDataset}
-import org.apache.commons.io.FileUtils
+import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgRepo}
 import play.Logger
 import play.api.Play.current
@@ -68,15 +68,57 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def mkdirs = {
     rootDir.mkdirs()
-    treeDir.mkdir()
     this
+  }
+
+  def receiveCommand(command: String): String = {
+    command match {
+
+      case "delete" =>
+        datasetDb.dropDataset()
+        deleteQuietly(rootDir)
+        "deleted"
+
+      case "interrupt" =>
+        if (interruptProgress) "interrupted" else "killed"
+
+      case "remove source" =>
+        deleteQuietly(sourceFile)
+        deleteQuietly(rawDir)
+        deleteQuietly(stagingDir)
+        datasetDb.setStatus(EMPTY)
+        datasetDb.endProgress(None)
+        "source removed"
+
+      case "remove tree" =>
+        deleteQuietly(treeDir)
+        datasetDb.setTree(ready = false)
+        datasetDb.endProgress(None)
+        "tree removed"
+
+      case "remove records" =>
+        recordDbOpt.map(_.dropDb())
+        datasetDb.setRecords(ready = false, 0)
+        datasetDb.endProgress(None)
+        "records removed"
+
+      case _ =>
+        Logger.warn(s"$this sent unrecognized command $command")
+        "unrecognized"
+    }
   }
 
   def createStagingRepo(stagingFacts: StagingFacts): StagingRepo = StagingRepo.createClean(stagingDir, stagingFacts)
 
+  def dropStagingRepo() = {
+    deleteQuietly(stagingDir)
+    datasetDb.setStatus(EMPTY)
+    datasetDb.setSource(ready = false, 0)
+  }
+
   def dropTree() = {
+    deleteQuietly(treeDir)
     datasetDb.setTree(ready = false)
-    clearDir(treeDir)
   }
 
   def dropRecords() = {
@@ -84,19 +126,16 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     datasetDb.setRecords(ready = false, 0)
   }
 
-  def dropStagingRepo() = {
-    clearDir(stagingDir)
-    datasetDb.setStatus(EMPTY)
-    datasetDb.setSource(ready = false, 0)
-  }
-
   def stagingRepoOpt: Option[StagingRepo] = if (stagingDir.exists()) Some(StagingRepo(stagingDir)) else None
 
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
   def setRawDelimiters(recordRoot: String, uniqueId: String) = {
-    createStagingRepo(StagingFacts("from-raw", recordRoot, uniqueId, None))
-    startAnalysis()
+    rawFile.map { raw =>
+      createStagingRepo(StagingFacts("from-raw", recordRoot, uniqueId, None))
+      dropTree()
+      OrgActor.actor ! DatasetMessage(datasetName, AdoptSource(raw))
+    }
   }
 
   def acceptUpload(fileName: String, prefix: String, setTargetFile: File => File): Option[String] = {
@@ -134,11 +173,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
               }
           }
         } getOrElse {
-          FileUtils.deleteQuietly(sipZipFile)
+          deleteQuietly(sipZipFile)
           Some(s"No mapping found in $sipZipFile for $datasetName")
         }
       } getOrElse {
-        FileUtils.deleteQuietly(sipZipFile)
+        deleteQuietly(sipZipFile)
         Some(s"Unable to use $sipZipFile.getName for $datasetName")
       }
     }
@@ -235,44 +274,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
     if (!interrupted) datasetDb.endProgress(Some("Terminated processing"))
     interrupted
-  }
-
-  def revertState: Option[DatasetState] = {
-    val currentState = datasetDb.infoOpt.map(DatasetState.datasetStateFromInfo(_))
-    Logger.info(s"Revert state of $datasetName from $currentState")
-    datasetDb.infoOpt.flatMap { info =>
-      currentState match {
-        case None =>
-          datasetDb.createDataset
-          Some(EMPTY)
-        case Some(RAW) =>
-          FileUtils.deleteQuietly(rawDir)
-          datasetDb.dropDataset()
-          None
-        case Some(EMPTY) =>
-          if (rawDir.exists()) {
-            Some(RAW)
-          }
-          else {
-            datasetDb.dropDataset()
-            None
-          }
-        case Some(SOURCED) =>
-          val treeTimeOption = nodeSeqToTime(info \ "tree" \ "time")
-          val recordsTimeOption = nodeSeqToTime(info \ "records" \ "time")
-          if (treeTimeOption.isEmpty && recordsTimeOption.isEmpty) {
-            FileUtils.deleteQuietly(sourceFile)
-            val nextStatus = if (rawDir.exists()) RAW else EMPTY
-            datasetDb.setStatus(nextStatus)
-            Some(nextStatus)
-          }
-          else {
-            currentState
-          }
-        case _ =>
-          currentState
-      }
-    }
   }
 
   def index = new File(treeDir, "index.json")

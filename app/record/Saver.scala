@@ -61,8 +61,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
   def receive = {
 
     case InterruptWork() =>
-      progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
-
+      if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
 
     case AdoptSource(file) =>
       log.info(s"Adopt source ${file.getAbsolutePath}")

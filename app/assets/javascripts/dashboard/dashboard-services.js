@@ -40,8 +40,8 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                revert: function (datasetName, command) {
-                    return dash.revert(datasetName, command).get().then(
+                command: function (datasetName, command) {
+                    return dash.command(datasetName, command).get().then(
                         function (response) {
                             return response.data;
                         },

@@ -34,7 +34,8 @@ object ProgressReporter {
 }
 
 trait ProgressReporter {
-  var bomb: Option[ActorRef]
+
+  def interruptBy(actor: ActorRef): Boolean
 
   def keepReading(value: Int = -1): Boolean
 
@@ -53,7 +54,8 @@ trait ProgressReporter {
 }
 
 class FakeProgressReporter extends ProgressReporter {
-  var bomb: Option[ActorRef] = None
+
+  override def interruptBy(actor: ActorRef) = true
 
   override def keepReading(value: Int): Boolean = true
 
@@ -77,6 +79,16 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetDb: DatasetD
   var maximumOption: Option[Int] = None
   var percentWas = -1
   var lastProgress = 0l
+
+  override def interruptBy(actor: ActorRef): Boolean = {
+    if (bomb.isDefined) {
+      false
+    }
+    else {
+      bomb = Some(actor)
+      true
+    }
+  }
 
   private def mindTheBomb(setProgress: => Unit): Boolean = {
     if (keepWorking) setProgress

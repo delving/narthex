@@ -195,7 +195,8 @@ define(["angular"], function () {
                     uniqueId: $scope.uniqueIdNode.path
                 };
                 datasetService.setRecordDelimiter($scope.datasetName, body).then(function () {
-                    console.log("record delimiter set");
+                    console.log("Record delimiter set, moving to datasets page");
+                    $location.path("/datasets");
                 });
             }
         };

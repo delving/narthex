@@ -178,7 +178,7 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.setPublication,
           routes.javascript.Dashboard.setCategories,
           routes.javascript.Dashboard.datasetInfo,
-          routes.javascript.Dashboard.revert,
+          routes.javascript.Dashboard.command,
           routes.javascript.Dashboard.nodeStatus,
           routes.javascript.Dashboard.index,
           routes.javascript.Dashboard.sample,

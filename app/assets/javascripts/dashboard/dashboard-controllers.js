@@ -54,12 +54,11 @@ define(["angular"], function () {
         });
 
         $scope.createDataset = function () {
-            // revert nothing means create
-            dashboardService.revert($scope.dataset.validName, "new").then(function () {
+            dashboardService.command($scope.dataset.validName, "create").then(function () {
                 $scope.setNewFileOpen(false);
-                $scope.fileOpen = $scope.dataset.validName;
                 $scope.dataset.name = undefined;
                 $scope.fetchDatasetList();
+                $scope.setFileOpen($scope.dataset.validName);
             });
         };
 
@@ -317,37 +316,37 @@ define(["angular"], function () {
             dashboardService.saveRecords(file.name).then(refresh);
         };
 
-        $scope.revert = function (areYouSure, command) {
-            if (areYouSure && !confirm(areYouSure)) return;
-            dashboardService.revert(file.name, command).then(function (data) {
-                refresh();
-                if (command == 'interrupt') $scope.setFileOpen(file.name);
-            });
-        };
-
         $scope.viewFile = function () {
             $location.path("/dataset/" + file.name);
             $location.search({});
         };
 
-        $scope.discardTree = function () {
-            $scope.revert("Discard analysis?", "tree");
-        };
-
-        $scope.discardRecords = function () {
-            $scope.revert("Discard records?", "records");
-        };
-
-        $scope.discardSource = function () {
-            $scope.revert("Discard source?", "source");
+        $scope.command = function (areYouSure, command) {
+            if (areYouSure && !confirm(areYouSure)) return;
+            dashboardService.command(file.name, command).then(function (data) {
+                refresh();
+                if (command == 'interrupt') $scope.setFileOpen(file.name);
+            });
         };
 
         $scope.interruptProcessing = function () {
-            $scope.revert("Interrupt processing?", "interrupt");
+            $scope.command("Interrupt processing?", "interrupt");
+        };
+
+        $scope.discardSource = function () {
+            $scope.command("Discard source?", "remove source");
+        };
+
+        $scope.discardTree = function () {
+            $scope.command("Discard analysis?", "remove tree");
+        };
+
+        $scope.discardRecords = function () {
+            $scope.command("Discard records?", "remove records");
         };
 
         $scope.deleteDataset = function () {
-            $scope.revert("Delete dataset?", "revert state");
+            $scope.command("Delete dataset?", "delete");
         };
 
         function fetchSipFileList() {

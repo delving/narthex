@@ -56,13 +56,18 @@ object SipRepo {
 }
 
 class SipRepo(home: File) {
-  home.mkdir()
 
-  def createSipZipFile(sipZipFileName: String) = new File(home, sipZipFileName)
+  def createSipZipFile(sipZipFileName: String) = {
+    home.mkdir()
+    new File(home, sipZipFileName)
+  }
 
   def listSips: Seq[Sip] = {
-    val zipFiles = home.listFiles().filter(_.getName.endsWith("zip"))
-    zipFiles.sortBy(_.getName).reverse.map(Sip(_))
+    if (home.exists()) {
+      val zipFiles = home.listFiles().filter(_.getName.endsWith("zip"))
+      zipFiles.sortBy(_.getName).reverse.map(Sip(_))
+    }
+    else Seq.empty[Sip]
   }
 
   def latestSipOpt: Option[Sip] = listSips.headOption

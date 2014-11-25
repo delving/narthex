@@ -45,7 +45,7 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
   def receive = {
 
     case InterruptWork() =>
-      progress.map(_.bomb = Some(sender())).getOrElse(context.stop(self))
+      if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
 
     case CountCategories() =>
       log.info("Counting categories")

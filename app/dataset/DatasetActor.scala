@@ -86,7 +86,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
             case PMH => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
             case ADLIB => HarvestAdLib(url, database, modifiedAfter)
           }
-          val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo)))
+          val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo), "harvester"))
           harvester ! kickoff
         } getOrElse {
           val incremental = modifiedAfter.map(IncrementalHarvest(_, None))
@@ -116,18 +116,19 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
     // === adopting
 
     case AdoptSource(file) =>
-      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
+      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo), "saver"))
       saver ! AdoptSource(file)
 
     case SourceAdoptionComplete(file) =>
       log.info(s"Adopted source ${file.getAbsolutePath}")
+      datasetRepo.dropTree()
       // todo: allow for error
       self ! GenerateSource()
 
     // === generating
 
     case GenerateSource() =>
-      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
+      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo), "saver"))
       saver ! GenerateSource()
 
     case SourceGenerationComplete(file, recordCount) =>
@@ -143,10 +144,10 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
     case StartAnalysis() =>
       log.info("Start analysis")
       if (datasetRepo.sourceFile.exists()) {
-        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo)))
+        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
         analyzer ! AnalyzeFile(datasetRepo.sourceFile)
       } else datasetRepo.rawFile.map { rawFile =>
-        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo)))
+        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
         analyzer ! AnalyzeFile(rawFile)
       } getOrElse {
         self ! AnalysisComplete(Some(s"No file to analyze for $datasetRepo"))
@@ -165,7 +166,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
 
     case StartSaving(incrementalOpt, sipMapperOpt) =>
       log.info(s"Start saving from incremental=$incrementalOpt")
-      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo)))
+      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo), "saver"))
       saver ! SaveRecords(incrementalOpt, sipMapperOpt)
 
     case SaveComplete(recordCount, errorOption) =>
@@ -179,7 +180,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
     case StartCategoryCounting() =>
       log.info("Start categorizing")
       if (datasetRepo.sourceFile.exists()) {
-        val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo)))
+        val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo), "category-counter"))
         categoryCounter ! CountCategories()
       }
       else {
@@ -196,6 +197,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
 
     case InterruptChild(actorWaiting) => // return true if an interrupt happened
       val interrupted = context.children.exists { child: ActorRef =>
+        log.info(s"Sending interrupt to $child")
         child ! InterruptWork()
         true // found one to interrupt
       }

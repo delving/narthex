@@ -323,9 +323,12 @@
 
             <span ng-if="file.state">
                 <span ng-switch="file.state">
-                    <span class="label label-warning" ng-switch-when="state-deleted">Deleted</span>
                     <span class="label label-default" ng-switch-when="state-empty">Empty</span>
-                    <span ng-switch-default>
+                    <span ng-switch-when="state-raw">
+                        <span class="label label-success" data-ng-show="!file.treeTime">Raw</span>
+                        <span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>
+                    </span>
+                    <span ng-switch-when="state-sourced">
                         <span class="label label-success" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
                         <span class="label label-success" data-ng-show="file.treeTime">Analyzed {{ file.treeTime }}</span>
                         <span class="label label-success" data-ng-show="file.recordsTime">Saved {{ file.recordsTime }}</span>

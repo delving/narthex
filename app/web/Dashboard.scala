@@ -67,29 +67,18 @@ object Dashboard extends Controller with Security {
     } getOrElse NotFound(Json.obj("problem" -> s"Not found $datasetName"))
   }
 
-  def revert(datasetName: String, command: String) = Secure() { token => implicit request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
-    val change = command match {
-      case "interrupt" =>
-        val interrupted = datasetRepo.interruptProgress
-        s"Interrupted: $interrupted"
-      case "tree" =>
-        datasetRepo.dropTree()
-        "Tree removed"
-      case "source" =>
-        datasetRepo.dropStagingRepo()
-        "Tree removed"
-      case "records" =>
-        datasetRepo.dropRecords()
-        "Records removed"
-      case "new" =>
-        datasetRepo.datasetDb.createDataset
-        "New dataset created"
+  def command(datasetName: String, command: String) = Secure() { token => implicit request =>
+    command match {
+      case "create" =>
+        repo.datasetRepo(datasetName).datasetDb.createDataset
+        Ok(s"Created $datasetName")
       case _ =>
-        val revertedStateOpt = datasetRepo.revertState
-        s"Reverted to $revertedStateOpt"
+        repo.datasetRepoOption(datasetName).map { datasetRepo =>
+          Ok(datasetRepo.receiveCommand(command))
+        } getOrElse {
+          NotFound
+        }
     }
-    Ok(Json.obj("change" -> change))
   }
 
   def upload(datasetName: String, prefix: String) = Secure(parse.multipartFormData) { token => implicit request =>
