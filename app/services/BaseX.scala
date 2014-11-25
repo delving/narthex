@@ -21,7 +21,7 @@ object BaseX {
 
   def withDbSession[T](name: String, documentOpt: Option[String] = None)(block: ClientSession => T): T = {
     try {
-      baseX.withDbSession[T](name, check = documentOpt.isEmpty)(block)
+      baseX.withDbSession[T](name)(block)
     }
     catch {
       case be: BaseXException =>
@@ -31,7 +31,7 @@ object BaseX {
             val create = documentOpt.map(document => new CreateDB(name, s"<$document/>")).getOrElse(new CreateDB(name))
             session.execute(create)
           }
-          baseX.withDbSession(name, check = false)(block)
+          baseX.withDbSession(name)(block)
         }
         else {
           throw be
@@ -62,8 +62,8 @@ class BaseX(host: String, port: Int, user: String, pass: String) {
     }
   }
 
-  def withDbSession[T](name: String, check: Boolean)(block: ClientSession => T): T = withSession { session =>
-    session.execute(if (check) new Check(name) else new Open(name))
+  def withDbSession[T](name: String)(block: ClientSession => T): T = withSession { session =>
+    session.execute(new Open(name))
     session.execute(new Set("autoflush", "false"))
     val result = block(session)
     session.execute(new Flush())
