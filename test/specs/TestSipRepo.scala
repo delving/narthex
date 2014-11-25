@@ -17,7 +17,7 @@ class TestSipRepo extends FlatSpec with Matchers {
   "A SipRepo" should "handle a harvest sip" in {
 
     val home = new File(getClass.getResource("/sip_harvest").getFile)
-    val sipRepo = new SipRepo(new File(home, "sips"))
+    val sipRepo = new SipRepo("test", "http://aboutprefix", new File(home, "sips"))
     val stagingSourceDir = new File(home, "staging")
     val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
 
@@ -65,7 +65,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     val home = new File(getClass.getResource("/sip_source").getFile)
     val sipsDir = FileHandling.clearDir(new File("/tmp/test-sip-source-sips"))
     FileUtils.copyDirectory(home, sipsDir)
-    val sipRepo = new SipRepo(sipsDir)
+    val sipRepo = new SipRepo("test", "http://aboutprefix", sipsDir)
 
     val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-source-staging"))
 

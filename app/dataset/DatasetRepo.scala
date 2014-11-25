@@ -61,7 +61,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetName"
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
-  lazy val sipRepo = SipRepo(sipsDir)
+  lazy val sipRepo = SipRepo(datasetName, NarthexConfig.RDF_ABOUT_PREFIX, sipsDir)
   lazy val recordDbOpt = datasetDb.prefixOpt.map(prefix => new RecordDb(this, dbBaseName, prefix))
 
   override def toString = datasetName

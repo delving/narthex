@@ -27,7 +27,7 @@ import org.w3c.dom.Element
 import play.api.Logger
 import record.PocketParser._
 import services.StringHandling.urlEncodeValue
-import services.{NarthexConfig, Temporal}
+import services.Temporal
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -52,10 +52,10 @@ object SipRepo {
     }
   }
 
-  def apply(home: File): SipRepo = new SipRepo(home)
+  def apply(datasetName: String, rdfAboutPrefix: String, home: File): SipRepo = new SipRepo(datasetName, rdfAboutPrefix, home)
 }
 
-class SipRepo(home: File) {
+class SipRepo(datasetName: String, rdfAboutPrefix: String, home: File) {
 
   def createSipZipFile(sipZipFileName: String) = {
     home.mkdir()
@@ -65,7 +65,7 @@ class SipRepo(home: File) {
   def listSips: Seq[Sip] = {
     if (home.exists()) {
       val zipFiles = home.listFiles().filter(_.getName.endsWith("zip"))
-      zipFiles.sortBy(_.getName).reverse.map(Sip(_))
+      zipFiles.sortBy(_.getName).reverse.map(Sip(datasetName, rdfAboutPrefix, _))
     }
     else Seq.empty[Sip]
   }
@@ -88,7 +88,7 @@ object Sip {
 
   val PrefixVersion = "(.*)_(.*)".r
 
-  def apply(zipFile: File) = new Sip(zipFile)
+  def apply(datasetName: String, rdfAboutPrefix: String, zipFile: File) = new Sip(datasetName, rdfAboutPrefix, zipFile)
 
   val XMLNS = "http://www.w3.org/2000/xmlns/"
   val RDF_ROOT_TAG: String = "RDF"
@@ -111,7 +111,7 @@ object Sip {
 
 }
 
-class Sip(val file: File) {
+class Sip(datasetName: String, rdfAboutPrefix: String, val file: File) {
 
   import dataset.Sip._
 
@@ -233,7 +233,11 @@ class Sip(val file: File) {
         val cn = root.getChildNodes
         val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
         val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-        val rdfAbout = s"${NarthexConfig.RDF_ABOUT_PREFIX}${urlEncodeValue(pocket.id)}"
+        val prefix = if (rdfAboutPrefix.endsWith("/"))
+          rdfAboutPrefix.substring(0, rdfAboutPrefix.length - 1)
+        else
+          rdfAboutPrefix
+        val rdfAbout = s"$prefix/$datasetName/${urlEncodeValue(pocket.id)}"
         rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
         kids.foreach(rdfElement.appendChild)
         pocketElement.appendChild(rdfElement)
