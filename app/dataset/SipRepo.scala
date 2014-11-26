@@ -16,12 +16,12 @@
 package dataset
 
 import java.io._
-import java.util.zip.ZipFile
+import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipOutputStream}
 
 import eu.delving.groovy._
 import eu.delving.metadata._
 import org.OrgRepo.repo
-import org.apache.commons.io.FileUtils
+import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import org.w3c.dom.Element
 import play.api.Logger
@@ -266,4 +266,23 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
   }
 
   def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
+
+  def copyWithSourceTo(sipFile: File, sourceFile: File) = {
+    val entryList: List[ZipEntry] = zipFile.entries().toList
+    val toCopy = entryList.filter(entry => entry.getName != "source.xml.gz")
+    val zos = new ZipOutputStream(new FileOutputStream(sipFile))
+    toCopy.foreach { entry =>
+      zos.putNextEntry(entry)
+      val is = zipFile.getInputStream(entry)
+      IOUtils.copy(is, zos)
+      zos.closeEntry()
+    }
+    zos.putNextEntry(new ZipEntry("source.xml.gz"))
+    val gzipOut = new GZIPOutputStream(zos)
+    val sourceIn = new FileInputStream(sourceFile)
+    IOUtils.copy(sourceIn, gzipOut)
+    gzipOut.close()
+    zos.close()
+  }
+
 }

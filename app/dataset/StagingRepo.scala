@@ -281,11 +281,11 @@ class StagingRepo(home: File) {
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSource(rawOutputStream: OutputStream, mappedFile: File, sipMapperOpt: Option[SipMapper], progressReporter: ProgressReporter): Int = {
+  def generateSource(pocketOutputStream: OutputStream, mappedFile: File, sipMapperOpt: Option[SipMapper], progressReporter: ProgressReporter): Int = {
     Logger.info(s"Generating source from $home to $mappedFile with mapper $sipMapperOpt using $stagingFacts")
     var recordCount = 0
     val mappedOutputOpt: Option[Writer] = sipMapperOpt.map(sm => new OutputStreamWriter(new FileOutputStream(mappedFile), "UTF-8"))
-    val rawOutput = new OutputStreamWriter(rawOutputStream, "UTF-8")
+    val rawOutput = new OutputStreamWriter(pocketOutputStream, "UTF-8")
     try {
       val startList = s"""<$POCKET_LIST>\n"""
       val endList = s"""</$POCKET_LIST>\n"""

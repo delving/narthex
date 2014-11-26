@@ -23,6 +23,7 @@ import dataset.DatasetActor.{ChildFailure, IncrementalSave, InterruptWork}
 import dataset.DatasetRepo
 import dataset.ProgressState._
 import dataset.Sip.SipMapper
+import org.apache.commons.io.FileUtils
 import org.basex.core.cmd.{Delete, Optimize}
 import record.PocketParser.Pocket
 import record.Saver._
@@ -86,11 +87,16 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
       log.info("Generate source")
       datasetRepo.stagingRepoOpt.map { stagingRepo =>
         val sipMapperOpt = datasetRepo.sipMapperOpt
-        val pocketOutput = new FileOutputStream(datasetRepo.pocketFile)
         future {
           val progressReporter = ProgressReporter(GENERATING, db)
           progress = Some(progressReporter)
+          val pocketOutput = new FileOutputStream(datasetRepo.pocketFile)
           val recordCount = stagingRepo.generateSource(pocketOutput, datasetRepo.mappedFile, sipMapperOpt, progressReporter)
+          pocketOutput.close()
+          datasetRepo.sipRepo.latestSipOpt.map { latestSip =>
+            latestSip.copyWithSourceTo(datasetRepo.sipFile, datasetRepo.pocketFile)
+            FileUtils.deleteQuietly(datasetRepo.pocketFile)
+          }
           context.parent ! SourceGenerationComplete(datasetRepo.mappedFile, recordCount)
         } onFailure {
           case t => context.parent ! ChildFailure(t.getMessage, Some(t))

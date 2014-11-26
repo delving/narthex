@@ -46,6 +46,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "datasets")
   val sourceDir = new File(orgRoot, "source")
+  val sipsDir = new File(orgRoot, "sips")
   val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
   val skosRepo = new SkosRepo(new File(orgRoot, "skos"))
   val repoDb = new OrgDb(orgId)
@@ -53,6 +54,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   orgRoot.mkdirs()
   datasetsDir.mkdir()
   sourceDir.mkdirs()
+  sipsDir.mkdirs()
 
   def datasetRepo(datasetName: String): DatasetRepo = {
     val dr = new DatasetRepo(this, datasetName)

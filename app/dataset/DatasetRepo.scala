@@ -48,19 +48,20 @@ import scala.concurrent._
 class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   private val rootDir = new File(orgRepo.datasetsDir, datasetName)
+  private val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetName"
 
   private val treeDir = new File(rootDir, "tree")
   private val stagingDir = new File(rootDir, "staging")
   private val sipsDir = new File(rootDir, "sips")
   private val rawDir = new File(rootDir, "raw")
 
-  // todo: provisional.  we will need to build a sip!
-  val pocketFile = new File(orgRepo.sourceDir, s"$datasetName-pocket.xml")
+  val pocketFile = new File(orgRepo.sipsDir, s"$datasetName-pockets.xml")
+  val sipFile = new File(orgRepo.sipsDir, s"${datasetName}_sip.zip")
   val mappedFile = new File(orgRepo.sourceDir, s"$datasetName.xml")
+
   val treeRoot = new NodeRepo(this, treeDir)
 
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, datasetName)
-  val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetName"
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = SipRepo(datasetName, NarthexConfig.RDF_ABOUT_PREFIX, sipsDir)
