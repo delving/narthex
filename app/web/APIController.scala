@@ -20,8 +20,8 @@ import java.io.FileInputStream
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
-import dataset.DatasetDb
-import org.OrgRepo.repo
+import dataset.{DatasetDb, Sip}
+import org.OrgRepo.{AvailableSip, repo}
 import org.apache.commons.io.IOUtils
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
@@ -159,13 +159,30 @@ object APIController extends Controller {
   }
 
   def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val sipZips = repo.listSipZips
+    val availableSips: Seq[AvailableSip] = repo.availableSips
+    val uploadedSips: Seq[Sip] = repo.uploadedSips
     val xml =
-      <sip-zips>{ for (pair <- sipZips) yield
-          <sip-zip>
-            <dataset>{ pair._1 }</dataset>
-            <date>{ Temporal.timeToLocalString(pair._2) }</date>
-          </sip-zip>}
+      <sip-zips>
+        <available>
+          {
+            for (availableSip <- availableSips) yield
+            <sip-zip>
+              <dataset>{ availableSip.datasetName }</dataset>
+              <file>{ availableSip.file.getName }</file>
+              <date>{ Temporal.timeToLocalString(availableSip.dateTime) }</date>
+            </sip-zip>
+          }
+        </available>
+        <uploaded>
+          {
+            for (sip <- uploadedSips) yield
+            <sip-zip>
+              <dataset>{ sip.datasetName }</dataset>
+              <file>{ sip.file.getName }</file>
+              <date>{ Temporal.fileNameToLocalString(sip.file.getName) }</date>
+            </sip-zip>
+          }
+        </uploaded>
       </sip-zips>
     Ok(xml)
   }

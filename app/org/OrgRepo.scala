@@ -19,11 +19,12 @@ package org
 import java.io.File
 
 import dataset.ProgressState._
-import dataset.{DatasetDb, DatasetRepo}
+import dataset.{DatasetDb, DatasetRepo, Sip}
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
 import mapping.{CategoriesRepo, SkosRepo}
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
+import org.OrgRepo.AvailableSip
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
@@ -39,6 +40,12 @@ object OrgRepo {
   lazy val repo = new OrgRepo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
 
   def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
+
+  case class AvailableSip(file: File) {
+    val n = file.getName
+    val datasetName = n.substring(0, n.length - ".sip.zip".length)
+    val dateTime = new DateTime(file.lastModified())
+  }
 
 }
 
@@ -68,10 +75,9 @@ class OrgRepo(userHome: String, val orgId: String) {
     if (dr.datasetDb.infoOpt.isDefined) Some(dr) else None
   }
 
-  def listSipZips: Seq[(String, DateTime)] = sipsDir.listFiles.toSeq.map { file =>
-    val n = file.getName
-    (n.substring(0, n.length - ".sip.zip".length), new DateTime(file.lastModified()))
-  }.sortBy(_._2.getMillis).reverse
+  def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
+
+  def uploadedSips: Seq[Sip] = repoDb.listDatasets.flatMap(dataset => datasetRepo(dataset.datasetName).sipRepo.latestSipOpt)
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
     repoDb.listDatasets.flatMap { dataset =>
