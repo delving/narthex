@@ -24,6 +24,7 @@ import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMe
 import mapping.{CategoriesRepo, SkosRepo}
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
+import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
 import record.EnrichmentParser._
@@ -67,6 +68,11 @@ class OrgRepo(userHome: String, val orgId: String) {
     if (dr.datasetDb.infoOpt.isDefined) Some(dr) else None
   }
 
+  def listSipZips: Seq[(String, DateTime)] = sipsDir.listFiles.toSeq.map { file =>
+    val n = file.getName
+    (n.substring(0, n.length - ".sip.zip".length), new DateTime(file.lastModified()))
+  }.sortBy(_._2.getMillis).reverse
+
   def getPublishedDatasets: Seq[PublishedDataset] = {
     repoDb.listDatasets.flatMap { dataset =>
       if (!oaipmhPublishFromInfo(dataset.info))
@@ -78,7 +84,7 @@ class OrgRepo(userHome: String, val orgId: String) {
           case Some(ns) => RepoMetadataFormat(prefix, ns._2)
           case None => RepoMetadataFormat(prefix)
         }
-//        Logger.info(s"info: ${dataset.info}")
+        //        Logger.info(s"info: ${dataset.info}")
         val recordsPresent = (dataset.info \ "records" \ "ready").text == "true"
         if (!recordsPresent)
           None

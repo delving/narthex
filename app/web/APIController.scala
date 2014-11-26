@@ -20,14 +20,13 @@ import java.io.FileInputStream
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
-import dataset.{DatasetDb, SipRepo}
+import dataset.DatasetDb
 import org.OrgRepo.repo
 import org.apache.commons.io.IOUtils
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import record.EnrichmentParser
-import services.Temporal.fileNameToLocalString
 import services._
 import web.Application.{OkFile, OkXml}
 
@@ -160,19 +159,22 @@ object APIController extends Controller {
   }
 
   def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val sipZips = SipRepo.listSipZips
+    val sipZips = repo.listSipZips
     val xml =
-      <sip-zips>{ for (z <- sipZips) yield
-          <sip-zip dataset={ z.datasetName }>
-            <date>{ fileNameToLocalString(z.file.getName) }</date>
-            <schema>{ z.schemaVersionOpt.getOrElse("UNKNOWN") }</schema>
+      <sip-zips>{ for (pair <- sipZips) yield
+          <sip-zip>
+            <dataset>{ pair._1 }</dataset>
+            <date>{ Temporal.timeToLocalString(pair._2) }</date>
           </sip-zip>}
       </sip-zips>
     Ok(xml)
   }
 
   def downloadSipZip(apiKey: String, datasetName: String) = Action(parse.anyContent) { implicit request =>
-    NotImplemented
+    val sipFileOpt = repo.datasetRepoOption(datasetName).flatMap { datasetRepo =>
+      Option(datasetRepo.sipFile).find(_.exists())
+    }
+    sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $datasetName"))
   }
 
   def uploadSipZip(apiKey: String, datasetName: String, zipFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>

@@ -56,7 +56,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   private val rawDir = new File(rootDir, "raw")
 
   val pocketFile = new File(orgRepo.sipsDir, s"$datasetName-pockets.xml")
-  val sipFile = new File(orgRepo.sipsDir, s"${datasetName}_sip.zip")
+  val sipFile = new File(orgRepo.sipsDir, s"$datasetName.sip.zip")
   val mappedFile = new File(orgRepo.sourceDir, s"$datasetName.xml")
 
   val treeRoot = new NodeRepo(this, treeDir)

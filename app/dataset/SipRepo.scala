@@ -20,7 +20,6 @@ import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipOutputStream}
 
 import eu.delving.groovy._
 import eu.delving.metadata._
-import org.OrgRepo.repo
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import org.w3c.dom.Element
@@ -44,13 +43,6 @@ object SipRepo {
 
   val SIP_SOURCE_RECORD_ROOT = "/delving-sip-source/input"
   val SIP_SOURCE_UNIQUE_ID = "/delving-sip-source/input/@id"
-
-  def listSipZips: Seq[Sip] = {
-    repo.repoDb.listDatasets.flatMap { dataset =>
-      var datasetRepo = repo.datasetRepo(dataset.datasetName)
-      datasetRepo.sipRepo.latestSipOpt
-    }
-  }
 
   def apply(datasetName: String, rdfAboutPrefix: String, home: File): SipRepo = new SipRepo(datasetName, rdfAboutPrefix, home)
 }
