@@ -180,7 +180,14 @@ class Sip(datasetName: String, rdfAboutPrefix: String, val file: File) {
       if (harvestUrl.isDefined) mapping.getNodeMappings.foreach { nodeMapping =>
         val inputPath = nodeMapping.inputPath.toString
         if (inputPath.startsWith("/input")) {
-          nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/metadata/[^/]*", ""))
+          recordRootPath.map {
+            case "/harvest/OAI-PMH/ListRecords/record" =>
+              //  <ListRecords><record><metadata>
+              //      recordRootPath=/harvest/OAI-PMH/ListRecords/record
+              //      uniqueElementPath=/harvest/OAI-PMH/ListRecords/record/metadata/arno:document/arno:document-admin/arno:doc_id
+              nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/metadata/[^/]*/", "/"))
+          }
+//          println(s"$inputPath => ${nodeMapping.inputPath}")
         }
       }
       mapping

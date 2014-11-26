@@ -17,7 +17,7 @@
 package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.InterruptWork
+import dataset.DatasetActor.{ChildFailure, InterruptWork}
 import dataset.{DatasetRepo, ProgressState}
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import record.CategoryParser
@@ -31,7 +31,7 @@ object CategoryCounter {
 
   case class CountCategories()
 
-  case class CategoryCountComplete(dataset: String, categoryCounts: List[CategoryCount], errorOption: Option[String])
+  case class CategoryCountComplete(dataset: String, categoryCounts: List[CategoryCount])
 
   def props(datasetRepo: DatasetRepo) = Props(new CategoryCounter(datasetRepo))
 }
@@ -59,14 +59,17 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
           progress = Some(progressReporter)
           progressReporter.setReadProgress(readProgress)
           parser.parse(source, Set.empty[String], progressReporter)
-          context.parent ! CategoryCountComplete(datasetRepo.datasetName, parser.categoryCounts, None)
+          context.parent ! CategoryCountComplete(datasetRepo.datasetName, parser.categoryCounts)
         }
         catch {
-          case e: Exception => context.parent ! CategoryCountComplete(datasetRepo.datasetName, List.empty[CategoryCount], Some(e.toString))
+          case e: Exception => context.parent ! ChildFailure(e.getMessage, Some(e))
         }
         finally {
           source.close()
         }
+      } onFailure {
+        case exception =>
+          // todo: send parent the problem
       }
   }
 }

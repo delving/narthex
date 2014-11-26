@@ -330,13 +330,17 @@
                     </span>
                     <span ng-switch-when="state-sourced">
                         <span class="label label-success" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
-                        <span class="label label-success" data-ng-show="file.treeTime">Analyzed {{ file.treeTime }}</span>
-                        <span class="label label-success" data-ng-show="file.recordsTime">Saved {{ file.recordsTime }}</span>
+                        <span class="label label-success" data-ng-show="file.treeTime">
+                            <i class="fa fa-eye"></i> Analyzed {{ file.treeTime }}
+                        </span>
+                        <span class="label label-success" data-ng-show="file.recordsTime">
+                            <i class="fa fa-database"></i> Saved {{ file.recordsTime }}
+                        </span>
                     </span>
                 </span>
             </span>
             <span class="label label-default" ng-if="file.info.categories.included == 'true'">
-                Included in Monitor Statistics
+                <i class="fa fa-bar-chart-o"></i> Included in Monitor Statistics
             </span>
         </a>
 

@@ -67,31 +67,30 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
       log.info(s"Analyzer on ${file.getName}")
       val (source, readProgress) = FileHandling.sourceFromFile(file)
       import context.dispatcher
-      val f = future {
+      future {
         val progressReporter = ProgressReporter(SPLITTING, db)
         progressReporter.setReadProgress(readProgress)
         progress = Some(progressReporter)
+        // todo: create a sequence of futures and compose them with Future.sequence()
         TreeNode(source, file.length, datasetRepo, progressReporter) match {
           case Some(tree) =>
-            tree.launchSorters {
-              node =>
-                if (node.lengths.isEmpty) {
-                  node.nodeRepo.setStatus(Json.obj("uniqueCount" -> 0))
-                }
-                else {
-                  node.nodeRepo.setStatus(Json.obj("sorting" -> true))
-                  val sorter = context.actorOf(Sorter.props(node.nodeRepo))
-                  sorters = sorter :: sorters
-                  sorter ! Sort(SortType.VALUE_SORT)
-                }
+            tree.launchSorters { node =>
+              if (node.lengths.isEmpty) {
+                node.nodeRepo.setStatus(Json.obj("uniqueCount" -> 0))
+              }
+              else {
+                node.nodeRepo.setStatus(Json.obj("sorting" -> true))
+                val sorter = context.actorOf(Sorter.props(node.nodeRepo))
+                sorters = sorter :: sorters
+                sorter ! Sort(SortType.VALUE_SORT)
+              }
             }
             self ! AnalysisTreeComplete(Json.toJson(tree))
           case None =>
             context.parent ! AnalysisComplete(Some(s"Interrupted while splitting ${file.getName}"))
         }
         source.close()
-      }
-      f.onFailure {
+      } onFailure {
         case ex: Exception =>
           source.close()
           log.error("Problem reading the file", ex)

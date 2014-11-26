@@ -24,7 +24,7 @@ import analysis.NodeRepo
 import dataset.DatasetActor.{StartAnalysis, StartCategoryCounting, StartHarvest, StartSaving}
 import dataset.DatasetState._
 import dataset.ProgressState._
-import dataset.Sip.{RDF_PREFIX, RDF_URI}
+import dataset.Sip.{RDF_PREFIX, RDF_URI, SipMapper}
 import dataset.StagingRepo._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
@@ -43,7 +43,7 @@ import services.FileHandling.clearDir
 import services.Temporal._
 import services._
 
-import scala.concurrent.Await
+import scala.concurrent._
 
 class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
@@ -63,6 +63,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = SipRepo(datasetName, NarthexConfig.RDF_ABOUT_PREFIX, sipsDir)
   lazy val recordDbOpt = datasetDb.prefixOpt.map(prefix => new RecordDb(this, dbBaseName, prefix))
+
+  def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
 
   override def toString = datasetName
 
@@ -130,6 +132,30 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
+  // doing this with futures?
+  //  def setRawDelimiters(recordRoot: String, uniqueId: String) = {
+  //    rawFile.map { raw =>
+  //      val stagingRepo = createStagingRepo(StagingFacts("from-raw", recordRoot, uniqueId, None))
+  //      dropTree()
+  //      val adoptFile = future {
+  //        val progressReporter = ProgressReporter(ADOPTING, datasetDb)
+  //        //          progress = Some(progressReporter)
+  //        stagingRepo.acceptFile(raw, progressReporter).map { acceptedFile =>
+  //          val progressReporter = ProgressReporter(GENERATING, datasetDb)
+  //          //          progress = Some(progressReporter)
+  //          val sipMapperOpt = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
+  //          val recordCount = stagingRepo.generateSource(sourceFile, sipMapperOpt, datasetDb.setNamespaceMap, progressReporter)
+  //          if (recordCount > 0) datasetDb.setStatus(SOURCED)
+  //          datasetDb.setSource(recordCount > 0, recordCount)
+  //        }
+  //      }
+  //      adoptFile.onSuccess {
+  //        case b =>
+  //          startAnalysis()
+  //      }
+  //    }
+  //  }
+
   def setRawDelimiters(recordRoot: String, uniqueId: String) = {
     rawFile.map { raw =>
       createStagingRepo(StagingFacts("from-raw", recordRoot, uniqueId, None))
@@ -152,25 +178,24 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
       sipRepo.latestSipOpt.map { sip =>
         db.setSipFacts(sip.facts)
         db.setSipHints(sip.hints)
+        db.setMetadataPrefix(prefix)
         sip.sipMappingOpt.map { sipMapping =>
           // must add RDF since the mapping output uses it
           val namespaces = sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)
           db.setNamespaceMap(namespaces)
-          (sip.harvestUrl, sip.harvestSpec, sip.harvestPrefix) match {
-            case (Some(harvestUrl), Some(harvestSpec), Some(harvestPrefix)) =>
-              // the harvest information is in the Sip, but no source
-              firstHarvest(PMH, harvestUrl, harvestSpec, harvestPrefix)
-            case _ =>
-              // there is no harvest information so there must be source
-              val stagingRepo = createStagingRepo(DELVING_SIP_SOURCE)
-              db.setMetadataPrefix(sipMapping.prefix)
-              sip.copySourceToTempFile.map { sourceFile =>
-                OrgActor.actor ! DatasetMessage(datasetName, AdoptSource(sourceFile))
-                None
-              } getOrElse {
-                dropStagingRepo()
-                Some(s"No source found in $sipZipFile for $datasetName")
-              }
+          sip.harvestUrl.map { harvestUrl =>
+            // the harvest information is in the Sip, but no source
+            firstHarvest(PMH, harvestUrl, sip.harvestSpec.getOrElse(""), sip.harvestPrefix.getOrElse(""))
+          } getOrElse {
+            // there is no harvest information so there must be source
+            val stagingRepo = createStagingRepo(DELVING_SIP_SOURCE)
+            sip.copySourceToTempFile.map { sourceFile =>
+              OrgActor.actor ! DatasetMessage(datasetName, AdoptSource(sourceFile))
+              None
+            } getOrElse {
+              dropStagingRepo()
+              Some(s"No source found in $sipZipFile for $datasetName")
+            }
           }
         } getOrElse {
           deleteQuietly(sipZipFile)
@@ -255,8 +280,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     if (state == SOURCED) {
       datasetDb.startProgress(SAVING)
       recordDbOpt.get.createDb()
-      val sipMapperOpt = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
-      OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None, sipMapperOpt))
+      OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None))
     }
     else {
       Logger.warn(s"First save of $datasetName can only be started with state sourced when there is a source file")

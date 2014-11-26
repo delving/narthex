@@ -19,7 +19,7 @@ package record
 import java.io.File
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{IncrementalSave, InterruptWork}
+import dataset.DatasetActor.{ChildFailure, IncrementalSave, InterruptWork}
 import dataset.DatasetRepo
 import dataset.ProgressState._
 import dataset.Sip.SipMapper
@@ -41,9 +41,9 @@ object Saver {
 
   case class SourceGenerationComplete(file: File, recordCount: Int)
 
-  case class SaveRecords(incrementalOpt: Option[IncrementalSave], sipMapperOpt: Option[SipMapper])
+  case class SaveRecords(incrementalOpt: Option[IncrementalSave])
 
-  case class SaveComplete(recordCount: Int, errorOption: Option[String] = None)
+  case class SaveComplete(recordCount: Int)
 
   case class MappingContext(recordDb: RecordDb, sipMapper: Option[SipMapper])
 
@@ -74,29 +74,35 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
           } getOrElse {
             log.warning(s"File not accepted: ${file.getAbsolutePath}")
           }
+        } onFailure {
+          case t => context.parent ! ChildFailure(t.getMessage, Some(t))
         }
+
       } getOrElse {
         log.warning("Missing staging repository!")
       }
 
     case GenerateSource() =>
       log.info("Generate source")
+      val sipMapperOpt = datasetRepo.sipMapperOpt
       datasetRepo.stagingRepoOpt.map { stagingRepo =>
         future {
           val progressReporter = ProgressReporter(GENERATING, db)
           progress = Some(progressReporter)
-          val sipMapperOpt = datasetRepo.sipRepo.latestSipOpt.flatMap(_.createSipMapper)
           val recordCount = stagingRepo.generateSource(datasetRepo.sourceFile, sipMapperOpt, db.setNamespaceMap, progressReporter)
           context.parent ! SourceGenerationComplete(datasetRepo.sourceFile, recordCount)
+        } onFailure {
+          case t => context.parent ! ChildFailure(t.getMessage, Some(t))
         }
       } getOrElse {
         log.warning("No data for generating source")
       }
 
-    case SaveRecords(incrementalOpt, sipMapperOpt) =>
+    case SaveRecords(incrementalOpt) =>
       val stagingFacts = datasetRepo.stagingRepoOpt.map(_.stagingFacts).getOrElse(throw new RuntimeException(s"No staging facts for $datasetRepo"))
       log.info(s"Saving incremental=$incrementalOpt facts=$stagingFacts")
       val recordDb = datasetRepo.recordDbOpt.getOrElse(throw new RuntimeException(s"Expected record db for $datasetRepo"))
+      val sipMapperOpt = datasetRepo.sipMapperOpt
 
       future {
 
@@ -129,11 +135,6 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
             try {
               parser.parse(source, Set.empty[String], receiveRecord, progressReporter)
               context.parent ! SaveComplete(recordCount)
-            }
-            catch {
-              case e: Exception =>
-                log.error("Unable to update", e)
-                context.parent ! SaveComplete(0, Some(e.toString))
             }
             finally {
               source.close()
@@ -169,11 +170,13 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
                 context.parent ! SaveComplete(recordCount)
               }
               else {
-                context.parent ! SaveComplete(recordCount, Some("Interrupted while saving"))
+                context.parent ! ChildFailure("Interrupted while saving")
               }
             }
           }
         }
+      } onFailure {
+        case t => context.parent ! ChildFailure(t.getMessage, Some(t))
       }
   }
 

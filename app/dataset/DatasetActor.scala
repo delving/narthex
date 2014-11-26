@@ -24,7 +24,6 @@ import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DatasetState.SOURCED
-import dataset.Sip.SipMapper
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
 import harvest.Harvesting.HarvestType.{ADLIB, PMH, harvestTypeFromInfo}
@@ -49,13 +48,15 @@ object DatasetActor {
 
   case class IncrementalSave(modifiedAfter: DateTime, file: File)
 
-  case class StartSaving(incrementalOpt: Option[IncrementalSave], sipMapperOpt: Option[SipMapper])
+  case class StartSaving(incrementalOpt: Option[IncrementalSave])
 
   case class StartCategoryCounting()
 
   case class InterruptWork()
 
   case class InterruptChild(actorWaiting: ActorRef)
+
+  case class ChildFailure(message: String, exceptionOpt: Option[Throwable] = None)
 
   def props(datasetRepo: DatasetRepo) = Props(new DatasetActor(datasetRepo))
 
@@ -90,25 +91,22 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
           harvester ! kickoff
         } getOrElse {
           val incremental = modifiedAfter.map(IncrementalHarvest(_, None))
-          self ! HarvestComplete(incremental, Some(s"Harvest type not recognized"))
+          self ! ChildFailure(s"Harvest type not recognized")
         }
       }
 
-    case HarvestComplete(incrementalOpt, errorOption) =>
-      log.info(s"Harvest complete error=$errorOption, incremental=$incrementalOpt")
-      db.endProgress(errorOption)
-      if (errorOption.isEmpty) db.infoOpt.foreach { info =>
-        // todo: this is WRONG:
+    case HarvestComplete(incrementalOpt) =>
+      log.info(s"Harvest complete incremental=$incrementalOpt")
+      db.endProgress(None)
+      db.infoOpt.foreach { info =>
         incrementalOpt.map { incremental =>
           db.setStatus(SOURCED) // first harvest
           datasetRepo.dropTree()
-//          self ! GenerateSource()
-          val sipMapperOpt = datasetRepo.sipRepo.latestSipOpt.flatMap(_.createSipMapper)
-          if (incremental.fileOpt.isDefined) {
-            self ! StartSaving(Some(IncrementalSave(incremental.modifiedAfter, incremental.fileOpt.get)), sipMapperOpt)
+          incremental.fileOpt.map { newFile =>
+            self ! StartSaving(Some(IncrementalSave(incremental.modifiedAfter, newFile)))
           }
         } getOrElse {
-          log.info("No file to save")
+          self ! GenerateSource()
         }
       }
       if (sender != self) sender ! PoisonPill
@@ -164,15 +162,15 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
 
     // === saving
 
-    case StartSaving(incrementalOpt, sipMapperOpt) =>
+    case StartSaving(incrementalOpt) =>
       log.info(s"Start saving from incremental=$incrementalOpt")
       val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo), "saver"))
-      saver ! SaveRecords(incrementalOpt, sipMapperOpt)
+      saver ! SaveRecords(incrementalOpt)
 
-    case SaveComplete(recordCount, errorOption) =>
-      log.info(s"Save complete $recordCount error=$errorOption")
-      db.endProgress(errorOption)
-      db.setRecords(errorOption.isEmpty, recordCount)
+    case SaveComplete(recordCount) =>
+      log.info(s"Save complete $recordCount")
+      db.endProgress(None)
+      db.setRecords(ready = true, recordCount)
       if (sender != self) sender ! PoisonPill
 
     // == categorization
@@ -184,13 +182,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
         categoryCounter ! CountCategories()
       }
       else {
-        self ! CategoryCountComplete(datasetRepo.datasetName, List.empty, Some(s"No source file for categorizing $datasetRepo"))
+        self ! ChildFailure(s"No source file for categorizing $datasetRepo")
       }
 
-    case CategoryCountComplete(dataset, categoryCounts, errorOption) =>
+    case CategoryCountComplete(dataset, categoryCounts) =>
       log.info(s"Category Counts arrived: $categoryCounts")
-      db.endProgress(errorOption)
-      context.parent ! CategoryCountComplete(datasetRepo.datasetName, categoryCounts, errorOption)
+      db.endProgress(None)
+      context.parent ! CategoryCountComplete(datasetRepo.datasetName, categoryCounts)
       if (sender != self) sender ! PoisonPill
 
     // === stopping stuff
@@ -203,6 +201,11 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
       }
       log.info(s"InterruptChild, report back to $actorWaiting interrupted=$interrupted")
       actorWaiting ! interrupted
+
+    case ChildFailure(message, exceptionOpt) =>
+      db.endProgress(Some(message))
+      exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
+      if (sender != self) sender ! PoisonPill
 
     case spurious =>
       log.error(s"Spurious message: $spurious")

@@ -63,7 +63,7 @@ class OrgActor extends Actor with ActorLogging {
       countsInProgress = datasets.map(name => (name, None)).toMap
       datasets.foreach(name => self ! DatasetMessage(name, StartCategoryCounting()))
 
-    case CategoryCountComplete(dataset, categoryCounts, errorOption) =>
+    case CategoryCountComplete(dataset, categoryCounts) =>
       countsInProgress += dataset -> Some(categoryCounts)
       log.info(s"Category counting complete, counts: $countsInProgress")
       val countLists = countsInProgress.values.flatten

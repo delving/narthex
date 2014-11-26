@@ -48,11 +48,10 @@ object TreeNode {
 
           case EvElemStart(pre, label, attrs, scope) =>
             node = node.kid(tag(pre, label)).start()
-            attrs.foreach {
-              attr =>
-                val kid = node.kid(s"@${attr.prefixedKey}").start()
-                kid.value(attr.value.toString())
-                kid.end()
+            attrs.foreach { attr =>
+              val kid = node.kid(s"@${attr.prefixedKey}").start()
+              kid.value(attr.value.toString())
+              kid.end()
             }
 
           case EvText(text) =>
@@ -68,7 +67,7 @@ object TreeNode {
             stupidParser(text, string => node.value(translateEntity(string)))
 
           case EvProcInstr(target, text) =>
-            // do nothing
+          // do nothing
 
           case x =>
             println("EVENT? " + x) // todo: record these in an error file for later
@@ -268,3 +267,32 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
   override def toString = s"TreeNode($tag)"
 }
 
+// todo: Understand this:
+//import akka.actor._
+//import akka.pattern.{after, ask, pipe}
+//import akka.util.Timeout
+//
+//class LogSearchActor extends Actor {
+//
+//  def receive = {
+//    case Search(worktimes, timeout) =>
+//      // Doing all the work in one actor using futures
+//      val searchFutures = worktimes map { worktime =>
+//        val searchFuture = search(worktime)
+//        val fallback = after(timeout, context.system.scheduler) {
+//          Future successful s"$worktime ms > $timeout"
+//        }
+//        Future firstCompletedOf Seq(searchFuture, fallback)
+//      }
+//
+//      // Pipe future results to sender
+//      (Future sequence searchFutures) pipeTo sender
+//  }
+//
+//  def search(worktime: Int): Future[String] = Future {
+//    Thread sleep worktime
+//    s"found something in $worktime ms"
+//  }
+//}
+//
+//case class Search(worktime: List[Int], timeout: FiniteDuration)

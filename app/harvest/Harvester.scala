@@ -21,7 +21,7 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import akka.actor.{Actor, Props}
 import akka.pattern.pipe
-import dataset.DatasetActor.InterruptWork
+import dataset.DatasetActor.{ChildFailure, InterruptWork}
 import dataset.DatasetRepo
 import dataset.ProgressState._
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
@@ -42,7 +42,7 @@ object Harvester {
 
   case class IncrementalHarvest(modifiedAfter: DateTime, fileOpt: Option[File])
 
-  case class HarvestComplete(incrementalOpt: Option[IncrementalHarvest], error: Option[String])
+  case class HarvestComplete(incrementalOpt: Option[IncrementalHarvest])
 
   def props(datasetRepo: DatasetRepo) = Props(new Harvester(datasetRepo))
 }
@@ -72,22 +72,21 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
     log.info(s"finished harvest modified=$modifiedAfter error=$error")
     error.map { errorString =>
       FileUtils.deleteQuietly(tempFile)
-      context.parent ! HarvestComplete(None, error = Some(errorString))
+      context.parent ! ChildFailure(errorString)
     } getOrElse {
       datasetRepo.stagingRepoOpt.map { stagingRepo =>
-        val completion = future {
+        future {
           val acceptZipReporter = ProgressReporter(COLLECTING, db)
           val fileOption = stagingRepo.acceptFile(tempFile, acceptZipReporter)
           log.info(s"Zip file accepted: $fileOption")
           val incrementalOpt = modifiedAfter.map(IncrementalHarvest(_, fileOption))
-          context.parent ! HarvestComplete(incrementalOpt, None)
-        }
-        completion.onFailure {
+          context.parent ! HarvestComplete(incrementalOpt)
+        } onFailure {
           case e: Exception =>
-            context.parent ! HarvestComplete(None, error = Some(e.toString))
+            context.parent ! ChildFailure(e.getMessage)
         }
       } getOrElse {
-        context.parent ! HarvestComplete(None, error = Some(s"No staging repo for $datasetRepo"))
+        context.parent ! ChildFailure(s"No staging repo for $datasetRepo")
       }
     }
   }
