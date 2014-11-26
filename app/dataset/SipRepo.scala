@@ -76,11 +76,14 @@ class SipRepo(datasetName: String, rdfAboutPrefix: String, home: File) {
 
 object Sip {
 
-  case class SipMapping(prefix: String, version: String, recDefTree: RecDefTree, validationXSD: String, recMapping: RecMapping) {
+  case class SipMapping(datasetName: String, prefix: String, version: String, recDefTree: RecDefTree, validationXSD: String, recMapping: RecMapping) {
     def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
   }
 
   trait SipMapper {
+
+    val datasetName: String
+
     val prefix: String
 
     def map(pocket: Pocket): Option[Pocket]
@@ -187,7 +190,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
               //      uniqueElementPath=/harvest/OAI-PMH/ListRecords/record/metadata/arno:document/arno:document-admin/arno:doc_id
               nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/metadata/[^/]*/", "/"))
           }
-//          println(s"$inputPath => ${nodeMapping.inputPath}")
+          //          println(s"$inputPath => ${nodeMapping.inputPath}")
         }
       }
       mapping
@@ -198,6 +201,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
     val PrefixVersion(prefix, version) = schemaVersion
     val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
     SipMapping(
+      datasetName = datasetName,
       prefix = prefix,
       version = version,
       recDefTree = tree,
@@ -224,6 +228,8 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
     val factory = new MetadataRecordFactory(namespaces)
     val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
 
+    override val datasetName = sipMapping.datasetName
+
     override val prefix: String = sipMapping.prefix
 
     override def map(pocket: Pocket): Option[Pocket] = {
@@ -248,7 +254,8 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
         rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
         kids.foreach(rdfElement.appendChild)
         pocketElement.appendChild(rdfElement)
-        val xml = serializer.toXml(pocketElement, true)
+        // the serializer gives us <?xml..?>
+        val xml = serializer.toXml(pocketElement, true).replaceFirst("<[?].*[?]>\n", "")
         Some(Pocket(pocket.id, pocket.hash, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
       } catch {
         case discard: DiscardRecordException =>

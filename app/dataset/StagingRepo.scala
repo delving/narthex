@@ -281,24 +281,34 @@ class StagingRepo(home: File) {
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSource(sourceFile: File, sipMapperOpt: Option[SipMapper], setNamespaceMap: Map[String, String] => Unit, progressReporter: ProgressReporter): Int = {
-    Logger.info(s"Generating source from $home to $sourceFile using $stagingFacts")
+  def generateSource(rawOutputStream: OutputStream, mappedFile: File, sipMapperOpt: Option[SipMapper], progressReporter: ProgressReporter): Int = {
+    Logger.info(s"Generating source from $home to $mappedFile with mapper $sipMapperOpt using $stagingFacts")
     var recordCount = 0
-    val out = new OutputStreamWriter(new FileOutputStream(sourceFile), "UTF-8")
-    out.write( s"""<$POCKET_LIST>\n""")
-    def pocketWriter(rawPocket: Pocket): Unit = {
-      val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
-      pocketOpt.map { pocket =>
-        out.write(pocket.text.replaceFirst("<[?].*[?]>\n", ""))
-        recordCount += 1
-        if (recordCount % 1000 == 0) {
-          Logger.info(s"Generating record $recordCount")
+    val mappedOutputOpt: Option[Writer] = sipMapperOpt.map(sm => new OutputStreamWriter(new FileOutputStream(mappedFile), "UTF-8"))
+    val rawOutput = new OutputStreamWriter(rawOutputStream, "UTF-8")
+    try {
+      val startList = s"""<$POCKET_LIST>\n"""
+      val endList = s"""</$POCKET_LIST>\n"""
+      rawOutput.write(startList)
+      mappedOutputOpt.map(_.write(startList))
+      def pocketWriter(rawPocket: Pocket): Unit = {
+        rawOutput.write(rawPocket.text)
+        val mappedOpt = sipMapperOpt.flatMap(_.map(rawPocket))
+        mappedOpt.map { pocket =>
+          mappedOutputOpt.get.write(pocket.text)
+          recordCount += 1
+          if (recordCount % 1000 == 0) {
+            Logger.info(s"Generating record $recordCount")
+          }
         }
       }
+      parsePockets(pocketWriter, progressReporter)
+      rawOutput.write(endList)
+      mappedOutputOpt.map(_.write(endList))
+    } finally {
+      rawOutput.close()
+      mappedOutputOpt.map(_.close).getOrElse(FileUtils.deleteQuietly(mappedFile))
     }
-    parsePockets(pocketWriter, progressReporter)
-    out.write( s"""</$POCKET_LIST>\n""")
-    out.close()
     Logger.info(s"Finished generating source from $home")
     recordCount
   }

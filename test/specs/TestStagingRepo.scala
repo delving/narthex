@@ -1,6 +1,6 @@
 package specs
 
-import java.io.File
+import java.io.{File, FileOutputStream}
 
 import dataset.StagingRepo
 import dataset.StagingRepo.StagingFacts
@@ -71,13 +71,15 @@ class TestStagingRepo extends FlatSpec with Matchers {
     recordCount should be(4)
 
     val gitDir = fresh("/tmp/staging-repo-git")
-    val gitFile = new File(gitDir, s"test-source-repo.xml")
+    val pocketFile = new File(gitDir, "test-source-repo.xml")
+    val pocketOut = new FileOutputStream(pocketFile)
+    val unused = new File(gitDir, "unused.xml")
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
 
-    stagingRepo.generateSource(gitFile, None, map => Unit, ProgressReporter())
+    stagingRepo.generateSource(pocketOut, unused, None, ProgressReporter())
 
-    FileHandling.gitCommit(gitFile, "Several words of message") should be(true)
+    FileHandling.gitCommit(pocketFile, "Several words of message") should be(true)
   }
 
   "A Staging Repository" should "accept pmh record harvest files" in {
@@ -125,7 +127,7 @@ class TestStagingRepo extends FlatSpec with Matchers {
     var recordCount = 0
 
     def receiveRecord(record: Pocket): Unit = {
-//      println(s"${record.id}: ${record.text}")
+      //      println(s"${record.id}: ${record.text}")
       recordCount += 1
     }
 

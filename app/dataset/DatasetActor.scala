@@ -141,9 +141,9 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
 
     case StartAnalysis() =>
       log.info("Start analysis")
-      if (datasetRepo.sourceFile.exists()) {
+      if (datasetRepo.mappedFile.exists()) {
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
-        analyzer ! AnalyzeFile(datasetRepo.sourceFile)
+        analyzer ! AnalyzeFile(datasetRepo.mappedFile)
       } else datasetRepo.rawFile.map { rawFile =>
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
         analyzer ! AnalyzeFile(rawFile)
@@ -177,7 +177,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
 
     case StartCategoryCounting() =>
       log.info("Start categorizing")
-      if (datasetRepo.sourceFile.exists()) {
+      if (datasetRepo.mappedFile.exists()) {
         val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo), "category-counter"))
         categoryCounter ! CountCategories()
       }

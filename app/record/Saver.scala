@@ -16,7 +16,7 @@
 
 package record
 
-import java.io.File
+import java.io.{File, FileOutputStream}
 
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{ChildFailure, IncrementalSave, InterruptWork}
@@ -69,7 +69,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
         future {
           val progressReporter = ProgressReporter(ADOPTING, db)
           progress = Some(progressReporter)
-          stagingRepo.acceptFile(file, progressReporter).map{adoptedFile =>
+          stagingRepo.acceptFile(file, progressReporter).map { adoptedFile =>
             context.parent ! SourceAdoptionComplete(adoptedFile)
           } getOrElse {
             log.warning(s"File not accepted: ${file.getAbsolutePath}")
@@ -84,13 +84,14 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
 
     case GenerateSource() =>
       log.info("Generate source")
-      val sipMapperOpt = datasetRepo.sipMapperOpt
       datasetRepo.stagingRepoOpt.map { stagingRepo =>
+        val sipMapperOpt = datasetRepo.sipMapperOpt
+        val pocketOutput = new FileOutputStream(datasetRepo.pocketFile)
         future {
           val progressReporter = ProgressReporter(GENERATING, db)
           progress = Some(progressReporter)
-          val recordCount = stagingRepo.generateSource(datasetRepo.sourceFile, sipMapperOpt, db.setNamespaceMap, progressReporter)
-          context.parent ! SourceGenerationComplete(datasetRepo.sourceFile, recordCount)
+          val recordCount = stagingRepo.generateSource(pocketOutput, datasetRepo.mappedFile, sipMapperOpt, progressReporter)
+          context.parent ! SourceGenerationComplete(datasetRepo.mappedFile, recordCount)
         } onFailure {
           case t => context.parent ! ChildFailure(t.getMessage, Some(t))
         }

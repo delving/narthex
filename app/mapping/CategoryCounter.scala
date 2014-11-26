@@ -53,7 +53,7 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
       future {
         val categoryMappings = datasetRepo.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap
         val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT, categoryMappings)
-        val (source, readProgress) = FileHandling.sourceFromFile(datasetRepo.sourceFile)
+        val (source, readProgress) = FileHandling.sourceFromFile(datasetRepo.mappedFile)
         try {
           val progressReporter = ProgressReporter(ProgressState.CATEGORIZING, datasetRepo.datasetDb)
           progress = Some(progressReporter)
@@ -68,8 +68,7 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
           source.close()
         }
       } onFailure {
-        case exception =>
-          // todo: send parent the problem
+        case t => context.parent ! ChildFailure(t.getMessage, Some(t))
       }
   }
 }

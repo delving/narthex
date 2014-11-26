@@ -54,7 +54,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   private val sipsDir = new File(rootDir, "sips")
   private val rawDir = new File(rootDir, "raw")
 
-  val sourceFile = new File(orgRepo.sourceDir, s"$datasetName.xml")
+  // todo: provisional.  we will need to build a sip!
+  val pocketFile = new File(orgRepo.sourceDir, s"$datasetName-pocket.xml")
+  val mappedFile = new File(orgRepo.sourceDir, s"$datasetName.xml")
   val treeRoot = new NodeRepo(this, treeDir)
 
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, datasetName)
@@ -85,7 +87,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         if (interruptProgress) "interrupted" else "killed"
 
       case "remove source" =>
-        deleteQuietly(sourceFile)
+        deleteQuietly(pocketFile)
+        deleteQuietly(mappedFile)
         deleteQuietly(rawDir)
         deleteQuietly(stagingDir)
         datasetDb.setStatus(EMPTY)
