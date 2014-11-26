@@ -38,5 +38,9 @@ class TestTemporal extends FlatSpec with Matchers{
     utc("2014-11-06") should be ("2014-11-05T23:00:00Z")
 
     println(nowFileName("evil", ".hex"))
+
+    fileNameToLocalString("frans-hals-museum__2014_11_24_16_19__icn.sip.zip") should be("2014-11-24T16:19:00")
+    fileNameToLocalString("brabant-collectie-prent__2014_11_17_15_33.sip.zip") should be("2014-11-17T15:33:00")
+    fileNameToLocalString("brab_14_7_15_33.sip.zip") should be("UNKNOWN")
   }
 }

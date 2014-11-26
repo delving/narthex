@@ -85,7 +85,7 @@ define(["angular"], function () {
             $scope.newFileOpen = value;
         };
 
-        $scope.setTabOpen = function(tab) {
+        $scope.setTabOpen = function (tab) {
             $scope.tabOpen = tab;
             setSearch();
         };
@@ -279,6 +279,21 @@ define(["angular"], function () {
 
         var file = $scope.file;
 
+        $scope.getIcon = function () {
+            if (file.recordsTime) {
+                return "fa-database"
+            }
+            else if (file.treeTime) {
+                return "fa-eye"
+            }
+            else if ($scope.fileOpen == file.name) {
+                return 'fa-folder-open-o';
+            }
+            else {
+                return 'fa-folder-o';
+            }
+        };
+
         function refresh() {
             $scope.fetchDatasetList();
         }
@@ -351,9 +366,10 @@ define(["angular"], function () {
 
         function fetchSipFileList() {
             dashboardService.listSipFiles(file.name).then(function (data) {
-                $scope.sipFiles = (data && data.list && data.list.length)? data.list : undefined;
+                $scope.sipFiles = (data && data.list && data.list.length) ? data.list : undefined;
             });
         }
+
         fetchSipFileList();
 
         $scope.deleteSipZip = function () {

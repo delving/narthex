@@ -20,13 +20,14 @@ import java.io.FileInputStream
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
-import dataset.DatasetDb
+import dataset.{DatasetDb, SipRepo}
 import org.OrgRepo.repo
 import org.apache.commons.io.IOUtils
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import record.EnrichmentParser
+import services.Temporal.fileNameToLocalString
 import services._
 import web.Application.{OkFile, OkXml}
 
@@ -45,12 +46,17 @@ object APIController extends Controller {
 
   def pathsJSON(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val treeFile = repo.datasetRepo(datasetName).index
-    val string = IOUtils.toString(new FileInputStream(treeFile))
-    val json = Json.parse(string)
-    val tree = json.as[ReadTreeNode]
-    val paths = TreeNode.gatherPaths(tree, new Call(request.method, request.path).absoluteURL())
-    val pathJson = Json.toJson(paths)
-    Ok(Json.prettyPrint(pathJson)).as(ContentTypes.JSON)
+    if (treeFile.exists()) {
+      val string = IOUtils.toString(new FileInputStream(treeFile))
+      val json = Json.parse(string)
+      val tree = json.as[ReadTreeNode]
+      val paths = TreeNode.gatherPaths(tree, new Call(request.method, request.path).absoluteURL())
+      val pathJson = Json.toJson(paths)
+      Ok(Json.prettyPrint(pathJson)).as(ContentTypes.JSON)
+    }
+    else {
+      Ok("{ 'problem': 'nothing found' }").as(ContentTypes.JSON)
+    }
   }
 
   def indexJSON(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
@@ -154,7 +160,15 @@ object APIController extends Controller {
   }
 
   def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    NotImplemented
+    val sipZips = SipRepo.listSipZips
+    val xml =
+      <sip-zips>{ for (z <- sipZips) yield
+          <sip-zip dataset={ z.datasetName }>
+            <date>{ fileNameToLocalString(z.file.getName) }</date>
+            <schema>{ z.schemaVersionOpt.getOrElse("UNKNOWN") }</schema>
+          </sip-zip>}
+      </sip-zips>
+    Ok(xml)
   }
 
   def downloadSipZip(apiKey: String, datasetName: String) = Action(parse.anyContent) { implicit request =>

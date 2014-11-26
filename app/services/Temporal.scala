@@ -56,5 +56,16 @@ object Temporal {
     }
   }
 
+  val ExtractDate = ".*(\\d{4})_(\\d{2})_(\\d{2})_(\\d{2})_(\\d{2}).*".r
+
+  def fileNameToLocalString(fileName: String) = {
+    try {
+      val ExtractDate(year, month, day, hour, minute) = fileName
+      val dateTime = new DateTime(year.toInt, month.toInt, day.toInt, hour.toInt, minute.toInt)
+      timeToLocalString(dateTime)
+    } catch {
+      case m: MatchError => "UNKNOWN"
+    }
+  }
 
 }

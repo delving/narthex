@@ -306,7 +306,7 @@
     <div data-ng-controller="DatasetEntryCtrl" class="list-item-inner">
 
         <a href data-ng-click="setFileOpen(file)" class="file-open btn btn-default">
-            <i class="fa fa-fw" data-ng-class="{ 'fa-folder-o':fileOpen != file.name, 'fa-folder-open-o':fileOpen == file.name }"></i>
+            <i class="fa {{ getIcon() }}"></i>
 
             <span class="fa-2x">{{ file.datasetName }}</span>
 

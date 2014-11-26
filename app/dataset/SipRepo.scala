@@ -111,7 +111,7 @@ object Sip {
 
 }
 
-class Sip(datasetName: String, rdfAboutPrefix: String, val file: File) {
+class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
 
   import dataset.Sip._
 
