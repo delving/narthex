@@ -180,6 +180,17 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     else if (fileName.endsWith(".sip.zip")) {
       val sipZipFile = setTargetFile(sipRepo.createSipZipFile(fileName))
       sipRepo.latestSipOpt.map { sip =>
+        datasetDb.infoOpt.map { info =>
+          val meta = info \ "metadata"
+          val name = (meta \ "name").text.trim
+          val dataOwner = (meta \ "dataOwner").text.trim
+          val dataProvider = (meta \ "dataProvider").text.trim
+          if (name.isEmpty) db.setMetadata(Map(
+            "name" -> sip.name.getOrElse(name),
+            "dataOwner" -> sip.provider.getOrElse(dataOwner),
+            "dataProvider" -> sip.dataProvider.getOrElse(dataProvider)
+          ))
+        }
         db.setSipFacts(sip.facts)
         db.setSipHints(sip.hints)
         db.setMetadataPrefix(prefix)

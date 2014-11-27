@@ -261,6 +261,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
 
   def copyWithSourceTo(sipFile: File, sourceFile: File) = {
     val entryList: List[ZipEntry] = zipFile.entries().toList
+    // todo: filter out "narthex_facts.txt" and add "pocket_facts.txt"?
     val toCopy = entryList.filter(entry => entry.getName != "source.xml.gz")
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
     toCopy.foreach { entry =>
