@@ -37,13 +37,16 @@ import scala.language.postfixOps
 
 object OrgRepo {
 
+  val SIP_EXTENSION = ".sip.zip"
+
   lazy val repo = new OrgRepo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
 
   def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
 
   case class AvailableSip(file: File) {
     val n = file.getName
-    val datasetName = n.substring(0, n.length - ".sip.zip".length)
+    if (!n.endsWith(SIP_EXTENSION)) throw new RuntimeException(s"Strange file name $file")
+    val datasetName = n.substring(0, n.length - SIP_EXTENSION.length)
     val dateTime = new DateTime(file.lastModified())
   }
 

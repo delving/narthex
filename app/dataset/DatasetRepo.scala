@@ -37,7 +37,7 @@ import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import record.EnrichmentParser._
-import record.Saver.AdoptSource
+import record.Saver.{AdoptSource, GenerateSource}
 import record.{EnrichmentParser, RecordDb}
 import services.FileHandling.clearDir
 import services.Temporal._
@@ -120,6 +120,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     deleteQuietly(stagingDir)
     datasetDb.setStatus(EMPTY)
     datasetDb.setSource(ready = false, 0)
+  }
+
+  def dropSource() = {
+    deleteQuietly(sipFile)
+    deleteQuietly(mappedFile)
   }
 
   def dropTree() = {
@@ -288,6 +293,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     dropTree()
     datasetDb.startProgress(SPLITTING)
     OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis())
+  }
+
+  def startSourceGeneration() = {
+    datasetDb.startProgress(GENERATING)
+    OrgActor.actor ! DatasetMessage(datasetName, GenerateSource())
   }
 
   def firstSaveRecords() = datasetDb.infoOpt.map { info =>

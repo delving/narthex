@@ -198,7 +198,8 @@ object APIController extends Controller {
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       request.body.moveTo(datasetRepo.sipRepo.createSipZipFile(zipFileName))
       datasetRepo.dropTree()
-      // todo: maybe more things to trigger
+      datasetRepo.dropSource()
+      datasetRepo.startSourceGeneration()
       Ok
     } getOrElse {
       NotAcceptable(Json.obj("err" -> s"Dataset $datasetName not found"))
