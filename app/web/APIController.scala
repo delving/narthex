@@ -195,7 +195,14 @@ object APIController extends Controller {
   }
 
   def uploadSipZip(apiKey: String, datasetName: String, zipFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
-    NotImplemented
+    repo.datasetRepoOption(datasetName).map { datasetRepo =>
+      request.body.moveTo(datasetRepo.sipRepo.createSipZipFile(zipFileName))
+      datasetRepo.dropTree()
+      // todo: maybe more things to trigger
+      Ok
+    } getOrElse {
+      NotAcceptable(Json.obj("err" -> s"Dataset $datasetName not found"))
+    }
   }
 
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>
