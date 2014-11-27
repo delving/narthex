@@ -1,4 +1,4 @@
-@(orgId: String)
+@(orgId: String, sipCreatorLink: String)
 <html>
     <head>
         <title>Narthex-@orgId</title>
@@ -37,6 +37,9 @@
                                 <li>
                                     <a href="" data-ng-click="logout()">
                                         <span class="glyphicon glyphicon-off"></span> Logout
+                                    </a>
+                                    <a href="@sipCreatorLink">
+                                        <span class="glyphicon glyphicon-download"></span> SIP-Creator
                                     </a>
                                 </li>
                             </ul>
