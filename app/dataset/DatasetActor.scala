@@ -120,7 +120,6 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
     case SourceAdoptionComplete(file) =>
       log.info(s"Adopted source ${file.getAbsolutePath}")
       datasetRepo.dropTree()
-      // todo: allow for error
       self ! GenerateSource()
 
     // === generating
@@ -132,7 +131,6 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
     case SourceGenerationComplete(file, recordCount) =>
       // todo: figure out if there are other things to trigger
       log.info(s"Generated file $file with $recordCount records")
-      // todo: allow for error
       db.setStatus(SOURCED)
       db.setSource(recordCount > 0, recordCount)
       self ! StartAnalysis()
@@ -148,7 +146,9 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
         analyzer ! AnalyzeFile(rawFile)
       } getOrElse {
-        self ! AnalysisComplete(Some(s"No file to analyze for $datasetRepo"))
+        // initially for testing (remove the mapped file), but maybe this is ok for always
+        self ! GenerateSource()
+//        self ! AnalysisComplete(Some(s"No file to analyze for $datasetRepo"))
       }
 
     case AnalysisComplete(errorOption) =>

@@ -254,7 +254,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         dropTree()
         createStagingRepo(StagingFacts(harvestType))
         datasetDb.startProgress(HARVESTING)
-        datasetDb.setMetadataPrefix(prefix)
         datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
         datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
         Logger.info(s"First Harvest $datasetName")

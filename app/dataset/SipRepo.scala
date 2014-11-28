@@ -40,7 +40,7 @@ import scala.io.Source
  */
 
 object SipRepo {
-
+  val SOURCE_FILE = "source.xml.gz"
   val SIP_SOURCE_RECORD_ROOT = "/delving-sip-source/input"
   val SIP_SOURCE_UNIQUE_ID = "/delving-sip-source/input/@id"
 
@@ -57,7 +57,7 @@ class SipRepo(datasetName: String, rdfAboutPrefix: String, home: File) {
   def listSips: Seq[Sip] = {
     if (home.exists()) {
       val zipFiles = home.listFiles().filter(_.getName.endsWith("zip"))
-      zipFiles.sortBy(_.getName).reverse.map(Sip(datasetName, rdfAboutPrefix, _))
+      zipFiles.sortBy(_.lastModified()).reverse.map(Sip(datasetName, rdfAboutPrefix, _))
     }
     else Seq.empty[Sip]
   }
@@ -109,6 +109,7 @@ object Sip {
 class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
 
   import dataset.Sip._
+  import dataset.SipRepo._
 
   lazy val zipFile = new ZipFile(file)
 
@@ -177,10 +178,8 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
         if (inputPath.startsWith("/input")) {
           recordRootPath.map {
             case "/harvest/OAI-PMH/ListRecords/record" =>
-              //  <ListRecords><record><metadata>
-              //      recordRootPath=/harvest/OAI-PMH/ListRecords/record
-              //      uniqueElementPath=/harvest/OAI-PMH/ListRecords/record/metadata/arno:document/arno:document-admin/arno:doc_id
-              nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/metadata/[^/]*/", "/"))
+              // the path used to be rooted at "record", but now has to be the actual record root
+              nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/metadata/", "/input/"))
           }
           //          println(s"$inputPath => ${nodeMapping.inputPath}")
         }
@@ -226,7 +225,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
 
     override def map(pocket: Pocket): Option[Pocket] = {
       try {
-        val metadataRecord = factory.metadataRecordFrom(pocket.id, pocket.recordXml, false)
+        val metadataRecord = factory.metadataRecordFrom(pocket.recordXml)
         val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
         val root = result.root().asInstanceOf[Element]
         val doc = root.getOwnerDocument
@@ -261,8 +260,8 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
 
   def copyWithSourceTo(sipFile: File, sourceFile: File) = {
     val entryList: List[ZipEntry] = zipFile.entries().toList
-    // todo: filter out "narthex_facts.txt" and add "pocket_facts.txt"?
-    val toCopy = entryList.filter(entry => entry.getName != "source.xml.gz")
+    val mappingEntry = entryList.find(_.getName.startsWith("mapping_")).getOrElse(throw new RuntimeException)
+    val toCopy = entryList.filter(entry => entry.getName != SOURCE_FILE && entry.getName != mappingEntry.getName)
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
     toCopy.foreach { entry =>
       zos.putNextEntry(entry)
@@ -270,7 +269,12 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
       IOUtils.copy(is, zos)
       zos.closeEntry()
     }
-    zos.putNextEntry(new ZipEntry("source.xml.gz"))
+    // add the adjusted recMapping
+    zos.putNextEntry(new ZipEntry(mappingEntry.getName))
+    RecMapping.write(zos, sipMappingOpt.getOrElse(throw new RuntimeException).recMapping)
+    zos.closeEntry()
+    // add the source file, gzipped
+    zos.putNextEntry(new ZipEntry(SOURCE_FILE))
     val gzipOut = new GZIPOutputStream(zos)
     val sourceIn = new FileInputStream(sourceFile)
     IOUtils.copy(sourceIn, gzipOut)

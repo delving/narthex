@@ -301,7 +301,7 @@
     <h4 class="heading">SIP Files</h4>
     <ul>
         <li data-ng-repeat="sip in sipFiles">
-            {{ sip }}
+            <span data-ng-class="{ 'fa-2x': $index == 0}">{{ sip }}</span>
         </li>
     </ul>
 </script>
