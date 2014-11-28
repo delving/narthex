@@ -66,6 +66,8 @@ object StagingRepo {
 
   def DELVING_SIP_SOURCE = StagingFacts("delving-sip-source", SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, None)
 
+  def DELVING_POCKET_SOURCE = StagingFacts("delving-pocket-source", POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT)
+
   def stagingFactsFile(home: File) = new File(home, STAGING_FACTS_NAME)
 
   def stagingFacts(home: File): StagingFacts = {
@@ -223,7 +225,7 @@ class StagingRepo(home: File) {
     }
     else if (name.endsWith(".xml")) {
       val zos = new ZipOutputStream(new FileOutputStream(targetFile))
-      zos.putNextEntry(new ZipEntry(file.getName.replace(".xml.gz", ".xml")))
+      zos.putNextEntry(new ZipEntry(name))
       val bis = new BOMInputStream(new FileInputStream(file))
       IOUtils.copy(bis, zos)
       bis.close()
@@ -233,7 +235,7 @@ class StagingRepo(home: File) {
     }
     else if (name.endsWith(".xml.gz")) {
       val zos = new ZipOutputStream(new FileOutputStream(targetFile))
-      zos.putNextEntry(new ZipEntry(file.getName.replace(".xml.gz", ".xml")))
+      zos.putNextEntry(new ZipEntry(name.replace(".xml.gz", ".xml")))
       val gis = new GZIPInputStream(new FileInputStream(file))
       val bis = new BOMInputStream(gis)
       IOUtils.copy(bis, zos)

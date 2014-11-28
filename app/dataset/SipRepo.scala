@@ -150,6 +150,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
   lazy val recordCount = hint("recordCount")
   lazy val recordRootPath = hint("recordRootPath")
   lazy val uniqueElementPath = hint("uniqueElementPath")
+  lazy val pockets = hint("pockets")
 
   lazy val schemaVersionOpt: Option[String] = schemaVersions.flatMap(commas => commas.split(" *,").headOption)
 
@@ -173,15 +174,24 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
       val inputStream = zipFile.getInputStream(entry)
       val mapping = RecMapping.read(inputStream, recDefTree)
       // in the case of a harvest sip, we strip off /metadata/<recordRoot>
-      if (harvestUrl.isDefined) mapping.getNodeMappings.foreach { nodeMapping =>
-        val inputPath = nodeMapping.inputPath.toString
-        if (inputPath.startsWith("/input")) {
-          recordRootPath.map {
-            case "/harvest/OAI-PMH/ListRecords/record" =>
-              // the path used to be rooted at "record", but now has to be the actual record root
-              nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/metadata/", "/input/"))
+      if (harvestUrl.isDefined) {
+        mapping.getNodeMappings.foreach { nodeMapping =>
+          val inputPath = nodeMapping.inputPath.toString
+          if (inputPath.startsWith("/input")) {
+            // the path used to be rooted at "record", but now has to be the actual record root
+            nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/metadata/", "/input/"))
+            println(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
           }
-          //          println(s"$inputPath => ${nodeMapping.inputPath}")
+        }
+      }
+      else {
+        mapping.getNodeMappings.foreach { nodeMapping =>
+          val inputPath = nodeMapping.inputPath.toString
+          if (inputPath.startsWith("/input") && !inputPath.startsWith(s"/input/$SIP_RECORD_TAG")) {
+            // take input as the record root
+            nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/", s"/input/$SIP_RECORD_TAG/"))
+            println(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
+          }
         }
       }
       mapping

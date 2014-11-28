@@ -208,7 +208,14 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
             firstHarvest(PMH, harvestUrl, sip.harvestSpec.getOrElse(""), sip.harvestPrefix.getOrElse(""))
           } getOrElse {
             // there is no harvest information so there must be source
-            val stagingRepo = createStagingRepo(DELVING_SIP_SOURCE)
+            val stagingRepo = if (sip.pockets.isDefined) {
+              // the sip is from the pocket sip creator, so its source is based on pockets
+              createStagingRepo(DELVING_POCKET_SOURCE)
+            }
+            else {
+              // the sip is from dropping so it's from sip-creator source
+              createStagingRepo(DELVING_SIP_SOURCE)
+            }
             sip.copySourceToTempFile.map { sourceFile =>
               OrgActor.actor ! DatasetMessage(datasetName, AdoptSource(sourceFile))
               None

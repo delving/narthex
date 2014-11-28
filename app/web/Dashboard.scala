@@ -85,7 +85,7 @@ object Dashboard extends Controller with Security {
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       request.body.file("file").map { file =>
         val error = datasetRepo.acceptUpload(file.filename, prefix, { target =>
-          file.ref.moveTo(target)
+          file.ref.moveTo(target, replace = true)
           Logger.info(s"Dropped file ${file.filename} on $datasetName: ${target.getAbsolutePath}")
           datasetRepo.datasetDb.setProgress(ProgressState.ADOPTING, ProgressType.PERCENT, 1)
           target

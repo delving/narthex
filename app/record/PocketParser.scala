@@ -57,6 +57,8 @@ object PocketParser {
   val POCKET_UNIQUE_ID = s"$POCKET_RECORD_ROOT/$POCKET_ID"
   val POCKET_DEEP_RECORD_ROOT = Some(POCKET_RECORD_ROOT)
 
+  val SIP_RECORD_TAG = "sip-record"
+  
   val digest = MessageDigest.getInstance("MD5")
 
   private def hashString(record: String) = {
@@ -91,6 +93,7 @@ object PocketParser {
 class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
   import record.PocketParser._
   val path = new mutable.Stack[(String, StringBuilder)]
+  val delvingSipSource = recordRootPath == "/delving-sip-source/input"
   var percentWas = -1
   var lastProgress = 0l
   var recordCount = 0
@@ -145,7 +148,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
       else if (string == recordRootPath) {
         if (deepRecordContainer.isEmpty) {
           depth = 1
-          startElement = Some(startElementString(tag, attrs))
+          startElement = Some(startElementString(if (delvingSipSource) SIP_RECORD_TAG else tag, attrs))
         }
         findUniqueId(attrs.toList)
       }
@@ -171,7 +174,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
         if (hitRecordRoot) {
           flushStartElement()
           indent()
-          recordText.append(s"</$tag>\n")
+          recordText.append(s"</${if (delvingSipSource) SIP_RECORD_TAG else tag}>\n")
           val record = uniqueId.map { id =>
             if (id.isEmpty) throw new RuntimeException("Empty unique id!")
             if (avoidIds.contains(id)) None
