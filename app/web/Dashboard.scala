@@ -18,7 +18,7 @@ package web
 
 import dataset._
 import harvest.Harvesting
-import harvest.Harvesting.HarvestType
+import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
 import mapping.SkosVocabulary
 import mapping.SkosVocabulary._
@@ -105,8 +105,12 @@ object Dashboard extends Controller with Security {
     try {
       val datasetRepo = repo.datasetRepo(datasetName)
       Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $datasetName")
-      HarvestType.harvestTypeFromString(required("harvestType")) map { harvestType =>
-        val prefix = if (harvestType == HarvestType.PMH) required("prefix") else HarvestType.ADLIB.name
+      harvestTypeFromString(required("harvestType")) map { harvestType =>
+        val prefix = harvestType match {
+          case PMH => required("prefix")
+          case PMH_REC => required("prefix")
+          case ADLIB => ADLIB.name
+        }
         val error = datasetRepo.firstHarvest(harvestType, required("url"), optional("dataset"), prefix)
         error.map(message => NotAcceptable(Json.obj("problem" -> message))).getOrElse(Ok)
       } getOrElse {

@@ -68,7 +68,10 @@ class SipRepo(datasetName: String, rdfAboutPrefix: String, home: File) {
 
 object Sip {
 
-  case class SipMapping(datasetName: String, prefix: String, version: String, recDefTree: RecDefTree, validationXSD: String, recMapping: RecMapping) {
+  case class SipMapping(datasetName: String, prefix: String, version: String,
+                        recDefTree: RecDefTree, validationXSD: String,
+                        recMapping: RecMapping, extendWithRecord: Boolean) {
+
     def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
   }
 
@@ -91,6 +94,8 @@ object Sip {
   val RDF_ABOUT_ATTRIBUTE: String = "about"
   val RDF_PREFIX: String = "rdf"
   val RDF_URI: String = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+
+  val INPUT_METADATA = "/input/metadata/"
 
   //  val NAMESPACES = Map(
   //    "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -169,45 +174,67 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
     } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from $file"))
   }
 
-  private def recMapping(sipContentFileName: String, recDefTree: RecDefTree): RecMapping = {
+  private def multipleTagsWithinMetadata(mapping: RecMapping) = {
+    val inputPaths = mapping.getNodeMappings.map(_.inputPath.toString).filter(_.startsWith(INPUT_METADATA))
+    val nextTags = inputPaths.map(_.substring(INPUT_METADATA.length)).map { remainder =>
+      val slash = remainder.indexOf('/')
+      if (slash > 0) remainder.substring(0, slash) else remainder
+    }
+    nextTags.distinct.size > 1
+  }
+
+  private def recMapping(sipContentFileName: String, recDefTree: RecDefTree): (RecMapping, Boolean) = {
     entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val mapping = RecMapping.read(inputStream, recDefTree)
+      val extendWithRecord = multipleTagsWithinMetadata(mapping)
       // in the case of a harvest sip, we strip off /metadata/<recordRoot>
-      if (harvestUrl.isDefined) {
-        mapping.getNodeMappings.foreach { nodeMapping =>
-          val inputPath = nodeMapping.inputPath.toString
-          if (inputPath.startsWith("/input")) {
-            // the path used to be rooted at "record", but now has to be the actual record root
-            nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/metadata/", "/input/"))
-            println(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
+      if (!pockets.isDefined) {
+        if (harvestUrl.isDefined) {
+          mapping.getNodeMappings.foreach { nodeMapping =>
+            val inputPath = nodeMapping.inputPath.toString
+            val changeOpt = Option(inputPath).find(_.startsWith(INPUT_METADATA)).map { path =>
+              if (extendWithRecord) {
+                // case B: /input/metadata/dc:description => /input/record/metadata/dc:description
+                "/input/record/metadata/" + inputPath.substring(INPUT_METADATA.length)
+              } else {
+                // case /input/metadata/oai_dc:dc/dc:format => /input/oai_dc:dc/dc:format
+                inputPath.replaceFirst("/input/metadata/([^/]+)/", "/input/$1/")
+              }
+            }
+            changeOpt.foreach { path =>
+              nodeMapping.inputPath = Path.create(path)
+              Logger.info(s"Adjust input path: $inputPath => $path")
+            }
+          }
+        }
+        else {
+          mapping.getNodeMappings.foreach { nodeMapping =>
+            val inputPath = nodeMapping.inputPath.toString
+            if (inputPath.startsWith("/input") && !inputPath.startsWith(s"/input/$SIP_RECORD_TAG")) {
+              // take input as the record root
+              nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/", s"/input/$SIP_RECORD_TAG/"))
+              println(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
+            }
           }
         }
       }
-      else {
-        mapping.getNodeMappings.foreach { nodeMapping =>
-          val inputPath = nodeMapping.inputPath.toString
-          if (inputPath.startsWith("/input") && !inputPath.startsWith(s"/input/$SIP_RECORD_TAG")) {
-            // take input as the record root
-            nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/", s"/input/$SIP_RECORD_TAG/"))
-            println(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
-          }
-        }
-      }
-      mapping
+      (mapping, extendWithRecord)
     } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from $file"))
   }
 
   lazy val sipMappingOpt: Option[SipMapping] = schemaVersionOpt.map { schemaVersion =>
     val PrefixVersion(prefix, version) = schemaVersion
     val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
+    val (mapping, extendWithRecord) = recMapping(s"mapping_$prefix.xml", tree)
     SipMapping(
       datasetName = datasetName,
       prefix = prefix,
       version = version,
       recDefTree = tree,
       validationXSD = "when you want to validate" /* file(s"${schemaVersion}_validation.xsd")*/ ,
-      recMapping = recMapping(s"mapping_$prefix.xml", tree)
+      recMapping = mapping,
+      extendWithRecord = extendWithRecord
     )
   }
 
@@ -270,8 +297,10 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
 
   def copyWithSourceTo(sipFile: File, sourceFile: File) = {
     val entryList: List[ZipEntry] = zipFile.entries().toList
-    val mappingEntry = entryList.find(_.getName.startsWith("mapping_")).getOrElse(throw new RuntimeException)
-    val toCopy = entryList.filter(entry => entry.getName != SOURCE_FILE && entry.getName != mappingEntry.getName)
+    val sipMapping = sipMappingOpt.getOrElse(throw new RuntimeException(s"No sip mapping!"))
+    val prefix = sipMapping.prefix
+    val mappingFileName = s"mapping_$prefix.xml"
+    val toCopy = entryList.filter(entry => entry.getName != SOURCE_FILE && entry.getName != mappingFileName)
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
     toCopy.foreach { entry =>
       zos.putNextEntry(entry)
@@ -280,7 +309,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
       zos.closeEntry()
     }
     // add the adjusted recMapping
-    zos.putNextEntry(new ZipEntry(mappingEntry.getName))
+    zos.putNextEntry(new ZipEntry(mappingFileName))
     RecMapping.write(zos, sipMappingOpt.getOrElse(throw new RuntimeException).recMapping)
     zos.closeEntry()
     // add the source file, gzipped

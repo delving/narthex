@@ -45,6 +45,12 @@ object Harvesting {
       uniqueId = "/OAI-PMH/ListRecords/record/header/identifier",
       deepRecordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
     )
+    val PMH_REC = HarvestType(
+      name = "pmh-rec",
+      recordRoot = "/OAI-PMH/ListRecords/record",
+      uniqueId = "/OAI-PMH/ListRecords/record/header/identifier",
+      deepRecordContainer = Some("/OAI-PMH/ListRecords/record")
+    )
     val ADLIB = HarvestType(
       name = "adlib",
       recordRoot = "/adlibXML/recordList/record",
@@ -52,7 +58,7 @@ object Harvesting {
       deepRecordContainer = None
     )
 
-    val ALL_TYPES = List(PMH, ADLIB)
+    val ALL_TYPES = List(PMH, PMH_REC, ADLIB)
 
     def harvestTypeFromString(string: String): Option[HarvestType] = ALL_TYPES.find(s => s.matches(string))
 

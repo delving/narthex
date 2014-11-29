@@ -12,57 +12,50 @@ import scala.xml.XML
 
 class TestSipRepo extends FlatSpec with Matchers {
 
-  // todo: strange harvest has fields right inside /metadata, whereas we expect a record wrapper
-  //  "A SipRepo" should "maybe handle a harvest where the metadata is unwrapped fields" in {
-  //
-  // harvest looks like this, with no record wrapper
-  // <OAI-PMH><ListRecords><record><metadata><dc_identifier/><europeana_unstored/>
-  //
-  //    val home = new File(getClass.getResource("/sip_harvest_abbe").getFile)
-  //    val sipRepo = new SipRepo("test", "http://aboutprefix", new File(home, "sips"))
-  //    val stagingSourceDir = new File(home, "staging")
-  //    val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
-  //
-  //    val sipOpt = sipRepo.latestSipOpt
-  //    sipOpt.isDefined should be(true)
-  //
-  //    sipOpt.foreach { sip =>
-  //
-  //      sip.spec should be(Some("van-abbe-museum"))
-  //
-  //      sip.schemaVersionOpt.isDefined should be(true)
-  //
-  //      val stagingRepo = StagingRepo.createClean(stagingDir, StagingFacts(HarvestType.PMH))
-  //      FileUtils.copyDirectory(stagingSourceDir, stagingDir)
-  //
-  //      var mappedPockets = List.empty[Pocket]
-  //
-  //      var count = 0
-  //      sip.createSipMapper.map { sipMapper =>
-  //        def pocketCatcher(pocket: Pocket): Unit = {
-  //          var mappedPocket = sipMapper.map(pocket)
-  //          println(mappedPocket)
-  //          count += 1
-  //          if (count == 7) throw new RuntimeException
-  //          mappedPockets = mappedPocket.get :: mappedPockets
-  //        }
-  //        stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
-  //      }
-  //
-  //      mappedPockets.size should be(5)
-  //
-  //      val head = XML.loadString(mappedPockets.head.text)
-  //
-  //      println(head)
-  //
-  //      val expectedTitle = "Not likely"
-  //
-  //      val titleText = (head \ "Description" \ "title").filter(_.prefix == "dc").text.trim
-  //
-  //      titleText should be(expectedTitle)
-  //    }
-  //
-  //  }
+  "A SipRepo" should "maybe handle a harvest where the metadata is unwrapped fields" in {
+
+    //    harvest looks like this, with no record wrapper
+    //  <OAI-PMH><ListRecords><record><metadata><dc_identifier/><europeana_unstored/>
+
+    val home = new File(getClass.getResource("/sip_harvest_abbe").getFile)
+    val sipRepo = new SipRepo("test", "http://aboutprefix", new File(home, "sips"))
+    val stagingSourceDir = new File(home, "staging")
+    val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
+
+    val sipOpt = sipRepo.latestSipOpt
+    sipOpt.isDefined should be(true)
+
+    sipOpt.foreach { sip =>
+
+      sip.spec should be(Some("van-abbe-museum"))
+
+      sip.schemaVersionOpt.isDefined should be(true)
+
+      FileUtils.copyDirectory(stagingSourceDir, stagingDir)
+      val stagingRepo = StagingRepo(stagingDir)
+
+      var mappedPockets = List.empty[Pocket]
+
+      var count = 0
+      sip.createSipMapper.map { sipMapper =>
+
+        def pocketCatcher(pocket: Pocket): Unit = {
+          var mappedPocket = sipMapper.map(pocket)
+          count += 1
+          mappedPockets = mappedPocket.get :: mappedPockets
+        }
+
+        stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
+      }
+
+      mappedPockets.size should be(6)
+
+      val first = XML.loadString(mappedPockets.last.text)
+      val expectedTitle = "Tribute to the chaotics, Hommage aan de chaoten"
+      val titleText = (first \ "Description" \ "title").filter(_.prefix == "dc").map(_.text).mkString(", ")
+      titleText should be(expectedTitle)
+    }
+  }
 
   "A SipRepo" should "handle a harvest sip" in {
 
@@ -103,7 +96,7 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       val head = XML.loadString(mappedPockets.head.text)
 
-      println(head)
+//      println(head)
 
       val expectedTitle = "[Bezoek van Statenleden aan de electriciteitsfabriek te Geertruidenberg op 18 Juli 1917]."
 
@@ -152,7 +145,7 @@ class TestSipRepo extends FlatSpec with Matchers {
       val head = XML.loadString(mappedPockets.head.text)
       val creator = "Kees Verwey"
 
-      println(head)
+//      println(head)
 
       val creatorText = (head \ "Description" \ "creator").filter(_.prefix == "dc").text.trim
 

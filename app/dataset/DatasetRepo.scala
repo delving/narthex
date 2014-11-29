@@ -205,7 +205,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
           db.setNamespaceMap(namespaces)
           sip.harvestUrl.map { harvestUrl =>
             // the harvest information is in the Sip, but no source
-            firstHarvest(PMH, harvestUrl, sip.harvestSpec.getOrElse(""), sip.harvestPrefix.getOrElse(""))
+            val harvestType = if (sip.sipMappingOpt.exists(_.extendWithRecord)) PMH_REC else PMH
+            firstHarvest(harvestType, harvestUrl, sip.harvestSpec.getOrElse(""), sip.harvestPrefix.getOrElse(""))
           } getOrElse {
             // there is no harvest information so there must be source
             val stagingRepo = if (sip.pockets.isDefined) {

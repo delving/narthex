@@ -26,7 +26,7 @@ import dataset.DatasetActor._
 import dataset.DatasetState.SOURCED
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
-import harvest.Harvesting.HarvestType.{ADLIB, PMH, harvestTypeFromInfo}
+import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import org.joda.time.DateTime
@@ -85,6 +85,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
           val prefix = (harvest \ "prefix").text
           val kickoff = harvestType match {
             case PMH => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
+            case PMH_REC => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
             case ADLIB => HarvestAdLib(url, database, modifiedAfter)
           }
           val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo), "harvester"))

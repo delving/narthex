@@ -139,6 +139,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
       progress = Some(ProgressReporter(HARVESTING, db))
       val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate)
       handleFailure(futurePage, modifiedAfter, "pmh harvest")
+      // todo: if none comes back there's something wrong
       futurePage pipeTo self
 
     case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, justDate, resumptionToken) =>

@@ -46,7 +46,7 @@ object PocketParser {
 
     def textBytes: ByteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"))
 
-    def path(datasetName:String): String = s"$datasetName/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
+    def path(datasetName: String): String = s"$datasetName/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
 
   }
 
@@ -58,7 +58,7 @@ object PocketParser {
   val POCKET_DEEP_RECORD_ROOT = Some(POCKET_RECORD_ROOT)
 
   val SIP_RECORD_TAG = "sip-record"
-  
+
   val digest = MessageDigest.getInstance("MD5")
 
   private def hashString(record: String) = {
@@ -91,7 +91,9 @@ object PocketParser {
 }
 
 class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
+
   import record.PocketParser._
+
   val path = new mutable.Stack[(String, StringBuilder)]
   val delvingSipSource = recordRootPath == "/delving-sip-source/input"
   var percentWas = -1
@@ -146,7 +148,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
         findUniqueId(attrs.toList)
       }
       else if (string == recordRootPath) {
-        if (deepRecordContainer.isEmpty) {
+        if (deepRecordContainer.isEmpty || deepRecordContainer.get.equals(recordRootPath)) {
           depth = 1
           startElement = Some(startElementString(if (delvingSipSource) SIP_RECORD_TAG else tag, attrs))
         }
@@ -170,7 +172,14 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
       path.pop()
       if (depth > 0) {
         // deep record means check container instead
-        val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _).getOrElse(string == recordRootPath)
+        val hitRecordRoot = deepRecordContainer.map { recordContainer =>
+          if (recordContainer == recordRootPath) {
+            string == recordRootPath
+          }
+          else {
+            pathContainer(string) == recordContainer
+          }
+        }.getOrElse(string == recordRootPath)
         if (hitRecordRoot) {
           flushStartElement()
           indent()
@@ -183,7 +192,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
               val contentHash = hashString(recordContent)
               val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
               val mod = timeToString(new DateTime())
-              val scopedRecordContent = recordContent.replaceFirst(">",s" $scope>")
+              val scopedRecordContent = recordContent.replaceFirst(">", s" $scope>")
               val wrapped = s"""<$POCKET id="$id" mod="$mod" hash="$contentHash">\n$scopedRecordContent</$POCKET>\n"""
               Some(Pocket(id, contentHash, wrapped, namespaceMap))
             }
