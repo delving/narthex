@@ -186,15 +186,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
       val sipZipFile = setTargetFile(sipRepo.createSipZipFile(fileName))
       sipRepo.latestSipOpt.map { sip =>
         datasetDb.infoOpt.map { info =>
-          val meta = info \ "metadata"
-          val name = (meta \ "name").text.trim
-          val dataOwner = (meta \ "dataOwner").text.trim
-          val dataProvider = (meta \ "dataProvider").text.trim
-          if (name.isEmpty) db.setMetadata(Map(
-            "name" -> sip.name.getOrElse(name),
-            "dataOwner" -> sip.provider.getOrElse(dataOwner),
-            "dataProvider" -> sip.dataProvider.getOrElse(dataProvider)
-          ))
+          def value(fieldName: String, sipValue: Option[String]) = {
+            val existing = (info \ "metadata" \ fieldName).text.trim
+            if (existing.nonEmpty) existing else sipValue.getOrElse("")
+          }
+          def nameToEntry(fieldName: String) = fieldName -> value(fieldName, sip.fact(fieldName))
+          val fields = Seq("name", "dataOwner", "dataProvider", "language", "rights")
+          db.setMetadata(fields.map(nameToEntry).toMap)
         }
         db.setSipFacts(sip.facts)
         db.setSipHints(sip.hints)

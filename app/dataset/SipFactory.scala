@@ -35,31 +35,26 @@ object SipFactory {
   (spec: String,
    prefix: String,
    name: String,
+   dataOwner: String,
    dataProvider: String,
    language: String,
    rights: String)
 
   object SipGenerationFacts {
-    // todo: this is not implemented
-    def apply(info: NodeSeq) = new SipGenerationFacts(
-      spec = "spec",
-      prefix = "prefix",
-      name = "name",
-      dataProvider = "dataProvider",
-      language = "nl",
-      rights = "rights"
-    )
+    def apply(info: NodeSeq) = {
+      val meta = info \ "metadata"
+      new SipGenerationFacts(
+        spec = (info \ "@name").text,
+        prefix = (info \ "character" \ "prefix").text,
+        name = (meta \ "name").text,
+        dataOwner = (meta \ "dataOwner").text,
+        dataProvider = (meta \ "dataProvider").text,
+        language = (meta \ "language").text,
+        rights = (meta \ "rights").text
+      )
+    }
   }
 
-  /*
-    todo: remaining
-
-    country=Netherlands
-    dataProviderUri=http://id.musip.nl/crm_e39/7426
-    orgId=dimcon
-    provider=Rijksdienst voor het Cultureel Erfgoed
-    type=IMAGE
-   */
 }
 
 class SipFactory(home: File) {
@@ -71,7 +66,9 @@ class SipFactory(home: File) {
 }
 
 class SipPrefixRepo(home: File) {
+
   import dataset.SipFactory._
+
   val prefix = home.getName
 
   lazy val recordDefinition = home.listFiles().find(f => f.getName.endsWith(RECORD_DEFINITION_SUFFIX)).getOrElse(

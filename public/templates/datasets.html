@@ -151,6 +151,10 @@
                 <input id="meta_name" class="form-control" data-ng-model="file.info.metadata.name"/>
             </div>
             <div class="form-group">
+                <label for="meta_description">Description</label>
+                <input id="meta_description" class="form-control" data-ng-model="file.info.metadata.description"/>
+            </div>
+            <div class="form-group">
                 <label for="meta_owner">Data Owner</label>
                 <input id="meta_owner" class="form-control" data-ng-model="file.info.metadata.dataOwner"/>
             </div>
@@ -159,8 +163,12 @@
                 <input id="meta_provider" class="form-control" data-ng-model="file.info.metadata.dataProvider"/>
             </div>
             <div class="form-group">
-                <label for="meta_description">Description</label>
-                <input id="meta_description" class="form-control" data-ng-model="file.info.metadata.description"/>
+                <label for="meta_language">Language</label>
+                <input id="meta_language" class="form-control" data-ng-model="file.info.metadata.language"/>
+            </div>
+            <div class="form-group">
+                <label for="meta_rights">Rights</label>
+                <input id="meta_rights" class="form-control" data-ng-model="file.info.metadata.rights"/>
             </div>
             <button typ="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()">
                 <i class="fa fa-save"></i>
