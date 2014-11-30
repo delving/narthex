@@ -1,9 +1,11 @@
 package specs
 
-import java.io.File
+import java.io.{File, FileOutputStream}
 
-import dataset.{SipFactory, SipPrefixRepo}
+import dataset.SipFactory.SipGenerationFacts
+import dataset.{SipFactory, SipPrefixRepo, StagingRepo}
 import org.scalatest.{FlatSpec, Matchers}
+import services.{FileHandling, ProgressReporter}
 
 class TestSipFactory extends FlatSpec with Matchers {
 
@@ -19,6 +21,26 @@ class TestSipFactory extends FlatSpec with Matchers {
 
     icn.recordDefinition.getName should be("icn_1.0.4_record-definition.xml")
     icn.validation.getName should be("icn_1.0.4_validation.xsd")
+
+    val targetDir = FileHandling.clearDir(new File("/tmp/test-sip-factory"))
+    val sipFile = new File(targetDir, "test.sip.zip")
+
+    val stagingDir = new File(getClass.getResource("/sip_harvest_abbe/staging").getFile)
+    val stagingRepo = StagingRepo(stagingDir)
+    val sourceXmlFile = new File(targetDir, "source.xml")
+    val sourceOutput = new FileOutputStream(sourceXmlFile)
+    stagingRepo.generateSource(sourceOutput, new File(targetDir, "should.not.appear"), None, ProgressReporter())
+    sourceOutput.close()
+
+    val facts = SipGenerationFacts(
+      spec = "spec",
+      name = "name",
+      dataProvider = "dataProvider",
+      language = "nl",
+      rights = "rights"
+    )
+
+    icn.generateSip(sipFile, sourceXmlFile, facts)
 
     /*
      initial mapping: mapping_icn.xml
