@@ -295,7 +295,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
 
   def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
 
-  def copyWithSourceTo(sipFile: File, sourceFile: File) = {
+  def copyWithSourceTo(sipFile: File, sourceXmlFile: File) = {
     val entryList: List[ZipEntry] = zipFile.entries().toList
     val sipMapping = sipMappingOpt.getOrElse(throw new RuntimeException(s"No sip mapping!"))
     val prefix = sipMapping.prefix
@@ -315,8 +315,9 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
     // add the source file, gzipped
     zos.putNextEntry(new ZipEntry(SOURCE_FILE))
     val gzipOut = new GZIPOutputStream(zos)
-    val sourceIn = new FileInputStream(sourceFile)
+    val sourceIn = new FileInputStream(sourceXmlFile)
     IOUtils.copy(sourceIn, gzipOut)
+    sourceIn.close()
     gzipOut.close()
     zos.close()
   }
