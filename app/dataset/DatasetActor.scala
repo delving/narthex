@@ -30,6 +30,7 @@ import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import org.joda.time.DateTime
+import play.api.Logger
 import record.Saver
 import record.Saver._
 
@@ -204,6 +205,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
       actorWaiting ! interrupted
 
     case ChildFailure(message, exceptionOpt) =>
+      exceptionOpt.map(Logger.warn(message, _))
+      log.warning(s"Child failure $message")
       db.endProgress(Some(message))
       exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
       if (sender != self) sender ! PoisonPill

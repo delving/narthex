@@ -20,6 +20,8 @@ import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import org.apache.commons.io.IOUtils
 
+import scala.xml.NodeSeq
+
 /**
  * @author Gerald de Jong <gerald@delving.eu>
  */
@@ -31,10 +33,23 @@ object SipFactory {
 
   case class SipGenerationFacts
   (spec: String,
+   prefix: String,
    name: String,
    dataProvider: String,
    language: String,
    rights: String)
+
+  object SipGenerationFacts {
+    // todo: this is not implemented
+    def apply(info: NodeSeq) = new SipGenerationFacts(
+      spec = "spec",
+      prefix = "prefix",
+      name = "name",
+      dataProvider = "dataProvider",
+      language = "nl",
+      rights = "rights"
+    )
+  }
 
   /*
     todo: remaining
@@ -45,14 +60,13 @@ object SipFactory {
     provider=Rijksdienst voor het Cultureel Erfgoed
     type=IMAGE
    */
-
-  def apply(home: File) = new SipFactory(home)
-
 }
 
 class SipFactory(home: File) {
 
-  lazy val prefixes = home.listFiles().filter(_.isDirectory).map(new SipPrefixRepo(_))
+  lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map(new SipPrefixRepo(_))
+
+  def prefixRepo(prefix: String) = prefixRepos.find(_.prefix == prefix)
 
 }
 

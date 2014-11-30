@@ -19,7 +19,7 @@ package org
 import java.io.File
 
 import dataset.ProgressState._
-import dataset.{DatasetDb, DatasetRepo, Sip}
+import dataset.{DatasetDb, DatasetRepo, Sip, SipFactory}
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
 import mapping.{CategoriesRepo, SkosRepo}
 import org.OrgActor.DatasetsCountCategories
@@ -60,12 +60,15 @@ class OrgRepo(userHome: String, val orgId: String) {
   val sipsDir = new File(orgRoot, "sips")
   val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
   val skosRepo = new SkosRepo(new File(orgRoot, "skos"))
+  val factoryDir = new File(orgRoot, "factory")
+  val sipFactory = new SipFactory(factoryDir)
   val repoDb = new OrgDb(orgId)
 
   orgRoot.mkdirs()
   datasetsDir.mkdir()
   sourceDir.mkdirs()
   sipsDir.mkdirs()
+  factoryDir.mkdirs()
 
   def datasetRepo(datasetName: String): DatasetRepo = {
     val dr = new DatasetRepo(this, datasetName)

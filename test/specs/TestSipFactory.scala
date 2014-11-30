@@ -12,12 +12,12 @@ class TestSipFactory extends FlatSpec with Matchers {
   "A SipFactory" should "be able to create a sip from a harvest dataset, given a prefix" in {
 
     val home = new File(getClass.getResource("/sip_factory").getFile)
-    val factory = SipFactory(home)
+    val factory = new SipFactory(home)
 
-    val prefixRepos: Array[SipPrefixRepo] = factory.prefixes
+    val prefixRepos: Array[SipPrefixRepo] = factory.prefixRepos
     prefixRepos.size should be(2)
 
-    val icn = prefixRepos.find(_.prefix == "icn").getOrElse(throw new RuntimeException)
+    val icn = factory.prefixRepo("icn").getOrElse(throw new RuntimeException)
 
     icn.recordDefinition.getName should be("icn_1.0.4_record-definition.xml")
     icn.validation.getName should be("icn_1.0.4_validation.xsd")
@@ -32,13 +32,7 @@ class TestSipFactory extends FlatSpec with Matchers {
     stagingRepo.generateSource(sourceOutput, new File(targetDir, "should.not.appear"), None, ProgressReporter())
     sourceOutput.close()
 
-    val facts = SipGenerationFacts(
-      spec = "spec",
-      name = "name",
-      dataProvider = "dataProvider",
-      language = "nl",
-      rights = "rights"
-    )
+    val facts = SipGenerationFacts(<info/>)
 
     icn.generateSip(sipFile, sourceXmlFile, facts)
 

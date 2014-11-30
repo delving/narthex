@@ -23,7 +23,7 @@ import dataset.DatasetActor.{ChildFailure, IncrementalSave, InterruptWork}
 import dataset.DatasetRepo
 import dataset.ProgressState._
 import dataset.Sip.SipMapper
-import org.apache.commons.io.FileUtils
+import dataset.SipFactory.SipGenerationFacts
 import org.basex.core.cmd.{Delete, Optimize}
 import record.PocketParser.Pocket
 import record.Saver._
@@ -73,14 +73,13 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
           stagingRepo.acceptFile(file, progressReporter).map { adoptedFile =>
             context.parent ! SourceAdoptionComplete(adoptedFile)
           } getOrElse {
-            log.warning(s"File not accepted: ${file.getAbsolutePath}")
+            context.parent ! ChildFailure(s"File not accepted: ${file.getAbsolutePath}")
           }
         } onFailure {
           case t => context.parent ! ChildFailure(t.getMessage, Some(t))
         }
-
       } getOrElse {
-        log.warning("Missing staging repository!")
+        context.parent ! ChildFailure("Missing staging repository!")
       }
 
     case GenerateSource() =>
@@ -95,14 +94,27 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
           pocketOutput.close()
           datasetRepo.sipRepo.latestSipOpt.map { latestSip =>
             latestSip.copyWithSourceTo(datasetRepo.sipFile, datasetRepo.pocketFile)
-            FileUtils.deleteQuietly(datasetRepo.pocketFile)
+            //            FileUtils.deleteQuietly(datasetRepo.pocketFile)
+          } getOrElse {
+            val generationFactsOpt = db.infoOpt.map(SipGenerationFacts(_))
+            generationFactsOpt.map { facts =>
+              val sipPrefixRepo = datasetRepo.orgRepo.sipFactory.prefixRepo(facts.prefix)
+              sipPrefixRepo.map { prefixRepo =>
+                prefixRepo.generateSip(datasetRepo.sipFile, datasetRepo.pocketFile, facts)
+                //            FileUtils.deleteQuietly(datasetRepo.pocketFile)
+              } getOrElse {
+                context.parent ! ChildFailure("Unable to build sip for download")
+              }
+            } getOrElse {
+              context.parent ! ChildFailure("Unable to create sip generation facts")
+            }
           }
           context.parent ! SourceGenerationComplete(datasetRepo.mappedFile, recordCount)
         } onFailure {
           case t => context.parent ! ChildFailure(t.getMessage, Some(t))
         }
       } getOrElse {
-        log.warning("No data for generating source")
+        context.parent ! ChildFailure("No data for generating source")
       }
 
     case SaveRecords(incrementalOpt) =>
