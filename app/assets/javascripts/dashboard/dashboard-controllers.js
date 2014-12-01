@@ -46,15 +46,19 @@ define(["angular"], function () {
             $location.search({open: $scope.fileOpen, tab: $scope.tabOpen });
         }
 
-        $scope.$watch("dataset.name", function () {
+        function setNewDataset() {
             var ds = $scope.dataset;
             if (!ds.name) ds.name = "";
-            var name = ds.name.trim().replace(/\W+/g, "_").replace(/_+/g, "_");
-            ds.validName = (name.replace(/_/, "").length > 0) ? name : undefined;
-        });
+            var name = ds.name.trim().replace(/\W+/g, "_").replace(/_+/g, "_").toLowerCase();
+            ds.validName = name;
+            if (name.replace(/_/, "").length == 0 || !ds.prefix) ds.validName = undefined
+        }
+
+        $scope.$watch("dataset.name", setNewDataset);
+        $scope.$watch("dataset.prefix", setNewDataset);
 
         $scope.createDataset = function () {
-            dashboardService.command($scope.dataset.validName, "create").then(function () {
+            dashboardService.create($scope.dataset.validName, $scope.dataset.prefix).then(function () {
                 $scope.setNewFileOpen(false);
                 $scope.dataset.name = undefined;
                 $scope.fetchDatasetList();
@@ -104,7 +108,7 @@ define(["angular"], function () {
             }
             file.uploading = true;
             $upload.upload({
-                url: '/narthex/dashboard/' + file.name + '/upload/' + file.prefix,
+                url: '/narthex/dashboard/' + file.name + '/upload',
                 file: onlyFile
             }).progress(
                 function (evt) {
@@ -258,7 +262,7 @@ define(["angular"], function () {
         }
 
         $scope.fetchDatasetList = function () {
-            dashboardService.list().then(function (files) {
+            dashboardService.listDatasets().then(function (files) {
                 _.forEach($scope.files, cancelChecker);
                 _.forEach(files, decorateFile);
                 $scope.files = files;
@@ -269,6 +273,11 @@ define(["angular"], function () {
         };
 
         $scope.fetchDatasetList();
+
+        dashboardService.listPrefixes().then(function(prefixes) {
+            $scope.prefixes = prefixes;
+            $scope.dataset.prefix = prefixes.length ? prefixes[0] : undefined
+        });
     };
 
     DashboardCtrl.$inject = [

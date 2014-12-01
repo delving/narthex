@@ -114,20 +114,24 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
 
   def datasetElement = s"${repoDb.allDatasets}/dataset[@name=${quote(datasetName)}]"
 
-  def createDataset = db {
+  def createDataset(prefix: String) = db {
     session =>
       val update = s"""
           |
+          | let $$character :=
+          |   <character>
+          |     <prefix>$prefix</prefix>
+          |   </character>
           | let $$status :=
           |   <status>
           |     <state>state-empty</state>
           |     <time>$now</time>
           |   </status>
           | let $$dataset :=
-          |   <dataset name="$datasetName">{ $$status }</dataset>
+          |   <dataset name="$datasetName">{ $$character }{ $$status }</dataset>
           | return
           |   if (exists($datasetElement))
-          |   then replace node $datasetElement/status with $$status
+          |   then replace node $datasetElement with $$dataset
           |   else insert node $$dataset into ${repoDb.allDatasets}
           |
           """.stripMargin.trim
@@ -168,12 +172,6 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     Logger.info(s"$datasetName set $listName: ${entries.toMap}")
     session.query(update).execute()
   }
-
-  def setMetadataPrefix(prefix: String) = setProperties(
-    "character",
-    "type" -> "metadata",
-    "prefix" -> prefix
-  )
 
   def setStatus(state: DatasetState) = setProperties(
     "status",

@@ -38,6 +38,14 @@
                                 <label for="new-name">Dataset Name</label>
                                 <input id="new-name" class="form-control" data-ng-model="dataset.name" placeholder="name" required autofocus/>
                             </div>
+                            <div>
+                                <label for="new-format">Metadata Format</label>
+                                <div id="new-format">
+                                    <span data-ng-repeat="prefix in prefixes" style="padding: 5px">
+                                        <input type="radio" name="prefix" data-ng-model="dataset.prefix" data-ng-value="prefix"> <span>{{ prefix }}</span>
+                                    </span>
+                                </div>
+                            </div>
                             <hr/>
                             <div class="form-group">
                                 <span typ="button" class="btn btn-success" data-ng-class="{ 'disabled': !dataset.validName }" data-ng-click="createDataset()">
@@ -58,19 +66,9 @@
 
 <script type="text/ng-template" id="drop-file.html">
     <div>
-        <div class="col-md-6">
-            <form name="form" class="form file-harvest">
-                <fieldset>
-                    <div class="form-group">
-                        <label for="drop_prefix">Metadata format prefix:</label>
-                        <input id="drop_prefix" class="form-control" data-ng-model="file.prefix" placeholder="prefix" required/>
-                    </div>
-                </fieldset>
-            </form>
-        </div>
-        <div class="file-drop col-md-6" ng-file-drop="file.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
+        <div class="file-drop col-md-12" ng-file-drop="file.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
             <span data-ng-show="!(file.prefix && file.prefix.length)">Prefix required</span>
-            <span data-ng-show="file.prefix && file.prefix.length">Drag and drop your xml source with <strong>"{{file.prefix}}"</strong> data into this area</span>
+            <span data-ng-show="file.prefix && file.prefix.length">Drag and drop your xml source or SIP file into this area</span>
             <div class="img-holder" data-ng-show="file.uploading">
                 <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
                 <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>

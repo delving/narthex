@@ -18,8 +18,10 @@ POST        /narthex/login                                                web.Ap
 GET         /narthex/logout                                               web.Application.logout
 
 # File Handling
-GET         /narthex/dashboard/list                                       web.Dashboard.list
-POST        /narthex/dashboard/:datasetName/upload/:prefix                web.Dashboard.upload(datasetName, prefix)
+GET         /narthex/dashboard/datasets                                   web.Dashboard.listDatasets
+GET         /narthex/dashboard/prefixes                                   web.Dashboard.listPrefixes
+GET         /narthex/dashboard/:datasetName/create/:prefix                web.Dashboard.create(datasetName, prefix)
+POST        /narthex/dashboard/:datasetName/upload                        web.Dashboard.upload(datasetName)
 POST        /narthex/dashboard/:datasetName/harvest                       web.Dashboard.harvest(datasetName)
 POST        /narthex/dashboard/:datasetName/set-harvest-cron              web.Dashboard.setHarvestCron(datasetName)
 POST        /narthex/dashboard/:datasetName/set-metadata                  web.Dashboard.setMetadata(datasetName)

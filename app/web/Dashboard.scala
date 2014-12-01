@@ -51,13 +51,18 @@ object Dashboard extends Controller with Security {
     "sipHints"
   )
 
-  def list = Secure() { token => implicit request =>
+  def listDatasets = Secure() { token => implicit request =>
     val datasets = repo.repoDb.listDatasets.flatMap { dataset =>
       val state = DatasetState.datasetStateFromInfo(dataset.info)
       val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
       Some(Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists)))
     }
     Ok(JsArray(datasets))
+  }
+
+  def listPrefixes = Secure() { token => implicit request =>
+    val prefixes = repo.sipFactory.prefixRepos.map(_.prefix)
+    Ok(Json.toJson(prefixes))
   }
 
   def datasetInfo(datasetName: String) = Secure() { token => implicit request =>
@@ -67,24 +72,23 @@ object Dashboard extends Controller with Security {
     } getOrElse NotFound(Json.obj("problem" -> s"Not found $datasetName"))
   }
 
+  def create(datasetName: String, prefix: String) = Secure() { token => implicit request =>
+    repo.datasetRepo(datasetName).datasetDb.createDataset(prefix)
+    Ok(Json.obj("created" -> s"Dataset $datasetName with prefix $prefix"))
+  }
+
   def command(datasetName: String, command: String) = Secure() { token => implicit request =>
-    command match {
-      case "create" =>
-        repo.datasetRepo(datasetName).datasetDb.createDataset
-        Ok(s"Created $datasetName")
-      case _ =>
-        repo.datasetRepoOption(datasetName).map { datasetRepo =>
-          Ok(datasetRepo.receiveCommand(command))
-        } getOrElse {
-          NotFound
-        }
+    repo.datasetRepoOption(datasetName).map { datasetRepo =>
+      Ok(datasetRepo.receiveCommand(command))
+    } getOrElse {
+      NotFound
     }
   }
 
-  def upload(datasetName: String, prefix: String) = Secure(parse.multipartFormData) { token => implicit request =>
+  def upload(datasetName: String) = Secure(parse.multipartFormData) { token => implicit request =>
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       request.body.file("file").map { file =>
-        val error = datasetRepo.acceptUpload(file.filename, prefix, { target =>
+        val error = datasetRepo.acceptUpload(file.filename, { target =>
           file.ref.moveTo(target, replace = true)
           Logger.info(s"Dropped file ${file.filename} on $datasetName: ${target.getAbsolutePath}")
           datasetRepo.datasetDb.setProgress(ProgressState.ADOPTING, ProgressType.PERCENT, 1)

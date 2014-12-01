@@ -173,10 +173,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     }
   }
 
-  def acceptUpload(fileName: String, prefix: String, setTargetFile: File => File): Option[String] = {
+  def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
     val db = datasetDb
     if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
-      db.setMetadataPrefix(prefix)
       db.setStatus(RAW)
       setTargetFile(createRawFile(fileName))
       startAnalysis()
@@ -196,7 +195,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         }
         db.setSipFacts(sip.facts)
         db.setSipHints(sip.hints)
-        db.setMetadataPrefix(prefix)
         sip.sipMappingOpt.map { sipMapping =>
           // must add RDF since the mapping output uses it
           val namespaces = sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)

@@ -40,6 +40,14 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
+                create: function (datasetName, prefix) {
+                    return dash.create(datasetName, prefix).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 command: function (datasetName, command) {
                     return dash.command(datasetName, command).get().then(
                         function (response) {
@@ -56,8 +64,16 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                list: function () {
-                    return dash.list().get().then(
+                listDatasets: function () {
+                    return dash.listDatasets().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                listPrefixes: function () {
+                    return dash.listPrefixes().get().then(
                         function (response) {
                             return response.data;
                         },
