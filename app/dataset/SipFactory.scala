@@ -35,7 +35,7 @@ object SipFactory {
   (spec: String,
    prefix: String,
    name: String,
-   dataOwner: String,
+   provider: String,
    dataProvider: String,
    language: String,
    rights: String)
@@ -47,7 +47,7 @@ object SipFactory {
         spec = (info \ "@name").text,
         prefix = (info \ "character" \ "prefix").text,
         name = (meta \ "name").text,
-        dataOwner = (meta \ "dataOwner").text,
+        provider = (meta \ "provider").text,
         dataProvider = (meta \ "dataProvider").text,
         language = (meta \ "language").text,
         rights = (meta \ "rights").text
@@ -89,6 +89,7 @@ class SipPrefixRepo(home: File) {
     val factsString =
       s"""spec=${facts.spec}
          |name=${facts.name}
+         |provider=${facts.provider}
          |dataProvider=${facts.dataProvider}
          |language=${facts.language}
          |schemaVersions=$schemaVersions
@@ -98,9 +99,9 @@ class SipPrefixRepo(home: File) {
     zos.closeEntry()
 
     // record definition and validation
-    def copyIn(file: File) = {
-      zos.putNextEntry(new ZipEntry(file.getName))
-      val fileIn = new FileInputStream(sourceXmlFile)
+    def copyIn(fileToCopy: File) = {
+      zos.putNextEntry(new ZipEntry(fileToCopy.getName))
+      val fileIn = new FileInputStream(fileToCopy)
       IOUtils.copy(fileIn, zos)
       fileIn.close()
       zos.closeEntry()

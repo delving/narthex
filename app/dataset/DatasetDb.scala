@@ -97,9 +97,10 @@ case class DatasetState(name: String) {
 object DatasetState {
   val EMPTY = DatasetState("state-empty")
   val RAW = DatasetState("state-raw")
+  val RAW_POCKETS = DatasetState("state-raw-pockets")
   val SOURCED = DatasetState("state-sourced")
 
-  val ALL_STATES = List(EMPTY, RAW, SOURCED)
+  val ALL_STATES = List(EMPTY, RAW, RAW_POCKETS, SOURCED)
 
   def datasetStateFromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
 

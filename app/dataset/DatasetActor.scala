@@ -23,12 +23,13 @@ import akka.actor._
 import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
-import dataset.DatasetState.SOURCED
+import dataset.DatasetState._
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
+import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
 import record.Saver
@@ -130,11 +131,18 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
       val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo), "saver"))
       saver ! GenerateSource()
 
-    case SourceGenerationComplete(file, recordCount) =>
+    case SourceGenerationComplete(rawRecordCount, mappedRecordCount) =>
       // todo: figure out if there are other things to trigger
-      log.info(s"Generated file $file with $recordCount records")
-      db.setStatus(SOURCED)
-      db.setSource(recordCount > 0, recordCount)
+      log.info(s"Generated file $rawRecordCount raw, $mappedRecordCount mapped")
+      if (mappedRecordCount > 0) {
+        db.setStatus(SOURCED)
+        db.setSource(ready = true, mappedRecordCount)
+      }
+      else {
+        val rawFile = datasetRepo.createRawFile(datasetRepo.pocketFile.getName)
+        FileUtils.copyFile(datasetRepo.pocketFile, rawFile)
+        db.setStatus(RAW_POCKETS)
+      }
       self ! StartAnalysis()
 
     // === analyzing

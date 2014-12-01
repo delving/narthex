@@ -90,7 +90,10 @@
                 <label for="harvest_type">Harvest Server Type</label>
                 <div id="harvest_type" class="form-control">
                     <input type="radio" ng-model="file.info.harvest.harvestType" value="pmh">
-                    <span>OAI-PMH</span>
+                    <span>OAI-PMH (record wrapper)</span>
+                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    <input type="radio" ng-model="file.info.harvest.harvestType" value="pmh-rec">
+                    <span>OAI-PMH (no record wrapper)</span>
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
                     <input type="radio" ng-model="file.info.harvest.harvestType" value="adlib">
                     <span>AdLib API</span>
@@ -104,14 +107,15 @@
                 <label for="pmh_set">Server Dataset</label>
                 <input id="pmh_set" class="form-control" data-ng-model="file.info.harvest.dataset" placeholder="dataset"/>
             </div>
-            <div class="form-group" data-ng-show="file.info.harvest.harvestType == 'pmh'">
+            <div class="form-group" data-ng-show="file.info.harvest.harvestType != 'adlib'">
                 <label for="pmh_prefix">Metadata Prefix</label>
                 <input id="pmh_prefix" class="form-control" data-ng-model="file.info.harvest.prefix" placeholder="prefix" required/>
             </div>
             <button typ="button" class="btn btn-success" data-ng-click="startHarvest()">
                 <i class="fa fa-refresh"></i>
                 <span>Harvest</span>
-                <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH</span>
+                <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH (record wrapper)</span>
+                <span data-ng-show="harvest.harvestType == 'pmh-rec'">from OAI-PMH (no record wrapper)</span>
                 <span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>
             </button>
         </fieldset>
@@ -153,8 +157,8 @@
                 <input id="meta_description" class="form-control" data-ng-model="file.info.metadata.description"/>
             </div>
             <div class="form-group">
-                <label for="meta_owner">Data Owner</label>
-                <input id="meta_owner" class="form-control" data-ng-model="file.info.metadata.dataOwner"/>
+                <label for="meta_owner">Provider or Owner</label>
+                <input id="meta_owner" class="form-control" data-ng-model="file.info.metadata.provider"/>
             </div>
             <div class="form-group">
                 <label for="meta_provider">Data Provider</label>
@@ -168,7 +172,8 @@
                 <label for="meta_rights">Rights</label>
                 <input id="meta_rights" class="form-control" data-ng-model="file.info.metadata.rights"/>
             </div>
-            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()">
+            <!--todo: make this enabled whenever fields are different, otherwise not-->
+            <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()">
                 <i class="fa fa-save"></i>
                 <span>Save</span>
             </button>
@@ -338,6 +343,10 @@
                         <span class="label label-success" data-ng-show="!file.treeTime">Raw</span>
                         <span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>
                     </span>
+                    <span ng-switch-when="state-raw-pockets">
+                        <span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>
+                        <span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>
+                    </span>
                     <span ng-switch-when="state-sourced">
                         <span class="label label-success" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
                         <span class="label label-success" data-ng-show="file.treeTime">
@@ -389,7 +398,7 @@
                     <li ng-class="{'active':tabOpen === 'harvest'}" data-ng-show="file.state == 'state-empty'">
                         <a href role="tab" data-ng-click="setTabOpen('harvest')">Harvest</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url">
+                    <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.state == 'state-sourced'">
                         <a href role="tab" data-ng-click="setTabOpen('harvest-cron')">Scheduled Harvest</a>
                     </li>
                     <li ng-class="{'active':tabOpen === 'publication'}" data-ng-show="file.recordsTime">

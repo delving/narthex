@@ -190,7 +190,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
             if (existing.nonEmpty) existing else sipValue.getOrElse("")
           }
           def nameToEntry(fieldName: String) = fieldName -> value(fieldName, sip.fact(fieldName))
-          val fields = Seq("name", "dataOwner", "dataProvider", "language", "rights")
+          val fields = Seq("name", "provider", "dataProvider", "language", "rights")
           db.setMetadata(fields.map(nameToEntry).toMap)
         }
         db.setSipFacts(sip.facts)

@@ -95,7 +95,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
   import record.PocketParser._
 
   val path = new mutable.Stack[(String, StringBuilder)]
-  val delvingSipSource = recordRootPath == "/delving-sip-source/input"
+  val introduceRecord = deepRecordContainer.exists(_ == recordRootPath)
   var percentWas = -1
   var lastProgress = 0l
   var recordCount = 0
@@ -150,11 +150,11 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
       else if (string == recordRootPath) {
         if (deepRecordContainer.isEmpty || deepRecordContainer.get.equals(recordRootPath)) {
           depth = 1
-          startElement = Some(startElementString(if (delvingSipSource) SIP_RECORD_TAG else tag, attrs))
+          startElement = Some(startElementString(if (introduceRecord) SIP_RECORD_TAG else tag, attrs))
         }
         findUniqueId(attrs.toList)
       }
-      else deepRecordContainer.foreach { recordContainer =>
+      else if (!introduceRecord) deepRecordContainer.foreach { recordContainer =>
         if (pathContainer(string) == recordContainer) {
           depth = 1
           startElement = Some(startElementString(tag, attrs))
@@ -183,7 +183,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
         if (hitRecordRoot) {
           flushStartElement()
           indent()
-          recordText.append(s"</${if (delvingSipSource) SIP_RECORD_TAG else tag}>\n")
+          recordText.append(s"</${if (introduceRecord) SIP_RECORD_TAG else tag}>\n")
           val record = uniqueId.map { id =>
             if (id.isEmpty) throw new RuntimeException("Empty unique id!")
             if (avoidIds.contains(id)) None
@@ -197,6 +197,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
               Some(Pocket(id, contentHash, wrapped, namespaceMap))
             }
           } getOrElse {
+            Logger.error("MISSING ID!")
             throw new RuntimeException("Missing id!")
           }
           record.foreach { r =>

@@ -20,7 +20,7 @@ import java.nio.file.Files
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
 
 import dataset.Sip.SipMapper
-import dataset.SipRepo.{SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID}
+import dataset.SipRepo._
 import harvest.Harvesting.HarvestType
 import mapping.CategoryDb.CategoryMapping
 import org.apache.commons.io.input.BOMInputStream
@@ -64,7 +64,7 @@ object StagingRepo {
 
   case class StagingFacts(stagingType: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
 
-  def DELVING_SIP_SOURCE = StagingFacts("delving-sip-source", SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, None)
+  def DELVING_SIP_SOURCE = StagingFacts("delving-sip-source", SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, SIP_SOURCE_DEEP_RECORD_CONTAINER)
 
   def DELVING_POCKET_SOURCE = StagingFacts("delving-pocket-source", POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT)
 
@@ -265,7 +265,7 @@ class StagingRepo(home: File) {
     parser.categoryCounts
   }
 
-  def parsePockets(output: Pocket => Unit, progressReporter: ProgressReporter): Map[String, String] = {
+  def parsePockets(output: Pocket => Unit, progressReporter: ProgressReporter): Int = {
     val parser = PocketParser(stagingFacts)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
@@ -278,14 +278,15 @@ class StagingRepo(home: File) {
       parser.parse(source, idSet.toSet, output, progressReporter)
       source.close()
     }
-    parser.namespaceMap
+    totalActiveIds
   }
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSource(pocketOutputStream: OutputStream, mappedFile: File, sipMapperOpt: Option[SipMapper], progressReporter: ProgressReporter): Int = {
+  def generateSource(pocketOutputStream: OutputStream, mappedFile: File, sipMapperOpt: Option[SipMapper], progressReporter: ProgressReporter): (Int, Int) = {
     Logger.info(s"Generating source from $home to $mappedFile with mapper $sipMapperOpt using $stagingFacts")
-    var recordCount = 0
+    var rawRecordCount = 0
+    var mappedRecordCount = 0
     val mappedOutputOpt: Option[Writer] = sipMapperOpt.map(sm => new OutputStreamWriter(new FileOutputStream(mappedFile), "UTF-8"))
     val rawOutput = new OutputStreamWriter(pocketOutputStream, "UTF-8")
     try {
@@ -298,21 +299,21 @@ class StagingRepo(home: File) {
         val mappedOpt = sipMapperOpt.flatMap(_.map(rawPocket))
         mappedOpt.map { pocket =>
           mappedOutputOpt.get.write(pocket.text)
-          recordCount += 1
-          if (recordCount % 1000 == 0) {
-            Logger.info(s"Generating record $recordCount")
+          mappedRecordCount += 1
+          if (mappedRecordCount % 1000 == 0) {
+            Logger.info(s"Generating record $mappedRecordCount")
           }
         }
       }
-      parsePockets(pocketWriter, progressReporter)
+      rawRecordCount = parsePockets(pocketWriter, progressReporter)
       rawOutput.write(endList)
       mappedOutputOpt.map(_.write(endList))
     } finally {
       rawOutput.close()
       mappedOutputOpt.map(_.close).getOrElse(FileUtils.deleteQuietly(mappedFile))
     }
-    Logger.info(s"Finished generating source from $home")
-    recordCount
+    Logger.info(s"Finished generating source from $home: $mappedRecordCount mapped records")
+    (rawRecordCount, mappedRecordCount)
   }
 
 }

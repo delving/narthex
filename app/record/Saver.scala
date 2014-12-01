@@ -24,6 +24,7 @@ import dataset.DatasetRepo
 import dataset.ProgressState._
 import dataset.Sip.SipMapper
 import dataset.SipFactory.SipGenerationFacts
+import org.apache.commons.io.FileUtils
 import org.basex.core.cmd.{Delete, Optimize}
 import record.PocketParser.Pocket
 import record.Saver._
@@ -40,7 +41,7 @@ object Saver {
 
   case class GenerateSource()
 
-  case class SourceGenerationComplete(file: File, recordCount: Int)
+  case class SourceGenerationComplete(rawRecordCount: Int, mappedRecordCount: Int)
 
   case class SaveRecords(incrementalOpt: Option[IncrementalSave])
 
@@ -90,7 +91,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
           val progressReporter = ProgressReporter(GENERATING, db)
           progress = Some(progressReporter)
           val pocketOutput = new FileOutputStream(datasetRepo.pocketFile)
-          val recordCount = stagingRepo.generateSource(pocketOutput, datasetRepo.mappedFile, sipMapperOpt, progressReporter)
+          val (rawRecordCount, mappedRecordCount) = stagingRepo.generateSource(pocketOutput, datasetRepo.mappedFile, sipMapperOpt, progressReporter)
           pocketOutput.close()
           datasetRepo.sipRepo.latestSipOpt.map { latestSip =>
             latestSip.copyWithSourceTo(datasetRepo.sipFile, datasetRepo.pocketFile)
@@ -109,7 +110,14 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
               context.parent ! ChildFailure("Unable to create sip generation facts")
             }
           }
-          context.parent ! SourceGenerationComplete(datasetRepo.mappedFile, recordCount)
+          if (rawRecordCount > 0) {
+            context.parent ! SourceGenerationComplete(rawRecordCount, mappedRecordCount)
+          }
+          else {
+            FileUtils.deleteQuietly(datasetRepo.sipFile)
+            FileUtils.deleteQuietly(datasetRepo.pocketFile)
+            context.parent ! ChildFailure("Zero raw records generated")
+          }
         } onFailure {
           case t => context.parent ! ChildFailure(t.getMessage, Some(t))
         }

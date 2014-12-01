@@ -22,8 +22,8 @@ import scala.xml.{MetaData, NamespaceBinding, NodeSeq}
  * as a [[scala.collection.Iterator]] will provide access to the generated events.
  * @param src A [[scala.io.Source]] for XML data to parse
  *
- *  @author Burak Emir
- *  @author Paul Phillips
+ * @author Burak Emir
+ * @author Paul Phillips
  */
 class NarthexEventReader(src: Source) extends scala.collection.Iterator[XMLEvent] with ProducerConsumerIterator[XMLEvent] {
 
@@ -36,13 +36,16 @@ class NarthexEventReader(src: Source) extends scala.collection.Iterator[XMLEvent
   val preserveWS = true
 
   override val MaxQueueSize = 1000
+
   protected case object POISON extends XMLEvent
+
   val EndOfStream = POISON
 
   // thread machinery
   private[this] val parser = new Parser(src)
   private[this] val parserThread = new Thread(parser, "NarthexEventReader")
   parserThread.start
+
   // enqueueing the poison object is the reliable way to cause the
   // iterator to terminate; hasNext will return false once it sees it.
   // Calling interrupt() on the parserThread is the only way we can get
@@ -72,6 +75,7 @@ class NarthexEventReader(src: Source) extends scala.collection.Iterator[XMLEvent
       level += 1
       setEvent(EvElemStart(pre, label, attrs, scope))
     }
+
     override def elemEnd(pos: Int, pre: String, label: String) {
       setEvent(EvElemEnd(pre, label))
       level -= 1
@@ -81,17 +85,22 @@ class NarthexEventReader(src: Source) extends scala.collection.Iterator[XMLEvent
     // memory usage optimization return one <ignore/> for top level to satisfy
     // MarkupParser.document() otherwise NodeSeq.Empty
     private var ignoreWritten = false
-    final def elem(pos: Int, pre: String, label: String, attrs: MetaData, pscope: NamespaceBinding, empty: Boolean, nodes: NodeSeq): NodeSeq =
-      if (level == 1 && !ignoreWritten) {ignoreWritten = true; <ignore/> } else NodeSeq.Empty
 
-    def procInstr(pos: Int, target: String, txt: String)  = setEvent(EvProcInstr(target, txt))
-    def comment(pos: Int, txt: String)                    = setEvent(EvComment(txt))
-    def entityRef(pos: Int, n: String)                    = setEvent(EvEntityRef(n))
-    def text(pos: Int, txt:String)                        = setEvent(EvText(txt))
+    final def elem(pos: Int, pre: String, label: String, attrs: MetaData, pscope: NamespaceBinding, empty: Boolean, nodes: NodeSeq): NodeSeq =
+      if (level == 1 && !ignoreWritten) {
+        ignoreWritten = true; <ignore/> } else NodeSeq.Empty
+
+    def procInstr(pos: Int, target: String, txt: String) = setEvent(EvProcInstr(target, txt))
+
+    def comment(pos: Int, txt: String) = setEvent(EvComment(txt))
+
+    def entityRef(pos: Int, n: String) = setEvent(EvEntityRef(n))
+
+    def text(pos: Int, txt: String) = setEvent(EvText(txt))
 
     override def run() {
       curInput = input
-//gdj: from https://github.com/scala/scala-xml/commit/c1db5fd357396f6b9ee847cbaba066f54fc29dc0#diff-0
+      //gdj: from https://github.com/scala/scala-xml/commit/c1db5fd357396f6b9ee847cbaba066f54fc29dc0#diff-0
       try {
         interruptibly {
           this.initialize.document()
@@ -102,9 +111,10 @@ class NarthexEventReader(src: Source) extends scala.collection.Iterator[XMLEvent
       setEvent(POISON)
     }
   }
+
 }
 
-private case class ExceptionEvent(exception:Exception) extends XMLEvent
+private case class ExceptionEvent(exception: Exception) extends XMLEvent
 
 // An iterator designed for one or more producers to generate
 // elements, and a single consumer to iterate.  Iteration will continue
@@ -124,19 +134,22 @@ trait ProducerConsumerIterator[T >: Null] extends Iterator[T] {
   val MaxQueueSize = -1
 
   def interruptibly[T](body: => T): Option[T] = try Some(body) catch {
-    case _: InterruptedException    => Thread.currentThread.interrupt(); None
-    case _: ClosedChannelException  => None
+    case _: InterruptedException => Thread.currentThread.interrupt(); None
+    case _: ClosedChannelException => None
   }
 
   private[this] lazy val queue =
     if (MaxQueueSize < 0) new LinkedBlockingQueue[T]()
     else new LinkedBlockingQueue[T](MaxQueueSize)
   private[this] var buffer: T = _
+
   private def fillBuffer() = {
     buffer = interruptibly(queue.take) getOrElse EndOfStream
     isElement(buffer)
   }
+
   private def isElement(x: T) = x != null && x != EndOfStream
+
   private def eos() = buffer == EndOfStream
 
   // public producer interface - this is the only method producers call, so

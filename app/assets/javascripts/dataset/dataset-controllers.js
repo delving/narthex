@@ -39,7 +39,9 @@ define(["angular"], function () {
 
             $scope.state = info.status.state;
             $scope.rawState = $scope.state == 'state-raw';
+            $scope.sourcedState = $scope.state == 'state-sourced';
             if (!$scope.rawState) {
+                // all other statuses involve pockets (state-empty, state-raw-pockets, state-sourced)
                 $scope.recordContainer = "/pockets/pocket";
                 $scope.uniqueId = "/pockets/pocket/@id";
             }

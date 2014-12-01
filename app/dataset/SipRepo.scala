@@ -43,6 +43,7 @@ object SipRepo {
   val SOURCE_FILE = "source.xml.gz"
   val SIP_SOURCE_RECORD_ROOT = "/delving-sip-source/input"
   val SIP_SOURCE_UNIQUE_ID = "/delving-sip-source/input/@id"
+  val SIP_SOURCE_DEEP_RECORD_CONTAINER = Some(SIP_SOURCE_RECORD_ROOT)
 
   def apply(datasetName: String, rdfAboutPrefix: String, home: File): SipRepo = new SipRepo(datasetName, rdfAboutPrefix, home)
 }
@@ -196,7 +197,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
             val changeOpt = Option(inputPath).find(_.startsWith(INPUT_METADATA)).map { path =>
               if (extendWithRecord) {
                 // case B: /input/metadata/dc:description => /input/record/metadata/dc:description
-                "/input/record/metadata/" + inputPath.substring(INPUT_METADATA.length)
+                s"/input/$SIP_RECORD_TAG/metadata/" + inputPath.substring(INPUT_METADATA.length)
               } else {
                 // case /input/metadata/oai_dc:dc/dc:format => /input/oai_dc:dc/dc:format
                 inputPath.replaceFirst("/input/metadata/([^/]+)/", "/input/$1/")
