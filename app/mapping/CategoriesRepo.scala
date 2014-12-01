@@ -15,11 +15,12 @@
 //===========================================================================
 package mapping
 
-import java.io.{File, FileOutputStream, FileWriter}
+import java.io.{File, FileOutputStream}
 
 import play.api.libs.json.Json
 import record.CategoryParser
 import record.CategoryParser._
+import services.FileHandling.writer
 import services.{NarthexConfig, Temporal}
 
 class CategoriesRepo(root: File) {
@@ -45,7 +46,7 @@ class CategoriesRepo(root: File) {
     val jsonName = Temporal.nowFileName(NarthexConfig.ORG_ID, JSON)
     val jsonFile = new File(data, jsonName)
     val jsonList = Json.arr(counts)
-    val fw = new FileWriter(jsonFile)
+    val fw = writer(jsonFile)
     fw.write(Json.prettyPrint(jsonList))
     fw.close()
     val sheetName = Temporal.nowFileName(NarthexConfig.ORG_ID, SPREADSHEET)

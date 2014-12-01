@@ -29,8 +29,8 @@ import play.api.Logger
 import record.CategoryParser.CategoryCount
 import record.PocketParser._
 import record.{CategoryParser, PocketParser}
-import services.FileHandling.clearDir
-import services.{FileHandling, ProgressReporter}
+import services.FileHandling.{clearDir, sourceFromFile, writer}
+import services.ProgressReporter
 
 import scala.collection.mutable
 import scala.io.Source
@@ -176,7 +176,7 @@ class StagingRepo(home: File) {
     val idSet = new mutable.HashSet[String]()
     val parser = PocketParser(stagingFacts)
     def receiveRecord(record: Pocket): Unit = idSet.add(record.id)
-    val (source, readProgress) = FileHandling.sourceFromFile(file)
+    val (source, readProgress) = sourceFromFile(file)
     progressReporter.setReadProgress(readProgress)
     try {
       parser.parse(source, Set.empty, receiveRecord, progressReporter)
@@ -257,7 +257,7 @@ class StagingRepo(home: File) {
     progressReporter.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
       var idSet = avoidSet(zipFile)
-      val (source, readProgress) = FileHandling.sourceFromFile(zipFile)
+      val (source, readProgress) = sourceFromFile(zipFile)
       // ignore this read progress because it's one of many files
       parser.parse(source, idSet.toSet, progressReporter)
       source.close()
@@ -273,7 +273,7 @@ class StagingRepo(home: File) {
     progressReporter.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
       var idSet = avoidSet(zipFile)
-      val (source, readProgress) = FileHandling.sourceFromFile(zipFile)
+      val (source, readProgress) = sourceFromFile(zipFile)
       // ignore this read progress because it's one of many files
       parser.parse(source, idSet.toSet, output, progressReporter)
       source.close()
@@ -287,8 +287,8 @@ class StagingRepo(home: File) {
     Logger.info(s"Generating source from $home to $mappedFile with mapper $sipMapperOpt using $stagingFacts")
     var rawRecordCount = 0
     var mappedRecordCount = 0
-    val mappedOutputOpt: Option[Writer] = sipMapperOpt.map(sm => new OutputStreamWriter(new FileOutputStream(mappedFile), "UTF-8"))
-    val rawOutput = new OutputStreamWriter(pocketOutputStream, "UTF-8")
+    val mappedOutputOpt: Option[Writer] = sipMapperOpt.map(sm => writer(mappedFile))
+    val rawOutput = writer(pocketOutputStream)
     try {
       val startList = s"""<$POCKET_LIST>\n"""
       val endList = s"""</$POCKET_LIST>\n"""

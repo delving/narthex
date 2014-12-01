@@ -16,16 +16,16 @@
 
 package analysis
 
-import java.io.{BufferedWriter, FileWriter}
-
 import analysis.TreeNode.LengthHistogram
 import dataset.DatasetRepo
-import org.OrgRepo
+import org.OrgRepo.pathToDirectory
 import org.apache.commons.io.FileUtils
+import org.apache.commons.io.FileUtils.writeStringToFile
 import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
+import services.FileHandling.appender
 import services.StringHandling._
 import services.{NarthexEventReader, ProgressReporter}
 
@@ -180,7 +180,7 @@ object TreeNode {
   def gatherPaths(node: ReadTreeNode, requestUrl: String): List[PathNode] = {
     val list = node.kids.flatMap(n => gatherPaths(n, requestUrl)).toList
     if (node.lengths.length > 0 && node.count > 1) {
-      val path = OrgRepo.pathToDirectory(node.path)
+      val path = pathToDirectory(node.path)
       PathNode(s"$requestUrl/histogram$path", node.count) :: list
     }
     else {
@@ -206,7 +206,7 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
   var valueList = List.empty[String]
 
   def flush() = {
-    val writer = new BufferedWriter(new FileWriter(nodeRepo.values, true))
+    val writer = appender(nodeRepo.values)
     valueList.foreach {
       line =>
         writer.write(line)
@@ -250,8 +250,8 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
 
   def finish(): Unit = {
     flush()
-    val index = kids.values.map(kid => OrgRepo.pathToDirectory(kid.tag)).mkString("\n")
-    FileUtils.writeStringToFile(nodeRepo.indexText, index)
+    val index = kids.values.map(kid => pathToDirectory(kid.tag)).mkString("\n")
+    writeStringToFile(nodeRepo.indexText, index)
     kids.values.foreach(_.finish())
   }
 

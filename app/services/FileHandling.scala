@@ -16,7 +16,7 @@
 
 package services
 
-import java.io.{BufferedInputStream, File, FileInputStream, InputStream}
+import java.io._
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipFile}
 
 import org.apache.commons.io.FileUtils._
@@ -55,6 +55,14 @@ object FileHandling {
     val commit = commitCommand.!!
     true
   }
+
+  def reader(file: File) = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))
+
+  def writer(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))
+
+  def appender(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, true), "UTF-8"))
+
+  def writer(outputStream: OutputStream) = new BufferedWriter(new OutputStreamWriter(outputStream, "UTF-8"))
 
   abstract class ReadProgress {
     def getPercentRead: Int

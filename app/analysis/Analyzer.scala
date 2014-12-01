@@ -16,7 +16,7 @@
 
 package analysis
 
-import java.io.{BufferedReader, File, FileReader, FileWriter}
+import java.io._
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import analysis.Analyzer._
@@ -30,6 +30,7 @@ import dataset.DatasetRepo
 import dataset.ProgressState._
 import org.apache.commons.io.FileUtils
 import play.api.libs.json._
+import services.FileHandling.{reader, sourceFromFile, writer}
 import services._
 
 import scala.concurrent._
@@ -65,7 +66,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
 
     case AnalyzeFile(file) =>
       log.info(s"Analyzer on ${file.getName}")
-      val (source, readProgress) = FileHandling.sourceFromFile(file)
+      val (source, readProgress) = sourceFromFile(file)
       import context.dispatcher
       future {
         val progressReporter = ProgressReporter(SPLITTING, db)
@@ -175,7 +176,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor {
   def receive = {
 
     case Count() =>
-      val sorted = new BufferedReader(new FileReader(nodeRepo.sorted))
+      val sorted = reader(nodeRepo.sorted)
 
       val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
 
@@ -188,8 +189,8 @@ class Collator(val nodeRepo: NodeRepo) extends Actor {
         if (string != null) Some(string) else None
       }
 
-      val counted = new FileWriter(nodeRepo.counted)
-      val unique = new FileWriter(nodeRepo.uniqueText)
+      val counted = writer(nodeRepo.counted)
+      val unique = writer(nodeRepo.uniqueText)
       var occurrences = 0
       var uniqueCount = 0
 
@@ -275,12 +276,12 @@ class Sorter(val nodeRepo: NodeRepo) extends Actor {
         case SortType.VALUE_SORT => (nodeRepo.values, nodeRepo.sorted)
         case SortType.HISTOGRAM_SORT => (nodeRepo.counted, nodeRepo.histogramText)
       }
-      val input = new BufferedReader(new FileReader(inputFile))
+      val input = reader(inputFile)
 
       var lines = List.empty[String]
       def dumpSortedToFile() = {
         val outputFile = nodeRepo.tempSort
-        val output = new FileWriter(outputFile)
+        val output = writer(outputFile)
         lines.sorted(sortType.ordering).foreach {
           line =>
             output.write(line)
@@ -335,8 +336,8 @@ class Merger(val nodeRepo: NodeRepo) extends Actor {
   def receive = {
 
     case Merge(inFileA, inFileB, mergeResultFile, sortType) =>
-      val inputA = new BufferedReader(new FileReader(inFileA))
-      val inputB = new BufferedReader(new FileReader(inFileB))
+      val inputA = reader(inFileA)
+      val inputB = reader(inFileB)
 
       def lineOption(reader: BufferedReader) = {
         val string = reader.readLine()
@@ -344,7 +345,7 @@ class Merger(val nodeRepo: NodeRepo) extends Actor {
       }
 
       val outputFile = nodeRepo.tempSort
-      val output = new FileWriter(outputFile)
+      val output = writer(outputFile)
 
       def write(line: Option[String]) = {
         output.write(line.get)

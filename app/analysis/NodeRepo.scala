@@ -16,7 +16,7 @@
 
 package analysis
 
-import java.io.{BufferedReader, File, FileReader}
+import java.io.File
 import java.util.UUID
 
 import analysis.NodeRepo._
@@ -24,6 +24,7 @@ import dataset.DatasetRepo
 import org.OrgRepo
 import org.apache.commons.io.FileUtils._
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
+import services.FileHandling.reader
 
 import scala.collection.mutable
 import scala.language.postfixOps
@@ -86,7 +87,7 @@ class NodeRepo(val parent: DatasetRepo, val dir: File) {
   def writeHistograms(uniqueCount: Int) = {
 
     val LINE = """^ *(\d*) (.*)$""".r
-    val input = new BufferedReader(new FileReader(histogramText))
+    val input = reader(histogramText)
 
     def lineOption = {
       val string = input.readLine()
