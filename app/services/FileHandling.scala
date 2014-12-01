@@ -117,7 +117,7 @@ object FileHandling {
 
     var entries = file.entries()
     var entry: Option[ZipEntry] = None
-    var entryInputStream: InputStream = null
+    var entryReader: Reader = null
     var nextChar: Int = -1
     var charCount = 0L
 
@@ -142,8 +142,8 @@ object FileHandling {
               // check for .xml
               entry = Some(entries.nextElement())
               val is = file.getInputStream(entry.get)
-              entryInputStream = new BOMInputStream(new BufferedInputStream(is))
-              nextChar = entryInputStream.read()
+              entryReader = new InputStreamReader(new BOMInputStream(new BufferedInputStream(is)), "UTF-8")
+              nextChar = entryReader.read()
               charCount += 1
               hasNext
             }
@@ -155,7 +155,7 @@ object FileHandling {
 
       override def next(): Char = {
         val c = nextChar
-        nextChar = entryInputStream.read()
+        nextChar = entryReader.read()
         charCount += 1
         c.toChar
       }
