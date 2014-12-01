@@ -24,7 +24,6 @@ import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMe
 import mapping.{CategoriesRepo, SkosRepo}
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
-import org.OrgRepo.AvailableSip
 import org.joda.time.DateTime
 import play.api.Play.current
 import play.api.cache.Cache
@@ -53,6 +52,8 @@ object OrgRepo {
 }
 
 class OrgRepo(userHome: String, val orgId: String) {
+  import org.OrgRepo._
+
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "datasets")
@@ -81,7 +82,7 @@ class OrgRepo(userHome: String, val orgId: String) {
     if (dr.datasetDb.infoOpt.isDefined) Some(dr) else None
   }
 
-  def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
+  def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(_.getName.endsWith(SIP_EXTENSION)).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
 
   def uploadedSips: Seq[Sip] = repoDb.listDatasets.flatMap(dataset => datasetRepo(dataset.datasetName).sipRepo.latestSipOpt)
 
