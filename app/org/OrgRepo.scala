@@ -45,7 +45,7 @@ object OrgRepo {
   case class AvailableSip(file: File) {
     val n = file.getName
     if (!n.endsWith(SIP_EXTENSION)) throw new RuntimeException(s"Strange file name $file")
-    val datasetName = n.substring(0, n.length - SIP_EXTENSION.length)
+    val datasetName = n.substring(0, n.indexOf("__"))
     val dateTime = new DateTime(file.lastModified())
   }
 

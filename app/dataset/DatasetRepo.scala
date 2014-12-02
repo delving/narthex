@@ -60,7 +60,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val pocketFile = new File(orgRepo.sipsDir, s"$datasetName-pockets.xml")
   val mappedFile = new File(orgRepo.sourceDir, s"$datasetName.xml")
-  def sipFile = new File(orgRepo.sipsDir, s"${datasetName}__${DATE_FORMAT.format(new Date())}.sip.zip")
+  def createSipFile = new File(orgRepo.sipsDir, s"${datasetName}__${DATE_FORMAT.format(new Date())}.sip.zip")
+
+  def sipFiles = orgRepo.sipsDir.listFiles.filter(
+    file => file.getName.startsWith(s"${datasetName}__")
+  ).sortBy(_.getName).reverse
 
   val treeRoot = new NodeRepo(this, treeDir)
 
@@ -126,7 +130,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def dropSource() = {
-    deleteQuietly(sipFile)
+//    deleteQuietly(sipFile) todo: delete all of them
     deleteQuietly(mappedFile)
   }
 

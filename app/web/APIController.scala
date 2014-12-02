@@ -23,6 +23,7 @@ import analysis.TreeNode.ReadTreeNode
 import dataset.{DatasetDb, Sip}
 import org.OrgRepo.{AvailableSip, repo}
 import org.apache.commons.io.IOUtils
+import play.api.Logger
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
@@ -186,8 +187,9 @@ object APIController extends Controller {
   }
 
   def downloadSipZip(apiKey: String, datasetName: String) = Action(parse.anyContent) { implicit request =>
+    Logger.info(s"Download sip-zip $datasetName")
     val sipFileOpt = repo.datasetRepoOption(datasetName).flatMap { datasetRepo =>
-      Option(datasetRepo.sipFile).find(_.exists())
+      datasetRepo.sipFiles.headOption
     }
     sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $datasetName"))
   }
