@@ -52,6 +52,7 @@ object OrgRepo {
 }
 
 class OrgRepo(userHome: String, val orgId: String) {
+
   import org.OrgRepo._
 
   val root = new File(userHome, "NarthexFiles")
@@ -82,7 +83,9 @@ class OrgRepo(userHome: String, val orgId: String) {
     if (dr.datasetDb.infoOpt.isDefined) Some(dr) else None
   }
 
-  def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(_.getName.endsWith(SIP_EXTENSION)).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
+  def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(
+    _.getName.endsWith(SIP_EXTENSION)
+  ).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
 
   def uploadedSips: Seq[Sip] = repoDb.listDatasets.flatMap(dataset => datasetRepo(dataset.datasetName).sipRepo.latestSipOpt)
 

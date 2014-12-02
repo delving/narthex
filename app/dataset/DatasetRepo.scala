@@ -16,6 +16,8 @@
 package dataset
 
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.concurrent.TimeUnit
 
 import akka.pattern.ask
@@ -55,9 +57,10 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   private val sipsDir = new File(rootDir, "sips")
   private val rawDir = new File(rootDir, "raw")
 
+  val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val pocketFile = new File(orgRepo.sipsDir, s"$datasetName-pockets.xml")
-  val sipFile = new File(orgRepo.sipsDir, s"$datasetName.sip.zip")
   val mappedFile = new File(orgRepo.sourceDir, s"$datasetName.xml")
+  def sipFile = new File(orgRepo.sipsDir, s"${datasetName}__${DATE_FORMAT.format(new Date())}.sip.zip")
 
   val treeRoot = new NodeRepo(this, treeDir)
 

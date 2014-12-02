@@ -169,7 +169,6 @@ object APIController extends Controller {
             <sip-zip>
               <dataset>{ availableSip.datasetName }</dataset>
               <file>{ availableSip.file.getName }</file>
-              <date>{ Temporal.timeToLocalString(availableSip.dateTime) }</date>
             </sip-zip>
           }
         </available>
@@ -179,7 +178,6 @@ object APIController extends Controller {
             <sip-zip>
               <dataset>{ sip.datasetName }</dataset>
               <file>{ sip.file.getName }</file>
-              <date>{ Temporal.fileNameToLocalString(sip.file.getName) }</date>
             </sip-zip>
           }
         </uploaded>
