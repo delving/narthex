@@ -32,7 +32,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object Application extends Controller with Security {
 
-  val SIP_CREATOR = "http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/P14-01/sip-app-P14-02-exejar.jar"
+  val SIP_CREATOR = "http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/P14-02/sip-app-P14-02-exejar.jar"
 
   def root = Action { request => Redirect("/narthex/")}
 
