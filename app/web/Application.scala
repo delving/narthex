@@ -31,13 +31,15 @@ import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Application extends Controller with Security {
+  
+  val SIP_APP_VERSION = "P14-02"
 
-  val SIP_CREATOR = "http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/P14-02/sip-app-P14-02-exejar.jar"
+  val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
 
   def root = Action { request => Redirect("/narthex/")}
 
   def index = Action { request =>
-      Ok(views.html.index(ORG_ID, SIP_CREATOR))
+      Ok(views.html.index(ORG_ID, SIP_APP_URL))
   }
 
   def login = Action(parse.json) {
