@@ -17,7 +17,11 @@ package dataset
 
 import java.io._
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipOutputStream}
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamSource
+import javax.xml.validation.Validator
 
+import eu.delving.XMLToolFactory
 import eu.delving.groovy._
 import eu.delving.metadata._
 import org.apache.commons.io.{FileUtils, IOUtils}
@@ -27,6 +31,7 @@ import play.api.Logger
 import record.PocketParser._
 import services.StringHandling.urlEncodeValue
 import services.Temporal
+import sun.reflect.generics.reflectiveObjects.NotImplementedException
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -70,7 +75,7 @@ class SipRepo(datasetName: String, rdfAboutPrefix: String, home: File) {
 object Sip {
 
   case class SipMapping(datasetName: String, prefix: String, version: String,
-                        recDefTree: RecDefTree, validationXSD: String,
+                        recDefTree: RecDefTree, validatorOpt: Option[Validator],
                         recMapping: RecMapping, extendWithRecord: Boolean) {
 
     def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
@@ -224,6 +229,30 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
     } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from $file"))
   }
 
+  private class ResolverContext extends CachedResourceResolver.Context {
+
+    override def get(url: String): String = {
+      throw NotImplementedException
+    }
+
+    override def file(systemId: String): File = {
+      throw NotImplementedException
+    }
+  }
+
+  private def validator(sipContentFileName: String, prefix: String): Option[Validator] = {
+    entries.get(sipContentFileName).map { entry =>
+      val inputStream = zipFile.getInputStream(entry)
+      val schemaFactory = XMLToolFactory.schemaFactory(prefix)
+      val context = new ResolverContext()
+      val resolver = new CachedResourceResolver(context)
+      schemaFactory.setResourceResolver(resolver)
+      val source: StreamSource = new StreamSource(inputStream)
+      val schema = schemaFactory.newSchema(source)
+      schema.newValidator()
+    }
+  }
+
   lazy val sipMappingOpt: Option[SipMapping] = schemaVersionOpt.map { schemaVersion =>
     val PrefixVersion(prefix, version) = schemaVersion
     val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
@@ -233,8 +262,8 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
       prefix = prefix,
       version = version,
       recDefTree = tree,
-      validationXSD = "when you want to validate" /* file(s"${schemaVersion}_validation.xsd")*/ ,
       recMapping = mapping,
+      validatorOpt = None, // validator(s"${schemaVersion}_validation.xsd", prefix),
       extendWithRecord = extendWithRecord
     )
   }
@@ -285,10 +314,26 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
         pocketElement.appendChild(rdfElement)
         // the serializer gives us <?xml..?>
         val xml = serializer.toXml(pocketElement, true).replaceFirst("<[?].*[?]>\n", "")
-        Some(Pocket(pocket.id, pocket.hash, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
+        val validationExceptionOpt: Option[Exception] = sipMapping.validatorOpt.flatMap { validator =>
+          try {
+            val record: Element = pocketElement.getFirstChild.asInstanceOf[Element]
+            val domSource = new DOMSource(record)
+            validator.validate(domSource)
+            None
+          }
+          catch {
+            case e: Exception => Some(e)
+          }
+        }
+        validationExceptionOpt.map { validationException =>
+          Logger.info("Invalid record " + pocket.id)
+          None
+        } getOrElse {
+          Some(Pocket(pocket.id, pocket.hash, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
+        }
       } catch {
         case discard: DiscardRecordException =>
-          Logger.info("Discarded record " + pocket.id, discard)
+          Logger.info("Discarded record " + pocket.id)
           None
       }
     }
