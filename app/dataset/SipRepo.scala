@@ -31,7 +31,6 @@ import play.api.Logger
 import record.PocketParser._
 import services.StringHandling.urlEncodeValue
 import services.Temporal
-import sun.reflect.generics.reflectiveObjects.NotImplementedException
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -232,11 +231,11 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
   private class ResolverContext extends CachedResourceResolver.Context {
 
     override def get(url: String): String = {
-      throw NotImplementedException
+      throw RuntimeException
     }
 
     override def file(systemId: String): File = {
-      throw NotImplementedException
+      throw RuntimeException
     }
   }
 
