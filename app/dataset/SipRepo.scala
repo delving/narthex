@@ -231,11 +231,11 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
   private class ResolverContext extends CachedResourceResolver.Context {
 
     override def get(url: String): String = {
-      throw RuntimeException
+      throw new RuntimeException
     }
 
     override def file(systemId: String): File = {
-      throw RuntimeException
+      throw new RuntimeException
     }
   }
 
