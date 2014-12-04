@@ -277,7 +277,7 @@
 
 <script type="text/ng-template" id="actions.html">
     <button class="btn btn-sm btn-success btn-block" data-ng-click="startAnalysis()"
-            data-ng-show="!file.treeTime && !file.progress && file.state == 'state-sourced'">
+            data-ng-show="!file.treeTime && !file.progress && file.state != 'state-empty'">
         <i class="fa fa-eye"></i>
         <span>Perform Analysis</span>
     </button>
