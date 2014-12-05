@@ -21,7 +21,7 @@ import org.OrgRepo.{AvailableSip, repo}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
-import web.Application.OkFile
+import web.Application.{OkFile, SIP_APP_VERSION}
 
 object SipAppController extends Controller with Security {
 
@@ -29,7 +29,7 @@ object SipAppController extends Controller with Security {
     val availableSips: Seq[AvailableSip] = repo.availableSips
     val uploadedSips: Seq[Sip] = repo.uploadedSips
     val xml =
-      <sip-zips>
+      <sip-zips sipAppVersion={SIP_APP_VERSION}>
         <available>
           {
             for (availableSip <- availableSips) yield
