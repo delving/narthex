@@ -24,6 +24,7 @@ import javax.xml.validation.Validator
 import eu.delving.XMLToolFactory
 import eu.delving.groovy._
 import eu.delving.metadata._
+import eu.delving.schema.SchemaVersion
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import org.w3c.dom.Element
@@ -44,15 +45,24 @@ import scala.io.Source
  */
 
 object SipRepo {
+
   val SOURCE_FILE = "source.xml.gz"
+  val FACTS_FILE = "narthex_facts.txt"
+  val HINTS_FILE = "hints.txt"
+  val SchemaVersionsPattern = "schemaVersions=(.*)".r
+  val SourcePattern = "source.*".r
+  val MappingPattern = "mapping_.*".r
+  val RecordDefinitionPattern = ".*_record-definition.xml".r
+  val ValidationPattern = ".*_validation.xsd".r
+
+
   val SIP_SOURCE_RECORD_ROOT = "/delving-sip-source/input"
   val SIP_SOURCE_UNIQUE_ID = "/delving-sip-source/input/@id"
   val SIP_SOURCE_DEEP_RECORD_CONTAINER = Some(SIP_SOURCE_RECORD_ROOT)
 
-  def apply(datasetName: String, rdfAboutPrefix: String, home: File): SipRepo = new SipRepo(datasetName, rdfAboutPrefix, home)
 }
 
-class SipRepo(datasetName: String, rdfAboutPrefix: String, home: File) {
+class SipRepo(home: File, datasetName: String, rdfAboutPrefix: String) {
 
   def createSipZipFile(sipZipFileName: String) = {
     home.mkdir()
@@ -78,6 +88,8 @@ object Sip {
                         recMapping: RecMapping, extendWithRecord: Boolean) {
 
     def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
+
+    def fileName = s"mapping_$prefix.xml"
   }
 
   trait SipMapper {
@@ -136,7 +148,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
     } getOrElse (throw new RuntimeException(s"No entry for $propertyFileName"))
   }
 
-  lazy val facts = readMap("narthex_facts.txt")
+  lazy val facts = readMap(FACTS_FILE)
 
   def fact(name: String): Option[String] = facts.get(name)
 
@@ -150,7 +162,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
   lazy val rights = fact("rights")
   lazy val schemaVersions = fact("schemaVersions")
 
-  lazy val hints = readMap("hints.txt")
+  lazy val hints = readMap(HINTS_FILE)
 
   private def hint(name: String): Option[String] = hints.get(name)
 
@@ -340,30 +352,66 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
 
   def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
 
-  def copyWithSourceTo(sipFile: File, sourceXmlFile: File) = {
-    val entryList: List[ZipEntry] = zipFile.entries().toList
-    val sipMapping = sipMappingOpt.getOrElse(throw new RuntimeException(s"No sip mapping!"))
-    val prefix = sipMapping.prefix
-    val mappingFileName = s"mapping_$prefix.xml"
-    val toCopy = entryList.filter(entry => entry.getName != SOURCE_FILE && entry.getName != mappingFileName)
+  def copyWithSourceTo(sipFile: File, sourceXmlFile: File, sipPrefixRepoOpt: Option[SipPrefixRepo]) = {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
-    toCopy.foreach { entry =>
-      zos.putNextEntry(entry)
-      val is = zipFile.getInputStream(entry)
-      IOUtils.copy(is, zos)
-      zos.closeEntry()
+
+    zipFile.entries.foreach { entry =>
+
+      def copyEntry(): Unit = {
+        zos.putNextEntry(entry)
+        val is = zipFile.getInputStream(entry)
+        IOUtils.copy(is, zos)
+        zos.closeEntry()
+      }
+
+      def copyFileIn(file: File, gzip: Boolean) = {
+        zos.putNextEntry(new ZipEntry(file.getName))
+        val out = if (gzip) new GZIPOutputStream(zos) else zos
+        val in = new FileInputStream(file)
+        IOUtils.copy(in, out)
+        in.close()
+        out.flush()
+        zos.closeEntry()
+      }
+
+      entry.getName match {
+
+        case MappingPattern() =>
+          sipMappingOpt.map { sipMapping =>
+            zos.putNextEntry(new ZipEntry(sipMapping.fileName))
+            // if there is a new schema version, set it
+            sipPrefixRepoOpt.foreach(sipPrefix => sipMapping.recMapping.setSchemaVersion(new SchemaVersion(sipPrefix.schemaVersions)))
+            RecMapping.write(zos, sipMapping.recMapping)
+            zos.closeEntry()
+          }
+
+        case RecordDefinitionPattern() =>
+          sipPrefixRepoOpt.map(_.recordDefinition).map(copyFileIn(_, gzip = false)).getOrElse(copyEntry())
+
+        case ValidationPattern() =>
+          sipPrefixRepoOpt.map(_.validation).map(copyFileIn(_, gzip = false)).getOrElse(copyEntry())
+
+        case SourcePattern() =>
+          copyFileIn(sourceXmlFile, gzip = true)
+
+        case FACTS_FILE =>
+          sipPrefixRepoOpt.map(_.schemaVersions).map { schemaVersions =>
+            val in = zipFile.getInputStream(entry)
+            val lines = Source.fromInputStream(in, "UTF-8").getLines()
+            val replaced = lines.map {
+              case SchemaVersionsPattern(value) => s"schemaVersions=$schemaVersions"
+              case other => other
+            }
+            zos.putNextEntry(new ZipEntry(FACTS_FILE))
+            replaced.foreach(line => zos.write(s"$line\n".getBytes("UTF-8")))
+            zos.closeEntry()
+          }.getOrElse(copyEntry())
+
+        case entryName =>
+          copyEntry()
+      }
     }
-    // add the adjusted recMapping
-    zos.putNextEntry(new ZipEntry(mappingFileName))
-    RecMapping.write(zos, sipMappingOpt.getOrElse(throw new RuntimeException).recMapping)
-    zos.closeEntry()
-    // add the source file, gzipped
-    zos.putNextEntry(new ZipEntry(SOURCE_FILE))
-    val gzipOut = new GZIPOutputStream(zos)
-    val sourceIn = new FileInputStream(sourceXmlFile)
-    IOUtils.copy(sourceIn, gzipOut)
-    sourceIn.close()
-    gzipOut.close()
+
     zos.close()
   }
 

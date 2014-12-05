@@ -58,8 +58,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   private val rawDir = new File(rootDir, "raw")
 
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
-  val pocketFile = new File(orgRepo.sipsDir, s"$datasetName-pockets.xml")
-  val mappedFile = new File(orgRepo.sourceDir, s"$datasetName.xml")
+  val pocketFile = new File(orgRepo.rawDir, s"$datasetName.xml")
+  val mappedFile = new File(orgRepo.mappedDir, s"$datasetName.xml")
   def createSipFile = new File(orgRepo.sipsDir, s"${datasetName}__${DATE_FORMAT.format(new Date())}.sip.zip")
 
   def sipFiles = orgRepo.sipsDir.listFiles.filter(
@@ -71,7 +71,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val datasetDb = new DatasetDb(orgRepo.repoDb, datasetName)
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
-  lazy val sipRepo = SipRepo(datasetName, NarthexConfig.RDF_ABOUT_PREFIX, sipsDir)
+  lazy val sipRepo = new SipRepo(sipsDir, datasetName, NarthexConfig.RDF_ABOUT_PREFIX)
   lazy val recordDbOpt = datasetDb.prefixOpt.map(prefix => new RecordDb(this, dbBaseName, prefix))
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)

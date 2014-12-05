@@ -18,6 +18,7 @@ package dataset
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
+import dataset.SipRepo.FACTS_FILE
 import org.apache.commons.io.IOUtils
 
 import scala.xml.NodeSeq
@@ -81,11 +82,11 @@ class SipPrefixRepo(home: File) {
 
   lazy val schemaVersions = recordDefinition.getName.substring(0, recordDefinition.getName.length - RECORD_DEFINITION_SUFFIX.length)
 
-  def generateSip(sipFile: File, sourceXmlFile: File, facts: SipGenerationFacts) = {
+  def initiateSipZip(sipFile: File, sourceXmlFile: File, facts: SipGenerationFacts) = {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
 
     // facts
-    zos.putNextEntry(new ZipEntry("narthex_facts.txt"))
+    zos.putNextEntry(new ZipEntry(FACTS_FILE))
     val factsString =
       s"""spec=${facts.spec}
          |name=${facts.name}

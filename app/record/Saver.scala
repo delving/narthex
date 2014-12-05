@@ -94,15 +94,14 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
           val (rawRecordCount, mappedRecordCount) = stagingRepo.generateSource(pocketOutput, datasetRepo.mappedFile, sipMapperOpt, progressReporter)
           pocketOutput.close()
           datasetRepo.sipRepo.latestSipOpt.map { latestSip =>
-            latestSip.copyWithSourceTo(datasetRepo.createSipFile, datasetRepo.pocketFile)
-            //            FileUtils.deleteQuietly(datasetRepo.pocketFile)
+            val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetRepo.orgRepo.sipFactory.prefixRepo(mapping.prefix))
+            latestSip.copyWithSourceTo(datasetRepo.createSipFile, datasetRepo.pocketFile, prefixRepoOpt)
           } getOrElse {
             val generationFactsOpt = db.infoOpt.map(SipGenerationFacts(_))
             generationFactsOpt.map { facts =>
               val sipPrefixRepo = datasetRepo.orgRepo.sipFactory.prefixRepo(facts.prefix)
               sipPrefixRepo.map { prefixRepo =>
-                prefixRepo.generateSip(datasetRepo.createSipFile, datasetRepo.pocketFile, facts)
-                //            FileUtils.deleteQuietly(datasetRepo.pocketFile)
+                prefixRepo.initiateSipZip(datasetRepo.createSipFile, datasetRepo.pocketFile, facts)
               } getOrElse {
                 context.parent ! ChildFailure("Unable to build sip for download")
               }

@@ -18,7 +18,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     //  <OAI-PMH><ListRecords><record><metadata><dc_identifier/><europeana_unstored/>
 
     val home = new File(getClass.getResource("/sip_harvest_abbe").getFile)
-    val sipRepo = new SipRepo("test", "http://aboutprefix", new File(home, "sips"))
+    val sipRepo = new SipRepo(new File(home, "sips"), "test", "http://aboutprefix")
     val stagingSourceDir = new File(home, "staging")
     val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
 
@@ -63,7 +63,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     // <OAI-PMH><ListRecords><record><metadata><arno:document>
 
     val home = new File(getClass.getResource("/sip_harvest").getFile)
-    val sipRepo = new SipRepo("test", "http://aboutprefix", new File(home, "sips"))
+    val sipRepo = new SipRepo(new File(home, "sips"), "test", "http://aboutprefix")
 
     val stagingSourceDir = new File(home, "staging")
     val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
@@ -112,7 +112,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     val home = new File(getClass.getResource("/sip_source").getFile)
     val sipsDir = FileHandling.clearDir(new File("/tmp/test-sip-source-sips"))
     FileUtils.copyDirectory(home, sipsDir)
-    val sipRepo = new SipRepo("test", "http://aboutprefix", sipsDir)
+    val sipRepo = new SipRepo(sipsDir, "test", "http://aboutprefix")
 
     val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-source-staging"))
 
