@@ -48,6 +48,8 @@ object Application extends Controller with Security {
       var username = (request.body \ "username").as[String]
       var password = (request.body \ "password").as[String]
 
+      Logger.info(s"Login $username")
+
       CommonsServices.services match {
         case Some(services) =>
           def getOrCreateUser(username: String, profileMaybe: Option[UserProfile]): SimpleResult = {

@@ -24,7 +24,8 @@ import play.api.mvc._
 
 import scala.concurrent.Future
 
-trait Security { this: Controller =>
+trait Security {
+  this: Controller =>
   val TOKEN = "X-XSRF-TOKEN"
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
   lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
@@ -37,8 +38,10 @@ trait Security { this: Controller =>
   */
 
   def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => Request[A] => Result): Action[A] = Action(p) { implicit request =>
-    val maybeToken = request.headers.get(TOKEN)
-    maybeToken flatMap { token =>
+    val maybeToken: Option[String] = request.headers.get(TOKEN)
+    val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
+    val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
+    tokenOrCookie.flatMap { token =>
       Cache.getAs[String](token) map { email =>
         block(token)(request).withToken(token, email)
       }
