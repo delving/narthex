@@ -1,15 +1,15 @@
 package specs
 
-import mapping.ConScheme
-import mapping.ConScheme.LabelSearch
+import mapping.ConceptScheme
+import mapping.ConceptScheme.LabelSearch
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.Json
 
-class TestConScheme extends FlatSpec with Matchers {
+class TestConceptScheme extends FlatSpec with Matchers {
 
   "A SKOS file" should "be readable by Jena" in {
     val example = getClass.getResource("/skos-example.xml")
-    val conSchemes = ConScheme.read(example.openStream())
+    val conSchemes = ConceptScheme.read(example.openStream())
     conSchemes.map(s => println(s"Scheme: $s"))
     val conScheme = conSchemes.head
 

@@ -108,14 +108,14 @@
                     </span>
                     <!-- BROADER TERM -->
                     <span ng-show="concept.broader">
-                        <span data-ng-repeat="b in concept.broader" data-ng-click="selectSought(b.label)" class="broader-term">
-                             <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b.label }}</span>
+                        <span data-ng-repeat="broader in concept.broader" data-ng-click="selectSought(broader)" class="broader-term">
+                             <span class="label term-broader">&#8599; {{ broader }}</span>
                         </span>
                     </span>
                     <!-- NARROWER TERM -->
                     <span ng-show="concept.narrower">
-                        <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSought(n.label)" class="narrower-term">
-                            <span class="label term-narrower">&#8600; {{ n.label }}</span>
+                        <span data-ng-repeat="narrower in concept.narrower" data-ng-click="selectSought(narrower)" class="narrower-term">
+                            <span class="label term-narrower">&#8600; {{ narrower }}</span>
                         </span>
                     </span>
 

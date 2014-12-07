@@ -20,13 +20,13 @@ import java.io.InputStream
 
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory, Resource}
 import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
-import mapping.ConScheme._
+import mapping.ConceptScheme._
 import play.api.libs.json.{JsObject, Json, Writes}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-object ConScheme {
+object ConceptScheme {
 
   val XML = "http://www.w3.org/XML/1998/namespace"
   val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -55,13 +55,13 @@ object ConScheme {
     model.listStatements(resource, property, null).map(_.getObject.asResource()).toSeq
   }
 
-  def read(inputStream: InputStream): Seq[ConScheme] = {
+  def read(inputStream: InputStream): Seq[ConceptScheme] = {
     val model = ModelFactory.createDefaultModel()
     model.read(inputStream, null)
     val inScheme = model.getProperty(SKOS, "inScheme")
     val statements = model.listStatements(null, inScheme, null).toList
     val schemeResources = statements.map(_.getObject.asResource()).distinct
-    schemeResources.map(ConScheme(_, model))
+    schemeResources.map(ConceptScheme(_, model))
   }
 
   implicit val writesLabelSearch = new Writes[LabelSearch] {
@@ -81,7 +81,7 @@ object ConScheme {
         "label" -> result.label.text,
         "prefLabel" -> result.prefLabel.text,
         "uri" -> result.concept.resource.toString,
-        "conceptScheme" -> result.concept.scheme.getPrefLabel(language).text,
+        "conceptScheme" -> result.concept.scheme.name,
         "narrower" -> narrowerLabels.map(_.text),
         "broader" -> broaderLabels.map(_.text)
       )
@@ -103,7 +103,7 @@ object ConScheme {
 
   case class ProximityResult(label: Label, prefLabel: Label, proximity: Double, concept: Concept)
 
-  case class Concept(scheme: ConScheme, resource: Resource, conceptMap: mutable.HashMap[String, Concept], model: Model) {
+  case class Concept(scheme: ConceptScheme, resource: Resource, conceptMap: mutable.HashMap[String, Concept], model: Model) {
     conceptMap.put(resource.getURI, this)
     lazy val prefLabels = getPrefLabels(resource, model)
     lazy val altLabels = getAltLabels(resource, model)
@@ -133,20 +133,20 @@ object ConScheme {
 
 }
 
-case class ConScheme(resource: Resource, model: Model) {
+case class ConceptScheme(resource: Resource, model: Model) {
 
   val conceptMap = new mutable.HashMap[String, Concept]()
 
   lazy val prefLabels = getPrefLabels(resource, model)
   lazy val altLabels = getAltLabels(resource, model)
 
+  lazy val name = prefLabels.headOption.map(_.text).getOrElse("unknown scheme name")
+
   lazy val concepts: Seq[Concept] = {
     val inScheme = model.getProperty(SKOS, "inScheme")
     val conceptResources = model.listStatements(null, inScheme, resource).map(_.getSubject).toSeq
     conceptResources.map(resource => Concept(this, resource, conceptMap, model))
   }
-
-  def getPrefLabel(language: String) = getLanguageLabel(prefLabels, language)
 
   def search(language: String, sought: String, count: Int): LabelSearch = {
     val cleanSought = IGNORE_BRACKET.replaceFirstIn(sought, "")
@@ -155,6 +155,5 @@ case class ConScheme(resource: Resource, model: Model) {
     LabelSearch(LabelQuery(language, cleanSought, count), results)
   }
 
-  // todo: "dut"?
-  override def toString: String = s"ConceptScheme($resource): ${getLanguageLabel(prefLabels, "dut")}"
+  override def toString: String = s"ConceptScheme($resource): $name"
 }

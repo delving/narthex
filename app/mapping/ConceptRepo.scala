@@ -17,17 +17,19 @@ package mapping
 
 import java.io.{File, FileInputStream}
 
-class SkosRepo(home: File) {
+import org.apache.commons.io.input.BOMInputStream
+import play.api.Logger
 
-  val SUFFIX = ".xml"
+class ConceptRepo(home: File) {
 
-  def listFiles = {
-    val files = if (home.exists()) home.listFiles.filter(file => file.getName.endsWith(SUFFIX)) else Array[File]()
-    files.map(file => file.getName.substring(0, file.getName.length - SUFFIX.length)).map(_.replaceAll("_", " "))
+  lazy val conceptSchemes: Seq[ConceptScheme] = {
+    Logger.info("Reading concept schemes")
+    val schemes = home.listFiles.filter(_.getName.endsWith(".xml")).flatMap { file =>
+      Logger.info(s"Reading $file")
+      ConceptScheme.read(new BOMInputStream(new FileInputStream(file)))
+    }
+    Logger.info(s"Concept Schemes: ${schemes.mkString(",")}")
+    schemes
   }
-
-  def file(name: String) = new File(home, name.replaceAll(" ", "_") + SUFFIX)
-
-  def vocabulary(name: String) = SkosVocabulary(new FileInputStream(file(name)))
 
 }

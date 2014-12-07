@@ -20,14 +20,10 @@ import dataset._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
-import mapping.SkosVocabulary
-import mapping.SkosVocabulary._
 import mapping.TermDb._
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
 import play.api.Logger
-import play.api.Play.current
-import play.api.cache.Cache
 import play.api.libs.json._
 import play.api.mvc._
 import web.Application.OkFile
@@ -254,17 +250,16 @@ object Dashboard extends Controller with Security {
   }
 
   def listSkos = Secure() { token => implicit request =>
-    Ok(Json.obj("list" -> repo.skosRepo.listFiles))
+    Ok(Json.obj("list" -> repo.skosRepo.conceptSchemes.map(_.name)))
   }
 
   def searchSkos(name: String, sought: String) = Secure() { token => implicit request =>
-    def searchVocabulary(vocabulary: SkosVocabulary): LabelSearch = vocabulary.search("dut", sought, 25)
-    Cache.getAs[SkosVocabulary](name) map {
-      vocabulary => Ok(Json.obj("search" -> searchVocabulary(vocabulary)))
+    val schemeOpt = repo.skosRepo.conceptSchemes.find(scheme => name == scheme.name)
+    schemeOpt.map{scheme =>
+      val search = scheme.search("dut", sought, 25)
+      Ok(Json.obj("search" -> search))
     } getOrElse {
-      val vocabulary = repo.skosRepo.vocabulary(name)
-      Cache.set(name, vocabulary, CACHE_EXPIRATION)
-      Ok(Json.obj("search" -> searchVocabulary(vocabulary)))
+      NotFound(Json.obj("problem" -> s"No concept scheme named '$name' found."))
     }
   }
 

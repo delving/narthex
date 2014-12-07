@@ -21,7 +21,7 @@ import java.io.File
 import dataset.ProgressState._
 import dataset.{DatasetDb, DatasetRepo, Sip, SipFactory}
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
-import mapping.{CategoriesRepo, SkosRepo}
+import mapping.{CategoriesRepo, ConceptRepo}
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
 import org.joda.time.DateTime
@@ -62,7 +62,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   val mappedDir = new File(orgRoot, "mapped")
   val sipsDir = new File(orgRoot, "sips")
   val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
-  val skosRepo = new SkosRepo(new File(orgRoot, "skos"))
+  val skosRepo = new ConceptRepo(new File(orgRoot, "skos"))
   val factoryDir = new File(orgRoot, "factory")
   val sipFactory = new SipFactory(factoryDir)
   val repoDb = new OrgDb(orgId)
