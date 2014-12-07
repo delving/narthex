@@ -23,6 +23,24 @@ import services.BaseX._
 import scala.xml.XML
 
 /**
+ *
+ * todo: turn this into RDF:
+<term-mappings>
+  <term-mapping>
+    <source>dimcon/afrika_sip_drop/rdf:Description/dc:subject/maten%20en%20gewichten</source>
+    <target>http://data.cultureelerfgoed.nl/semnet/1cf92d41-21eb-4a17-b132-25d407ff01a4</target>
+    <vocabulary>Erfgoed Thesaurus</vocabulary>
+    <prefLabel>weefgewichten</prefLabel>
+  </term-mapping>
+</term-mappings>
+like so:
+ <skos:Concept rdf:about="dimcon/afrika_sip_drop/rdf:Description/dc:subject/maten%20en%20gewichten">
+     <skos:exactMatch rdf:resource="http://data.cultureelerfgoed.nl/semnet/1cf92d41-21eb-4a17-b132-25d407ff01a4"
+     <skos:prefLabel>weefgewichten</skos:prefLabel>
+     <skos:note>Mapped by {{ username }} on {{ date }}</skos:note>
+     <skos:note>https://github.com/delving/narthex</skos:note>
+ </skos:Concept>
+ *
  * @author Gerald de Jong <gerald@delving.eu
  */
 
