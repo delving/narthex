@@ -364,19 +364,25 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
         zos.closeEntry()
       }
 
-      def copyFileIn(file: File, gzip: Boolean) = {
-        zos.putNextEntry(new ZipEntry(file.getName))
-        val out = if (gzip) new GZIPOutputStream(zos) else zos
-        val in = new FileInputStream(file)
-        IOUtils.copy(in, out)
+      def copyFileIn(sourceFile: File, fileName: String, gzip: Boolean) = {
+        zos.putNextEntry(new ZipEntry(fileName))
+        val in = new FileInputStream(sourceFile)
+        if (gzip) {
+          val out = new GZIPOutputStream(zos)
+          IOUtils.copy(in, out)
+          out.finish()
+        }
+        else {
+          IOUtils.copy(in, zos)
+        }
         in.close()
-        out.flush()
         zos.closeEntry()
       }
 
       entry.getName match {
 
         case MappingPattern() =>
+          Logger.info(s"Mapping: ${entry.getName}")
           sipMappingOpt.map { sipMapping =>
             zos.putNextEntry(new ZipEntry(sipMapping.fileName))
             // if there is a new schema version, set it
@@ -386,15 +392,19 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
           }
 
         case RecordDefinitionPattern() =>
-          sipPrefixRepoOpt.map(_.recordDefinition).map(copyFileIn(_, gzip = false)).getOrElse(copyEntry())
+          Logger.info(s"Record definition: ${entry.getName}")
+          sipPrefixRepoOpt.map(_.recordDefinition).map(copyFileIn(_, entry.getName, gzip = false)).getOrElse(copyEntry())
 
         case ValidationPattern() =>
-          sipPrefixRepoOpt.map(_.validation).map(copyFileIn(_, gzip = false)).getOrElse(copyEntry())
+          Logger.info(s"Validation: ${entry.getName}")
+          sipPrefixRepoOpt.map(_.validation).map(copyFileIn(_, entry.getName, gzip = false)).getOrElse(copyEntry())
 
         case SourcePattern() =>
-          copyFileIn(sourceXmlFile, gzip = true)
+          Logger.info(s"Source: ${entry.getName}")
+          copyFileIn(sourceXmlFile, entry.getName, gzip = true)
 
         case FACTS_FILE =>
+          Logger.info(s"Facts: ${entry.getName}")
           sipPrefixRepoOpt.map(_.schemaVersions).map { schemaVersions =>
             val in = zipFile.getInputStream(entry)
             val lines = Source.fromInputStream(in, "UTF-8").getLines()
@@ -408,6 +418,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
           }.getOrElse(copyEntry())
 
         case entryName =>
+          Logger.info(s"Verbatim: ${entry.getName}")
           copyEntry()
       }
     }
