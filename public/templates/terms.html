@@ -25,11 +25,11 @@
             <ul class="list-group terminology-list">
                 <li data-ng-repeat="entry in histogramVisible | filter:filterText"
                     class="list-group-item clearfix test-class"
-                    data-ng-class="{ 'list-item-selected': entry.value ==  sourceEntry.value, 'list-item-mapped' : mappings[entry.sourceUri] }"
+                    data-ng-class="{ 'list-item-selected': entry.value ==  sourceEntry.value, 'list-item-mapped' : mappings[entry.sourceURI] }"
                     data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectSource(entry);">
                     <span class="term">{{ entry.value }}</span>
-                    <span class="term-mapped" data-ng-show="mappings[entry.sourceUri].prefLabel">
-                        <i class="fa fa-link"></i> {{ mappings[entry.sourceUri].prefLabel }}
+                    <span class="term-mapped" data-ng-show="mappings[entry.sourceURI].prefLabel">
+                        <i class="fa fa-link"></i> {{ mappings[entry.sourceURI].prefLabel }}
                     </span>
                     <span class="node-stats badge">{{ entry.count }}</span>
                 </li>
@@ -40,8 +40,8 @@
     <div class="col-md-8">
 
         <ul class="nav nav-tabs">
-            <li data-ng-class="{ active: activeView == 'vocabulary' }">
-                <a href data-ng-click="vocabularyTab()">Vocabularies</a>
+            <li data-ng-class="{ active: activeView == 'conceptScheme' }">
+                <a href data-ng-click="conceptSchemeTab()">Concept Schemes</a>
             </li>
             <li data-ng-class="{ active: activeView == 'skos' }">
                 <a href data-ng-click="skosTab()">Concepts</a>
@@ -51,7 +51,7 @@
             </li>
         </ul>
 
-        <h4 data-ng-show="activeView == 'vocabulary'">Available SKOS Vocabularies</h4>
+        <h4 data-ng-show="activeView == 'conceptScheme'">Available Concept Schemes</h4>
         <h4 data-ng-show="activeView == 'record'">Records containing "{{ sourceEntry.value }}"</h4>
 
         <!-- SHOW RECORD -->
@@ -60,19 +60,19 @@
         </div>
 
         <!-- SHOW SKOS (CONCEPT) -->
-        <div data-ng-show="vocabularyList && activeView == 'vocabulary'">
+        <div data-ng-show="conceptSchemeList && activeView == 'conceptScheme'">
             <div class="panel panel-default panel-choice">
-                <div class="panel-body" data-ng-repeat="name in vocabularyList" data-ng-click="selectVocabulary(name)">
-                    <i data-ng-show="name == vocabulary" class="fa fa-search fa-fw"></i>
+                <div class="panel-body" data-ng-repeat="name in conceptSchemeList" data-ng-click="selectConceptScheme(name)">
+                    <i data-ng-show="name == conceptScheme" class="fa fa-search fa-fw"></i>
                     <span>{{ name }}</span>
                 </div>
             </div>
         </div>
 
-        <div data-ng-show="vocabulary && activeView == 'skos'">
+        <div data-ng-show="conceptScheme && activeView == 'skos'">
 
             <div class="input-group input-group-skos-term">
-                <label class="input-group-addon"><i class="fa fa-search"></i> {{ vocabulary }}</label>
+                <label class="input-group-addon"><i class="fa fa-search"></i> {{ conceptScheme }}</label>
                 <input class="form-control" type="text" data-ng-model="sought"/>
             </div>
 
@@ -94,7 +94,7 @@
 
             <div data-ng-show="concepts" class="concepts-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="320" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
 
-                <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceEntry.sourceUri].target == concept.uri }">
+                <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceEntry.sourceURI].targetURI == concept.uri }">
 
                     <!-- MATCHTED TERM / ALT TERM -->
                     <button style="vertical-align: bottom" class="btn btn-default" tooltip="Click to map to this term..." tooltip-trigger="mouseenter" tooltip-placement="right" data-ng-click="setMapping(concept)">

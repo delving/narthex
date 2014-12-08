@@ -72,11 +72,11 @@ class SipPrefixRepo(home: File) {
 
   val prefix = home.getName
 
-  lazy val recordDefinition = home.listFiles().find(f => f.getName.endsWith(RECORD_DEFINITION_SUFFIX)).getOrElse(
+  lazy val recordDefinition: File = home.listFiles().find(f => f.getName.endsWith(RECORD_DEFINITION_SUFFIX)).getOrElse(
     throw new RuntimeException(s"Missing record definition in $home")
   )
 
-  lazy val validation = home.listFiles().find(f => f.getName.endsWith(VALIDATION_SUFFIX)).getOrElse(
+  lazy val validation: File = home.listFiles().find(f => f.getName.endsWith(VALIDATION_SUFFIX)).getOrElse(
     throw new RuntimeException(s"Missing validation xsd in $home")
   )
 

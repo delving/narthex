@@ -25,7 +25,7 @@ import web.Application.{OkFile, SIP_APP_VERSION}
 
 object SipAppController extends Controller with Security {
 
-  def listSipZips() = Secure() { token => implicit request =>
+  def listSipZips() = Secure() { email => implicit request =>
     val availableSips: Seq[AvailableSip] = repo.availableSips
     val uploadedSips: Seq[Sip] = repo.uploadedSips
     val xml =
@@ -52,7 +52,7 @@ object SipAppController extends Controller with Security {
     Ok(xml)
   }
 
-  def downloadSipZip(datasetName: String) = Secure() { token => implicit request =>
+  def downloadSipZip(datasetName: String) = Secure() { email => implicit request =>
     Logger.info(s"Download sip-zip $datasetName")
     val sipFileOpt = repo.datasetRepoOption(datasetName).flatMap { datasetRepo =>
       datasetRepo.sipFiles.headOption
@@ -60,7 +60,7 @@ object SipAppController extends Controller with Security {
     sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $datasetName"))
   }
 
-  def uploadSipZip(datasetName: String, zipFileName: String) = Secure(parse.temporaryFile) { token => implicit request =>
+  def uploadSipZip(datasetName: String, zipFileName: String) = Secure(parse.temporaryFile) { email => implicit request =>
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       request.body.moveTo(datasetRepo.sipRepo.createSipZipFile(zipFileName))
       datasetRepo.dropTree()

@@ -40,8 +40,8 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                list: function () {
-                    return dash.list().get().then(
+                listDatasets: function () {
+                    return dash.listDatasets().get().then(
                         function (response) {
                             return response.data;
                         },

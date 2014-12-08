@@ -48,8 +48,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                listSkos: function () {
-                    return dash.listSkos().get().then(
+                listConceptSchemes: function () {
+                    return dash.listConceptSchemes().get().then(
                         function (response) {
                             return response.data;
                         },
@@ -72,8 +72,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                searchSkos: function (name, sought) {
-                    return dash.searchSkos(name, sought).get().then(
+                searchConceptScheme: function (conceptSchemeName, sought) {
+                    return dash.searchConceptScheme(conceptSchemeName, sought).get().then(
                         function (response) {
                             return response.data;
                         },

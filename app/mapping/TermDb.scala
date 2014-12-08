@@ -17,8 +17,10 @@
 package mapping
 
 import org.basex.server.ClientSession
+import org.joda.time.DateTime
 import play.api.libs.json.{Json, Writes}
 import services.BaseX._
+import services.Temporal
 
 import scala.xml.XML
 
@@ -29,7 +31,7 @@ import scala.xml.XML
   <term-mapping>
     <source>dimcon/afrika_sip_drop/rdf:Description/dc:subject/maten%20en%20gewichten</source>
     <target>http://data.cultureelerfgoed.nl/semnet/1cf92d41-21eb-4a17-b132-25d407ff01a4</target>
-    <vocabulary>Erfgoed Thesaurus</vocabulary>
+    <conceptScheme>Erfgoed Thesaurus</conceptScheme>
     <prefLabel>weefgewichten</prefLabel>
   </term-mapping>
 </term-mappings>
@@ -48,14 +50,18 @@ object TermDb {
 
   implicit val mappingWrites = new Writes[TermMapping] {
     def writes(mapping: TermMapping) = Json.obj(
-      "source" -> mapping.source,
-      "target" -> mapping.target,
-      "vocabulary" -> mapping.vocabulary,
-      "prefLabel" -> mapping.prefLabel
+      "sourceURI" -> mapping.sourceURI,
+      "targetURI" -> mapping.targetURI,
+      "conceptScheme" -> mapping.conceptScheme,
+      "prefLabel" -> mapping.prefLabel,
+      "who" -> mapping.who,
+      "when" -> mapping.whenString
     )
   }
 
-  case class TermMapping(source: String, target: String, vocabulary: String, prefLabel: String)
+  case class TermMapping(sourceURI: String, targetURI: String, conceptScheme: String, prefLabel: String, who: String, when: DateTime) {
+    val whenString = Temporal.timeToString(when)
+  }
 
 }
 
@@ -74,13 +80,15 @@ class TermDb(dbBaseName: String) {
       |
       | let $$freshMapping :=
       |   <term-mapping>
-      |     <source>${mapping.source}</source>
-      |     <target>${mapping.target}</target>
-      |     <vocabulary>${mapping.vocabulary}</vocabulary>
+      |     <sourceURI>${mapping.sourceURI}</sourceURI>
+      |     <targetURI>${mapping.targetURI}</targetURI>
+      |     <conceptScheme>${mapping.conceptScheme}</conceptScheme>
       |     <prefLabel>${mapping.prefLabel}</prefLabel>
+      |     <who>${mapping.who}</who>
+      |     <when>${mapping.whenString}</when>
       |   </term-mapping>
       |
-      | let $$termMapping := $dbPath/term-mapping[source=${quote(mapping.source)}]
+      | let $$termMapping := $dbPath/term-mapping[sourceURI=${quote(mapping.sourceURI)}]
       |
       | return
       |   if (exists($$termMapping))
@@ -94,7 +102,7 @@ class TermDb(dbBaseName: String) {
   def removeMapping(sourceUri: String) = withTermDb { session =>
     val upsert = s"""
       |
-      | let $$termMapping := $dbPath/term-mapping[source=${quote(sourceUri)}]
+      | let $$termMapping := $dbPath/term-mapping[sourceURI=${quote(sourceUri)}]
       |
       | return
       |   if (exists($$termMapping))
@@ -108,18 +116,18 @@ class TermDb(dbBaseName: String) {
   def getSourcePaths: Seq[String] = withTermDb[Seq[String]] { session =>
     val q = s"""
       |
-      | let $$sources := $dbPath/term-mapping/source
+      | let $$sources := $dbPath/term-mapping/sourceURI
       |
       | return
-      |   <sources>{
+      |   <sourceURIs>{
       |     for $$s in $$sources
-      |       return <source>{$$s/text()}</source>
-      |   }</sources>
+      |       return <sourceURI>{$$s/text()}</sourceURI>
+      |   }</sourceURIs>
       |
       | """.stripMargin
     val result = session.query(q).execute()
     val xml = XML.loadString(result)
-    (xml \ "source").map(n => n.text.substring(0, n.text.lastIndexOf("/"))).distinct
+    (xml \ "sourceURI").map(n => n.text.substring(0, n.text.lastIndexOf("/"))).distinct
   }
 
   def getMappings: Seq[TermMapping] = withTermDb[Seq[TermMapping]] { session =>
@@ -127,10 +135,12 @@ class TermDb(dbBaseName: String) {
     val xml = XML.loadString(mappings)
     (xml \ "term-mapping").map { node =>
       TermMapping(
-        (node \ "source").text,
-        (node \ "target").text,
-        (node \ "vocabulary").text,
-        (node \ "prefLabel").text
+        (node \ "sourceURI").text,
+        (node \ "targetURI").text,
+        (node \ "conceptScheme").text,
+        (node \ "prefLabel").text,
+        (node \ "who").text,
+        Temporal.stringToTime((node \ "when").text)
       )
     }
   }

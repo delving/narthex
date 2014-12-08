@@ -4,6 +4,7 @@ import java.io.{ByteArrayInputStream, File}
 import javax.xml.parsers.DocumentBuilderFactory
 
 import org.apache.commons.io.FileUtils._
+import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 import org.xml.sax.InputSource
 import record.EnrichmentParser
@@ -43,8 +44,8 @@ class TestTermMatching extends FlatSpec with Matchers {
     val recordRoot = "/record"
 
     val mappings = Map(
-      s"$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> TargetConcept("uri", "vocab", "glasinloody"),
-      s"$filePrefix$recordRoot/inner/content.subject" -> TargetConcept("uri", "vocab", "close but no cigar")
+      s"$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> TargetConcept("uri", "vocab", "glasinloody", "dude", new DateTime(0)),
+      s"$filePrefix$recordRoot/inner/content.subject" -> TargetConcept("uri", "vocab", "close but no cigar", "dude", new DateTime(0))
     )
 
     val storedString =
@@ -70,7 +71,7 @@ class TestTermMatching extends FlatSpec with Matchers {
         |        <skos:prefLabel>glasinloody</skos:prefLabel>
         |        <skos:exactMatch rdf:resource="uri"/>
         |        <skos:Collection>vocab</skos:Collection>
-        |        <skos:note>From Narthex</skos:note>
+        |        <skos:note>Mapped in Narthex by dude on 1970-01-01T02:00:00+02:00</skos:note>
         |      </rdf:Description>
         |    </content.subject>
         |  </inner>

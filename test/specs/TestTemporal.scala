@@ -1,6 +1,6 @@
 package specs
 
-import org.joda.time.{DateTime, LocalDateTime}
+import org.joda.time.{DateTime, DateTimeZone, LocalDateTime}
 import org.scalatest.{FlatSpec, Matchers}
 import services.Temporal._
 
@@ -8,6 +8,7 @@ class TestTemporal extends FlatSpec with Matchers{
 
   "date parsing" should "be tolerant" in {
 
+    DateTimeZone.setDefault(DateTimeZone.forID("Europe/Amsterdam"))
     println(s"DateTime: ${new DateTime()}")
     println(s"LocalDateTime: ${new LocalDateTime()}")
 

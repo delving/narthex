@@ -38,7 +38,7 @@ define(["angular"], function (angular) {
 
         var recordContainer = "/pockets/pocket";
         if ($scope.path.substring(0, recordContainer.length) != recordContainer) console.warn("Missing record container!");
-        var sourceUriPath = $scope.path.substring(recordContainer.length);
+        var sourceURIPath = $scope.path.substring(recordContainer.length);
 
         function columnDefinitionsFromCategories() {
             $scope.columnDefs = [];
@@ -77,12 +77,12 @@ define(["angular"], function (angular) {
             columnDefinitionsFromCategories();
             categoriesService.histogram($scope.datasetName, $scope.path, $scope.histogramSize).then(function (histogramData) {
                 $scope.gridData = _.map(histogramData.histogram, function (entry) {
-                    var sourceUri = $rootScope.orgId + "/" + $scope.datasetName + sourceUriPath + "/" + encodeURIComponent(entry[1]);
-//                        console.log("sourceUri " + entry[1], sourceUri);
+                    var sourceURI = $rootScope.orgId + "/" + $scope.datasetName + sourceURIPath + "/" + encodeURIComponent(entry[1]);
+//                        console.log("sourceURI " + entry[1], sourceURI);
                     return {
                         term: entry[1],
                         count: entry[0],
-                        sourceUri: sourceUri,
+                        sourceURI: sourceURI,
                         memberOf: {}
                     }
                 });
@@ -90,10 +90,10 @@ define(["angular"], function (angular) {
                 categoriesService.getCategoryMappings($scope.datasetName).then(function (mappingsData) {
                     var mappingLookup = {};
                     _.forEach(mappingsData.mappings, function (mapping) {
-                        mappingLookup[mapping.source] = mapping.categories;
+                        mappingLookup[mapping.sourceURI] = mapping.categories;
                     });
                     _.forEach($scope.gridData, function (row) {
-                        var categories = mappingLookup[row.sourceUri];
+                        var categories = mappingLookup[row.sourceURI];
                         _.forEach(categories, function (category) {
                             row.memberOf[category] = true;
                         });
@@ -139,7 +139,7 @@ define(["angular"], function (angular) {
 
         $scope.setGridValue = function (entity, code) {
             var body = {
-                source: entity.sourceUri,
+                source: entity.sourceURI,
                 category: code,
                 member: entity.memberOf[code]
             };
@@ -169,7 +169,7 @@ define(["angular"], function (angular) {
         fetchSheetList();
 
         function fetchDatasetList() {
-            categoriesService.list().then(function (files) {
+            categoriesService.listDatasets().then(function (files) {
                 _.forEach($scope.files, cancelChecker);
                 _.forEach(files, decorateFile);
                 $scope.files = _.filter(files, function (file) {

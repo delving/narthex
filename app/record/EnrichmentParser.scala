@@ -33,7 +33,9 @@ object EnrichmentParser {
 
   case class StoredRecord(id: String, mod: DateTime, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
 
-  case class TargetConcept(uri: String, vocabulary: String, prefLabel: String)
+  case class TargetConcept(uri: String, conceptScheme: String, prefLabel: String, who: String, when: DateTime){
+    val whenString = Temporal.timeToString(when)
+  }
 
   def parseStoredRecords(xmlString: String): List[StoredRecord] = {
     val wrappedRecord = scala.xml.XML.loadString(xmlString)
@@ -130,19 +132,15 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
             val path = s"$pathPrefix${frame.path}/${urlEncodeValue(text)}"
-//
-//            Logger.info(s"lookup $path")
-//
             val in = indent
             val tagText = termMappings.get(path).map { targetConcept =>
-              // todo: use concept scheme
               s"""$in${start.get}
                    |$in  <rdf:Description rdf:about="$path">
                    |$in    <rdfs:label>${frame.text}</rdfs:label>
                    |$in    <skos:prefLabel>${targetConcept.prefLabel}</skos:prefLabel>
                    |$in    <skos:exactMatch rdf:resource="${targetConcept.uri}"/>
-                   |$in    <skos:Collection>${targetConcept.vocabulary}</skos:Collection>
-                   |$in    <skos:note>From Narthex</skos:note>
+                   |$in    <skos:Collection>${targetConcept.conceptScheme}</skos:Collection>
+                   |$in    <skos:note>Mapped in Narthex by ${targetConcept.who} on ${targetConcept.whenString}</skos:note>
                    |$in  </rdf:Description>
                    |$in</$tag>\n""".stripMargin
             } getOrElse {

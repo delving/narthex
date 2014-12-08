@@ -39,8 +39,8 @@ GET         /narthex/dashboard/:datasetName/save-records                 web.Das
 
 POST        /narthex/dashboard/:datasetName/query-records                web.Dashboard.queryRecords(datasetName)
 
-GET         /narthex/dashboard/skos/list                                 web.Dashboard.listSkos
-GET         /narthex/dashboard/skos/:name/:sought                        web.Dashboard.searchSkos(name, sought)
+GET         /narthex/dashboard/skos/list                                 web.Dashboard.listConceptSchemes
+GET         /narthex/dashboard/skos/:conceptSchemeName/:sought           web.Dashboard.searchConceptScheme(conceptSchemeName, sought)
 GET         /narthex/dashboard/:datasetName/term/source-paths            web.Dashboard.getTermSourcePaths(datasetName)
 GET         /narthex/dashboard/:datasetName/term/mappings                web.Dashboard.getTermMappings(datasetName)
 POST        /narthex/dashboard/:datasetName/term/set-mapping             web.Dashboard.setTermMapping(datasetName)

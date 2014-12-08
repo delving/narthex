@@ -43,17 +43,17 @@ trait Security {
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
       Cache.getAs[String](token) map { email =>
-        block(token)(request).withToken(token, email)
+        block(email)(request).withToken(token, email)
       }
     } getOrElse {
       Unauthorized(Json.obj("err" -> "Secure session expired"))
     }
   }
 
-  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => String => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
+  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
     request.headers.get(TOKEN) flatMap { token =>
       Cache.getAs[String](token) map { email =>
-        block(token)(email)(request)
+        block(email)(request)
       }
     } getOrElse {
       Future.successful(Unauthorized(Json.obj("err" -> "Secure async session expired")))

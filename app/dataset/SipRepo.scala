@@ -393,11 +393,11 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
 
         case RecordDefinitionPattern() =>
           Logger.info(s"Record definition: ${entry.getName}")
-          sipPrefixRepoOpt.map(_.recordDefinition).map(copyFileIn(_, entry.getName, gzip = false)).getOrElse(copyEntry())
+          sipPrefixRepoOpt.map(_.recordDefinition).map(rd => copyFileIn(rd, rd.getName, gzip = false)).getOrElse(copyEntry())
 
         case ValidationPattern() =>
           Logger.info(s"Validation: ${entry.getName}")
-          sipPrefixRepoOpt.map(_.validation).map(copyFileIn(_, entry.getName, gzip = false)).getOrElse(copyEntry())
+          sipPrefixRepoOpt.map(_.validation).map(va => copyFileIn(va, va.getName, gzip = false)).getOrElse(copyEntry())
 
         case SourcePattern() =>
           Logger.info(s"Source: ${entry.getName}")

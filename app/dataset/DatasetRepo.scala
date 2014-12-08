@@ -371,7 +371,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def enrichRecords(storedRecords: String): List[StoredRecord] = {
     val mappings: Map[String, TargetConcept] = Cache.getOrElse[Map[String, TargetConcept]](datasetName) {
-      termDb.getMappings.map(m => (m.source, TargetConcept(m.target, m.vocabulary, m.prefLabel))).toMap
+      termDb.getMappings.map(m => (m.sourceURI, TargetConcept(m.targetURI, m.conceptScheme, m.prefLabel, m.who, m.when))).toMap
     }
     val pathPrefix = s"${NarthexConfig.ORG_ID}/$datasetName"
     val parser = new EnrichmentParser(pathPrefix, mappings)

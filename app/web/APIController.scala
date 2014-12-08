@@ -138,7 +138,29 @@ object APIController extends Controller {
     }
   }
 
-  def mappings(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+/**
+ *
+ * todo: turn this into RDF:
+<mappings>
+  <term-mapping>
+    <sourceURI>dimcon/afrika_sip_drop/rdf:Description/dc:subject/maten%20en%20gewichten</sourceURI>
+    <targetURI>http://data.cultureelerfgoed.nl/semnet/1cf92d41-21eb-4a17-b132-25d407ff01a4</targetURI>
+    <conceptScheme>Erfgoed Thesaurus</conceptScheme>
+    <prefLabel>weefgewichten</prefLabel>
+    <who>info@delving.eu</who>
+    <when>2014-11-06T07:44:08+01:00</when>
+  </mapping>
+</term-mappings>
+something like this:
+ <skos:Concept rdf:about="dimcon/afrika_sip_drop/rdf:Description/dc:subject/maten%20en%20gewichten">
+     <skos:exactMatch rdf:resource="http://data.cultureelerfgoed.nl/semnet/1cf92d41-21eb-4a17-b132-25d407ff01a4"
+     <skos:prefLabel>weefgewichten</skos:prefLabel>
+     <skos:note>Mapped by {{ username }} on {{ date }}</skos:note>
+     <skos:note>https://github.com/delving/narthex</skos:note>
+ </skos:Concept>
+ */
+
+def mappings(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     repo.datasetRepoOption(datasetName) match {
       case Some(datasetRepo) =>
         val mappings = datasetRepo.termDb.getMappings
@@ -146,10 +168,12 @@ object APIController extends Controller {
               <mappings>
                 {mappings.map { m =>
                 <mapping>
-                  <source>{m.source}</source>
-                  <target>{m.target}</target>
+                  <sourceURI>{m.sourceURI}</sourceURI>
+                  <targetURI>{m.targetURI}</targetURI>
                   <prefLabel>{m.prefLabel}</prefLabel>
-                  <vocabulary>{m.vocabulary}</vocabulary>
+                  <conceptScheme>{m.conceptScheme}</conceptScheme>
+                  <who>{m.who}</who>
+                  <when>{m.whenString}</when>
                 </mapping>
               }}
               </mappings>
