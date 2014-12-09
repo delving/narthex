@@ -68,7 +68,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   val treeRoot = new NodeRepo(this, treeDir)
 
-  lazy val datasetDb = new DatasetDb(orgRepo.repoDb, datasetName)
+  lazy val datasetDb = new DatasetDb(orgRepo.orgDb, datasetName)
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir, datasetName, NarthexConfig.RDF_ABOUT_PREFIX)

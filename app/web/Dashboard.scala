@@ -49,7 +49,7 @@ object Dashboard extends Controller with Security {
   )
 
   def listDatasets = Secure() { email => implicit request =>
-    val datasets = repo.repoDb.listDatasets.flatMap { dataset =>
+    val datasets = repo.orgDb.listDatasets.flatMap { dataset =>
       val state = DatasetState.datasetStateFromInfo(dataset.info)
       val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
       Some(Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists)))

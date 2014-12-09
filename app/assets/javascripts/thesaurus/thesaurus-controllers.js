@@ -18,8 +18,8 @@ define(["angular"], function (angular) {
     "use strict";
 
     var ThesaurusCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService, $timeout, pageScroll) {
-        $scope.thesaurusA = $routeParams.thesaurusA;
-        $scope.thesaurusB = $routeParams.thesaurusB;
+        $scope.conceptSchemeA = $routeParams.conceptSchemeA;
+        $scope.conceptSchemeB = $routeParams.conceptSchemeB;
 
         $scope.sought = "";
         $scope.soughtA = "";
@@ -33,14 +33,14 @@ define(["angular"], function (angular) {
 
         function searchSkosA(value) {
             $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
-            thesaurusService.searchSkos($scope.thesaurusA, value).then(function (data) {
+            thesaurusService.searchSkos($scope.conceptSchemeA, value).then(function (data) {
                 $scope.conceptsA = data.search.results;
             });
         }
 
         function searchSkosB(value) {
             $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
-            thesaurusService.searchSkos($scope.thesaurusB, value).then(function (data) {
+            thesaurusService.searchSkos($scope.conceptSchemeB, value).then(function (data) {
                 $scope.conceptsB = data.search.results;
             });
         }

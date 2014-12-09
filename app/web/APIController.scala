@@ -34,7 +34,7 @@ import web.Application.{OkFile, OkXml}
 object APIController extends Controller {
 
   def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val datasets = repo.repoDb.listDatasets.map {
+    val datasets = repo.orgDb.listDatasets.map {
       dataset =>
         val lists = Dashboard.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
         Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))

@@ -30,7 +30,7 @@ define(
             "$routeProvider", "userResolve",
             function ($routeProvider, userResolve) {
                 $routeProvider.when(
-                    "/thesaurus/:thesaurusA/:thesaurusB",
+                    "/thesaurus/:conceptSchemeA/:conceptSchemeB",
                     {
                         templateUrl: "/narthex/assets/templates/thesaurus.html",
                         controller: controllers.ThesaurusCtrl,

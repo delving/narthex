@@ -30,6 +30,7 @@ import play.api.cache.Cache
 import record.EnrichmentParser._
 import services.StringHandling._
 import services._
+import thesaurus.ThesaurusDb
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -65,7 +66,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   val skosRepo = new ConceptRepo(new File(orgRoot, "skos"))
   val factoryDir = new File(orgRoot, "factory")
   val sipFactory = new SipFactory(factoryDir)
-  val repoDb = new OrgDb(orgId)
+  val orgDb = new OrgDb(orgId)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
@@ -73,6 +74,12 @@ class OrgRepo(userHome: String, val orgId: String) {
   rawDir.mkdirs()
   mappedDir.mkdirs()
   sipsDir.mkdirs()
+
+  def thesaurusDb(conceptSchemeA: String, conceptSchemeB: String) =
+    if (conceptSchemeA > conceptSchemeB)
+      new ThesaurusDb(conceptSchemeB, conceptSchemeA)
+    else
+      new ThesaurusDb(conceptSchemeA, conceptSchemeB)
 
   def datasetRepo(datasetName: String): DatasetRepo = {
     val dr = new DatasetRepo(this, datasetName)
@@ -89,10 +96,10 @@ class OrgRepo(userHome: String, val orgId: String) {
     _.getName.endsWith(SIP_EXTENSION)
   ).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
 
-  def uploadedSips: Seq[Sip] = repoDb.listDatasets.flatMap(dataset => datasetRepo(dataset.datasetName).sipRepo.latestSipOpt)
+  def uploadedSips: Seq[Sip] = orgDb.listDatasets.flatMap(dataset => datasetRepo(dataset.datasetName).sipRepo.latestSipOpt)
 
   def getPublishedDatasets: Seq[PublishedDataset] = {
-    repoDb.listDatasets.flatMap { dataset =>
+    orgDb.listDatasets.flatMap { dataset =>
       if (!oaipmhPublishFromInfo(dataset.info))
         None
       else {
@@ -143,7 +150,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   }
 
   def startCategoryCounts() = {
-    val categoryDatasets: Seq[Dataset] = repoDb.listDatasets.flatMap { dataset =>
+    val categoryDatasets: Seq[Dataset] = orgDb.listDatasets.flatMap { dataset =>
       val included = (dataset.info \ "categories" \ "included").text
       if (included == "true") Some(dataset) else None
     }

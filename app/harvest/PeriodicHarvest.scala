@@ -43,7 +43,7 @@ class PeriodicHarvest extends Actor {
   def receive = {
 
     case "tick" =>
-      OrgRepo.repo.repoDb.listDatasets.foreach { dataset =>
+      OrgRepo.repo.orgDb.listDatasets.foreach { dataset =>
         val harvestCron = Harvesting.harvestCron(dataset.info)
         if (harvestCron.timeToWork) {
           log.info(s"Time to work on ${dataset.datasetName}")
