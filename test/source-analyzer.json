@@ -1,0 +1,23 @@
+{
+    "dataset": "dataset identifier",
+    "hash": "A7aasSas",
+    "path": "/path/to/field",
+    "values": [
+        {
+            "value": "one",
+            "occurrences": [
+                12,
+                23,
+                45
+            ]
+        },
+        {
+            "value": "two",
+            "occurrences": [
+                12,
+                23,
+                45
+            ]
+        }
+    ]
+}
