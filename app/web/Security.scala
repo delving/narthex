@@ -30,6 +30,8 @@ trait Security {
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
   lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
 
+  case class CachedProfile(firstName: String, lastName: String, email:String, apiKey: String, oaiPmhKey: String)
+
   /*
     To make this work seamlessly with Angular, you should read the token from a header called
     X-XSRF-TOKEN, and issue a cookie called XSRF-TOKEN.
@@ -37,12 +39,12 @@ trait Security {
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: String => Request[A] => Result): Action[A] = Action(p) { implicit request =>
+  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: CachedProfile => Request[A] => Result): Action[A] = Action(p) { implicit request =>
     val maybeToken: Option[String] = request.headers.get(TOKEN)
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[String](token) map { email =>
+      Cache.getAs[CachedProfile](token) map { email =>
         block(email)(request).withToken(token, email)
       }
     } getOrElse {
@@ -61,8 +63,8 @@ trait Security {
   }
 
   implicit class ResultWithToken(result: Result) {
-    def withToken(token: String, email: String): Result = {
-      Cache.set(token, email, CACHE_EXPIRATION)
+    def withToken(token: String, cachedProfile: CachedProfile): Result = {
+      Cache.set(token, cachedProfile, CACHE_EXPIRATION)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, token, None, httpOnly = false))
     }
 

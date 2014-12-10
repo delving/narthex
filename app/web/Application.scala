@@ -24,14 +24,14 @@ import play.api.cache.Cache
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
 import play.api.mvc._
-import services.NarthexConfig.ORG_ID
+import services.NarthexConfig.{API_ACCESS_KEYS, OAI_PMH_ACCESS_KEYS, ORG_ID}
 import services.{CommonsServices, UserProfile}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Application extends Controller with Security {
-  
+
   val SIP_APP_VERSION = "P14-03"
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
@@ -39,7 +39,7 @@ object Application extends Controller with Security {
   def root = Action { request => Redirect("/narthex/")}
 
   def index = Action { request =>
-      Ok(views.html.index(ORG_ID, SIP_APP_URL))
+    Ok(views.html.index(ORG_ID, SIP_APP_URL))
   }
 
   def login = Action(parse.json) {
@@ -55,13 +55,22 @@ object Application extends Controller with Security {
           def getOrCreateUser(username: String, profileMaybe: Option[UserProfile]): SimpleResult = {
             val profile = profileMaybe.getOrElse(throw new RuntimeException(s"no profile for $username"))
             val token = java.util.UUID.randomUUID().toString
+            val cachedProfile = CachedProfile(
+              firstName = profile.firstName,
+              lastName = profile.lastName,
+              email = profile.email,
+              apiKey = API_ACCESS_KEYS(0),
+              oaiPmhKey = OAI_PMH_ACCESS_KEYS(0)
+            )
             Logger.warn("get or create " + username + " " + profile + " with token:" + token)
             // todo: put the user in the database
             Ok(Json.obj(
-              "firstName" -> profile.firstName,
-              "lastName" -> profile.lastName,
-              "email" -> profile.email
-            )).withToken(token, profile.email)
+              "firstName" -> cachedProfile.firstName,
+              "lastName" -> cachedProfile.lastName,
+              "email" -> cachedProfile.email,
+              "apiKey" -> cachedProfile.apiKey,
+              "oaiPmhKey" -> cachedProfile.oaiPmhKey
+            )).withToken(token, cachedProfile)
           }
           Logger.info(s"connecting user $username")
           if (services.connect(username, password)) {
@@ -87,14 +96,20 @@ object Application extends Controller with Security {
                   }
                   else {
                     val token = java.util.UUID.randomUUID().toString
-                    val firstName = user.getString("firstName")
-                    val lastName = user.getString("lastName")
-                    val email = user.getString("email")
+                    val cachedProfile = CachedProfile(
+                      firstName=user.getString("firstName"),
+                      lastName = user.getString("lastName"),
+                      email = user.getString("email"),
+                      apiKey = API_ACCESS_KEYS(0),
+                      oaiPmhKey = OAI_PMH_ACCESS_KEYS(0)
+                    )
                     Ok(Json.obj(
-                      "firstName" -> firstName,
-                      "lastName" -> lastName,
-                      "email" -> email
-                    )).withToken(token, email)
+                      "firstName" -> cachedProfile.firstName,
+                      "lastName" -> cachedProfile.lastName,
+                      "email" -> cachedProfile.email,
+                      "apiKey" -> cachedProfile.apiKey,
+                      "oaiPmhKey" -> cachedProfile.oaiPmhKey
+                    )).withToken(token, cachedProfile)
                   }
 
                 case None =>
@@ -109,9 +124,14 @@ object Application extends Controller with Security {
       val maybeToken = request.headers.get(TOKEN)
       maybeToken flatMap {
         token =>
-          Cache.getAs[String](token) map {
-            email =>
-              Ok(Json.obj("email" -> email)).withToken(token, email) // todo: there's more in the profile
+          Cache.getAs[CachedProfile](token) map { cachedProfile =>
+              Ok(Json.obj(
+                "firstName" -> cachedProfile.firstName,
+                "lastName" -> cachedProfile.lastName,
+                "email" -> cachedProfile.email,
+                "apiKey" -> cachedProfile.apiKey,
+                "oaiPmhKey" -> cachedProfile.oaiPmhKey
+              )).withToken(token, cachedProfile)
           }
       } getOrElse {
         Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
@@ -195,6 +215,7 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.getTermSourcePaths,
           routes.javascript.Dashboard.getTermMappings,
           routes.javascript.Dashboard.setTermMapping,
+          routes.javascript.Dashboard.setThesaurusMapping,
           routes.javascript.Dashboard.getCategoryList,
           routes.javascript.Dashboard.listSheets,
           routes.javascript.Dashboard.getCategorySourcePaths,

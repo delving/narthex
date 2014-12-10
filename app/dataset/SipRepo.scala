@@ -62,7 +62,7 @@ object SipRepo {
 
 }
 
-class SipRepo(home: File, datasetName: String, rdfAboutPrefix: String) {
+class SipRepo(home: File, datasetName: String, domain: String) {
 
   def createSipZipFile(sipZipFileName: String) = {
     home.mkdir()
@@ -72,7 +72,7 @@ class SipRepo(home: File, datasetName: String, rdfAboutPrefix: String) {
   def listSips: Seq[Sip] = {
     if (home.exists()) {
       val zipFiles = home.listFiles().filter(_.getName.endsWith("zip"))
-      zipFiles.sortBy(_.lastModified()).reverse.map(Sip(datasetName, rdfAboutPrefix, _))
+      zipFiles.sortBy(_.lastModified()).reverse.map(Sip(datasetName, domain, _))
     }
     else Seq.empty[Sip]
   }
@@ -103,7 +103,7 @@ object Sip {
 
   val PrefixVersion = "(.*)_(.*)".r
 
-  def apply(datasetName: String, rdfAboutPrefix: String, zipFile: File) = new Sip(datasetName, rdfAboutPrefix, zipFile)
+  def apply(datasetName: String, domain: String, zipFile: File) = new Sip(datasetName, domain, zipFile)
 
   val XMLNS = "http://www.w3.org/2000/xmlns/"
   val RDF_ROOT_TAG: String = "RDF"
@@ -128,7 +128,7 @@ object Sip {
 
 }
 
-class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
+class Sip(val datasetName: String, domain: String, val file: File) {
 
   import dataset.Sip._
   import dataset.SipRepo._
@@ -315,11 +315,7 @@ class Sip(val datasetName: String, rdfAboutPrefix: String, val file: File) {
         val cn = root.getChildNodes
         val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
         val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-        val prefix = if (rdfAboutPrefix.endsWith("/"))
-          rdfAboutPrefix.substring(0, rdfAboutPrefix.length - 1)
-        else
-          rdfAboutPrefix
-        val rdfAbout = s"$prefix/$datasetName/${urlEncodeValue(pocket.id)}"
+        val rdfAbout = s"$domain/resource/document/$datasetName/${urlEncodeValue(pocket.id)}"
         rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
         kids.foreach(rdfElement.appendChild)
         pocketElement.appendChild(rdfElement)

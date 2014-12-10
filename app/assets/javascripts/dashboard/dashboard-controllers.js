@@ -19,8 +19,6 @@ String.prototype.endsWith = function (suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
 };
 
-var API_ACCESS_KEY = "secret"; // todo: find a better way
-
 define(["angular"], function () {
     "use strict";
 
@@ -36,8 +34,7 @@ define(["angular"], function () {
         $scope.fileOpen = $routeParams.open || $rootScope.fileOpen || "";
         $scope.tabOpen = $routeParams.tab || $rootScope.tabOpen || "metadata";
 
-        var absUrl = $location.absUrl();
-        $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
+        $scope.apiPrefix = $rootScope.narthexAPI + user.apiKey;
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
         $scope.dataset = { name: "" };
@@ -186,7 +183,7 @@ define(["angular"], function () {
                 var start = enriched ? 'oai-pmh/enriched/' : 'oai-pmh/';
                 return {
                     prefix: file.prefix,
-                    url: serverUrl + start + API_ACCESS_KEY + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
+                    url: serverUrl + start + user.oaiPmhKey + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
                 }
             }
 

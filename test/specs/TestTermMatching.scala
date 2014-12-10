@@ -40,13 +40,16 @@ class TestTermMatching extends FlatSpec with Matchers {
 
   "A transformer" should "insert an enrichment" in {
 
-    val filePrefix = "gerald_delving_eu/RCE_Beeldbank"
+    val domain = "http://localhost:9000"
+    val filePrefix = "/gerald_delving_eu/RCE_Beeldbank"
     val recordRoot = "/record"
 
     val mappings = Map(
-      s"$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> TargetConcept("uri", "vocab", "glasinloody", "dude", new DateTime(0)),
-      s"$filePrefix$recordRoot/inner/content.subject" -> TargetConcept("uri", "vocab", "close but no cigar", "dude", new DateTime(0))
+      s"$domain/resource/thesaurusenrichment$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> TargetConcept("uri", "vocab", "glasinloody", "dude", new DateTime(0)),
+      s"$domain/resource/thesaurusenrichment$filePrefix$recordRoot/inner/content.subject" -> TargetConcept("uri", "vocab", "close but no cigar", "dude", new DateTime(0))
     )
+
+    println(s"Mappings: $mappings")
 
     val storedString =
       s"""
@@ -66,11 +69,12 @@ class TestTermMatching extends FlatSpec with Matchers {
         |<record xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:very="http://veryother.org/#">
         |  <inner>
         |    <content.subject>
-        |      <rdf:Description rdf:about="gerald_delving_eu/RCE_Beeldbank/record/inner/content.subject/Glas%20in%20loodraam">
+        |      <rdf:Description rdf:about="http://localhost:9000/resource/thesaurusenrichment/gerald_delving_eu/RCE_Beeldbank/record/inner/content.subject/Glas%20in%20loodraam">
+        |        <rdf:type rdf:resource="http://schemas.delving.org/ThesaurusEnrichment"/>
         |        <rdfs:label>Glas in loodraam</rdfs:label>
         |        <skos:prefLabel>glasinloody</skos:prefLabel>
         |        <skos:exactMatch rdf:resource="uri"/>
-        |        <skos:Collection>vocab</skos:Collection>
+        |        <skos:ConceptScheme>vocab</skos:ConceptScheme>
         |        <skos:note>Mapped in Narthex by dude on 1970-01-01T02:00:00+02:00</skos:note>
         |      </rdf:Description>
         |    </content.subject>
@@ -80,7 +84,7 @@ class TestTermMatching extends FlatSpec with Matchers {
         |</record>
       """.stripMargin.trim
 
-    val parser = new EnrichmentParser(filePrefix, mappings)
+    val parser = new EnrichmentParser(domain, filePrefix, mappings)
     val record = parser.parse(storedString)
     val recordText = record(0).text.toString().trim
 

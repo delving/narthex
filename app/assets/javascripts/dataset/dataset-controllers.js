@@ -14,18 +14,15 @@
 //    limitations under the License.
 //===========================================================================
 
-var API_ACCESS_KEY = "secret"; // todo: find a better way
-
 define(["angular"], function () {
     "use strict";
 
-    var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll) {
+    var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll, user) {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.datasetName = $routeParams.datasetName;
         $rootScope.breadcrumbs.dataset = $scope.datasetName;
-
-        var absUrl = $location.absUrl();
-        $scope.apiPrefix = absUrl.substring(0, absUrl.indexOf("#")) + "api/" + API_ACCESS_KEY;
+        $scope.sourceURIPrefix = $rootScope.thesaurusEnrichmentPrefix + "/" + $scope.datasetName;
+        $scope.apiPrefix = $rootScope.narthexAPI + user.apiKey;
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
@@ -77,7 +74,7 @@ define(["angular"], function () {
                         }
                         else {
                             var recPath = node.path.substring($scope.recordContainer.length);
-                            node.sourcePath = $rootScope.orgId + "/" + $scope.datasetName + recPath;
+                            node.sourcePath = $scope.sourceURIPrefix + recPath;
                         }
                     }
                     for (var index = 0; index < node.kids.length; index++) {
@@ -295,7 +292,7 @@ define(["angular"], function () {
 
     };
 
-    DatasetCtrl.$inject = ["$rootScope", "$scope", "$routeParams", "$timeout", "$location", "datasetService", "pageScroll"];
+    DatasetCtrl.$inject = ["$rootScope", "$scope", "$routeParams", "$timeout", "$location", "datasetService", "pageScroll", "user"];
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree) {

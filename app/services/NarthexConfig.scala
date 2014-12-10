@@ -32,7 +32,7 @@ object NarthexConfig {
   def configInt(name: String) = config.getInt(name).getOrElse(
     throw new RuntimeException(s"Missing config int: $name")
   )
-  def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List[String]("secret"))
+  def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List("secret"))
 
   val USER_HOME = System.getProperty("user.home")
   val NARTHEX = new File(USER_HOME, "NarthexFiles")
@@ -53,6 +53,6 @@ object NarthexConfig {
   def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
 
   val ORG_ID = configString("orgId")
-  val RDF_ABOUT_PREFIX = configString("rdfAboutPrefix")
+  val DOMAIN = configString("domain")
 
 }

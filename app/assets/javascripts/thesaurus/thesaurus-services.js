@@ -56,6 +56,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                setThesaurusMapping: function (name, body) {
+                    return dash.setThesaurusMapping(name).post(body).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                }
             };
         }
     ]);

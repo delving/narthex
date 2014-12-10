@@ -53,6 +53,12 @@ define(["angular"], function (angular) {
 
         $scope.setOrg = function (orgId) {
             $rootScope.orgId = orgId;
+            var absUrl = $location.absUrl();
+            var pathStart = absUrl.indexOf("/narthex/#");
+            if (pathStart < 0) console.error("Cannot find domain in "+absUrl);
+            $rootScope.domain = absUrl.substring(0, pathStart);
+            $rootScope.narthexAPI = $rootScope.domain + "/narthex/api/";
+            $rootScope.thesaurusEnrichmentPrefix = $rootScope.domain + "/resource/thesaurusenrichment/" + $scope.orgId;
         };
 
         // Wrap the current user from the service in a watch expression

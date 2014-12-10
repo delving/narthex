@@ -27,6 +27,7 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
+import thesaurus.ThesaurusDb.ThesaurusMapping
 import web.Application.OkFile
 
 object Dashboard extends Controller with Security {
@@ -48,7 +49,7 @@ object Dashboard extends Controller with Security {
     "sipHints"
   )
 
-  def listDatasets = Secure() { email => implicit request =>
+  def listDatasets = Secure() { profile => implicit request =>
     val datasets = repo.orgDb.listDatasets.flatMap { dataset =>
       val state = DatasetState.datasetStateFromInfo(dataset.info)
       val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
@@ -57,24 +58,24 @@ object Dashboard extends Controller with Security {
     Ok(JsArray(datasets))
   }
 
-  def listPrefixes = Secure() { email => implicit request =>
+  def listPrefixes = Secure() { profile => implicit request =>
     val prefixes = repo.sipFactory.prefixRepos.map(_.prefix)
     Ok(Json.toJson(prefixes))
   }
 
-  def datasetInfo(datasetName: String) = Secure() { email => implicit request =>
+  def datasetInfo(datasetName: String) = Secure() { profile => implicit request =>
     repo.datasetRepo(datasetName).datasetDb.infoOpt.map { info =>
       val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(info, name))
       Ok(JsObject(lists))
     } getOrElse NotFound(Json.obj("problem" -> s"Not found $datasetName"))
   }
 
-  def create(datasetName: String, prefix: String) = Secure() { email => implicit request =>
+  def create(datasetName: String, prefix: String) = Secure() { profile => implicit request =>
     repo.datasetRepo(datasetName).datasetDb.createDataset(prefix)
     Ok(Json.obj("created" -> s"Dataset $datasetName with prefix $prefix"))
   }
 
-  def command(datasetName: String, command: String) = Secure() { email => implicit request =>
+  def command(datasetName: String, command: String) = Secure() { profile => implicit request =>
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       Ok(datasetRepo.receiveCommand(command))
     } getOrElse {
@@ -82,7 +83,7 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def upload(datasetName: String) = Secure(parse.multipartFormData) { email => implicit request =>
+  def upload(datasetName: String) = Secure(parse.multipartFormData) { profile => implicit request =>
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       request.body.file("file").map { file =>
         val error = datasetRepo.acceptUpload(file.filename, { target =>
@@ -100,7 +101,7 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def harvest(datasetName: String) = Secure(parse.json) { email => implicit request =>
+  def harvest(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     def optional(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
     try {
@@ -123,7 +124,7 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setHarvestCron(datasetName: String) = Secure(parse.json) { email => implicit request =>
+  def setHarvestCron(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
     try {
       val datasetRepo = repo.datasetRepo(datasetName)
@@ -137,7 +138,7 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setMetadata(datasetName: String) = Secure(parse.json) { email => implicit request =>
+  def setMetadata(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     try {
       val obj = request.body.as[JsObject]
       val meta: Map[String, String] = obj.value.map(nv => nv._1 -> nv._2.as[String]).toMap
@@ -151,7 +152,7 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setPublication(datasetName: String) = Secure(parse.json) { email => implicit request =>
+  def setPublication(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     def boolParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
     def stringParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     try {
@@ -164,7 +165,7 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setCategories(datasetName: String) = Secure(parse.json) { email => implicit request =>
+  def setCategories(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     def param(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
     try {
       val datasetRepo = repo.datasetRepo(datasetName)
@@ -176,7 +177,7 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def analyze(datasetName: String) = Secure() { email => implicit request =>
+  def analyze(datasetName: String) = Secure() { profile => implicit request =>
     repo.datasetRepoOption(datasetName) match {
       case Some(datasetRepo) =>
         datasetRepo.startAnalysis()
@@ -186,32 +187,32 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def index(datasetName: String) = Secure() { email => implicit request =>
+  def index(datasetName: String) = Secure() { profile => implicit request =>
     OkFile(repo.datasetRepo(datasetName).index)
   }
 
-  def nodeStatus(datasetName: String, path: String) = Secure() { email => implicit request =>
+  def nodeStatus(datasetName: String, path: String) = Secure() { profile => implicit request =>
     repo.datasetRepo(datasetName).status(path) match {
       case None => NotFound(Json.obj("path" -> path))
       case Some(file) => OkFile(file)
     }
   }
 
-  def sample(datasetName: String, path: String, size: Int) = Secure() { email => implicit request =>
+  def sample(datasetName: String, path: String, size: Int) = Secure() { profile => implicit request =>
     repo.datasetRepo(datasetName).sample(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
       case Some(file) => OkFile(file)
     }
   }
 
-  def histogram(datasetName: String, path: String, size: Int) = Secure() { email => implicit request =>
+  def histogram(datasetName: String, path: String, size: Int) = Secure() { profile => implicit request =>
     repo.datasetRepo(datasetName).histogram(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
       case Some(file) => OkFile(file)
     }
   }
 
-  def setRecordDelimiter(datasetName: String) = Secure(parse.json) { email => implicit request =>
+  def setRecordDelimiter(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     var recordRoot = (request.body \ "recordRoot").as[String]
     var uniqueId = (request.body \ "uniqueId").as[String]
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
@@ -222,13 +223,13 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def saveRecords(datasetName: String) = Secure() { email => implicit request =>
+  def saveRecords(datasetName: String) = Secure() { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     datasetRepo.firstSaveRecords()
     Ok
   }
 
-  def queryRecords(datasetName: String) = Secure(parse.json) { email => implicit request =>
+  def queryRecords(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     val path = (request.body \ "path").as[String]
     val value = (request.body \ "value").as[String]
     val datasetRepo = repo.datasetRepo(datasetName)
@@ -242,7 +243,7 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def listSheets = Secure() { email => implicit request =>
+  def listSheets = Secure() { profile => implicit request =>
     Ok(Json.obj("sheets" -> repo.categoriesRepo.listSheets))
   }
 
@@ -250,15 +251,14 @@ object Dashboard extends Controller with Security {
     OkFile(repo.categoriesRepo.sheet(datasetName))
   }
 
-  def listConceptSchemes = Secure() { email => implicit request =>
+  def listConceptSchemes = Secure() { profile => implicit request =>
     Ok(Json.obj("list" -> repo.skosRepo.conceptSchemes.map(_.name)))
   }
 
-  def searchConceptScheme(conceptSchemeName: String, sought: String) = Secure() { email => implicit request =>
+  def searchConceptScheme(conceptSchemeName: String, sought: String) = Secure() { profile => implicit request =>
     val schemeOpt = repo.skosRepo.conceptSchemes.find(scheme => conceptSchemeName == scheme.name)
     schemeOpt.map { scheme =>
       val nonemptySought = if (sought == "-") "" else sought
-      Logger.info(s"SEARCH $nonemptySought")
       val search = scheme.search("dut", nonemptySought, 25)
       Ok(Json.obj("search" -> search))
     } getOrElse {
@@ -266,19 +266,19 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def getTermSourcePaths(datasetName: String) = Secure() { email => implicit request =>
+  def getTermSourcePaths(datasetName: String) = Secure() { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     val sourcePaths = datasetRepo.termDb.getSourcePaths
     Ok(Json.obj("sourcePaths" -> sourcePaths))
   }
 
-  def getTermMappings(datasetName: String) = Secure() { email => implicit request =>
+  def getTermMappings(datasetName: String) = Secure() { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     val mappings: scala.Seq[TermMapping] = datasetRepo.termDb.getMappings
     Ok(Json.obj("mappings" -> mappings))
   }
 
-  def setTermMapping(datasetName: String) = Secure(parse.json) { email => implicit request =>
+  def setTermMapping(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     datasetRepo.invalidateEnrichmentCache()
     if ((request.body \ "remove").asOpt[String].isDefined) {
@@ -292,7 +292,7 @@ object Dashboard extends Controller with Security {
         targetURI = (request.body \ "targetURI").as[String],
         conceptScheme = (request.body \ "conceptScheme").as[String],
         prefLabel = (request.body \ "prefLabel").as[String],
-        who = email,
+        who = profile.email,
         when = new DateTime()
       )
       datasetRepo.termDb.addMapping(termMapping)
@@ -300,7 +300,23 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def getCategoryList = Secure() { email => implicit request =>
+  def setThesaurusMapping() = Secure(parse.json) { profile => implicit request =>
+    if ((request.body \ "remove").asOpt[String].isDefined) {
+      val sourceUri = (request.body \ "uri").as[String]
+      Ok("Mapping removed")
+    }
+    else {
+      val termMapping = ThesaurusMapping(
+        uriA = (request.body \ "uriA").as[String],
+        uriB = (request.body \ "uriB").as[String],
+        who = profile.email,
+        when = new DateTime()
+      )
+      Ok("Mapping added")
+    }
+  }
+
+  def getCategoryList = Secure() { profile => implicit request =>
     repo.categoriesRepo.categoryListOption.map { list =>
       Ok(Json.toJson(list))
     } getOrElse {
@@ -308,24 +324,24 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def gatherCategoryCounts = Secure() { email => implicit request =>
+  def gatherCategoryCounts = Secure() { profile => implicit request =>
     repo.startCategoryCounts()
     Ok
   }
 
-  def getCategorySourcePaths(datasetName: String) = Secure() { email => implicit request =>
+  def getCategorySourcePaths(datasetName: String) = Secure() { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     val sourcePaths = datasetRepo.categoryDb.getSourcePaths
     Ok(Json.obj("sourcePaths" -> sourcePaths))
   }
 
-  def getCategoryMappings(datasetName: String) = Secure() { email => implicit request =>
+  def getCategoryMappings(datasetName: String) = Secure() { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     val mappings: Seq[CategoryMapping] = datasetRepo.categoryDb.getMappings
     Ok(Json.obj("mappings" -> mappings))
   }
 
-  def setCategoryMapping(datasetName: String) = Secure(parse.json) { email => implicit request =>
+  def setCategoryMapping(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     val categoryMapping = CategoryMapping(
       (request.body \ "source").as[String],
@@ -336,13 +352,13 @@ object Dashboard extends Controller with Security {
     Ok("Mapping " + (if (member) "added" else "removed"))
   }
 
-  def listSipFiles(datasetName: String) = Secure() { email => implicit request =>
+  def listSipFiles(datasetName: String) = Secure() { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     val fileNames = datasetRepo.sipRepo.listSips.map(_.file.getName)
     Ok(Json.obj("list" -> fileNames))
   }
 
-  def deleteLatestSipFile(datasetName: String) = Secure() { email => implicit request =>
+  def deleteLatestSipFile(datasetName: String) = Secure() { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     val sips = datasetRepo.sipRepo.listSips
     if (sips.size < 2) {

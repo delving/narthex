@@ -41,6 +41,7 @@ POST        /narthex/dashboard/:datasetName/query-records                web.Das
 
 GET         /narthex/dashboard/skos/list                                 web.Dashboard.listConceptSchemes
 GET         /narthex/dashboard/skos/:conceptSchemeName/:sought           web.Dashboard.searchConceptScheme(conceptSchemeName, sought)
+POST        /narthex/dashboard/skos/set-mapping                          web.Dashboard.setThesaurusMapping()
 GET         /narthex/dashboard/:datasetName/term/source-paths            web.Dashboard.getTermSourcePaths(datasetName)
 GET         /narthex/dashboard/:datasetName/term/mappings                web.Dashboard.getTermMappings(datasetName)
 POST        /narthex/dashboard/:datasetName/term/set-mapping             web.Dashboard.setTermMapping(datasetName)

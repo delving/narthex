@@ -42,8 +42,8 @@ import record.EnrichmentParser._
 import record.Saver.{AdoptSource, GenerateSource}
 import record.{EnrichmentParser, RecordDb}
 import services.FileHandling.clearDir
+import services.NarthexConfig.{DOMAIN, ORG_ID}
 import services.Temporal._
-import services._
 
 import scala.concurrent._
 
@@ -71,7 +71,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val datasetDb = new DatasetDb(orgRepo.orgDb, datasetName)
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
-  lazy val sipRepo = new SipRepo(sipsDir, datasetName, NarthexConfig.RDF_ABOUT_PREFIX)
+  lazy val sipRepo = new SipRepo(sipsDir, datasetName, DOMAIN)
   lazy val recordDbOpt = datasetDb.prefixOpt.map(prefix => new RecordDb(this, dbBaseName, prefix))
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
@@ -373,8 +373,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     val mappings: Map[String, TargetConcept] = Cache.getOrElse[Map[String, TargetConcept]](datasetName) {
       termDb.getMappings.map(m => (m.sourceURI, TargetConcept(m.targetURI, m.conceptScheme, m.prefLabel, m.who, m.when))).toMap
     }
-    val pathPrefix = s"${NarthexConfig.ORG_ID}/$datasetName"
-    val parser = new EnrichmentParser(pathPrefix, mappings)
+    val parser = new EnrichmentParser(DOMAIN, s"/$ORG_ID/$datasetName", mappings)
     parser.parse(storedRecords)
   }
 

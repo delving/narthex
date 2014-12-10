@@ -52,7 +52,7 @@ object EnrichmentParser {
 
 }
 
-class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConcept]) {
+class EnrichmentParser(domain: String, pathPrefix: String, termMappings: Map[String, TargetConcept]) {
 
   val ENRICHMENT_NAMESPACES = Seq(
     "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -131,15 +131,19 @@ class EnrichmentParser(pathPrefix: String, termMappings: Map[String, TargetConce
           val tag = frame.tag
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
-            val path = s"$pathPrefix${frame.path}/${urlEncodeValue(text)}"
+            val rdfAbout = s"$domain/resource/thesaurusenrichment$pathPrefix${frame.path}/${urlEncodeValue(text)}"
+//
+//            println(s"looking up $rdfAbout")
+//
             val in = indent
-            val tagText = termMappings.get(path).map { targetConcept =>
+            val tagText = termMappings.get(rdfAbout).map { targetConcept =>
               s"""$in${start.get}
-                   |$in  <rdf:Description rdf:about="$path">
+                   |$in  <rdf:Description rdf:about="$rdfAbout">
+                   |$in    <rdf:type rdf:resource="http://schemas.delving.org/ThesaurusEnrichment"/>
                    |$in    <rdfs:label>${frame.text}</rdfs:label>
                    |$in    <skos:prefLabel>${targetConcept.prefLabel}</skos:prefLabel>
                    |$in    <skos:exactMatch rdf:resource="${targetConcept.uri}"/>
-                   |$in    <skos:Collection>${targetConcept.conceptScheme}</skos:Collection>
+                   |$in    <skos:ConceptScheme>${targetConcept.conceptScheme}</skos:ConceptScheme>
                    |$in    <skos:note>Mapped in Narthex by ${targetConcept.who} on ${targetConcept.whenString}</skos:note>
                    |$in  </rdf:Description>
                    |$in</$tag>\n""".stripMargin

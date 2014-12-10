@@ -14,7 +14,7 @@
 //    limitations under the License.
 //===========================================================================
 
-define(["angular"], function (angular) {
+define(["angular"], function () {
     "use strict";
 
     var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, termsService, $timeout, pageScroll) {
@@ -38,7 +38,6 @@ define(["angular"], function (angular) {
 
         getSearchParams();
 
-        // local
         $scope.sourceEntry = undefined; // list selection
         $scope.sought = ""; // the field model
         $scope.mappings = {};
@@ -49,7 +48,8 @@ define(["angular"], function (angular) {
 
         var recordContainer = "/pockets/pocket";
         if ($scope.path.substring(0, recordContainer.length) != recordContainer) console.warn("Missing record container!");
-        $scope.sourceURIPath = $scope.path.substring(recordContainer.length);
+        var sourceURIPath = $scope.path.substring(recordContainer.length);
+        $scope.sourceURIPrefix = $rootScope.thesaurusEnrichmentPrefix + "/" + $scope.datasetName + sourceURIPath;
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
@@ -117,7 +117,7 @@ define(["angular"], function (angular) {
             });
             termsService.histogram($scope.datasetName, $scope.path, $scope.histogramSize).then(function (data) {
                 $scope.histogram = _.map(data.histogram, function (count) {
-                    var sourceURI = $rootScope.orgId + "/" + $scope.datasetName + $scope.sourceURIPath + "/" + encodeURIComponent(count[1]);
+                    var sourceURI = $scope.sourceURIPrefix + "/" + encodeURIComponent(count[1]);
                     return {
                         value: count[1],
                         count: count[0],
