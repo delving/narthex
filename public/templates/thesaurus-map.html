@@ -11,23 +11,12 @@
         </div>
         <div class="col-sm-3">
         </div>
-        <!--<div class="col-md-6">-->
-            <!--<div class="well legend">-->
-                <!--<span class="label term-preferred"><i class="fa fa-star"></i> preferred term</span>-->
-                <!--<span class="label term-matched">matched term</span>-->
-                <!--<span class="label term-alt">alt term</span>-->
-                <!--<span class="label term-broader">&#8599;-->
-                    <!--<i class="fa fa-expand"></i> broader term</span>-->
-                <!--<span class="label term-narrower">&#8600;-->
-                    <!--<i class="fa fa-compress"></i>  narrower term</span>-->
-            <!--</div>-->
-        <!--</div>-->
     </div>
 
     <div class="col-md-12">
-        <div class="col-sm-5 concept-pane">
+        <div class="col-sm-6 concept-pane">
             <div class="input-group input-group-skos-term">
-                <label class="input-group-addon"><i class="fa fa-search"></i> {{ thesaurusA }}</label>
+                <label class="input-group-addon"><i class="fa fa-search"></i> {{ conceptSchemeA }}</label>
                 <input class="form-control" type="text" data-ng-model="soughtA"/>
             </div>
             <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-a" data-offset="320" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
@@ -47,15 +36,15 @@
 
                     <!-- BROADER TERM -->
                     <span ng-show="concept.broader">
-                        <span data-ng-repeat="b in concept.broader" data-ng-click="selectSoughtA(b.label)" class="broader-term">
-                             <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b.label }}</span>
+                        <span data-ng-repeat="b in concept.broader" data-ng-click="selectSoughtA(b)" class="broader-term">
+                             <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b }}</span>
                         </span>
                     </span>
 
                     <!-- NARROWER TERM -->
                     <span ng-show="concept.narrower">
-                        <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSoughtA(n.label)" class="narrower-term">
-                            <span class="label term-narrower">&#8600; {{ n.label }}</span>
+                        <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSoughtA(n)" class="narrower-term">
+                            <span class="label term-narrower">&#8600; {{ n }}</span>
                         </span>
                     </span>
 
@@ -71,35 +60,9 @@
             </div>
         </div>
 
-        <div class="col-sm-2" style="text-align: center">
-            <div class="btn-toolbar col-sm-12">
-                <button class="btn btn-sm btn-info" data-ng-mouseover="link = 'lt'">
-                    <span class="fa-2x"> &lt; </span>
-                </button>
-                <button class="btn btn-sm btn-info" data-ng-mouseover="link = 'eq'">
-                    <span class="fa-2x"> = </span>
-                </button>
-                <button class="btn btn-sm btn-info" data-ng-mouseover="link = 'gt'">
-                    <span class="fa-2x"> &gt; </span>
-                </button>
-            </div>
-            <div class="col-sm-12" style="text-align: center; padding-top: 20px">
-                <span data-ng-show="link == 'lt'">
-                    <span>narrow</span><span class="fa-2x">&lt;</span><span class="fa-2x">broad</span>
-                </span>
-                <span data-ng-show="link == 'eq'">
-                    <span class="fa-2x">same</span><span class="fa-2x">=</span><span class="fa-2x">same</span>
-                </span>
-                <span data-ng-show="link == 'gt'">
-                    <span class="fa-2x">broad</span><span class="fa-2x">&gt;</span><span>narrow</span>
-                </span>
-            </div>
-        </div>
-
-
-        <div class="col-sm-5">
+        <div class="col-sm-6">
             <div class="input-group input-group-skos-term">
-                <label class="input-group-addon"><i class="fa fa-search"></i> {{ thesaurusB }}</label>
+                <label class="input-group-addon"><i class="fa fa-search"></i> {{ conceptSchemeB }}</label>
                 <input class="form-control" type="text" data-ng-model="soughtB"/>
             </div>
             <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-b" data-offset="320" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
@@ -119,15 +82,15 @@
 
                     <!-- BROADER TERM -->
                     <span ng-show="concept.broader">
-                        <span data-ng-repeat="b in concept.broader" data-ng-click="selectSoughtB(b.label)" class="broader-term">
-                             <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b.label }}</span>
+                        <span data-ng-repeat="b in concept.broader" data-ng-click="selectSoughtB(b)" class="broader-term">
+                             <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b }}</span>
                         </span>
                     </span>
 
                     <!-- NARROWER TERM -->
                     <span ng-show="concept.narrower">
-                        <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSoughtB(n.label)" class="narrower-term">
-                            <span class="label term-narrower">&#8600; {{ n.label }}</span>
+                        <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSoughtB(n)" class="narrower-term">
+                            <span class="label term-narrower">&#8600; {{ n }}</span>
                         </span>
                     </span>
 
@@ -142,6 +105,16 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="col-md-12 fa-align-center">
+        <div class="col-sm-3"></div>
+        <div class="col-sm-6">
+            <button type="button" style="width: 100%" class="btn btn-success" data-ng-click="createMapping()" data-ng-disabled="!buttonEnabled">
+                <span>{{ buttonText }}</span>
+            </button>
+        </div>
+        <div class="col-sm-3"></div>
     </div>
 
 </div>

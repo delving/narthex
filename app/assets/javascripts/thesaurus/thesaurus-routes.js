@@ -30,10 +30,18 @@ define(
             "$routeProvider", "userResolve",
             function ($routeProvider, userResolve) {
                 $routeProvider.when(
+                    "/thesaurus",
+                    {
+                        templateUrl: "/narthex/assets/templates/thesaurus-choose.html",
+                        controller: controllers.ThesaurusChooseCtrl,
+                        resolve: userResolve,
+                        reloadOnSearch: false
+                    }
+                ).when(
                     "/thesaurus/:conceptSchemeA/:conceptSchemeB",
                     {
-                        templateUrl: "/narthex/assets/templates/thesaurus.html",
-                        controller: controllers.ThesaurusCtrl,
+                        templateUrl: "/narthex/assets/templates/thesaurus-map.html",
+                        controller: controllers.ThesaurusMapCtrl,
                         resolve: userResolve,
                         reloadOnSearch: false
                     }

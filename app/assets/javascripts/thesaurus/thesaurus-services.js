@@ -40,14 +40,22 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                searchSkos: function (name, sought) {
-                    return dash.searchSkos(name, sought).get().then(
+                listConceptSchemes: function () {
+                    return dash.listConceptSchemes().get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
-                }
+                },
+                searchConceptScheme: function (conceptSchemeName, sought) {
+                    return dash.searchConceptScheme(conceptSchemeName, sought).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
             };
         }
     ]);

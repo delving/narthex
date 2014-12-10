@@ -256,8 +256,10 @@ object Dashboard extends Controller with Security {
 
   def searchConceptScheme(conceptSchemeName: String, sought: String) = Secure() { email => implicit request =>
     val schemeOpt = repo.skosRepo.conceptSchemes.find(scheme => conceptSchemeName == scheme.name)
-    schemeOpt.map{scheme =>
-      val search = scheme.search("dut", sought, 25)
+    schemeOpt.map { scheme =>
+      val nonemptySought = if (sought == "-") "" else sought
+      Logger.info(s"SEARCH $nonemptySought")
+      val search = scheme.search("dut", nonemptySought, 25)
       Ok(Json.obj("search" -> search))
     } getOrElse {
       NotFound(Json.obj("problem" -> s"No concept scheme named '$conceptSchemeName' found."))

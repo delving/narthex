@@ -17,7 +17,34 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var ThesaurusCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService, $timeout, pageScroll) {
+    var ThesaurusChooseCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService) {
+        $scope.conceptSchemes = {};
+        $scope.buttonEnabled = false;
+
+        thesaurusService.listConceptSchemes().then(function (data) {
+            $scope.conceptSchemeList = data.list;
+        });
+
+        $scope.goToMapping = function() {
+            if (!($scope.conceptSchemes.a && $scope.conceptSchemes.b)) return;
+            $location.path('/thesaurus/'+$scope.conceptSchemes.a+"/"+$scope.conceptSchemes.b);
+        };
+
+        $scope.$watch("conceptSchemes", function(schemes) {
+            if (schemes.a && schemes.b) {
+                $scope.buttonText = schemes.a + " <=> " + schemes.b;
+                $scope.buttonEnabled = true;
+            }
+            else {
+                $scope.buttonText = "Select two concept schemes";
+                $scope.buttonEnabled = false;
+            }
+        }, true);
+    };
+
+    ThesaurusChooseCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService"];
+
+    var ThesaurusMapCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService, $timeout, pageScroll) {
         $scope.conceptSchemeA = $routeParams.conceptSchemeA;
         $scope.conceptSchemeB = $routeParams.conceptSchemeB;
 
@@ -31,16 +58,17 @@ define(["angular"], function (angular) {
             pageScroll.scrollTo(options);
         };
 
-        function searchSkosA(value) {
+        function searchA(value) {
             $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
-            thesaurusService.searchSkos($scope.conceptSchemeA, value).then(function (data) {
+            thesaurusService.searchConceptScheme($scope.conceptSchemeA, value).then(function (data) {
+                console.log("AA");
                 $scope.conceptsA = data.search.results;
             });
         }
 
-        function searchSkosB(value) {
+        function searchB(value) {
             $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
-            thesaurusService.searchSkos($scope.conceptSchemeB, value).then(function (data) {
+            thesaurusService.searchConceptScheme($scope.conceptSchemeB, value).then(function (data) {
                 $scope.conceptsB = data.search.results;
             });
         }
@@ -58,17 +86,35 @@ define(["angular"], function (angular) {
         });
 
         $scope.$watch("soughtA", function (soughtA) {
-            if (soughtA) searchSkosA(soughtA);
+            if (!soughtA) soughtA = "-";
+            searchA(soughtA);
         });
 
         $scope.$watch("soughtB", function (soughtB) {
-            if (soughtB) searchSkosB(soughtB);
+            if (!soughtB) soughtB = "-";
+            searchB(soughtB);
         });
+
+        $scope.buttonText = "Select two concepts";
+        $scope.buttonEnabled = false;
+
+//        $scope.$watch("conceptSchemes", function(schemes) {
+//            if (schemes.a && schemes.b) {
+//                $scope.buttonText = schemes.a + " <=> " + schemes.b;
+//                $scope.buttonEnabled = true;
+//            }
+//            else {
+//                $scope.buttonText = "Select two concept schemes";
+//                $scope.buttonEnabled = false;
+//            }
+//        }, true);
+
     };
 
-    ThesaurusCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService", "$timeout", "pageScroll"];
+    ThesaurusMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService", "$timeout", "pageScroll"];
 
     return {
-        ThesaurusCtrl: ThesaurusCtrl
+        ThesaurusChooseCtrl: ThesaurusChooseCtrl,
+        ThesaurusMapCtrl: ThesaurusMapCtrl
     };
 });
