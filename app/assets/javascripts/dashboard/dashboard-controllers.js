@@ -33,8 +33,6 @@ define(["angular"], function () {
         $scope.percent = null;
         $scope.fileOpen = $routeParams.open || $rootScope.fileOpen || "";
         $scope.tabOpen = $routeParams.tab || $rootScope.tabOpen || "metadata";
-
-        $scope.apiPrefix = $rootScope.narthexAPI + user.apiKey;
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
         $scope.dataset = { name: "" };
@@ -178,12 +176,10 @@ define(["angular"], function () {
         function decorateFile(file) {
 
             function oaiPmhListRecords(enriched) {
-                var absUrl = $location.absUrl();
-                var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-                var start = enriched ? 'oai-pmh/enriched/' : 'oai-pmh/';
+                var oaiPmhUrl = enriched ? user.oaiPmhEnriched : user.oaiPmhRaw;
                 return {
                     prefix: file.prefix,
-                    url: serverUrl + start + user.oaiPmhKey + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
+                    url: oaiPmhUrl + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
                 }
             }
 
@@ -201,7 +197,7 @@ define(["angular"], function () {
                     delete(file.progress);
                 }
             }
-            file.apiMappings = $scope.apiPrefix + '/' + file.name + '/mappings';
+            file.apiMappings = user.narthexAPI + '/' + file.name + '/mappings';
             file.fileDropped = function ($files) {
                 fileDropped(file, $files)
             };

@@ -52,7 +52,7 @@ object EnrichmentParser {
 
 }
 
-class EnrichmentParser(domain: String, pathPrefix: String, termMappings: Map[String, TargetConcept]) {
+class EnrichmentParser(naveDomain: String, pathPrefix: String, termMappings: Map[String, TargetConcept]) {
 
   val ENRICHMENT_NAMESPACES = Seq(
     "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -131,10 +131,7 @@ class EnrichmentParser(domain: String, pathPrefix: String, termMappings: Map[Str
           val tag = frame.tag
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
-            val rdfAbout = s"$domain/resource/thesaurusenrichment$pathPrefix${frame.path}/${urlEncodeValue(text)}"
-//
-//            println(s"looking up $rdfAbout")
-//
+            val rdfAbout = s"$naveDomain/resource/thesaurusenrichment$pathPrefix${frame.path}/${urlEncodeValue(text)}"
             val in = indent
             val tagText = termMappings.get(rdfAbout).map { targetConcept =>
               s"""$in${start.get}

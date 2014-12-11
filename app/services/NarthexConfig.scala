@@ -53,6 +53,7 @@ object NarthexConfig {
   def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
 
   val ORG_ID = configString("orgId")
-  val DOMAIN = configString("domain")
+  val NARTHEX_DOMAIN = configString("domains.narthex")
+  val NAVE_DOMAIN = configString("domains.nave")
 
 }

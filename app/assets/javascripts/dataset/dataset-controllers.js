@@ -21,8 +21,7 @@ define(["angular"], function () {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.datasetName = $routeParams.datasetName;
         $rootScope.breadcrumbs.dataset = $scope.datasetName;
-        $scope.sourceURIPrefix = $rootScope.thesaurusEnrichmentPrefix + "/" + $scope.datasetName;
-        $scope.apiPrefix = $rootScope.narthexAPI + user.apiKey;
+        $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.datasetName;
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
@@ -154,8 +153,8 @@ define(["angular"], function () {
             datasetService.nodeStatus($scope.datasetName, node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
-                $scope.apiPathUnique = $scope.apiPrefix + "/" + $scope.datasetName + "/unique" + filePath;
-                $scope.apiPathHistogram = $scope.apiPrefix + "/" + $scope.datasetName + "/histogram" + filePath;
+                $scope.apiPathUnique = user.narthexAPI + "/" + $scope.datasetName + "/unique" + filePath;
+                $scope.apiPathHistogram = user.narthexAPI + "/" + $scope.datasetName + "/histogram" + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
                 switch ($routeParams.view) {

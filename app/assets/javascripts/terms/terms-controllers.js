@@ -17,7 +17,7 @@
 define(["angular"], function () {
     "use strict";
 
-    var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, termsService, $timeout, pageScroll) {
+    var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, termsService, $timeout, pageScroll, user) {
 
         function getSearchParams() {
             $scope.datasetName = $routeParams.datasetName;
@@ -49,7 +49,7 @@ define(["angular"], function () {
         var recordContainer = "/pockets/pocket";
         if ($scope.path.substring(0, recordContainer.length) != recordContainer) console.warn("Missing record container!");
         var sourceURIPath = $scope.path.substring(recordContainer.length);
-        $scope.sourceURIPrefix = $rootScope.thesaurusEnrichmentPrefix + "/" + $scope.datasetName + sourceURIPath;
+        $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.datasetName + sourceURIPath;
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
@@ -249,7 +249,7 @@ define(["angular"], function () {
         };
     };
 
-    TermsCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "termsService", "$timeout", "pageScroll"];
+    TermsCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "termsService", "$timeout", "pageScroll", "user"];
 
     return {
         TermsCtrl: TermsCtrl

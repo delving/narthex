@@ -17,6 +17,14 @@
 define(["angular", "common"], function (angular) {
     "use strict";
 
+    function buildUrls(user) {
+        user.narthexAPI = user.narthexDomain + '/narthex/api/' + user.apiKey;
+        user.enrichmentPrefix = user.naveDomain + '/resource/thesaurusenrichment';
+        user.oaiPmhRaw = user.narthexDomain + '/narthex/oai-pmh/' + user.oaiPmhKey;
+        user.oaiPmhEnriched = user.narthexDomain + '/narthex/oai-pmh/enriched/' + user.oaiPmhKey;
+        console.log("user", user);
+    }
+
     var mod = angular.module("home.services", ["narthex.common"]);
     mod.factory(
         "userService",
@@ -29,7 +37,8 @@ define(["angular", "common"], function (angular) {
                         return app.login().post(credentials).then(
                             function (response) {
                                 user = response.data;
-                                return { profile : user };
+                                buildUrls(user);
+                                return { profile: user };
                             },
                             function (response) {
                                 user = null;
@@ -48,6 +57,7 @@ define(["angular", "common"], function (angular) {
                         return app.checkLogin().get().then(
                             function (response) {
                                 user = response.data;
+                                buildUrls(user);
                                 return user;
                             },
                             function (problem) {
@@ -68,29 +78,26 @@ define(["angular", "common"], function (angular) {
      * Add this object to a route definition to only allow resolving the route if the user is
      * logged in. This also adds the contents of the objects as a dependency of the controller.
      */
-    mod.constant(
-        "userResolve",
-        {
-            user: function ($q, userService) {
-                var deferred = $q.defer();
-                var user = userService.getUser();
-                if (user) {
-                    deferred.resolve(user);
-                }
-                else {
-                    userService.checkLogin().then(
-                        function (revealedUser) {
-                            deferred.resolve(revealedUser)
-                        },
-                        function (reason) {
-                            deferred.reject();
-                        }
-                    );
-                }
-                return deferred.promise;
+    mod.constant("userResolve", {
+        user: function ($q, userService) {
+            var deferred = $q.defer();
+            var user = userService.getUser();
+            if (user) {
+                deferred.resolve(user);
             }
+            else {
+                userService.checkLogin().then(
+                    function (revealedUser) {
+                        deferred.resolve(revealedUser)
+                    },
+                    function (reason) {
+                        deferred.reject();
+                    }
+                );
+            }
+            return deferred.promise;
         }
-    );
+    });
 
 //    todo: the user function above is not injected properly, maybe do something like this:
 //     DashboardCtrl.$inject = [

@@ -24,7 +24,7 @@ import play.api.cache.Cache
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
 import play.api.mvc._
-import services.NarthexConfig.{API_ACCESS_KEYS, OAI_PMH_ACCESS_KEYS, ORG_ID}
+import services.NarthexConfig._
 import services.{CommonsServices, UserProfile}
 
 import scala.collection.JavaConversions._
@@ -60,7 +60,9 @@ object Application extends Controller with Security {
               lastName = profile.lastName,
               email = profile.email,
               apiKey = API_ACCESS_KEYS(0),
-              oaiPmhKey = OAI_PMH_ACCESS_KEYS(0)
+              oaiPmhKey = OAI_PMH_ACCESS_KEYS(0),
+              narthexDomain = NARTHEX_DOMAIN,
+              naveDomain = NAVE_DOMAIN
             )
             Logger.warn("get or create " + username + " " + profile + " with token:" + token)
             // todo: put the user in the database
@@ -69,7 +71,9 @@ object Application extends Controller with Security {
               "lastName" -> cachedProfile.lastName,
               "email" -> cachedProfile.email,
               "apiKey" -> cachedProfile.apiKey,
-              "oaiPmhKey" -> cachedProfile.oaiPmhKey
+              "oaiPmhKey" -> cachedProfile.oaiPmhKey,
+              "narthexDomain" -> cachedProfile.narthexDomain,
+              "naveDomain" -> cachedProfile.naveDomain
             )).withToken(token, cachedProfile)
           }
           Logger.info(s"connecting user $username")
@@ -101,14 +105,18 @@ object Application extends Controller with Security {
                       lastName = user.getString("lastName"),
                       email = user.getString("email"),
                       apiKey = API_ACCESS_KEYS(0),
-                      oaiPmhKey = OAI_PMH_ACCESS_KEYS(0)
+                      oaiPmhKey = OAI_PMH_ACCESS_KEYS(0),
+                      narthexDomain = NARTHEX_DOMAIN,
+                      naveDomain = NAVE_DOMAIN
                     )
                     Ok(Json.obj(
                       "firstName" -> cachedProfile.firstName,
                       "lastName" -> cachedProfile.lastName,
                       "email" -> cachedProfile.email,
                       "apiKey" -> cachedProfile.apiKey,
-                      "oaiPmhKey" -> cachedProfile.oaiPmhKey
+                      "oaiPmhKey" -> cachedProfile.oaiPmhKey,
+                      "narthexDomain" -> cachedProfile.narthexDomain,
+                      "naveDomain" -> cachedProfile.naveDomain
                     )).withToken(token, cachedProfile)
                   }
 
@@ -130,7 +138,9 @@ object Application extends Controller with Security {
                 "lastName" -> cachedProfile.lastName,
                 "email" -> cachedProfile.email,
                 "apiKey" -> cachedProfile.apiKey,
-                "oaiPmhKey" -> cachedProfile.oaiPmhKey
+                "oaiPmhKey" -> cachedProfile.oaiPmhKey,
+                "narthexDomain" -> cachedProfile.narthexDomain,
+                "naveDomain" -> cachedProfile.naveDomain
               )).withToken(token, cachedProfile)
           }
       } getOrElse {
