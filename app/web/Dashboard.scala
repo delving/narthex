@@ -27,7 +27,7 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
-import thesaurus.ThesaurusDb.ThesaurusMapping
+import thesaurus.ThesaurusDb._
 import web.Application.OkFile
 
 object Dashboard extends Controller with Security {
@@ -300,20 +300,22 @@ object Dashboard extends Controller with Security {
     }
   }
 
-  def setThesaurusMapping() = Secure(parse.json) { profile => implicit request =>
-    if ((request.body \ "remove").asOpt[String].isDefined) {
-      val sourceUri = (request.body \ "uri").as[String]
-      Ok("Mapping removed")
-    }
-    else {
-      val termMapping = ThesaurusMapping(
-        uriA = (request.body \ "uriA").as[String],
-        uriB = (request.body \ "uriB").as[String],
-        who = profile.email,
-        when = new DateTime()
-      )
-      Ok("Mapping added")
-    }
+  def getThesaurusMappings(conceptSchemeA: String, conceptSchemeB: String) = Secure() { profile => implicit request =>
+    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
+    val mappings = thesaurusDb.getMappings
+    Ok(Json.obj("mappings" -> mappings))
+  }
+
+  def setThesaurusMapping(conceptSchemeA: String, conceptSchemeB: String) = Secure(parse.json) { profile => implicit request =>
+    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
+    val termMapping = ThesaurusMapping(
+      uriA = (request.body \ "uriA").as[String],
+      uriB = (request.body \ "uriB").as[String],
+      who = profile.email,
+      when = new DateTime()
+    )
+    val added = thesaurusDb.toggleMapping(termMapping)
+    Ok(Json.obj("action" -> (if (added) "added" else "removed")))
   }
 
   def getCategoryList = Secure() { profile => implicit request =>

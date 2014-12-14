@@ -56,8 +56,16 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                setThesaurusMapping: function (name, body) {
-                    return dash.setThesaurusMapping(name).post(body).then(
+                getThesaurusMappings: function (schemeNameA, schemeNameB) {
+                    return dash.getThesaurusMappings(schemeNameA, schemeNameB).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                setThesaurusMapping: function (schemeNameA, schemeNameB, body) {
+                    return dash.setThesaurusMapping(schemeNameA, schemeNameB).post(body).then(
                         function (response) {
                             return response.data;
                         },

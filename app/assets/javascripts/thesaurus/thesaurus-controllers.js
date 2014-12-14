@@ -25,12 +25,12 @@ define(["angular"], function (angular) {
             $scope.conceptSchemeList = data.list;
         });
 
-        $scope.goToMapping = function() {
+        $scope.goToMapping = function () {
             if (!($scope.conceptSchemes.a && $scope.conceptSchemes.b)) return;
-            $location.path('/thesaurus/'+$scope.conceptSchemes.a+"/"+$scope.conceptSchemes.b);
+            $location.path('/thesaurus/' + $scope.conceptSchemes.a + "/" + $scope.conceptSchemes.b);
         };
 
-        $scope.$watch("conceptSchemes", function(schemes) {
+        $scope.$watch("conceptSchemes", function (schemes) {
             if (schemes.a && schemes.b) {
                 $scope.buttonText = schemes.a + " <=> " + schemes.b;
                 $scope.buttonEnabled = true;
@@ -45,14 +45,33 @@ define(["angular"], function (angular) {
     ThesaurusChooseCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService"];
 
     var ThesaurusMapCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService, $timeout, pageScroll) {
-        $scope.conceptSchemeA = $routeParams.conceptSchemeA;
-        $scope.conceptSchemeB = $routeParams.conceptSchemeB;
+        var a = $routeParams.conceptSchemeA;
+        var b = $routeParams.conceptSchemeB;
+        $scope.conceptSchemeA = (a < b) ? a : b;
+        $scope.conceptSchemeB = (a < b) ? b : a;
+
+        $scope.mappingsAB = {};
+        $scope.mappingsBA = {};
 
         $scope.sought = "";
         $scope.soughtA = "";
         $scope.soughtB = "";
         $scope.conceptsA = [];
         $scope.conceptsB = [];
+
+        function fetchMappings() {
+            thesaurusService.getThesaurusMappings($scope.conceptSchemeA, $scope.conceptSchemeB).then(function (data) {
+                $scope.mappingsAB = {};
+                $scope.mappingsBA = {};
+                _.forEach(data.mappings, function (m) {
+                    $scope.mappingsAB[m.uriA] = m.uriB;
+                    $scope.mappingsBA[m.uriB] = m.uriA;
+                });
+                console.log("AB", $scope.mappingsAB)
+            });
+        }
+
+        fetchMappings();
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
@@ -61,7 +80,6 @@ define(["angular"], function (angular) {
         function searchA(value) {
             $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
             thesaurusService.searchConceptScheme($scope.conceptSchemeA, value).then(function (data) {
-                console.log("AA");
                 $scope.conceptsA = data.search.results;
             });
         }
@@ -95,20 +113,74 @@ define(["angular"], function (angular) {
             searchB(soughtB);
         });
 
-        $scope.buttonText = "Select two concepts";
-        $scope.buttonEnabled = false;
+        function afterSelect() {
+            console.log("after select");
+            if ($scope.conceptA && $scope.conceptB) {
+                $scope.buttonText = $scope.conceptA.prefLabel + " <=MATCHES=> " + $scope.conceptB.prefLabel;
+                $scope.buttonEnabled = true;
+            }
+            else {
+                if ($scope.conceptA) {
+                    var uriB = $scope.mappingsAB[$scope.conceptA.uri];
+                    if (uriB) {
+                        $scope.selectB(uriB);
+                        return
+                    }
+                }
+                else if ($scope.conceptB) {
+                    var uriA = $scope.mappingsBA[$scope.conceptB.uri];
+                    if (uriA) {
+                        $scope.selectA(uriA);
+                        return
+                    }
+                }
+                $scope.buttonText = "Select two concepts";
+                $scope.buttonEnabled = false;
+            }
+        }
 
-//        $scope.$watch("conceptSchemes", function(schemes) {
-//            if (schemes.a && schemes.b) {
-//                $scope.buttonText = schemes.a + " <=> " + schemes.b;
-//                $scope.buttonEnabled = true;
-//            }
-//            else {
-//                $scope.buttonText = "Select two concept schemes";
-//                $scope.buttonEnabled = false;
-//            }
-//        }, true);
+        afterSelect();
 
+        $scope.selectConceptA = function (c) {
+            $scope.conceptA = ($scope.conceptA == c) ? null : c;
+            afterSelect();
+        };
+
+        $scope.selectConceptB = function (c) {
+            $scope.conceptB = ($scope.conceptB == c) ? null : c;
+            afterSelect();
+        };
+
+        $scope.selectA = function (uri) {
+            $scope.selectConceptA(_.find($scope.conceptsA, function (a) {
+                return a.uri == uri;
+            }));
+        };
+
+        $scope.selectB = function (uri) {
+            $scope.selectConceptB(_.find($scope.conceptsB, function (b) {
+                return b.uri == uri;
+            }));
+        };
+
+        $scope.toggleMapping = function () {
+            var body = {
+                uriA: $scope.conceptA.uri,
+                uriB: $scope.conceptB.uri
+            };
+            thesaurusService.setThesaurusMapping($scope.conceptSchemeA, $scope.conceptSchemeB, body).then(function (reply) {
+                switch (reply.action) {
+                    case "added":
+                        $scope.mappingsAB[body.uriA] = body.uriB;
+                        $scope.mappingsBA[body.uriB] = body.uriA;
+                        break;
+                    case "removed":
+                        $scope.mappingsAB[body.uriA] = $scope.mappingsBA[body.uriB] = undefined;
+                        break;
+                }
+                console.log("reply", reply);
+            });
+        };
     };
 
     ThesaurusMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService", "$timeout", "pageScroll"];

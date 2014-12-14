@@ -22,7 +22,7 @@ define(["angular", "common"], function (angular) {
         user.enrichmentPrefix = user.naveDomain + '/resource/thesaurusenrichment';
         user.oaiPmhRaw = user.narthexDomain + '/narthex/oai-pmh/' + user.oaiPmhKey;
         user.oaiPmhEnriched = user.narthexDomain + '/narthex/oai-pmh/enriched/' + user.oaiPmhKey;
-        console.log("user", user);
+//        console.log("user", user);
     }
 
     var mod = angular.module("home.services", ["narthex.common"]);

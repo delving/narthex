@@ -225,6 +225,7 @@ object Application extends Controller with Security {
           routes.javascript.Dashboard.getTermSourcePaths,
           routes.javascript.Dashboard.getTermMappings,
           routes.javascript.Dashboard.setTermMapping,
+          routes.javascript.Dashboard.getThesaurusMappings,
           routes.javascript.Dashboard.setThesaurusMapping,
           routes.javascript.Dashboard.getCategoryList,
           routes.javascript.Dashboard.listSheets,

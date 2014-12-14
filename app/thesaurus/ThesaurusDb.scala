@@ -44,16 +44,22 @@ object ThesaurusDb {
 class ThesaurusDb(conceptSchemeA: String, conceptSchemeB: String) {
   import thesaurus.ThesaurusDb._
   if (conceptSchemeA >= conceptSchemeB) throw new RuntimeException("Should be alphabetical")
-  val name = "thesaurus-mappings"
-  val thesaurusDb = "thesaurus"
   def safeName(conceptSchemeName: String) = conceptSchemeName.replaceAll("[^\\w]", "_")
-  val dbDoc = s"thesaurus/${safeName(conceptSchemeA)}__${safeName(conceptSchemeB)}.xml"
+  val name = "thesaurus-mappings"
+  val thesaurusDb = s"narthex_thesaurus__${safeName(conceptSchemeA)}__${safeName(conceptSchemeB)}"
+  val dbDoc = s"$thesaurusDb/$thesaurusDb.xml"
   val dbPath = s"doc('$dbDoc')/$name"
 
   def withTermDb[T](block: ClientSession => T): T = withDbSession[T](thesaurusDb, Some(name))(block)
 
-  def addMapping(mapping: ThesaurusMapping) = withTermDb { session =>
-    val upsert = s"""
+  def toggleMapping(mapping: ThesaurusMapping) = withTermDb { session =>
+    val orQuery = s"$dbPath/thesaurus-mapping[uriA=${quote(mapping.uriA)} or uriB=${quote(mapping.uriB)}]"
+    val existing = session.query(orQuery).execute().trim
+
+    println(s"existing: $existing")
+
+    if (existing.isEmpty) {
+      val insert = s"""
       |
       | let $$freshMapping :=
       |   <thesaurus-mapping>
@@ -63,29 +69,22 @@ class ThesaurusDb(conceptSchemeA: String, conceptSchemeB: String) {
       |     <when>${mapping.whenString}</when>
       |   </thesaurus-mapping>
       |
-      | let $$thesaurusMapping := $dbPath/thesaurus-mapping[uriA=${quote(mapping.uriA)}]
-      |
-      | return
-      |   if (exists($$thesaurusMapping))
-      |   then replace node $$thesaurusMapping with $$freshMapping
-      |   else insert node $$freshMapping into $dbPath
+      | return insert node $$freshMapping into $dbPath
       |
       """.stripMargin
-    session.query(upsert).execute()
-  }
-
-  def removeMapping(uri: String) = withTermDb { session =>
-    val upsert = s"""
+      session.query(insert).execute()
+      true
+    }
+    else {
+      val insert = s"""
       |
-      | let $$thesaurusMapping := $dbPath/thesaurus-mapping[uriA=${quote(uri)} or uriB=${quote(uri)}]
-      |
-      | return
-      |   if (exists($$thesaurusMapping))
-      |   then delete node $$thesaurusMapping
-      |   else ()
+      | let $$existingMapping := $orQuery
+      | return delete node $$existingMapping
       |
       """.stripMargin
-    session.query(upsert).execute()
+      session.query(insert).execute()
+      false
+    }
   }
 
   def getMappings: Seq[ThesaurusMapping] = withTermDb[Seq[ThesaurusMapping]] { session =>
