@@ -30,6 +30,7 @@ object ConceptScheme {
 
   val XML = "http://www.w3.org/XML/1998/namespace"
   val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  val DC = "http://purl.org/dc/elements/1.1/"
   val SKOS = "http://www.w3.org/2004/02/skos/core#"
   val IGNORE_BRACKET = """ *[(].*[)]$""".r
 
@@ -137,10 +138,16 @@ case class ConceptScheme(resource: Resource, model: Model) {
 
   val conceptMap = new mutable.HashMap[String, Concept]()
 
-  lazy val prefLabels = getPrefLabels(resource, model)
-  lazy val altLabels = getAltLabels(resource, model)
-
-  lazy val name = prefLabels.headOption.map(_.text).getOrElse("unknown scheme name")
+  lazy val name: String = {
+    val prefLabels = getPrefLabels(resource, model)
+    prefLabels.headOption.map(_.text).getOrElse{
+      val property = model.getProperty(DC, "title")
+      val titles = model.listStatements(resource, property, null).map(_.getObject.asLiteral()).map(
+        literal => literal.getString
+      ).toSeq
+      titles.headOption.getOrElse(throw new RuntimeException(s"Unable to find name for concept scheme $resource"))
+    }
+  }
 
   lazy val concepts: Seq[Concept] = {
     val inScheme = model.getProperty(SKOS, "inScheme")
