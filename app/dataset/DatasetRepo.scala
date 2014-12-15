@@ -60,6 +60,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val pocketFile = new File(orgRepo.rawDir, s"$datasetName.xml")
   val mappedFile = new File(orgRepo.mappedDir, s"$datasetName.xml")
+
   def createSipFile = new File(orgRepo.sipsDir, s"${datasetName}__${DATE_FORMAT.format(new Date())}.sip.zip")
 
   def sipFiles = orgRepo.sipsDir.listFiles.filter(
@@ -92,7 +93,15 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         "deleted"
 
       case "interrupt" =>
-        if (interruptProgress) "interrupted" else "killed"
+        val interrupted = interruptProgress
+        Logger.info(s"Interrupt $datasetName: $interrupted")
+        if (interrupted) {
+          "interrupted"
+        }
+        else {
+          datasetDb.endProgress(None)
+          "killed"
+        }
 
       case "remove source" =>
         deleteQuietly(rawDir)
@@ -134,7 +143,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def dropSource() = {
-//    deleteQuietly(sipFile) todo: delete all of them
+    //    deleteQuietly(sipFile) todo: delete all of them
     deleteQuietly(mappedFile)
   }
 
@@ -332,7 +341,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def interruptProgress: Boolean = {
-    implicit val timeout = Timeout(100, TimeUnit.MILLISECONDS)
+    implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
     val answer = OrgActor.actor ? InterruptDataset(datasetName)
     val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
     if (!interrupted) datasetDb.endProgress(Some("Terminated processing"))
