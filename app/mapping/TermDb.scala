@@ -22,27 +22,9 @@ import play.api.libs.json.{Json, Writes}
 import services.BaseX._
 import services.Temporal
 
-import scala.xml.XML
+import scala.xml.{Elem, XML}
 
 /**
- *
- * todo: turn this into RDF:
-<term-mappings>
-  <term-mapping>
-    <source>dimcon/afrika_sip_drop/rdf:Description/dc:subject/maten%20en%20gewichten</source>
-    <target>http://data.cultureelerfgoed.nl/semnet/1cf92d41-21eb-4a17-b132-25d407ff01a4</target>
-    <conceptScheme>Erfgoed Thesaurus</conceptScheme>
-    <prefLabel>weefgewichten</prefLabel>
-  </term-mapping>
-</term-mappings>
-like so:
- <skos:Concept rdf:about="dimcon/afrika_sip_drop/rdf:Description/dc:subject/maten%20en%20gewichten">
-     <skos:exactMatch rdf:resource="http://data.cultureelerfgoed.nl/semnet/1cf92d41-21eb-4a17-b132-25d407ff01a4"
-     <skos:prefLabel>weefgewichten</skos:prefLabel>
-     <skos:note>Mapped by {{ username }} on {{ date }}</skos:note>
-     <skos:note>https://github.com/delving/narthex</skos:note>
- </skos:Concept>
- *
  * @author Gerald de Jong <gerald@delving.eu
  */
 
@@ -143,6 +125,26 @@ class TermDb(dbBaseName: String) {
         Temporal.stringToTime((node \ "when").text)
       )
     }
+  }
+
+  def getMappingsRDF: Elem = withTermDb[Elem] { session =>
+    val rdfQuery = s"""
+      | declare namespace rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+      | declare namespace skos="http://www.w3.org/2004/02/skos/core#";
+      | let $$mappings := $dbPath/term-mapping
+      | return
+      |   <rdf:RDF>{
+      |     for $$m in $$mappings return
+      |       <skos:Concept rdf:about="{$$m/sourceURI}">
+      |         <skos:exactMatch rdf:resource="{$$m/targetURI}"/>
+      |         <skos:note>Mapped in Narthex by {$$m/who/text()} on {$$m/when/text()}</skos:note>
+      |       </skos:Concept>
+      |   }</rdf:RDF>
+      |
+      """.stripMargin
+
+    val mappings = session.query(rdfQuery).execute()
+    XML.loadString(mappings)
   }
 
 }

@@ -67,7 +67,6 @@ define(["angular"], function (angular) {
                     $scope.mappingsAB[m.uriA] = m.uriB;
                     $scope.mappingsBA[m.uriB] = m.uriA;
                 });
-                console.log("AB", $scope.mappingsAB)
             });
         }
 
@@ -114,23 +113,26 @@ define(["angular"], function (angular) {
         });
 
         function afterSelect() {
-            console.log("after select");
             if ($scope.conceptA && $scope.conceptB) {
-                $scope.buttonText = $scope.conceptA.prefLabel + " <=MATCHES=> " + $scope.conceptB.prefLabel;
+                $scope.buttonText = "'" + $scope.conceptA.prefLabel + "' <= exact match => '" + $scope.conceptB.prefLabel + "'";
                 $scope.buttonEnabled = true;
             }
             else {
                 if ($scope.conceptA) {
                     var uriB = $scope.mappingsAB[$scope.conceptA.uri];
                     if (uriB) {
-                        $scope.selectB(uriB);
+                        $scope.selectConceptB(_.find($scope.conceptsB, function (b) {
+                            return b.uri == uriB;
+                        }));
                         return
                     }
                 }
                 else if ($scope.conceptB) {
                     var uriA = $scope.mappingsBA[$scope.conceptB.uri];
                     if (uriA) {
-                        $scope.selectA(uriA);
+                        $scope.selectConceptA(_.find($scope.conceptsA, function (a) {
+                            return a.uri == uriA;
+                        }));
                         return
                     }
                 }
@@ -151,18 +153,6 @@ define(["angular"], function (angular) {
             afterSelect();
         };
 
-        $scope.selectA = function (uri) {
-            $scope.selectConceptA(_.find($scope.conceptsA, function (a) {
-                return a.uri == uri;
-            }));
-        };
-
-        $scope.selectB = function (uri) {
-            $scope.selectConceptB(_.find($scope.conceptsB, function (b) {
-                return b.uri == uri;
-            }));
-        };
-
         $scope.toggleMapping = function () {
             var body = {
                 uriA: $scope.conceptA.uri,
@@ -178,7 +168,6 @@ define(["angular"], function (angular) {
                         $scope.mappingsAB[body.uriA] = $scope.mappingsBA[body.uriB] = undefined;
                         break;
                 }
-                console.log("reply", reply);
             });
         };
     };

@@ -22,7 +22,7 @@ import play.api.libs.json.{Json, Writes}
 import services.BaseX._
 import services.Temporal
 
-import scala.xml.XML
+import scala.xml.{Elem, XML}
 
 object ThesaurusDb {
 
@@ -50,9 +50,9 @@ class ThesaurusDb(conceptSchemeA: String, conceptSchemeB: String) {
   val dbDoc = s"$thesaurusDb/$thesaurusDb.xml"
   val dbPath = s"doc('$dbDoc')/$name"
 
-  def withTermDb[T](block: ClientSession => T): T = withDbSession[T](thesaurusDb, Some(name))(block)
+  def withThesaurusDb[T](block: ClientSession => T): T = withDbSession[T](thesaurusDb, Some(name))(block)
 
-  def toggleMapping(mapping: ThesaurusMapping) = withTermDb { session =>
+  def toggleMapping(mapping: ThesaurusMapping) = withThesaurusDb { session =>
     val orQuery = s"$dbPath/thesaurus-mapping[uriA=${quote(mapping.uriA)} or uriB=${quote(mapping.uriB)}]"
     val existing = session.query(orQuery).execute().trim
 
@@ -87,7 +87,7 @@ class ThesaurusDb(conceptSchemeA: String, conceptSchemeB: String) {
     }
   }
 
-  def getMappings: Seq[ThesaurusMapping] = withTermDb[Seq[ThesaurusMapping]] { session =>
+  def getMappings: Seq[ThesaurusMapping] = withThesaurusDb[Seq[ThesaurusMapping]] { session =>
     val mappings = session.query(dbPath).execute()
     val xml = XML.loadString(mappings)
     (xml \ "thesaurus-mapping").map { node =>
@@ -98,6 +98,26 @@ class ThesaurusDb(conceptSchemeA: String, conceptSchemeB: String) {
         Temporal.stringToTime((node \ "when").text)
       )
     }
+  }
+
+  def getMappingsRDF: Elem = withThesaurusDb[Elem] { session =>
+    val rdfQuery = s"""
+      | declare namespace rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+      | declare namespace skos="http://www.w3.org/2004/02/skos/core#";
+      | let $$mappings := $dbPath/thesaurus-mapping
+      | return
+      |   <rdf:RDF>{
+      |     for $$m in $$mappings return
+      |       <skos:Concept rdf:about="{$$m/uriA}">
+      |         <skos:exactMatch rdf:resource="{$$m/uriB}"/>
+      |         <skos:note>Mapped in Narthex by {$$m/who/text()} on {$$m/when/text()}</skos:note>
+      |       </skos:Concept>
+      |   }</rdf:RDF>
+      |
+      """.stripMargin
+
+    val mappings = session.query(rdfQuery).execute()
+    XML.loadString(mappings)
   }
 
 }

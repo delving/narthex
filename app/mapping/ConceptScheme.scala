@@ -39,16 +39,16 @@ object ConceptScheme {
     languageFit.getOrElse(labels.head)
   }
 
-  def getLabels(resource: Resource, propertyName: String, model: Model): Seq[Label] = {
+  def getLabels(resource: Resource, propertyName: String, preferred: Boolean, model: Model): Seq[Label] = {
     val property = model.getProperty(SKOS, propertyName)
     model.listStatements(resource, property, null).map(_.getObject.asLiteral()).map(
-      literal => Label(preferred = true, literal.getLanguage, literal.getString)
+      literal => Label(preferred = preferred, literal.getLanguage, literal.getString)
     ).toSeq
   }
 
-  def getPrefLabels(resource: Resource, model: Model) = getLabels(resource, "prefLabel", model)
+  def getPrefLabels(resource: Resource, model: Model) = getLabels(resource, "prefLabel", preferred = true, model)
 
-  def getAltLabels(resource: Resource, model: Model) = getLabels(resource, "altLabel", model)
+  def getAltLabels(resource: Resource, model: Model) = getLabels(resource, "altLabel", preferred = false, model)
 
   def getRelated(resource: Resource, propertyName: String, model: Model): Seq[Resource] = {
     val property = model.getProperty(SKOS, propertyName)
