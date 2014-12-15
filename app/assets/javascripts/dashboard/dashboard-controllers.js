@@ -354,6 +354,10 @@ define(["angular"], function () {
             $scope.command("Discard source?", "remove source");
         };
 
+        $scope.discardMapped = function () {
+            $scope.command("Discard mapped data?", "remove mapped");
+        };
+
         $scope.discardTree = function () {
             $scope.command("Discard analysis?", "remove tree");
         };

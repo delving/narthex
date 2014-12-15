@@ -95,13 +95,17 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         if (interruptProgress) "interrupted" else "killed"
 
       case "remove source" =>
-        deleteQuietly(pocketFile)
-        deleteQuietly(mappedFile)
         deleteQuietly(rawDir)
         deleteQuietly(stagingDir)
         datasetDb.setStatus(EMPTY)
         datasetDb.endProgress(None)
         "source removed"
+
+      case "remove mapped" =>
+        deleteQuietly(pocketFile)
+        deleteQuietly(mappedFile)
+        startAnalysis()
+        "mapped removed"
 
       case "remove tree" =>
         deleteQuietly(treeDir)

@@ -296,6 +296,11 @@
         <i class="fa fa-trash-o"></i>
         <span>Discard Records</span>
     </button>
+    <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="discardMapped()"
+            data-ng-show="!(file.treeTime || file.recordsTime || file.progress) && file.state != 'state-empty'">
+        <i class="fa fa-trash-o"></i>
+        <span>Discard Mapped Data</span>
+    </button>
     <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="discardSource()"
             data-ng-show="!(file.treeTime || file.recordsTime || file.progress) && file.state != 'state-empty'">
         <i class="fa fa-trash-o"></i>
