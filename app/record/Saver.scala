@@ -25,7 +25,7 @@ import dataset.ProgressState._
 import dataset.Sip.SipMapper
 import dataset.SipFactory.SipGenerationFacts
 import org.apache.commons.io.FileUtils
-import org.basex.core.cmd.{Delete, Optimize}
+import org.basex.core.cmd.{Delete, Flush, Optimize}
 import record.PocketParser.Pocket
 import record.Saver._
 import services.{FileHandling, ProgressReporter}
@@ -182,6 +182,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
                   if (tick % 10000 == 0) {
                     val now = System.currentTimeMillis()
                     log.info(s"Saving $tick: ${now - time}ms")
+                    session.execute(new Flush())
                     time = now
                   }
                   recordCount += 1
