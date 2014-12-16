@@ -1,12 +1,7 @@
+<h1 class="text-center">Mapping Concept Schemes</h1>
 <div class="row">
-
-    <div class="col-md-12" style="text-align: center">
-        <h1>Mapping Concept Schemes</h1>
-    </div>
-    <div class="col-md-12">
-        <div class="col-sm-3"></div>
-        <div class="col-sm-3" style="text-align: right">
-            <ul class="list-unstyled">
+        <div class="col-sm-3 col-sm-offset-3">
+            <ul class="list-unstyled text-right">
                 <li data-ng-repeat="cs in conceptSchemeList">
                     <label for="A{{$index}}">{{ cs }}</label>
                     <input id="A{{$index}}" type="radio" data-ng-model="conceptSchemes.a" data-ng-value="cs" data-ng-disabled="cs == conceptSchemes.b">
@@ -21,17 +16,14 @@
                 </li>
             </ul>
         </div>
-        <div class="col-sm-3"></div>
-    </div>
+   </div>
 
-    <div class="col-md-12 fa-align-center">
-        <div class="col-sm-3"></div>
-        <div class="col-sm-6">
-            <button type="button" style="width: 100%" class="btn btn-success" data-ng-click="goToMapping()" data-ng-disabled="!buttonEnabled">
+    <div class="row">
+        <div class="col-sm-4 col-sm-offset-4">
+            <button type="button" class="btn btn-success btn-block" data-ng-click="goToMapping()" data-ng-disabled="!buttonEnabled">
                 <span>{{ buttonText }}</span>
             </button>
         </div>
-        <div class="col-sm-3"></div>
     </div>
 
     <!--todo: a button for downloading-->

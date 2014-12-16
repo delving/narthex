@@ -1,19 +1,15 @@
 <div class="row">
 
-    <div class="col-md-12 search-all">
-        <div class="col-sm-3">
-        </div>
-        <div class="col-sm-6">
+    <div class="row search-all">
+        <div class="col-sm-6 col-sm-offset-3">
             <div class="input-group input-group-skos-term search-all-field">
                 <label class="input-group-addon"><i class="fa fa-search"></i>Search Both</label>
                 <input class="form-control" type="text" data-ng-model="sought"/>
             </div>
         </div>
-        <div class="col-sm-3">
-        </div>
     </div>
 
-    <div class="col-md-12">
+    <div class="row">
         <div class="col-sm-6 concept-pane">
             <div class="input-group input-group-skos-term">
                 <label class="input-group-addon"><i class="fa fa-search"></i> {{ conceptSchemeA }}</label>
@@ -101,14 +97,12 @@
         </div>
     </div>
 
-    <div class="col-md-12 fa-align-center">
-        <div class="col-sm-3"></div>
-        <div class="col-sm-6">
+    <div class="row">
+        <div class="col-sm-6 col-sm-offset-3">
             <button type="button" style="width: 100%" class="btn btn-success" data-ng-click="toggleMapping()" data-ng-disabled="!buttonEnabled">
                 <span>{{ buttonText }}</span>
             </button>
         </div>
-        <div class="col-sm-3"></div>
     </div>
 
 </div>
