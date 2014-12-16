@@ -409,7 +409,7 @@
                     <li ng-class="{'active':tabOpen === 'publication'}" data-ng-show="file.recordsTime">
                         <a href role="tab" data-ng-click="setTabOpen('publication')">Publication</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="file.recordsTime">
+                    <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="file.recordsTime && categoriesEnabled">
                         <a href role="tab" data-ng-click="setTabOpen('categories')">Categories</a>
                     </li>
                     <li ng-class="{'active':tabOpen === 'downloads'}" data-ng-show="file.recordsTime">

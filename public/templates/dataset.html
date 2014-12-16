@@ -56,16 +56,14 @@
                         <span> Use as Unique Element</span>
                     </button>
                 </div>
-                <div class="btn-group">
-                    <button class="btn btn-info btn-xs" data-ng-click="goToPage(selectedNode, 'terms')"
-                            data-ng-show="sourcedState && activeView == 'histogram' && histogramVocabulary">
+                <div class="btn-group" data-ng-show="sourcedState && activeView == 'histogram' && histogramVocabulary">
+                    <button class="btn btn-info btn-xs" data-ng-click="goToPage(selectedNode, 'terms')">
                         <i class="fa fa-arrow-circle-right"></i>
                         <span> Terminology Mapping</span>
                     </button>
                 </div>
-                <div class="btn-group">
-                    <button class="btn btn-info btn-xs" data-ng-click="goToPage(selectedNode, 'categories')"
-                            data-ng-show="sourcedState && activeView == 'histogram' && histogramVocabulary">
+                <div class="btn-group" data-ng-show="sourcedState && activeView == 'histogram' && histogramVocabulary && categoriesEnabled">
+                    <button class="btn btn-info btn-xs" data-ng-click="goToPage(selectedNode, 'categories')">
                         <i class="fa fa-arrow-circle-right"></i>
                         <span> Category Mapping</span>
                     </button>

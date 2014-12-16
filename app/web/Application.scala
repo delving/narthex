@@ -36,10 +36,12 @@ object Application extends Controller with Security {
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
 
-  def root = Action { request => Redirect("/narthex/")}
+  def root = Action { request =>
+    Redirect("/narthex/")
+  }
 
   def index = Action { request =>
-    Ok(views.html.index(ORG_ID, SIP_APP_URL))
+    Ok(views.html.index(ORG_ID, SIP_APP_URL, SHOW_CATEGORIES, SHOW_THESAURUS))
   }
 
   def login = Action(parse.json) {
@@ -62,7 +64,8 @@ object Application extends Controller with Security {
               apiKey = API_ACCESS_KEYS(0),
               oaiPmhKey = OAI_PMH_ACCESS_KEYS(0),
               narthexDomain = NARTHEX_DOMAIN,
-              naveDomain = NAVE_DOMAIN
+              naveDomain = NAVE_DOMAIN,
+              categoriesEnabled = SHOW_CATEGORIES
             )
             Logger.warn("get or create " + username + " " + profile + " with token:" + token)
             // todo: put the user in the database
@@ -101,13 +104,14 @@ object Application extends Controller with Security {
                   else {
                     val token = java.util.UUID.randomUUID().toString
                     val cachedProfile = CachedProfile(
-                      firstName=user.getString("firstName"),
+                      firstName = user.getString("firstName"),
                       lastName = user.getString("lastName"),
                       email = user.getString("email"),
                       apiKey = API_ACCESS_KEYS(0),
                       oaiPmhKey = OAI_PMH_ACCESS_KEYS(0),
                       narthexDomain = NARTHEX_DOMAIN,
-                      naveDomain = NAVE_DOMAIN
+                      naveDomain = NAVE_DOMAIN,
+                      categoriesEnabled = SHOW_CATEGORIES
                     )
                     Ok(Json.obj(
                       "firstName" -> cachedProfile.firstName,
@@ -116,7 +120,8 @@ object Application extends Controller with Security {
                       "apiKey" -> cachedProfile.apiKey,
                       "oaiPmhKey" -> cachedProfile.oaiPmhKey,
                       "narthexDomain" -> cachedProfile.narthexDomain,
-                      "naveDomain" -> cachedProfile.naveDomain
+                      "naveDomain" -> cachedProfile.naveDomain,
+                      "categoriesEnabled" -> cachedProfile.categoriesEnabled
                     )).withToken(token, cachedProfile)
                   }
 
@@ -133,15 +138,16 @@ object Application extends Controller with Security {
       maybeToken flatMap {
         token =>
           Cache.getAs[CachedProfile](token) map { cachedProfile =>
-              Ok(Json.obj(
-                "firstName" -> cachedProfile.firstName,
-                "lastName" -> cachedProfile.lastName,
-                "email" -> cachedProfile.email,
-                "apiKey" -> cachedProfile.apiKey,
-                "oaiPmhKey" -> cachedProfile.oaiPmhKey,
-                "narthexDomain" -> cachedProfile.narthexDomain,
-                "naveDomain" -> cachedProfile.naveDomain
-              )).withToken(token, cachedProfile)
+            Ok(Json.obj(
+              "firstName" -> cachedProfile.firstName,
+              "lastName" -> cachedProfile.lastName,
+              "email" -> cachedProfile.email,
+              "apiKey" -> cachedProfile.apiKey,
+              "oaiPmhKey" -> cachedProfile.oaiPmhKey,
+              "narthexDomain" -> cachedProfile.narthexDomain,
+              "naveDomain" -> cachedProfile.naveDomain,
+              "categoriesEnabled" -> cachedProfile.categoriesEnabled
+            )).withToken(token, cachedProfile)
           }
       } getOrElse {
         Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)

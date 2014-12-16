@@ -36,6 +36,7 @@ define(["angular"], function () {
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
         $scope.dataset = { name: "" };
+        $scope.categoriesEnabled = user.categoriesEnabled;
 
         function setSearch() {
             $location.search({open: $scope.fileOpen, tab: $scope.tabOpen });

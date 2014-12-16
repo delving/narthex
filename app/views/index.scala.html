@@ -1,4 +1,4 @@
-@(orgId: String, sipCreatorLink: String)
+@(orgId: String, sipCreatorLink: String, showCategories: Boolean, showThesaurus: Boolean)
 <html>
     <head>
         <title>Narthex-@orgId</title>
@@ -21,9 +21,12 @@
                 <div data-ng-switch-when="true">
                     <div class="navbar-left nav-app">
                         <a href="/narthex/#/datasets" class="btn btn-primary">Datasets</a>
-                        @*todo: make the appearance of this button optional*@
-                        <a href="/narthex/#/categories" class="btn btn-primary">Categories</a>
-                        <a href="/narthex/#/thesaurus" class="btn btn-primary">Thesaurus</a>
+                        @if(showCategories) {
+                           <a href="/narthex/#/categories" class="btn btn-primary">Categories</a>
+                        }
+                        @if(showThesaurus) {
+                           <a href="/narthex/#/thesaurus" class="btn btn-primary">Thesaurus</a>
+                        }
                         <a data-ng-show="breadcrumbs.dataset" href="/narthex/#/dataset/{{ breadcrumbs.dataset }}" class="btn btn-primary">
                             Dataset "{{ breadcrumbs.dataset }}"
                         </a>

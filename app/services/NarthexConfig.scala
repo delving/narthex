@@ -26,6 +26,7 @@ import scala.collection.JavaConversions._
 object NarthexConfig {
   val config = Play.current.configuration
 
+  def configFlag(name: String): Boolean = config.getBoolean(name).getOrElse(false)
   def configString(name: String) = config.getString(name).getOrElse(
     throw new RuntimeException(s"Missing config string: $name")
   )
@@ -56,4 +57,6 @@ object NarthexConfig {
   val NARTHEX_DOMAIN = configString("domains.narthex")
   val NAVE_DOMAIN = configString("domains.nave")
 
+  val SHOW_CATEGORIES = configFlag("categories")
+  val SHOW_THESAURUS = configFlag("thesaurus")
 }

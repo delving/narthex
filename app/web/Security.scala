@@ -30,7 +30,14 @@ trait Security {
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
   lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
 
-  case class CachedProfile(firstName: String, lastName: String, email:String, apiKey: String, oaiPmhKey: String, narthexDomain:String, naveDomain:String)
+  case class CachedProfile
+  (
+    firstName: String, lastName: String,
+    email:String,
+    apiKey: String, oaiPmhKey: String,
+    narthexDomain:String, naveDomain:String,
+    categoriesEnabled: Boolean
+    )
 
   /*
     To make this work seamlessly with Angular, you should read the token from a header called

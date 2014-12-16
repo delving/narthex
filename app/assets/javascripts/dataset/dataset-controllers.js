@@ -22,6 +22,7 @@ define(["angular"], function () {
         $scope.datasetName = $routeParams.datasetName;
         $rootScope.breadcrumbs.dataset = $scope.datasetName;
         $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.datasetName;
+        $scope.categoriesEnabled = user.categoriesEnabled;
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
