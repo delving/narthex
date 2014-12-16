@@ -4,7 +4,7 @@ import java.io.{ByteArrayInputStream, File}
 import javax.xml.parsers.DocumentBuilderFactory
 
 import org.apache.commons.io.FileUtils._
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.{FlatSpec, Matchers}
 import org.xml.sax.InputSource
 import record.EnrichmentParser
@@ -13,30 +13,31 @@ import record.PocketParser._
 
 class TestTermMatching extends FlatSpec with Matchers {
 
-    val userHome: String = "/tmp/narthex-user"
-    System.setProperty("user.home", userHome)
-    deleteQuietly(new File(userHome))
+  val userHome: String = "/tmp/narthex-user"
+  System.setProperty("user.home", userHome)
+  deleteQuietly(new File(userHome))
+  DateTimeZone.setDefault(DateTimeZone.forID("Europe/Amsterdam"))
 
-//    "A NodeRepo" should "allow terminology mapping" in {
-//      val repo = Repo("test@narthex.delving.org")
-//      repo.create("password")
-//      val datasetRepo = repo.datasetRepo("pretend-file.xml.gz")
-//
-//      def createNodeRepo(path: String) = {
-//        val nodeDir = path.split('/').toList.foldLeft(datasetRepo.dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
-//        nodeDir.mkdirs()
-//        datasetRepo.nodeRepo(path).get
-//      }
-//
-//      Repo.startBaseX()
-//
-//      datasetRepo.setMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink", "cusses", "finky"))
-//      datasetRepo.setMapping(TermMapping("bb", "http://gumby.com/pokey", "cusses", "horsey"))
-//      datasetRepo.setMapping(TermMapping("a", "http://gumby.com/gumby", "cusses", "clayman"))
-//
-//      datasetRepo.getMappings.toString() should be("List(TermMapping(a,http://gumby.com/gumby,cusses,clayman), TermMapping(bb,http://gumby.com/pokey,cusses,horsey))")
-//      datasetRepo.getMapping("a") should be("http://gumby.com/gumby")
-//    }
+  //    "A NodeRepo" should "allow terminology mapping" in {
+  //      val repo = Repo("test@narthex.delving.org")
+  //      repo.create("password")
+  //      val datasetRepo = repo.datasetRepo("pretend-file.xml.gz")
+  //
+  //      def createNodeRepo(path: String) = {
+  //        val nodeDir = path.split('/').toList.foldLeft(datasetRepo.dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
+  //        nodeDir.mkdirs()
+  //        datasetRepo.nodeRepo(path).get
+  //      }
+  //
+  //      Repo.startBaseX()
+  //
+  //      datasetRepo.setMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink", "cusses", "finky"))
+  //      datasetRepo.setMapping(TermMapping("bb", "http://gumby.com/pokey", "cusses", "horsey"))
+  //      datasetRepo.setMapping(TermMapping("a", "http://gumby.com/gumby", "cusses", "clayman"))
+  //
+  //      datasetRepo.getMappings.toString() should be("List(TermMapping(a,http://gumby.com/gumby,cusses,clayman), TermMapping(bb,http://gumby.com/pokey,cusses,horsey))")
+  //      datasetRepo.getMapping("a") should be("http://gumby.com/gumby")
+  //    }
 
   "A transformer" should "insert an enrichment" in {
 
@@ -75,7 +76,7 @@ class TestTermMatching extends FlatSpec with Matchers {
         |        <skos:prefLabel>glasinloody</skos:prefLabel>
         |        <skos:exactMatch rdf:resource="uri"/>
         |        <skos:ConceptScheme>vocab</skos:ConceptScheme>
-        |        <skos:note>Mapped in Narthex by dude on 1970-01-01T02:00:00+02:00</skos:note>
+        |        <skos:note>Mapped in Narthex by dude on 1970-01-01T01:00:00+01:00</skos:note>
         |      </rdf:Description>
         |    </content.subject>
         |  </inner>

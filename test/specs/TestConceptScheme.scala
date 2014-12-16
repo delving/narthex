@@ -13,7 +13,7 @@ class TestConceptScheme extends FlatSpec with Matchers {
     conSchemes.map(s => println(s"Scheme: $s"))
     val conScheme = conSchemes.head
 
-    def searchConceptScheme(sought: String) = conScheme.search("dut", sought, 3)
+    def searchConceptScheme(sought: String) = conScheme.search("nl", sought, 3)
 
     val searches: List[LabelSearch] = List(
       "Europese wetgeving",

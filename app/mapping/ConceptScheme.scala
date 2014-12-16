@@ -35,7 +35,7 @@ object ConceptScheme {
   val IGNORE_BRACKET = """ *[(].*[)]$""".r
 
   def getLanguageLabel(labels: Seq[Label], language: String): Label = {
-    // try language, default to "sys"
+    // try language, default to whatever can be found
     val languageFit = labels.find(_.language == language)
     languageFit.getOrElse(labels.head)
   }
@@ -162,5 +162,5 @@ case class ConceptScheme(resource: Resource, model: Model) {
     LabelSearch(LabelQuery(language, cleanSought, count), results)
   }
 
-  override def toString: String = s"ConceptScheme($resource): $name"
+  override def toString: String = s"ConceptScheme($resource): $name (${concepts.size})"
 }

@@ -259,7 +259,7 @@ object Dashboard extends Controller with Security {
     val schemeOpt = repo.skosRepo.conceptSchemes.find(scheme => conceptSchemeName == scheme.name)
     schemeOpt.map { scheme =>
       val nonemptySought = if (sought == "-") "" else sought
-      val search = scheme.search("dut", nonemptySought, 25)
+      val search = scheme.search("nl", nonemptySought, 25)
       Ok(Json.obj("search" -> search))
     } getOrElse {
       NotFound(Json.obj("problem" -> s"No concept scheme named '$conceptSchemeName' found."))
