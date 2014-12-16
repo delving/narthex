@@ -49,6 +49,7 @@ define(["angular"], function (angular) {
         var b = $routeParams.conceptSchemeB;
         $scope.conceptSchemeA = (a < b) ? a : b;
         $scope.conceptSchemeB = (a < b) ? b : a;
+        $scope.show = "all";
 
         $scope.downloadUrl = user.narthexAPI + '/skos/' + $scope.conceptSchemeA + '/' + $scope.conceptSchemeB + '/mappings';
         $scope.mappingsAB = {};
@@ -61,6 +62,65 @@ define(["angular"], function (angular) {
         var fetchedConceptsB = [];
         $scope.conceptsA = [];
         $scope.conceptsB = [];
+
+        function filterConcepts() {
+            switch ($scope.show) {
+                case "all":
+                    if ($scope.conceptA) {
+                        $scope.conceptsA = [ $scope.conceptA ];
+                    }
+                    else {
+                        $scope.conceptsA = fetchedConceptsA;
+                    }
+                    if ($scope.conceptB) {
+                        $scope.conceptsB = [ $scope.conceptB ];
+                    }
+                    else {
+                        $scope.conceptsB = fetchedConceptsB;
+                    }
+                    break;
+                case "mapped":
+                    if ($scope.conceptA) {
+                        $scope.conceptsA = [ $scope.conceptA ];
+                    }
+                    else {
+                        $scope.conceptsA = _.filter(fetchedConceptsA, function (c) {
+                            return $scope.mappingsAB[c.uri];
+                        });
+                    }
+                    if ($scope.conceptB) {
+                        $scope.conceptsB = [ $scope.conceptB ];
+                    }
+                    else {
+                        $scope.conceptsB = _.filter(fetchedConceptsB, function (c) {
+                            return $scope.mappingsBA[c.uri];
+                        });
+                    }
+                    break;
+                case "unmapped":
+                    if ($scope.conceptA) {
+                        $scope.conceptsA = [ $scope.conceptA ];
+                    }
+                    else {
+                        $scope.conceptsA = _.filter(fetchedConceptsA, function (c) {
+                            return !$scope.mappingsAB[c.uri];
+                        });
+                    }
+                    if ($scope.conceptB) {
+                        $scope.conceptsB = [ $scope.conceptB ];
+                    }
+                    else {
+                        $scope.conceptsB = _.filter(fetchedConceptsB, function (c) {
+                            return !$scope.mappingsBA[c.uri];
+                        });
+                    }
+                    break;
+            }
+        }
+
+        $scope.$watch("show", function (show) {
+            filterConcepts();
+        });
 
         function fetchMappings() {
             thesaurusService.getThesaurusMappings($scope.conceptSchemeA, $scope.conceptSchemeB).then(function (data) {
@@ -144,8 +204,7 @@ define(["angular"], function (angular) {
                 $scope.buttonText = "Select two concepts";
                 $scope.buttonEnabled = false;
             }
-            if (!$scope.conceptA) $scope.conceptsA = fetchedConceptsA;
-            if (!$scope.conceptB) $scope.conceptsB = fetchedConceptsB;
+            filterConcepts();
         }
 
         afterSelect();
@@ -177,6 +236,8 @@ define(["angular"], function (angular) {
                         $scope.mappingsAB[body.uriA] = $scope.mappingsBA[body.uriB] = undefined;
                         break;
                 }
+                $scope.conceptA = $scope.conceptB = null;
+                afterSelect();
             });
         };
     };
