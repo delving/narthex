@@ -222,32 +222,19 @@ trait Harvesting {
 
   def fetchPMHPage(url: String, set: String, metadataPrefix: String, modifiedAfter: Option[DateTime], justDate: Boolean,
                    resumption: Option[PMHResumptionToken] = None): Future[AnyRef] = {
-    val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
+
     // Teylers 2014-09-15
-    val fromBase = timeToUTCString(modifiedAfter.getOrElse(new DateTime(0L)))
-    val from = if (justDate) fromBase.substring(0, fromBase.indexOf('T')) else fromBase
+    val listRecords = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT).withQueryString("verb" -> "ListRecords")
     val request = resumption match {
       case None =>
-        if (set.isEmpty) {
-          requestUrl.withQueryString(
-            "verb" -> "ListRecords",
-            "metadataPrefix" -> metadataPrefix,
-            "from" -> from
-          )
-        }
-        else {
-          requestUrl.withQueryString(
-            "verb" -> "ListRecords",
-            "set" -> set,
-            "metadataPrefix" -> metadataPrefix,
-            "from" -> fromBase
-          )
-        }
+        val withPrefix = listRecords.withQueryString("metadataPrefix" -> metadataPrefix)
+        val withSet = if (set.isEmpty) withPrefix else withPrefix.withQueryString("set" -> set)
+        modifiedAfter.map(modified => withSet.withQueryString("from" -> {
+          val dateTime = timeToUTCString(modified)
+          if (justDate) dateTime.substring(0, dateTime.indexOf('T')) else dateTime
+        })).getOrElse(withSet)
       case Some(token) =>
-        requestUrl.withQueryString(
-          "verb" -> "ListRecords",
-          "resumptionToken" -> token.value
-        )
+        listRecords.withQueryString("resumptionToken" -> token.value)
     }
     request.get().map { response =>
       val error: Option[HarvestError] = if (response.status != 200) {
