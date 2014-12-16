@@ -55,9 +55,6 @@ class ThesaurusDb(conceptSchemeA: String, conceptSchemeB: String) {
   def toggleMapping(mapping: ThesaurusMapping) = withThesaurusDb { session =>
     val orQuery = s"$dbPath/thesaurus-mapping[uriA=${quote(mapping.uriA)} or uriB=${quote(mapping.uriB)}]"
     val existing = session.query(orQuery).execute().trim
-
-    println(s"existing: $existing")
-
     if (existing.isEmpty) {
       val insert = s"""
       |
