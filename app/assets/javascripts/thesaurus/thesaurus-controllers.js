@@ -44,12 +44,13 @@ define(["angular"], function (angular) {
 
     ThesaurusChooseCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService"];
 
-    var ThesaurusMapCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService, $timeout, pageScroll) {
+    var ThesaurusMapCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService, $timeout, pageScroll, user) {
         var a = $routeParams.conceptSchemeA;
         var b = $routeParams.conceptSchemeB;
         $scope.conceptSchemeA = (a < b) ? a : b;
         $scope.conceptSchemeB = (a < b) ? b : a;
 
+        $scope.downloadUrl = user.narthexAPI + '/skos/' + $scope.conceptSchemeA + '/' + $scope.conceptSchemeB + '/mappings';
         $scope.mappingsAB = {};
         $scope.mappingsBA = {};
 
@@ -172,7 +173,7 @@ define(["angular"], function (angular) {
         };
     };
 
-    ThesaurusMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService", "$timeout", "pageScroll"];
+    ThesaurusMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService", "$timeout", "pageScroll", "user"];
 
     return {
         ThesaurusChooseCtrl: ThesaurusChooseCtrl,
