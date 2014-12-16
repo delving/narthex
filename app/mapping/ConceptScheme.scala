@@ -109,8 +109,8 @@ object ConceptScheme {
     lazy val prefLabels = getPrefLabels(resource, model)
     lazy val altLabels = getAltLabels(resource, model)
     lazy val labels = prefLabels ++ altLabels
-    lazy val narrower: Seq[Concept] = getRelated(resource, "narrower", model).map(resource => conceptMap(resource.getURI))
-    lazy val broader: Seq[Concept] = getRelated(resource, "broader", model).map(resource => conceptMap(resource.getURI))
+    lazy val narrower: Seq[Concept] = getRelated(resource, "narrower", model).flatMap(resource => conceptMap.get(resource.getURI))
+    lazy val broader: Seq[Concept] = getRelated(resource, "broader", model).flatMap(resource => conceptMap.get(resource.getURI))
     
     def getPrefLabel(language: String) = getLanguageLabel(prefLabels, language)
     
