@@ -57,6 +57,8 @@ define(["angular"], function (angular) {
         $scope.sought = "";
         $scope.soughtA = "";
         $scope.soughtB = "";
+        var fetchedConceptsA = [];
+        var fetchedConceptsB = [];
         $scope.conceptsA = [];
         $scope.conceptsB = [];
 
@@ -80,14 +82,16 @@ define(["angular"], function (angular) {
         function searchA(value) {
             $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
             thesaurusService.searchConceptScheme($scope.conceptSchemeA, value).then(function (data) {
-                $scope.conceptsA = data.search.results;
+                fetchedConceptsA = $scope.conceptsA = data.search.results;
+                $scope.conceptA = null;
             });
         }
 
         function searchB(value) {
             $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
             thesaurusService.searchConceptScheme($scope.conceptSchemeB, value).then(function (data) {
-                $scope.conceptsB = data.search.results;
+                fetchedConceptsB = $scope.conceptsB = data.search.results;
+                $scope.conceptB = null;
             });
         }
 
@@ -140,17 +144,21 @@ define(["angular"], function (angular) {
                 $scope.buttonText = "Select two concepts";
                 $scope.buttonEnabled = false;
             }
+            if (!$scope.conceptA) $scope.conceptsA = fetchedConceptsA;
+            if (!$scope.conceptB) $scope.conceptsB = fetchedConceptsB;
         }
 
         afterSelect();
 
         $scope.selectConceptA = function (c) {
             $scope.conceptA = ($scope.conceptA == c) ? null : c;
+            if ($scope.conceptA) $scope.conceptsA = [ $scope.conceptA ];
             afterSelect();
         };
 
         $scope.selectConceptB = function (c) {
             $scope.conceptB = ($scope.conceptB == c) ? null : c;
+            if ($scope.conceptB) $scope.conceptsB = [ $scope.conceptB ];
             afterSelect();
         };
 
