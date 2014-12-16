@@ -36,7 +36,7 @@ import scala.language.postfixOps
 
 object Harvester {
 
-  case class HarvestAdLib(url: String, database: String, modifiedAfter: Option[DateTime])
+  case class HarvestAdLib(url: String, database: String, search: String, modifiedAfter: Option[DateTime])
 
   case class HarvestPMH(url: String, set: String, prefix: String, modifiedAfter: Option[DateTime], justDate: Boolean)
 
@@ -104,14 +104,14 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
     case InterruptWork() =>
       if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
 
-    case HarvestAdLib(url, database, modifiedAfter) =>
+    case HarvestAdLib(url, database, search, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
-      val futurePage = fetchAdLibPage(url, database, modifiedAfter)
+      val futurePage = fetchAdLibPage(url, database, search, modifiedAfter)
       handleFailure(futurePage, modifiedAfter, "adlib harvest")
       progress = Some(ProgressReporter(HARVESTING, db))
       futurePage pipeTo self
 
-    case AdLibHarvestPage(records, url, database, modifiedAfter, diagnostic) =>
+    case AdLibHarvestPage(records, url, database, search, modifiedAfter, diagnostic) =>
       progress.foreach { progressReporter =>
         val pageNumber = addPage(records)
         val keepGoing = if (modifiedAfter.isDefined)
@@ -124,7 +124,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
             finish(modifiedAfter, None)
           }
           else {
-            val futurePage = fetchAdLibPage(url, database, modifiedAfter, Some(diagnostic))
+            val futurePage = fetchAdLibPage(url, database, search, modifiedAfter, Some(diagnostic))
             handleFailure(futurePage, modifiedAfter, "adlib harvest page")
             futurePage pipeTo self
           }

@@ -85,10 +85,11 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
           val url = (harvest \ "url").text
           val database = (harvest \ "dataset").text
           val prefix = (harvest \ "prefix").text
+          val search = (harvest \ "search").text
           val kickoff = harvestType match {
             case PMH => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
             case PMH_REC => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
-            case ADLIB => HarvestAdLib(url, database, modifiedAfter)
+            case ADLIB => HarvestAdLib(url, database, search, modifiedAfter)
           }
           val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo), "harvester"))
           harvester ! kickoff

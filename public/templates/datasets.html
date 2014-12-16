@@ -90,32 +90,36 @@
                 <label for="harvest_type">Harvest Server Type</label>
                 <div id="harvest_type" class="form-control">
                     <input type="radio" ng-model="file.info.harvest.harvestType" value="pmh">
-                    <span>OAI-PMH (record wrapper)</span>
+                    <span>OAI-PMH (record)</span>
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
                     <input type="radio" ng-model="file.info.harvest.harvestType" value="pmh-rec">
-                    <span>OAI-PMH (no record wrapper)</span>
+                    <span>OAI-PMH (fields)</span>
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
                     <input type="radio" ng-model="file.info.harvest.harvestType" value="adlib">
                     <span>AdLib API</span>
                 </div>
             </div>
             <div class="form-group">
-                <label for="pmh_url">Server URL</label>
-                <input id="pmh_url" class="form-control" data-ng-model="file.info.harvest.url" placeholder="http://..." required/>
+                <label for="harv_url">Server URL</label>
+                <input id="harv_url" class="form-control" data-ng-model="file.info.harvest.url" placeholder="http://..." required/>
             </div>
             <div class="form-group">
-                <label for="pmh_set">Server Dataset</label>
-                <input id="pmh_set" class="form-control" data-ng-model="file.info.harvest.dataset" placeholder="dataset"/>
+                <label for="harv_set">Server Dataset</label>
+                <input id="harv_set" class="form-control" data-ng-model="file.info.harvest.dataset" placeholder="dataset"/>
             </div>
             <div class="form-group" data-ng-show="file.info.harvest.harvestType != 'adlib'">
-                <label for="pmh_prefix">Metadata Prefix</label>
-                <input id="pmh_prefix" class="form-control" data-ng-model="file.info.harvest.prefix" placeholder="prefix" required/>
+                <label for="harv_prefix">Metadata Prefix</label>
+                <input id="harv_prefix" class="form-control" data-ng-model="file.info.harvest.prefix" placeholder="prefix" required/>
+            </div>
+            <div class="form-group" data-ng-show="file.info.harvest.harvestType == 'adlib'">
+                <label for="harv_search">Search</label>
+                <input id="harv_search" class="form-control" data-ng-model="file.info.harvest.search" placeholder="search" required/>
             </div>
             <button typ="button" class="btn btn-success" data-ng-click="startHarvest()">
                 <i class="fa fa-refresh"></i>
                 <span>Harvest</span>
-                <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH (record wrapper)</span>
-                <span data-ng-show="harvest.harvestType == 'pmh-rec'">from OAI-PMH (no record wrapper)</span>
+                <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH (record)</span>
+                <span data-ng-show="harvest.harvestType == 'pmh-rec'">from OAI-PMH (fields)</span>
                 <span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>
             </button>
         </fieldset>
