@@ -102,6 +102,7 @@ object Harvesting {
     records: String,
     url: String,
     database: String,
+    search: String,
     modifiedAfter: Option[DateTime],
     diagnostic: AdLibDiagnostic)
 
@@ -182,15 +183,17 @@ trait Harvesting {
       default
   }
 
-  def fetchAdLibPage(url: String, database: String, modifiedAfter: Option[DateTime],
+  def fetchAdLibPage(url: String, database: String, search: String, modifiedAfter: Option[DateTime],
                      diagnosticOption: Option[AdLibDiagnostic] = None): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
     // UMU 2014-10-16T15:00
-    val search = modifiedAfter.map(after => s"modification greater '${timeToLocalString(after)}'").getOrElse("all")
+    val searchModified = modifiedAfter.map(after =>
+      s"modification greater '${timeToLocalString(after)}'"
+    ).getOrElse(if (search.isEmpty) "all" else search)
     val request = requestUrl.withQueryString(
       "database" -> database,
-      "search" -> search,
+      "search" -> searchModified,
       "xmltype" -> "grouped",
       "limit" -> "50",
       "startFrom" -> startFrom.toString
@@ -209,6 +212,7 @@ trait Harvesting {
           response.xml.toString(),
           url,
           database,
+          search,
           modifiedAfter,
           AdLibDiagnostic(
             totalItems = tagToInt(diagnostic, "hits"),
