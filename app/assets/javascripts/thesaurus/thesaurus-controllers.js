@@ -45,6 +45,7 @@ define(["angular"], function (angular) {
     ThesaurusChooseCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService"];
 
     var ThesaurusMapCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService, $timeout, pageScroll, user) {
+
         var a = $routeParams.conceptSchemeA;
         var b = $routeParams.conceptSchemeB;
         $scope.conceptSchemeA = (a < b) ? a : b;
@@ -63,59 +64,53 @@ define(["angular"], function (angular) {
         $scope.conceptsA = [];
         $scope.conceptsB = [];
 
-        function filterConcepts() {
+        function filterConceptsNow() {
             switch ($scope.show) {
                 case "all":
-                    if ($scope.conceptA) {
+                    if ($scope.conceptA)
                         $scope.conceptsA = [ $scope.conceptA ];
-                    }
-                    else {
+                    else
                         $scope.conceptsA = fetchedConceptsA;
-                    }
-                    if ($scope.conceptB) {
+                    if ($scope.conceptB)
                         $scope.conceptsB = [ $scope.conceptB ];
-                    }
-                    else {
+                    else
                         $scope.conceptsB = fetchedConceptsB;
-                    }
                     break;
                 case "mapped":
-                    if ($scope.conceptA) {
+                    if ($scope.conceptA)
                         $scope.conceptsA = [ $scope.conceptA ];
-                    }
-                    else {
+                    else
                         $scope.conceptsA = _.filter(fetchedConceptsA, function (c) {
                             return $scope.mappingsAB[c.uri];
                         });
-                    }
-                    if ($scope.conceptB) {
+                    if ($scope.conceptB)
                         $scope.conceptsB = [ $scope.conceptB ];
-                    }
-                    else {
+                    else
                         $scope.conceptsB = _.filter(fetchedConceptsB, function (c) {
                             return $scope.mappingsBA[c.uri];
                         });
-                    }
                     break;
                 case "unmapped":
-                    if ($scope.conceptA) {
+                    if ($scope.conceptA)
                         $scope.conceptsA = [ $scope.conceptA ];
-                    }
-                    else {
+                    else
                         $scope.conceptsA = _.filter(fetchedConceptsA, function (c) {
                             return !$scope.mappingsAB[c.uri];
                         });
-                    }
-                    if ($scope.conceptB) {
+                    if ($scope.conceptB)
                         $scope.conceptsB = [ $scope.conceptB ];
-                    }
-                    else {
+                    else
                         $scope.conceptsB = _.filter(fetchedConceptsB, function (c) {
                             return !$scope.mappingsBA[c.uri];
                         });
-                    }
                     break;
             }
+        }
+
+        var filterConceptsPromise;
+        function filterConcepts() {
+            $timeout.cancel(filterConceptsPromise);
+            filterConceptsPromise = $timeout(filterConceptsNow, 500);
         }
 
         $scope.$watch("show", function (show) {
@@ -132,27 +127,44 @@ define(["angular"], function (angular) {
                 });
             });
         }
-
         fetchMappings();
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
         };
 
-        function searchA(value) {
-            $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
+        function searchANow(value) {
+//            $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
             thesaurusService.searchConceptScheme($scope.conceptSchemeA, value).then(function (data) {
-                fetchedConceptsA = $scope.conceptsA = data.search.results;
+                fetchedConceptsA = data.search.results;
                 $scope.conceptA = null;
+                filterConceptsNow();
             });
         }
 
-        function searchB(value) {
-            $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
+        var searchAPromise;
+        function searchA(value) {
+            $timeout.cancel(searchAPromise);
+            searchAPromise = $timeout(function() {
+                searchANow(value);
+            }, 500);
+        }
+
+        function searchBNow(value) {
+//            $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
             thesaurusService.searchConceptScheme($scope.conceptSchemeB, value).then(function (data) {
-                fetchedConceptsB = $scope.conceptsB = data.search.results;
+                fetchedConceptsB = data.search.results;
                 $scope.conceptB = null;
+                filterConceptsNow();
             });
+        }
+
+        var searchBPromise;
+        function searchB(value) {
+            $timeout.cancel(searchBPromise);
+            searchBPromise = $timeout(function() {
+                searchBNow(value);
+            }, 500);
         }
 
         $scope.selectSoughtA = function (value) {
