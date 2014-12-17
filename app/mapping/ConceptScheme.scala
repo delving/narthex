@@ -116,7 +116,7 @@ object ConceptScheme {
     
     def search(language: String, sought: String): Option[ProximityResult] = {
       val judged = labels.filter(_.language == language).map { label =>
-        val text = IGNORE_BRACKET.replaceFirstIn(label.text, "")
+        val text = IGNORE_BRACKET.replaceFirstIn(label.text.toLowerCase, "")
         (RatcliffObershelpMetric.compare(sought, text), label)
       }
       val prefLabel = getPrefLabel(language)
