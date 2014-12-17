@@ -32,7 +32,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object Application extends Controller with Security {
 
-  val SIP_APP_VERSION = "P14-03"
+  val SIP_APP_VERSION = "P14-04"
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
 
