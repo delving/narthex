@@ -25,7 +25,7 @@ import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
 import play.api.mvc._
 import services.NarthexConfig._
-import services.{CommonsServices, UserProfile}
+import services.{CommonsServices, NarthexConfig, UserProfile}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -81,12 +81,13 @@ object Application extends Controller with Security {
           }
           Logger.info(s"connecting user $username")
           if (services.connect(username, password)) {
-            if (services.isAdmin(ORG_ID, username)) {
-              Logger.info(s"Logged in $username of $ORG_ID")
+            val orgId: String = NarthexConfig.configString("commons.orgId")
+            if (services.isAdmin(orgId, username)) {
+              Logger.info(s"Logged in $username of $orgId")
               getOrCreateUser(username, services.getUserProfile(username))
             }
             else {
-              Unauthorized(s"User $username is not an admin of organization $ORG_ID")
+              Unauthorized(s"User $username is not an admin of organization $orgId")
             }
           }
           else {
