@@ -26,7 +26,7 @@ define(["angular"], function () {
      * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
      */
     var DashboardCtrl = function ($rootScope, $scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
-
+        if (user == null) return;
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];

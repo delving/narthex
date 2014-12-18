@@ -91,39 +91,42 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
           val progressReporter = ProgressReporter(GENERATING, db)
           progress = Some(progressReporter)
           val pocketOutput = new FileOutputStream(datasetRepo.pocketFile)
-          val (rawRecordCount, mappedRecordCount) = stagingRepo.generateSource(pocketOutput, datasetRepo.mappedFile, sipMapperOpt, progressReporter)
-          pocketOutput.close()
-          val sipFileOpt: Option[File] = datasetRepo.sipRepo.latestSipOpt.map { latestSip =>
-            val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetRepo.orgRepo.sipFactory.prefixRepo(mapping.prefix))
-            datasetRepo.sipFiles.foreach(_.delete())
-            val sipFile = datasetRepo.createSipFile
-            latestSip.copyWithSourceTo(sipFile, datasetRepo.pocketFile, prefixRepoOpt)
-            Some(sipFile)
-          } getOrElse {
-            val generationFactsOpt = db.infoOpt.map(SipGenerationFacts(_))
-            generationFactsOpt.map { facts =>
-              val sipPrefixRepo = datasetRepo.orgRepo.sipFactory.prefixRepo(facts.prefix)
-              sipPrefixRepo.map { prefixRepo =>
-                datasetRepo.sipFiles.foreach(_.delete())
-                val sipFile = datasetRepo.createSipFile
-                prefixRepo.initiateSipZip(sipFile, datasetRepo.pocketFile, facts)
-                Some(sipFile)
+          try {
+            val (rawRecordCount, mappedRecordCount) = stagingRepo.generateSource(pocketOutput, datasetRepo.mappedFile, sipMapperOpt, progressReporter)
+            val sipFileOpt: Option[File] = datasetRepo.sipRepo.latestSipOpt.map { latestSip =>
+              val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetRepo.orgRepo.sipFactory.prefixRepo(mapping.prefix))
+              datasetRepo.sipFiles.foreach(_.delete())
+              val sipFile = datasetRepo.createSipFile
+              latestSip.copyWithSourceTo(sipFile, datasetRepo.pocketFile, prefixRepoOpt)
+              Some(sipFile)
+            } getOrElse {
+              val generationFactsOpt = db.infoOpt.map(SipGenerationFacts(_))
+              generationFactsOpt.map { facts =>
+                val sipPrefixRepo = datasetRepo.orgRepo.sipFactory.prefixRepo(facts.prefix)
+                sipPrefixRepo.map { prefixRepo =>
+                  datasetRepo.sipFiles.foreach(_.delete())
+                  val sipFile = datasetRepo.createSipFile
+                  prefixRepo.initiateSipZip(sipFile, datasetRepo.pocketFile, facts)
+                  Some(sipFile)
+                } getOrElse {
+                  context.parent ! ChildFailure("Unable to build sip for download")
+                  None
+                }
               } getOrElse {
-                context.parent ! ChildFailure("Unable to build sip for download")
+                context.parent ! ChildFailure("Unable to create sip generation facts")
                 None
               }
-            } getOrElse {
-              context.parent ! ChildFailure("Unable to create sip generation facts")
-              None
             }
-          }
-          if (rawRecordCount > 0) {
-            context.parent ! SourceGenerationComplete(rawRecordCount, mappedRecordCount)
-          }
-          else {
-            sipFileOpt.map(_.delete())
-            FileUtils.deleteQuietly(datasetRepo.pocketFile)
-            context.parent ! ChildFailure("Zero raw records generated")
+            if (rawRecordCount > 0) {
+              context.parent ! SourceGenerationComplete(rawRecordCount, mappedRecordCount)
+            }
+            else {
+              sipFileOpt.map(_.delete())
+              FileUtils.deleteQuietly(datasetRepo.pocketFile)
+              context.parent ! ChildFailure("Zero raw records generated")
+            }
+          } finally {
+            pocketOutput.close()
           }
         } onFailure {
           case t => context.parent ! ChildFailure(t.getMessage, Some(t))

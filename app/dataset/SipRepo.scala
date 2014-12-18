@@ -215,12 +215,14 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
       val extendWithRecord = multipleTagsWithinMetadata(mapping)
       // in the case of a harvest sip, we strip off /metadata/<recordRoot>
       if (!pockets.isDefined) {
-        //        def fixGroovyArrays(nodeMapping: NodeMapping) = {
-        //          val codeList = nodeMapping.groovyCode.toList
-        //          if (codeList.size == 1) {
-        //            val line = codeList.head
-        //          }
-        //        }
+        def fixGroovyArrays(nodeMapping: NodeMapping) = {
+          val code = nodeMapping.getGroovyCode
+          if (code != null) {
+            val fixed = code.replaceAll("_M4", "_M5").replaceAll("_M3", "_M4").replaceAll("_M2", "_M3").replaceAll("_M1", "_M2")
+            if (fixed != code) Logger.info(s"Fixed _M? array references\nBefore: $code\nAfter:$fixed")
+            nodeMapping.setGroovyCode(fixed)
+          }
+        }
 
         if (harvestUrl.isDefined) {
           mapping.getNodeMappings.foreach { nodeMapping =>
@@ -238,6 +240,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
               nodeMapping.inputPath = Path.create(path)
               Logger.info(s"Adjust input path: $inputPath => $path")
             }
+            fixGroovyArrays(nodeMapping)
           }
         }
         else {
@@ -248,6 +251,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
               nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/", s"/input/$SIP_RECORD_TAG/"))
               println(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
             }
+            fixGroovyArrays(nodeMapping)
           }
         }
       }
