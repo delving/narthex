@@ -1,5 +1,7 @@
 @import "variables";
 @import "elements";
+@import 'sidebar';
+@import 'header';
 
 /*****************/
 // CUSTOM COLORS //
@@ -116,7 +118,7 @@
 
 
 body {
-  margin-top: 60px;
+  background: #f3f3f3;
 }
 
 a {
@@ -137,38 +139,55 @@ a {
   }
 }
 
-/* topnav bar **********************************************************/
+/* page, content and sidebar wrappers ********************************/
 
-.navbar-brand {
-  color: @gray-lighter !important;
-  font-size: 175%;
-  text-transform: uppercase;
-  small {
-    color: @gray-light;
-  }
-  img {
-    margin-top: -5px;
-    margin-right: 10px;
-  }
+.row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+.row > div {
+  margin-bottom: 15px;
 }
 
-.nav-app {
-  margin: 8px 0 0 60px;
-  .btn {
-    padding: @padding-small-vertical/1.5 @padding-small-horizontal/1.5;
-    border: none;
-  }
-  .dropdown-menu {
-    background: @white;
-    &> li > a {
-      color: @gray-darker;
-      &:hover {
-        background: transparent;
-        text-decoration: underline;
-      }
-    }
+#page-wrapper {
+  padding-left: 70px;
+  height: 100%
+}
+
+#sidebar-wrapper {
+  margin-left: -150px;
+  left: -30px;
+  width: 250px;
+  position: fixed;
+  height: 100%;
+  z-index: 999;
+}
+
+#page-wrapper, #sidebar-wrapper {
+  transition: all .4s ease 0s;
+}
+
+#content-wrapper {
+  padding-left: 0;
+  margin-left: 0;
+  width: 100%;
+  height: auto;
+}
+
+@media only screen and (min-width:561px){
+  #page-wrapper.open {
+    padding-left: 250px;
   }
 }
+@media only screen and (max-width:560px){
+  #page-wrapper.open {
+    padding-left: 70px;
+  }
+}
+#page-wrapper.open #sidebar-wrapper {
+  left: 150px;
+}
+
 
 /* custom button styles ************************************************/
 
@@ -217,6 +236,7 @@ a {
   position: relative;
 
 }
+
 
 /* nav-tabs ************************************************************/
 
@@ -581,6 +601,8 @@ textarea.code {
     display: block;
   }
 }
+
+
 
 
 

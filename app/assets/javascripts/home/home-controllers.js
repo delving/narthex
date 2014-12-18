@@ -55,6 +55,11 @@ define(["angular"], function (angular) {
             $rootScope.orgId = orgId;
         };
 
+        $scope.toggleSidebar = function() {
+            $scope.toggle = !$scope.toggle;
+            $cookieStore.put('toggle', $scope.toggle);
+        };
+
         // Wrap the current user from the service in a watch expression
         $scope.$watch(
             function () {
