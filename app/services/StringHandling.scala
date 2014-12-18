@@ -50,4 +50,10 @@ object StringHandling {
 
   def oaipmhPublishFromInfo(info: NodeSeq): Boolean = (info \ "publication" \ "oaipmh").text.trim == "true"
 
+  def sanitizeXml(xml:String) = xml
+    .replaceAll("[<]", "&lt;")
+    .replaceAll("[&]", "&amp;")
+    .replaceAll("[>]", "&gt;")
+    .replaceAll("[\"]", "&quot;")
+    .replaceAll("[']", "&apos;")
 }

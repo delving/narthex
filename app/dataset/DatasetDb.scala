@@ -25,6 +25,7 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json.{JsObject, JsString}
 import services.BaseX._
+import services.StringHandling
 import services.Temporal._
 
 import scala.xml.{Elem, NodeSeq, XML}
@@ -202,7 +203,9 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
 
   def startProgress(progressState: ProgressState) = setProgress(progressState, BUSY, 0)
 
-  def endProgress(error: Option[String] = None) = setProgress(if (error.isDefined) ERROR else STATE_IDLE, TYPE_IDLE, 0, error)
+  def endProgress(error: Option[String] = None) = {
+    setProgress(if (error.isDefined) ERROR else STATE_IDLE, TYPE_IDLE, 0, error.map(StringHandling.sanitizeXml))
+  }
 
   def setProgress(progressState: ProgressState, progressType: ProgressType, count: Int, error: Option[String] = None) = setProperties(
     "progress",
