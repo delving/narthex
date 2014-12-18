@@ -13,50 +13,105 @@
         <script data-main="@routes.Assets.at("javascripts/main.js")" type="text/javascript" src="@routes.Assets.at("lib/requirejs/require.js")"></script>
     </head>
     <body>
-        <header class="navbar navbar-inverse navbar-fixed-top basics-nav" data-ng-controller="HeaderCtrl" data-ng-init="setOrg('@orgId')" data-ng-cloak>
-            <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
-                <a href="#/" class="navbar-brand"><img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
-                    NARTHEX <small>@orgId</small>
-                </a>
-                <div data-ng-switch-when="true">
-                    <div class="navbar-left nav-app">
-                        <a href="/narthex/#/datasets" class="btn btn-primary">Datasets</a>
-                        @if(showCategories) {
-                           <a href="/narthex/#/categories" class="btn btn-primary">Categories</a>
-                        }
-                        @if(showThesaurus) {
-                           <a href="/narthex/#/thesaurus" class="btn btn-primary">Thesaurus</a>
-                        }
-                        <a data-ng-show="breadcrumbs.dataset" href="/narthex/#/dataset/{{ breadcrumbs.dataset }}" class="btn btn-primary">
-                            Dataset "{{ breadcrumbs.dataset }}"
+
+        <div id="page-wrapper" class="open" ng-class="{'open': toggle}" ng-cloak data-ng-controller="HeaderCtrl">
+
+
+        <!-- Sidebar -->
+            <div id="sidebar-wrapper">
+                <ul class="sidebar">
+                    <li class="sidebar-main">
+                        <a href="" ng-click="toggleSidebar()" class="brand">
+                            <img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
+                                NARTHEX <small>@orgId</small>
+                            <span class="menu-icon glyphicon glyphicon-transfer"></span>
+                        </a>
+                    </li>
+                    <li class="sidebar-title"><span>NAVIGATION</span></li>
+                    <li class="sidebar-list">
+                        <a href="/narthex/#/datasets">Datasets <span class="menu-icon fa fa-cubes"></span></a>
+                    </li>
+                    @if(showCategories) {
+                        <li class="sidebar-list">
+                            <a href="/narthex/#/categories">Category mapping <span class="menu-icon fa fa-exchange"></span></a>
+                        </li>
+                    }
+                    @if(showThesaurus) {
+                        <li class="sidebar-list">
+                            <a href="/narthex/#/thesaurus">Thesauri alignment <span class="menu-icon fa fa-exchange"></span></a>
+                        </li>
+                    }
+                </ul>
+                <div class="sidebar-footer">
+                    <div class="col-xs-4">
+                        <a href="https://github.com/delving/narthex" target="_blank">
+                            Github
                         </a>
                     </div>
-                    <ul class="nav navbar-nav navbar-right">
-                        <li class="dropdown">
-                            <a href="" class="dropdown-toggle" data-toggle="dropdown">
-                                <span class="glyphicon glyphicon-user"></span> <span>{{user.email}}</span>
-                                <b class="caret"></b>
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <a href="" data-ng-click="logout()">
-                                        <span class="glyphicon glyphicon-off"></span> Logout
-                                    </a>
-                                    <a href="@sipCreatorLink">
-                                        <span class="glyphicon glyphicon-download"></span> SIP app
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-                    </ul>
+                    <div class="col-xs-4">
+                        <a href="https://github.com/delving/narthex/blob/master/README.md" target="_blank">
+                            About
+                        </a>
+                    </div>
+                    <div class="col-xs-4">
+                        <a href="#">
+                            Support
+                        </a>
+                    </div>
                 </div>
             </div>
-            @*<div>*@
-            @*<button class="badge" data-ng-click="trySocket()">TRY SOCKET</button>*@
-            @*</div>*@
-        </header>
-        <div class="container-fluid" data-ng-cloak>
-            <div class="main" data-ng-view></div>
+            <!-- End Sidebar -->
+
+            <div id="content-wrapper">
+                <div class="page-content">
+
+
+                    <div class="row header" data-ng-init="setOrg('@orgId')" data-ng-cloak>
+                        <div class="col-xs-12">
+                            <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
+                                <div data-ng-switch-when="true">
+                                    <div class="navbar-left nav-app">
+                                        <a data-ng-show="breadcrumbs.dataset" href="/narthex/#/dataset/{{ breadcrumbs.dataset }}" class="btn btn-primary">
+                                            Dataset "{{ breadcrumbs.dataset }}"
+                                        </a>
+                                    </div>
+                                    <ul class="nav navbar-nav navbar-right">
+                                        <li class="dropdown">
+                                            <a href="" class="dropdown-toggle" data-toggle="dropdown">
+                                                <span class="glyphicon glyphicon-user"></span> <span>{{user.email}}</span>
+                                                <b class="caret"></b>
+                                            </a>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <a href="" data-ng-click="logout()">
+                                                        <span class="glyphicon glyphicon-off"></span> Logout
+                                                    </a>
+                                                    <a href="@sipCreatorLink">
+                                                        <span class="glyphicon glyphicon-download"></span> SIP app
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="container-fluid">
+                            <div data-ng-view></div>
+                        </div>
+                    </div>
+
+
+
+
+                </div>
+            </div>
+
+
+
         </div>
     </body>
 </html>
