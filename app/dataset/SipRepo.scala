@@ -49,6 +49,7 @@ object SipRepo {
   val SOURCE_FILE = "source.xml.gz"
   val FACTS_FILE = "narthex_facts.txt"
   val HINTS_FILE = "hints.txt"
+  val MAX_ZIP_COUNT = 6
   val SchemaVersionsPattern = "schemaVersions=(.*)".r
   val SourcePattern = "source.*".r
   val MappingPattern = "mapping_.*".r
@@ -71,8 +72,15 @@ class SipRepo(home: File, datasetName: String, naveDomain: String) {
 
   def listSips: Seq[Sip] = {
     if (home.exists()) {
-      val zipFiles = home.listFiles().filter(_.getName.endsWith("zip"))
-      zipFiles.sortBy(_.lastModified()).reverse.map(Sip(datasetName, naveDomain, _))
+      val filesLastToFirst = home.listFiles().filter(_.getName.endsWith(".sip.zip")).sortBy(_.lastModified())
+      val filesLimited =
+        if (filesLastToFirst.size <= SipRepo.MAX_ZIP_COUNT)
+          filesLastToFirst
+        else {
+          filesLastToFirst.head.delete()
+          filesLastToFirst.tail
+        }
+      filesLimited.reverse.map(Sip(datasetName, naveDomain, _))
     }
     else Seq.empty[Sip]
   }
@@ -207,12 +215,12 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
       val extendWithRecord = multipleTagsWithinMetadata(mapping)
       // in the case of a harvest sip, we strip off /metadata/<recordRoot>
       if (!pockets.isDefined) {
-//        def fixGroovyArrays(nodeMapping: NodeMapping) = {
-//          val codeList = nodeMapping.groovyCode.toList
-//          if (codeList.size == 1) {
-//            val line = codeList.head
-//          }
-//        }
+        //        def fixGroovyArrays(nodeMapping: NodeMapping) = {
+        //          val codeList = nodeMapping.groovyCode.toList
+        //          if (codeList.size == 1) {
+        //            val line = codeList.head
+        //          }
+        //        }
 
         if (harvestUrl.isDefined) {
           mapping.getNodeMappings.foreach { nodeMapping =>

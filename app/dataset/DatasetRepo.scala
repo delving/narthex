@@ -63,9 +63,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def createSipFile = new File(orgRepo.sipsDir, s"${datasetName}__${DATE_FORMAT.format(new Date())}.sip.zip")
 
-  def sipFiles = orgRepo.sipsDir.listFiles.filter(
-    file => file.getName.startsWith(s"${datasetName}__")
-  ).sortBy(_.getName).reverse
+  def sipFiles = orgRepo.sipsDir.listFiles.filter(file => file.getName.startsWith(s"${datasetName}__")).sortBy(_.getName).reverse
 
   val treeRoot = new NodeRepo(this, treeDir)
 
@@ -143,7 +141,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def dropSource() = {
-    //    deleteQuietly(sipFile) todo: delete all of them
+    sipFiles.foreach(deleteQuietly)
     deleteQuietly(mappedFile)
   }
 
@@ -196,6 +194,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
     val db = datasetDb
     if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
+      dropRecords()
+      dropTree()
+      dropStagingRepo()
       db.setStatus(RAW)
       setTargetFile(createRawFile(fileName))
       startAnalysis()
@@ -251,14 +252,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     }
   }
 
-  def rawFile: Option[File] = {
-    if (rawDir.exists()) {
-      rawDir.listFiles.headOption
-    }
-    else {
-      None
-    }
-  }
+  def rawFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.headOption else None
 
   def singleHarvestZip: Option[File] = {
     val allZip = stagingDir.listFiles.filter(_.getName.endsWith("zip"))
