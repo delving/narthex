@@ -69,7 +69,7 @@ class TestCRM extends FlatSpec with Matchers {
       (c, subjects(rdfsDomain, c.resource).map(CRMProperty))
     )
 
-    println(s"classes/properties:\n${crmClassesProperties.mkString("\n")}")
+//    println(s"classes/properties:\n${crmClassesProperties.mkString("\n")}")
 
     //    val crmPropertiesDomainRange = crmProperties.map(p =>
 //      (p, objects(p.resource, rdfsDomain).map(CRMClass), objects(p.resource, rdfsRange).map(CRMClass))

@@ -12,7 +12,53 @@ import scala.xml.XML
 
 class TestSipRepo extends FlatSpec with Matchers {
 
-  "A SipRepo" should "maybe handle a harvest where the metadata is unwrapped fields" in {
+
+  "A SipRepo" should "handle the arkivportalen harvest sip" in {
+
+    // harvest looks like this
+    // <OAI-PMH><ListRecords><record><metadata><abm:record>
+
+    val home = new File(getClass.getResource("/sip_harvest_arkiv").getFile)
+    val sipRepo = new SipRepo(new File(home, "sips"), "test", "http://aboutprefix")
+
+    val stagingSourceDir = new File(home, "staging")
+    val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
+
+    val sipOpt = sipRepo.latestSipOpt
+    sipOpt.isDefined should be(true)
+
+    sipOpt.foreach { sip =>
+
+      sip.spec should be(Some("arkivportalen"))
+
+      sip.schemaVersionOpt.isDefined should be(true)
+
+      FileUtils.copyDirectory(stagingSourceDir, stagingDir)
+      val stagingRepo = StagingRepo(stagingDir)
+
+      var mappedPockets = List.empty[Pocket]
+
+      sip.createSipMapper.map { sipMapper =>
+        def pocketCatcher(pocket: Pocket): Unit = {
+          var mappedPocket = sipMapper.map(pocket)
+          mappedPockets = mappedPocket.get :: mappedPockets
+        }
+        stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
+      }
+
+      mappedPockets.size should be(3)
+
+      val head = XML.loadString(mappedPockets.head.text)
+
+      val expectedTitle = "Saksarkiv ordnet etter organets hovedsystem (Børge Brevhus, Børge Brevhus)"
+
+      val titleText = (head \ "Description" \ "title").filter(_.prefix == "dc").text.trim
+
+      titleText should be(expectedTitle)
+    }
+  }
+
+  "A SipRepo" should "handle a harvest where the metadata is unwrapped fields" in {
 
     //    harvest looks like this, with no record wrapper
     //  <OAI-PMH><ListRecords><record><metadata><dc_identifier/><europeana_unstored/>
@@ -95,8 +141,6 @@ class TestSipRepo extends FlatSpec with Matchers {
       mappedPockets.size should be(5)
 
       val head = XML.loadString(mappedPockets.head.text)
-
-//      println(head)
 
       val expectedTitle = "[Bezoek van Statenleden aan de electriciteitsfabriek te Geertruidenberg op 18 Juli 1917]."
 

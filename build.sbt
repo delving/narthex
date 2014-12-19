@@ -50,7 +50,9 @@ libraryDependencies ++= Seq(
   "eu.delving" % "sip-core" % "14.12-SNAPSHOT"
 )
 
-libraryDependencies ~= { _.map(_.exclude("org.slf4j", "slf4j-jdk14")) }
+libraryDependencies ~= {
+  _.map(_.exclude("org.slf4j", "slf4j-jdk14"))
+}
 
 libraryDependencies += cache
 
@@ -72,14 +74,18 @@ resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"
 
 publishMavenStyle := true
 
-publishArtifact in (Compile, packageBin) := false
+publishArtifact in(Compile, packageBin) := false
 
-publishArtifact in (Compile, packageDoc) := false
+publishArtifact in(Compile, packageDoc) := false
 
-publishArtifact in (Compile, packageSrc) := false
+publishArtifact in(Compile, packageSrc) := false
 
 publishTo := Some("Delving" at "http://artifactory.delving.org/artifactory/delving")
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
 javaOptions += "-Djava.awt.headless=true"
+
+// http://stackoverflow.com/questions/25182581/logging-in-unit-tests-for-play-2-3
+// doesn't work
+//javaOptions in Test += "-Dlogger.file=conf/logger.xml"

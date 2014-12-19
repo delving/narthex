@@ -212,6 +212,8 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
     entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val mapping = RecMapping.read(inputStream, recDefTree)
+      // now we look at whether adjustments must be made for sip-zips from the bridge sip-creator version
+      // this stuff can be removed when migration is definitively over
       val extendWithRecord = multipleTagsWithinMetadata(mapping)
       // in the case of a harvest sip, we strip off /metadata/<recordRoot>
       if (!pockets.isDefined) {
@@ -223,14 +225,17 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
             nodeMapping.setGroovyCode(fixed)
           }
         }
-
         if (harvestUrl.isDefined) {
+          val norvegianaCheat = recordRootPath == Some("/delving-harvest/input/metadata/abm:record")
           mapping.getNodeMappings.foreach { nodeMapping =>
             val inputPath = nodeMapping.inputPath.toString
-            val changeOpt = Option(inputPath).find(_.startsWith(INPUT_METADATA)).map { path =>
+            val changeOpt = Option(inputPath).find(_.startsWith("/input/")).map { path =>
               if (extendWithRecord) {
                 // case B: /input/metadata/dc:description => /input/record/metadata/dc:description
                 s"/input/$SIP_RECORD_TAG/metadata/" + inputPath.substring(INPUT_METADATA.length)
+              } else if (norvegianaCheat) {
+                // case /input/? => /input/abm:record/?
+                inputPath.replaceFirst("/input/([^/]+)", "/input/abm:record/$1")
               } else {
                 // case /input/metadata/oai_dc:dc/dc:format => /input/oai_dc:dc/dc:format
                 inputPath.replaceFirst("/input/metadata/([^/]+)/", "/input/$1/")
@@ -249,7 +254,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
             if (inputPath.startsWith("/input")) {
               // take input as the record root
               nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/", s"/input/$SIP_RECORD_TAG/"))
-              println(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
+              Logger.info(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
             }
             fixGroovyArrays(nodeMapping)
           }
