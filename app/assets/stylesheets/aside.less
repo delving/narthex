@@ -1,11 +1,14 @@
 @import "elements";
 @import "variables";
 
-@aside-header-height: 50px;
-@aside-toolbar-height: 50px;
+@aside-header-height: 60px;
+@aside-toolbar-height: 60px;
 @aside-footer-height: 50px;
 @aside-body-padding: 20px;
 
+.aside .aside-dialog {
+  transition: all .4s ease 0s;
+}
 
 .aside .aside-dialog .aside-footer:after, .aside .aside-dialog .aside-footer:before, .btn-group-vertical > .btn-group:after, .btn-group-vertical > .btn-group:before, .btn-toolbar:after, .btn-toolbar:before, .container-fluid:after, .container-fluid:before, .container:after, .container:before, .form-horizontal .form-group:after, .form-horizontal .form-group:before, .modal-footer:after, .modal-footer:before, .nav:after, .nav:before, .navbar-collapse:after, .navbar-collapse:before, .navbar-header:after, .navbar-header:before, .navbar:after, .navbar:before, .pager:after, .pager:before, .panel-body:after, .panel-body:before, .row:after, .row:before {
   content: " ";
@@ -18,13 +21,12 @@
 
 .aside {
   z-index: 1049;
-  background: #fff;
+  background: #f3f3f3;
   position: fixed;
   overflow: auto;
   min-width: 320px;
   top: 0;
   bottom: 0;
-
 }
 
 .aside:focus {
@@ -47,12 +49,13 @@
 }
 
 .aside .aside-dialog .aside-header {
-  border-bottom: 1px solid @gray-dark;
-  min-height: 16.42857143px;
+  background: @sidebarHeaderColor;
+  color: @sidebarTitleColor;
+  font-size: 12px;
+  height: @aside-header-height;
+  line-height: @aside-header-height - 10;
   padding: 5px 15px 6px;
-  background: @brand-primary;
-  color: @gray-lighter;
-  min-height: 45px;
+  text-transform: uppercase;
 }
 
 .aside .aside-dialog .aside-header .close {

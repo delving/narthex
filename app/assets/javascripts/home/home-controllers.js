@@ -56,8 +56,7 @@ define(["angular"], function (angular) {
         };
 
         $scope.toggleSidebar = function() {
-            $scope.toggle = !$scope.toggle;
-            $cookieStore.put('toggle', $scope.toggle);
+            $scope.toggleBar = !$scope.toggleBar;
         };
 
         // Wrap the current user from the service in a watch expression

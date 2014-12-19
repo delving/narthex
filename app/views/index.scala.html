@@ -14,17 +14,16 @@
     </head>
     <body>
 
-        <div id="page-wrapper" class="open" ng-class="{'open': toggle}" ng-cloak data-ng-controller="HeaderCtrl">
+        <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="HeaderCtrl" data-ng-init="toggleBar = true">
 
 
         <!-- Sidebar -->
             <div id="sidebar-wrapper">
                 <ul class="sidebar">
                     <li class="sidebar-main">
-                        <a href="" ng-click="toggleSidebar()" class="brand">
+                        <a href="" ng-click="toggleSidebar()" class="">
                             <img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
-                                NARTHEX <small>@orgId</small>
-                            <span class="menu-icon glyphicon glyphicon-transfer"></span>
+                            NARTHEX <span class="menu-icon glyphicon glyphicon-transfer"></span>
                         </a>
                     </li>
                     <li class="sidebar-title"><span>NAVIGATION</span></li>
@@ -41,6 +40,15 @@
                             <a href="/narthex/#/thesaurus">Thesauri alignment <span class="menu-icon fa fa-exchange"></span></a>
                         </li>
                     }
+                    <li data-ng-show="breadcrumbs.dataset" class="sidebar-title">
+                        <span>LAST VIEWED</span>
+                    </li>
+                    <li class="sidebar-list" data-ng-show="breadcrumbs.dataset">
+                        <a href="/narthex/#/dataset/{{ breadcrumbs.dataset }}">
+                            {{ breadcrumbs.dataset }} <span class="menu-icon fa fa-eye"></span>
+                        </a>
+                    </li>
+
                 </ul>
                 <div class="sidebar-footer">
                     <div class="col-xs-4">
@@ -70,11 +78,6 @@
                         <div class="col-xs-12">
                             <div class="container-fluid" data-ng-switch="!!user" data-ng-cloak>
                                 <div data-ng-switch-when="true">
-                                    <div class="navbar-left nav-app">
-                                        <a data-ng-show="breadcrumbs.dataset" href="/narthex/#/dataset/{{ breadcrumbs.dataset }}" class="btn btn-primary">
-                                            Dataset "{{ breadcrumbs.dataset }}"
-                                        </a>
-                                    </div>
                                     <ul class="nav navbar-nav navbar-right">
                                         <li class="dropdown">
                                             <a href="" class="dropdown-toggle" data-toggle="dropdown">

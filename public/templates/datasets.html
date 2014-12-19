@@ -1,27 +1,171 @@
+<button class="btn btn-primary btn-sm" data-ng-click="setNewFileOpen(true)">
+    <i class="fa fa-plus"></i> Create a new file
+</button>
 
-<div class="row">
-    <div class="col-sm-12">
-        <div>
-            <button class="btn btn-primary btn-sm pull-right" data-ng-click="setNewFileOpen(true)">
-                <i class="fa fa-plus"></i> Create a new file
-            </button>
-            <h1>Datasets</h1>
-        </div>
-        <div class="file-list">
-            <ul class="list-group list-files">
-                <li data-ng-if="!files.length">
-                    <h4>No datasets yet</h4>
-                </li>
-                <li ng-repeat="file in files" class="list-group-item clearfix" data-ng-show="file.info.status">
-                    <div data-ng-include="'dataset-entry.html'">entry</div>
-                </li>
-            </ul>
-            <div data-ng-show="newFileOpen">
-                <div data-ng-include="'new-file.html'">new file</div>
-            </div>
-        </div>
+<hr/>
+
+<div class="file-list">
+    <div data-ng-if="!files.length">
+        <h4>No datasets yet</h4>
+    </div>
+    <div ng-repeat="file in files" class="file-block" data-ng-show="file.info.status">
+        <div data-ng-include="'dataset-entry.html'">entry</div>
+    </div>
+    <div data-ng-show="newFileOpen">
+        <div data-ng-include="'new-file.html'">new file</div>
     </div>
 </div>
+ 
+
+<script type="text/ng-template" id="dataset-entry.html">
+    <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary">
+        <div class="panel-heading">
+            <div class="icon">
+                <div class="circle">
+                    <i class="fa {{ getIcon() }} fa-3x fa-fw"></i>
+                </div>
+
+            </div>
+            <div class="name">
+                <h4>{{ file.datasetName }} <span data-ng-show="file.info.metadata.name">({{ file.info.metadata.name }})</span></h4>
+            </div>
+            <div class="count">
+                <span data-ng-show="file.recordCount">{{ file.recordCount }}</span>
+            </div>
+            <span class="label label-default" ng-if="file.info.categories.included == 'true'">
+                <i class="fa fa-bar-chart-o"></i> Included in Monitor Statistics
+            </span>
+        </div>
+
+        <div class="panel-body">
+
+
+            <a href data-ng-click="setFileOpen(file)">
+                <i class="fa fa-angle-double-down"></i> <span>Edit</span>
+            </a>
+
+            <a href class="" data-ng-click="viewFile()" data-ng-show="file.treeTime">
+                <i class="fa fa-eye"></i> <span>Explore</span>
+            </a>
+
+            <div data-ng-if="fileOpen == file.name">
+                <div data-ng-if="file.error" class="alert alert-explain" role="alert">
+                    <strong>Message:</strong> {{ file.error }}
+                </div>
+
+            <span data-ng-show="file.info.metadata.name">
+                <span>"{{ file.info.metadata.name }}"</span>
+                <span data-ng-show="file.info.metadata.dataProvider">from "{{ file.info.metadata.dataProvider }}": </span>
+            </span>
+
+                <div class="tabbable dataset-tabs">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li ng-class="{'active':tabOpen === 'metadata'}" >
+                            <a href role="tab" data-ng-click="setTabOpen('metadata')">Metadata</a>
+                        </li>
+                        <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="file.state == 'state-empty' && dropSupported">
+                            <a href role="tab" data-ng-click="setTabOpen('drop')">File Drop</a>
+                        </li>
+                        <li ng-class="{'active':tabOpen === 'sip-zip'}" data-ng-show="file.info.sipFacts">
+                            <a href role="tab" data-ng-click="setTabOpen('sip-zip')">SIP Files</a>
+                        </li>
+                        <li ng-class="{'active':tabOpen === 'harvest'}" data-ng-show="file.state == 'state-empty'">
+                            <a href role="tab" data-ng-click="setTabOpen('harvest')">Harvest</a>
+                        </li>
+                        <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.state == 'state-sourced'">
+                            <a href role="tab" data-ng-click="setTabOpen('harvest-cron')">Scheduled Harvest</a>
+                        </li>
+                        <li ng-class="{'active':tabOpen === 'publication'}" data-ng-show="file.recordsTime">
+                            <a href role="tab" data-ng-click="setTabOpen('publication')">Publication</a>
+                        </li>
+                        <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="file.recordsTime && categoriesEnabled">
+                            <a href role="tab" data-ng-click="setTabOpen('categories')">Categories</a>
+                        </li>
+                        <li ng-class="{'active':tabOpen === 'downloads'}" data-ng-show="file.recordsTime">
+                            <a href role="tab" data-ng-click="setTabOpen('downloads')">Downloads</a>
+                        </li>
+                        <li ng-class="{'active':tabOpen === 'info'}">
+                            <a href role="tab" data-ng-click="setTabOpen('info')">Info</a>
+                        </li>
+                    </ul>
+                    <div class="tab-content col-md-6">
+                        <div ng-switch="tabOpen">
+                            <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
+                            <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>
+                            <div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>
+                            <div ng-switch-when="harvest"><div data-ng-include="'harvest-form.html'">harvest form</div></div>
+                            <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
+                            <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
+                            <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
+                            <div ng-switch-when="downloads"><div data-ng-include="'downloads.html'">downloads</div></div>
+                            <div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 pull-right">
+                        <div data-ng-include="'actions.html'">actions</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div class="panel-footer">
+
+            <span ng-if="file.state">
+                <span ng-switch="file.state">
+                    <span class="label label-danger" ng-switch-when="state-empty">Empty</span>
+                    <span ng-switch-when="state-raw">
+                        <span class="label label-success" data-ng-show="!file.treeTime">Raw</span>
+                        <span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>
+                    </span>
+                    <span ng-switch-when="state-raw-pockets">
+                        <span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>
+                        <span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>
+                    </span>
+                    <span ng-switch-when="state-sourced">
+                        <span class="label label-success" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
+                        <span class="label label-success" data-ng-show="file.treeTime">
+                            <i class="fa fa-eye"></i> Analyzed {{ file.treeTime }}
+                        </span>
+                        <span class="label label-success" data-ng-show="file.recordsTime">
+                            <i class="fa fa-database"></i> Saved {{ file.recordsTime }}
+                        </span>
+                    </span>
+                </span>
+            </span>
+
+            <span data-ng-show="file.prefix" class="label label-warning">
+                {{ file.prefix }}
+            </span>
+
+        </div>
+
+
+
+
+
+
+
+        <div data-ng-if="file.progress" class="">
+            <!--<div class="col-md-11">-->
+            <div class="input-group">
+                <progressbar class="form-control-feedback" animate="true" value="file.progress.count" max="100">{{ file.progress.message }}</progressbar>
+                <span class="input-group-btn">
+                    <button type="button" class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="file.progress">
+                        <i class="fa fa-trash-o"></i>
+                        <span>Interrupt</span>
+                    </button>
+                </span>
+            </div>
+                <!--</div>-->
+            <!--<div class="col-md-1">-->
+
+            <!--</div>-->
+        </div>
+
+    </div>
+</script>
 
 <script type="text/ng-template" id="new-file.html">
     <div class="aside-backdrop am-fade" style=""></div>
@@ -326,123 +470,6 @@
     </ul>
 </script>
 
-<script type="text/ng-template" id="dataset-entry.html">
-    <div data-ng-controller="DatasetEntryCtrl" class="list-item-inner">
-
-        <a href data-ng-click="setFileOpen(file)" class="file-open btn btn-default">
-            <i class="fa {{ getIcon() }}"></i>
-
-            <b>{{ file.datasetName }}</b>
-
-            <span data-ng-show="file.recordCount">({{ file.recordCount }})</span>
-
-            <span data-ng-show="file.prefix">
-                <span class="label label-default">{{ file.prefix }}</span>
-            </span>
-
-            <span data-ng-show="file.info.metadata.name">
-                <span>"{{ file.info.metadata.name }}"</span>
-                <span data-ng-show="file.info.metadata.dataProvider">from "{{ file.info.metadata.dataProvider }}": </span>
-            </span>
-
-            <span ng-if="file.state">
-                <span ng-switch="file.state">
-                    <span class="label label-default" ng-switch-when="state-empty">Empty</span>
-                    <span ng-switch-when="state-raw">
-                        <span class="label label-success" data-ng-show="!file.treeTime">Raw</span>
-                        <span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>
-                    </span>
-                    <span ng-switch-when="state-raw-pockets">
-                        <span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>
-                        <span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>
-                    </span>
-                    <span ng-switch-when="state-sourced">
-                        <span class="label label-success" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
-                        <span class="label label-success" data-ng-show="file.treeTime">
-                            <i class="fa fa-eye"></i> Analyzed {{ file.treeTime }}
-                        </span>
-                        <span class="label label-success" data-ng-show="file.recordsTime">
-                            <i class="fa fa-database"></i> Saved {{ file.recordsTime }}
-                        </span>
-                    </span>
-                </span>
-            </span>
-            <span class="label label-default" ng-if="file.info.categories.included == 'true'">
-                <i class="fa fa-bar-chart-o"></i> Included in Monitor Statistics
-            </span>
-        </a>
-
-        <span style="margin-left: 10px">
-            <button class="btn btn-default" data-ng-click="viewFile()" data-ng-show="file.treeTime">
-                <i class="fa fa-eye"></i> <span>Explore</span>
-            </button>
-        </span>
-
-        <div data-ng-if="file.progress" class="col-md-12">
-            <div class="col-md-11">
-                <progressbar class="progress-striped active" animate="true" value="file.progress.count" max="100" type="success">{{ file.progress.message }}</progressbar>
-            </div>
-            <div class="col-md-1">
-                <button type="button" class="btn btn-danger" data-ng-click="interruptProcessing(file)" data-ng-show="file.progress">
-                    <i class="fa fa-trash-o"></i>
-                    <span>Interrupt</span>
-                </button>
-            </div>
-        </div>
-        <div data-ng-if="fileOpen == file.name" class="">
-            <div data-ng-if="file.error" class="alert alert-explain" role="alert">
-                <strong>Message:</strong> {{ file.error }}
-            </div>
-            <div class="tabbable dataset-tabs">
-                <ul class="nav nav-tabs" role="tablist">
-                    <li ng-class="{'active':tabOpen === 'metadata'}" >
-                        <a href role="tab" data-ng-click="setTabOpen('metadata')">Metadata</a>
-                    </li>
-                    <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="file.state == 'state-empty' && dropSupported">
-                        <a href role="tab" data-ng-click="setTabOpen('drop')">File Drop</a>
-                    </li>
-                    <li ng-class="{'active':tabOpen === 'sip-zip'}" data-ng-show="file.info.sipFacts">
-                        <a href role="tab" data-ng-click="setTabOpen('sip-zip')">SIP Files</a>
-                    </li>
-                    <li ng-class="{'active':tabOpen === 'harvest'}" data-ng-show="file.state == 'state-empty'">
-                        <a href role="tab" data-ng-click="setTabOpen('harvest')">Harvest</a>
-                    </li>
-                    <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.state == 'state-sourced'">
-                        <a href role="tab" data-ng-click="setTabOpen('harvest-cron')">Scheduled Harvest</a>
-                    </li>
-                    <li ng-class="{'active':tabOpen === 'publication'}" data-ng-show="file.recordsTime">
-                        <a href role="tab" data-ng-click="setTabOpen('publication')">Publication</a>
-                    </li>
-                    <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="file.recordsTime && categoriesEnabled">
-                        <a href role="tab" data-ng-click="setTabOpen('categories')">Categories</a>
-                    </li>
-                    <li ng-class="{'active':tabOpen === 'downloads'}" data-ng-show="file.recordsTime">
-                        <a href role="tab" data-ng-click="setTabOpen('downloads')">Downloads</a>
-                    </li>
-                    <li ng-class="{'active':tabOpen === 'info'}">
-                        <a href role="tab" data-ng-click="setTabOpen('info')">Info</a>
-                    </li>
-                </ul>
-                <div class="tab-content col-md-6">
-                    <div ng-switch="tabOpen">
-                        <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
-                        <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>
-                        <div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>
-                        <div ng-switch-when="harvest"><div data-ng-include="'harvest-form.html'">harvest form</div></div>
-                        <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
-                        <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
-                        <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
-                        <div ng-switch-when="downloads"><div data-ng-include="'downloads.html'">downloads</div></div>
-                        <div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>
-                    </div>
-                </div>
-                <div class="col-md-2 pull-right">
-                    <div data-ng-include="'actions.html'">actions</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</script>
 
 <div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
     <h4>HTML5 Drop File is not supported! You need an HTML5 compliant browser.</h4>
