@@ -40,15 +40,18 @@
         <div class="panel-body">
 
 
-            <a href data-ng-click="setFileOpen(file)">
-                <i class="fa fa-angle-double-down"></i> <span>Edit</span>
+            <a href data-ng-click="setFileOpen(file)" class="btn btn-default btn-sm">
+                Edit <span class="caret"></span>
             </a>
 
-            <a href class="" data-ng-click="viewFile()" data-ng-show="file.treeTime">
-                <i class="fa fa-eye"></i> <span>Explore</span>
+            <a href class="btn btn-primary btn-sm pull-right" data-ng-click="viewFile()" data-ng-show="file.treeTime">
+                Explore <i class="fa fa-eye"></i>
             </a>
 
             <div data-ng-if="fileOpen == file.name">
+
+                <hr/>
+
                 <div data-ng-if="file.error" class="alert alert-explain" role="alert">
                     <strong>Message:</strong> {{ file.error }}
                 </div>
@@ -88,7 +91,7 @@
                             <a href role="tab" data-ng-click="setTabOpen('info')">Info</a>
                         </li>
                     </ul>
-                    <div class="tab-content col-md-6">
+                    <div class="tab-content col-md-8">
                         <div ng-switch="tabOpen">
                             <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
                             <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>
@@ -101,7 +104,7 @@
                             <div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>
                         </div>
                     </div>
-                    <div class="col-md-2 pull-right">
+                    <div class="col-md-4">
                         <div data-ng-include="'actions.html'">actions</div>
                     </div>
                 </div>
