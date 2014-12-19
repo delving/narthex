@@ -254,7 +254,7 @@ a {
     font-weight: bold;
     margin-left: 0px !important;
     text-transform: uppercase;
-    padding: 5px 10px 4px 10px;
+    padding: 4px 6px 2px 6px;
   }
   .toolbar {
     float: right;
@@ -274,6 +274,7 @@ ul.nav-tabs {
   li {
     a {
       background: lighten(@bright-blue,40%);
+      padding: 4px 8px;
     }
     &.active a {
       background: @white
@@ -309,6 +310,11 @@ ul.nav-tabs {
     }
     .name {
       .column(7,12);
+      font-weight: bold;
+      span {
+        font-weight: normal;
+      }
+
     }
     .count {
       .column(3,12);
@@ -324,6 +330,7 @@ ul.nav-tabs {
   }
   .progress {
     background: #fff;
+    text-shadow: 1px 1px #000;
     font-size: 12px;
     height: 22px;
     /*line-height: 32px;*/
@@ -374,7 +381,7 @@ ul.nav-tabs {
 /* dataset/schema view styles *****************************************/
 
 .file-path-info {
-  background: @silver;
+  background: @white;
   font-weight: normal;
   font-size: 100%;
   margin: 0 0 10px 0;
@@ -447,6 +454,11 @@ code {
   background:@linnen;
   border: 1px solid lighten(@tan, 25%);
 //  color: @white;
+}
+
+.alert-small {
+  padding: 5px 10px;
+  margin: 0px;
 }
 
 .terminology-list {
