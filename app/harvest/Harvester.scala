@@ -61,6 +61,13 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
   def addPage(page: String): Int = {
     val harvestPageName = s"harvest_$pageCount.xml"
     zip.putNextEntry(new ZipEntry(harvestPageName))
+
+    println(s"HarvestPage:\n$page")
+    val pageFile = new File(new File("/tmp"), harvestPageName)
+    val os = new FileOutputStream(pageFile)
+    os.write(page.getBytes("UTF-8"))
+    os.close()
+
     zip.write(page.getBytes("UTF-8"))
     zip.closeEntry()
     pageCount += 1
@@ -145,24 +152,31 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
     case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, justDate, resumptionToken) =>
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
-      progress.foreach { progressReporter =>
-        resumptionToken.map { token =>
-          val keepHarvesting = if (token.hasPercentComplete) {
-            progressReporter.sendPercent(token.percentComplete)
+
+      if (pageNumber == 3) {
+        log.info("Finishing early")
+        finish(None, None)
+      }
+      else {
+        progress.foreach { progressReporter =>
+          resumptionToken.map { token =>
+            val keepHarvesting = if (token.hasPercentComplete) {
+              progressReporter.sendPercent(token.percentComplete)
+            }
+            else {
+              progressReporter.sendPage(pageCount)
+            }
+            if (keepHarvesting) {
+              val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate, resumptionToken)
+              handleFailure(futurePage, modifiedAfter, "pmh harvest page")
+              futurePage pipeTo self
+            }
+            else {
+              finish(modifiedAfter, Some("Interrupted while harvesting"))
+            }
+          } getOrElse {
+            finish(modifiedAfter, None)
           }
-          else {
-            progressReporter.sendPage(pageCount)
-          }
-          if (keepHarvesting) {
-            val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate, resumptionToken)
-            handleFailure(futurePage, modifiedAfter, "pmh harvest page")
-            futurePage pipeTo self
-          }
-          else {
-            finish(modifiedAfter, Some("Interrupted while harvesting"))
-          }
-        } getOrElse {
-          finish(modifiedAfter, None)
         }
       }
 
