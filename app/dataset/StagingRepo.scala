@@ -190,7 +190,12 @@ class StagingRepo(home: File) {
     }
     else {
       val newIdsFile = createIdsFile(fileNumber)
-      FileUtils.writeStringToFile(newIdsFile, idSet.toList.sorted.mkString("", "\n", "\n"))
+      val idWriter = writer(newIdsFile)
+      idSet.foreach { id =>
+        idWriter.write(id)
+        idWriter.write('\n')
+      }
+      idWriter.close()
       writeToFile(createActiveIdsFile(newIdsFile), idSet.size.toString)
       val idsFiles = files.map(createIdsFile)
       idsFiles.foreach { idsFile =>
