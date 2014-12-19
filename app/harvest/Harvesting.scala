@@ -16,6 +16,7 @@
 
 package harvest
 
+import com.ning.http.client.providers.netty.NettyResponse
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
@@ -26,7 +27,7 @@ import services.Temporal._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Random
-import scala.xml.{Elem, NodeSeq}
+import scala.xml.{Elem, NodeSeq, XML}
 
 // todo: use the actor's execution context?
 
@@ -228,7 +229,9 @@ trait Harvesting {
                    resumption: Option[PMHResumptionToken] = None): Future[AnyRef] = {
 
     // Teylers 2014-09-15
-    val listRecords = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT).withQueryString("verb" -> "ListRecords")
+    val listRecords = WS.url(url)
+      .withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
+      .withQueryString("verb" -> "ListRecords")
     val request = resumption match {
       case None =>
         val withPrefix = listRecords.withQueryString("metadataPrefix" -> metadataPrefix)
@@ -260,7 +263,10 @@ trait Harvesting {
         else None
       }
       error getOrElse {
-        val tokenNode = response.xml \ "ListRecords" \ "resumptionToken"
+        val netty = response.underlying[NettyResponse]
+        val body = netty.getResponseBody("UTF-8")
+        val xml = XML.loadString(body)
+        val tokenNode = xml \ "ListRecords" \ "resumptionToken"
         val newToken = if (tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
           val cursor = tagToInt(tokenNode, "@cursor", 1)
@@ -279,7 +285,7 @@ trait Harvesting {
           else if (resumption.isDefined) resumption.get.totalRecords
           else 0
         PMHHarvestPage(
-          records = response.xml.toString(),
+          records = xml.toString(),
           url = url,
           set = set,
           metadataPrefix = metadataPrefix,

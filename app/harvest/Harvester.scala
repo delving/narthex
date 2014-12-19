@@ -61,13 +61,6 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
   def addPage(page: String): Int = {
     val harvestPageName = s"harvest_$pageCount.xml"
     zip.putNextEntry(new ZipEntry(harvestPageName))
-
-    println(s"HarvestPage:\n$page")
-    val pageFile = new File(new File("/tmp"), harvestPageName)
-    val os = new FileOutputStream(pageFile)
-    os.write(page.getBytes("UTF-8"))
-    os.close()
-
     zip.write(page.getBytes("UTF-8"))
     zip.closeEntry()
     pageCount += 1
