@@ -18,6 +18,8 @@
  
 
 <script type="text/ng-template" id="dataset-entry.html">
+
+
     <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary" ng-class="{'panel-info': file.state == 'state-empty'}">
         <div class="panel-heading">
             <div class="icon">
@@ -37,7 +39,7 @@
 
             <div class="toolbar row">
                 <div class="col-xs-2">
-                    <a href data-ng-click="setFileOpen(file)" class="btn btn-default btn-sm">
+                    <a href data-ng-click="setFileOpen(file)" class="btn btn-default btn-sm" data-toggle="modal" data-target="#myModal">
                         Edit <span class="caret"></span>
                     </a>
                 </div>
@@ -120,7 +122,7 @@
 
                 <hr/>
 
-                <div data-ng-include="'actions.html'">actions</div>
+                <div data-ng-include="'actions.html'" class="file-block-toolbar">actions</div>
             </div>
         </div>
 
@@ -155,12 +157,57 @@
                 <i class="fa fa-bar-chart-o"></i> Included in Monitor Statistics
             </span>
 
-            <span data-ng-show="file.prefix" class="label label-warning">
+            <span data-ng-show="file.prefix" class="label label-inverse pull-right">
                 {{ file.prefix }}
             </span>
 
         </div>
     </div>
+
+</script>
+
+<script type="text/ng-template" id="metadata-form.html" class="">
+    <form name="form" class="form file-harvest">
+        <fieldset>
+            <div class="form-group">
+                <label for="meta_name">Dataset Name</label>
+                <input id="meta_name" class="form-control input-sm" data-ng-model="file.info.metadata.name"/>
+            </div>
+            <div class="form-group">
+                <label for="meta_description">Description</label>
+                <input id="meta_description" class="form-control input-sm" data-ng-model="file.info.metadata.description"/>
+            </div>
+            <div class="form-group">
+                <label for="meta_owner">Provider or Owner</label>
+                <input id="meta_owner" class="form-control input-sm" data-ng-model="file.info.metadata.provider"/>
+            </div>
+            <div class="form-group">
+                <label for="meta_provider">Data Provider</label>
+                <input id="meta_provider" class="form-control input-sm" data-ng-model="file.info.metadata.dataProvider"/>
+            </div>
+            <div class="form-group">
+                <label for="meta_language">Language</label>
+                <input id="meta_language" class="form-control input-sm" data-ng-model="file.info.metadata.language"/>
+            </div>
+            <div class="form-group">
+                <label for="meta_rights">Rights</label>
+                <input id="meta_rights" class="form-control input-sm" data-ng-model="file.info.metadata.rights"/>
+            </div>
+            <!--todo: make this enabled whenever fields are different, otherwise not-->
+            <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()">
+                <i class="fa fa-save"></i>
+                <span>Save</span>
+            </button>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="sip-zip.html">
+    <ul class="sip-files">
+        <li data-ng-repeat="sip in sipFiles">
+            <span data-ng-class="{ 'latest': $index == 0}">{{ sip }}</span>
+        </li>
+    </ul>
 </script>
 
 <script type="text/ng-template" id="new-file.html">
@@ -289,42 +336,6 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="metadata-form.html">
-    <form name="form" class="form file-harvest">
-        <fieldset>
-            <div class="form-group">
-                <label for="meta_name">Dataset Name</label>
-                <input id="meta_name" class="form-control" data-ng-model="file.info.metadata.name"/>
-            </div>
-            <div class="form-group">
-                <label for="meta_description">Description</label>
-                <input id="meta_description" class="form-control" data-ng-model="file.info.metadata.description"/>
-            </div>
-            <div class="form-group">
-                <label for="meta_owner">Provider or Owner</label>
-                <input id="meta_owner" class="form-control" data-ng-model="file.info.metadata.provider"/>
-            </div>
-            <div class="form-group">
-                <label for="meta_provider">Data Provider</label>
-                <input id="meta_provider" class="form-control" data-ng-model="file.info.metadata.dataProvider"/>
-            </div>
-            <div class="form-group">
-                <label for="meta_language">Language</label>
-                <input id="meta_language" class="form-control" data-ng-model="file.info.metadata.language"/>
-            </div>
-            <div class="form-group">
-                <label for="meta_rights">Rights</label>
-                <input id="meta_rights" class="form-control" data-ng-model="file.info.metadata.rights"/>
-            </div>
-            <!--todo: make this enabled whenever fields are different, otherwise not-->
-            <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()">
-                <i class="fa fa-save"></i>
-                <span>Save</span>
-            </button>
-        </fieldset>
-    </form>
-</script>
-
 <script type="text/ng-template" id="publication-form.html">
     <form name="form" class="form">
         <fieldset>
@@ -343,7 +354,7 @@
                     <input id="pub_lod" type="checkbox" data-ng-model="file.info.publication.lod" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
-            <button typ="button" class="btn btn-success" data-ng-click="setPublication()">
+            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setPublication()">
                 <i class="fa fa-refresh"></i>
                 <span>Save</span>
             </button>
@@ -455,15 +466,6 @@
         <i class="fa fa-trash-o"></i>
         <span>Delete Dataset</span>
     </button>
-</script>
-
-<script type="text/ng-template" id="sip-zip.html">
-    <h4 class="heading">SIP Files</h4>
-    <ul>
-        <li data-ng-repeat="sip in sipFiles">
-            <span data-ng-class="{ 'fa-2x': $index == 0}">{{ sip }}</span>
-        </li>
-    </ul>
 </script>
 
 

@@ -218,9 +218,10 @@ a {
 /* custom label styles ************************************************/
 
 .label-inverse {
-  background: @silver;
+  background: @white;
   border: 1px solid @ash-gray;
-  color: @gray-dark;
+  color: @brand-primary;
+  color: @brand-primary;
 }
 
 /* custom fontawesome icon styles ****************************************/
@@ -242,50 +243,6 @@ a {
 
 }
 
-
-/* nav-tabs ************************************************************/
-
-.nav-tabs {
-  dipsplay: inline-block;
-  width: 100%;
-  .nav-tabs-title {
-    display: inline-block;
-    color: @gray-light;
-    font-weight: bold;
-    margin-left: 0px !important;
-    text-transform: uppercase;
-    padding: 4px 6px 2px 6px;
-  }
-  .toolbar {
-    float: right;
-    .btn {
-      padding: 4px 8px;
-    }
-    .dropdown-menu {
-      left: auto !important;
-      right: 0px !important;
-    }
-  }
-}
-
-
-ul.nav-tabs {
-  margin: 10px 0;
-  li {
-    a {
-      background: lighten(@bright-blue,40%);
-      padding: 4px 8px;
-    }
-    &.active a {
-      background: @white
-    }
-  }
-}
-
-.navbar-tools {
-  background: @silver;
-}
-
 /* dashboard file list styles *******************************************/
 @total-width: 100%;
 
@@ -294,7 +251,7 @@ ul.nav-tabs {
 }
 
 .file-block {
-  .column(12);
+  .column(6);
   .panel-heading {
     .clearfix();
     .icon {
@@ -322,9 +279,6 @@ ul.nav-tabs {
       text-align: right;
     }
   }
-
-
-
   .label {
     display: inline-block;
   }
@@ -376,6 +330,71 @@ ul.nav-tabs {
   margin-top: 5px;
   background: @silver;
   padding: 10px;
+}
+
+.panel-footer {
+  height: 40px;
+}
+
+.file-block-toolbar {
+  text-align: right;
+}
+
+/* nav-tabs ************************************************************/
+
+.nav-tabs {
+  dipsplay: inline-block;
+  width: 100%;
+  font-size: .85em;
+  //  padding-left: 10px;
+  .nav-tabs-title {
+    display: inline-block;
+    color: @gray-light;
+    font-weight: bold;
+    //    margin-left: 0px !important;
+    text-transform: uppercase;
+    padding: 4px 6px 2px 6px;
+  }
+  .toolbar {
+    float: right;
+    .btn {
+      padding: 4px 8px;
+    }
+    .dropdown-menu {
+      left: auto !important;
+      right: 0px !important;
+    }
+  }
+}
+
+
+ul.nav-tabs {
+  margin: 10px 0;
+  li {
+    a {
+      background: lighten(@bright-blue,40%);
+      padding: 4px 8px;
+      margin-right: 1px;
+    }
+    &.active a {
+      background: @white
+    }
+  }
+}
+
+.navbar-tools {
+  background: @silver;
+}
+
+/* file-block tabs sip files list *************************************/
+
+.sip-files {
+  padding-left: 15px;
+  color: @gray-light;
+  .latest {
+    color: @brand-success;
+//    font-weight: bold;
+  }
 }
 
 /* dataset/schema view styles *****************************************/
