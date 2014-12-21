@@ -1,20 +1,24 @@
 /**
  * Header
  */
-.row.header {
+.row.page-header {
     height: 60px;
     background: #fff;
-    margin-bottom: 15px;
-    & > div:last-child {
-        padding-right: 0;
-    }
+    margin: 0 -15px 15px -15px !important;
+//    & > div:last-child {
+//        padding-right: 0;
+//    }
     .meta {
         .page {
-            font-size: 17px;
-            padding-top: 11px;
+          display: inline-block;
+            font-size: 18px;
+            padding-top: 10px;
         }
         .breadcrumb-links {
-            font-size: 10px;
+          background: transparent;
+            font-size: 12px;
+          margin: 0 0 0 0;
+          padding: 0;
         }
         div {
             white-space: nowrap;
@@ -29,7 +33,8 @@
         }
     }
     .user {
-        min-width: 130px;
+//        min-width: 130px;
+      line-height: 60px;
         & > .item {
             width: 65px;
             height: 60px;

@@ -24,7 +24,7 @@ define(
         );
 
         mod.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);
-        mod.config(function ($rootScopeProvider) {
+        mod.config(function ($rootScopeProvider) { 
             $rootScopeProvider.digestTtl(15);
         });
         return mod;
