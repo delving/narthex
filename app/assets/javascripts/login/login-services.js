@@ -25,16 +25,16 @@ define(["angular", "common"], function (angular) {
 //        console.log("user", user);
     }
 
-    var mod = angular.module("home.services", ["narthex.common"]);
+    var mod = angular.module("login.services", ["narthex.common"]);
     mod.factory(
         "userService",
         ["$http", "$q", "playRoutes",
             function ($http, $q, playRoutes) {
                 var user;
-                var app = playRoutes.web.Application;
+                var main = playRoutes.web.MainController;
                 return {
                     loginUser: function (credentials) {
-                        return app.login().post(credentials).then(
+                        return main.login().post(credentials).then(
                             function (response) {
                                 user = response.data;
                                 buildUrls(user);
@@ -48,13 +48,13 @@ define(["angular", "common"], function (angular) {
                     },
                     logout: function () {
                         console.log("notifying the server of logout");
-                        return app.logout().get().then(function (response) {
+                        return main.logout().get().then(function (response) {
                             user = undefined;
                             return "logged out"
                         });
                     },
                     checkLogin: function () {
-                        return app.checkLogin().get().then(
+                        return main.checkLogin().get().then(
                             function (response) {
                                 user = response.data;
                                 buildUrls(user);

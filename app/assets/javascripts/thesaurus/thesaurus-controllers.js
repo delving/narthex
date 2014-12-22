@@ -17,7 +17,8 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var ThesaurusChooseCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService) {
+    var ThesaurusChooseCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService, user) {
+        if (user == null) $location.path("/");
         $scope.conceptSchemes = {};
         $scope.buttonEnabled = false;
 
@@ -42,10 +43,10 @@ define(["angular"], function (angular) {
         }, true);
     };
 
-    ThesaurusChooseCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService"];
+    ThesaurusChooseCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService", "user"];
 
     var ThesaurusMapCtrl = function ($rootScope, $scope, $location, $routeParams, thesaurusService, $timeout, pageScroll, user) {
-
+        if (user == null) $location.path("/");
         var a = $routeParams.conceptSchemeA;
         var b = $routeParams.conceptSchemeB;
         $scope.conceptSchemeA = (a < b) ? a : b;

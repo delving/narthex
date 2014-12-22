@@ -20,7 +20,7 @@ define(["angular"], function (angular) {
     var USERNAME_COOKIE = "NARTHEX-User";
 
     /** Controls the index page */
-    var HomeCtrl = function ($scope, $rootScope, $cookies, $location, userService, $timeout) {
+    var LoginCtrl = function ($scope, $rootScope, $cookies, $location, userService, $timeout) {
 
         $scope.credentials = {
             username: $cookies[USERNAME_COOKIE]
@@ -39,20 +39,18 @@ define(["angular"], function (angular) {
                 }
             );
         };
-
-        if (userService.getUser()) {
-            if (userService.checkLogin()) {
-                $location.path("/datasets")
-            }
-        }
     };
-    HomeCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
+    LoginCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
 
     /** Controls the header */
     var HeaderCtrl = function ($rootScope, $scope, userService, $location) {
 
         $scope.setOrg = function (orgId) {
             $rootScope.orgId = orgId;
+        };
+
+        $scope.freshLogin = function() {
+            $location.path("/")
         };
 
         $scope.toggleSidebar = function() {
@@ -84,10 +82,9 @@ define(["angular"], function (angular) {
     };
     HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
 
-
     return {
         HeaderCtrl: HeaderCtrl,
-        HomeCtrl: HomeCtrl
+        LoginCtrl: LoginCtrl
     };
 
 });

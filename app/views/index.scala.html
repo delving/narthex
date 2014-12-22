@@ -21,9 +21,12 @@
             <div id="sidebar-wrapper">
                 <ul class="sidebar" sidebar-nav="active">
                     <li class="sidebar-main">
-                        <a href="" ng-click="toggleSidebar()" class="">
-                            <img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
-                            NARTHEX <span class="menu-icon glyphicon glyphicon-transfer"></span>
+                        <a href="" class="">
+                            <span data-ng-click="freshLogin()">
+                                <img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
+                                <span>NARTHEX</span>
+                            </span>
+                            <span ng-click="toggleSidebar()" class="menu-icon glyphicon glyphicon-transfer"></span>
                         </a>
                     </li>
                     @*<span data-ng-if="user">*@

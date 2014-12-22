@@ -1,24 +1,19 @@
-/**
- * Dashboard, shown after user is logged in.
- * dashboard/main.js is the entry module which serves as an entry point so other modules only have
- * to include a single module.
- */
 define(
     [
         "angular",
-        "./dashboard-controllers",
-        "./dashboard-routes",
-        "./dashboard-services"
+        "./datasets-controllers",
+        "./datasets-routes",
+        "./datasets-services"
     ],
     function (angular, controllers) {
         "use strict";
 
         var mod = angular.module(
-            "narthex.dashboard",
+            "narthex.datasets",
             [
                 "ngRoute",
-                "dashboard.routes",
-                "dashboard.services",
+                "datasets.routes",
+                "datasets.services",
                 "narthex.common"
             ]
         );

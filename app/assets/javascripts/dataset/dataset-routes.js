@@ -18,13 +18,13 @@ define(
     [
         "angular",
         "./dataset-controllers",
-        "../home/home-services",
+        "../login/login-services",
         "common"
     ],
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("dataset.routes", ["narthex.common", "home.services"]);
+        var mod = angular.module("dataset.routes", ["narthex.common", "login.services"]);
         mod.config(
             [
                 "$routeProvider", "userResolve",

@@ -22,8 +22,8 @@
 requirejs.config({
     packages: [
         "common",
-        "home",
-        "dashboard",
+        "login",
+        "datasets",
         "dataset",
         "terms",
         "categories",
