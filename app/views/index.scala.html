@@ -19,37 +19,37 @@
 
         <!-- Sidebar -->
             <div id="sidebar-wrapper">
-                <ul class="sidebar">
+                <ul class="sidebar" sidebar-nav="active">
                     <li class="sidebar-main">
                         <a href="" ng-click="toggleSidebar()" class="">
                             <img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
                             NARTHEX <span class="menu-icon glyphicon glyphicon-transfer"></span>
                         </a>
                     </li>
-                    <span data-ng-if="user">
+                    @*<span data-ng-if="user">*@
                     <li class="sidebar-title"><span>NAVIGATION</span></li>
                     <li class="sidebar-list">
-                        <a href="/narthex/#/datasets">Datasets <span class="menu-icon fa fa-cubes"></span></a>
+                        <a href="/#/datasets">Datasets <span class="menu-icon fa fa-cubes"></span></a>
                     </li>
                     @if(showCategories) {
                         <li class="sidebar-list">
-                            <a href="/narthex/#/categories">Monitor <span class="menu-icon fa fa-calculator"></span></a>
+                            <a href="/#/categories">Monitor <span class="menu-icon fa fa-calculator"></span></a>
                         </li>
                     }
                     @if(showThesaurus) {
                         <li class="sidebar-list">
-                            <a href="/narthex/#/thesaurus">Thesaurus alignment <span class="menu-icon fa fa-exchange"></span></a>
+                            <a href="/#/thesaurus">Thesaurus alignment <span class="menu-icon fa fa-exchange"></span></a>
                         </li>
                     }
                     <li data-ng-show="breadcrumbs.dataset" class="sidebar-title">
                         <span>LAST VIEWED</span>
                     </li>
                     <li class="sidebar-list" data-ng-show="breadcrumbs.dataset">
-                        <a href="/narthex/#/dataset/{{ breadcrumbs.dataset }}">
+                        <a href="/#/dataset/{{ breadcrumbs.dataset }}">
                             {{ breadcrumbs.dataset }} <span class="menu-icon fa fa-eye"></span>
                         </a>
                     </li>
-                    </span>
+                    @*</span>*@
                 </ul>
                 <div class="sidebar-footer">
                     <div class="col-xs-4">
