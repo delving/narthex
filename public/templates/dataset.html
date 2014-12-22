@@ -24,7 +24,7 @@
                 </div>
             </div>
             <div class="panel-body">
-                <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="220" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+                <div class="vertical-scroll" data-scrollable id="tree-list" data-offset="220" data-ng-style="{ 'height': elHeight }">
                     <ul data-ng-controller="TreeCtrl" class="list-node">
                         <li data-ng-include="'node.html'">tree</li>
                     </ul>
@@ -84,7 +84,7 @@
             </li>
         </ul>
 
-        <div data-ng-show="selectedNode && !(sample || histogram)" data-scrollable id="graph-list" data-offset="255" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+        <div data-ng-show="selectedNode && !(sample || histogram)" data-scrollable id="graph-list" data-offset="255" data-ng-style="{ 'height': elHeight }">
             <div>
                 <nvd3-pie-chart data="selectedNode.lengths" id="exampleId" width="500" height="500" x="getX()" y="getY()" color="getColor()" showLabels="true">
                     <svg></svg>
@@ -93,7 +93,7 @@
         </div>
 
         <div ng-show="sample">
-            <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="255" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+            <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="255" data-ng-style="{ 'height': elHeight }">
                 <ul class="list-group">
                     <li data-ng-repeat="value in sample.sample | filter:filterText" class="list-group-item">
                         {{ value }}
@@ -103,7 +103,7 @@
         </div>
 
         <div ng-show="histogram">
-            <div class="vertical-scroll" data-scrollable id="historgram-list" data-offset="255" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+            <div class="vertical-scroll" data-scrollable id="historgram-list" data-offset="255" data-ng-style="{ 'height': elHeight }">
                 <ul class="list-group">
                     <li data-ng-repeat="count in histogram.histogram | filter:filterText" class="list-group-item clearfix">
                         <span class="node-content">{{ count[1] }}</span>
