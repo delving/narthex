@@ -25,8 +25,8 @@
 define(
     [
         "angular",
-        "home",
-        "dashboard",
+        "login",
+        "datasets",
         "dataset",
         "terms",
         "categories",
@@ -40,8 +40,8 @@ define(
         return angular.module(
             "app",
             [
-                "narthex.home",
-                "narthex.dashboard",
+                "narthex.login",
+                "narthex.datasets",
                 "narthex.dataset",
                 "narthex.terms",
                 "narthex.categories",

@@ -17,14 +17,14 @@
 define(
     [
         "angular",
-        "./dashboard-controllers",
-        "../home/home-services",
+        "./datasets-controllers",
+        "../login/login-services",
         "common"
     ],
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("dashboard.routes", ["narthex.common", "home.services"]);
+        var mod = angular.module("datasets.routes", ["narthex.common", "login.services"]);
         mod.config(
             [
                 "$routeProvider", "userResolve",
@@ -32,7 +32,7 @@ define(
                     $routeProvider.when(
                         "/datasets", {
                             templateUrl: "/narthex/assets/templates/datasets.html",
-                            controller: controllers.DashboardCtrl,
+                            controller: controllers.DatasetsCtrl,
                             resolve: userResolve,
                             reloadOnSearch: false
                         }

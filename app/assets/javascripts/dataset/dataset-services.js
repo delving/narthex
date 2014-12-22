@@ -22,7 +22,7 @@ define(["angular", "common"], function (angular) {
     mod.service("datasetService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
-            var dash = playRoutes.web.Dashboard;
+            var app = playRoutes.web.AppController;
 
             var rejection = function (reply) {
                 if (reply.status == 401) { // unauthorized
@@ -41,7 +41,7 @@ define(["angular", "common"], function (angular) {
 
             return {
                 datasetInfo: function (datasetName) {
-                    return dash.datasetInfo(datasetName).get().then(
+                    return app.datasetInfo(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -49,7 +49,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 index: function (datasetName) {
-                    return dash.index(datasetName).get().then(
+                    return app.index(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -57,7 +57,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 getTermSourcePaths: function (datasetName) {
-                    return dash.getTermSourcePaths(datasetName).get().then(
+                    return app.getTermSourcePaths(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -65,7 +65,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 getCategorySourcePaths: function (datasetName) {
-                    return dash.getCategorySourcePaths(datasetName).get().then(
+                    return app.getCategorySourcePaths(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -73,7 +73,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 nodeStatus: function (datasetName, path) {
-                    return dash.nodeStatus(datasetName, path).get().then(
+                    return app.nodeStatus(datasetName, path).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -81,7 +81,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setRecordDelimiter: function (datasetName, body) {
-                    return dash.setRecordDelimiter(datasetName).post(body).then(
+                    return app.setRecordDelimiter(datasetName).post(body).then(
                         function (response) {
                             return response.data;
                         },
@@ -89,7 +89,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 sample: function (datasetName, path, size) {
-                    return dash.sample(datasetName, path, size).get().then(
+                    return app.sample(datasetName, path, size).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -97,7 +97,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 histogram: function (datasetName, path, size) {
-                    return dash.histogram(datasetName, path, size).get().then(
+                    return app.histogram(datasetName, path, size).get().then(
                         function (response) {
                             return response.data;
                         },

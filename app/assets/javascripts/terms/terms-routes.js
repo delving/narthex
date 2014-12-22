@@ -19,13 +19,13 @@ define(
         "angular",
         "./terms-controllers",
         "./terms-services",
-        "../home/home-services",
+        "../login/login-services",
         "common"
     ],
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("terms.routes", ["narthex.common", "home.services"]);
+        var mod = angular.module("terms.routes", ["narthex.common", "login.services"]);
         mod.config([
             "$routeProvider", "userResolve",
             function ($routeProvider, userResolve) {

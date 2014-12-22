@@ -23,10 +23,10 @@ define(["angular"], function () {
     "use strict";
 
     /**
-     * user is not a service, but stems from userResolve (Check ../user/dashboard-services.js) object used by dashboard.routes.
+     * user is not a service, but stems from userResolve (Check ../user/datasets-services.js) object used by dashboard.routes.
      */
-    var DashboardCtrl = function ($rootScope, $scope, user, dashboardService, $location, $upload, $timeout, $routeParams) {
-        if (user == null) return;
+    var DatasetsCtrl = function ($rootScope, $scope, user, datasetsService, $location, $upload, $timeout, $routeParams) {
+        if (user == null) $location.path("/");
         $scope.user = user;
         $scope.uploading = false;
         $scope.files = [];
@@ -54,7 +54,7 @@ define(["angular"], function () {
         $scope.$watch("dataset.prefix", setNewDataset);
 
         $scope.createDataset = function () {
-            dashboardService.create($scope.dataset.validName, $scope.dataset.prefix).then(function () {
+            datasetsService.create($scope.dataset.validName, $scope.dataset.prefix).then(function () {
                 $scope.setNewFileOpen(false);
                 $scope.dataset.name = undefined;
                 $scope.fetchDatasetList();
@@ -234,7 +234,7 @@ define(["angular"], function () {
         }
 
         function checkProgress(file) {
-            dashboardService.datasetInfo(file.name).then(
+            datasetsService.datasetInfo(file.name).then(
                 function (info) {
                     file.info = info;
                     decorateFile(file);
@@ -256,7 +256,7 @@ define(["angular"], function () {
         }
 
         $scope.fetchDatasetList = function () {
-            dashboardService.listDatasets().then(function (files) {
+            datasetsService.listDatasets().then(function (files) {
                 _.forEach($scope.files, cancelChecker);
                 _.forEach(files, decorateFile);
                 $scope.files = files;
@@ -268,17 +268,17 @@ define(["angular"], function () {
 
         $scope.fetchDatasetList();
 
-        dashboardService.listPrefixes().then(function(prefixes) {
+        datasetsService.listPrefixes().then(function(prefixes) {
             $scope.prefixes = prefixes;
             $scope.dataset.prefix = prefixes.length ? prefixes[0] : undefined
         });
     };
 
-    DashboardCtrl.$inject = [
-        "$rootScope", "$scope", "user", "dashboardService", "$location", "$upload", "$timeout", "$routeParams"
+    DatasetsCtrl.$inject = [
+        "$rootScope", "$scope", "user", "datasetsService", "$location", "$upload", "$timeout", "$routeParams"
     ];
 
-    var DatasetEntryCtrl = function ($scope, dashboardService, $location, $timeout) {
+    var DatasetEntryCtrl = function ($scope, datasetsService, $location, $timeout) {
 
         var file = $scope.file;
 
@@ -302,36 +302,36 @@ define(["angular"], function () {
         }
 
         $scope.setMetadata = function () {
-            dashboardService.setMetadata(file.name, file.info.metadata).then(refresh);
+            datasetsService.setMetadata(file.name, file.info.metadata).then(refresh);
         };
 
         $scope.setPublication = function () {
             // todo: publish in index implies publish oaipmh
-            dashboardService.setPublication(file.name, file.info.publication).then(refresh);
+            datasetsService.setPublication(file.name, file.info.publication).then(refresh);
             // todo: show the user it has happened!
         };
 
         $scope.setCategories = function () {
-            dashboardService.setCategories(file.name, file.info.categories).then(refresh);
+            datasetsService.setCategories(file.name, file.info.categories).then(refresh);
         };
 
         $scope.setHarvestCron = function () {
-            dashboardService.setHarvestCron(file.name, file.info.harvestCron).then(refresh);
+            datasetsService.setHarvestCron(file.name, file.info.harvestCron).then(refresh);
         };
 
         $scope.startHarvest = function () {
             $scope.setFileOpen("");
-            dashboardService.harvest(file.name, file.info.harvest).then(refresh);
+            datasetsService.harvest(file.name, file.info.harvest).then(refresh);
         };
 
         $scope.startAnalysis = function () {
             $scope.setFileOpen("");
-            dashboardService.analyze(file.name).then(refresh);
+            datasetsService.analyze(file.name).then(refresh);
         };
 
         $scope.saveRecords = function () {
             $scope.setFileOpen("");
-            dashboardService.saveRecords(file.name).then(refresh);
+            datasetsService.saveRecords(file.name).then(refresh);
         };
 
         $scope.viewFile = function () {
@@ -341,7 +341,7 @@ define(["angular"], function () {
 
         $scope.command = function (areYouSure, command) {
             if (areYouSure && !confirm(areYouSure)) return;
-            dashboardService.command(file.name, command).then(function (data) {
+            datasetsService.command(file.name, command).then(function (data) {
                 refresh();
                 if (command == 'interrupt') $scope.setFileOpen(file.name);
             });
@@ -372,7 +372,7 @@ define(["angular"], function () {
         };
 
         function fetchSipFileList() {
-            dashboardService.listSipFiles(file.name).then(function (data) {
+            datasetsService.listSipFiles(file.name).then(function (data) {
                 $scope.sipFiles = (data && data.list && data.list.length) ? data.list : undefined;
             });
         }
@@ -380,17 +380,17 @@ define(["angular"], function () {
         fetchSipFileList();
 
         $scope.deleteSipZip = function () {
-            dashboardService.deleteLatestSipFile(file.name).then(function () {
+            datasetsService.deleteLatestSipFile(file.name).then(function () {
                 fetchSipFileList();
             });
         };
 
     };
 
-    DatasetEntryCtrl.$inject = ["$scope", "dashboardService", "$location", "$timeout"];
+    DatasetEntryCtrl.$inject = ["$scope", "datasetsService", "$location", "$timeout"];
 
     return {
-        DashboardCtrl: DashboardCtrl,
+        DatasetsCtrl: DatasetsCtrl,
         DatasetEntryCtrl: DatasetEntryCtrl
     };
 

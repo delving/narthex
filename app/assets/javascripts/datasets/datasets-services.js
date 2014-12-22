@@ -17,12 +17,12 @@
 define(["angular", "common"], function (angular) {
     "use strict";
 
-    var mod = angular.module("dashboard.services", ["narthex.common"]);
+    var mod = angular.module("datasets.services", ["narthex.common"]);
 
-    mod.service("dashboardService", [
+    mod.service("datasetsService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
-            var dash = playRoutes.web.Dashboard;
+            var app = playRoutes.web.AppController;
 
             var rejection = function (reply) {
                 if (reply.status == 401) { // unauthorized
@@ -41,7 +41,7 @@ define(["angular", "common"], function (angular) {
 
             return {
                 create: function (datasetName, prefix) {
-                    return dash.create(datasetName, prefix).get().then(
+                    return app.create(datasetName, prefix).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -49,7 +49,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 command: function (datasetName, command) {
-                    return dash.command(datasetName, command).get().then(
+                    return app.command(datasetName, command).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -57,7 +57,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 datasetInfo: function (datasetName) {
-                    return dash.datasetInfo(datasetName).get().then(
+                    return app.datasetInfo(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -65,7 +65,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 listDatasets: function () {
-                    return dash.listDatasets().get().then(
+                    return app.listDatasets().get().then(
                         function (response) {
                             return response.data;
                         },
@@ -73,7 +73,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 listPrefixes: function () {
-                    return dash.listPrefixes().get().then(
+                    return app.listPrefixes().get().then(
                         function (response) {
                             return response.data;
                         },
@@ -81,7 +81,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setMetadata: function (datasetName, metadata) {
-                    return dash.setMetadata(datasetName).post(metadata).then(
+                    return app.setMetadata(datasetName).post(metadata).then(
                         function (response) {
                             return response.data;
                         },
@@ -89,7 +89,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setPublication: function (datasetName, publication) {
-                    return dash.setPublication(datasetName).post(publication).then(
+                    return app.setPublication(datasetName).post(publication).then(
                         function (response) {
                             return response.data;
                         },
@@ -97,7 +97,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setCategories: function (datasetName, categories) {
-                    return dash.setCategories(datasetName).post(categories).then(
+                    return app.setCategories(datasetName).post(categories).then(
                         function (response) {
                             return response.data;
                         },
@@ -105,7 +105,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 harvest: function (datasetName, harvestInfo) {
-                    return dash.harvest(datasetName).post(harvestInfo).then(
+                    return app.harvest(datasetName).post(harvestInfo).then(
                         function (response) {
                             return response.data;
                         },
@@ -113,7 +113,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setHarvestCron: function (datasetName, harvestCron) {
-                    return dash.setHarvestCron(datasetName).post(harvestCron).then(
+                    return app.setHarvestCron(datasetName).post(harvestCron).then(
                         function (response) {
                             return response.data;
                         },
@@ -121,7 +121,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 analyze: function (datasetName) {
-                    return dash.analyze(datasetName).get().then(
+                    return app.analyze(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -129,7 +129,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 saveRecords: function (datasetName) {
-                    return dash.saveRecords(datasetName).get().then(
+                    return app.saveRecords(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -137,7 +137,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 listSipFiles: function (datasetName) {
-                    return dash.listSipFiles(datasetName).get().then(
+                    return app.listSipFiles(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -145,7 +145,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 deleteLatestSipFile: function (datasetName) {
-                    return dash.deleteLatestSipFile(datasetName).get().then(
+                    return app.deleteLatestSipFile(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },

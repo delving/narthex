@@ -28,9 +28,9 @@ import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
 import thesaurus.ThesaurusDb._
-import web.Application.OkFile
+import web.MainController.OkFile
 
-object Dashboard extends Controller with Security {
+object AppController extends Controller with Security {
 
   val DATASET_PROPERTY_LISTS = List(
     "character",

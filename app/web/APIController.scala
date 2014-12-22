@@ -29,14 +29,14 @@ import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import record.EnrichmentParser
 import services._
-import web.Application.{OkFile, OkXml}
+import web.MainController.{OkFile, OkXml}
 
 object APIController extends Controller {
 
   def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasets = repo.orgDb.listDatasets.map {
       dataset =>
-        val lists = Dashboard.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+        val lists = AppController.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
         Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))
     }
     //      Ok(JsArray(datasets))

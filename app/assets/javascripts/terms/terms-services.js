@@ -22,7 +22,7 @@ define(["angular", "common"], function (angular) {
     mod.service("termsService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
-            var dash = playRoutes.web.Dashboard;
+            var app = playRoutes.web.AppController;
 
             var rejection = function (reply) {
                 if (reply.status == 401) { // unauthorized
@@ -41,7 +41,7 @@ define(["angular", "common"], function (angular) {
 
             return {
                 datasetInfo: function (datasetName) {
-                    return dash.datasetInfo(datasetName).get().then(
+                    return app.datasetInfo(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -49,7 +49,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 listConceptSchemes: function () {
-                    return dash.listConceptSchemes().get().then(
+                    return app.listConceptSchemes().get().then(
                         function (response) {
                             return response.data;
                         },
@@ -57,7 +57,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 getMappings: function (datasetName) {
-                    return dash.getTermMappings(datasetName).get().then(
+                    return app.getTermMappings(datasetName).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -65,7 +65,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 histogram: function (datasetName, path, size) {
-                    return dash.histogram(datasetName, path, size).get().then(
+                    return app.histogram(datasetName, path, size).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -73,7 +73,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 searchConceptScheme: function (conceptSchemeName, sought) {
-                    return dash.searchConceptScheme(conceptSchemeName, sought).get().then(
+                    return app.searchConceptScheme(conceptSchemeName, sought).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -81,7 +81,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 queryRecords: function (datasetName, body) {
-                    return dash.queryRecords(datasetName).post(body).then(
+                    return app.queryRecords(datasetName).post(body).then(
                         function (response) {
                             return response.data;
                         },
@@ -89,10 +89,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setMapping: function (name, body) {
-
-                    console.log("body", body);
-
-                    return dash.setTermMapping(name).post(body).then(
+                    return app.setTermMapping(name).post(body).then(
                         function (response) {
                             return response.data;
                         },

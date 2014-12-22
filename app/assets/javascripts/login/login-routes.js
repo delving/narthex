@@ -17,22 +17,22 @@
 define(
     [
         "angular",
-        "./home-controllers",
-        "./home-services",
+        "./login-controllers",
+        "./login-services",
         "common"
     ],
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module("home.routes", ["narthex.common"]);
+        var mod = angular.module("login.routes", ["narthex.common"]);
 
         mod.config(["$routeProvider", function ($routeProvider) {
             $routeProvider
                 .when(
                 "/",
                 {
-                    templateUrl: "/narthex/assets/templates/home.html",
-                    controller: controllers.HomeCtrl
+                    templateUrl: "/narthex/assets/templates/login.html",
+                    controller: controllers.LoginCtrl
                 }
             ).otherwise(
                 {

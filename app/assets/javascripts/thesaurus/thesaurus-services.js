@@ -22,7 +22,7 @@ define(["angular", "common"], function (angular) {
     mod.service("thesaurusService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
-            var dash = playRoutes.web.Dashboard;
+            var app = playRoutes.web.AppController;
 
             var rejection = function (reply) {
                 if (reply.status == 401) { // unauthorized
@@ -41,7 +41,7 @@ define(["angular", "common"], function (angular) {
 
             return {
                 listConceptSchemes: function () {
-                    return dash.listConceptSchemes().get().then(
+                    return app.listConceptSchemes().get().then(
                         function (response) {
                             return response.data;
                         },
@@ -49,7 +49,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 searchConceptScheme: function (conceptSchemeName, sought) {
-                    return dash.searchConceptScheme(conceptSchemeName, sought).get().then(
+                    return app.searchConceptScheme(conceptSchemeName, sought).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -57,7 +57,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 getThesaurusMappings: function (schemeNameA, schemeNameB) {
-                    return dash.getThesaurusMappings(schemeNameA, schemeNameB).get().then(
+                    return app.getThesaurusMappings(schemeNameA, schemeNameB).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -65,7 +65,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setThesaurusMapping: function (schemeNameA, schemeNameB, body) {
-                    return dash.setThesaurusMapping(schemeNameA, schemeNameB).post(body).then(
+                    return app.setThesaurusMapping(schemeNameA, schemeNameB).post(body).then(
                         function (response) {
                             return response.data;
                         },

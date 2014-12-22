@@ -30,7 +30,7 @@ import services.{CommonsServices, NarthexConfig, UserProfile}
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object Application extends Controller with Security {
+object MainController extends Controller with Security {
 
   val SIP_APP_VERSION = "P14-04"
 
@@ -166,6 +166,7 @@ object Application extends Controller with Security {
       }
   }
 
+  // todo: move this
   def OkFile(file: File, attempt: Int = 0): Result = {
     try {
       val input = new FileInputStream(file)
@@ -188,6 +189,7 @@ object Application extends Controller with Security {
     }
   }
 
+  // todo: move this
   def OkXml(xml: String): Result = {
     Result(
       ResponseHeader(OK, Map(
@@ -206,42 +208,42 @@ object Application extends Controller with Security {
     implicit request =>
       Ok(// IntelliJ Idea shows errors here but it compiles:
         Routes.javascriptRouter(varName)(
-          routes.javascript.Application.login,
-          routes.javascript.Application.checkLogin,
-          routes.javascript.Application.logout,
-          routes.javascript.Dashboard.listDatasets,
-          routes.javascript.Dashboard.listPrefixes,
-          routes.javascript.Dashboard.create,
-          routes.javascript.Dashboard.analyze,
-          routes.javascript.Dashboard.harvest,
-          routes.javascript.Dashboard.setHarvestCron,
-          routes.javascript.Dashboard.setMetadata,
-          routes.javascript.Dashboard.setPublication,
-          routes.javascript.Dashboard.setCategories,
-          routes.javascript.Dashboard.datasetInfo,
-          routes.javascript.Dashboard.command,
-          routes.javascript.Dashboard.nodeStatus,
-          routes.javascript.Dashboard.index,
-          routes.javascript.Dashboard.sample,
-          routes.javascript.Dashboard.histogram,
-          routes.javascript.Dashboard.setRecordDelimiter,
-          routes.javascript.Dashboard.saveRecords,
-          routes.javascript.Dashboard.queryRecords,
-          routes.javascript.Dashboard.listConceptSchemes,
-          routes.javascript.Dashboard.searchConceptScheme,
-          routes.javascript.Dashboard.getTermSourcePaths,
-          routes.javascript.Dashboard.getTermMappings,
-          routes.javascript.Dashboard.setTermMapping,
-          routes.javascript.Dashboard.getThesaurusMappings,
-          routes.javascript.Dashboard.setThesaurusMapping,
-          routes.javascript.Dashboard.getCategoryList,
-          routes.javascript.Dashboard.listSheets,
-          routes.javascript.Dashboard.getCategorySourcePaths,
-          routes.javascript.Dashboard.getCategoryMappings,
-          routes.javascript.Dashboard.setCategoryMapping,
-          routes.javascript.Dashboard.gatherCategoryCounts,
-          routes.javascript.Dashboard.listSipFiles,
-          routes.javascript.Dashboard.deleteLatestSipFile
+          routes.javascript.MainController.login,
+          routes.javascript.MainController.checkLogin,
+          routes.javascript.MainController.logout,
+          routes.javascript.AppController.listDatasets,
+          routes.javascript.AppController.listPrefixes,
+          routes.javascript.AppController.create,
+          routes.javascript.AppController.analyze,
+          routes.javascript.AppController.harvest,
+          routes.javascript.AppController.setHarvestCron,
+          routes.javascript.AppController.setMetadata,
+          routes.javascript.AppController.setPublication,
+          routes.javascript.AppController.setCategories,
+          routes.javascript.AppController.datasetInfo,
+          routes.javascript.AppController.command,
+          routes.javascript.AppController.nodeStatus,
+          routes.javascript.AppController.index,
+          routes.javascript.AppController.sample,
+          routes.javascript.AppController.histogram,
+          routes.javascript.AppController.setRecordDelimiter,
+          routes.javascript.AppController.saveRecords,
+          routes.javascript.AppController.queryRecords,
+          routes.javascript.AppController.listConceptSchemes,
+          routes.javascript.AppController.searchConceptScheme,
+          routes.javascript.AppController.getTermSourcePaths,
+          routes.javascript.AppController.getTermMappings,
+          routes.javascript.AppController.setTermMapping,
+          routes.javascript.AppController.getThesaurusMappings,
+          routes.javascript.AppController.setThesaurusMapping,
+          routes.javascript.AppController.getCategoryList,
+          routes.javascript.AppController.listSheets,
+          routes.javascript.AppController.getCategorySourcePaths,
+          routes.javascript.AppController.getCategoryMappings,
+          routes.javascript.AppController.setCategoryMapping,
+          routes.javascript.AppController.gatherCategoryCounts,
+          routes.javascript.AppController.listSipFiles,
+          routes.javascript.AppController.deleteLatestSipFile
         )
       ).as(JAVASCRIPT)
   }

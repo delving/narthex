@@ -21,7 +21,7 @@ import org.OrgRepo.{AvailableSip, repo}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
-import web.Application.{OkFile, SIP_APP_VERSION}
+import web.MainController.{OkFile, SIP_APP_VERSION}
 
 object SipAppController extends Controller with Security {
 

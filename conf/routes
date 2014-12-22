@@ -3,60 +3,60 @@
 # ~~~~
 
 # Home page
-GET         /                                                                     web.Application.root
-GET         /narthex/                                                             web.Application.index
+GET         /                                                                     web.MainController.root
+GET         /narthex/                                                             web.MainController.index
 
 # JavaScript routes object
-GET         /narthex/jsroutes.js                                                  web.Application.jsRoutes()
+GET         /narthex/jsroutes.js                                                  web.MainController.jsRoutes()
 
 # Routes used by Angular
 # ~~~~
 
 # Authentication
-GET         /narthex/checkLogin                                                   web.Application.checkLogin
-POST        /narthex/login                                                        web.Application.login
-GET         /narthex/logout                                                       web.Application.logout
+GET         /narthex/checkLogin                                                   web.MainController.checkLogin
+POST        /narthex/login                                                        web.MainController.login
+GET         /narthex/logout                                                       web.MainController.logout
 
 # File Handling
-GET         /narthex/dashboard/datasets                                           web.Dashboard.listDatasets
-GET         /narthex/dashboard/prefixes                                           web.Dashboard.listPrefixes
-GET         /narthex/dashboard/:datasetName/create/:prefix                        web.Dashboard.create(datasetName, prefix)
-POST        /narthex/dashboard/:datasetName/upload                                web.Dashboard.upload(datasetName)
-POST        /narthex/dashboard/:datasetName/harvest                               web.Dashboard.harvest(datasetName)
-POST        /narthex/dashboard/:datasetName/set-harvest-cron                      web.Dashboard.setHarvestCron(datasetName)
-POST        /narthex/dashboard/:datasetName/set-metadata                          web.Dashboard.setMetadata(datasetName)
-POST        /narthex/dashboard/:datasetName/set-publication                       web.Dashboard.setPublication(datasetName)
-POST        /narthex/dashboard/:datasetName/set-categories                        web.Dashboard.setCategories(datasetName)
-POST        /narthex/dashboard/:datasetName/set-delimiter                         web.Dashboard.setRecordDelimiter(datasetName)
-GET         /narthex/dashboard/:datasetName/analyze                               web.Dashboard.analyze(datasetName)
-GET         /narthex/dashboard/:datasetName/index                                 web.Dashboard.index(datasetName)
-GET         /narthex/dashboard/:datasetName/dataset-info                          web.Dashboard.datasetInfo(datasetName)
-GET         /narthex/dashboard/:datasetName/command/:command                      web.Dashboard.command(datasetName, command)
-GET         /narthex/dashboard/:datasetName/status/*path                          web.Dashboard.nodeStatus(datasetName, path)
-GET         /narthex/dashboard/:datasetName/sample/:size/*path                    web.Dashboard.sample(datasetName, path, size:Int)
-GET         /narthex/dashboard/:datasetName/histogram/:size/*path                 web.Dashboard.histogram(datasetName, path, size:Int)
-GET         /narthex/dashboard/:datasetName/save-records                          web.Dashboard.saveRecords(datasetName)
+GET         /narthex/app/datasets                                           web.AppController.listDatasets
+GET         /narthex/app/prefixes                                           web.AppController.listPrefixes
+GET         /narthex/app/:datasetName/create/:prefix                        web.AppController.create(datasetName, prefix)
+POST        /narthex/app/:datasetName/upload                                web.AppController.upload(datasetName)
+POST        /narthex/app/:datasetName/harvest                               web.AppController.harvest(datasetName)
+POST        /narthex/app/:datasetName/set-harvest-cron                      web.AppController.setHarvestCron(datasetName)
+POST        /narthex/app/:datasetName/set-metadata                          web.AppController.setMetadata(datasetName)
+POST        /narthex/app/:datasetName/set-publication                       web.AppController.setPublication(datasetName)
+POST        /narthex/app/:datasetName/set-categories                        web.AppController.setCategories(datasetName)
+POST        /narthex/app/:datasetName/set-delimiter                         web.AppController.setRecordDelimiter(datasetName)
+GET         /narthex/app/:datasetName/analyze                               web.AppController.analyze(datasetName)
+GET         /narthex/app/:datasetName/index                                 web.AppController.index(datasetName)
+GET         /narthex/app/:datasetName/dataset-info                          web.AppController.datasetInfo(datasetName)
+GET         /narthex/app/:datasetName/command/:command                      web.AppController.command(datasetName, command)
+GET         /narthex/app/:datasetName/status/*path                          web.AppController.nodeStatus(datasetName, path)
+GET         /narthex/app/:datasetName/sample/:size/*path                    web.AppController.sample(datasetName, path, size:Int)
+GET         /narthex/app/:datasetName/histogram/:size/*path                 web.AppController.histogram(datasetName, path, size:Int)
+GET         /narthex/app/:datasetName/save-records                          web.AppController.saveRecords(datasetName)
 
-POST        /narthex/dashboard/:datasetName/query-records                         web.Dashboard.queryRecords(datasetName)
+POST        /narthex/app/:datasetName/query-records                         web.AppController.queryRecords(datasetName)
 
-GET         /narthex/dashboard/skos/list                                          web.Dashboard.listConceptSchemes
-GET         /narthex/dashboard/skos/:conceptSchemeName/:sought                    web.Dashboard.searchConceptScheme(conceptSchemeName, sought)
-GET         /narthex/dashboard/skos/:schemeNameA/:schemeNameB/get-mappings        web.Dashboard.getThesaurusMappings(schemeNameA, schemeNameB)
-POST        /narthex/dashboard/skos/:schemeNameA/:schemeNameB/set-mapping         web.Dashboard.setThesaurusMapping(schemeNameA, schemeNameB)
-GET         /narthex/dashboard/:datasetName/term/source-paths                     web.Dashboard.getTermSourcePaths(datasetName)
-GET         /narthex/dashboard/:datasetName/term/mappings                         web.Dashboard.getTermMappings(datasetName)
-POST        /narthex/dashboard/:datasetName/term/set-mapping                      web.Dashboard.setTermMapping(datasetName)
+GET         /narthex/app/skos/list                                          web.AppController.listConceptSchemes
+GET         /narthex/app/skos/:conceptSchemeName/:sought                    web.AppController.searchConceptScheme(conceptSchemeName, sought)
+GET         /narthex/app/skos/:schemeNameA/:schemeNameB/get-mappings        web.AppController.getThesaurusMappings(schemeNameA, schemeNameB)
+POST        /narthex/app/skos/:schemeNameA/:schemeNameB/set-mapping         web.AppController.setThesaurusMapping(schemeNameA, schemeNameB)
+GET         /narthex/app/:datasetName/term/source-paths                     web.AppController.getTermSourcePaths(datasetName)
+GET         /narthex/app/:datasetName/term/mappings                         web.AppController.getTermMappings(datasetName)
+POST        /narthex/app/:datasetName/term/set-mapping                      web.AppController.setTermMapping(datasetName)
 
-GET         /narthex/dashboard/category-list                                      web.Dashboard.getCategoryList
-GET         /narthex/dashboard/sheets-list                                        web.Dashboard.listSheets
-GET         /narthex/dashboard/sheet/:datasetName                                 web.Dashboard.sheet(datasetName)
-GET         /narthex/dashboard/:datasetName/category/source-paths                 web.Dashboard.getCategorySourcePaths(datasetName)
-GET         /narthex/dashboard/:datasetName/category/mappings                     web.Dashboard.getCategoryMappings(datasetName)
-POST        /narthex/dashboard/:datasetName/category/set-mapping                  web.Dashboard.setCategoryMapping(datasetName)
-GET         /narthex/dashboard/categories/gather-counts                           web.Dashboard.gatherCategoryCounts
+GET         /narthex/app/category-list                                      web.AppController.getCategoryList
+GET         /narthex/app/sheets-list                                        web.AppController.listSheets
+GET         /narthex/app/sheet/:datasetName                                 web.AppController.sheet(datasetName)
+GET         /narthex/app/:datasetName/category/source-paths                 web.AppController.getCategorySourcePaths(datasetName)
+GET         /narthex/app/:datasetName/category/mappings                     web.AppController.getCategoryMappings(datasetName)
+POST        /narthex/app/:datasetName/category/set-mapping                  web.AppController.setCategoryMapping(datasetName)
+GET         /narthex/app/categories/gather-counts                           web.AppController.gatherCategoryCounts
 
-GET         /narthex/dashboard/:datasetName/sip-list                              web.Dashboard.listSipFiles(datasetName)
-GET         /narthex/dashboard/:datasetName/delete-latest                         web.Dashboard.deleteLatestSipFile(datasetName)
+GET         /narthex/app/:datasetName/sip-list                              web.AppController.listSipFiles(datasetName)
+GET         /narthex/app/:datasetName/delete-latest                         web.AppController.deleteLatestSipFile(datasetName)
 
 # sip-app
 GET         /narthex/sip-app                                                      web.SipAppController.listSipZips()

@@ -6,21 +6,21 @@
 define(
     [
         "angular",
-        "./home-routes",
-        "./home-services",
-        "./home-controllers"
+        "./login-routes",
+        "./login-services",
+        "./login-controllers"
     ],
     function (angular, routes, services, controllers) {
         "use strict";
 
         var mod = angular.module(
-            "narthex.home",
+            "narthex.login",
             [
                 "ngCookies",
                 "ngRoute",
                 "ngStorage",
-                "home.routes",
-                "home.services"
+                "login.routes",
+                "login.services"
             ]
         );
         mod.controller("HeaderCtrl", controllers.HeaderCtrl);
