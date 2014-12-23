@@ -147,7 +147,7 @@
             </span>
 
             <span class="label label-default" ng-if="file.info.categories.included == 'true'">
-                <i class="fa fa-bar-chart-o"></i> Included in Monitor Statistics
+                <i class="fa fa-bar-chart-o"></i> Included in Category Monitor Statistics
             </span>
 
             <span data-ng-show="file.prefix" class="label label-inverse pull-right">
@@ -359,7 +359,7 @@
     <form name="form" class="form">
         <fieldset>
             <div class="checkbox">
-                <label for="cat">Include Categories in Monitor Statistics
+                <label for="cat">Include in Category Monitor Statistics
                     <input id="cat" type="checkbox" data-ng-model="file.info.categories.included"
                            ng-true-value="'true'" ng-false-value="'false'" data-ng-click="setCategories()"/>
                 </label>
