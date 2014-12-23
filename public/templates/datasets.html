@@ -20,6 +20,43 @@
                 <div data-ng-include="'new-file.html'">new file</div>
             </div>
         </div>
+
+
+
+        <div class="panel-footer">
+
+            <span ng-if="file.state">
+                <span ng-switch="file.state">
+                    <span class="label label-danger" ng-switch-when="state-empty">Empty</span>
+                    <span ng-switch-when="state-raw">
+                        <span class="label label-success" data-ng-show="!file.treeTime">Raw</span>
+                        <span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>
+                    </span>
+                    <span ng-switch-when="state-raw-pockets">
+                        <span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>
+                        <span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>
+                    </span>
+                    <span ng-switch-when="state-sourced">
+                        <span class="label label-primary" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
+                        <span class="label label-primary" data-ng-show="file.treeTime">
+                            <i class="fa fa-eye"></i> Analyzed <!--{{ file.treeTime }}-->
+                        </span>
+                        <span class="label label-info" data-ng-show="file.recordsTime">
+                            <i class="fa fa-database"></i> Saved <!--{{ file.recordsTime }}-->
+                        </span>
+                    </span>
+                </span>
+            </span>
+
+            <span class="label label-default" ng-if="file.info.categories.included == 'true'">
+                <i class="fa fa-bar-chart-o"></i> Included in Category Monitor Statistics
+            </span>
+
+            <span data-ng-show="file.prefix" class="label label-inverse pull-right">
+                {{ file.prefix }}
+            </span>
+
+        </div>
     </div>
 </div>
 
@@ -215,7 +252,7 @@
     <form name="form" class="form">
         <fieldset>
             <div class="checkbox">
-                <label for="cat">Include Categories in Monitor Statistics
+                <label for="cat">Include in Category Monitor Statistics
                     <input id="cat" type="checkbox" data-ng-model="file.info.categories.included"
                            ng-true-value="'true'" ng-false-value="'false'" data-ng-click="setCategories()"/>
                 </label>
