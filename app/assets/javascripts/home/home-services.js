@@ -88,7 +88,12 @@ define(["angular", "common"], function (angular) {
             else {
                 userService.checkLogin().then(
                     function (revealedUser) {
-                        deferred.resolve(revealedUser)
+                        if (revealedUser) {
+                            deferred.resolve(revealedUser)
+                        }
+                        else {
+                            deferred.reject();
+                        }
                     },
                     function (reason) {
                         deferred.reject();
