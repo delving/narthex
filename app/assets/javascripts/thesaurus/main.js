@@ -6,22 +6,43 @@
 define(
     [
         "angular",
-        "./thesaurus-routes",
         "./thesaurus-services",
-        "./thesaurus-controllers"
+        "./thesaurus-controllers",
+        "../login/login-services"
     ],
-    function (angular, routes, services, controllers) {
+    function (angular, services, controllers) {
         "use strict";
 
-        var mod = angular.module(
-            "narthex.thesaurus",
-            [
-                "ngCookies",
-                "ngRoute",
-                "thesaurus.routes",
-                "thesaurus.services"
-            ]
-        );
-        return mod;
+        var thesaurusRoutes = angular.module("thesaurus.routes", ["narthex.common", "login.services"]);
+        thesaurusRoutes.config([
+            "$routeProvider", "userResolve",
+            function ($routeProvider, userResolve) {
+                $routeProvider.when(
+                    "/thesaurus",
+                    {
+                        templateUrl: "/narthex/assets/templates/thesaurus-choose.html",
+                        controller: controllers.ThesaurusChooseCtrl,
+                        resolve: userResolve,
+                        reloadOnSearch: false
+                    }
+                ).when(
+                    "/thesaurus/:conceptSchemeA/:conceptSchemeB",
+                    {
+                        templateUrl: "/narthex/assets/templates/thesaurus-map.html",
+                        controller: controllers.ThesaurusMapCtrl,
+                        resolve: userResolve,
+                        reloadOnSearch: false
+                    }
+                )
+            }
+        ]);
+
+        var narthexThesaurus = angular.module("narthex.thesaurus", [
+            "ngCookies",
+            "ngRoute",
+            "thesaurus.routes",
+            "thesaurus.services"
+        ]);
+        return narthexThesaurus;
     }
 );

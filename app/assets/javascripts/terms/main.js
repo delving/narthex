@@ -6,23 +6,34 @@
 define(
     [
         "angular",
-        "./terms-routes",
         "./terms-services",
         "./terms-controllers"
     ],
-    function (angular, routes, services, controllers) {
+    function (angular, services, controllers) {
         "use strict";
 
-        var mod = angular.module(
-            "narthex.terms",
-            [
-                "ngCookies",
-                "ngRoute",
-                "terms.routes",
-                "terms.services"
-            ]
-        );
-//        mod.controller("FooterCtrl", controllers.FooterCtrl);
-        return mod;
+        var termsRoutes = angular.module("terms.routes", ["narthex.common", "login.services"]);
+        termsRoutes.config([
+            "$routeProvider", "userResolve",
+            function ($routeProvider, userResolve) {
+                $routeProvider.when(
+                    "/terms/:datasetName",
+                    {
+                        templateUrl: "/narthex/assets/templates/terms.html",
+                        controller: controllers.TermsCtrl,
+                        resolve: userResolve,
+                        reloadOnSearch: false
+                    }
+                )
+            }
+        ]);
+
+        var narthexTerms = angular.module("narthex.terms", [
+            "ngCookies",
+            "ngRoute",
+            "terms.routes",
+            "terms.services"
+        ]);
+        return narthexTerms;
     }
 );
