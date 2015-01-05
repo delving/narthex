@@ -59,6 +59,19 @@ object PocketParser {
 
   val SIP_RECORD_TAG = "sip-record"
 
+}
+
+class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
+
+  import record.PocketParser._
+
+  val path = new mutable.Stack[(String, StringBuilder)]
+  val introduceRecord = deepRecordContainer.exists(_ == recordRootPath)
+  var percentWas = -1
+  var lastProgress = 0l
+  var recordCount = 0
+  var namespaceMap: Map[String, String] = Map.empty
+
   val digest = MessageDigest.getInstance("MD5")
 
   private def hashString(record: String) = {
@@ -87,19 +100,6 @@ object PocketParser {
     digest.reset()
     toHex(digest.digest(record.getBytes("UTF-8")))
   }
-
-}
-
-class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
-
-  import record.PocketParser._
-
-  val path = new mutable.Stack[(String, StringBuilder)]
-  val introduceRecord = deepRecordContainer.exists(_ == recordRootPath)
-  var percentWas = -1
-  var lastProgress = 0l
-  var recordCount = 0
-  var namespaceMap: Map[String, String] = Map.empty
 
   def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progressReporter: ProgressReporter): Int = {
     val events = new NarthexEventReader(source)
