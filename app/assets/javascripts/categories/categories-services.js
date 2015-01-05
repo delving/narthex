@@ -56,14 +56,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-//                sheet: function (name) {
-//                    return dash.sheet(name).get().then(
-//                        function (response) {
-//                            return response.data;
-//                        },
-//                        rejection
-//                    );
-//                },
                 gatherCategoryCounts: function () {
                     return app.gatherCategoryCounts().get().then(
                         function (response) {

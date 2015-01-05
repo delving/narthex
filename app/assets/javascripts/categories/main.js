@@ -6,21 +6,40 @@
 define(
     [
         "angular",
-        "./categories-routes",
         "./categories-services",
         "./categories-controllers"
     ],
-    function (angular, routes, services) {
+    function (angular, services, controllers) {
         "use strict";
 
-        return angular.module(
-            "narthex.categories",
-            [
-                "ngCookies",
-                "ngRoute",
-                "categories.routes",
-                "categories.services"
-            ]
-        );
+        var categoriesRoutes = angular.module("categories.routes", ["narthex.common", "login.services"]);
+        categoriesRoutes.config([
+            "$routeProvider", "userResolve",
+            function ($routeProvider, userResolve) {
+                $routeProvider.when(
+                    "/categories/:datasetName",
+                    {
+                        templateUrl: "/narthex/assets/templates/category-set.html",
+                        controller: controllers.CategorySetCtrl,
+                        resolve: userResolve,
+                        reloadOnSearch: false
+                    }
+                ).when(
+                    "/categories",
+                    {
+                        templateUrl: "/narthex/assets/templates/category-monitor.html",
+                        controller: controllers.CategoryMonitorCtrl,
+                        resolve: userResolve
+                    }
+                )
+            }
+        ]);
+
+        return angular.module("narthex.categories", [
+            "ngCookies",
+            "ngRoute",
+            "categories.routes",
+            "categories.services"
+        ]);
     }
 );

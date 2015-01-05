@@ -6,14 +6,29 @@
 define(
     [
         "angular",
-        "./login-routes",
         "./login-services",
         "./login-controllers"
     ],
-    function (angular, routes, services, controllers) {
+    function (angular, services, controllers) {
         "use strict";
 
-        var mod = angular.module(
+        var loginRoutes = angular.module("login.routes", ["narthex.common"]);
+        loginRoutes.config(["$routeProvider", function ($routeProvider) {
+            $routeProvider
+                .when(
+                "/",
+                {
+                    templateUrl: "/narthex/assets/templates/login.html",
+                    controller: controllers.LoginCtrl
+                }
+            ).otherwise(
+                {
+                    templateUrl: "/narthex/assets/templates/notFound.html"
+                }
+            );
+        }]);
+
+        var narthexLogin = angular.module(
             "narthex.login",
             [
                 "ngCookies",
@@ -23,8 +38,8 @@ define(
                 "login.services"
             ]
         );
-        mod.controller("HeaderCtrl", controllers.HeaderCtrl);
-        mod.controller("SidebarCtrl", controllers.SidebarCtrl);
-        return mod;
+        narthexLogin.controller("HeaderCtrl", controllers.HeaderCtrl);
+        narthexLogin.controller("SidebarCtrl", controllers.SidebarCtrl);
+        return narthexLogin;
     }
 );

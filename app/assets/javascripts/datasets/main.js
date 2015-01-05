@@ -2,27 +2,40 @@ define(
     [
         "angular",
         "./datasets-controllers",
-        "./datasets-routes",
         "./datasets-services"
     ],
     function (angular, controllers) {
         "use strict";
 
-        var mod = angular.module(
-            "narthex.datasets",
+        var datasetsRoutes = angular.module("datasets.routes", ["narthex.common", "login.services"]);
+        datasetsRoutes.config(
             [
-                "ngRoute",
-                "datasets.routes",
-                "datasets.services",
-                "narthex.common"
+                "$routeProvider", "userResolve",
+                function ($routeProvider, userResolve) {
+                    $routeProvider.when(
+                        "/datasets", {
+                            templateUrl: "/narthex/assets/templates/datasets.html",
+                            controller: controllers.DatasetsCtrl,
+                            resolve: userResolve,
+                            reloadOnSearch: false
+                        }
+                    );
+                }
             ]
         );
 
-        mod.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);
-        mod.config(function ($rootScopeProvider) { 
+        var narthexDatasets = angular.module("narthex.datasets", [
+            "ngRoute",
+            "datasets.routes",
+            "datasets.services",
+            "narthex.common"
+        ]);
+
+        narthexDatasets.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);
+        narthexDatasets.config(function ($rootScopeProvider) {
             $rootScopeProvider.digestTtl(15);
         });
-        return mod;
+        return narthexDatasets;
     });
 
 
