@@ -33,7 +33,7 @@ object EnrichmentParser {
 
   case class StoredRecord(id: String, mod: DateTime, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())
 
-  case class TargetConcept(uri: String, conceptScheme: String, prefLabel: String, who: String, when: DateTime){
+  case class TargetConcept(uri: String, conceptScheme: String, attributionName: String, prefLabel: String, who: String, when: DateTime){
     val whenString = Temporal.timeToString(when)
   }
 
@@ -57,7 +57,8 @@ class EnrichmentParser(naveDomain: String, pathPrefix: String, termMappings: Map
   val ENRICHMENT_NAMESPACES = Seq(
     "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     "rdfs" -> "http://www.w3.org/2000/01/rdf-schema#",
-    "skos" -> "http://www.w3.org/2004/02/skos/core#"
+    "skos" -> "http://www.w3.org/2004/02/skos/core#",
+    "cc" -> "http://creativecommons.org/ns#"
   )
 
   case class Frame(tag: String, path: String, text: mutable.StringBuilder = new mutable.StringBuilder())
@@ -132,22 +133,25 @@ class EnrichmentParser(naveDomain: String, pathPrefix: String, termMappings: Map
           val text = frame.text.toString().trim
           if (text.nonEmpty) {
             val rdfAbout = s"$naveDomain/resource/thesaurusenrichment$pathPrefix${frame.path}/${urlEncodeValue(text)}"
-            val in = indent
             val tagText = termMappings.get(rdfAbout).map { targetConcept =>
-              s"""$in${start.get}
-                   |$in  <rdf:Description rdf:about="$rdfAbout">
-                   |$in    <rdf:type rdf:resource="http://schemas.delving.org/ThesaurusEnrichment"/>
-                   |$in    <rdfs:label>${frame.text}</rdfs:label>
-                   |$in    <skos:prefLabel>${targetConcept.prefLabel}</skos:prefLabel>
-                   |$in    <skos:exactMatch rdf:resource="${targetConcept.uri}"/>
-                   |$in    <skos:ConceptScheme>${targetConcept.conceptScheme}</skos:ConceptScheme>
-                   |$in    <skos:note>Mapped in Narthex by ${targetConcept.who} on ${targetConcept.whenString}</skos:note>
-                   |$in  </rdf:Description>
-                   |$in</$tag>\n""".stripMargin
+              s"""
+                 |${start.get}
+                 |  <rdf:Description rdf:about="$rdfAbout">
+                 |    <rdf:type rdf:resource="http://schemas.delving.org/ThesaurusEnrichment"/>
+                 |    <rdfs:label>${frame.text}</rdfs:label>
+                 |    <skos:prefLabel>${targetConcept.prefLabel}</skos:prefLabel>
+                 |    <skos:exactMatch rdf:resource="${targetConcept.uri}"/>
+                 |    <skos:ConceptScheme>${targetConcept.conceptScheme}</skos:ConceptScheme>
+                 |    <cc:attributionURL rdf:resource="${targetConcept.uri}"/>
+                 |    <cc:attributionName>${targetConcept.attributionName}</cc:attributionName>
+                 |    <skos:note>Mapped in Narthex by ${targetConcept.who} on ${targetConcept.whenString}</skos:note>
+                 |  </rdf:Description>
+                 |</$tag>""".stripMargin.trim
             } getOrElse {
-              s"$in${start.get}${frame.text}</$tag>\n"
+              s"${start.get}${frame.text}</$tag>"
             }
-            record.get.text.append(tagText)
+            val indented = tagText.split("\n").map(indent + _).mkString("", "\n", "\n")
+            record.get.text.append(indented)
             start = None
           }
           else start match {

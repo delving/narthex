@@ -35,13 +35,14 @@ object TermDb {
       "sourceURI" -> mapping.sourceURI,
       "targetURI" -> mapping.targetURI,
       "conceptScheme" -> mapping.conceptScheme,
+      "attributionName" -> mapping.attributionName,
       "prefLabel" -> mapping.prefLabel,
       "who" -> mapping.who,
       "when" -> mapping.whenString
     )
   }
 
-  case class TermMapping(sourceURI: String, targetURI: String, conceptScheme: String, prefLabel: String, who: String, when: DateTime) {
+  case class TermMapping(sourceURI: String, targetURI: String, conceptScheme: String, attributionName: String, prefLabel: String, who: String, when: DateTime) {
     val whenString = Temporal.timeToString(when)
   }
 
@@ -65,6 +66,7 @@ class TermDb(dbBaseName: String) {
       |     <sourceURI>${mapping.sourceURI}</sourceURI>
       |     <targetURI>${mapping.targetURI}</targetURI>
       |     <conceptScheme>${mapping.conceptScheme}</conceptScheme>
+      |     <attributionName>${mapping.attributionName}</attributionName>
       |     <prefLabel>${mapping.prefLabel}</prefLabel>
       |     <who>${mapping.who}</who>
       |     <when>${mapping.whenString}</when>
@@ -120,6 +122,7 @@ class TermDb(dbBaseName: String) {
         (node \ "sourceURI").text,
         (node \ "targetURI").text,
         (node \ "conceptScheme").text,
+        (node \ "attributionName").text,
         (node \ "prefLabel").text,
         (node \ "who").text,
         Temporal.stringToTime((node \ "when").text)

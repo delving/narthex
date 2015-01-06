@@ -56,13 +56,13 @@ object ConceptScheme {
     model.listStatements(resource, property, null).map(_.getObject.asResource()).toSeq
   }
 
-  def read(inputStream: InputStream): Seq[ConceptScheme] = {
+  def read(inputStream: InputStream, fileName: String): Seq[ConceptScheme] = {
     val model = ModelFactory.createDefaultModel()
     model.read(inputStream, null)
     val inScheme = model.getProperty(SKOS, "inScheme")
     val statements = model.listStatements(null, inScheme, null).toList
     val schemeResources = statements.map(_.getObject.asResource()).distinct
-    schemeResources.map(ConceptScheme(_, model))
+    schemeResources.map(ConceptScheme(_, fileName, model))
   }
 
   implicit val writesLabelSearch = new Writes[LabelSearch] {
@@ -83,6 +83,7 @@ object ConceptScheme {
         "prefLabel" -> result.prefLabel.text,
         "uri" -> result.concept.resource.toString,
         "conceptScheme" -> result.concept.scheme.name,
+        "attributionName" -> result.concept.scheme.fileName,
         "narrower" -> narrowerLabels.map(_.text),
         "broader" -> broaderLabels.map(_.text)
       )
@@ -111,9 +112,9 @@ object ConceptScheme {
     lazy val labels = prefLabels ++ altLabels
     lazy val narrower: Seq[Concept] = getRelated(resource, "narrower", model).flatMap(resource => conceptMap.get(resource.getURI))
     lazy val broader: Seq[Concept] = getRelated(resource, "broader", model).flatMap(resource => conceptMap.get(resource.getURI))
-    
+
     def getPrefLabel(language: String) = getLanguageLabel(prefLabels, language)
-    
+
     def search(language: String, sought: String): Option[ProximityResult] = {
       val judged = labels.filter(_.language == language).map { label =>
         val text = IGNORE_BRACKET.replaceFirstIn(label.text.toLowerCase, "")
@@ -134,13 +135,13 @@ object ConceptScheme {
 
 }
 
-case class ConceptScheme(resource: Resource, model: Model) {
+case class ConceptScheme(resource: Resource, fileName: String, model: Model) {
 
   val conceptMap = new mutable.HashMap[String, Concept]()
 
   lazy val name: String = {
     val prefLabels = getPrefLabels(resource, model)
-    prefLabels.headOption.map(_.text).getOrElse{
+    prefLabels.headOption.map(_.text).getOrElse {
       val property = model.getProperty(DC, "title")
       val titles = model.listStatements(resource, property, null).map(_.getObject.asLiteral()).map(
         literal => literal.getString
@@ -162,5 +163,5 @@ case class ConceptScheme(resource: Resource, model: Model) {
     LabelSearch(LabelQuery(language, cleanSought, count), results)
   }
 
-  override def toString: String = s"ConceptScheme($resource): $name (${concepts.size})"
+  override def toString: String = s"ConceptScheme($resource): $name $fileName (${concepts.size})"
 }

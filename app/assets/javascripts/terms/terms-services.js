@@ -89,7 +89,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setMapping: function (name, body) {
-                    return app.setTermMapping(name).post(body).then(
+                    return dash.setTermMapping(name).post(body).then(
                         function (response) {
                             return response.data;
                         },
