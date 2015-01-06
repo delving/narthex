@@ -156,7 +156,7 @@ define(["angular"], function (angular) {
 
     CategorySetCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "categoriesService", "$timeout", "pageScroll"];
 
-    var CategoryMonitorCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, pageScroll) {
+    var CategoryMonitorCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, user) {
 
         $scope.datasetBusy = false;
 
@@ -304,7 +304,7 @@ define(["angular"], function (angular) {
         $scope.sheetUrl = function (name) {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
-            return serverUrl + "dashboard/sheet/" + name;
+            return serverUrl + "app/sheet/" + name;
         };
 
         $scope.viewFile = function (file) {
@@ -313,7 +313,7 @@ define(["angular"], function (angular) {
         };
     };
 
-    CategoryMonitorCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "categoriesService", "$timeout", "pageScroll"];
+    CategoryMonitorCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "categoriesService", "$timeout", "user"];
 
     return {
         CategorySetCtrl: CategorySetCtrl,
