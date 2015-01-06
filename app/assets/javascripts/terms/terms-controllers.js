@@ -110,6 +110,7 @@ define(["angular"], function () {
                 $scope.mappings[mapping.sourceURI] = {
                     targetURI: mapping.targetURI,
                     conceptScheme: mapping.conceptScheme,
+                    attributionName: mapping.attributionName,
                     prefLabel: mapping.prefLabel,
                     who: mapping.who,
                     when: mapping.when
@@ -199,6 +200,7 @@ define(["angular"], function () {
         $scope.selectConceptScheme = function (name) {
             $scope.conceptScheme = name;
             $scope.skosTab();
+            searchConceptScheme($scope.sought);
         };
 
         $scope.selectSought = function (value) {
@@ -225,6 +227,7 @@ define(["angular"], function () {
                 sourceURI: $scope.sourceEntry.sourceURI,
                 targetURI: concept.uri,
                 conceptScheme: $scope.conceptScheme,
+                attributionName: concept.attributionName,
                 prefLabel: concept.prefLabel
             };
             if ($scope.mappings[$scope.sourceEntry.sourceURI]) { // it already exists
@@ -239,6 +242,7 @@ define(["angular"], function () {
                     $scope.mappings[$scope.sourceEntry.sourceURI] = {
                         targetURI: concept.uri,
                         conceptScheme: $scope.conceptScheme,
+                        attributionName: concept.attributionName,
                         prefLabel: concept.prefLabel,
                         who: concept.who,
                         when: concept.when

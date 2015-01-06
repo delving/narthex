@@ -374,7 +374,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def enrichRecords(storedRecords: String): List[StoredRecord] = {
     val mappings: Map[String, TargetConcept] = Cache.getOrElse[Map[String, TargetConcept]](datasetName) {
-      termDb.getMappings.map(m => (m.sourceURI, TargetConcept(m.targetURI, m.conceptScheme, m.prefLabel, m.who, m.when))).toMap
+      termDb.getMappings.map(m => (m.sourceURI, TargetConcept(m.targetURI, m.conceptScheme, m.attributionName, m.prefLabel, m.who, m.when))).toMap
     }
     val parser = new EnrichmentParser(NAVE_DOMAIN, s"/$datasetName", mappings)
     parser.parse(storedRecords)

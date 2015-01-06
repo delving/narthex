@@ -89,6 +89,9 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setMapping: function (name, body) {
+
+                    console.log("body", body);
+
                     return dash.setTermMapping(name).post(body).then(
                         function (response) {
                             return response.data;

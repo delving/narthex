@@ -281,6 +281,9 @@ object Dashboard extends Controller with Security {
   def setTermMapping(datasetName: String) = Secure(parse.json) { profile => implicit request =>
     val datasetRepo = repo.datasetRepo(datasetName)
     datasetRepo.invalidateEnrichmentCache()
+
+    println(s"body: ${request.body}")
+
     if ((request.body \ "remove").asOpt[String].isDefined) {
       val sourceUri = (request.body \ "sourceURI").as[String]
       datasetRepo.termDb.removeMapping(sourceUri)
@@ -291,6 +294,7 @@ object Dashboard extends Controller with Security {
         sourceURI = (request.body \ "sourceURI").as[String],
         targetURI = (request.body \ "targetURI").as[String],
         conceptScheme = (request.body \ "conceptScheme").as[String],
+        attributionName = (request.body \ "attributionName").as[String],
         prefLabel = (request.body \ "prefLabel").as[String],
         who = profile.email,
         when = new DateTime()

@@ -22,11 +22,14 @@ import play.api.Logger
 
 class ConceptRepo(home: File) {
 
+  val extension = ".xml"
+
   lazy val conceptSchemes: Seq[ConceptScheme] = {
     Logger.info("Reading concept schemes")
-    val schemes = home.listFiles.filter(_.getName.endsWith(".xml")).flatMap { file =>
-      Logger.info(s"Reading $file")
-      ConceptScheme.read(new BOMInputStream(new FileInputStream(file)))
+    val schemes = home.listFiles.filter(_.getName.endsWith(extension)).flatMap { file =>
+      val name = file.getName.substring(0, file.getName.length - extension.length).replaceAll("_", " ")
+      Logger.info(s"Reading $file as $name")
+      ConceptScheme.read(new BOMInputStream(new FileInputStream(file)), name)
     }
     Logger.info(s"Concept Schemes: ${schemes.mkString(",")}")
     schemes
