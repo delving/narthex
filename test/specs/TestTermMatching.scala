@@ -46,8 +46,8 @@ class TestTermMatching extends FlatSpec with Matchers {
     val recordRoot = "/record"
 
     val mappings = Map(
-      s"$domain/resource/thesaurusenrichment$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> TargetConcept("uri", "vocab", "glasinloody", "dude", new DateTime(0)),
-      s"$domain/resource/thesaurusenrichment$filePrefix$recordRoot/inner/content.subject" -> TargetConcept("uri", "vocab", "close but no cigar", "dude", new DateTime(0))
+      s"$domain/resource/thesaurusenrichment$filePrefix$recordRoot/inner/content.subject/Glas%20in%20loodraam" -> TargetConcept("uri", "vocab", "attrib", "glasinloody", "dude", new DateTime(0)),
+      s"$domain/resource/thesaurusenrichment$filePrefix$recordRoot/inner/content.subject" -> TargetConcept("uri", "vocab", "attrib", "close but no cigar", "dude", new DateTime(0))
     )
 
     println(s"Mappings: $mappings")
@@ -67,7 +67,7 @@ class TestTermMatching extends FlatSpec with Matchers {
 
     val expectedString =
       """
-        |<record xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:very="http://veryother.org/#">
+        |<record xmlns:cc="http://creativecommons.org/ns#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:very="http://veryother.org/#">
         |  <inner>
         |    <content.subject>
         |      <rdf:Description rdf:about="http://localhost:9000/resource/thesaurusenrichment/gerald_delving_eu/RCE_Beeldbank/record/inner/content.subject/Glas%20in%20loodraam">
@@ -76,6 +76,8 @@ class TestTermMatching extends FlatSpec with Matchers {
         |        <skos:prefLabel>glasinloody</skos:prefLabel>
         |        <skos:exactMatch rdf:resource="uri"/>
         |        <skos:ConceptScheme>vocab</skos:ConceptScheme>
+        |        <cc:attributionURL rdf:resource="uri"/>
+        |        <cc:attributionName>attrib</cc:attributionName>
         |        <skos:note>Mapped in Narthex by dude on 1970-01-01T01:00:00+01:00</skos:note>
         |      </rdf:Description>
         |    </content.subject>

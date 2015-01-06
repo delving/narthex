@@ -9,7 +9,7 @@ class TestConceptScheme extends FlatSpec with Matchers {
 
   "A SKOS file" should "be readable by Jena" in {
     val example = getClass.getResource("/skos-example.xml")
-    val conSchemes = ConceptScheme.read(example.openStream())
+    val conSchemes = ConceptScheme.read(example.openStream(), "example")
     conSchemes.map(s => println(s"Scheme: $s"))
     val conScheme = conSchemes.head
 
