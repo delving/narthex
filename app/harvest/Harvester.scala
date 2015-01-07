@@ -21,7 +21,7 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import akka.actor.{Actor, Props}
 import akka.pattern.pipe
-import dataset.DatasetActor.{ChildFailure, InterruptWork}
+import dataset.DatasetActor.{InterruptWork, WorkFailure}
 import dataset.DatasetRepo
 import dataset.ProgressState._
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
@@ -72,21 +72,21 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
     log.info(s"finished harvest modified=$modifiedAfter error=$error")
     error.map { errorString =>
       FileUtils.deleteQuietly(tempFile)
-      context.parent ! ChildFailure(errorString)
+      context.parent ! WorkFailure(errorString)
     } getOrElse {
       datasetRepo.stagingRepoOpt.map { stagingRepo =>
         future {
-          val acceptZipReporter = ProgressReporter(COLLECTING, db)
+          val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
           val fileOption = stagingRepo.acceptFile(tempFile, acceptZipReporter)
           log.info(s"Zip file accepted: $fileOption")
           val incrementalOpt = modifiedAfter.map(IncrementalHarvest(_, fileOption))
           context.parent ! HarvestComplete(incrementalOpt)
         } onFailure {
           case e: Exception =>
-            context.parent ! ChildFailure(e.getMessage)
+            context.parent ! WorkFailure(e.getMessage)
         }
       } getOrElse {
-        context.parent ! ChildFailure(s"No staging repo for $datasetRepo")
+        context.parent ! WorkFailure(s"No staging repo for $datasetRepo")
       }
     }
   }
@@ -101,14 +101,14 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
 
   def receive = {
 
-    case InterruptWork() =>
+    case InterruptWork =>
       if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
 
     case HarvestAdLib(url, database, search, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetRepo")
       val futurePage = fetchAdLibPage(url, database, search, modifiedAfter)
       handleFailure(futurePage, modifiedAfter, "adlib harvest")
-      progress = Some(ProgressReporter(HARVESTING, db))
+      progress = Some(ProgressReporter(HARVESTING, context.parent))
       futurePage pipeTo self
 
     case AdLibHarvestPage(records, url, database, search, modifiedAfter, diagnostic) =>
@@ -136,7 +136,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
 
     case HarvestPMH(url, set, prefix, modifiedAfter, justDate) =>
       log.info(s"Harvesting $url $set $prefix to $datasetRepo")
-      progress = Some(ProgressReporter(HARVESTING, db))
+      progress = Some(ProgressReporter(HARVESTING, context.parent))
       val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate)
       handleFailure(futurePage, modifiedAfter, "pmh harvest")
       // todo: if none comes back there's something wrong

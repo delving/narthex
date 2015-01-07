@@ -18,9 +18,9 @@ package org
 
 import akka.actor._
 import dataset.DatasetActor
-import dataset.DatasetActor.{InterruptChild, StartCategoryCounting}
+import dataset.DatasetActor.StartCategoryCounting
 import mapping.CategoryCounter.CategoryCountComplete
-import org.OrgActor.{DatasetMessage, DatasetsCountCategories, InterruptDataset}
+import org.OrgActor.{DatasetMessage, DatasetsCountCategories}
 import org.OrgRepo.repo
 import play.libs.Akka
 import record.CategoryParser.CategoryCount
@@ -36,10 +36,8 @@ object OrgActor {
   lazy val actor: ActorRef = Akka.system.actorOf(Props[OrgActor], repo.orgId)
 
   case class DatasetMessage(name: String, message: AnyRef)
-  
-  case class DatasetsCountCategories(datasets: Seq[String])
 
-  case class InterruptDataset(name: String)
+  case class DatasetsCountCategories(datasets: Seq[String])
 
 }
 
@@ -51,17 +49,19 @@ class OrgActor extends Actor with ActorLogging {
   def receive = {
 
     case DatasetMessage(name, message: AnyRef) =>
-      val datasetActor = context.child(name).getOrElse {
-        val ref = context.actorOf(DatasetActor.props(repo.datasetRepo(name)), name)
-        log.info(s"Created dataset actor $ref")
-        context.watch(ref)
-        ref
+      val actorOpt = context.child(name).map(Some(_)).getOrElse {
+        repo.datasetRepoOption(name).map { datasetRepo =>
+          val datasetActor = context.actorOf(DatasetActor.props(datasetRepo), name)
+          log.info(s"Created dataset actor $datasetActor")
+          context.watch(datasetActor)
+          datasetActor
+        }
       }
-      datasetActor ! message
+      actorOpt.map(_ ! message)
 
     case DatasetsCountCategories(datasets) =>
       countsInProgress = datasets.map(name => (name, None)).toMap
-      datasets.foreach(name => self ! DatasetMessage(name, StartCategoryCounting()))
+      datasets.foreach(name => self ! DatasetMessage(name, StartCategoryCounting))
 
     case CategoryCountComplete(dataset, categoryCounts) =>
       countsInProgress += dataset -> Some(categoryCounts)
@@ -71,9 +71,6 @@ class OrgActor extends Actor with ActorLogging {
         OrgRepo.repo.categoriesRepo.createSheet(countLists.flatten.toList)
         countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
       }
-
-    case InterruptDataset(name) =>
-      context.child(name).map(_ ! InterruptChild(sender())) getOrElse(sender ! false)
 
     case Terminated(name) =>
       log.info(s"Demised $name")

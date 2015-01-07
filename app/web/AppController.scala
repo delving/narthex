@@ -16,19 +16,29 @@
 
 package web
 
+import java.util.concurrent.TimeUnit
+
+import akka.pattern.ask
+import akka.util.Timeout
+import dataset.DatasetActor.{Command, InterruptWork}
 import dataset._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
 import mapping.TermDb._
+import org.OrgActor
+import org.OrgActor.DatasetMessage
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
 import thesaurus.ThesaurusDb._
 import web.MainController.OkFile
+
+import scala.concurrent.Future
 
 object AppController extends Controller with Security {
 
@@ -36,7 +46,7 @@ object AppController extends Controller with Security {
     "character",
     "metadata",
     "status",
-    "progress",
+    "error",
     "tree",
     "source",
     "records",
@@ -75,11 +85,15 @@ object AppController extends Controller with Security {
     Ok(Json.obj("created" -> s"Dataset $datasetName with prefix $prefix"))
   }
 
-  def command(datasetName: String, command: String) = Secure() { profile => implicit request =>
-    repo.datasetRepoOption(datasetName).map { datasetRepo =>
-      Ok(datasetRepo.receiveCommand(command))
-    } getOrElse {
-      NotFound
+  def command(datasetName: String, command: String) = SecureAsync() { profile => implicit request =>
+    if (command == "interrupt") {
+      OrgActor.actor ! DatasetMessage(datasetName, InterruptWork)
+      Future(Ok("interrupt sent"))
+    }
+    else {
+      implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
+      val futureReply = (OrgActor.actor ? DatasetMessage(datasetName, Command(command))).mapTo[String]
+      futureReply.map(reply => Ok(reply))
     }
   }
 
@@ -89,7 +103,6 @@ object AppController extends Controller with Security {
         val error = datasetRepo.acceptUpload(file.filename, { target =>
           file.ref.moveTo(target, replace = true)
           Logger.info(s"Dropped file ${file.filename} on $datasetName: ${target.getAbsolutePath}")
-          datasetRepo.datasetDb.setProgress(ProgressState.ADOPTING, ProgressType.PERCENT, 1)
           target
         })
         error.map(message => NotAcceptable(Json.obj("problem" -> message))).getOrElse(Ok)

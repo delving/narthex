@@ -17,8 +17,9 @@
 package services
 
 import akka.actor.ActorRef
+import dataset.DatasetActor.ProgressTick
+import dataset.ProgressState
 import dataset.ProgressType._
-import dataset.{DatasetDb, ProgressState}
 import play.api.Logger
 import services.FileHandling.ReadProgress
 
@@ -28,7 +29,7 @@ import services.FileHandling.ReadProgress
 
 object ProgressReporter {
 
-  def apply(progressState: ProgressState, datasetDb: DatasetDb) = new UpdatingProgressReporter(progressState, datasetDb)
+  def apply(progressState: ProgressState, datasetActor: ActorRef) = new UpdatingProgressReporter(progressState, datasetActor)
 
   def apply(): ProgressReporter = new FakeProgressReporter
 }
@@ -72,7 +73,7 @@ class FakeProgressReporter extends ProgressReporter {
   override def setReadProgress(readProgress: ReadProgress): Unit = {}
 }
 
-class UpdatingProgressReporter(progressState: ProgressState, datasetDb: DatasetDb) extends ProgressReporter {
+class UpdatingProgressReporter(progressState: ProgressState, datasetActor: ActorRef) extends ProgressReporter {
   val PATIENCE_MILLIS = 333
   var bomb: Option[ActorRef] = None
   var readProgressOption: Option[ReadProgress] = None
@@ -95,11 +96,11 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetDb: DatasetD
     keepWorking
   }
 
-  def sendPercent(percent: Int) = mindTheBomb(datasetDb.setProgress(progressState, PERCENT, percent))
+  def sendPercent(percent: Int) = mindTheBomb(datasetActor ! ProgressTick(progressState, PERCENT, percent))
 
-  def sendPageNumber(pageNumber: Int) = mindTheBomb(datasetDb.setProgress(progressState, PAGES, pageNumber))
+  def sendPageNumber(pageNumber: Int) = mindTheBomb(datasetActor ! ProgressTick(progressState, PAGES, pageNumber))
 
-  def sendWorkers(workerCount: Int) = mindTheBomb(datasetDb.setProgress(progressState, WORKERS, workerCount))
+  def sendWorkers(workerCount: Int) = mindTheBomb(datasetActor ! ProgressTick(progressState, WORKERS, workerCount))
 
   def keepReading(value: Int): Boolean = {
     readProgressOption.map { readProgress =>
