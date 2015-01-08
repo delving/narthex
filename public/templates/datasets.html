@@ -22,14 +22,16 @@
 
     <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary" ng-class="{'panel-info': file.state == 'state-empty'}">
         <div class="panel-heading" data-ng-click="file.expanded = !file.expanded">
-            <a href class="btn btn-primary btn-sm pull-right" data-ng-click="viewFile()" data-ng-show="file.treeTime">Explore <i class="fa fa-compass"></i></a>
             <div class="icon">
                 <div class="circle">
-                    <i class="fa {{ getIcon() }} fa-3x fa-fw"></i>
+                    <i class="fa {{ getIcon() }} fa-2x fa-fw"></i>
                 </div>
             </div>
             <div class="name">
-                <h4>{{ file.datasetName }} <span data-ng-show="file.info.metadata.name">({{ file.info.metadata.name }})</span></h4>
+                <h4>{{ file.datasetName }}</h4>
+            </div>
+            <div class="explore">
+                <a href class="btn btn-info" data-ng-click="viewFile()" data-ng-show="file.treeTime">Explore <i class="fa fa-compass"></i></a>
             </div>
             <div class="count">
                 <span data-ng-show="file.recordCount">{{ file.recordCount }}</span>
@@ -111,36 +113,35 @@
                 <div class="tabbable dataset-tabs">
                     <ul class="nav nav-tabs" role="tablist">
                         <li ng-class="{'active':file.tabOpen === 'metadata'}" >
-                            <a href role="tab" data-ng-click="setTabOpen('metadata')">Metadata</a>
+                            <a href role="tab" data-ng-click="file.tabOpen = 'metadata'">Metadata</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'drop'}" data-ng-show="file.state == 'state-empty' && dropSupported">
-                            <a href role="tab" data-ng-click="setTabOpen('drop')">File Drop</a>
+                            <a href role="tab" data-ng-click="file.tabOpen = 'drop'">File Drop</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'sip-zip'}" data-ng-show="file.info.sipFacts">
-                            <a href role="tab" data-ng-click="setTabOpen('sip-zip')">SIP Files</a>
+                            <a href role="tab" data-ng-click="file.tabOpen = 'sip-zip'">SIP Files</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'harvest'}" data-ng-show="file.state == 'state-empty'">
-                            <a href role="tab" data-ng-click="setTabOpen('harvest')">Harvest</a>
+                            <a href role="tab" data-ng-click="file.tabOpen ='harvest'">Harvest</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.state == 'state-sourced'">
-                            <a href role="tab" data-ng-click="setTabOpen('harvest-cron')">Scheduled Harvest</a>
+                            <a href role="tab" data-ng-click="file.tabOpen = 'harvest-cron'">Scheduled Harvest</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'publication'}" data-ng-show="file.recordsTime">
-                            <a href role="tab" data-ng-click="setTabOpen('publication')">Publication</a>
+                            <a href role="tab" data-ng-click="file.tabOpen = 'publication'">Publication</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'categories'}" data-ng-show="file.recordsTime && categoriesEnabled">
-                            <a href role="tab" data-ng-click="setTabOpen('categories')">Categories</a>
+                            <a href role="tab" data-ng-click="file.tabOpen ='categories'">Categories</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'downloads'}" data-ng-show="file.recordsTime">
-                            <a href role="tab" data-ng-click="setTabOpen('downloads')">Downloads</a>
+                            <a href role="tab" data-ng-click="file.tabOpen ='downloads'">Downloads</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'info'}">
-                            <a href role="tab" data-ng-click="setTabOpen('info')">Info</a>
+                            <a href role="tab" data-ng-click="file.tabOpen ='info'">Info</a>
                         </li>
                     </ul>
                     <div class="tab-content">
                         <div ng-switch="file.tabOpen">
-                            <div ng-switch-default><div data-ng-include="'metadata-form.html'">metadata form</div></div>
                             <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
                             <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>
                             <div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>
@@ -188,8 +189,8 @@
                 <input id="meta_rights" class="form-control input-sm" data-ng-model="file.info.metadata.rights"/>
             </div>
             <!--todo: make this enabled whenever fields are different, otherwise not-->
-            <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()">
-                <i class="fa fa-save"></i>
+            <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()" data-ng-disabled="unchangedMetadata">
+                <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
         </fieldset>
@@ -323,7 +324,7 @@
                 <input id="hc_unit" class="form-control" data-ng-model="file.info.harvestCron.unit"/>
             </div>
             <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()">
-                <i class="fa fa-refresh"></i>
+                <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
         </fieldset>
@@ -348,8 +349,8 @@
                     <input id="pub_lod" type="checkbox" data-ng-model="file.info.publication.lod" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
-            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setPublication()">
-                <i class="fa fa-refresh"></i>
+            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setPublication()" data-ng-disabled="unchangedPublication">
+                <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
         </fieldset>
@@ -361,10 +362,13 @@
         <fieldset>
             <div class="checkbox">
                 <label for="cat">Include in Category Monitor Statistics
-                    <input id="cat" type="checkbox" data-ng-model="file.info.categories.included"
-                           ng-true-value="'true'" ng-false-value="'false'" data-ng-click="setCategories()"/>
+                    <input id="cat" type="checkbox" data-ng-model="file.info.categories.included" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
+            <button typ="button" class="btn btn-success btn-sm"  data-ng-click="setCategories()" data-ng-disabled="unchangedCategories">
+                <i class="fa fa-check-circle"></i>
+                <span>Save</span>
+            </button>
         </fieldset>
     </form>
 </script>

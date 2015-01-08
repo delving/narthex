@@ -49,10 +49,10 @@ define(["angular"], function () {
         $scope.$watch("dataset.name", setNewDataset);
         $scope.$watch("dataset.prefix", setNewDataset);
 
-        $scope.$watch("specFilter", function(filter) {
+        $scope.$watch("specFilter", function (filter) {
             filter = filter.trim();
             if (filter) {
-                $scope.filteredFiles = _.filter($scope.files, function(file) {
+                $scope.filteredFiles = _.filter($scope.files, function (file) {
                     return file.name.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
                 });
             }
@@ -75,11 +75,6 @@ define(["angular"], function () {
 
         $scope.isEmpty = function (obj) {
             return _.isEmpty(obj)
-        };
-
-        $scope.setTabOpen = function (tab) {
-            $scope.tabOpen = tab;
-            setSearch();
         };
 
         $scope.setDropSupported = function () {
@@ -122,7 +117,7 @@ define(["angular"], function () {
         }
 
         // treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
-        $scope.decorateFile = function(file) {
+        $scope.decorateFile = function (file, info) {
             function oaiPmhListRecords(enriched) {
                 var oaiPmhUrl = enriched ? user.oaiPmhEnriched : user.oaiPmhRaw;
                 return {
@@ -130,8 +125,13 @@ define(["angular"], function () {
                     url: oaiPmhUrl + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
                 }
             }
-
-            var info = file.info;
+            if (info) {
+                file.info = info;
+            }
+            else {
+                info = file.info;
+            }
+            file.originalInfo = angular.copy(file.info);
             if (info.error) file.error = info.error.message;
             file.apiMappings = user.narthexAPI + '/' + file.name + '/mappings';
             file.fileDropped = function ($files) {
@@ -172,13 +172,16 @@ define(["angular"], function () {
 
         $scope.fetchDatasetList = function () {
             datasetsService.listDatasets().then(function (files) {
-                _.forEach($scope.files, function(file) {
+                _.forEach($scope.files, function (file) {
                     if (file.progressCheckerTimeout) {
                         $timeout.cancel(file.progressCheckerTimeout);
                         delete(file.progressCheckerTimeout);
                     }
                 });
-                _.forEach(files, $scope.decorateFile);
+                _.forEach(files, function (file) {
+                    $scope.decorateFile(file, undefined);
+                    file.tabOpen = 'metadata';
+                });
                 $scope.files = $scope.filteredFiles = files;
                 $scope.specFilter = "";
             });
@@ -186,7 +189,7 @@ define(["angular"], function () {
 
         $scope.fetchDatasetList();
 
-        datasetsService.listPrefixes().then(function(prefixes) {
+        datasetsService.listPrefixes().then(function (prefixes) {
             $scope.prefixes = prefixes;
             $scope.dataset.prefix = prefixes.length ? prefixes[0] : undefined
         });
@@ -198,7 +201,7 @@ define(["angular"], function () {
 
     var DatasetEntryCtrl = function ($scope, datasetsService, $location, $timeout) {
 
-        var file = $scope.file;
+        $scope.file.progressCheckerTimeout = $timeout(checkProgress, 1000 + Math.floor(Math.random() * 1000));
 
         var stateNames = {
             'state-harvesting': "Harvesting",
@@ -243,36 +246,35 @@ define(["angular"], function () {
             p.message = pre + mid + post;
         }
 
-        function checkProgress(file) {
-            datasetsService.datasetProgress(file.name).then(
+        function checkProgress() {
+            datasetsService.datasetProgress($scope.file.name).then(
                 function (data) {
                     if (data.progressType == 'progress-idle') {
+                        $scope.file.progress = undefined;
                         if (data.errorMessage) {
-                            console.log(file.name + " has error message "+data.errorMessage);
-                            file.error = data.errorMessage;
+                            console.log($scope.file.name + " has error message " + data.errorMessage);
+                            $scope.file.error = data.errorMessage;
                         }
-                        if (file.refreshAfter) {
-                            delete file.refreshAfter;
-                            refresh();
+                        if ($scope.file.refreshAfter) {
+                            delete $scope.file.refreshAfter;
+                            refreshInfo();
                         }
-                        delete file.progress;
+                        delete $scope.file.progress;
                     }
                     else {
-                        console.log(file.name + " is in progress");
-                        file.progress = {
+                        console.log($scope.file.name + " is in progress");
+                        $scope.file.progress = {
                             state: data.progressState,
                             type: data.progressType,
                             count: parseInt(data.count)
                         };
-                        createProgressMessage(file.progress);
-                        file.progressCheckerTimeout = $timeout(function () {
-                            checkProgress(file)
-                        }, 900 + Math.floor(Math.random() * 200));
+                        createProgressMessage($scope.file.progress);
+                        $scope.file.progressCheckerTimeout = $timeout(checkProgress, 900 + Math.floor(Math.random() * 200));
                     }
                 },
                 function (problem) {
                     if (problem.status == 404) {
-                        alert("Processing problem with " + file.name);
+                        alert("Processing problem with " + $scope.file.name);
                     }
                     else {
                         alert("Network problem " + problem.status);
@@ -281,18 +283,14 @@ define(["angular"], function () {
             );
         }
 
-        file.progressCheckerTimeout = $timeout(function () {
-            checkProgress(file)
-        }, 1000 + Math.floor(Math.random() * 1000));
-
         $scope.getIcon = function () {
-            if (file.recordsTime) {
+            if ($scope.file.recordsTime) {
                 return "fa-database"
             }
-            else if (file.treeTime) {
+            else if ($scope.file.treeTime) {
                 return "fa-eye"
             }
-            else if ($scope.fileOpen == file.name) {
+            else if ($scope.fileOpen == $scope.file.name) {
                 return 'fa-folder-open-o';
             }
             else {
@@ -300,56 +298,74 @@ define(["angular"], function () {
             }
         };
 
-        function refresh() {
-            datasetsService.datasetInfo(file.name).then(function (info) {
-                file.info = info;
-                file.refreshAfter = true;
-                $scope.decorateFile(file);
-                file.progressCheckerTimeout = $timeout(function () {
-                    checkProgress(file)
-                }, 1000);
+        function compareForSave() {
+            if (!$scope.file.originalInfo.metadata) $scope.file.originalInfo.metadata = {};
+            $scope.unchangedMetadata = angular.equals($scope.file.info.metadata, $scope.file.originalInfo.metadata);
+            if (!$scope.file.originalInfo.publication) $scope.file.originalInfo.publication = {};
+            $scope.unchangedPublication = angular.equals($scope.file.info.publication, $scope.file.originalInfo.publication);
+            if (!$scope.file.originalInfo.categories) $scope.file.originalInfo.categories = {};
+            $scope.unchangedCategories = angular.equals($scope.file.info.categories, $scope.file.originalInfo.categories);
+
+        }
+
+        function refreshProgress() {
+            datasetsService.datasetInfo($scope.file.name).then(function (info) {
+                $scope.decorateFile($scope.file, info);
+                $scope.file.refreshAfter = true;
+                if ($scope.file.progressCheckerTimeout) $timeout.cancel($scope.file.progressCheckerTimeout);
+                $scope.file.progressCheckerTimeout = $timeout(checkProgress, 1000);
             });
         }
 
+        function refreshInfo() {
+            datasetsService.datasetInfo($scope.file.name).then(function (info) {
+                $scope.file.info = info;
+                $scope.decorateFile($scope.file);
+                compareForSave();
+            });
+        }
+
+        $scope.$watch("file.info", compareForSave, true);
+
         $scope.setMetadata = function () {
-            datasetsService.setMetadata(file.name, file.info.metadata).then(refresh);
+            datasetsService.setMetadata($scope.file.name, $scope.file.info.metadata).then(refreshInfo);
         };
 
         $scope.setPublication = function () {
             // todo: publish in index implies publish oaipmh
-            datasetsService.setPublication(file.name, file.info.publication).then(refresh);
+            datasetsService.setPublication($scope.file.name, $scope.file.info.publication).then(refreshInfo);
             // todo: show the user it has happened!
         };
 
         $scope.setCategories = function () {
-            datasetsService.setCategories(file.name, file.info.categories).then(refresh);
+            datasetsService.setCategories($scope.file.name, $scope.file.info.categories).then(refreshInfo);
         };
 
         $scope.setHarvestCron = function () {
-            datasetsService.setHarvestCron(file.name, file.info.harvestCron).then(refresh);
+            datasetsService.setHarvestCron($scope.file.name, $scope.file.info.harvestCron).then(refreshInfo);
         };
 
         $scope.startHarvest = function () {
-            datasetsService.harvest(file.name, file.info.harvest).then(refresh);
+            datasetsService.harvest($scope.file.name, $scope.file.info.harvest).then(refreshProgress);
         };
 
         $scope.startAnalysis = function () {
-            datasetsService.analyze(file.name).then(refresh);
+            datasetsService.analyze($scope.file.name).then(refreshProgress);
         };
 
         $scope.saveRecords = function () {
-            datasetsService.saveRecords(file.name).then(refresh);
+            datasetsService.saveRecords($scope.file.name).then(refreshProgress());
         };
 
         $scope.viewFile = function () {
-            $location.path("/dataset/" + file.name);
+            $location.path("/dataset/" + $scope.file.name);
             $location.search({});
         };
 
         $scope.command = function (areYouSure, command) {
             if (areYouSure && !confirm(areYouSure)) return;
-            datasetsService.command(file.name, command).then(function (data) {
-                refresh();
+            datasetsService.command($scope.file.name, command).then(function (data) {
+                refreshProgress();
             });
         };
 
@@ -378,7 +394,7 @@ define(["angular"], function () {
         };
 
         function fetchSipFileList() {
-            datasetsService.listSipFiles(file.name).then(function (data) {
+            datasetsService.listSipFiles($scope.file.name).then(function (data) {
                 $scope.sipFiles = (data && data.list && data.list.length) ? data.list : undefined;
             });
         }
@@ -386,7 +402,7 @@ define(["angular"], function () {
         fetchSipFileList();
 
         $scope.deleteSipZip = function () {
-            datasetsService.deleteLatestSipFile(file.name).then(function () {
+            datasetsService.deleteLatestSipFile($scope.file.name).then(function () {
                 fetchSipFileList();
             });
         };
