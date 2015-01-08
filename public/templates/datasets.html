@@ -1,8 +1,15 @@
+<div>
+    <div class="input-group input-group-skos-term search-all-field">
+        <span class="input-group-addon"><i class="fa fa-search"></i> Filter: </span>
+        <input class="form-control" type="text" data-ng-model="specFilter"/>
+    </div>
+</div>
+
 <div class="file-list" data-ng-init="breadcrumbs.dataset=''">
     <div data-ng-if="!files.length">
         <h4>No datasets yet</h4>
     </div>
-    <div ng-repeat="file in files" class="file-block" data-ng-show="file.info.status">
+    <div ng-repeat="file in filteredFiles" class="file-block" data-ng-show="file.info.status">
         <div data-ng-include="'dataset-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">
@@ -14,7 +21,8 @@
 
 
     <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary" ng-class="{'panel-info': file.state == 'state-empty'}">
-        <div class="panel-heading">
+        <div class="panel-heading" data-ng-click="file.expanded = !file.expanded">
+            <a href class="btn btn-primary btn-sm pull-right" data-ng-click="viewFile()" data-ng-show="file.treeTime">Explore <i class="fa fa-compass"></i></a>
             <div class="icon">
                 <div class="circle">
                     <i class="fa {{ getIcon() }} fa-3x fa-fw"></i>
@@ -30,13 +38,46 @@
 
         <div class="panel-body">
 
-            <div class="toolbar row">
-                <div class="col-xs-2">
-                    <a href data-ng-click="setFileOpen(file)" class="btn btn-default btn-sm" data-toggle="modal" data-target="#myModal">
-                        Edit <span class="caret"></span>
-                    </a>
-                </div>
-                <div class="col-xs-8">
+            <div>
+
+                <span ng-if="file.state">
+                    <span ng-switch="file.state">
+                        <span class="label label-danger" ng-switch-when="state-empty">Empty</span>
+                        <span ng-switch-when="state-raw">
+                            <span class="label label-success" data-ng-show="!file.treeTime">Raw</span>
+                            <span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>
+                        </span>
+                        <span ng-switch-when="state-raw-pockets">
+                            <span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>
+                            <span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>
+                        </span>
+                        <span ng-switch-when="state-sourced">
+                            <span class="label label-primary" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
+                            <span class="label label-primary" data-ng-show="file.treeTime">
+                                <i class="fa fa-eye"></i> Analyzed <!--{{ file.treeTime }}-->
+                            </span>
+                            <span class="label label-info" data-ng-show="file.recordsTime">
+                                <i class="fa fa-database"></i> Saved <!--{{ file.recordsTime }}-->
+                            </span>
+                        </span>
+                    </span>
+                </span>
+
+                <span class="label label-default" ng-if="file.info.categories.included == 'true'">
+                    <i class="fa fa-bar-chart-o"></i> Included in Category Monitor Statistics
+                </span>
+
+                <span data-ng-show="file.prefix" class="label label-inverse pull-right">
+                    {{ file.prefix }}
+                </span>
+
+            </div>
+
+            <div class="toolbar row" data-ng-if="file.error || file.progress">
+
+                <hr/>
+
+                <div class="col-xs-12">
                     <div data-ng-if="file.error" class="alert alert-explain alert-small" role="alert">
                         <strong>Message:</strong> {{ file.error }}
                     </div>
@@ -52,14 +93,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-xs-2">
-                    <a href class="btn btn-primary btn-sm pull-right" data-ng-click="viewFile()" data-ng-show="file.treeTime">
-                        Explore <i class="fa fa-compass"></i>
-                    </a>
-                </div>
             </div>
 
-            <div data-ng-if="fileOpen == file.name">
+            <div data-ng-if="file.expanded">
+
+                <hr/>
+
+                <div data-ng-include="'actions.html'" class="file-block-toolbar">actions</div>
 
                 <hr/>
 
@@ -70,36 +110,37 @@
 
                 <div class="tabbable dataset-tabs">
                     <ul class="nav nav-tabs" role="tablist">
-                        <li ng-class="{'active':tabOpen === 'metadata'}" >
+                        <li ng-class="{'active':file.tabOpen === 'metadata'}" >
                             <a href role="tab" data-ng-click="setTabOpen('metadata')">Metadata</a>
                         </li>
-                        <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="file.state == 'state-empty' && dropSupported">
+                        <li ng-class="{'active':file.tabOpen === 'drop'}" data-ng-show="file.state == 'state-empty' && dropSupported">
                             <a href role="tab" data-ng-click="setTabOpen('drop')">File Drop</a>
                         </li>
-                        <li ng-class="{'active':tabOpen === 'sip-zip'}" data-ng-show="file.info.sipFacts">
+                        <li ng-class="{'active':file.tabOpen === 'sip-zip'}" data-ng-show="file.info.sipFacts">
                             <a href role="tab" data-ng-click="setTabOpen('sip-zip')">SIP Files</a>
                         </li>
-                        <li ng-class="{'active':tabOpen === 'harvest'}" data-ng-show="file.state == 'state-empty'">
+                        <li ng-class="{'active':file.tabOpen === 'harvest'}" data-ng-show="file.state == 'state-empty'">
                             <a href role="tab" data-ng-click="setTabOpen('harvest')">Harvest</a>
                         </li>
-                        <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.state == 'state-sourced'">
+                        <li ng-class="{'active':file.tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.state == 'state-sourced'">
                             <a href role="tab" data-ng-click="setTabOpen('harvest-cron')">Scheduled Harvest</a>
                         </li>
-                        <li ng-class="{'active':tabOpen === 'publication'}" data-ng-show="file.recordsTime">
+                        <li ng-class="{'active':file.tabOpen === 'publication'}" data-ng-show="file.recordsTime">
                             <a href role="tab" data-ng-click="setTabOpen('publication')">Publication</a>
                         </li>
-                        <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="file.recordsTime && categoriesEnabled">
+                        <li ng-class="{'active':file.tabOpen === 'categories'}" data-ng-show="file.recordsTime && categoriesEnabled">
                             <a href role="tab" data-ng-click="setTabOpen('categories')">Categories</a>
                         </li>
-                        <li ng-class="{'active':tabOpen === 'downloads'}" data-ng-show="file.recordsTime">
+                        <li ng-class="{'active':file.tabOpen === 'downloads'}" data-ng-show="file.recordsTime">
                             <a href role="tab" data-ng-click="setTabOpen('downloads')">Downloads</a>
                         </li>
-                        <li ng-class="{'active':tabOpen === 'info'}">
+                        <li ng-class="{'active':file.tabOpen === 'info'}">
                             <a href role="tab" data-ng-click="setTabOpen('info')">Info</a>
                         </li>
                     </ul>
                     <div class="tab-content">
-                        <div ng-switch="tabOpen">
+                        <div ng-switch="file.tabOpen">
+                            <div ng-switch-default><div data-ng-include="'metadata-form.html'">metadata form</div></div>
                             <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
                             <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>
                             <div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>
@@ -112,86 +153,9 @@
                         </div>
                     </div>
                 </div>
-
-                <hr/>
-
-                <div data-ng-include="'actions.html'" class="file-block-toolbar">actions</div>
             </div>
         </div>
 
-
-
-        <div class="panel-footer">
-
-            <span ng-if="file.state">
-                <span ng-switch="file.state">
-                    <span class="label label-danger" ng-switch-when="state-empty">Empty</span>
-                    <span ng-switch-when="state-raw">
-                        <span class="label label-success" data-ng-show="!file.treeTime">Raw</span>
-                        <span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>
-                    </span>
-                    <span ng-switch-when="state-raw-pockets">
-                        <span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>
-                        <span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>
-                    </span>
-                    <span ng-switch-when="state-sourced">
-                        <span class="label label-primary" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
-                        <span class="label label-primary" data-ng-show="file.treeTime">
-                            <i class="fa fa-eye"></i> Analyzed <!--{{ file.treeTime }}-->
-                        </span>
-                        <span class="label label-info" data-ng-show="file.recordsTime">
-                            <i class="fa fa-database"></i> Saved <!--{{ file.recordsTime }}-->
-                        </span>
-                    </span>
-                </span>
-            </span>
-
-            <span class="label label-default" ng-if="file.info.categories.included == 'true'">
-                <i class="fa fa-bar-chart-o"></i> Included in Category Monitor Statistics
-            </span>
-
-            <span data-ng-show="file.prefix" class="label label-inverse pull-right">
-                {{ file.prefix }}
-            </span>
-
-        </div>
-
-
-
-        <div class="panel-footer">
-
-            <span ng-if="file.state">
-                <span ng-switch="file.state">
-                    <span class="label label-danger" ng-switch-when="state-empty">Empty</span>
-                    <span ng-switch-when="state-raw">
-                        <span class="label label-success" data-ng-show="!file.treeTime">Raw</span>
-                        <span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>
-                    </span>
-                    <span ng-switch-when="state-raw-pockets">
-                        <span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>
-                        <span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>
-                    </span>
-                    <span ng-switch-when="state-sourced">
-                        <span class="label label-primary" data-ng-show="!(file.treeTime || file.recordsTime)">Source available</span>
-                        <span class="label label-primary" data-ng-show="file.treeTime">
-                            <i class="fa fa-eye"></i> Analyzed <!--{{ file.treeTime }}-->
-                        </span>
-                        <span class="label label-info" data-ng-show="file.recordsTime">
-                            <i class="fa fa-database"></i> Saved <!--{{ file.recordsTime }}-->
-                        </span>
-                    </span>
-                </span>
-            </span>
-
-            <span class="label label-default" ng-if="file.info.categories.included == 'true'">
-                <i class="fa fa-bar-chart-o"></i> Included in Category Monitor Statistics
-            </span>
-
-            <span data-ng-show="file.prefix" class="label label-inverse pull-right">
-                {{ file.prefix }}
-            </span>
-
-        </div>
     </div>
 
 </script>
@@ -274,7 +238,7 @@
                     </form>
                 </div>
                 <div class="aside-footer">
-                    <button type="button" class="btn btn-default" ng-click="setNewFileOpen(false)">Cancel</button>
+                    <button type="button" class="btn btn-default" ng-click="newFileOpen = false">Cancel</button>
                 </div>
             </div>
         </div>

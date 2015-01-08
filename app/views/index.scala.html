@@ -77,12 +77,13 @@
                 <div class="page-content">
                     <div class="row page-header" data-ng-init="setOrg('@orgId')"  data-ng-if="user">
                         <div class="col-xs-4">
-                            <div class="meta">
+                            <div class="meta fa-3x">
                                 <span class="page">{{ pageTitle }}</span>
-                                <ul class="breadcrumb breadcrumb-links">
-                                    <li><a href>@orgId</a></li>
+                                @*<ul class="breadcrumb breadcrumb-links">*@
+                                    <span class="fa fa-bank"></span>
+                                    <span>@orgId</span>
                                     <!-- todo: add breadcrumbs per view -->
-                                </ul>
+                                @*</ul>*@
                             </div>
                         </div>
                         <div class="col-xs-6" id="header-options">
