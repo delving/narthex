@@ -16,8 +16,6 @@
 
 package dataset
 
-import dataset.ProgressState._
-import dataset.ProgressType._
 import harvest.Harvesting.{HarvestCron, HarvestType}
 import org.OrgDb
 import org.basex.server.ClientSession
@@ -25,7 +23,6 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json.{JsObject, JsString}
 import services.BaseX._
-import services.StringHandling
 import services.Temporal._
 
 import scala.xml.{Elem, NodeSeq, XML}
@@ -175,9 +172,16 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     session.query(update).execute()
   }
 
-  def setStatus(state: DatasetState) = setProperties(
+  def setStatus(state: DatasetState, errorOpt: Option[String] = None) = setProperties(
     "status",
     "state" -> state,
+    "time" -> now,
+    "error" -> errorOpt.getOrElse("")
+  )
+
+  def setError(message: String) = setProperties(
+    "error",
+    "message" -> message,
     "time" -> now
   )
 
@@ -199,20 +203,6 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     "ready" -> ready,
     "recordCount" -> recordCount,
     "time" -> now
-  )
-
-  def startProgress(progressState: ProgressState) = setProgress(progressState, BUSY, 0)
-
-  def endProgress(error: Option[String] = None) = {
-    setProgress(if (error.isDefined) ERROR else STATE_IDLE, TYPE_IDLE, 0, error.map(StringHandling.sanitizeXml))
-  }
-
-  def setProgress(progressState: ProgressState, progressType: ProgressType, count: Int, error: Option[String] = None) = setProperties(
-    "progress",
-    "state" -> progressState,
-    "type" -> progressType,
-    "count" -> count,
-    "error" -> error.getOrElse("")
   )
 
   def setNamespaceMap(namespaceMap: Map[String, String]) = setProperties(

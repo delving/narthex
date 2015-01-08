@@ -64,6 +64,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                datasetProgress: function (datasetName) {
+                    return app.datasetProgress(datasetName).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 listDatasets: function () {
                     return app.listDatasets().get().then(
                         function (response) {

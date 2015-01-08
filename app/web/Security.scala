@@ -51,18 +51,21 @@ trait Security {
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[CachedProfile](token) map { email =>
-        block(email)(request).withToken(token, email)
+      Cache.getAs[CachedProfile](token) map { cachedProfile =>
+        block(cachedProfile)(request).withToken(token, cachedProfile)
       }
     } getOrElse {
       Unauthorized(Json.obj("err" -> "Secure session expired"))
     }
   }
 
-  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: String => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
-    request.headers.get(TOKEN) flatMap { token =>
-      Cache.getAs[String](token) map { email =>
-        block(email)(request)
+  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: CachedProfile => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
+    val maybeToken: Option[String] = request.headers.get(TOKEN)
+    val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
+    val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
+    tokenOrCookie.flatMap { token =>
+      Cache.getAs[CachedProfile](token) map { cachedProfile =>
+        block(cachedProfile)(request)
       }
     } getOrElse {
       Future.successful(Unauthorized(Json.obj("err" -> "Secure async session expired")))

@@ -18,7 +18,6 @@ package org
 
 import java.io.File
 
-import dataset.ProgressState._
 import dataset.{DatasetDb, DatasetRepo, Sip, SipFactory}
 import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
 import mapping.{CategoriesRepo, ConceptRepo}
@@ -155,7 +154,6 @@ class OrgRepo(userHome: String, val orgId: String) {
       if (included == "true") Some(dataset) else None
     }
     val datasets = categoryDatasets.map(_.datasetName)
-    datasets.foreach(datasetRepo(_).datasetDb.startProgress(CATEGORIZING))
     OrgActor.actor ! DatasetsCountCategories(datasets)
   }
 }

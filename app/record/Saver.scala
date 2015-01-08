@@ -19,7 +19,7 @@ package record
 import java.io.{File, FileOutputStream}
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{ChildFailure, IncrementalSave, InterruptWork}
+import dataset.DatasetActor.{IncrementalSave, InterruptWork, WorkFailure}
 import dataset.DatasetRepo
 import dataset.ProgressState._
 import dataset.Sip.SipMapper
@@ -39,7 +39,7 @@ object Saver {
 
   case class SourceAdoptionComplete(file: File)
 
-  case class GenerateSource()
+  case object GenerateSource
 
   case class SourceGenerationComplete(rawRecordCount: Int, mappedRecordCount: Int)
 
@@ -62,33 +62,33 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
 
   def receive = {
 
-    case InterruptWork() =>
+    case InterruptWork =>
       if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
 
     case AdoptSource(file) =>
       log.info(s"Adopt source ${file.getAbsolutePath}")
       datasetRepo.stagingRepoOpt.map { stagingRepo =>
         future {
-          val progressReporter = ProgressReporter(ADOPTING, db)
+          val progressReporter = ProgressReporter(ADOPTING, context.parent)
           progress = Some(progressReporter)
           stagingRepo.acceptFile(file, progressReporter).map { adoptedFile =>
             context.parent ! SourceAdoptionComplete(adoptedFile)
           } getOrElse {
-            context.parent ! ChildFailure(s"File not accepted: ${file.getAbsolutePath}")
+            context.parent ! WorkFailure(s"File not accepted: ${file.getAbsolutePath}")
           }
         } onFailure {
-          case t => context.parent ! ChildFailure(t.getMessage, Some(t))
+          case t => context.parent ! WorkFailure(t.getMessage, Some(t))
         }
       } getOrElse {
-        context.parent ! ChildFailure("Missing staging repository!")
+        context.parent ! WorkFailure("Missing staging repository!")
       }
 
-    case GenerateSource() =>
+    case GenerateSource =>
       log.info("Generate source")
       datasetRepo.stagingRepoOpt.map { stagingRepo =>
         val sipMapperOpt = datasetRepo.sipMapperOpt
         future {
-          val progressReporter = ProgressReporter(GENERATING, db)
+          val progressReporter = ProgressReporter(GENERATING, context.parent)
           progress = Some(progressReporter)
           val pocketOutput = new FileOutputStream(datasetRepo.pocketFile)
           try {
@@ -109,11 +109,11 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
                   prefixRepo.initiateSipZip(sipFile, datasetRepo.pocketFile, facts)
                   Some(sipFile)
                 } getOrElse {
-                  context.parent ! ChildFailure("Unable to build sip for download")
+                  context.parent ! WorkFailure("Unable to build sip for download")
                   None
                 }
               } getOrElse {
-                context.parent ! ChildFailure("Unable to create sip generation facts")
+                context.parent ! WorkFailure("Unable to create sip generation facts")
                 None
               }
             }
@@ -123,16 +123,16 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
             else {
               sipFileOpt.map(_.delete())
               FileUtils.deleteQuietly(datasetRepo.pocketFile)
-              context.parent ! ChildFailure("Zero raw records generated")
+              context.parent ! WorkFailure("Zero raw records generated")
             }
           } finally {
             pocketOutput.close()
           }
         } onFailure {
-          case t => context.parent ! ChildFailure(t.getMessage, Some(t))
+          case t => context.parent ! WorkFailure(t.getMessage, Some(t))
         }
       } getOrElse {
-        context.parent ! ChildFailure("No data for generating source")
+        context.parent ! WorkFailure("No data for generating source")
       }
 
     case SaveRecords(incrementalOpt) =>
@@ -146,7 +146,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
         incrementalOpt.map { incremental =>
           val parser = PocketParser(stagingFacts)
           val (source, readProgress) = FileHandling.sourceFromFile(incremental.file)
-          val progressReporter = ProgressReporter(UPDATING, datasetRepo.datasetDb)
+          val progressReporter = ProgressReporter(UPDATING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
           recordDb.withRecordDb { session =>
@@ -199,7 +199,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
                   recordCount += 1
                 }
               }
-              val progressReporter = ProgressReporter(SAVING, datasetRepo.datasetDb)
+              val progressReporter = ProgressReporter(SAVING, context.parent)
               progress = Some(progressReporter)
               stagingRepo.parsePockets(catchPocket, progressReporter)
               if (progress.isDefined) {
@@ -208,13 +208,13 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
                 context.parent ! SaveComplete(recordCount)
               }
               else {
-                context.parent ! ChildFailure("Interrupted while saving")
+                context.parent ! WorkFailure("Interrupted while saving")
               }
             }
           }
         }
       } onFailure {
-        case t => context.parent ! ChildFailure(t.getMessage, Some(t))
+        case t => context.parent ! WorkFailure(t.getMessage, Some(t))
       }
   }
 

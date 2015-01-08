@@ -24,19 +24,23 @@ import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DatasetState._
+import dataset.ProgressState._
+import dataset.ProgressType._
 import harvest.Harvester
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
+import org.OrgActor.DatasetQuestion
 import org.apache.commons.io.FileUtils
+import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
-import play.api.Logger
 import record.Saver
 import record.Saver._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.xml.Elem
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
@@ -44,27 +48,64 @@ import scala.language.postfixOps
 
 object DatasetActor {
 
-  case class StartHarvest(modifiedAfter: Option[DateTime], justDate: Boolean)
+  // state machine
 
-  case class StartAnalysis()
+  sealed trait DatasetActorState
+
+  case object Idle extends DatasetActorState
+
+  case object Harvesting extends DatasetActorState
+
+  case object Adopting extends DatasetActorState
+
+  case object Analyzing extends DatasetActorState
+
+  case object Generating extends DatasetActorState
+
+  case object Saving extends DatasetActorState
+
+  case object Categorizing extends DatasetActorState
+
+  trait DatasetActorData
+
+  case object Dormant extends DatasetActorData
+
+  case class Active(childOpt: Option[ActorRef], progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0) extends DatasetActorData
+
+  case class InError(error: String) extends DatasetActorData
+
+
+  // messages to receive
+
+  case class Command(name: String)
+
+  case class StartHarvest(info: Elem, modifiedAfter: Option[DateTime], justDate: Boolean)
+
+  case object StartAnalysis
 
   case class IncrementalSave(modifiedAfter: DateTime, file: File)
 
   case class StartSaving(incrementalOpt: Option[IncrementalSave])
 
-  case class StartCategoryCounting()
+  case object StartCategoryCounting
 
-  case class InterruptWork()
+  case object InterruptWork
 
-  case class InterruptChild(actorWaiting: ActorRef)
+  case class WorkFailure(message: String, exceptionOpt: Option[Throwable] = None)
 
-  case class ChildFailure(message: String, exceptionOpt: Option[Throwable] = None)
+  case object CheckState
+
+  case object ClearError
+
+  case class ProgressTick(progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0)
+
+  // create one
 
   def props(datasetRepo: DatasetRepo) = Props(new DatasetActor(datasetRepo))
 
 }
 
-class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
+class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
 
   override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
     case _: Exception => Stop
@@ -72,68 +113,140 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
 
   val db = datasetRepo.datasetDb
 
-  def receive = {
+  val errorMessage = db.infoOpt.map(info => (info \ "error" \ "message").text).getOrElse("")
 
-    // === harvest
+  startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
-    case StartHarvest(modifiedAfter, justDate) =>
-      log.info(s"Start harvest modified=$modifiedAfter")
+  when(Idle) {
+
+    case Event(StartHarvest(info, modifiedAfter, justDate), Dormant) =>
       datasetRepo.dropTree()
-      db.infoOpt.foreach { info =>
-        harvestTypeFromInfo(info).map { harvestType =>
-          val harvest = info \ "harvest"
-          val url = (harvest \ "url").text
-          val database = (harvest \ "dataset").text
-          val prefix = (harvest \ "prefix").text
-          val search = (harvest \ "search").text
-          val kickoff = harvestType match {
-            case PMH => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
-            case PMH_REC => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
-            case ADLIB => HarvestAdLib(url, database, search, modifiedAfter)
-          }
-          val harvester = context.child("harvester").getOrElse(context.actorOf(Harvester.props(datasetRepo), "harvester"))
-          harvester ! kickoff
-        } getOrElse {
-          val incremental = modifiedAfter.map(IncrementalHarvest(_, None))
-          self ! ChildFailure(s"Harvest type not recognized")
+      val harvest = info \ "harvest"
+      harvestTypeFromString((harvest \ "harvestType").text).map { harvestType =>
+        val url = (harvest \ "url").text
+        val database = (harvest \ "dataset").text
+        val prefix = (harvest \ "prefix").text
+        val search = (harvest \ "search").text
+        val kickoff = harvestType match {
+          case PMH => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
+          case PMH_REC => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
+          case ADLIB => HarvestAdLib(url, database, search, modifiedAfter)
         }
+        val harvester = context.actorOf(Harvester.props(datasetRepo), "harvester")
+        harvester ! kickoff
+        goto(Harvesting) using Active(Some(harvester), HARVESTING)
+      } getOrElse {
+        stay() using InError("Unable to determine harvest type")
       }
 
-    case HarvestComplete(incrementalOpt) =>
-      log.info(s"Harvest complete incremental=$incrementalOpt")
-      db.endProgress(None)
-      db.infoOpt.foreach { info =>
-        incrementalOpt.map { incremental =>
-          db.setStatus(SOURCED) // first harvest
-          datasetRepo.dropTree()
-          incremental.fileOpt.map { newFile =>
-            self ! StartSaving(Some(IncrementalSave(incremental.modifiedAfter, newFile)))
-          }
-        } getOrElse {
-          self ! GenerateSource()
-        }
-      }
-      if (sender != self) sender ! PoisonPill
-
-    // === adopting
-
-    case AdoptSource(file) =>
-      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo), "saver"))
+    case Event(AdoptSource(file), Dormant) =>
+      val saver = context.actorOf(Saver.props(datasetRepo), "saver")
       saver ! AdoptSource(file)
+      goto(Adopting) using Active(Some(saver), ADOPTING)
 
-    case SourceAdoptionComplete(file) =>
-      log.info(s"Adopted source ${file.getAbsolutePath}")
-      datasetRepo.dropTree()
-      self ! GenerateSource()
-
-    // === generating
-
-    case GenerateSource() =>
+    case Event(GenerateSource, Dormant) =>
       val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo), "saver"))
-      saver ! GenerateSource()
+      saver ! GenerateSource
+      goto(Generating) using Active(Some(saver), GENERATING)
 
-    case SourceGenerationComplete(rawRecordCount, mappedRecordCount) =>
-      // todo: figure out if there are other things to trigger
+    case Event(StartAnalysis, Dormant) =>
+      log.info("Start analysis")
+      if (datasetRepo.mappedFile.exists()) {
+        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
+        analyzer ! AnalyzeFile(datasetRepo.mappedFile)
+        goto(Analyzing) using Active(Some(analyzer), SPLITTING)
+      } else datasetRepo.rawFile.map { rawFile =>
+        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
+        analyzer ! AnalyzeFile(rawFile)
+        goto(Analyzing) using Active(Some(analyzer), SPLITTING)
+      } getOrElse {
+        self ! GenerateSource
+        stay()
+      }
+
+    case Event(StartSaving(incrementalOpt), Dormant) =>
+      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo), "saver"))
+      saver ! SaveRecords(incrementalOpt)
+      goto(Saving) using Active(Some(saver), SAVING)
+
+    case Event(StartCategoryCounting, Dormant) =>
+      if (datasetRepo.mappedFile.exists()) {
+        val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo), "category-counter"))
+        categoryCounter ! CountCategories()
+        goto(Categorizing) using Active(Some(categoryCounter), CATEGORIZING)
+      }
+      else {
+        stay() using InError(s"No source file for categorizing $datasetRepo")
+      }
+
+    case Event(DatasetQuestion(listener, Command(commandName)), Dormant) =>
+      val reply = commandName match {
+
+        case "delete" =>
+          datasetRepo.datasetDb.dropDataset()
+          deleteQuietly(datasetRepo.rootDir)
+          "deleted"
+
+        case "remove source" =>
+          deleteQuietly(datasetRepo.rawDir)
+          deleteQuietly(datasetRepo.stagingDir)
+          datasetRepo.datasetDb.setStatus(EMPTY)
+          "source removed"
+
+        case "remove mapped" =>
+          deleteQuietly(datasetRepo.pocketFile)
+          deleteQuietly(datasetRepo.mappedFile)
+          datasetRepo.startAnalysis() // todo: shouldn't be necessary
+          "mapped removed"
+
+        case "remove tree" =>
+          deleteQuietly(datasetRepo.treeDir)
+          datasetRepo.datasetDb.setTree(ready = false)
+          "tree removed"
+
+        case "remove records" =>
+          datasetRepo.recordDbOpt.map(_.dropDb())
+          datasetRepo.datasetDb.setRecords(ready = false, 0)
+          "records removed"
+
+        case _ =>
+          log.warning(s"$this sent unrecognized command $commandName")
+          "unrecognized"
+      }
+      listener ! reply
+      stay()
+  }
+
+  when(Harvesting) {
+
+    case Event(HarvestComplete(incrementalOpt), Active(childOpt, HARVESTING, _, _)) =>
+      incrementalOpt.map { incremental =>
+        db.setStatus(SOURCED) // first harvest
+        datasetRepo.dropTree()
+        incremental.fileOpt.map { newFile =>
+          self ! StartSaving(Some(IncrementalSave(incremental.modifiedAfter, newFile)))
+        }
+      } getOrElse {
+        self ! GenerateSource
+      }
+      childOpt.map(_ ! PoisonPill)
+      goto(Idle) using Dormant
+
+  }
+
+  when(Adopting) {
+
+    case Event(SourceAdoptionComplete(file), Active(childOpt, ADOPTING, _, _)) =>
+      datasetRepo.dropTree()
+      self ! GenerateSource
+      childOpt.map(_ ! PoisonPill)
+      goto(Idle) using Dormant
+
+  }
+
+  when(Generating) {
+
+    case Event(SourceGenerationComplete(rawRecordCount, mappedRecordCount), Active(childOpt, GENERATING, _, _)) =>
       log.info(s"Generated file $rawRecordCount raw, $mappedRecordCount mapped")
       if (mappedRecordCount > 0) {
         db.setStatus(SOURCED)
@@ -144,85 +257,76 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging
         FileUtils.copyFile(datasetRepo.pocketFile, rawFile)
         db.setStatus(RAW_POCKETS)
       }
-      self ! StartAnalysis()
+      self ! StartAnalysis
+      childOpt.map(_ ! PoisonPill)
+      goto(Idle) using Dormant
 
-    // === analyzing
+  }
 
-    case StartAnalysis() =>
-      log.info("Start analysis")
-      if (datasetRepo.mappedFile.exists()) {
-        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
-        analyzer ! AnalyzeFile(datasetRepo.mappedFile)
-      } else datasetRepo.rawFile.map { rawFile =>
-        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
-        analyzer ! AnalyzeFile(rawFile)
-      } getOrElse {
-        // initially for testing (remove the mapped file), but maybe this is ok for always
-        self ! GenerateSource()
-//        self ! AnalysisComplete(Some(s"No file to analyze for $datasetRepo"))
-      }
+  when(Analyzing) {
 
-    case AnalysisComplete(errorOption) =>
-      log.info(s"Analysis complete error=$errorOption")
-      db.endProgress(errorOption)
+    case Event(AnalysisComplete(errorOption), Active(childOpt, COLLATING, _, _)) =>
       if (errorOption.isDefined)
         datasetRepo.dropTree()
       else
         db.setTree(ready = true)
-      if (sender != self) sender ! PoisonPill
+      childOpt.map(_ ! PoisonPill)
+      goto(Idle) using Dormant
 
-    // === saving
-
-    case StartSaving(incrementalOpt) =>
-      log.info(s"Start saving from incremental=$incrementalOpt")
-      val saver = context.child("saver").getOrElse(context.actorOf(Saver.props(datasetRepo), "saver"))
-      saver ! SaveRecords(incrementalOpt)
-
-    case SaveComplete(recordCount) =>
-      log.info(s"Save complete $recordCount")
-      db.endProgress(None)
-      db.setRecords(ready = true, recordCount)
-      if (sender != self) sender ! PoisonPill
-
-    // == categorization
-
-    case StartCategoryCounting() =>
-      log.info("Start categorizing")
-      if (datasetRepo.mappedFile.exists()) {
-        val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo), "category-counter"))
-        categoryCounter ! CountCategories()
-      }
-      else {
-        self ! ChildFailure(s"No source file for categorizing $datasetRepo")
-      }
-
-    case CategoryCountComplete(dataset, categoryCounts) =>
-      log.info(s"Category Counts arrived: $categoryCounts")
-      db.endProgress(None)
-      context.parent ! CategoryCountComplete(datasetRepo.datasetName, categoryCounts)
-      if (sender != self) sender ! PoisonPill
-
-    // === stopping stuff
-
-    case InterruptChild(actorWaiting) => // return true if an interrupt happened
-      val interrupted = context.children.exists { child: ActorRef =>
-        log.info(s"Sending interrupt to $child")
-        child ! InterruptWork()
-        true // found one to interrupt
-      }
-      log.info(s"InterruptChild, report back to $actorWaiting interrupted=$interrupted")
-      actorWaiting ! interrupted
-
-    case ChildFailure(message, exceptionOpt) =>
-      exceptionOpt.map(Logger.warn(message, _))
-      log.warning(s"Child failure $message")
-      db.endProgress(Option(message))
-      exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
-      if (sender != self) sender ! PoisonPill
-
-    case spurious =>
-      log.error(s"Spurious message: $spurious")
   }
+
+  when(Saving) {
+
+    case Event(SaveComplete(recordCount), Active(childOpt, SAVING, _, _)) =>
+      db.setRecords(ready = true, recordCount)
+      childOpt.map(_ ! PoisonPill)
+      goto(Idle) using Dormant
+
+  }
+
+  when(Categorizing) {
+
+    case Event(CategoryCountComplete(dataset, categoryCounts), Active(childOpt, CATEGORIZING, _, _)) =>
+      context.parent ! CategoryCountComplete(datasetRepo.datasetName, categoryCounts)
+      childOpt.map(_ ! PoisonPill)
+      goto(Idle) using Dormant
+
+  }
+
+  whenUnhandled {
+
+    case Event(tick: ProgressTick, active: Active) =>
+      stay() using active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)
+
+    case Event(ClearError, InError(message)) =>
+      log.info(s"Cleared error: $message)")
+      goto(Idle) using Dormant
+
+    case Event(InterruptWork, active: Active) =>
+      log.info(s"Sending interrupt while in $stateName/$active)")
+      active.childOpt.map { child =>
+        log.info(s"Interrupting $child")
+        child ! InterruptWork
+      }
+      stay()
+
+    case Event(WorkFailure(message, exceptionOpt), active: Active) =>
+      log.warning(s"Child failure $message while in $active")
+      exceptionOpt.map(log.warning(message, _))
+      db.setError(message)
+      exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
+      active.childOpt.map(_ ! PoisonPill)
+      goto(Idle) using InError(message)
+
+    case Event(DatasetQuestion(listener, CheckState), data) =>
+      listener ! data
+      stay()
+
+    case Event(request, data) =>
+      log.warning(s"Unhandled request $request in state $stateName/$data")
+      stay()
+  }
+
 }
 
 

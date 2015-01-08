@@ -18,21 +18,17 @@ package dataset
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.concurrent.TimeUnit
 
-import akka.pattern.ask
-import akka.util.Timeout
 import analysis.NodeRepo
-import dataset.DatasetActor.{StartAnalysis, StartCategoryCounting, StartHarvest, StartSaving}
+import dataset.DatasetActor._
 import dataset.DatasetState._
-import dataset.ProgressState._
 import dataset.Sip.{RDF_PREFIX, RDF_URI, SipMapper}
 import dataset.StagingRepo._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
 import harvest.Harvesting._
 import mapping.{CategoryDb, TermDb}
-import org.OrgActor.{DatasetMessage, InterruptDataset}
+import org.OrgActor.DatasetMessage
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgRepo}
 import play.Logger
@@ -45,17 +41,15 @@ import services.FileHandling.clearDir
 import services.NarthexConfig.NAVE_DOMAIN
 import services.Temporal._
 
-import scala.concurrent._
-
 class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
-  private val rootDir = new File(orgRepo.datasetsDir, datasetName)
-  private val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetName"
+  val rootDir = new File(orgRepo.datasetsDir, datasetName)
+  val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetName"
 
-  private val treeDir = new File(rootDir, "tree")
-  private val stagingDir = new File(rootDir, "staging")
-  private val sipsDir = new File(rootDir, "sips")
-  private val rawDir = new File(rootDir, "raw")
+  val treeDir = new File(rootDir, "tree")
+  val stagingDir = new File(rootDir, "staging")
+  val sipsDir = new File(rootDir, "sips")
+  val rawDir = new File(rootDir, "raw")
 
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val pocketFile = new File(orgRepo.rawDir, s"$datasetName.xml")
@@ -81,57 +75,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     rootDir.mkdirs()
     this
   }
-
-  def receiveCommand(command: String): String = {
-    command match {
-
-      case "delete" =>
-        datasetDb.dropDataset()
-        deleteQuietly(rootDir)
-        "deleted"
-
-      case "interrupt" =>
-        val interrupted = interruptProgress
-        Logger.info(s"Interrupt $datasetName: $interrupted")
-        if (interrupted) {
-          "interrupted"
-        }
-        else {
-          datasetDb.endProgress(None)
-          "killed"
-        }
-
-      case "remove source" =>
-        deleteQuietly(rawDir)
-        deleteQuietly(stagingDir)
-        datasetDb.setStatus(EMPTY)
-        datasetDb.endProgress(None)
-        "source removed"
-
-      case "remove mapped" =>
-        deleteQuietly(pocketFile)
-        deleteQuietly(mappedFile)
-        startAnalysis()
-        "mapped removed"
-
-      case "remove tree" =>
-        deleteQuietly(treeDir)
-        datasetDb.setTree(ready = false)
-        datasetDb.endProgress(None)
-        "tree removed"
-
-      case "remove records" =>
-        recordDbOpt.map(_.dropDb())
-        datasetDb.setRecords(ready = false, 0)
-        datasetDb.endProgress(None)
-        "records removed"
-
-      case _ =>
-        Logger.warn(s"$this sent unrecognized command $command")
-        "unrecognized"
-    }
-  }
-
+  
   def createStagingRepo(stagingFacts: StagingFacts): StagingRepo = StagingRepo.createClean(stagingDir, stagingFacts)
 
   def dropStagingRepo() = {
@@ -267,11 +211,10 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         dropStagingRepo()
         dropTree()
         createStagingRepo(StagingFacts(harvestType))
-        datasetDb.startProgress(HARVESTING)
         datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
         datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
         Logger.info(s"First Harvest $datasetName")
-        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(None, justDate = true))
+        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(info, None, justDate = true))
         None
       }
       else {
@@ -288,9 +231,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
         val nextHarvestCron = harvestCron.next
         // if the next is also to take place immediately, force the harvest cron to now
         datasetDb.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
-        datasetDb.startProgress(HARVESTING)
         val justDate = harvestCron.unit == DelayUnit.WEEKS
-        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(Some(harvestCron.previous), justDate))
+        OrgActor.actor ! DatasetMessage(datasetName, StartHarvest(info, Some(harvestCron.previous), justDate))
       }
       else {
         Logger.info(s"No re-harvest of $datasetName with cron $harvestCron because it's not time $harvestCron")
@@ -304,19 +246,16 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def startAnalysis() = datasetDb.infoOpt.map { info =>
     dropTree()
-    datasetDb.startProgress(SPLITTING)
-    OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis())
+    OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis)
   }
 
   def startSourceGeneration() = {
-    datasetDb.startProgress(GENERATING)
-    OrgActor.actor ! DatasetMessage(datasetName, GenerateSource())
+    OrgActor.actor ! DatasetMessage(datasetName, GenerateSource)
   }
 
   def firstSaveRecords() = datasetDb.infoOpt.map { info =>
     val state = DatasetState.datasetStateFromInfo(info)
     if (state == SOURCED) {
-      datasetDb.startProgress(SAVING)
       recordDbOpt.get.createDb()
       OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None))
     }
@@ -326,16 +265,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def startCategoryCounts() = {
-    datasetDb.startProgress(CATEGORIZING)
-    OrgActor.actor ! DatasetMessage(datasetName, StartCategoryCounting())
-  }
-
-  def interruptProgress: Boolean = {
-    implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
-    val answer = OrgActor.actor ? InterruptDataset(datasetName)
-    val interrupted = Await.result(answer, timeout.duration).asInstanceOf[Boolean]
-    if (!interrupted) datasetDb.endProgress(Some("Terminated processing"))
-    interrupted
+    OrgActor.actor ! DatasetMessage(datasetName, StartCategoryCounting)
   }
 
   def index = new File(treeDir, "index.json")
