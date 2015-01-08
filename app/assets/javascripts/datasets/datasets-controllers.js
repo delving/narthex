@@ -130,49 +130,6 @@ define(["angular"], function () {
             );
         }
 
-        var stateNames = {
-            'state-harvesting': "Harvesting from server",
-            'state-collecting': "Collecting identifiers",
-            'state-adopting': "Adopting data",
-            'state-generating': "Generating source",
-            'state-splitting': "Splitting fields",
-            'state-collating': "Collating values",
-            'state-categorizing': "Categorizing records",
-            'state-saving': "Saving to database",
-            'state-updating': "Updating database",
-            'state-error': "Error"
-        };
-
-        function createProgressMessage(p) {
-            if (p.count == 0) p.count = 1;
-            var pre = '';
-            var post = '';
-            var mid = p.count.toString();
-            if (p.count > 3) {
-                switch (p.type) {
-                    case "progress-busy":
-                        p.count = 100;
-                        mid = "Busy..";
-                        break;
-                    case "progress-percent":
-                        post = " %";
-                        break;
-                    case "progress-workers":
-                        p.count = 100;
-                        post = " workers";
-                        break;
-                    case "progress-pages":
-                        p.count = p.count % 100;
-                        post = " pages";
-                        break;
-                }
-                if (p.count > 15) {
-                    pre = stateNames[p.state] + " ";
-                }
-            }
-            p.message = pre + mid + post;
-        }
-
         // treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
         $scope.decorateFile = function(file) {
             function oaiPmhListRecords(enriched) {
@@ -222,57 +179,16 @@ define(["angular"], function () {
             }
         };
 
-        function cancelChecker(file) {
-            if (file.checker) {
-                $timeout.cancel(file.checker);
-                delete(file.checker);
-            }
-        }
-
-        function checkProgress(file) {
-            datasetsService.datasetProgress(file.name).then(
-                function (data) {
-                    if (data.progressType == 'progress-idle') {
-                        if (data.errorMessage) {
-                            console.log(file.name + " has error message "+data.errorMessage);
-                            file.error = data.errorMessage;
-                        }
-                        delete file.progress;
-                    }
-                    else {
-                        console.log(file.name + " is in progress");
-                        file.progress = {
-                            state: data.progressState,
-                            type: data.progressType,
-                            count: parseInt(data.count)
-                        };
-                        createProgressMessage(file.progress);
-                        file.checker = $timeout(function () {
-                            checkProgress(file)
-                        }, 1000);
-                    }
-                },
-                function (problem) {
-                    if (problem.status == 404) {
-                        alert("Processing problem with " + file.name);
-                    }
-                    else {
-                        alert("Network problem " + problem.status);
-                    }
-                }
-            );
-        }
-
         $scope.fetchDatasetList = function () {
             datasetsService.listDatasets().then(function (files) {
-                _.forEach($scope.files, cancelChecker);
+                _.forEach($scope.files, function(file) {
+                    if (file.progressCheckerTimeout) {
+                        $timeout.cancel(file.progressCheckerTimeout);
+                        delete(file.progressCheckerTimeout);
+                    }
+                });
                 _.forEach(files, $scope.decorateFile);
                 $scope.files = files;
-                _.forEach(files, function (file) {
-                    file.checker = $timeout(function () {
-                        checkProgress(file)
-                    }, 2000);
-                });
             });
         };
 
@@ -292,6 +208,91 @@ define(["angular"], function () {
 
         var file = $scope.file;
 
+        var stateNames = {
+            'state-harvesting': "Harvesting from server",
+            'state-collecting': "Collecting identifiers",
+            'state-adopting': "Adopting data",
+            'state-generating': "Generating source",
+            'state-splitting': "Splitting fields",
+            'state-collating': "Collating values",
+            'state-categorizing': "Categorizing records",
+            'state-saving': "Saving to database",
+            'state-updating': "Updating database",
+            'state-error': "Error"
+        };
+
+        function createProgressMessage(p) {
+            if (p.count == 0) p.count = 1;
+            var pre = '';
+            var post = '';
+            var mid = p.count.toString();
+            if (p.count > 3) {
+                switch (p.type) {
+                    case "progress-busy":
+                        p.count = 100;
+                        mid = "Busy..";
+                        break;
+                    case "progress-percent":
+                        post = " %";
+                        break;
+                    case "progress-workers":
+                        p.count = 100;
+                        post = " workers";
+                        break;
+                    case "progress-pages":
+                        p.count = p.count % 100;
+                        post = " pages";
+                        break;
+                }
+                if (p.count > 15) {
+                    pre = stateNames[p.state] + " ";
+                }
+            }
+            p.message = pre + mid + post;
+        }
+
+        function checkProgress(file) {
+            datasetsService.datasetProgress(file.name).then(
+                function (data) {
+                    if (data.progressType == 'progress-idle') {
+                        if (data.errorMessage) {
+                            console.log(file.name + " has error message "+data.errorMessage);
+                            file.error = data.errorMessage;
+                        }
+                        if (file.refreshAfter) {
+                            delete file.refreshAfter;
+                            refresh();
+                        }
+                        delete file.progress;
+                    }
+                    else {
+                        console.log(file.name + " is in progress");
+                        file.progress = {
+                            state: data.progressState,
+                            type: data.progressType,
+                            count: parseInt(data.count)
+                        };
+                        createProgressMessage(file.progress);
+                        file.progressCheckerTimeout = $timeout(function () {
+                            checkProgress(file)
+                        }, 900 + Math.floor(Math.random() * 200));
+                    }
+                },
+                function (problem) {
+                    if (problem.status == 404) {
+                        alert("Processing problem with " + file.name);
+                    }
+                    else {
+                        alert("Network problem " + problem.status);
+                    }
+                }
+            );
+        }
+
+        file.progressCheckerTimeout = $timeout(function () {
+            checkProgress(file)
+        }, 1000 + Math.floor(Math.random() * 1000));
+
         $scope.getIcon = function () {
             if (file.recordsTime) {
                 return "fa-database"
@@ -310,7 +311,11 @@ define(["angular"], function () {
         function refresh() {
             datasetsService.datasetInfo(file.name).then(function (info) {
                 file.info = info;
+                file.refreshAfter = true;
                 $scope.decorateFile(file);
+                file.progressCheckerTimeout = $timeout(function () {
+                    checkProgress(file)
+                }, 1000);
             });
         }
 
