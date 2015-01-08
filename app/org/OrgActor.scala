@@ -17,10 +17,9 @@
 package org
 
 import akka.actor._
-import dataset.DatasetActor
-import dataset.DatasetActor.StartCategoryCounting
+import dataset.DatasetActor._
 import mapping.CategoryCounter.CategoryCountComplete
-import org.OrgActor.{DatasetMessage, DatasetsCountCategories}
+import org.OrgActor._
 import org.OrgRepo.repo
 import play.libs.Akka
 import record.CategoryParser.CategoryCount
@@ -35,7 +34,9 @@ object OrgActor {
 
   lazy val actor: ActorRef = Akka.system.actorOf(Props[OrgActor], repo.orgId)
 
-  case class DatasetMessage(name: String, message: AnyRef)
+  case class DatasetMessage(name: String, message: AnyRef, question: Boolean = false)
+
+  case class DatasetQuestion(requester: ActorRef, question: AnyRef)
 
   case class DatasetsCountCategories(datasets: Seq[String])
 
@@ -48,16 +49,22 @@ class OrgActor extends Actor with ActorLogging {
 
   def receive = {
 
-    case DatasetMessage(name, message: AnyRef) =>
+    case DatasetMessage(name, message, question) =>
       val actorOpt = context.child(name).map(Some(_)).getOrElse {
         repo.datasetRepoOption(name).map { datasetRepo =>
-          val datasetActor = context.actorOf(DatasetActor.props(datasetRepo), name)
+          val datasetActor = context.actorOf(props(datasetRepo), name)
           log.info(s"Created dataset actor $datasetActor")
           context.watch(datasetActor)
           datasetActor
         }
       }
-      actorOpt.map(_ ! message)
+      actorOpt.map { actor =>
+        if (question) {
+          actor ! DatasetQuestion(sender(), message)
+        } else {
+          actor ! message
+        }
+      }
 
     case DatasetsCountCategories(datasets) =>
       countsInProgress = datasets.map(name => (name, None)).toMap
@@ -75,6 +82,9 @@ class OrgActor extends Actor with ActorLogging {
     case Terminated(name) =>
       log.info(s"Demised $name")
       log.info(s"Children: ${context.children}")
+
+    case spurious =>
+      log.warning(s"Spurious message $spurious")
   }
 }
 

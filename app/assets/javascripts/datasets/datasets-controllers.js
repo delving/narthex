@@ -170,12 +170,11 @@ define(["angular"], function () {
                     pre = stateNames[p.state] + " ";
                 }
             }
-            return pre + mid + post;
+            p.message = pre + mid + post;
         }
 
-        // progressState, progressType, treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
-        function decorateFile(file) {
-
+        // treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
+        $scope.decorateFile = function(file) {
             function oaiPmhListRecords(enriched) {
                 var oaiPmhUrl = enriched ? user.oaiPmhEnriched : user.oaiPmhRaw;
                 return {
@@ -185,19 +184,7 @@ define(["angular"], function () {
             }
 
             var info = file.info;
-            delete(file.error);
-            if (info.progress) {
-                if (info.progress.type != 'progress-idle') {
-                    file.progress = info.progress;
-                    file.progress.message = createProgressMessage(info.progress);
-                }
-                else {
-                    if (info.progress.state == 'state-error') {
-                        file.error = info.progress.error;
-                    }
-                    delete(file.progress);
-                }
-            }
+            if (info.error) file.error = info.error.message;
             file.apiMappings = user.narthexAPI + '/' + file.name + '/mappings';
             file.fileDropped = function ($files) {
                 fileDropped(file, $files)
@@ -212,9 +199,15 @@ define(["angular"], function () {
             if (info.tree && info.tree.ready == 'true') {
                 file.treeTime = info.tree.time;
             }
+            else {
+                file.treeTime = undefined;
+            }
             if (info.source && info.source.ready == 'true') {
                 file.sourceTime = info.source.time;
                 file.recordCount = info.source.recordCount;
+            }
+            else {
+                file.sourceTime = undefined;
             }
             if (info.records && info.records.ready == 'true') {
                 file.recordCount = info.records.recordCount;
@@ -224,7 +217,10 @@ define(["angular"], function () {
                     file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
                 }
             }
-        }
+            else {
+                file.recordsTime = undefined;
+            }
+        };
 
         function cancelChecker(file) {
             if (file.checker) {
@@ -234,34 +230,48 @@ define(["angular"], function () {
         }
 
         function checkProgress(file) {
-            datasetsService.datasetInfo(file.name).then(
-                function (info) {
-                    file.info = info;
-                    decorateFile(file);
-                    if (!file.progress) return;
-                    file.checker = $timeout(function () {
-                        checkProgress(file)
-                    }, 1000);
+            datasetsService.datasetProgress(file.name).then(
+                function (data) {
+                    if (data.progressType == 'progress-idle') {
+                        if (data.errorMessage) {
+                            console.log(file.name + " has error message "+data.errorMessage);
+                            file.error = data.errorMessage;
+                        }
+                        delete file.progress;
+                    }
+                    else {
+                        console.log(file.name + " is in progress");
+                        file.progress = {
+                            state: data.progressState,
+                            type: data.progressType,
+                            count: parseInt(data.count)
+                        };
+                        createProgressMessage(file.progress);
+                        file.checker = $timeout(function () {
+                            checkProgress(file)
+                        }, 1000);
+                    }
                 },
                 function (problem) {
                     if (problem.status == 404) {
                         alert("Processing problem with " + file.name);
-                        $scope.fetchDatasetList()
                     }
                     else {
                         alert("Network problem " + problem.status);
                     }
                 }
-            )
+            );
         }
 
         $scope.fetchDatasetList = function () {
             datasetsService.listDatasets().then(function (files) {
                 _.forEach($scope.files, cancelChecker);
-                _.forEach(files, decorateFile);
+                _.forEach(files, $scope.decorateFile);
                 $scope.files = files;
                 _.forEach(files, function (file) {
-                    if (file.progress) checkProgress(file)
+                    file.checker = $timeout(function () {
+                        checkProgress(file)
+                    }, 2000);
                 });
             });
         };
@@ -298,7 +308,10 @@ define(["angular"], function () {
         };
 
         function refresh() {
-            $scope.fetchDatasetList();
+            datasetsService.datasetInfo(file.name).then(function (info) {
+                file.info = info;
+                $scope.decorateFile(file);
+            });
         }
 
         $scope.setMetadata = function () {

@@ -31,6 +31,7 @@ import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
+import org.OrgActor.DatasetQuestion
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
@@ -65,7 +66,7 @@ object DatasetActor {
 
   case object Categorizing extends DatasetActorState
 
-  sealed trait DatasetActorData
+  trait DatasetActorData
 
   case object Dormant extends DatasetActorData
 
@@ -112,7 +113,9 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
   val db = datasetRepo.datasetDb
 
-  startWith(Idle, Dormant)
+  val errorMessage = db.infoOpt.map(info => (info \ "error" \ "message").text).getOrElse("")
+
+  startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
   when(Idle) {
 
@@ -176,7 +179,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
         stay() using InError(s"No source file for categorizing $datasetRepo")
       }
 
-    case Event(Command(commandName), Dormant) =>
+    case Event(DatasetQuestion(listener, Command(commandName)), Dormant) =>
       val reply = commandName match {
 
         case "delete" =>
@@ -210,7 +213,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
           log.warning(s"$this sent unrecognized command $commandName")
           "unrecognized"
       }
-      stay() replying reply
+      listener ! reply
+      stay()
   }
 
   when(Harvesting) {
@@ -314,8 +318,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using InError(message)
 
-    case Event(CheckState, data) =>
-      sender ! data
+    case Event(DatasetQuestion(listener, CheckState), data) =>
+      listener ! data
       stay()
 
     case Event(request, data) =>

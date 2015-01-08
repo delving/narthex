@@ -18,9 +18,9 @@ package web
 
 import java.util.concurrent.TimeUnit
 
-import akka.pattern.ask
+import akka.pattern.{AskTimeoutException, ask}
 import akka.util.Timeout
-import dataset.DatasetActor.{Command, InterruptWork}
+import dataset.DatasetActor._
 import dataset._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
@@ -41,6 +41,8 @@ import web.MainController.OkFile
 import scala.concurrent.Future
 
 object AppController extends Controller with Security {
+
+  implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
   val DATASET_PROPERTY_LISTS = List(
     "character",
@@ -85,15 +87,46 @@ object AppController extends Controller with Security {
     Ok(Json.obj("created" -> s"Dataset $datasetName with prefix $prefix"))
   }
 
+  def datasetProgress(datasetName: String) = SecureAsync() { profile => implicit request =>
+    val replyData = (OrgActor.actor ? DatasetMessage(datasetName, CheckState, question = true)).mapTo[DatasetActorData]
+    replyData.map {
+      case Dormant =>
+        Ok(Json.obj(
+          "progressType" -> ProgressType.TYPE_IDLE.name
+        ))
+      case Active(_, progressState, progressType, count) =>
+        Ok(Json.obj(
+          "progressState" -> progressState.name,
+          "progressType" -> progressType.name,
+          "count" -> count
+        ))
+      case InError(message) =>
+        Ok(Json.obj(
+          "progressType" -> ProgressType.TYPE_IDLE.name,
+          "errorMessage" -> message
+        ))
+    } recover {
+      case t: AskTimeoutException =>
+        Ok(Json.obj(
+          "progressType" -> ProgressType.TYPE_IDLE.name,
+          "errorMessage" -> "actor didn't answer"
+        ))
+    }
+  }
+
   def command(datasetName: String, command: String) = SecureAsync() { profile => implicit request =>
     if (command == "interrupt") {
       OrgActor.actor ! DatasetMessage(datasetName, InterruptWork)
       Future(Ok("interrupt sent"))
     }
     else {
-      implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
-      val futureReply = (OrgActor.actor ? DatasetMessage(datasetName, Command(command))).mapTo[String]
-      futureReply.map(reply => Ok(reply))
+      val replyString = (OrgActor.actor ? DatasetMessage(datasetName, Command(command), question = true)).mapTo[String]
+      replyString.map { reply =>
+        Ok(Json.obj("reply" -> reply))
+      } recover {
+        case t: AskTimeoutException =>
+          Ok(Json.obj("reply" -> "there was no reply"))
+      }
     }
   }
 
