@@ -1,8 +1,3 @@
-<style>
-    body {
-        background-color: #ddd;
-    }
-</style>
 <div class="row search-all">
 
         <div class="col-sm-3">
@@ -34,13 +29,13 @@
 </div>
 
 <div class="row">
-    <div class="col-sm-6 concept-pane" style="border-right: 1px solid #eee;">
+    <div class="col-sm-6 concept-pane" style="border-right: 1px solid #ccc;">
         <div class="input-group input-group-skos-term">
             <label class="input-group-addon">{{ conceptSchemeA }}</label>
             <input class="form-control" type="text" data-ng-model="soughtA"/>
             <span class="input-group-addon"><i class="fa fa-search"></i></span>
         </div>
-        <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-a" data-offset="320" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+        <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-a" data-offset="320" data-ng-style="{ 'height': elHeight }">
 
             <div data-ng-repeat="concept in conceptsA" class="list-group concept-box"
                  data-ng-class="{'concept-selected': conceptA == concept, 'concept-mapped': mappingsAB[concept.uri] }">
@@ -85,7 +80,7 @@
             <span class="input-group-addon"><i class="fa fa-search"></i></span>
 
         </div>
-        <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-b" data-offset="320" data-ng-style="{ 'max-height': elHeight, 'min-height': elHeight }">
+        <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-b" data-offset="320" data-ng-style="{ 'height': elHeight }">
 
             <div data-ng-repeat="concept in conceptsB" class="list-group concept-box"
                  data-ng-class="{'concept-selected': conceptB == concept, 'concept-mapped': mappingsBA[concept.uri] }">

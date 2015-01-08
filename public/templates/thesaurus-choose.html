@@ -2,7 +2,7 @@
 
 <div class="row">
 
-    <div class="col-sm-3 col-sm-offset-3">
+    <div class="col-xs-6">
         <ul class=" text-right list-group" data-ng-show="conceptSchemeList">
             <li data-ng-repeat="cs in conceptSchemeList" class="list-group-item">
                 <label for="A{{$index}}">{{ cs }}</label>
@@ -11,7 +11,7 @@
             </li>
         </ul>
     </div>
-    <div class="col-sm-3">
+    <div class="col-xs-6">
         <ul class="list-group" data-ng-show="conceptSchemeList">
             <li data-ng-repeat="cs in conceptSchemeList" class="list-group-item">
                 <input id="B{{$index}}" type="radio" data-ng-model="conceptSchemes.b" data-ng-value="cs"

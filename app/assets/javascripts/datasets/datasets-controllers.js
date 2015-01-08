@@ -29,18 +29,14 @@ define(["angular"], function () {
         if (user == null) $location.path("/");
         $scope.user = user;
         $scope.uploading = false;
+        $scope.filteredFiles = [];
         $scope.files = [];
         $scope.percent = null;
-        $scope.fileOpen = $routeParams.open || $rootScope.fileOpen || "";
-        $scope.tabOpen = $routeParams.tab || $rootScope.tabOpen || "metadata";
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
         $scope.dataset = { name: "" };
+        $scope.specFilter = "";
         $scope.categoriesEnabled = user.categoriesEnabled;
-
-        function setSearch() {
-            $location.search({open: $scope.fileOpen, tab: $scope.tabOpen });
-        }
 
         function setNewDataset() {
             var ds = $scope.dataset;
@@ -53,12 +49,23 @@ define(["angular"], function () {
         $scope.$watch("dataset.name", setNewDataset);
         $scope.$watch("dataset.prefix", setNewDataset);
 
+        $scope.$watch("specFilter", function(filter) {
+            filter = filter.trim();
+            if (filter) {
+                $scope.filteredFiles = _.filter($scope.files, function(file) {
+                    return file.name.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
+                });
+            }
+            else {
+                $scope.filteredFiles = $scope.files;
+            }
+        });
+
         $scope.createDataset = function () {
             datasetsService.create($scope.dataset.validName, $scope.dataset.prefix).then(function () {
-                $scope.setNewFileOpen(false);
+                $scope.newFileOpen = false;
                 $scope.dataset.name = undefined;
                 $scope.fetchDatasetList();
-                $scope.setFileOpen($scope.dataset.validName);
             });
         };
 
@@ -68,21 +75,6 @@ define(["angular"], function () {
 
         $scope.isEmpty = function (obj) {
             return _.isEmpty(obj)
-        };
-
-        $scope.setFileOpen = function (file) {
-            if ($scope.fileOpen == file.name || file.progress) {
-                $scope.fileOpen = "";
-            }
-            else {
-                $scope.fileOpen = file.name;
-            }
-            $scope.tabOpen = 'metadata';
-            setSearch();
-        };
-
-        $scope.setNewFileOpen = function (value) {
-            $scope.newFileOpen = value;
         };
 
         $scope.setTabOpen = function (tab) {
@@ -114,7 +106,6 @@ define(["angular"], function () {
                 function () {
                     file.uploading = false;
                     file.uploadPercent = null;
-                    $scope.setFileOpen("");
                     $scope.fetchDatasetList();
                 }
             ).error(
@@ -188,7 +179,8 @@ define(["angular"], function () {
                     }
                 });
                 _.forEach(files, $scope.decorateFile);
-                $scope.files = files;
+                $scope.files = $scope.filteredFiles = files;
+                $scope.specFilter = "";
             });
         };
 
@@ -209,15 +201,15 @@ define(["angular"], function () {
         var file = $scope.file;
 
         var stateNames = {
-            'state-harvesting': "Harvesting from server",
-            'state-collecting': "Collecting identifiers",
-            'state-adopting': "Adopting data",
-            'state-generating': "Generating source",
-            'state-splitting': "Splitting fields",
-            'state-collating': "Collating values",
-            'state-categorizing': "Categorizing records",
-            'state-saving': "Saving to database",
-            'state-updating': "Updating database",
+            'state-harvesting': "Harvesting",
+            'state-collecting': "Collecting",
+            'state-adopting': "Adopting",
+            'state-generating': "Generating",
+            'state-splitting': "Splitting",
+            'state-collating': "Collating",
+            'state-categorizing': "Categorizing",
+            'state-saving': "Saving",
+            'state-updating': "Updating",
             'state-error': "Error"
         };
 
@@ -338,17 +330,14 @@ define(["angular"], function () {
         };
 
         $scope.startHarvest = function () {
-            $scope.setFileOpen("");
             datasetsService.harvest(file.name, file.info.harvest).then(refresh);
         };
 
         $scope.startAnalysis = function () {
-            $scope.setFileOpen("");
             datasetsService.analyze(file.name).then(refresh);
         };
 
         $scope.saveRecords = function () {
-            $scope.setFileOpen("");
             datasetsService.saveRecords(file.name).then(refresh);
         };
 
@@ -361,7 +350,6 @@ define(["angular"], function () {
             if (areYouSure && !confirm(areYouSure)) return;
             datasetsService.command(file.name, command).then(function (data) {
                 refresh();
-                if (command == 'interrupt') $scope.setFileOpen(file.name);
             });
         };
 
