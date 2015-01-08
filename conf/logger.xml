@@ -14,7 +14,14 @@
       <pattern>%date - %coloredLevel %X{akkaSource} - %message%n%xException{5}</pattern>
     </encoder>
   </appender>
-  
+
+  <logger name="akka" level="INFO" />
+  <logger name="org.OrgActor" level="INFO" />
+  <logger name="analysis.Analyzer" level="INFO" />
+  <logger name="harvest.Harvester" level="INFO" />
+  <logger name="record.Saver" level="INFO" />
+  <logger name="dataset.DatasetActor" level="INFO" />
+  <logger name="mapping.CategoryCounter" level="INFO" />
   <logger name="play" level="INFO" />
   <logger name="application" level="INFO" />
   <logger name="dataset" level="DEBUG" />

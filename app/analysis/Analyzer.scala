@@ -61,7 +61,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
 
   def receive = {
 
-    case InterruptWork() =>
+    case InterruptWork =>
       if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
 
     case AnalyzeFile(file) =>
@@ -69,7 +69,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
       val (source, readProgress) = sourceFromFile(file)
       import context.dispatcher
       future {
-        val progressReporter = ProgressReporter(SPLITTING, db)
+        val progressReporter = ProgressReporter(SPLITTING, context.parent)
         progressReporter.setReadProgress(readProgress)
         progress = Some(progressReporter)
         // todo: create a sequence of futures and compose them with Future.sequence()
@@ -99,7 +99,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
       }
 
     case AnalysisTreeComplete(json) =>
-      val progressReporter = ProgressReporter(COLLATING, db)
+      val progressReporter = ProgressReporter(COLLATING, context.parent)
       progress = Some(progressReporter)
       progressReporter.sendWorkers(sorters.size + collators.size)
       log.info(s"Tree complete")

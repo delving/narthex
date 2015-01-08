@@ -130,6 +130,84 @@ define(["angular"], function () {
             );
         }
 
+        // treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
+        $scope.decorateFile = function(file) {
+            function oaiPmhListRecords(enriched) {
+                var oaiPmhUrl = enriched ? user.oaiPmhEnriched : user.oaiPmhRaw;
+                return {
+                    prefix: file.prefix,
+                    url: oaiPmhUrl + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
+                }
+            }
+
+            var info = file.info;
+            if (info.error) file.error = info.error.message;
+            file.apiMappings = user.narthexAPI + '/' + file.name + '/mappings';
+            file.fileDropped = function ($files) {
+                fileDropped(file, $files)
+            };
+            file.state = info.status.state;
+            file.datasetName = file.name;
+            if (info.character) file.prefix = info.character.prefix;
+            if (!info.harvest) info.harvest = {};
+            if (!info.metadata) info.metadata = {};
+            if (!info.publication) info.publication = {};
+            if (!info.categories) info.categories = {};
+            if (info.tree && info.tree.ready == 'true') {
+                file.treeTime = info.tree.time;
+            }
+            else {
+                file.treeTime = undefined;
+            }
+            if (info.source && info.source.ready == 'true') {
+                file.sourceTime = info.source.time;
+                file.recordCount = info.source.recordCount;
+            }
+            else {
+                file.sourceTime = undefined;
+            }
+            if (info.records && info.records.ready == 'true') {
+                file.recordCount = info.records.recordCount;
+                file.recordsTime = info.records.time;
+                if (file.prefix) {
+                    file.oaiPmhListRecords = oaiPmhListRecords(false);
+                    file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
+                }
+            }
+            else {
+                file.recordsTime = undefined;
+            }
+        };
+
+        $scope.fetchDatasetList = function () {
+            datasetsService.listDatasets().then(function (files) {
+                _.forEach($scope.files, function(file) {
+                    if (file.progressCheckerTimeout) {
+                        $timeout.cancel(file.progressCheckerTimeout);
+                        delete(file.progressCheckerTimeout);
+                    }
+                });
+                _.forEach(files, $scope.decorateFile);
+                $scope.files = files;
+            });
+        };
+
+        $scope.fetchDatasetList();
+
+        datasetsService.listPrefixes().then(function(prefixes) {
+            $scope.prefixes = prefixes;
+            $scope.dataset.prefix = prefixes.length ? prefixes[0] : undefined
+        });
+    };
+
+    DatasetsCtrl.$inject = [
+        "$rootScope", "$scope", "user", "datasetsService", "$location", "$upload", "$timeout", "$routeParams"
+    ];
+
+    var DatasetEntryCtrl = function ($scope, datasetsService, $location, $timeout) {
+
+        var file = $scope.file;
+
         var stateNames = {
             'state-harvesting': "Harvesting from server",
             'state-collecting': "Collecting identifiers",
@@ -170,117 +248,50 @@ define(["angular"], function () {
                     pre = stateNames[p.state] + " ";
                 }
             }
-            return pre + mid + post;
-        }
-
-        // progressState, progressType, treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
-        function decorateFile(file) {
-
-            function oaiPmhListRecords(enriched) {
-                var oaiPmhUrl = enriched ? user.oaiPmhEnriched : user.oaiPmhRaw;
-                return {
-                    prefix: file.prefix,
-                    url: oaiPmhUrl + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
-                }
-            }
-
-            var info = file.info;
-            delete(file.error);
-            if (info.progress) {
-                if (info.progress.type != 'progress-idle') {
-                    file.progress = info.progress;
-                    file.progress.message = createProgressMessage(info.progress);
-                }
-                else {
-                    if (info.progress.state == 'state-error') {
-                        file.error = info.progress.error;
-                    }
-                    delete(file.progress);
-                }
-            }
-            file.apiMappings = user.narthexAPI + '/' + file.name + '/mappings';
-            file.fileDropped = function ($files) {
-                fileDropped(file, $files)
-            };
-            file.state = info.status.state;
-            file.datasetName = file.name;
-            if (info.character) file.prefix = info.character.prefix;
-            if (!info.harvest) info.harvest = {};
-            if (!info.metadata) info.metadata = {};
-            if (!info.publication) info.publication = {};
-            if (!info.categories) info.categories = {};
-            if (info.tree && info.tree.ready == 'true') {
-                file.treeTime = info.tree.time;
-            }
-            if (info.source && info.source.ready == 'true') {
-                file.sourceTime = info.source.time;
-                file.recordCount = info.source.recordCount;
-            }
-            if (info.records && info.records.ready == 'true') {
-                file.recordCount = info.records.recordCount;
-                file.recordsTime = info.records.time;
-                if (file.prefix) {
-                    file.oaiPmhListRecords = oaiPmhListRecords(false);
-                    file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
-                }
-            }
-        }
-
-        function cancelChecker(file) {
-            if (file.checker) {
-                $timeout.cancel(file.checker);
-                delete(file.checker);
-            }
+            p.message = pre + mid + post;
         }
 
         function checkProgress(file) {
-            datasetsService.datasetInfo(file.name).then(
-                function (info) {
-                    file.info = info;
-                    decorateFile(file);
-                    if (!file.progress) return;
-                    file.checker = $timeout(function () {
-                        checkProgress(file)
-                    }, 1000);
+            datasetsService.datasetProgress(file.name).then(
+                function (data) {
+                    if (data.progressType == 'progress-idle') {
+                        if (data.errorMessage) {
+                            console.log(file.name + " has error message "+data.errorMessage);
+                            file.error = data.errorMessage;
+                        }
+                        if (file.refreshAfter) {
+                            delete file.refreshAfter;
+                            refresh();
+                        }
+                        delete file.progress;
+                    }
+                    else {
+                        console.log(file.name + " is in progress");
+                        file.progress = {
+                            state: data.progressState,
+                            type: data.progressType,
+                            count: parseInt(data.count)
+                        };
+                        createProgressMessage(file.progress);
+                        file.progressCheckerTimeout = $timeout(function () {
+                            checkProgress(file)
+                        }, 900 + Math.floor(Math.random() * 200));
+                    }
                 },
                 function (problem) {
                     if (problem.status == 404) {
                         alert("Processing problem with " + file.name);
-                        $scope.fetchDatasetList()
                     }
                     else {
                         alert("Network problem " + problem.status);
                     }
                 }
-            )
+            );
         }
 
-        $scope.fetchDatasetList = function () {
-            datasetsService.listDatasets().then(function (files) {
-                _.forEach($scope.files, cancelChecker);
-                _.forEach(files, decorateFile);
-                $scope.files = files;
-                _.forEach(files, function (file) {
-                    if (file.progress) checkProgress(file)
-                });
-            });
-        };
-
-        $scope.fetchDatasetList();
-
-        datasetsService.listPrefixes().then(function(prefixes) {
-            $scope.prefixes = prefixes;
-            $scope.dataset.prefix = prefixes.length ? prefixes[0] : undefined
-        });
-    };
-
-    DatasetsCtrl.$inject = [
-        "$rootScope", "$scope", "user", "datasetsService", "$location", "$upload", "$timeout", "$routeParams"
-    ];
-
-    var DatasetEntryCtrl = function ($scope, datasetsService, $location, $timeout) {
-
-        var file = $scope.file;
+        file.progressCheckerTimeout = $timeout(function () {
+            checkProgress(file)
+        }, 1000 + Math.floor(Math.random() * 1000));
 
         $scope.getIcon = function () {
             if (file.recordsTime) {
@@ -298,7 +309,14 @@ define(["angular"], function () {
         };
 
         function refresh() {
-            $scope.fetchDatasetList();
+            datasetsService.datasetInfo(file.name).then(function (info) {
+                file.info = info;
+                file.refreshAfter = true;
+                $scope.decorateFile(file);
+                file.progressCheckerTimeout = $timeout(function () {
+                    checkProgress(file)
+                }, 1000);
+            });
         }
 
         $scope.setMetadata = function () {

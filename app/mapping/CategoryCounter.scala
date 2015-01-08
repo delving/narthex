@@ -17,7 +17,7 @@
 package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{ChildFailure, InterruptWork}
+import dataset.DatasetActor.{InterruptWork, WorkFailure}
 import dataset.{DatasetRepo, ProgressState}
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import record.CategoryParser
@@ -44,7 +44,7 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
 
   def receive = {
 
-    case InterruptWork() =>
+    case InterruptWork =>
       if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
 
     case CountCategories() =>
@@ -55,20 +55,20 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
         val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT, categoryMappings)
         val (source, readProgress) = FileHandling.sourceFromFile(datasetRepo.mappedFile)
         try {
-          val progressReporter = ProgressReporter(ProgressState.CATEGORIZING, datasetRepo.datasetDb)
+          val progressReporter = ProgressReporter(ProgressState.CATEGORIZING, context.parent)
           progress = Some(progressReporter)
           progressReporter.setReadProgress(readProgress)
           parser.parse(source, Set.empty[String], progressReporter)
           context.parent ! CategoryCountComplete(datasetRepo.datasetName, parser.categoryCounts)
         }
         catch {
-          case e: Exception => context.parent ! ChildFailure(e.getMessage, Some(e))
+          case e: Exception => context.parent ! WorkFailure(e.getMessage, Some(e))
         }
         finally {
           source.close()
         }
       } onFailure {
-        case t => context.parent ! ChildFailure(t.getMessage, Some(t))
+        case t => context.parent ! WorkFailure(t.getMessage, Some(t))
       }
   }
 }
