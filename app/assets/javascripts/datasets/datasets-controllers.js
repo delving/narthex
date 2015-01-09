@@ -63,7 +63,7 @@ define(["angular"], function () {
 
         $scope.createDataset = function () {
             datasetsService.create($scope.dataset.validName, $scope.dataset.prefix).then(function () {
-                $scope.newFileOpen = false;
+                $scope.cancelNewFile();
                 $scope.dataset.name = undefined;
                 $scope.fetchDatasetList();
             });
@@ -75,6 +75,10 @@ define(["angular"], function () {
 
         $scope.isEmpty = function (obj) {
             return _.isEmpty(obj)
+        };
+
+        $scope.cancelNewFile = function() {
+            $scope.newFileOpen = false;
         };
 
         $scope.setDropSupported = function () {
@@ -369,7 +373,12 @@ define(["angular"], function () {
         $scope.command = function (areYouSure, command) {
             if (areYouSure && !confirm(areYouSure)) return;
             datasetsService.command($scope.file.name, command).then(function (data) {
-                refreshProgress();
+                if (command == "delete") {
+                    $scope.fetchDatasetList();
+                }
+                else {
+                    refreshProgress();
+                }
             });
         };
 
