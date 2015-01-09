@@ -219,7 +219,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
   when(Harvesting) {
 
-    case Event(HarvestComplete(incrementalOpt), Active(childOpt, HARVESTING, _, _)) =>
+    case Event(HarvestComplete(incrementalOpt), active: Active) =>
       incrementalOpt.map { incremental =>
         db.setStatus(SOURCED) // first harvest
         datasetRepo.dropTree()
@@ -229,24 +229,24 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       } getOrElse {
         self ! GenerateSource
       }
-      childOpt.map(_ ! PoisonPill)
+      active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
 
   when(Adopting) {
 
-    case Event(SourceAdoptionComplete(file), Active(childOpt, ADOPTING, _, _)) =>
+    case Event(SourceAdoptionComplete(file), active: Active) =>
       datasetRepo.dropTree()
       self ! GenerateSource
-      childOpt.map(_ ! PoisonPill)
+      active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
 
   when(Generating) {
 
-    case Event(SourceGenerationComplete(rawRecordCount, mappedRecordCount), Active(childOpt, GENERATING, _, _)) =>
+    case Event(SourceGenerationComplete(rawRecordCount, mappedRecordCount), active: Active) =>
       log.info(s"Generated file $rawRecordCount raw, $mappedRecordCount mapped")
       if (mappedRecordCount > 0) {
         db.setStatus(SOURCED)
@@ -258,37 +258,37 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
         db.setStatus(RAW_POCKETS)
       }
       self ! StartAnalysis
-      childOpt.map(_ ! PoisonPill)
+      active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
 
   when(Analyzing) {
 
-    case Event(AnalysisComplete(errorOption), Active(childOpt, COLLATING, _, _)) =>
+    case Event(AnalysisComplete(errorOption), active: Active) =>
       if (errorOption.isDefined)
         datasetRepo.dropTree()
       else
         db.setTree(ready = true)
-      childOpt.map(_ ! PoisonPill)
+      active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
 
   when(Saving) {
 
-    case Event(SaveComplete(recordCount), Active(childOpt, SAVING, _, _)) =>
+    case Event(SaveComplete(recordCount), active: Active) =>
       db.setRecords(ready = true, recordCount)
-      childOpt.map(_ ! PoisonPill)
+      active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
 
   when(Categorizing) {
 
-    case Event(CategoryCountComplete(dataset, categoryCounts), Active(childOpt, CATEGORIZING, _, _)) =>
+    case Event(CategoryCountComplete(dataset, categoryCounts), active: Active) =>
       context.parent ! CategoryCountComplete(datasetRepo.datasetName, categoryCounts)
-      childOpt.map(_ ! PoisonPill)
+      active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }

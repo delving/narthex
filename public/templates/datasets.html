@@ -118,9 +118,6 @@
                         <li ng-class="{'active':file.tabOpen === 'drop'}" data-ng-show="file.state == 'state-empty' && dropSupported">
                             <a href role="tab" data-ng-click="file.tabOpen = 'drop'">File Drop</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'sip-zip'}" data-ng-show="file.info.sipFacts">
-                            <a href role="tab" data-ng-click="file.tabOpen = 'sip-zip'">SIP Files</a>
-                        </li>
                         <li ng-class="{'active':file.tabOpen === 'harvest'}" data-ng-show="file.state == 'state-empty'">
                             <a href role="tab" data-ng-click="file.tabOpen ='harvest'">Harvest</a>
                         </li>
@@ -139,18 +136,21 @@
                         <li ng-class="{'active':file.tabOpen === 'info'}">
                             <a href role="tab" data-ng-click="file.tabOpen ='info'">Info</a>
                         </li>
+                        <li ng-class="{'active':file.tabOpen === 'sip-zip'}" data-ng-show="file.info.sipFacts">
+                            <a href role="tab" data-ng-click="file.tabOpen = 'sip-zip'">SIP Files</a>
+                        </li>
                     </ul>
                     <div class="tab-content">
                         <div ng-switch="file.tabOpen">
                             <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
                             <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>
-                            <div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>
                             <div ng-switch-when="harvest"><div data-ng-include="'harvest-form.html'">harvest form</div></div>
                             <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
                             <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
                             <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
                             <div ng-switch-when="downloads"><div data-ng-include="'downloads.html'">downloads</div></div>
                             <div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>
+                            <div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>
                         </div>
                     </div>
                 </div>
@@ -323,7 +323,7 @@
                 <label for="hc_unit">Unit</label>
                 <input id="hc_unit" class="form-control" data-ng-model="file.info.harvestCron.unit"/>
             </div>
-            <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()">
+            <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()" data-ng-disabled="unchangedHarvestCron">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>

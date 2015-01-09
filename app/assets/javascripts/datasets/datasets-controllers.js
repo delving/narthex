@@ -298,14 +298,18 @@ define(["angular"], function () {
             }
         };
 
-        function compareForSave() {
-            if (!$scope.file.originalInfo.metadata) $scope.file.originalInfo.metadata = {};
-            $scope.unchangedMetadata = angular.equals($scope.file.info.metadata, $scope.file.originalInfo.metadata);
-            if (!$scope.file.originalInfo.publication) $scope.file.originalInfo.publication = {};
-            $scope.unchangedPublication = angular.equals($scope.file.info.publication, $scope.file.originalInfo.publication);
-            if (!$scope.file.originalInfo.categories) $scope.file.originalInfo.categories = {};
-            $scope.unchangedCategories = angular.equals($scope.file.info.categories, $scope.file.originalInfo.categories);
+        function nonEmpty(obj) {
+            if (obj)
+                return obj;
+            else
+                return {};
+        }
 
+        function compareForSave() {
+            $scope.unchangedMetadata = angular.equals($scope.file.info.metadata, nonEmpty($scope.file.originalInfo.metadata));
+            $scope.unchangedPublication = angular.equals($scope.file.info.publication, nonEmpty($scope.file.originalInfo.publication));
+            $scope.unchangedCategories = angular.equals($scope.file.info.categories, nonEmpty($scope.file.originalInfo.categories));
+            $scope.unchangedHarvestCron = angular.equals($scope.file.info.harvestCron, nonEmpty($scope.file.originalInfo.harvestCron));
         }
 
         function refreshProgress() {
