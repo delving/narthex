@@ -352,7 +352,8 @@ define(["angular"], function () {
 
         function command(command, areYouSure, after) {
             if (areYouSure && !confirm(areYouSure)) return;
-            datasetsService.command($scope.file.name, command).then(function () {
+            datasetsService.command($scope.file.name, command).then(function (reply) {
+                console.log(reply);
                 if (command == "delete") {
                     $scope.fetchDatasetList();
                 }

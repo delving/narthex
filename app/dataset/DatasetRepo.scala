@@ -249,24 +249,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis)
   }
 
-  def startSourceGeneration() = {
-    OrgActor.actor ! DatasetMessage(datasetName, GeneratePockets)
-  }
+  def startSourceGeneration() = OrgActor.actor ! DatasetMessage(datasetName, GeneratePockets)
 
-  def firstSaveRecords() = datasetDb.infoOpt.map { info =>
-    val state = DatasetState.datasetStateFromInfo(info)
-//    if (state == SOURCED) {
-//      recordDbOpt.get.createDb()
-//      OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None))
-//    }
-//    else {
-//      Logger.warn(s"First save of $datasetName can only be started with state sourced when there is a source file")
-//    }
-  }
+  def startMapping() = OrgActor.actor ! DatasetMessage(datasetName, StartProcessing(None))
 
-  def startCategoryCounts() = {
-    OrgActor.actor ! DatasetMessage(datasetName, StartCategoryCounting)
-  }
+  def startCategoryCounts() = OrgActor.actor ! DatasetMessage(datasetName, StartCategoryCounting)
 
   def index = new File(treeDir, "index.json")
 

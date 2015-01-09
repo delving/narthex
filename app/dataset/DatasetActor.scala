@@ -204,10 +204,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
           "tree removed"
 
         case "start mapping" =>
-          log.warning("EXECUTE MAPPING")
+          datasetRepo.startMapping()
+          "not implemented"
 
         case "start analysis" =>
           log.warning("START ANALYSIS")
+          datasetRepo.startAnalysis()
+          "not implemented"
 
         case _ =>
           log.warning(s"$this sent unrecognized command $commandName")
