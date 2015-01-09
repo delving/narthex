@@ -74,11 +74,10 @@ object ProgressState {
   val SPLITTING = ProgressState("state-splitting")
   val COLLATING = ProgressState("state-collating")
   val CATEGORIZING = ProgressState("state-categorizing")
-  val SAVING = ProgressState("state-saving")
-  val UPDATING = ProgressState("state-updating")
+  val PROCESSING = ProgressState("state-processing")
   val ERROR = ProgressState("state-error")
 
-  val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, SAVING, ERROR)
+  val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, PROCESSING, ERROR)
 
   def progressStateFromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
 
@@ -198,10 +197,11 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     "time" -> now
   )
 
-  def setRecords(ready: Boolean, recordCount: Int) = setProperties(
+  def setRecords(ready: Boolean, recordCount: Int = 0, invalidRecordCount: Int = 0) = setProperties(
     "records",
     "ready" -> ready,
     "recordCount" -> recordCount,
+    "invalidRecordCount" -> invalidRecordCount,
     "time" -> now
   )
 

@@ -120,7 +120,7 @@ define(["angular"], function () {
             );
         }
 
-        // treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
+        // treeTime, mappedTime, identity { datasetName, prefix, recordCount, name, dataProvider }
         $scope.decorateFile = function (file, info) {
             if (info) {
                 file.info = info;
@@ -156,10 +156,10 @@ define(["angular"], function () {
             }
             if (info.records && info.records.ready == 'true') {
                 file.recordCount = info.records.recordCount;
-                file.recordsTime = info.records.time;
+                file.mappedTime = info.records.time;
             }
             else {
-                file.recordsTime = undefined;
+                file.mappedTime = undefined;
             }
         };
 
@@ -204,8 +204,7 @@ define(["angular"], function () {
             'state-splitting': "Splitting",
             'state-collating': "Collating",
             'state-categorizing': "Categorizing",
-            'state-saving': "Saving",
-            'state-updating': "Updating",
+            'state-processing': "Processing",
             'state-error': "Error"
         };
 
@@ -277,7 +276,7 @@ define(["angular"], function () {
         }
 
         $scope.getIcon = function () {
-            if ($scope.file.recordsTime) {
+            if ($scope.file.mappedTime) {
                 return "fa-database"
             }
             else if ($scope.file.treeTime) {
@@ -346,45 +345,47 @@ define(["angular"], function () {
             datasetsService.harvest($scope.file.name, $scope.file.info.harvest).then(refreshProgress);
         };
 
-        $scope.startAnalysis = function () {
-            datasetsService.analyze($scope.file.name).then(refreshProgress);
-        };
-
         $scope.viewFile = function () {
             $location.path("/dataset/" + $scope.file.name);
             $location.search({});
         };
 
-        $scope.command = function (areYouSure, command) {
+        function command(command, areYouSure, after) {
             if (areYouSure && !confirm(areYouSure)) return;
-            datasetsService.command($scope.file.name, command).then(function (data) {
+            datasetsService.command($scope.file.name, command).then(function () {
                 if (command == "delete") {
                     $scope.fetchDatasetList();
                 }
                 else {
                     refreshProgress();
                 }
+            }).then(function() {
+                if (after) after();
             });
-        };
+        }
 
         $scope.interruptProcessing = function () {
-            $scope.command("Interrupt processing?", "interrupt");
+            command("interrupt", "Interrupt processing?");
         };
 
         $scope.discardSource = function () {
-            $scope.command("Discard source?", "remove source");
+            command("remove source", "Discard source?");
         };
 
         $scope.discardMapped = function () {
-            $scope.command("Discard mapped data?", "remove mapped");
+            command("remove mapped", "Discard mapped data?");
         };
 
         $scope.discardTree = function () {
-            $scope.command("Discard analysis?", "remove tree");
+            command("remove tree", "Discard analysis?");
         };
 
-        $scope.discardRecords = function () {
-            $scope.command("Discard records?", "remove records");
+        $scope.startMapping = function () {
+            command("start mapping", null, refreshProgress);
+        };
+
+        $scope.startAnalysis = function () {
+            command("start analysis", null, refreshProgress);
         };
 
         $scope.deleteDataset = function () {

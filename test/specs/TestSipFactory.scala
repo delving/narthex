@@ -33,7 +33,7 @@ class TestSipFactory extends FlatSpec with Matchers {
     val stagingRepo = StagingRepo(stagingDir)
     val sourceXmlFile = new File(targetDir, "source.xml")
     val sourceOutput = new FileOutputStream(sourceXmlFile)
-    stagingRepo.generateSource(sourceOutput, new File(targetDir, "should.not.appear"), None, ProgressReporter())
+    stagingRepo.generatePockets(sourceOutput, ProgressReporter())
     sourceOutput.close()
 
     val facts = SipGenerationFacts(<info/>)

@@ -12,7 +12,6 @@ import scala.xml.XML
 
 class TestSipRepo extends FlatSpec with Matchers {
 
-/*
   "A SipRepo" should "handle the arkivportalen harvest sip" in {
 
     // harvest looks like this
@@ -52,7 +51,7 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       val expectedTitle = "Saksarkiv ordnet etter organets hovedsystem (Børge Brevhus, Børge Brevhus)"
 
-      val titleText = (head \ "Description" \ "title").filter(_.prefix == "dc").text.trim
+      val titleText = (head \ "title").filter(_.prefix == "dc").text.trim
 
       titleText should be(expectedTitle)
     }
@@ -98,11 +97,10 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       val first = XML.loadString(mappedPockets.last.text)
       val expectedTitle = "Tribute to the chaotics, Hommage aan de chaoten"
-      val titleText = (first \ "Description" \ "title").filter(_.prefix == "dc").map(_.text).mkString(", ")
+      val titleText = (first \ "title").filter(_.prefix == "dc").map(_.text).mkString(", ")
       titleText should be(expectedTitle)
     }
   }
-  */
 
   "A SipRepo" should "handle a harvest sip" in {
 
@@ -143,18 +141,17 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       val head = XML.loadString(mappedPockets.head.text)
 
-      println(mappedPockets.head)
+//      println(head)
 
       val expectedTitle = "[Bezoek van Statenleden aan de electriciteitsfabriek te Geertruidenberg op 18 Juli 1917]."
 
-      val titleText = (head \ "Description" \ "title").filter(_.prefix == "dc").text.trim
+      val titleText = (head \ "title").filter(_.prefix == "dc").text.trim
 
       titleText should be(expectedTitle)
 
     }
   }
 
-  /*
   "A SipRepo" should "handle a source sip" in {
 
     val home = new File(getClass.getResource("/sip_source").getFile)
@@ -195,10 +192,9 @@ class TestSipRepo extends FlatSpec with Matchers {
 
 //      println(head)
 
-      val creatorText = (head \ "Description" \ "creator").filter(_.prefix == "dc").text.trim
+      val creatorText = (head \ "creator").filter(_.prefix == "dc").text.trim
 
       creatorText should be("Kees Verwey")
     }
   }
-*/
 }

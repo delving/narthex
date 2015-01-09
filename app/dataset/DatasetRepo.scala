@@ -34,7 +34,7 @@ import org.{OrgActor, OrgRepo}
 import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
-import record.Saver.{AdoptSource, GenerateSource}
+import record.SourceProcessor.{AdoptSource, GeneratePockets}
 import services.FileHandling.clearDir
 import services.NarthexConfig.NAVE_DOMAIN
 import services.Temporal._
@@ -48,7 +48,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   val stagingDir = new File(rootDir, "staging")
   val sipsDir = new File(rootDir, "sips")
   val rawDir = new File(rootDir, "raw")
-  val sourceDir = new File(rootDir, "source")
+  private val mappedDir = new File(rootDir, "mapped")
 
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val pocketFile = new File(orgRepo.rawDir, s"$datasetName.xml")
@@ -63,7 +63,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir, datasetName, NAVE_DOMAIN)
-  lazy val sourceRepo = new SourceRepo(sourceDir)
+  lazy val mappedRepo = new MappedRepo(mappedDir)
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
 
@@ -84,7 +84,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def dropSource() = {
     sipFiles.foreach(deleteQuietly)
-    deleteQuietly(sourceDir)
+    deleteQuietly(mappedDir)
   }
 
   def dropTree() = {
@@ -94,8 +94,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   @Deprecated
   def dropRecords() = {
+    // todo
 //    recordDbOpt.map(_.dropDb())
-    datasetDb.setRecords(ready = false, 0)
+    datasetDb.setRecords(ready = false)
   }
 
   def stagingRepoOpt: Option[StagingRepo] = if (stagingDir.exists()) Some(StagingRepo(stagingDir)) else None
@@ -223,8 +224,8 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def nextHarvest() = datasetDb.infoOpt.map { info =>
-    val recordsTimeOption = nodeSeqToTime(info \ "records" \ "time")
-    recordsTimeOption.map { recordsTime =>
+    val mappedTimeOption = nodeSeqToTime(info \ "records" \ "time")
+    mappedTimeOption.map { mappedTime =>
       val harvestCron = Harvesting.harvestCron(info)
       if (harvestCron.timeToWork) {
         val nextHarvestCron = harvestCron.next
@@ -249,7 +250,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def startSourceGeneration() = {
-    OrgActor.actor ! DatasetMessage(datasetName, GenerateSource)
+    OrgActor.actor ! DatasetMessage(datasetName, GeneratePockets)
   }
 
   def firstSaveRecords() = datasetDb.infoOpt.map { info =>

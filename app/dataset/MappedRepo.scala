@@ -17,18 +17,19 @@ package dataset
 
 import java.io._
 
+import services.FileHandling
+
 /**
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-object SourceRepo {
+object MappedRepo {
   val SUFFIX = ".xml"
-
 }
 
-class SourceRepo(home: File) {
+class MappedRepo(val home: File) {
 
-  import dataset.SourceRepo._
+  import dataset.MappedRepo._
 
   private def numberString(number: Int): String = "%05d".format(number)
 
@@ -58,4 +59,6 @@ class SourceRepo(home: File) {
   }
 
   def nonEmpty: Boolean = listFiles.nonEmpty
+
+  def clear() = FileHandling.clearDir(home)
 }

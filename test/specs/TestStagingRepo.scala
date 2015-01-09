@@ -73,11 +73,10 @@ class TestStagingRepo extends FlatSpec with Matchers {
     val gitDir = fresh("/tmp/staging-repo-git")
     val pocketFile = new File(gitDir, "test-source-repo.xml")
     val pocketOut = new FileOutputStream(pocketFile)
-    val unused = new File(gitDir, "unused.xml")
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
 
-    stagingRepo.generateSource(pocketOut, unused, None, ProgressReporter())
+    stagingRepo.generatePockets(pocketOut, ProgressReporter())
 
     FileHandling.gitCommit(pocketFile, "Several words of message") should be(true)
   }

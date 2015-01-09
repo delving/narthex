@@ -19,13 +19,11 @@ import java.io._
 import java.nio.file.Files
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
 
-import dataset.Sip._
 import dataset.SipRepo._
 import harvest.Harvesting.HarvestType
 import mapping.CategoryDb.CategoryMapping
 import org.apache.commons.io.input.BOMInputStream
 import org.apache.commons.io.{FileUtils, IOUtils}
-import play.api.Logger
 import record.CategoryParser.CategoryCount
 import record.PocketParser._
 import record.{CategoryParser, PocketParser}
@@ -288,38 +286,22 @@ class StagingRepo(home: File) {
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generateSource(pocketOutputStream: OutputStream, mappedFile: File, sipMapperOpt: Option[SipMapper], progressReporter: ProgressReporter): (Int, Int) = {
-    Logger.info(s"Generating source from $home to $mappedFile with mapper $sipMapperOpt using $stagingFacts")
-    var rawRecordCount = 0
-    var mappedRecordCount = 0
-    val mappedOutputOpt: Option[Writer] = sipMapperOpt.map(sm => writer(mappedFile))
-    val rawOutput = writer(pocketOutputStream)
+  def generatePockets(sourceOutputStream: OutputStream, progressReporter: ProgressReporter): Int = {
+    var recordCount = 0
+    val rawOutput = writer(sourceOutputStream)
     try {
-      val startList = s"""<$RDF_PREFIX:$RDF_ROOT_TAG xmlns:$RDF_PREFIX="$RDF_URI">\n"""
-      val endList = s"""</$RDF_PREFIX:$RDF_ROOT_TAG>\n"""
+      val startList = s"""<$POCKET_LIST>\n"""
+      val endList = s"""</$POCKET_LIST>\n"""
       rawOutput.write(startList)
-      mappedOutputOpt.map(_.write(startList))
-      def pocketWriter(rawPocket: Pocket): Unit = {
-        rawOutput.write(rawPocket.text)
-        val mappedOpt = sipMapperOpt.flatMap(_.map(rawPocket))
-        mappedOpt.map { pocket =>
-          val withoutRdf = pocket.text.replace(" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" ", " ")
-          mappedOutputOpt.get.write(withoutRdf)
-          mappedRecordCount += 1
-          if (mappedRecordCount % 1000 == 0) {
-            Logger.info(s"Generating record $mappedRecordCount")
-          }
-        }
+      def pocketWriter(pocket: Pocket): Unit = {
+        rawOutput.write(pocket.text)
       }
-      rawRecordCount = parsePockets(pocketWriter, progressReporter)
+      recordCount = parsePockets(pocketWriter, progressReporter)
       rawOutput.write(endList)
-      mappedOutputOpt.map(_.write(endList))
     } finally {
       rawOutput.close()
-      mappedOutputOpt.map(_.close).getOrElse(FileUtils.deleteQuietly(mappedFile))
     }
-    Logger.info(s"Finished generating source from $home: $mappedRecordCount mapped records")
-    (rawRecordCount, mappedRecordCount)
+    recordCount
   }
 
 }

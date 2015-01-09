@@ -28,7 +28,6 @@ POST        /narthex/app/:datasetName/set-metadata                              
 POST        /narthex/app/:datasetName/set-publication                           web.AppController.setPublication(datasetName)
 POST        /narthex/app/:datasetName/set-categories                            web.AppController.setCategories(datasetName)
 POST        /narthex/app/:datasetName/set-delimiter                             web.AppController.setRecordDelimiter(datasetName)
-GET         /narthex/app/:datasetName/analyze                                   web.AppController.analyze(datasetName)
 GET         /narthex/app/:datasetName/index                                     web.AppController.index(datasetName)
 GET         /narthex/app/:datasetName/dataset-info                              web.AppController.datasetInfo(datasetName)
 GET         /narthex/app/:datasetName/dataset-progress                          web.AppController.datasetProgress(datasetName)

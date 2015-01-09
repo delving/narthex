@@ -194,8 +194,7 @@ define(["angular"], function (angular) {
             'state-splitting': "Splitting fields",
             'state-collating': "Collating values",
             'state-categorizing': "Categorizing records",
-            'state-saving': "Saving to database",
-            'state-updating': "Updating database",
+            'state-processing': "Processing records",
             'state-error': "Error"
         };
 

@@ -223,16 +223,6 @@ object AppController extends Controller with Security {
     }
   }
 
-  def analyze(datasetName: String) = Secure() { profile => implicit request =>
-    repo.datasetRepoOption(datasetName) match {
-      case Some(datasetRepo) =>
-        datasetRepo.startAnalysis()
-        Ok
-      case None =>
-        NotFound(Json.obj("problem" -> s"Not found $datasetName"))
-    }
-  }
-
   def index(datasetName: String) = Secure() { profile => implicit request =>
     OkFile(repo.datasetRepo(datasetName).index)
   }

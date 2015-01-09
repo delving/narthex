@@ -209,7 +209,6 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
           routes.javascript.AppController.create,
-          routes.javascript.AppController.analyze,
           routes.javascript.AppController.harvest,
           routes.javascript.AppController.setHarvestCron,
           routes.javascript.AppController.setMetadata,
