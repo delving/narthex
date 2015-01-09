@@ -31,7 +31,6 @@ import org.w3c.dom.Element
 import play.api.Logger
 import record.PocketParser._
 import services.StringHandling.urlEncodeValue
-import services.Temporal
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -332,24 +331,18 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
         val root = result.root().asInstanceOf[Element]
         val doc = root.getOwnerDocument
         root.removeAttribute("xsi:schemaLocation")
-        val pocketElement = doc.createElement("pocket")
-        pocketElement.setAttribute("id", pocket.id)
-        pocketElement.setAttribute("hash", pocket.hash)
-        pocketElement.setAttribute("mod", Temporal.timeToString(now))
         val cn = root.getChildNodes
         val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
         val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
         val rdfAbout = s"$naveDomain/resource/document/$datasetName/${urlEncodeValue(pocket.id)}"
+        // todo: mod?
         rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
         kids.foreach(rdfElement.appendChild)
-        pocketElement.appendChild(rdfElement)
         // the serializer gives us <?xml..?>
-        val xml = serializer.toXml(pocketElement, true).replaceFirst("<[?].*[?]>\n", "")
+        val xml = serializer.toXml(rdfElement, true).replaceFirst("<[?].*[?]>\n", "")
         val validationExceptionOpt: Option[Exception] = sipMapping.validatorOpt.flatMap { validator =>
           try {
-            val record: Element = pocketElement.getFirstChild.asInstanceOf[Element]
-            val domSource = new DOMSource(record)
-            validator.validate(domSource)
+            validator.validate(new DOMSource(root))
             None
           }
           catch {
@@ -360,7 +353,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
           Logger.info("Invalid record " + pocket.id)
           None
         } getOrElse {
-          Some(Pocket(pocket.id, pocket.hash, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
+          Some(Pocket(pocket.id, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
         }
       } catch {
         case discard: DiscardRecordException =>

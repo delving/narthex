@@ -12,7 +12,7 @@ import scala.xml.XML
 
 class TestSipRepo extends FlatSpec with Matchers {
 
-
+/*
   "A SipRepo" should "handle the arkivportalen harvest sip" in {
 
     // harvest looks like this
@@ -102,6 +102,7 @@ class TestSipRepo extends FlatSpec with Matchers {
       titleText should be(expectedTitle)
     }
   }
+  */
 
   "A SipRepo" should "handle a harvest sip" in {
 
@@ -142,6 +143,8 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       val head = XML.loadString(mappedPockets.head.text)
 
+      println(mappedPockets.head)
+
       val expectedTitle = "[Bezoek van Statenleden aan de electriciteitsfabriek te Geertruidenberg op 18 Juli 1917]."
 
       val titleText = (head \ "Description" \ "title").filter(_.prefix == "dc").text.trim
@@ -151,6 +154,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     }
   }
 
+  /*
   "A SipRepo" should "handle a source sip" in {
 
     val home = new File(getClass.getResource("/sip_source").getFile)
@@ -196,5 +200,5 @@ class TestSipRepo extends FlatSpec with Matchers {
       creatorText should be("Kees Verwey")
     }
   }
-
+*/
 }

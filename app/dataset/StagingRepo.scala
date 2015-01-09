@@ -19,7 +19,7 @@ import java.io._
 import java.nio.file.Files
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
 
-import dataset.Sip.SipMapper
+import dataset.Sip._
 import dataset.SipRepo._
 import harvest.Harvesting.HarvestType
 import mapping.CategoryDb.CategoryMapping
@@ -295,15 +295,16 @@ class StagingRepo(home: File) {
     val mappedOutputOpt: Option[Writer] = sipMapperOpt.map(sm => writer(mappedFile))
     val rawOutput = writer(pocketOutputStream)
     try {
-      val startList = s"""<$POCKET_LIST>\n"""
-      val endList = s"""</$POCKET_LIST>\n"""
+      val startList = s"""<$RDF_PREFIX:$RDF_ROOT_TAG xmlns:$RDF_PREFIX="$RDF_URI">\n"""
+      val endList = s"""</$RDF_PREFIX:$RDF_ROOT_TAG>\n"""
       rawOutput.write(startList)
       mappedOutputOpt.map(_.write(startList))
       def pocketWriter(rawPocket: Pocket): Unit = {
         rawOutput.write(rawPocket.text)
         val mappedOpt = sipMapperOpt.flatMap(_.map(rawPocket))
         mappedOpt.map { pocket =>
-          mappedOutputOpt.get.write(pocket.text)
+          val withoutRdf = pocket.text.replace(" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" ", " ")
+          mappedOutputOpt.get.write(withoutRdf)
           mappedRecordCount += 1
           if (mappedRecordCount % 1000 == 0) {
             Logger.info(s"Generating record $mappedRecordCount")

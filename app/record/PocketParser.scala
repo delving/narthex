@@ -17,7 +17,6 @@
 package record
 
 import java.io.ByteArrayInputStream
-import java.security.MessageDigest
 
 import dataset.StagingRepo.StagingFacts
 import org.joda.time.DateTime
@@ -37,7 +36,7 @@ object PocketParser {
 
   val PocketRegex = "(?s).*<pocket[^>]*>(.*)</pocket>.*".r
 
-  case class Pocket(id: String, hash: String, text: String, namespaces: Map[String, String]) {
+  case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
 
     def recordXml: String = {
       val PocketRegex(content) = text
@@ -45,8 +44,6 @@ object PocketParser {
     }
 
     def textBytes: ByteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"))
-
-    def path(datasetName: String): String = s"$datasetName/${hash(0)}/${hash(1)}/${hash(2)}/$hash.xml"
 
   }
 
@@ -71,35 +68,6 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
   var lastProgress = 0l
   var recordCount = 0
   var namespaceMap: Map[String, String] = Map.empty
-
-  val digest = MessageDigest.getInstance("MD5")
-
-  private def hashString(record: String) = {
-
-    def byteToHex(b: Byte): Char = {
-      require(b >= 0 && b <= 15, "Byte " + b + " was not between 0 and 15")
-      if (b < 10) {
-        ('0'.asInstanceOf[Int] + b).asInstanceOf[Char]
-      }
-      else {
-        ('a'.asInstanceOf[Int] + (b - 10)).asInstanceOf[Char]
-      }
-    }
-
-    def toHex(bytes: Array[Byte]): String = {
-      val buffer = new StringBuilder(bytes.length * 2)
-      for (i <- 0 until bytes.length) {
-        val b = bytes(i)
-        val bi: Int = if (b < 0) b + 256 else b
-        buffer append byteToHex((bi >>> 4).asInstanceOf[Byte])
-        buffer append byteToHex((bi & 0x0F).asInstanceOf[Byte])
-      }
-      buffer.toString()
-    }
-
-    digest.reset()
-    toHex(digest.digest(record.getBytes("UTF-8")))
-  }
 
   def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progressReporter: ProgressReporter): Int = {
     val events = new NarthexEventReader(source)
@@ -189,12 +157,11 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
             if (avoidIds.contains(id)) None
             else {
               val recordContent = recordText.toString()
-              val contentHash = hashString(recordContent)
               val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
               val mod = timeToString(new DateTime())
               val scopedRecordContent = recordContent.replaceFirst(">", s" $scope>")
-              val wrapped = s"""<$POCKET id="$id" mod="$mod" hash="$contentHash">\n$scopedRecordContent</$POCKET>\n"""
-              Some(Pocket(id, contentHash, wrapped, namespaceMap))
+              val wrapped = s"""<$POCKET id="$id" mod="$mod">\n$scopedRecordContent</$POCKET>\n"""
+              Some(Pocket(id, wrapped, namespaceMap))
             }
           } getOrElse {
             Logger.error("MISSING ID!")

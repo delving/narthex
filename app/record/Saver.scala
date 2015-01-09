@@ -157,15 +157,10 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
                 log.info(s"Updating ${pocket.id}")
                 recordDb.findRecord(pocket.id, session).map { foundRecord =>
                   log.info(s"Record found $foundRecord, deleting it")
-                  if (pocket.hash == foundRecord.hash) {
-                    log.info(s"The new record has the same hash, but ignoring that for now")
-                  }
-                  else {
-                    log.info(s"The new record has a fresh hash")
-                  }
                   session.execute(new Delete(foundRecord.path))
                 }
-                session.add(pocket.path(datasetRepo.datasetName), pocket.textBytes)
+                // todo: can't do this anymore
+//                session.add(pocket.path(datasetRepo.datasetName), pocket.textBytes)
                 recordCount += 1
               }
             }
@@ -188,7 +183,8 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
               def catchPocket(rawPocket: Pocket): Unit = {
                 val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
                 pocketOpt.map { pocket =>
-                  session.add(pocket.path(datasetRepo.datasetName), pocket.textBytes)
+                  // todo: can't do this anymore
+//                  session.add(pocket.path(datasetRepo.datasetName), pocket.textBytes)
                   tick += 1
                   if (tick % 10000 == 0) {
                     val now = System.currentTimeMillis()
