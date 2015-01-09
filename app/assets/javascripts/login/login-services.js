@@ -20,8 +20,6 @@ define(["angular", "common"], function (angular) {
     function buildUrls(user) {
         user.narthexAPI = user.narthexDomain + '/narthex/api/' + user.apiKey;
         user.enrichmentPrefix = user.naveDomain + '/resource/thesaurusenrichment';
-        user.oaiPmhRaw = user.narthexDomain + '/narthex/oai-pmh/' + user.oaiPmhKey;
-        user.oaiPmhEnriched = user.narthexDomain + '/narthex/oai-pmh/enriched/' + user.oaiPmhKey;
 //        console.log("user", user);
     }
 

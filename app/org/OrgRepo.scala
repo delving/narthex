@@ -53,7 +53,6 @@ class OrgRepo(userHome: String, val orgId: String) {
   val orgRoot = new File(root, orgId)
   val datasetsDir = new File(orgRoot, "datasets")
   val rawDir = new File(orgRoot, "raw")
-  val mappedDir = new File(orgRoot, "mapped")
   val sipsDir = new File(orgRoot, "sips")
   val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
   val skosRepo = new ConceptRepo(new File(orgRoot, "skos"))
@@ -65,7 +64,6 @@ class OrgRepo(userHome: String, val orgId: String) {
   factoryDir.mkdirs()
   datasetsDir.mkdir()
   rawDir.mkdirs()
-  mappedDir.mkdirs()
   sipsDir.mkdirs()
 
   def thesaurusDb(conceptSchemeA: String, conceptSchemeB: String) =

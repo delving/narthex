@@ -48,10 +48,10 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   val stagingDir = new File(rootDir, "staging")
   val sipsDir = new File(rootDir, "sips")
   val rawDir = new File(rootDir, "raw")
+  val sourceDir = new File(rootDir, "source")
 
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val pocketFile = new File(orgRepo.rawDir, s"$datasetName.xml")
-  val mappedFile = new File(orgRepo.mappedDir, s"$datasetName.xml")
 
   def createSipFile = new File(orgRepo.sipsDir, s"${datasetName}__${DATE_FORMAT.format(new Date())}.sip.zip")
 
@@ -63,6 +63,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir, datasetName, NAVE_DOMAIN)
+  lazy val sourceRepo = new SourceRepo(sourceDir)
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
 
@@ -83,7 +84,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def dropSource() = {
     sipFiles.foreach(deleteQuietly)
-    deleteQuietly(mappedFile)
+    deleteQuietly(sourceDir)
   }
 
   def dropTree() = {
@@ -91,6 +92,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     datasetDb.setTree(ready = false)
   }
 
+  @Deprecated
   def dropRecords() = {
 //    recordDbOpt.map(_.dropDb())
     datasetDb.setRecords(ready = false, 0)

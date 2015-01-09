@@ -34,7 +34,7 @@ trait Security {
   (
     firstName: String, lastName: String,
     email:String,
-    apiKey: String, oaiPmhKey: String,
+    apiKey: String,
     narthexDomain:String, naveDomain:String,
     categoriesEnabled: Boolean
     )

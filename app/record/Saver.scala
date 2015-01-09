@@ -87,7 +87,8 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
           progress = Some(progressReporter)
           val pocketOutput = new FileOutputStream(datasetRepo.pocketFile)
           try {
-            val (rawRecordCount, mappedRecordCount) = stagingRepo.generateSource(pocketOutput, datasetRepo.mappedFile, sipMapperOpt, progressReporter)
+            val mappedFile = datasetRepo.sourceRepo.createFile
+            val (rawRecordCount, mappedRecordCount) = stagingRepo.generateSource(pocketOutput, mappedFile, sipMapperOpt, progressReporter)
             val sipFileOpt: Option[File] = datasetRepo.sipRepo.latestSipOpt.map { latestSip =>
               val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetRepo.orgRepo.sipFactory.prefixRepo(mapping.prefix))
               datasetRepo.sipFiles.foreach(_.delete())

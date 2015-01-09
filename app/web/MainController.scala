@@ -62,7 +62,6 @@ object MainController extends Controller with Security {
               lastName = profile.lastName,
               email = profile.email,
               apiKey = API_ACCESS_KEYS(0),
-              oaiPmhKey = OAI_PMH_ACCESS_KEYS(0),
               narthexDomain = NARTHEX_DOMAIN,
               naveDomain = NAVE_DOMAIN,
               categoriesEnabled = SHOW_CATEGORIES
@@ -74,7 +73,6 @@ object MainController extends Controller with Security {
               "lastName" -> cachedProfile.lastName,
               "email" -> cachedProfile.email,
               "apiKey" -> cachedProfile.apiKey,
-              "oaiPmhKey" -> cachedProfile.oaiPmhKey,
               "narthexDomain" -> cachedProfile.narthexDomain,
               "naveDomain" -> cachedProfile.naveDomain
             )).withToken(token, cachedProfile)
@@ -109,7 +107,6 @@ object MainController extends Controller with Security {
                       lastName = user.getString("lastName"),
                       email = user.getString("email"),
                       apiKey = API_ACCESS_KEYS(0),
-                      oaiPmhKey = OAI_PMH_ACCESS_KEYS(0),
                       narthexDomain = NARTHEX_DOMAIN,
                       naveDomain = NAVE_DOMAIN,
                       categoriesEnabled = SHOW_CATEGORIES
@@ -119,7 +116,6 @@ object MainController extends Controller with Security {
                       "lastName" -> cachedProfile.lastName,
                       "email" -> cachedProfile.email,
                       "apiKey" -> cachedProfile.apiKey,
-                      "oaiPmhKey" -> cachedProfile.oaiPmhKey,
                       "narthexDomain" -> cachedProfile.narthexDomain,
                       "naveDomain" -> cachedProfile.naveDomain,
                       "categoriesEnabled" -> cachedProfile.categoriesEnabled
@@ -144,7 +140,6 @@ object MainController extends Controller with Security {
               "lastName" -> cachedProfile.lastName,
               "email" -> cachedProfile.email,
               "apiKey" -> cachedProfile.apiKey,
-              "oaiPmhKey" -> cachedProfile.oaiPmhKey,
               "narthexDomain" -> cachedProfile.narthexDomain,
               "naveDomain" -> cachedProfile.naveDomain,
               "categoriesEnabled" -> cachedProfile.categoriesEnabled

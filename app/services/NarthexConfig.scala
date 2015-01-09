@@ -40,17 +40,8 @@ object NarthexConfig {
 
   lazy val API_ACCESS_KEYS = secretList("api.accessKeys")
 
-  lazy val OAI_PMH_REPOSITORY_IDENTIFIER = configString("oai_pmh.repositoryIdentifier")
-  lazy val OAI_PMH_REPOSITORY_NAME = configString("oai_pmh.repositoryName")
-  lazy val OAI_PMH_ADMIN_EMAIL = configString("oai_pmh.adminEmail")
-  lazy val OAI_PMH_EARLIEST_DATE_STAMP = configString("oai_pmh.earliestDateStamp")
-  lazy val OAI_PMH_SAMPLE_IDENTIFIER = configString("oai_pmh.sampleIdentifier")
-  lazy val OAI_PMH_PAGE_SIZE = configInt("oai_pmh.pageSize")
-  lazy val OAI_PMH_ACCESS_KEYS = secretList("oai_pmh.accessKeys")
-
   lazy val HARVEST_TIMEOUT = config.getInt("harvest.timeout").getOrElse(3 * 60 * 1000)
 
-  def oaiPmhKeyFits(accessKey: String) = OAI_PMH_ACCESS_KEYS.contains(accessKey)
   def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
 
   val ORG_ID = configString("orgId")

@@ -73,26 +73,29 @@ object FileHandling {
   }
 
   def sourceFromFile(file: File): (Source, ReadProgress) = {
-    val name = file.getName
-    if (name.endsWith(".zip")) {
+    if (file.isDirectory) {
+      val fc = new FileConcatXML(file)
+      (fc, fc.readProgress)
+    }
+    else if (file.getName.endsWith(".zip")) {
       val zc = new ZipConcatXML(new ZipFile(file))
       (zc, zc.readProgress)
     }
-    else if (name.endsWith(".xml.gz")) {
+    else if (file.getName.endsWith(".xml.gz")) {
       val is = new FileInputStream(file)
       val cs = new CountingInputStream(is)
       val gz = new GZIPInputStream(cs)
       val bis = new BOMInputStream(gz)
       (Source.fromInputStream(bis, "UTF-8"), new FileReadProgress(file.length(), cs))
     }
-    else if (name.endsWith(".xml")) {
+    else if (file.getName.endsWith(".xml")) {
       val is = new FileInputStream(file)
       val cs = new CountingInputStream(is)
       val bis = new BOMInputStream(cs)
       (Source.fromInputStream(bis, "UTF-8"), new FileReadProgress(file.length(), cs))
     }
     else {
-      throw new RuntimeException(s"Unrecognized extension: $name")
+      throw new RuntimeException(s"Unrecognized source from: ${file.getName}")
     }
   }
 
@@ -114,7 +117,6 @@ object FileHandling {
   }
 
   class ZipConcatXML(val file: ZipFile) extends Source {
-
     var entries = file.entries()
     var entry: Option[ZipEntry] = None
     var entryReader: Reader = null
@@ -164,6 +166,54 @@ object FileHandling {
     override protected val iter: Iterator[Char] = new ZipEntryIterator
 
     def readProgress = new ZipReadProgress(getZipFileSize(file))
+  }
+
+  class FileConcatXML(directory: File) extends Source {
+    val fileList: List[File] = directory.listFiles().toList.filter(f => f.getName.endsWith(".xml")).sortBy(_.getName)
+    var entries = fileList
+    var totalLength = (0L /: fileList.map(_.length()))(_ + _)
+    var entry: Option[Reader] = None
+    var nextChar: Int = -1
+    var charCount = 0L
+
+    class FileIterator extends Iterator[Char] {
+      override def hasNext: Boolean = entry.map { reader =>
+        if (nextChar >= 0) {
+          true
+        }
+        else {
+          reader.close()
+          entry = None
+          hasNext
+        }
+      } getOrElse {
+        if (entries.nonEmpty) {
+          entry = Some(new InputStreamReader(new BOMInputStream(new BufferedInputStream(new FileInputStream(entries.head))), "UTF-8"))
+          entries = entries.tail
+          nextChar = entry.get.read()
+          charCount += 1
+          hasNext
+        }
+        else {
+          false
+        }
+      }
+
+      override def next(): Char = {
+        val c = nextChar
+        nextChar = entry.get.read()
+        charCount += 1
+        c.toChar
+      }
+    }
+
+    override protected val iter: Iterator[Char] = new FileIterator
+
+    class FileReadProgress() extends ReadProgress {
+      override def getPercentRead: Int = ((100 * charCount) / totalLength).toInt
+    }
+
+    lazy val readProgress = new FileReadProgress()
   }
 
 }

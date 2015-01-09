@@ -151,9 +151,9 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
     case Event(StartAnalysis, Dormant) =>
       log.info("Start analysis")
-      if (datasetRepo.mappedFile.exists()) {
+      if (datasetRepo.sourceRepo.nonEmpty) {
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
-        analyzer ! AnalyzeFile(datasetRepo.mappedFile)
+        analyzer ! AnalyzeFile(datasetRepo.sourceDir)
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)
       } else datasetRepo.rawFile.map { rawFile =>
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
@@ -170,7 +170,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       goto(Saving) using Active(Some(saver), SAVING)
 
     case Event(StartCategoryCounting, Dormant) =>
-      if (datasetRepo.mappedFile.exists()) {
+      if (datasetRepo.sourceRepo.nonEmpty) {
         val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo), "category-counter"))
         categoryCounter ! CountCategories()
         goto(Categorizing) using Active(Some(categoryCounter), CATEGORIZING)
@@ -195,7 +195,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
         case "remove mapped" =>
           deleteQuietly(datasetRepo.pocketFile)
-          deleteQuietly(datasetRepo.mappedFile)
+          deleteQuietly(datasetRepo.sourceDir)
           datasetRepo.startAnalysis() // todo: shouldn't be necessary
           "mapped removed"
 

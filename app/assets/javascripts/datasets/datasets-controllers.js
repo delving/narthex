@@ -122,13 +122,6 @@ define(["angular"], function () {
 
         // treeTime, recordsTime, identity { datasetName, prefix, recordCount, name, dataProvider }
         $scope.decorateFile = function (file, info) {
-            function oaiPmhListRecords(enriched) {
-                var oaiPmhUrl = enriched ? user.oaiPmhEnriched : user.oaiPmhRaw;
-                return {
-                    prefix: file.prefix,
-                    url: oaiPmhUrl + '?verb=ListRecords&set=' + file.name + "&metadataPrefix=" + file.prefix
-                }
-            }
             if (info) {
                 file.info = info;
             }
@@ -164,10 +157,6 @@ define(["angular"], function () {
             if (info.records && info.records.ready == 'true') {
                 file.recordCount = info.records.recordCount;
                 file.recordsTime = info.records.time;
-                if (file.prefix) {
-                    file.oaiPmhListRecords = oaiPmhListRecords(false);
-                    file.oaiPmhListEnrichedRecords = oaiPmhListRecords(true);
-                }
             }
             else {
                 file.recordsTime = undefined;
