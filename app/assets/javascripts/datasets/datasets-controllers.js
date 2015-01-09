@@ -361,10 +361,6 @@ define(["angular"], function () {
             datasetsService.analyze($scope.file.name).then(refreshProgress);
         };
 
-        $scope.saveRecords = function () {
-            datasetsService.saveRecords($scope.file.name).then(refreshProgress());
-        };
-
         $scope.viewFile = function () {
             $location.path("/dataset/" + $scope.file.name);
             $location.search({});

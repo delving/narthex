@@ -153,7 +153,6 @@
                             <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
                             <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
                             <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
-                            <div ng-switch-when="downloads"><div data-ng-include="'downloads.html'">downloads</div></div>
                             <div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>
                             <div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>
                         </div>
@@ -378,26 +377,6 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="downloads.html">
-    <ul class="list-unstyled">
-        <li>
-            <a class="" ng-href="{{file.apiMappings}}" target="_blank">
-                <i class="fa fa-download"></i> Terminology Mappings
-            </a>
-        </li>
-        <li data-ng-show="file.oaiPmhListRecords">
-            <a class="" ng-href="{{ file.oaiPmhListRecords.url }}" target="_blank">
-                <i class="fa fa-download"></i> Records with format "{{ file.oaiPmhListRecords.prefix }}"
-            </a>
-        </li>
-        <li data-ng-show="file.oaiPmhListEnrichedRecords">
-            <a class="" ng-href="{{ file.oaiPmhListEnrichedRecords.url }}" target="_blank">
-                <i class="fa fa-download"></i> Enriched Records with format "{{ file.oaiPmhListEnrichedRecords.prefix }}"
-            </a>
-        </li>
-    </ul>
-</script>
-
 <script type="text/ng-template" id="info.html">
     <div class="file-info-harvest" data-ng-show="nonEmpty(file.info.harvest)">
         <h4 class="heading">Harvest</h4>
@@ -444,11 +423,11 @@
         <i class="fa fa-trash-o"></i>
         <span>Discard Analysis</span>
     </button>
-    <button class="btn btn-sm btn-success" data-ng-click="saveRecords()"
-            data-ng-show="!file.recordsTime && !file.progress && file.state == 'state-sourced' && file.sourceTime">
-        <i class="fa fa-database"></i>
-        <span>Save Records</span>
-    </button>
+    <!--<button class="btn btn-sm btn-success" data-ng-click="saveRecords()"-->
+            <!--data-ng-show="!file.recordsTime && !file.progress && file.state == 'state-sourced' && file.sourceTime">-->
+        <!--<i class="fa fa-database"></i>-->
+        <!--<span>Save Records</span>-->
+    <!--</button>-->
     <button class="btn btn-sm btn-danger" data-ng-click="discardRecords()"
             data-ng-show="file.recordsTime && !file.progress">
         <i class="fa fa-trash-o"></i>

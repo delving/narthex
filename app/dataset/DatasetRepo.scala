@@ -34,9 +34,7 @@ import org.{OrgActor, OrgRepo}
 import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
-import record.EnrichmentParser._
 import record.Saver.{AdoptSource, GenerateSource}
-import record.{EnrichmentParser, RecordDb}
 import services.FileHandling.clearDir
 import services.NarthexConfig.NAVE_DOMAIN
 import services.Temporal._
@@ -65,7 +63,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir, datasetName, NAVE_DOMAIN)
-  lazy val recordDbOpt = datasetDb.prefixOpt.map(prefix => new RecordDb(this, dbBaseName, prefix))
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
 
@@ -95,7 +92,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   }
 
   def dropRecords() = {
-    recordDbOpt.map(_.dropDb())
+//    recordDbOpt.map(_.dropDb())
     datasetDb.setRecords(ready = false, 0)
   }
 
@@ -255,13 +252,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def firstSaveRecords() = datasetDb.infoOpt.map { info =>
     val state = DatasetState.datasetStateFromInfo(info)
-    if (state == SOURCED) {
-      recordDbOpt.get.createDb()
-      OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None))
-    }
-    else {
-      Logger.warn(s"First save of $datasetName can only be started with state sourced when there is a source file")
-    }
+//    if (state == SOURCED) {
+//      recordDbOpt.get.createDb()
+//      OrgActor.actor ! DatasetMessage(datasetName, StartSaving(None))
+//    }
+//    else {
+//      Logger.warn(s"First save of $datasetName can only be started with state sourced when there is a source file")
+//    }
   }
 
   def startCategoryCounts() = {
@@ -302,13 +299,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def histogramText(path: String): Option[File] = nodeRepo(path).map(_.histogramText)
 
-  def enrichRecords(storedRecords: String): List[StoredRecord] = {
-    val mappings: Map[String, TargetConcept] = Cache.getOrElse[Map[String, TargetConcept]](datasetName) {
-      termDb.getMappings.map(m => (m.sourceURI, TargetConcept(m.targetURI, m.conceptScheme, m.attributionName, m.prefLabel, m.who, m.when))).toMap
-    }
-    val parser = new EnrichmentParser(NAVE_DOMAIN, s"/$datasetName", mappings)
-    parser.parse(storedRecords)
-  }
+//  def enrichRecords(storedRecords: String): List[StoredRecord] = {
+//    val mappings: Map[String, TargetConcept] = Cache.getOrElse[Map[String, TargetConcept]](datasetName) {
+//      termDb.getMappings.map(m => (m.sourceURI, TargetConcept(m.targetURI, m.conceptScheme, m.attributionName, m.prefLabel, m.who, m.when))).toMap
+//    }
+//    val parser = new EnrichmentParser(NAVE_DOMAIN, s"/$datasetName", mappings)
+//    parser.parse(storedRecords)
+//  }
 
   def invalidateEnrichmentCache() = Cache.remove(datasetName)
 }

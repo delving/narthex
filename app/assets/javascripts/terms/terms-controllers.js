@@ -145,15 +145,15 @@ define(["angular"], function () {
             });
         }
 
-        function searchRecords(value) {
-            var body = {
-                "path": $scope.path,
-                "value": value
-            };
-            termsService.queryRecords($scope.datasetName, body).then(function (data) {
-                $scope.records = data;
-            });
-        }
+//        function searchRecords(value) {
+//            var body = {
+//                "path": $scope.path,
+//                "value": value
+//            };
+//            termsService.queryRecords($scope.datasetName, body).then(function (data) {
+//                $scope.records = data;
+//            });
+//        }
 
         $scope.conceptSchemeTab = function () {
             $scope.activeView = "conceptScheme";
@@ -173,13 +173,13 @@ define(["angular"], function () {
             }
         };
 
-        $scope.recordTab = function () {
-            $scope.activeView = "record";
-            if ($scope.sourceEntry) {
-                searchRecords($scope.sourceEntry.value);
-            }
-            updateSearchParams();
-        };
+//        $scope.recordTab = function () {
+//            $scope.activeView = "record";
+//            if ($scope.sourceEntry) {
+//                searchRecords($scope.sourceEntry.value);
+//            }
+//            updateSearchParams();
+//        };
 
         $scope.selectSource = function (entry) {
             $scope.sourceEntry = entry;

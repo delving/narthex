@@ -205,7 +205,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
           "tree removed"
 
         case "remove records" =>
-          datasetRepo.recordDbOpt.map(_.dropDb())
+//          datasetRepo.recordDbOpt.map(_.dropDb())
           datasetRepo.datasetDb.setRecords(ready = false, 0)
           "records removed"
 

@@ -269,26 +269,6 @@ object AppController extends Controller with Security {
     }
   }
 
-  def saveRecords(datasetName: String) = Secure() { profile => implicit request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
-    datasetRepo.firstSaveRecords()
-    Ok
-  }
-
-  def queryRecords(datasetName: String) = Secure(parse.json) { profile => implicit request =>
-    val path = (request.body \ "path").as[String]
-    val value = (request.body \ "value").as[String]
-    val datasetRepo = repo.datasetRepo(datasetName)
-    datasetRepo.recordDbOpt.map { recordDb =>
-      val recordsString = recordDb.recordsWithValue(path, value)
-      val enrichedRecords = datasetRepo.enrichRecords(recordsString)
-      val result = enrichedRecords.map(rec => rec.text).mkString("\n")
-      Ok(result)
-    } getOrElse {
-      NotFound(Json.obj("problem" -> "No record database found"))
-    }
-  }
-
   def listSheets = Secure() { profile => implicit request =>
     Ok(Json.obj("sheets" -> repo.categoriesRepo.listSheets))
   }

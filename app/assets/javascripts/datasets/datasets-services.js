@@ -136,14 +136,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                saveRecords: function (datasetName) {
-                    return app.saveRecords(datasetName).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
                 listSipFiles: function (datasetName) {
                     return app.listSipFiles(datasetName).get().then(
                         function (response) {

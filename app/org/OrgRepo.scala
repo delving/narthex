@@ -18,20 +18,14 @@ package org
 
 import java.io.File
 
-import dataset.{DatasetDb, DatasetRepo, Sip, SipFactory}
-import harvest.Harvesting.{Harvest, PMHResumptionToken, PublishedDataset, RepoMetadataFormat}
+import dataset.{DatasetRepo, Sip, SipFactory}
 import mapping.{CategoriesRepo, ConceptRepo}
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
 import org.joda.time.DateTime
-import play.api.Play.current
-import play.api.cache.Cache
-import record.EnrichmentParser._
-import services.StringHandling._
 import services._
 import thesaurus.ThesaurusDb
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object OrgRepo {
@@ -96,57 +90,6 @@ class OrgRepo(userHome: String, val orgId: String) {
   ).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
 
   def uploadedSips: Seq[Sip] = orgDb.listDatasets.flatMap(dataset => datasetRepo(dataset.datasetName).sipRepo.latestSipOpt)
-
-  def getPublishedDatasets: Seq[PublishedDataset] = {
-    orgDb.listDatasets.flatMap { dataset =>
-      if (!oaipmhPublishFromInfo(dataset.info))
-        None
-      else {
-        val prefix = DatasetDb.prefixOptFromInfo(dataset.info).getOrElse(throw new RuntimeException(s"No prefix for $dataset)"))
-        val namespaces = (dataset.info \ "namespaces" \ "_").map(node => (node.label, node.text))
-        val metadataFormat = namespaces.find(_._1 == prefix) match {
-          case Some(ns) => RepoMetadataFormat(prefix, ns._2)
-          case None => RepoMetadataFormat(prefix)
-        }
-        //        Logger.info(s"info: ${dataset.info}")
-        val recordsPresent = (dataset.info \ "records" \ "ready").text == "true"
-        if (!recordsPresent)
-          None
-        else
-          Some(PublishedDataset(
-            spec = dataset.datasetName,
-            prefix = prefix,
-            name = (dataset.info \ "metadata" \ "name").text,
-            description = (dataset.info \ "metadata" \ "description").text,
-            dataProvider = (dataset.info \ "metadata" \ "dataProvider").text,
-            totalRecords = (dataset.info \ "records" \ "recordCount").text.toInt,
-            metadataFormat = metadataFormat
-          ))
-      }
-    }
-  }
-
-  def getMetadataFormats: Seq[RepoMetadataFormat] = {
-    getPublishedDatasets.sortBy(_.metadataFormat.namespace).map(d => (d.prefix, d.metadataFormat)).toMap.values.toSeq
-  }
-
-  def getHarvest(resumptionToken: PMHResumptionToken, enriched: Boolean): (List[StoredRecord], Option[PMHResumptionToken]) = {
-    Cache.getAs[Harvest](resumptionToken.value).map { harvest =>
-      val pageSize = NarthexConfig.OAI_PMH_PAGE_SIZE
-      val start = 1 + (harvest.currentPage - 1) * pageSize
-      val repo = datasetRepo(harvest.repoName)
-      val storedRecords = repo.recordDbOpt.get.recordHarvest(harvest.from, harvest.until, start, pageSize)
-      val records = if (enriched) repo.enrichRecords(storedRecords) else parseStoredRecords(storedRecords)
-      harvest.next.map { next =>
-        Cache.set(next.resumptionToken.value, next, 2 minutes)
-        (records, Some(next.resumptionToken))
-      } getOrElse {
-        (records, None)
-      }
-    } getOrElse {
-      throw new RuntimeException(s"Resumption token not found: $resumptionToken")
-    }
-  }
 
   def startCategoryCounts() = {
     val categoryDatasets: Seq[Dataset] = orgDb.listDatasets.flatMap { dataset =>

@@ -29,6 +29,9 @@ import scala.io.Source
 import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding}
 
+// TODO: REMOVE because this is only for reference
+
+
 object EnrichmentParser {
 
   case class StoredRecord(id: String, mod: DateTime, scope: NamespaceBinding, text: mutable.StringBuilder = new mutable.StringBuilder())

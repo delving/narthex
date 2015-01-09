@@ -26,7 +26,6 @@ import services.Temporal._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.Random
 import scala.xml.{Elem, NodeSeq, XML}
 
 // todo: use the actor's execution context?
@@ -107,42 +106,42 @@ object Harvesting {
     modifiedAfter: Option[DateTime],
     diagnostic: AdLibDiagnostic)
 
-  case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
+//  case class RepoMetadataFormat(prefix: String, namespace: String = "unknown")
 
-  case class PublishedDataset
-  (
-    spec: String, prefix: String, name: String, description: String,
-    dataProvider: String, totalRecords: Int,
-    metadataFormat: RepoMetadataFormat)
-
-
-  case class Harvest
-  (
-    repoName: String,
-    headersOnly: Boolean,
-    from: Option[DateTime],
-    until: Option[DateTime],
-    totalPages: Int,
-    totalRecords: Int,
-    prefix: String,
-    pageSize: Int,
-    random: String = Random.alphanumeric.take(10).mkString(""),
-    currentPage: Int = 1) {
-
-    def resumptionToken: PMHResumptionToken = PMHResumptionToken(
-      value = s"$random-$totalPages-$currentPage",
-      currentRecord = currentPage * NarthexConfig.OAI_PMH_PAGE_SIZE,
-      totalRecords = totalRecords,
-      prefix = prefix
-    )
-
-    def next = {
-      if (currentPage >= totalPages)
-        None
-      else
-        Some(this.copy(currentPage = currentPage + 1))
-    }
-  }
+//  case class PublishedDataset
+//  (
+//    spec: String, prefix: String, name: String, description: String,
+//    dataProvider: String, totalRecords: Int,
+//    metadataFormat: RepoMetadataFormat)
+//
+//
+//  case class Harvest
+//  (
+//    repoName: String,
+//    headersOnly: Boolean,
+//    from: Option[DateTime],
+//    until: Option[DateTime],
+//    totalPages: Int,
+//    totalRecords: Int,
+//    prefix: String,
+//    pageSize: Int,
+//    random: String = Random.alphanumeric.take(10).mkString(""),
+//    currentPage: Int = 1) {
+//
+//    def resumptionToken: PMHResumptionToken = PMHResumptionToken(
+//      value = s"$random-$totalPages-$currentPage",
+//      currentRecord = currentPage * NarthexConfig.OAI_PMH_PAGE_SIZE,
+//      totalRecords = totalRecords,
+//      prefix = prefix
+//    )
+//
+//    def next = {
+//      if (currentPage >= totalPages)
+//        None
+//      else
+//        Some(this.copy(currentPage = currentPage + 1))
+//    }
+//  }
 
   case class HarvestCron(previous: DateTime, delay: Int, unit: DelayUnit) {
 

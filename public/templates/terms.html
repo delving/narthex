@@ -46,18 +46,17 @@
             <li data-ng-class="{ active: activeView == 'skos' }">
                 <a href data-ng-click="skosTab()">Concepts</a>
             </li>
-            <li data-ng-class="{ active: activeView == 'record' }" data-ng-show="datasetInfo.records.ready == 'true'">
-                <a href data-ng-click="recordTab()">Records</a>
-            </li>
+            <!--<li data-ng-class="{ active: activeView == 'record' }" data-ng-show="datasetInfo.records.ready == 'true'">-->
+                <!--<a href data-ng-click="recordTab()">Records</a>-->
+            <!--</li>-->
         </ul>
 
         <h4 data-ng-show="activeView == 'conceptScheme'">Available Concept Schemes</h4>
-        <h4 data-ng-show="activeView == 'record'">Records containing "{{ sourceEntry.value }}"</h4>
+        <!--<h4 data-ng-show="activeView == 'record'">Records containing "{{ sourceEntry.value }}"</h4>-->
 
-        <!-- SHOW RECORD -->
-        <div data-ng-show="activeView == 'record'">
-            <textarea class="form-control code" data-scrollable id="records" data-offset="240" data-ng-style="{ 'height': elHeight }">{{ records }}</textarea>
-        </div>
+        <!--<div data-ng-show="activeView == 'record'">-->
+            <!--<textarea class="form-control code" data-scrollable id="records" data-offset="240" data-ng-style="{ 'height': elHeight }">{{ records }}</textarea>-->
+        <!--</div>-->
 
         <!-- SHOW SKOS (CONCEPT) -->
         <div data-ng-show="conceptSchemeList && activeView == 'conceptScheme'">

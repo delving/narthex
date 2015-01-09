@@ -36,9 +36,6 @@ GET         /narthex/app/:datasetName/command/:command                          
 GET         /narthex/app/:datasetName/status/*path                              web.AppController.nodeStatus(datasetName, path)
 GET         /narthex/app/:datasetName/sample/:size/*path                        web.AppController.sample(datasetName, path, size:Int)
 GET         /narthex/app/:datasetName/histogram/:size/*path                     web.AppController.histogram(datasetName, path, size:Int)
-GET         /narthex/app/:datasetName/save-records                              web.AppController.saveRecords(datasetName)
-
-POST        /narthex/app/:datasetName/query-records                             web.AppController.queryRecords(datasetName)
 
 GET         /narthex/app/skos/list                                              web.AppController.listConceptSchemes
 GET         /narthex/app/skos/:conceptSchemeName/:sought                        web.AppController.searchConceptScheme(conceptSchemeName, sought)
@@ -69,16 +66,10 @@ GET         /narthex/api/:apiKey/:datasetName                                   
 GET         /narthex/api/:apiKey/:datasetName/tree                              web.APIController.indexJSON(apiKey, datasetName)
 GET         /narthex/api/:apiKey/:datasetName/index                             web.APIController.indexText(apiKey, datasetName, path="")
 GET         /narthex/api/:apiKey/:datasetName/mappings                          web.APIController.termMappings(apiKey, datasetName)
-GET         /narthex/api/:apiKey/:datasetName/ids/:since                        web.APIController.ids(apiKey, datasetName, since)
-GET         /narthex/api/:apiKey/:datasetName/record/:id                        web.APIController.rawRecord(apiKey, datasetName, id)
-GET         /narthex/api/:apiKey/:datasetName/record/:id/enriched               web.APIController.enrichedRecord(apiKey, datasetName, id)
 GET         /narthex/api/:apiKey/:datasetName/index/*path                       web.APIController.indexText(apiKey, datasetName, path)
 GET         /narthex/api/:apiKey/:datasetName/unique/*path                      web.APIController.uniqueText(apiKey, datasetName, path)
 GET         /narthex/api/:apiKey/:datasetName/histogram/*path                   web.APIController.histogramText(apiKey, datasetName, path)
 GET         /narthex/api/:apiKey/skos/:schemeNameA/:schemeNameB/mappings        web.APIController.thesaurusMappings(apiKey, schemeNameA, schemeNameB)
-
-GET         /narthex/oai-pmh/:accessKey                                         harvest.OaiPmh.service(accessKey)
-GET         /narthex/oai-pmh/enriched/:accessKey                                harvest.OaiPmh.serviceEnriched(accessKey)
 
 # Static
 GET         /narthex/webjars/*file                                              controllers.WebJarAssets.at(file)

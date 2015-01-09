@@ -80,14 +80,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                queryRecords: function (datasetName, body) {
-                    return app.queryRecords(datasetName).post(body).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
                 setMapping: function (name, body) {
                     return app.setTermMapping(name).post(body).then(
                         function (response) {

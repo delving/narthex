@@ -27,9 +27,8 @@ import play.api.Logger
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import record.EnrichmentParser
 import services._
-import web.MainController.{OkFile, OkXml}
+import web.MainController.OkFile
 
 object APIController extends Controller {
 
@@ -87,54 +86,6 @@ object APIController extends Controller {
         NotFound(s"No list found for $path")
       case Some(file) =>
         OkFile(file)
-    }
-  }
-
-  def record(apiKey: String, datasetName: String, id: String, enrich: Boolean = false) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
-    datasetRepo.recordDbOpt.map { recordDb =>
-      val storedRecord: String = recordDb.record(id)
-      if (storedRecord.nonEmpty) {
-        if (enrich) {
-          val records = datasetRepo.enrichRecords(storedRecord)
-          if (records.nonEmpty) {
-            val record = records.head
-            OkXml(record.text.toString())
-          }
-          else {
-            NotFound(s"Parser gave no records")
-          }
-        }
-        else {
-          val records = EnrichmentParser.parseStoredRecords(storedRecord)
-          if (records.nonEmpty) {
-            val record = records.head
-            OkXml(record.text.toString())
-          }
-          else {
-            NotFound(s"Parser gave no records")
-          }
-        }
-      }
-      else {
-        NotFound(s"No record found for $id")
-      }
-    } getOrElse {
-      NotFound(s"No record database found for $datasetRepo")
-    }
-  }
-
-  def rawRecord(apiKey: String, datasetName: String, id: String) = record(apiKey, datasetName, id, enrich = false)
-
-  def enrichedRecord(apiKey: String, datasetName: String, id: String) = record(apiKey, datasetName, id, enrich = true)
-
-  def ids(apiKey: String, datasetName: String, since: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
-    datasetRepo.recordDbOpt.map { recordDb =>
-      val ids = recordDb.getIds(since)
-      Ok(scala.xml.XML.loadString(ids))
-    } getOrElse {
-      NotFound(s"No record database found for $datasetRepo")
     }
   }
 

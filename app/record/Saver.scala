@@ -22,11 +22,8 @@ import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{IncrementalSave, InterruptWork, WorkFailure}
 import dataset.DatasetRepo
 import dataset.ProgressState._
-import dataset.Sip.SipMapper
 import dataset.SipFactory.SipGenerationFacts
 import org.apache.commons.io.FileUtils
-import org.basex.core.cmd.{Delete, Flush, Optimize}
-import record.PocketParser.Pocket
 import record.Saver._
 import services.{FileHandling, ProgressReporter}
 
@@ -46,8 +43,6 @@ object Saver {
   case class SaveRecords(incrementalOpt: Option[IncrementalSave])
 
   case class SaveComplete(recordCount: Int)
-
-  case class MappingContext(recordDb: RecordDb, sipMapper: Option[SipMapper])
 
   def props(datasetRepo: DatasetRepo) = Props(new Saver(datasetRepo))
 
@@ -138,7 +133,7 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
     case SaveRecords(incrementalOpt) =>
       val stagingFacts = datasetRepo.stagingRepoOpt.map(_.stagingFacts).getOrElse(throw new RuntimeException(s"No staging facts for $datasetRepo"))
       log.info(s"Saving incremental=$incrementalOpt facts=$stagingFacts")
-      val recordDb = datasetRepo.recordDbOpt.getOrElse(throw new RuntimeException(s"Expected record db for $datasetRepo"))
+//      val recordDb = datasetRepo.recordDbOpt.getOrElse(throw new RuntimeException(s"Expected record db for $datasetRepo"))
       val sipMapperOpt = datasetRepo.sipMapperOpt
 
       future {
@@ -149,65 +144,65 @@ class Saver(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
           val progressReporter = ProgressReporter(UPDATING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
-          recordDb.withRecordDb { session =>
-            var recordCount = 0
-            def receiveRecord(rawPocket: Pocket): Unit = {
-              val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
-              pocketOpt.map { pocket =>
-                log.info(s"Updating ${pocket.id}")
-                recordDb.findRecord(pocket.id, session).map { foundRecord =>
-                  log.info(s"Record found $foundRecord, deleting it")
-                  session.execute(new Delete(foundRecord.path))
-                }
-                // todo: can't do this anymore
-//                session.add(pocket.path(datasetRepo.datasetName), pocket.textBytes)
-                recordCount += 1
-              }
-            }
-            try {
-              parser.parse(source, Set.empty[String], receiveRecord, progressReporter)
-              context.parent ! SaveComplete(recordCount)
-            }
-            finally {
-              source.close()
-            }
-          }
+//          recordDb.withRecordDb { session =>
+//            var recordCount = 0
+//            def receiveRecord(rawPocket: Pocket): Unit = {
+//              val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
+//              pocketOpt.map { pocket =>
+//                log.info(s"Updating ${pocket.id}")
+//                recordDb.findRecord(pocket.id, session).map { foundRecord =>
+//                  log.info(s"Record found $foundRecord, deleting it")
+//                  session.execute(new Delete(foundRecord.path))
+//                }
+//                // todo: can't do this anymore
+////                session.add(pocket.path(datasetRepo.datasetName), pocket.textBytes)
+//                recordCount += 1
+//              }
+//            }
+//            try {
+//              parser.parse(source, Set.empty[String], receiveRecord, progressReporter)
+//              context.parent ! SaveComplete(recordCount)
+//            }
+//            finally {
+//              source.close()
+//            }
+//          }
         } getOrElse {
           log.info(s"Saving first time")
-          recordDb.createDb()
+//          recordDb.createDb()
           var tick = 0
           var time = System.currentTimeMillis()
-          recordDb.withRecordDb { session =>
-            datasetRepo.stagingRepoOpt.map { stagingRepo =>
-              var recordCount = 0
-              def catchPocket(rawPocket: Pocket): Unit = {
-                val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
-                pocketOpt.map { pocket =>
-                  // todo: can't do this anymore
-//                  session.add(pocket.path(datasetRepo.datasetName), pocket.textBytes)
-                  tick += 1
-                  if (tick % 10000 == 0) {
-                    val now = System.currentTimeMillis()
-                    log.info(s"Saving $tick: ${now - time}ms")
-                    session.execute(new Flush())
-                    time = now
-                  }
-                  recordCount += 1
-                }
-              }
-              val progressReporter = ProgressReporter(SAVING, context.parent)
-              progress = Some(progressReporter)
-              stagingRepo.parsePockets(catchPocket, progressReporter)
-              if (progress.isDefined) {
-                log.info(s"Saved, optimizing..")
-                recordDb.withRecordDb(_.execute(new Optimize()))
-                context.parent ! SaveComplete(recordCount)
-              }
-              else {
-                context.parent ! WorkFailure("Interrupted while saving")
-              }
-            }
-          }
+//          recordDb.withRecordDb { session =>
+//            datasetRepo.stagingRepoOpt.map { stagingRepo =>
+//              var recordCount = 0
+//              def catchPocket(rawPocket: Pocket): Unit = {
+//                val pocketOpt = sipMapperOpt.map(_.map(rawPocket)).getOrElse(Some(rawPocket))
+//                pocketOpt.map { pocket =>
+//                  // todo: can't do this anymore
+////                  session.add(pocket.path(datasetRepo.datasetName), pocket.textBytes)
+//                  tick += 1
+//                  if (tick % 10000 == 0) {
+//                    val now = System.currentTimeMillis()
+//                    log.info(s"Saving $tick: ${now - time}ms")
+//                    session.execute(new Flush())
+//                    time = now
+//                  }
+//                  recordCount += 1
+//                }
+//              }
+//              val progressReporter = ProgressReporter(SAVING, context.parent)
+//              progress = Some(progressReporter)
+//              stagingRepo.parsePockets(catchPocket, progressReporter)
+//              if (progress.isDefined) {
+//                log.info(s"Saved, optimizing..")
+//                recordDb.withRecordDb(_.execute(new Optimize()))
+//                context.parent ! SaveComplete(recordCount)
+//              }
+//              else {
+//                context.parent ! WorkFailure("Interrupted while saving")
+//              }
+//            }
+//          }
         }
       } onFailure {
         case t => context.parent ! WorkFailure(t.getMessage, Some(t))

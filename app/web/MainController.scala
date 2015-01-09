@@ -228,8 +228,6 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.sample,
           routes.javascript.AppController.histogram,
           routes.javascript.AppController.setRecordDelimiter,
-          routes.javascript.AppController.saveRecords,
-          routes.javascript.AppController.queryRecords,
           routes.javascript.AppController.listConceptSchemes,
           routes.javascript.AppController.searchConceptScheme,
           routes.javascript.AppController.getTermSourcePaths,
