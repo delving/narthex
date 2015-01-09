@@ -32,7 +32,6 @@ import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import org.OrgActor.DatasetQuestion
-import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import record.SourceProcessor
@@ -140,12 +139,12 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       }
 
     case Event(AdoptSource(file), Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "sourceProcessor")
+      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "source-adopter")
       sourceProcessor ! AdoptSource(file)
       goto(Adopting) using Active(Some(sourceProcessor), ADOPTING)
 
     case Event(GeneratePockets, Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "sourceProcessor")
+      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "source-generator")
       sourceProcessor ! GeneratePockets
       goto(Generating) using Active(Some(sourceProcessor), GENERATING)
 
@@ -205,12 +204,11 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
         case "start mapping" =>
           datasetRepo.startMapping()
-          "not implemented"
+          "mapping started"
 
         case "start analysis" =>
-          log.warning("START ANALYSIS")
           datasetRepo.startAnalysis()
-          "not implemented"
+          "analysis started"
 
         case _ =>
           log.warning(s"$this sent unrecognized command $commandName")
@@ -241,8 +239,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
     case Event(SourceAdoptionComplete(file), active: Active) =>
       datasetRepo.dropTree()
-      self ! GeneratePockets
       active.childOpt.map(_ ! PoisonPill)
+      self ! GeneratePockets
       goto(Idle) using Dormant
 
   }
@@ -250,18 +248,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
   when(Generating) {
 
     case Event(PocketGenerationComplete(recordCount), active: Active) =>
-      log.info(s"Generated file $recordCount records")
-//      todo
-//      if (mappedRecordCount > 0) {
-//        db.setStatus(SOURCED)
-//        db.setSource(ready = true, mappedRecordCount)
-//      }
-//      else {
-        val rawFile = datasetRepo.createRawFile(datasetRepo.pocketFile.getName)
-        FileUtils.copyFile(datasetRepo.pocketFile, rawFile)
-        db.setStatus(RAW_POCKETS)
-//      }
-      self ! StartAnalysis
+      log.info(s"Generated $recordCount pockets")
+      db.setStatus(SOURCED)
+      db.setSource(ready = true, recordCount)
+      // todo: figure this out
+      //        val rawFile = datasetRepo.createRawFile(datasetRepo.pocketFile.getName)
+      //        FileUtils.copyFile(datasetRepo.pocketFile, rawFile)
+      //        db.setStatus(RAW_POCKETS)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 

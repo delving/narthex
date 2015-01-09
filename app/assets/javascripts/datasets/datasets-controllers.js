@@ -25,7 +25,7 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/datasets-services.js) object used by dashboard.routes.
      */
-    var DatasetsCtrl = function ($rootScope, $scope, user, datasetsService, $location, $upload, $timeout, $routeParams) {
+    var DatasetsCtrl = function ($rootScope, $scope, user, datasetsService, $location, $timeout) {
         if (user == null) $location.path("/");
         $scope.user = user;
         $scope.uploading = false;
@@ -85,41 +85,6 @@ define(["angular"], function () {
             $scope.dropSupported = true;
         };
 
-        function fileDropped(file, $files) {
-            //$files: an array of files selected, each file has name, size, and type.  Take the first only.
-            if (!($files.length && !file.uploading)) return;
-            var onlyFile = $files[0];
-            if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml') || onlyFile.name.endsWith('.sip.zip'))) {
-                alert("Sorry, the file must end with '.xml.gz' or '.xml' or '.sip.zip'");
-                return;
-            }
-            file.uploading = true;
-            $upload.upload({
-                url: '/narthex/dashboard/' + file.name + '/upload',
-                file: onlyFile
-            }).progress(
-                function (evt) {
-                    if (file.uploading) file.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
-                }
-            ).success(
-                function () {
-                    file.uploading = false;
-                    file.uploadPercent = null;
-                    $scope.fetchDatasetList();
-                }
-            ).error(
-                function (data, status, headers, config) {
-                    file.uploading = false;
-                    file.uploadPercent = null;
-                    console.log("Failure during upload: data", data);
-                    console.log("Failure during upload: status", status);
-                    console.log("Failure during upload: headers", headers);
-                    console.log("Failure during upload: config", config);
-                    alert(data.problem);
-                }
-            );
-        }
-
         // treeTime, mappedTime, identity { datasetName, prefix, recordCount, name, dataProvider }
         $scope.decorateFile = function (file, info) {
             if (info) {
@@ -131,9 +96,6 @@ define(["angular"], function () {
             file.originalInfo = angular.copy(file.info);
             if (info.error) file.error = info.error.message;
             file.apiMappings = user.narthexAPI + '/' + file.name + '/mappings';
-            file.fileDropped = function ($files) {
-                fileDropped(file, $files)
-            };
             file.state = info.status.state;
             file.datasetName = file.name;
             if (info.character) file.prefix = info.character.prefix;
@@ -189,12 +151,53 @@ define(["angular"], function () {
     };
 
     DatasetsCtrl.$inject = [
-        "$rootScope", "$scope", "user", "datasetsService", "$location", "$upload", "$timeout", "$routeParams"
+        "$rootScope", "$scope", "user", "datasetsService", "$location", "$timeout"
     ];
 
-    var DatasetEntryCtrl = function ($scope, datasetsService, $location, $timeout) {
+    var DatasetEntryCtrl = function ($scope, datasetsService, $location, $timeout, $upload) {
 
         $scope.file.progressCheckerTimeout = $timeout(checkProgress, 1000 + Math.floor(Math.random() * 1000));
+
+        function fileDropped(file, $files, after) {
+            //$files: an array of files selected, each file has name, size, and type.  Take the first only.
+            if (!($files.length && !file.uploading)) return;
+            var onlyFile = $files[0];
+            if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml') || onlyFile.name.endsWith('.sip.zip'))) {
+                alert("Sorry, the file must end with '.xml.gz' or '.xml' or '.sip.zip'");
+                return;
+            }
+            file.uploading = true;
+            $upload.upload({
+                url: '/narthex/app/' + file.name + '/upload',
+                file: onlyFile
+            }).progress(
+                function (evt) {
+                    if (file.uploading) file.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
+                }
+            ).success(
+                function () {
+                    file.uploading = false;
+                    file.uploadPercent = null;
+                    if (after) after();
+                }
+            ).error(
+                function (data, status, headers, config) {
+                    file.uploading = false;
+                    file.uploadPercent = null;
+                    console.log("Failure during upload: data", data);
+                    console.log("Failure during upload: status", status);
+                    console.log("Failure during upload: headers", headers);
+                    console.log("Failure during upload: config", config);
+                    alert(data.problem);
+                }
+            );
+        }
+
+        $scope.file.fileDropped = function ($files) {
+            fileDropped($scope.file, $files, function() {
+                refreshProgress();
+            });
+        };
 
         var stateNames = {
             'state-harvesting': "Harvesting",
@@ -409,7 +412,7 @@ define(["angular"], function () {
 
     };
 
-    DatasetEntryCtrl.$inject = ["$scope", "datasetsService", "$location", "$timeout"];
+    DatasetEntryCtrl.$inject = ["$scope", "datasetsService", "$location", "$timeout", "$upload"];
 
     return {
         DatasetsCtrl: DatasetsCtrl,
