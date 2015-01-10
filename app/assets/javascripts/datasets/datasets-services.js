@@ -128,14 +128,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                analyze: function (datasetName) {
-                    return app.analyze(datasetName).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
                 listSipFiles: function (datasetName) {
                     return app.listSipFiles(datasetName).get().then(
                         function (response) {
