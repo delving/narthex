@@ -1,100 +1,167 @@
 package specs
 
+import java.io.InputStream
 import java.util
 
-import com.hp.hpl.jena.rdf.model.{ModelFactory, Property, Resource, Statement}
+import com.hp.hpl.jena.rdf.model._
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.collection.JavaConversions._
+
+class CRM(is: InputStream) {
+  val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  val RDFS = "http://www.w3.org/2000/01/rdf-schema#"
+  val CRM = "http://www.cidoc-crm.org/cidoc-crm/"
+
+  val model = ModelFactory.createDefaultModel().read(is, null)
+
+  //  just for exploration
+  //  model.listStatements().toList.map { s =>
+  //    if (s.toString.contains("P55")) println(s)
+  //  }
+
+  def list(s: Option[Resource], p: Option[Property], o: Option[Resource]): util.List[Statement] =
+    model.listStatements(s.orNull, p.orNull, o.orNull).toList
+
+  val LABEL = model.getProperty(RDFS, "label")
+  val DOMAIN = model.getProperty(RDFS, "domain")
+  val RANGE = model.getProperty(RDFS, "range")
+  val COMMENT = model.getProperty(RDFS, "comment")
+  val SUB_CLASS_OF = model.getProperty(RDFS, "subClassOf")
+  val SUB_PROPERTY_OF = model.getProperty(RDFS, "subPropertyOf")
+  val CLASS = model.getProperty(RDFS, "Class")
+  val LITERAL = model.getProperty(RDFS, "Literal")
+  val PROPERTY = model.getProperty(RDF, "Property")
+  val TYPE = model.getProperty(RDF, "type")
+
+  def preUnderscore(resource: Resource) = {
+    val name = resource.getLocalName
+    name.substring(0, name.indexOf("_"))
+  }
+
+  def postUnderscore(resource: Resource) = {
+    val name = resource.getLocalName
+    name.substring(name.indexOf("_") + 1).replaceAll("-", "_")
+  }
+
+  def subjects(p: Property, o: Resource): List[Resource] =
+    list(None, Some(p), Some(o)).map(_.getSubject).toList
+
+  def objects(s: Resource, p: Property): List[Resource] =
+    list(Some(s), Some(p), None).map(_.getObject.asResource()).toList
+
+  def literal(s: Resource, p: Property, l: String = "en"): String =
+    list(Some(s), Some(p), None)
+      .map(_.getObject.asLiteral())
+      .find(_.getLanguage == l)
+      .map(_.getString)
+      .getOrElse(postUnderscore(s))
+
+  case class CRMClass(resource: Resource) {
+    lazy val superClasses = objects(resource, SUB_CLASS_OF).map(toClass)
+    lazy val subClasses = subjects(SUB_CLASS_OF, resource).map(toClass)
+    lazy val properties = subjects(DOMAIN, resource).map(toProperty)
+    lazy val comment = literal(resource, COMMENT)
+
+    override def toString = postUnderscore(resource)
+  }
+
+  case class CRMProperty(resource: Resource) {
+    lazy val superProperties = objects(resource, SUB_PROPERTY_OF).map(toProperty)
+    lazy val subProperties = subjects(SUB_PROPERTY_OF, resource).map(toProperty)
+    lazy val rangeClass = objects(resource, RANGE).filter(_ != LITERAL).map(toClass).headOption
+    lazy val comment = literal(resource, COMMENT)
+
+    override def toString = resource.getLocalName
+//    override def toString = postUnderscore(resource)
+  }
+
+  val classes = subjects(TYPE, CLASS).map(CRMClass)
+
+  val rootClass = classes.find(_.superClasses.isEmpty).get
+
+  val properties = subjects(TYPE, PROPERTY).map(CRMProperty)
+
+  def toClass(resource: Resource): CRMClass = classes.find(_.resource == resource).getOrElse(throw new RuntimeException(s"No class for $resource"))
+
+  def toProperty(resource: Resource): CRMProperty = properties.find(_.resource == resource).getOrElse(throw new RuntimeException(s"No property for $resource"))
+
+  def findClass(localName: String) = classes.find(_.resource.getLocalName == localName).get
+
+  def findProperty(localName: String) = properties.find(_.resource.getLocalName == localName).get
+}
 
 class TestCRM extends FlatSpec with Matchers {
 
   "The CRM" should "appear in JSON" in {
 
-    val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-    val RDFS = "http://www.w3.org/2000/01/rdf-schema#"
-    val CRM = "http://www.cidoc-crm.org/cidoc-crm/"
+    val CRM = new CRM(getClass.getResource("/crm/cidoc_crm_v5.0.4_official_release.rdfs.xml").openStream())
 
-    val inputStream = getClass.getResource("/crm/cidoc_crm_v5.0.4_official_release.rdfs.xml").openStream()
-    val model = ModelFactory.createDefaultModel()
-    model.read(inputStream, null)
+    def countTree(crmClass: CRM.CRMClass) : Int = 1 + crmClass.subClasses.map(countTree).sum
 
-    val rdfsLabel = model.getProperty(RDFS, "label")
-    val rdfsDomain = model.getProperty(RDFS, "domain")
-    val rdfsRange = model.getProperty(RDFS, "range")
-    val rdfsSubClassOf = model.getProperty(RDFS, "subClassOf")
-    val rdfsSubPropertyOf = model.getProperty(RDFS, "subPropertyOf")
-    val rdfsClass = model.getProperty(RDFS, "Class")
-    val rdfProperty = model.getProperty(RDF, "Property")
-    val rdfType = model.getProperty(RDF, "type")
-
-    //    def englishLiteral(sub: Resource, pred: Property) = {
-    //      val literals = statements(Some(sub), Some(pred), None).map(_.getObject.asLiteral())
-    //      literals.filter(_.getLanguage == "en").head.getString
-    //    }
-
-    case class CRMClass(resource: Resource) {
-      override def toString = resource.getLocalName
+    def showProperty(crmProperty: CRM.CRMProperty, level: Int): Unit = {
+      val indent = "   " * level
+      val range = crmProperty.rangeClass.map(_.toString).getOrElse("Literal")
+      val count = crmProperty.rangeClass.map(countTree).getOrElse(0)
+      println(s"$indent: $crmProperty -> $range ($count)")
+      crmProperty.subProperties.foreach(showProperty(_, level + 1))
     }
 
-    case class CRMProperty(resource: Resource) {
-      override def toString = resource.getLocalName
+    def showClass(crmClass: CRM.CRMClass, withProperties: Boolean, level: Int = 0): Unit = {
+      val indent = "   " * level
+      println(s"$indent$crmClass")
+      if (withProperties) crmClass.properties.foreach(showProperty(_, level + 1))
+      crmClass.subClasses.foreach(showClass(_, withProperties, level + 1))
     }
 
-    def statements(sub: Option[Resource], pred: Option[Property], obj: Option[Resource]): util.List[Statement] = {
-      model.listStatements(sub.orNull, pred.orNull, obj.orNull).toList
-    }
+    showClass(CRM.rootClass, withProperties = true)
 
-    def subjects(pred: Property, obj: Resource) = statements(None, Some(pred), Some(obj)).map(_.getSubject)
-
-    def objects(sub: Resource, pred: Property) = statements(Some(sub), Some(pred), None).map(_.getObject.asResource())
-
-    def domains(sub: Resource) = objects(sub, rdfsDomain).map(CRMClass)
-
-    def ranges(sub: Resource) = objects(sub, rdfsRange).map(CRMClass)
-
-    val crmClasses = subjects(rdfType, rdfsClass).map(CRMClass)
-
-    val crmProperties = subjects(rdfType, rdfProperty).map(CRMProperty)
-
-    val crmClassesSuperclasses = crmClasses.map(c =>
-      (c, objects(c.resource, rdfsSubClassOf).map(CRMClass))
-    )
-
-    val crmPropertiesSuperproperties = crmProperties.map(c =>
-      (c, objects(c.resource, rdfsSubPropertyOf).map(CRMProperty))
-    )
-
-    val crmClassesProperties = crmClasses.map(c =>
-      (c, subjects(rdfsDomain, c.resource).map(CRMProperty))
-    )
-
-//    println(s"classes/properties:\n${crmClassesProperties.mkString("\n")}")
-
-    //    val crmPropertiesDomainRange = crmProperties.map(p =>
-//      (p, objects(p.resource, rdfsDomain).map(CRMClass), objects(p.resource, rdfsRange).map(CRMClass))
-//    )
+//    println("=" * 50)
 //
-//    println(s"prop, domain, range:\n${crmPropertiesDomainRange.mkString("\n")}")
+//    showClass(CRM.findClass("E10_Transfer_of_Custody"), withProperties = true)
+//
+//    println("=" * 50)
+//
+//    showClass(CRM.findClass("E53_Place"), withProperties = true)
 
-    //    println(s"classes, supers:\n${crmClassesSuperclasses.mkString("\n")}")
 
-    //    case class CRMClass(uri: String, name: String, var domains: List[CRMClass] = List.empty)
+    //    val c = CRM.findClass("E10_Transfer_of_Custody")
 
-    //    val crmClasses = crmClassResources.map(sub => sub.getURI -> CRMClass(sub.getURI, sub.getLocalName)).toMap
-
-    //    println(s"classes:\n${crmClassResources.mkString("\n")}")
-
-    //    println(s"properties:\n${crmProperties.mkString("\n")}")
-
-    model.listStatements().toList.map { s =>
-      if (s.toString.contains("P13_")) println(s)
-    }
+    //    println()
+    //    println(s"class: $c")
+    ////    println(s"comment: ${c.comment}")
+    //    println(s"super: ${c.superClasses}")
+    //    println(s"sub: ${c.subClasses}")
+    //    println(s"props: ${c.properties}")
+    //    println(s"prop-range: ${c.properties.head.rangeClass}")
     //
-    //    val classes = model.listStatements(null, property, null).map(_.getSubject).map(
-    //      subject => subject.getURI
-    //    ).toSeq
+    //    val s = c.superClasses.head
     //
-    //    println(s"classes:\n ${classes.mkString("\n")}")
+    //    println()
+    //    println(s"class: $s")
+    ////    println(s"comment: ${s.comment}")
+    //    println(s"super: ${s.superClasses}")
+    //    println(s"sub: ${s.subClasses}")
+    //    println(s"props: ${s.properties}")
+    //    println(s"prop-range: ${s.properties.head.rangeClass}")
+    //
+    //    println()
+    //
+    //    val classSuperCount =    CRM.classes.map(c => c.superClasses.size).sorted
+    //    println(s"classes have this many superclasses: $classSuperCount")
+    //
+    //    val classPropertyCount = CRM.classes.map(c => c.properties.size).sorted
+    //    println(s"classes have this many properties: $classPropertyCount")
+    //
+    //    println()
+    //
+    //    val propertySuperCount = CRM.properties.map(c => c.superProperties.size).sorted
+    //    println(s"properties have this many superproperties: $propertySuperCount")
+    //
+    //    val propertyClasses = CRM.properties.filter(c => c.rangeClass.isDefined)
+    //    val propertyLiterals = CRM.properties.filter(c => c.rangeLiteral)
+    //    println(s"properties ${CRM.properties.size}:")
+    ////    println(s"with range classes = $propertyClasses")
+    //    println(s"with range literal = $propertyLiterals")
   }
 }
