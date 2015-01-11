@@ -23,16 +23,20 @@ class CRM(is: InputStream) {
   def list(s: Option[Resource], p: Option[Property], o: Option[Resource]): util.List[Statement] =
     model.listStatements(s.orNull, p.orNull, o.orNull).toList
 
-  val LABEL = model.getProperty(RDFS, "label")
-  val DOMAIN = model.getProperty(RDFS, "domain")
-  val RANGE = model.getProperty(RDFS, "range")
-  val COMMENT = model.getProperty(RDFS, "comment")
-  val SUB_CLASS_OF = model.getProperty(RDFS, "subClassOf")
-  val SUB_PROPERTY_OF = model.getProperty(RDFS, "subPropertyOf")
-  val CLASS = model.getProperty(RDFS, "Class")
-  val LITERAL = model.getProperty(RDFS, "Literal")
-  val PROPERTY = model.getProperty(RDF, "Property")
-  val TYPE = model.getProperty(RDF, "type")
+  def rdf(localName: String) = model.getProperty(RDF, localName)
+
+  def rdfs(localName: String) = model.getProperty(RDFS, localName)
+
+  val LABEL = rdfs("label")
+  val DOMAIN = rdfs("domain")
+  val RANGE = rdfs("range")
+  val COMMENT = rdfs("comment")
+  val SUB_CLASS_OF = rdfs("subClassOf")
+  val SUB_PROPERTY_OF = rdfs("subPropertyOf")
+  val CLASS = rdfs("Class")
+  val LITERAL = rdfs("Literal")
+  val PROPERTY = rdf("Property")
+  val TYPE = rdf("type")
 
   def preUnderscore(resource: Resource) = {
     val name = resource.getLocalName
@@ -73,13 +77,12 @@ class CRM(is: InputStream) {
     lazy val comment = literal(resource, COMMENT)
 
     override def toString = resource.getLocalName
-//    override def toString = postUnderscore(resource)
+
+    //    override def toString = postUnderscore(resource)
   }
 
   val classes = subjects(TYPE, CLASS).map(CRMClass)
-
   val rootClass = classes.find(_.superClasses.isEmpty).get
-
   val properties = subjects(TYPE, PROPERTY).map(CRMProperty)
 
   def toClass(resource: Resource): CRMClass = classes.find(_.resource == resource).getOrElse(throw new RuntimeException(s"No class for $resource"))
@@ -97,7 +100,7 @@ class TestCRM extends FlatSpec with Matchers {
 
     val CRM = new CRM(getClass.getResource("/crm/cidoc_crm_v5.0.4_official_release.rdfs.xml").openStream())
 
-    def countTree(crmClass: CRM.CRMClass) : Int = 1 + crmClass.subClasses.map(countTree).sum
+    def countTree(crmClass: CRM.CRMClass): Int = 1 + crmClass.subClasses.map(countTree).sum
 
     def showProperty(crmProperty: CRM.CRMProperty, level: Int): Unit = {
       val indent = "   " * level
