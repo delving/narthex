@@ -115,53 +115,5 @@ class TestCRM extends FlatSpec with Matchers {
     }
 
     showClass(CRM.rootClass, withProperties = true)
-
-//    println("=" * 50)
-//
-//    showClass(CRM.findClass("E10_Transfer_of_Custody"), withProperties = true)
-//
-//    println("=" * 50)
-//
-//    showClass(CRM.findClass("E53_Place"), withProperties = true)
-
-
-    //    val c = CRM.findClass("E10_Transfer_of_Custody")
-
-    //    println()
-    //    println(s"class: $c")
-    ////    println(s"comment: ${c.comment}")
-    //    println(s"super: ${c.superClasses}")
-    //    println(s"sub: ${c.subClasses}")
-    //    println(s"props: ${c.properties}")
-    //    println(s"prop-range: ${c.properties.head.rangeClass}")
-    //
-    //    val s = c.superClasses.head
-    //
-    //    println()
-    //    println(s"class: $s")
-    ////    println(s"comment: ${s.comment}")
-    //    println(s"super: ${s.superClasses}")
-    //    println(s"sub: ${s.subClasses}")
-    //    println(s"props: ${s.properties}")
-    //    println(s"prop-range: ${s.properties.head.rangeClass}")
-    //
-    //    println()
-    //
-    //    val classSuperCount =    CRM.classes.map(c => c.superClasses.size).sorted
-    //    println(s"classes have this many superclasses: $classSuperCount")
-    //
-    //    val classPropertyCount = CRM.classes.map(c => c.properties.size).sorted
-    //    println(s"classes have this many properties: $classPropertyCount")
-    //
-    //    println()
-    //
-    //    val propertySuperCount = CRM.properties.map(c => c.superProperties.size).sorted
-    //    println(s"properties have this many superproperties: $propertySuperCount")
-    //
-    //    val propertyClasses = CRM.properties.filter(c => c.rangeClass.isDefined)
-    //    val propertyLiterals = CRM.properties.filter(c => c.rangeLiteral)
-    //    println(s"properties ${CRM.properties.size}:")
-    ////    println(s"with range classes = $propertyClasses")
-    //    println(s"with range literal = $propertyLiterals")
   }
 }
