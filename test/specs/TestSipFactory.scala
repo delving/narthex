@@ -3,7 +3,7 @@ package specs
 import java.io.{File, FileOutputStream}
 
 import dataset.SipFactory.SipGenerationFacts
-import dataset.{SipFactory, SipPrefixRepo, SipRepo, StagingRepo}
+import dataset.{SipFactory, SipPrefixRepo, SipRepo, SourceRepo}
 import org.apache.commons.io.FileUtils._
 import org.scalatest.{FlatSpec, Matchers}
 import services.{FileHandling, ProgressReporter}
@@ -29,11 +29,11 @@ class TestSipFactory extends FlatSpec with Matchers {
     val existingSipZip = new File(targetDir, "existing.sip.zip")
     val copiedSipZip = new File(targetDir, "copied.sip.zip")
 
-    val stagingDir = new File(getClass.getResource("/sip_harvest_abbe/staging").getFile)
-    val stagingRepo = StagingRepo(stagingDir)
+    val sourceDir = new File(getClass.getResource("/sip_harvest_abbe/source").getFile)
+    val sourceRepo = SourceRepo(sourceDir)
     val sourceXmlFile = new File(targetDir, "source.xml")
     val sourceOutput = new FileOutputStream(sourceXmlFile)
-    stagingRepo.generatePockets(sourceOutput, ProgressReporter())
+    sourceRepo.generatePockets(sourceOutput, ProgressReporter())
     sourceOutput.close()
 
     val facts = SipGenerationFacts(<info/>)

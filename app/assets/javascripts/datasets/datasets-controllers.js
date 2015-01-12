@@ -331,9 +331,7 @@ define(["angular"], function () {
         };
 
         $scope.setPublication = function () {
-            // todo: publish in index implies publish oaipmh
             datasetsService.setPublication($scope.file.name, $scope.file.info.publication).then(refreshInfo);
-            // todo: show the user it has happened!
         };
 
         $scope.setCategories = function () {
@@ -357,31 +355,25 @@ define(["angular"], function () {
             if (areYouSure && !confirm(areYouSure)) return;
             datasetsService.command($scope.file.name, command).then(function (reply) {
                 console.log(reply);
-                if (command == "delete") {
-                    $scope.fetchDatasetList();
-                }
-                else {
-                    refreshProgress();
-                }
             }).then(function() {
                 if (after) after();
             });
         }
 
         $scope.interruptProcessing = function () {
-            command("interrupt", "Interrupt processing?");
+            command("interrupt", "Interrupt processing?", refreshProgress);
         };
 
         $scope.discardSource = function () {
-            command("remove source", "Discard source?");
+            command("remove source", "Discard source?", refreshInfo);
         };
 
         $scope.discardMapped = function () {
-            command("remove mapped", "Discard mapped data?");
+            command("remove mapped", "Discard mapped data?", refreshInfo);
         };
 
         $scope.discardTree = function () {
-            command("remove tree", "Discard analysis?");
+            command("remove tree", "Discard analysis?", refreshInfo);
         };
 
         $scope.startMapping = function () {
@@ -393,7 +385,7 @@ define(["angular"], function () {
         };
 
         $scope.deleteDataset = function () {
-            $scope.command("Delete dataset?", "delete");
+            command("delete", "Delete dataset?", $scope.fetchDatasetList);
         };
 
         function fetchSipFileList() {

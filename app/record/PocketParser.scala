@@ -18,7 +18,7 @@ package record
 
 import java.io.ByteArrayInputStream
 
-import dataset.StagingRepo.StagingFacts
+import dataset.SourceRepo.SourceFacts
 import org.joda.time.DateTime
 import play.Logger
 import services.StringHandling._
@@ -32,7 +32,7 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object PocketParser {
 
-  def apply(stagingFacts: StagingFacts) = new PocketParser(stagingFacts.recordRoot, stagingFacts.uniqueId, stagingFacts.deepRecordContainer)
+  def apply(sourceFacts: SourceFacts) = new PocketParser(sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.deepRecordContainer)
 
   val PocketRegex = "(?s).*<pocket[^>]*>(.*)</pocket>.*".r
 

@@ -23,7 +23,7 @@ import analysis.NodeRepo
 import dataset.DatasetActor._
 import dataset.DatasetState._
 import dataset.Sip.{RDF_PREFIX, RDF_URI, SipMapper}
-import dataset.StagingRepo._
+import dataset.SourceRepo._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
 import harvest.Harvesting._
@@ -40,17 +40,16 @@ import services.NarthexConfig.NAVE_DOMAIN
 import services.Temporal._
 
 class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
-
+  val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val rootDir = new File(orgRepo.datasetsDir, datasetName)
   val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetName"
 
-  val treeDir = new File(rootDir, "tree")
-  val stagingDir = new File(rootDir, "staging")
-  val sipsDir = new File(rootDir, "sips")
   val rawDir = new File(rootDir, "raw")
-  private val mappedDir = new File(rootDir, "mapped")
+  val sipsDir = new File(rootDir, "sips")
+  val sourceDir = new File(rootDir, "source")
+  val treeDir = new File(rootDir, "tree")
+  val mappedDir = new File(rootDir, "mapped")
 
-  val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val pocketFile = new File(orgRepo.rawDir, s"$datasetName.xml")
 
   def createSipFile = new File(orgRepo.sipsDir, s"${datasetName}__${DATE_FORMAT.format(new Date())}.sip.zip")
@@ -74,10 +73,10 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     this
   }
   
-  def createStagingRepo(stagingFacts: StagingFacts): StagingRepo = StagingRepo.createClean(stagingDir, stagingFacts)
+  def createSourceRepo(sourceFacts: SourceFacts): SourceRepo = SourceRepo.createClean(sourceDir, sourceFacts)
 
-  def dropStagingRepo() = {
-    deleteQuietly(stagingDir)
+  def dropSourceRepo() = {
+    deleteQuietly(sourceDir)
     datasetDb.setStatus(EMPTY)
     datasetDb.setSource(ready = false, 0)
   }
@@ -99,37 +98,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     datasetDb.setRecords(ready = false)
   }
 
-  def stagingRepoOpt: Option[StagingRepo] = if (stagingDir.exists()) Some(StagingRepo(stagingDir)) else None
+  def sourceRepoOpt: Option[SourceRepo] = if (sourceDir.exists()) Some(SourceRepo(sourceDir)) else None
 
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
-  // doing this with futures?
-  //  def setRawDelimiters(recordRoot: String, uniqueId: String) = {
-  //    rawFile.map { raw =>
-  //      val stagingRepo = createStagingRepo(StagingFacts("from-raw", recordRoot, uniqueId, None))
-  //      dropTree()
-  //      val adoptFile = future {
-  //        val progressReporter = ProgressReporter(ADOPTING, datasetDb)
-  //        //          progress = Some(progressReporter)
-  //        stagingRepo.acceptFile(raw, progressReporter).map { acceptedFile =>
-  //          val progressReporter = ProgressReporter(GENERATING, datasetDb)
-  //          //          progress = Some(progressReporter)
-  //          val sipMapperOpt = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
-  //          val recordCount = stagingRepo.generateSource(sourceFile, sipMapperOpt, datasetDb.setNamespaceMap, progressReporter)
-  //          if (recordCount > 0) datasetDb.setStatus(SOURCED)
-  //          datasetDb.setSource(recordCount > 0, recordCount)
-  //        }
-  //      }
-  //      adoptFile.onSuccess {
-  //        case b =>
-  //          startAnalysis()
-  //      }
-  //    }
-  //  }
-
   def setRawDelimiters(recordRoot: String, uniqueId: String) = {
     rawFile.map { raw =>
-      createStagingRepo(StagingFacts("from-raw", recordRoot, uniqueId, None))
+      createSourceRepo(SourceFacts("from-raw", recordRoot, uniqueId, None))
       dropTree()
       OrgActor.actor ! DatasetMessage(datasetName, AdoptSource(raw))
     }
@@ -140,7 +115,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
       dropRecords()
       dropTree()
-      dropStagingRepo()
+      dropSourceRepo()
       db.setStatus(RAW)
       setTargetFile(createRawFile(fileName))
       startAnalysis()
@@ -172,12 +147,12 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
             // there is no harvest information so there may be source
             if (sip.pockets.isDefined) None else {
               // if it's not pockets, there should be source, otherwise we don't expect it
-              createStagingRepo(DELVING_SIP_SOURCE)
+              createSourceRepo(DELVING_SIP_SOURCE)
               sip.copySourceToTempFile.map { sourceFile =>
                 OrgActor.actor ! DatasetMessage(datasetName, AdoptSource(sourceFile))
                 None
               } getOrElse {
-                dropStagingRepo()
+                dropSourceRepo()
                 Some(s"No source found in $sipZipFile for $datasetName")
               }
             }
@@ -199,7 +174,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   def rawFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.headOption else None
 
   def singleHarvestZip: Option[File] = {
-    val allZip = stagingDir.listFiles.filter(_.getName.endsWith("zip"))
+    val allZip = sourceDir.listFiles.filter(_.getName.endsWith("zip"))
     if (allZip.size > 1) throw new RuntimeException(s"Multiple zip files where one was expected: $allZip")
     allZip.headOption
   }
@@ -208,9 +183,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     datasetDb.infoOpt.map { info =>
       val state = DatasetState.datasetStateFromInfo(info)
       if (state == EMPTY) {
-        dropStagingRepo()
+        dropSourceRepo()
         dropTree()
-        createStagingRepo(StagingFacts(harvestType))
+        createSourceRepo(SourceFacts(harvestType))
         datasetDb.setHarvestInfo(harvestType, url, dataset, prefix)
         datasetDb.setHarvestCron(Harvesting.harvestCron(info)) // a clean one
         Logger.info(s"First Harvest $datasetName")

@@ -188,7 +188,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
         case "remove source" =>
           deleteQuietly(datasetRepo.rawDir)
-          deleteQuietly(datasetRepo.stagingDir)
+          deleteQuietly(datasetRepo.sourceDir)
           datasetRepo.datasetDb.setStatus(EMPTY)
           "source removed"
 

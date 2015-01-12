@@ -129,14 +129,11 @@
                         <li ng-class="{'active':file.tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.state == 'state-sourced'">
                             <a href role="tab" data-ng-click="file.tabOpen = 'harvest-cron'">Scheduled Harvest</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'publication'}" data-ng-show="file.mappedTime">
+                        <li ng-class="{'active':file.tabOpen === 'publication'}">
                             <a href role="tab" data-ng-click="file.tabOpen = 'publication'">Publication</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'categories'}" data-ng-show="file.mappedTime && categoriesEnabled">
+                        <li ng-class="{'active':file.tabOpen === 'categories'}" data-ng-show="categoriesEnabled">
                             <a href role="tab" data-ng-click="file.tabOpen ='categories'">Categories</a>
-                        </li>
-                        <li ng-class="{'active':file.tabOpen === 'downloads'}" data-ng-show="file.mappedTime">
-                            <a href role="tab" data-ng-click="file.tabOpen ='downloads'">Downloads</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'info'}">
                             <a href role="tab" data-ng-click="file.tabOpen ='info'">Info</a>
@@ -414,6 +411,16 @@
 
 <script type="text/ng-template" id="actions.html">
     <div data-ng-hide="file.progress">
+        <button class="btn btn-sm btn-success" data-ng-click="startMapping()"
+                data-ng-show="!file.mappedTime && file.state == 'state-sourced' && file.sourceTime">
+            <i class="fa fa-database"></i>
+            <span>Execute Mapping</span>
+        </button>
+        <button type="button" class="btn btn-danger btn-sm" data-ng-click="discardMapped()"
+                data-ng-show="file.mappedTime">
+            <i class="fa fa-trash-o"></i>
+            <span>Discard Mapped Data</span>
+        </button>
         <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()"
                 data-ng-show="!file.treeTime && file.state != 'state-empty'">
             <i class="fa fa-eye"></i>
@@ -423,16 +430,6 @@
                 data-ng-show="file.treeTime">
             <i class="fa fa-trash-o"></i>
             <span>Discard Analysis</span>
-        </button>
-        <button class="btn btn-sm btn-success" data-ng-click="startMapping()"
-                data-ng-show="!file.mappedTime && file.state == 'state-sourced' && file.sourceTime">
-            <i class="fa fa-database"></i>
-            <span>Execute Mapping</span>
-        </button>
-        <button type="button" class="btn btn-danger btn-sm" data-ng-click="discardMapped()"
-                data-ng-show="file.mappedTime && file.state != 'state-empty'">
-            <i class="fa fa-trash-o"></i>
-            <span>Discard Mapped Data</span>
         </button>
         <button type="button" class="btn btn-danger btn-sm" data-ng-click="discardSource()"
                 data-ng-show="!(file.treeTime || file.mappedTime) && file.state != 'state-empty'">

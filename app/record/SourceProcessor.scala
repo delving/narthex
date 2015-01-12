@@ -68,11 +68,11 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
 
     case AdoptSource(file) =>
       log.info(s"Adopt source ${file.getAbsolutePath}")
-      datasetRepo.stagingRepoOpt.map { stagingRepo =>
+      datasetRepo.sourceRepoOpt.map { sourceRepo =>
         future {
           val progressReporter = ProgressReporter(ADOPTING, context.parent)
           progress = Some(progressReporter)
-          stagingRepo.acceptFile(file, progressReporter).map { adoptedFile =>
+          sourceRepo.acceptFile(file, progressReporter).map { adoptedFile =>
             context.parent ! SourceAdoptionComplete(adoptedFile)
           } getOrElse {
             context.parent ! WorkFailure(s"File not accepted: ${file.getAbsolutePath}")
@@ -81,18 +81,18 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
           case t => context.parent ! WorkFailure(t.getMessage, Some(t))
         }
       } getOrElse {
-        context.parent ! WorkFailure("Missing staging repository!")
+        context.parent ! WorkFailure("Missing source repository!")
       }
 
     case GeneratePockets =>
       log.info("Generate pockets")
-      datasetRepo.stagingRepoOpt.map { stagingRepo =>
+      datasetRepo.sourceRepoOpt.map { sourceRepo =>
         future {
           val progressReporter = ProgressReporter(GENERATING, context.parent)
           progress = Some(progressReporter)
           val pocketOutput = new FileOutputStream(datasetRepo.pocketFile)
           try {
-            val pocketCount = stagingRepo.generatePockets(pocketOutput, progressReporter)
+            val pocketCount = sourceRepo.generatePockets(pocketOutput, progressReporter)
             val sipFileOpt: Option[File] = datasetRepo.sipRepo.latestSipOpt.map { latestSip =>
               val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetRepo.orgRepo.sipFactory.prefixRepo(mapping.prefix))
               datasetRepo.sipFiles.foreach(_.delete())
@@ -137,7 +137,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
       }
 
     case ProcessRecords(incrementalOpt) =>
-      val stagingFacts = datasetRepo.stagingRepoOpt.map(_.stagingFacts).getOrElse(throw new RuntimeException(s"No staging facts for $datasetRepo"))
+      val sourceFacts = datasetRepo.sourceRepoOpt.map(_.sourceFacts).getOrElse(throw new RuntimeException(s"No source facts for $datasetRepo"))
       val sipMapper = datasetRepo.sipMapperOpt.getOrElse(throw new RuntimeException(s"No sip mapper for $datasetRepo"))
       if (incrementalOpt.isEmpty) datasetRepo.mappedRepo.clear()
 
@@ -167,24 +167,24 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
         }
 
         incrementalOpt.map { incremental =>
-          log.info(s"Processing incremental $stagingFacts")
+          log.info(s"Processing incremental $sourceFacts")
           val (source, readProgress) = FileHandling.sourceFromFile(incremental.file)
           try {
             val progressReporter = ProgressReporter(PROCESSING, context.parent)
             progressReporter.setReadProgress(readProgress)
             progress = Some(progressReporter)
-            val parser = PocketParser(stagingFacts)
+            val parser = PocketParser(sourceFacts)
             parser.parse(source, Set.empty[String], catchPocket, progressReporter)
           }
           finally {
             source.close()
           }
         } getOrElse {
-          log.info(s"Processing all $stagingFacts")
-          datasetRepo.stagingRepoOpt.map { stagingRepo =>
+          log.info(s"Processing all $sourceFacts")
+          datasetRepo.sourceRepoOpt.map { sourceRepo =>
             val progressReporter = ProgressReporter(PROCESSING, context.parent)
             progress = Some(progressReporter)
-            stagingRepo.parsePockets(catchPocket, progressReporter)
+            sourceRepo.parsePockets(catchPocket, progressReporter)
           }
         }
 

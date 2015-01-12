@@ -46,13 +46,13 @@ import scala.io.Source
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-object StagingRepo {
+object SourceRepo {
 
   val MAX_FILES = 100
-  val STAGING_FACTS_NAME = "staging_facts.txt"
+  val SOURCE_FACTS_FILE = "source_facts.txt"
 
-  object StagingFacts {
-    def apply(harvestType: HarvestType): StagingFacts = StagingFacts(
+  object SourceFacts {
+    def apply(harvestType: HarvestType): SourceFacts = SourceFacts(
       harvestType.name,
       harvestType.recordRoot,
       harvestType.uniqueId,
@@ -60,49 +60,49 @@ object StagingRepo {
     )
   }
 
-  case class StagingFacts(stagingType: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
+  case class SourceFacts(sourceType: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
 
-  def DELVING_SIP_SOURCE = StagingFacts("delving-sip-source", SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, SIP_SOURCE_DEEP_RECORD_CONTAINER)
+  def DELVING_SIP_SOURCE = SourceFacts("delving-sip-source", SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, SIP_SOURCE_DEEP_RECORD_CONTAINER)
 
-  def DELVING_POCKET_SOURCE = StagingFacts("delving-pocket-source", POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT)
+  def DELVING_POCKET_SOURCE = SourceFacts("delving-pocket-source", POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT)
 
-  def stagingFactsFile(home: File) = new File(home, STAGING_FACTS_NAME)
+  def sourceFactsFile(home: File) = new File(home, SOURCE_FACTS_FILE)
 
-  def stagingFacts(home: File): StagingFacts = {
-    val file = stagingFactsFile(home)
+  def sourceFacts(home: File): SourceFacts = {
+    val file = sourceFactsFile(home)
     val lines = Source.fromFile(file).getLines()
     val map = lines.flatMap { line =>
       val equals = line.indexOf("=")
       if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
     }.toMap
-    val stagingType = map.getOrElse("stagingType", throw new RuntimeException(s"Staging type missing!"))
+    val sourceType = map.getOrElse("sourceType", throw new RuntimeException(s"Source type missing!"))
     val recordRoot = map.getOrElse("recordRoot", throw new RuntimeException(s"Record root missing!"))
     val uniqueId = map.getOrElse("uniqueId", throw new RuntimeException(s"Unique ID missing!"))
     val deepRecordContainer = map.getOrElse("deepRecordContainer", throw new RuntimeException(s"Record root missing!"))
-    StagingFacts(stagingType, recordRoot, uniqueId, Option(deepRecordContainer).find(_.nonEmpty))
+    SourceFacts(sourceType, recordRoot, uniqueId, Option(deepRecordContainer).find(_.nonEmpty))
   }
 
-  def createClean(home: File, stagingFacts: StagingFacts): StagingRepo = {
+  def createClean(home: File, sourceFacts: SourceFacts): SourceRepo = {
     clearDir(home)
-    val file = stagingFactsFile(home)
+    val file = sourceFactsFile(home)
     val facts =
       s"""
-         |stagingType=${stagingFacts.stagingType}
-         |recordRoot=${stagingFacts.recordRoot}
-         |uniqueId=${stagingFacts.uniqueId}
-         |deepRecordContainer=${stagingFacts.deepRecordContainer.getOrElse("")}
+         |sourceType=${sourceFacts.sourceType}
+         |recordRoot=${sourceFacts.recordRoot}
+         |uniqueId=${sourceFacts.uniqueId}
+         |deepRecordContainer=${sourceFacts.deepRecordContainer.getOrElse("")}
        """.stripMargin
     FileUtils.write(file, facts)
     apply(home)
   }
 
-  def apply(home: File): StagingRepo = new StagingRepo(home)
+  def apply(home: File): SourceRepo = new SourceRepo(home)
 
 }
 
-class StagingRepo(home: File) {
+class SourceRepo(home: File) {
 
-  import dataset.StagingRepo._
+  import dataset.SourceRepo._
 
   private def numberString(number: Int): String = "%05d".format(number)
 
@@ -116,7 +116,7 @@ class StagingRepo(home: File) {
   private def fileList: Seq[File] = {
     val all = home.listFiles()
     val (files, dirs) = all.partition(_.isFile)
-    dirs.flatMap(_.listFiles()) ++ files.filter(_.getName != STAGING_FACTS_NAME)
+    dirs.flatMap(_.listFiles()) ++ files.filter(_.getName != SOURCE_FACTS_FILE)
   }
 
   private def moveFiles = {
@@ -172,7 +172,7 @@ class StagingRepo(home: File) {
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = provideZipFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
-    val parser = PocketParser(stagingFacts)
+    val parser = PocketParser(sourceFacts)
     def receiveRecord(record: Pocket): Unit = idSet.add(record.id)
     val (source, readProgress) = sourceFromFile(file)
     progressReporter.setReadProgress(readProgress)
@@ -216,7 +216,7 @@ class StagingRepo(home: File) {
 
   // public things:
 
-  lazy val stagingFacts = StagingRepo.stagingFacts(home)
+  lazy val sourceFacts = SourceRepo.sourceFacts(home)
 
   def countFiles = fileList.size
 
@@ -248,12 +248,12 @@ class StagingRepo(home: File) {
       targetFile
     }
     else {
-      throw new RuntimeException(s"StagingRepo can only accept .zip, .xml.gz, or .xml")
+      throw new RuntimeException(s"SourceRepo can only accept .zip, .xml.gz, or .xml")
     }
   })
 
   def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progressReporter: ProgressReporter): List[CategoryCount] = {
-    val parser = new CategoryParser(pathPrefix, stagingFacts.recordRoot, stagingFacts.uniqueId, stagingFacts.deepRecordContainer, categoryMappings)
+    val parser = new CategoryParser(pathPrefix, sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.deepRecordContainer, categoryMappings)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
@@ -269,7 +269,7 @@ class StagingRepo(home: File) {
   }
 
   def parsePockets(output: Pocket => Unit, progressReporter: ProgressReporter): Int = {
-    val parser = PocketParser(stagingFacts)
+    val parser = PocketParser(sourceFacts)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)

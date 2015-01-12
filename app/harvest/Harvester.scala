@@ -74,10 +74,10 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
       FileUtils.deleteQuietly(tempFile)
       context.parent ! WorkFailure(errorString)
     } getOrElse {
-      datasetRepo.stagingRepoOpt.map { stagingRepo =>
+      datasetRepo.sourceRepoOpt.map { sourceRepo =>
         future {
           val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
-          val fileOption = stagingRepo.acceptFile(tempFile, acceptZipReporter)
+          val fileOption = sourceRepo.acceptFile(tempFile, acceptZipReporter)
           log.info(s"Zip file accepted: $fileOption")
           val incrementalOpt = modifiedAfter.map(IncrementalHarvest(_, fileOption))
           context.parent ! HarvestComplete(incrementalOpt)
@@ -86,7 +86,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
             context.parent ! WorkFailure(e.getMessage)
         }
       } getOrElse {
-        context.parent ! WorkFailure(s"No staging repo for $datasetRepo")
+        context.parent ! WorkFailure(s"No source repo for $datasetRepo")
       }
     }
   }

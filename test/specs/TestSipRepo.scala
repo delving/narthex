@@ -2,7 +2,7 @@ package specs
 
 import java.io.File
 
-import dataset.{SipRepo, StagingRepo}
+import dataset.{SipRepo, SourceRepo}
 import org.apache.commons.io.FileUtils
 import org.scalatest.{FlatSpec, Matchers}
 import record.PocketParser.Pocket
@@ -20,8 +20,8 @@ class TestSipRepo extends FlatSpec with Matchers {
     val home = new File(getClass.getResource("/sip_harvest_arkiv").getFile)
     val sipRepo = new SipRepo(new File(home, "sips"), "test", "http://aboutprefix")
 
-    val stagingSourceDir = new File(home, "staging")
-    val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
+    val fromSourceDir = new File(home, "source")
+    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
 
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined should be(true)
@@ -32,8 +32,8 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       sip.schemaVersionOpt.isDefined should be(true)
 
-      FileUtils.copyDirectory(stagingSourceDir, stagingDir)
-      val stagingRepo = StagingRepo(stagingDir)
+      FileUtils.copyDirectory(fromSourceDir, sourceDir)
+      val sourceRepo = SourceRepo(sourceDir)
 
       var mappedPockets = List.empty[Pocket]
 
@@ -42,7 +42,7 @@ class TestSipRepo extends FlatSpec with Matchers {
           var mappedPocket = sipMapper.map(pocket)
           mappedPockets = mappedPocket.get :: mappedPockets
         }
-        stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
+        sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
       }
 
       mappedPockets.size should be(3)
@@ -64,8 +64,8 @@ class TestSipRepo extends FlatSpec with Matchers {
 
     val home = new File(getClass.getResource("/sip_harvest_abbe").getFile)
     val sipRepo = new SipRepo(new File(home, "sips"), "test", "http://aboutprefix")
-    val stagingSourceDir = new File(home, "staging")
-    val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
+    val fromSourceDir = new File(home, "source")
+    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
 
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined should be(true)
@@ -76,8 +76,8 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       sip.schemaVersionOpt.isDefined should be(true)
 
-      FileUtils.copyDirectory(stagingSourceDir, stagingDir)
-      val stagingRepo = StagingRepo(stagingDir)
+      FileUtils.copyDirectory(fromSourceDir, sourceDir)
+      val sourceRepo = SourceRepo(sourceDir)
 
       var mappedPockets = List.empty[Pocket]
 
@@ -90,7 +90,7 @@ class TestSipRepo extends FlatSpec with Matchers {
           mappedPockets = mappedPocket.get :: mappedPockets
         }
 
-        stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
+        sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
       }
 
       mappedPockets.size should be(6)
@@ -110,8 +110,8 @@ class TestSipRepo extends FlatSpec with Matchers {
     val home = new File(getClass.getResource("/sip_harvest").getFile)
     val sipRepo = new SipRepo(new File(home, "sips"), "test", "http://aboutprefix")
 
-    val stagingSourceDir = new File(home, "staging")
-    val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
+    val fromSourceDir = new File(home, "source")
+    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
 
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined should be(true)
@@ -124,8 +124,8 @@ class TestSipRepo extends FlatSpec with Matchers {
 
       sip.schemaVersionOpt.isDefined should be(true)
 
-      FileUtils.copyDirectory(stagingSourceDir, stagingDir)
-      val stagingRepo = StagingRepo(stagingDir)
+      FileUtils.copyDirectory(fromSourceDir, sourceDir)
+      val sourceRepo = SourceRepo(sourceDir)
 
       var mappedPockets = List.empty[Pocket]
 
@@ -134,7 +134,7 @@ class TestSipRepo extends FlatSpec with Matchers {
           var mappedPocket = sipMapper.map(pocket)
           mappedPockets = mappedPocket.get :: mappedPockets
         }
-        stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
+        sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
       }
 
       mappedPockets.size should be(5)
@@ -159,7 +159,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     FileUtils.copyDirectory(home, sipsDir)
     val sipRepo = new SipRepo(sipsDir, "test", "http://aboutprefix")
 
-    val stagingDir = FileHandling.clearDir(new File("/tmp/test-sip-source-staging"))
+    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-source"))
 
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined should be(true)
@@ -170,9 +170,9 @@ class TestSipRepo extends FlatSpec with Matchers {
       val source = sip.copySourceToTempFile
       source.isDefined should be(true)
 
-      val stagingRepo = StagingRepo.createClean(stagingDir, StagingRepo.DELVING_SIP_SOURCE)
+      val sourceRepo = SourceRepo.createClean(sourceDir, SourceRepo.DELVING_SIP_SOURCE)
 
-      stagingRepo.acceptFile(source.get, ProgressReporter())
+      sourceRepo.acceptFile(source.get, ProgressReporter())
 
       var mappedPockets = List.empty[Pocket]
 
@@ -182,7 +182,7 @@ class TestSipRepo extends FlatSpec with Matchers {
           var mappedPocket = sipMapper.map(pocket)
           mappedPockets = mappedPocket.get :: mappedPockets
         }
-        stagingRepo.parsePockets(pocketCatcher, ProgressReporter())
+        sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
       }
 
       mappedPockets.size should be(5)

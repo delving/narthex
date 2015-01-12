@@ -1,5 +1,5 @@
 
-stagingType=pmh
+sourceType=pmh
 recordRoot=/OAI-PMH/ListRecords/record
 uniqueId=/OAI-PMH/ListRecords/record/header/identifier
 deepRecordContainer=/OAI-PMH/ListRecords/record/metadata

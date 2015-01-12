@@ -117,6 +117,6 @@ class TestCRM extends FlatSpec with Matchers {
       crmClass.subClasses.foreach(showClass(_, withProperties, level + 1))
     }
 
-    showClass(CRM.rootClass, withProperties = true)
+//    showClass(CRM.rootClass, withProperties = true)
   }
 }
