@@ -143,9 +143,9 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       sourceProcessor ! AdoptSource(file)
       goto(Adopting) using Active(Some(sourceProcessor), ADOPTING)
 
-    case Event(GeneratePockets, Dormant) =>
+    case Event(GenerateSipZip, Dormant) =>
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "source-generator")
-      sourceProcessor ! GeneratePockets
+      sourceProcessor ! GenerateSipZip
       goto(Generating) using Active(Some(sourceProcessor), GENERATING)
 
     case Event(StartAnalysis, Dormant) =>
@@ -159,13 +159,13 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
         analyzer ! AnalyzeFile(rawFile)
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)
       } getOrElse {
-        self ! GeneratePockets
+        self ! GenerateSipZip
         stay()
       }
 
     case Event(StartProcessing(incrementalOpt), Dormant) =>
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "source-processor")
-      sourceProcessor ! ProcessRecords(incrementalOpt)
+      sourceProcessor ! MapAndValidate(incrementalOpt)
       goto(Processing) using Active(Some(sourceProcessor), PROCESSING)
 
     case Event(StartCategoryCounting, Dormant) =>
@@ -228,7 +228,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
           self ! StartProcessing(Some(IncrementalSave(incremental.modifiedAfter, newFile)))
         }
       } getOrElse {
-        self ! GeneratePockets
+        self ! GenerateSipZip
       }
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
@@ -240,7 +240,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
     case Event(SourceAdoptionComplete(file), active: Active) =>
       datasetRepo.dropTree()
       active.childOpt.map(_ ! PoisonPill)
-      self ! GeneratePockets
+      self ! GenerateSipZip
       goto(Idle) using Dormant
 
   }

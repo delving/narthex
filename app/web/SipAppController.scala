@@ -65,7 +65,7 @@ object SipAppController extends Controller with Security {
       request.body.moveTo(datasetRepo.sipRepo.createSipZipFile(zipFileName))
       datasetRepo.dropTree()
       datasetRepo.dropSource()
-      datasetRepo.startSourceGeneration()
+      datasetRepo.startSipZipGeneration()
       Ok
     } getOrElse {
       NotAcceptable(Json.obj("err" -> s"Dataset $datasetName not found"))

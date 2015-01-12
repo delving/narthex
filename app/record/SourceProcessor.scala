@@ -39,11 +39,11 @@ object SourceProcessor {
 
   case class SourceAdoptionComplete(file: File)
 
-  case object GeneratePockets
+  case object GenerateSipZip
 
   case class PocketGenerationComplete(recordCount: Int)
 
-  case class ProcessRecords(incrementalOpt: Option[IncrementalSave])
+  case class MapAndValidate(incrementalOpt: Option[IncrementalSave])
 
   case class ProcessingComplete(validRecords: Int, invalidRecords: Int)
 
@@ -84,8 +84,8 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
         context.parent ! WorkFailure("Missing source repository!")
       }
 
-    case GeneratePockets =>
-      log.info("Generate pockets")
+    case GenerateSipZip =>
+      log.info("Generate SipZip")
       datasetRepo.sourceRepoOpt.map { sourceRepo =>
         future {
           val progressReporter = ProgressReporter(GENERATING, context.parent)
@@ -133,10 +133,10 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
           case t => context.parent ! WorkFailure(t.getMessage, Some(t))
         }
       } getOrElse {
-        context.parent ! WorkFailure("No data for generating pockets")
+        context.parent ! WorkFailure("No data for generating SipZip")
       }
 
-    case ProcessRecords(incrementalOpt) =>
+    case MapAndValidate(incrementalOpt) =>
       val sourceFacts = datasetRepo.sourceRepoOpt.map(_.sourceFacts).getOrElse(throw new RuntimeException(s"No source facts for $datasetRepo"))
       val sipMapper = datasetRepo.sipMapperOpt.getOrElse(throw new RuntimeException(s"No sip mapper for $datasetRepo"))
       if (incrementalOpt.isEmpty) datasetRepo.mappedRepo.clear()

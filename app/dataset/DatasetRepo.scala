@@ -34,7 +34,7 @@ import org.{OrgActor, OrgRepo}
 import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
-import record.SourceProcessor.{AdoptSource, GeneratePockets}
+import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
 import services.NarthexConfig.NAVE_DOMAIN
 import services.Temporal._
@@ -224,7 +224,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis)
   }
 
-  def startSourceGeneration() = OrgActor.actor ! DatasetMessage(datasetName, GeneratePockets)
+  def startSipZipGeneration() = OrgActor.actor ! DatasetMessage(datasetName, GenerateSipZip)
 
   def startMapping() = OrgActor.actor ! DatasetMessage(datasetName, StartProcessing(None))
 
