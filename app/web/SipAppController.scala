@@ -63,8 +63,6 @@ object SipAppController extends Controller with Security {
   def uploadSipZip(datasetName: String, zipFileName: String) = Secure(parse.temporaryFile) { profile => implicit request =>
     repo.datasetRepoOption(datasetName).map { datasetRepo =>
       request.body.moveTo(datasetRepo.sipRepo.createSipZipFile(zipFileName))
-      datasetRepo.dropTree()
-      datasetRepo.dropSource()
       datasetRepo.startSipZipGeneration()
       Ok
     } getOrElse {

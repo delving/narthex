@@ -41,9 +41,9 @@ object SourceProcessor {
 
   case object GenerateSipZip
 
-  case class PocketGenerationComplete(recordCount: Int)
+  case class SipZipGenerationComplete(recordCount: Int)
 
-  case class MapAndValidate(incrementalOpt: Option[IncrementalSave])
+  case class Process(incrementalOpt: Option[IncrementalSave])
 
   case class ProcessingComplete(validRecords: Int, invalidRecords: Int)
 
@@ -119,7 +119,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
               }
             }
             if (pocketCount > 0) {
-              context.parent ! PocketGenerationComplete(pocketCount)
+              context.parent ! SipZipGenerationComplete(pocketCount)
             }
             else {
               sipFileOpt.map(_.delete())
@@ -136,14 +136,14 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
         context.parent ! WorkFailure("No data for generating SipZip")
       }
 
-    case MapAndValidate(incrementalOpt) =>
+    case Process(incrementalOpt) =>
       val sourceFacts = datasetRepo.sourceRepoOpt.map(_.sourceFacts).getOrElse(throw new RuntimeException(s"No source facts for $datasetRepo"))
       val sipMapper = datasetRepo.sipMapperOpt.getOrElse(throw new RuntimeException(s"No sip mapper for $datasetRepo"))
-      if (incrementalOpt.isEmpty) datasetRepo.mappedRepo.clear()
+      if (incrementalOpt.isEmpty) datasetRepo.processedRepo.clear()
 
       val work = future {
 
-        var sourceFile = datasetRepo.mappedRepo.createFile
+        var sourceFile = datasetRepo.processedRepo.createFile
         val sourceOutput = writer(sourceFile)
         sourceOutput.write(startList)
         var validRecords = 0

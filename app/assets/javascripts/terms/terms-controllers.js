@@ -46,9 +46,7 @@ define(["angular"], function () {
         $scope.histogram = [];
         $scope.histogramVisible = [];
 
-        var recordContainer = "/pockets/pocket";
-        if ($scope.path.substring(0, recordContainer.length) != recordContainer) console.warn("Missing record container!");
-        var sourceURIPath = $scope.path.substring(recordContainer.length);
+        var sourceURIPath = $scope.path.substring('/rdf:RDF'.length);
         $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.datasetName + sourceURIPath;
 
         $scope.scrollTo = function (options) {

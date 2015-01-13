@@ -150,26 +150,27 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
     case Event(StartAnalysis, Dormant) =>
       log.info("Start analysis")
-      if (datasetRepo.mappedRepo.nonEmpty) {
+      if (datasetRepo.processedRepo.nonEmpty) {
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
-        analyzer ! AnalyzeFile(datasetRepo.mappedRepo.home)
+        analyzer ! AnalyzeFile(datasetRepo.processedRepo.home)
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)
       } else datasetRepo.rawFile.map { rawFile =>
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
         analyzer ! AnalyzeFile(rawFile)
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)
       } getOrElse {
+        // todo: sure about this?
         self ! GenerateSipZip
         stay()
       }
 
     case Event(StartProcessing(incrementalOpt), Dormant) =>
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "source-processor")
-      sourceProcessor ! MapAndValidate(incrementalOpt)
+      sourceProcessor ! Process(incrementalOpt)
       goto(Processing) using Active(Some(sourceProcessor), PROCESSING)
 
     case Event(StartCategoryCounting, Dormant) =>
-      if (datasetRepo.mappedRepo.nonEmpty) {
+      if (datasetRepo.processedRepo.nonEmpty) {
         val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo), "category-counter"))
         categoryCounter ! CountCategories()
         goto(Categorizing) using Active(Some(categoryCounter), CATEGORIZING)
@@ -187,24 +188,20 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
           "deleted"
 
         case "remove source" =>
-          deleteQuietly(datasetRepo.rawDir)
-          deleteQuietly(datasetRepo.sourceDir)
-          datasetRepo.datasetDb.setStatus(EMPTY)
+          datasetRepo.dropSourceRepo()
           "source removed"
 
-        case "remove mapped" =>
-          datasetRepo.mappedRepo.clear()
-          datasetRepo.datasetDb.setRecords(ready = false)
-          "mapped removed"
+        case "remove processed" =>
+          datasetRepo.dropProcessedRepo()
+          "processed data removed"
 
         case "remove tree" =>
-          deleteQuietly(datasetRepo.treeDir)
-          datasetRepo.datasetDb.setTree(ready = false)
+          datasetRepo.dropTree()
           "tree removed"
 
-        case "start mapping" =>
-          datasetRepo.startMapping()
-          "mapping started"
+        case "start processing" =>
+          datasetRepo.startProcessing()
+          "processing started"
 
         case "start analysis" =>
           datasetRepo.startAnalysis()
@@ -222,9 +219,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
     case Event(HarvestComplete(incrementalOpt), active: Active) =>
       incrementalOpt.map { incremental =>
-        db.setStatus(SOURCED) // first harvest
-        datasetRepo.dropTree()
         incremental.fileOpt.map { newFile =>
+          db.setState(SOURCED)
           self ! StartProcessing(Some(IncrementalSave(incremental.modifiedAfter, newFile)))
         }
       } getOrElse {
@@ -247,10 +243,10 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
   when(Generating) {
 
-    case Event(PocketGenerationComplete(recordCount), active: Active) =>
+    case Event(SipZipGenerationComplete(recordCount), active: Active) =>
       log.info(s"Generated $recordCount pockets")
-      db.setStatus(SOURCED)
-      db.setSource(ready = true, recordCount)
+      db.setState(MAPPABLE)
+      db.setRecordCount(recordCount)
       // todo: figure this out
       //        val rawFile = datasetRepo.createRawFile(datasetRepo.pocketFile.getName)
       //        FileUtils.copyFile(datasetRepo.pocketFile, rawFile)
@@ -266,7 +262,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       if (errorOption.isDefined)
         datasetRepo.dropTree()
       else
-        db.setTree(ready = true)
+        db.setState(ANALYZED)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -275,7 +271,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
   when(Processing) {
 
     case Event(ProcessingComplete(validRecords, invalidRecords), active: Active) =>
-      db.setRecords(ready = true, validRecords, invalidRecords)
+      db.setProcessedRecordCounts(validRecords, invalidRecords)
+      db.setState(PROCESSED)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 

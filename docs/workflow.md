@@ -6,10 +6,6 @@ For example, after a periodic fetch of new records, the "source" has been update
 
 This is useful for testing because it becomes possible to cause the cascade of analyzing or processing (long-lived processes) by simply deleting the timestamp indicating that the work has already been done.
 
-### EMPTY
-
-A dataset is empty when it has just been created and has not yet been given a source data file or information about how the data can be harvested for the first time.
-
 ### RAW
 
 When the data is given to Narthex in source form (not harvested) it is not yet known what XML tag represents the record delimiter and which tag or attribute represents the record's unique identifier.  The data in this case is stored separately in raw form and an analysis is performed in preparation for the following state.
@@ -36,7 +32,7 @@ A dataset is processable if an uploaded SIP-Zip file is present, because it cont
 
 When the data has been mapped and validated using the SIP-Creator mapping engine (integrated into Narthex), it appears in the form of RDF/XML in the mapped data repository.  Mapped data will initially be a single (perhaps large) file, but after each partial fetch of changed records, it will contain a series of processed files.  Similar to the source repository, the mapped repository's files are 
 
-### PROCESSED_ANALYZED
+### ANALYZED
 
 Once the processing of a dataset is completed, Narthex can perform its analysis process, where the values from each individual field or path within the source data is separated from the rest, sorted, collated, and counted.  The result of this analysis provides the user with a view of all the values that have ever appeared in a given field, which is the basis for both terminology mapping and category mapping.  These values appear in the form of an alphanumerically sorted list of unique values, and a histogram of value counts from the highest to the lowest.
 

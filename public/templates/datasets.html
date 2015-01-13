@@ -14,7 +14,7 @@
     <div data-ng-if="!files.length">
         <h4>No datasets yet</h4>
     </div>
-    <div ng-repeat="file in filteredFiles" class="file-block" data-ng-show="file.info.status">
+    <div ng-repeat="file in filteredFiles" class="file-block">
         <div data-ng-include="'dataset-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">
@@ -24,8 +24,7 @@
 
 <script type="text/ng-template" id="dataset-entry.html">
 
-
-    <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary" ng-class="{'panel-info': file.state == 'state-empty'}">
+    <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary">
         <div class="panel-heading" data-ng-click="file.expanded = !file.expanded">
             <div class="icon">
                 <div class="circle">
@@ -35,11 +34,8 @@
             <div class="name">
                 <h4>{{ file.datasetName }}</h4>
             </div>
-            <div class="explore">
-                <a href class="btn btn-info" data-ng-click="viewFile()" data-ng-show="file.treeTime">Explore <i class="fa fa-compass"></i></a>
-            </div>
             <div class="count">
-                <span data-ng-show="file.recordCount">{{ file.recordCount }}</span>
+                <span data-ng-show="file.info.recordCount">{{ file.info.recordCount.count }}</span>
             </div>
         </div>
 
@@ -47,43 +43,92 @@
 
             <div>
 
-                <span ng-if="file.state">
-                    <span ng-switch="file.state">
-                        <span class="label label-danger" ng-switch-when="state-empty">Empty</span>
-                        <span ng-switch-when="state-raw">
-                            <span class="label label-success" data-ng-show="!file.treeTime">Raw</span>
-                            <span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>
-                        </span>
-                        <span ng-switch-when="state-raw-pockets">
-                            <span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>
-                            <span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>
-                        </span>
-                        <span ng-switch-when="state-sourced">
-                            <span class="label label-primary" data-ng-show="!(file.treeTime || file.mappedTime)">Source available</span>
-                            <span class="label label-primary" data-ng-show="file.treeTime">
-                                <i class="fa fa-eye"></i> Analyzed <span class="small">{{ file.treeTime }}</span>
-                            </span>
-                            <span class="label label-info" data-ng-show="file.mappedTime">
-                                <i class="fa fa-database"></i> Mapped <span class="small">{{ file.mappedTime }}</span>
-                            </span>
-                        </span>
-                    </span>
-                </span>
+                <div data-ng-show="!file.progress">
+                    <div data-ng-show="file.info.rawState">
+                        Raw {{ file.info.rawState.time }}
+                    </div>
+                    <div data-ng-show="file.info.rawAnalyzedState">
+                        Raw Analyzed  {{ file.info.rawAnalyzedState.time }}
+                    </div>
+                    <div data-ng-show="file.info.sourcedState">
+                        Sourced {{ file.info.sourcedState.time }}
+                    </div>
+                    <div data-ng-show="file.info.mappableState">
+                        Mappable {{ file.info.mappableState.time }}
+                    </div>
+                    <div data-ng-show="file.info.processableState">
+                        Processable {{ file.info.processableState.time }}
+                        <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
+                            <i class="fa fa-cogs"></i> <span>Process</span>
+                        </button>
+                    </div>
+                    <div data-ng-show="file.info.processedState">
+                        Processed {{ file.info.processedState.time }}
+                        <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
+                            <i class="fa fa-cogs"></i> <span>Analyze</span>
+                        </button>
+                    </div>
+                    <div data-ng-show="file.info.analyzedState">
+                        Analyzed {{ file.info.analyzedState.time }}
+                        <button class="btn btn-sm btn-success" data-ng-click="viewFile()">
+                            <i class="fa fa-eye"></i> <span>Explore</span>
+                        </button>
+                    </div>
+                    <div data-ng-show="file.info.savedState">
+                        Saved {{ file.info.savedState.time }}
+                    </div>
+                </div>
 
-                <span class="label label-default" ng-if="file.info.categories.included == 'true'">
-                    <i class="fa fa-bar-chart-o"></i> Included in Category Monitor Statistics
-                </span>
+                <!--<div data-ng-hide="file.progress" class="file-block-toolbar">-->
+                    <!--<button type="button" class="btn btn-danger btn-sm" data-ng-click="discardProcessed()"-->
+                            <!--data-ng-show="file.mappedTime">-->
+                        <!--<i class="fa fa-trash-o"></i>-->
+                        <!--<span>Discard Processed Data</span>-->
+                    <!--</button>-->
+                    <!--<button class="btn btn-sm btn-danger" data-ng-click="discardTree()"-->
+                            <!--data-ng-show="file.treeTime">-->
+                        <!--<i class="fa fa-trash-o"></i>-->
+                        <!--<span>Discard Analysis</span>-->
+                    <!--</button>-->
+                    <!--<button type="button" class="btn btn-danger btn-sm" data-ng-click="discardSource()"-->
+                            <!--data-ng-show="!(file.treeTime || file.mappedTime) && file.state != 'state-empty'">-->
+                        <!--<i class="fa fa-trash-o"></i>-->
+                        <!--<span>Discard Source</span>-->
+                    <!--</button>-->
+                    <!--<button type="button" class="btn btn-danger btn-sm" data-ng-click="deleteDataset()"-->
+                            <!--data-ng-show="file.state == 'state-empty'">-->
+                        <!--<i class="fa fa-trash-o"></i>-->
+                        <!--<span>Delete Dataset</span>-->
+                    <!--</button>-->
+                <!--</div>-->
 
-                <span data-ng-show="file.prefix" class="label label-inverse pull-right">
-                    {{ file.prefix }}
-                </span>
 
+                <!--<span ng-if="file.state">-->
+                    <!--<span ng-switch="file.state">-->
+                        <!--<span class="label label-danger" ng-switch-when="state-empty">Empty</span>-->
+                        <!--<span ng-switch-when="state-raw">-->
+                            <!--<span class="label label-success" data-ng-show="!file.treeTime">Raw</span>-->
+                            <!--<span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>-->
+                        <!--</span>-->
+                        <!--<span ng-switch-when="state-raw-pockets">-->
+                            <!--<span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>-->
+                            <!--<span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>-->
+                        <!--</span>-->
+                        <!--<span ng-switch-when="state-sourced">-->
+                            <!--<span class="label label-primary" data-ng-show="!(file.treeTime || file.mappedTime)">Source available</span>-->
+                            <!--<span class="label label-primary" data-ng-show="file.treeTime">-->
+                                <!--<i class="fa fa-eye"></i> Analyzed <span class="small">{{ file.treeTime }}</span>-->
+                            <!--</span>-->
+                            <!--<span class="label label-info" data-ng-show="file.mappedTime">-->
+                                <!--<i class="fa fa-database"></i> Mapped <span class="small">{{ file.mappedTime }}</span>-->
+                            <!--</span>-->
+                        <!--</span>-->
+                    <!--</span>-->
+                <!--</span>-->
             </div>
 
             <div class="toolbar row" data-ng-if="file.error || file.progress">
-
                 <hr/>
-
                 <div class="col-xs-12">
                     <div data-ng-if="file.error" class="alert alert-explain alert-small" role="alert">
                         <strong>Message:</strong> {{ file.error }}
@@ -93,8 +138,7 @@
                             <progressbar class="form-control-feedback" animate="true" value="file.progress.count" max="100">{{ file.progress.message }}</progressbar>
                             <div class="input-group-btn">
                                 <button type="button" class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="file.progress">
-                                    <i class="fa fa-trash-o"></i>
-                                    <span>Interrupt</span>
+                                    <i class="fa fa-trash-o"></i> <span>Interrupt</span>
                                 </button>
                             </div>
                         </div>
@@ -103,11 +147,6 @@
             </div>
 
             <div data-ng-if="file.expanded">
-
-                <hr/>
-
-                <div data-ng-include="'actions.html'" class="file-block-toolbar">actions</div>
-
                 <hr/>
 
                 <h4 data-ng-show="file.info.metadata.name">
@@ -120,13 +159,13 @@
                         <li ng-class="{'active':file.tabOpen === 'metadata'}" >
                             <a href role="tab" data-ng-click="file.tabOpen = 'metadata'">Metadata</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'drop'}" data-ng-show="file.state == 'state-empty' && dropSupported">
+                        <li ng-class="{'active':file.tabOpen === 'drop'}" data-ng-show="dropSupported">
                             <a href role="tab" data-ng-click="file.tabOpen = 'drop'">File Drop</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'harvest'}" data-ng-show="file.state == 'state-empty'">
+                        <li ng-class="{'active':file.tabOpen === 'harvest'}">
                             <a href role="tab" data-ng-click="file.tabOpen ='harvest'">Harvest</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.state == 'state-sourced'">
+                        <li ng-class="{'active':file.tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.info.sourcedState">
                             <a href role="tab" data-ng-click="file.tabOpen = 'harvest-cron'">Scheduled Harvest</a>
                         </li>
                         <li ng-class="{'active':file.tabOpen === 'publication'}">
@@ -408,42 +447,6 @@
         </ul>
     </div>
 </script>
-
-<script type="text/ng-template" id="actions.html">
-    <div data-ng-hide="file.progress">
-        <button class="btn btn-sm btn-success" data-ng-click="startMapping()"
-                data-ng-show="!file.mappedTime && file.state == 'state-sourced' && file.sourceTime">
-            <i class="fa fa-database"></i>
-            <span>Execute Mapping</span>
-        </button>
-        <button type="button" class="btn btn-danger btn-sm" data-ng-click="discardMapped()"
-                data-ng-show="file.mappedTime">
-            <i class="fa fa-trash-o"></i>
-            <span>Discard Mapped Data</span>
-        </button>
-        <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()"
-                data-ng-show="!file.treeTime && file.state != 'state-empty'">
-            <i class="fa fa-eye"></i>
-            <span>Analyze Data</span>
-        </button>
-        <button class="btn btn-sm btn-danger" data-ng-click="discardTree()"
-                data-ng-show="file.treeTime">
-            <i class="fa fa-trash-o"></i>
-            <span>Discard Analysis</span>
-        </button>
-        <button type="button" class="btn btn-danger btn-sm" data-ng-click="discardSource()"
-                data-ng-show="!(file.treeTime || file.mappedTime) && file.state != 'state-empty'">
-            <i class="fa fa-trash-o"></i>
-            <span>Discard Source</span>
-        </button>
-        <button type="button" class="btn btn-danger btn-sm" data-ng-click="deleteDataset()"
-                data-ng-show="file.state == 'state-empty'">
-            <i class="fa fa-trash-o"></i>
-            <span>Delete Dataset</span>
-        </button>
-    </div>
-</script>
-
 
 <div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
     <h4>HTML5 Drop File is not supported! You need an HTML5 compliant browser.</h4>

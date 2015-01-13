@@ -66,6 +66,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
 
     case AnalyzeFile(file) =>
       log.info(s"Analyzer on ${file.getName}")
+      datasetRepo.dropTree()
       val (source, readProgress) = sourceFromFile(file)
       import context.dispatcher
       future {

@@ -44,28 +44,10 @@ object AppController extends Controller with Security {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
-  val DATASET_PROPERTY_LISTS = List(
-    "character",
-    "metadata",
-    "status",
-    "error",
-    "tree",
-    "source",
-    "records",
-    "publication",
-    "categories",
-    "namespaces",
-    "harvest",
-    "harvestCron",
-    "sipFacts",
-    "sipHints"
-  )
-
   def listDatasets = Secure() { profile => implicit request =>
-    val datasets = repo.orgDb.listDatasets.flatMap { dataset =>
-      val state = DatasetState.datasetStateFromInfo(dataset.info)
-      val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-      Some(Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists)))
+    val datasets = repo.orgDb.listDatasets.map { dataset =>
+      val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+      Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))
     }
     Ok(JsArray(datasets))
   }
@@ -77,7 +59,7 @@ object AppController extends Controller with Security {
 
   def datasetInfo(datasetName: String) = Secure() { profile => implicit request =>
     repo.datasetRepo(datasetName).datasetDb.infoOpt.map { info =>
-      val lists = DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(info, name))
+      val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(info, name))
       Ok(JsObject(lists))
     } getOrElse NotFound(Json.obj("problem" -> s"Not found $datasetName"))
   }
@@ -138,7 +120,11 @@ object AppController extends Controller with Security {
           Logger.info(s"Dropped file ${file.filename} on $datasetName: ${target.getAbsolutePath}")
           target
         })
-        error.map(message => NotAcceptable(Json.obj("problem" -> message))).getOrElse(Ok)
+        error.map {
+          message => NotAcceptable(Json.obj("problem" -> message))
+        } getOrElse {
+          Ok
+        }
       } getOrElse {
         NotAcceptable(Json.obj("problem" -> "Cannot find file in upload"))
       }

@@ -85,7 +85,6 @@ define(["angular"], function () {
             $scope.dropSupported = true;
         };
 
-        // treeTime, mappedTime, identity { datasetName, prefix, recordCount, name, dataProvider }
         $scope.decorateFile = function (file, info) {
             if (info) {
                 file.info = info;
@@ -96,33 +95,12 @@ define(["angular"], function () {
             file.originalInfo = angular.copy(file.info);
             if (info.error) file.error = info.error.message;
             file.apiMappings = user.narthexAPI + '/' + file.name + '/mappings';
-            file.state = info.status.state;
             file.datasetName = file.name;
             if (info.character) file.prefix = info.character.prefix;
             if (!info.harvest) info.harvest = {};
             if (!info.metadata) info.metadata = {};
             if (!info.publication) info.publication = {};
             if (!info.categories) info.categories = {};
-            if (info.tree && info.tree.ready == 'true') {
-                file.treeTime = info.tree.time;
-            }
-            else {
-                file.treeTime = undefined;
-            }
-            if (info.source && info.source.ready == 'true') {
-                file.sourceTime = info.source.time;
-                file.recordCount = info.source.recordCount;
-            }
-            else {
-                file.sourceTime = undefined;
-            }
-            if (info.records && info.records.ready == 'true') {
-                file.recordCount = info.records.recordCount;
-                file.mappedTime = info.records.time;
-            }
-            else {
-                file.mappedTime = undefined;
-            }
         };
 
         $scope.fetchDatasetList = function () {
@@ -279,14 +257,11 @@ define(["angular"], function () {
         }
 
         $scope.getIcon = function () {
-            if ($scope.file.mappedTime) {
+            if ($scope.file.info.savedState) { // todo: mapped -> processed, etc
                 return "fa-database"
             }
-            else if ($scope.file.treeTime) {
+            else if ($scope.file.info.analyzedState) {
                 return "fa-eye"
-            }
-            else if ($scope.fileOpen == $scope.file.name) {
-                return 'fa-folder-open-o';
             }
             else {
                 return 'fa-folder-o';
@@ -368,16 +343,16 @@ define(["angular"], function () {
             command("remove source", "Discard source?", refreshInfo);
         };
 
-        $scope.discardMapped = function () {
-            command("remove mapped", "Discard mapped data?", refreshInfo);
+        $scope.discardProcessed = function () {
+            command("remove processed", "Discard processed data?", refreshInfo);
         };
 
         $scope.discardTree = function () {
             command("remove tree", "Discard analysis?", refreshInfo);
         };
 
-        $scope.startMapping = function () {
-            command("start mapping", null, refreshProgress);
+        $scope.startProcessing = function () {
+            command("start processing", null, refreshProgress);
         };
 
         $scope.startAnalysis = function () {

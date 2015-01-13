@@ -35,7 +35,7 @@ object APIController extends Controller {
   def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasets = repo.orgDb.listDatasets.map {
       dataset =>
-        val lists = AppController.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+        val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
         Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))
     }
     //      Ok(JsArray(datasets))
@@ -139,18 +139,6 @@ object APIController extends Controller {
       datasetRepo.sipFiles.headOption
     }
     sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $datasetName"))
-  }
-
-  def uploadSipZip(apiKey: String, datasetName: String, zipFileName: String) = KeyFits(apiKey, parse.temporaryFile) { implicit request =>
-    repo.datasetRepoOption(datasetName).map { datasetRepo =>
-      request.body.moveTo(datasetRepo.sipRepo.createSipZipFile(zipFileName))
-      datasetRepo.dropTree()
-      datasetRepo.dropSource()
-      datasetRepo.startSipZipGeneration()
-      Ok
-    } getOrElse {
-      NotAcceptable(Json.obj("err" -> s"Dataset $datasetName not found"))
-    }
   }
 
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>

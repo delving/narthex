@@ -23,13 +23,13 @@ import services.FileHandling
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
-object MappedRepo {
+object ProcessedRepo {
   val SUFFIX = ".xml"
 }
 
-class MappedRepo(val home: File) {
+class ProcessedRepo(val home: File) {
 
-  import dataset.MappedRepo._
+  import dataset.ProcessedRepo._
 
   private def numberString(number: Int): String = "%05d".format(number)
 

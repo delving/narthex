@@ -27,6 +27,7 @@ import services.Temporal._
 
 import scala.xml.{Elem, NodeSeq, XML}
 
+
 object DatasetDb {
   def toJsObjectEntryOption(datasetInfo: Elem, tag: String) = {
     val fields: Seq[(String, JsString)] = (datasetInfo \ tag).headOption.map(element =>
@@ -36,6 +37,21 @@ object DatasetDb {
   }
 
   def prefixOptFromInfo(info: Elem) = Option((info \ "character" \ "prefix").text).find(_.trim.nonEmpty)
+
+  val DATASET_PROPERTY_LISTS = List(
+    "character",
+    "metadata",
+    "error",
+    "recordCount",
+    "processedRecordCounts",
+    "publication",
+    "categories",
+    "namespaces",
+    "harvest",
+    "harvestCron",
+    "sipFacts",
+    "sipHints"
+  ) ++ DatasetState.ALL_STATES.map(_.name)
 
 }
 
@@ -92,16 +108,16 @@ case class DatasetState(name: String) {
 }
 
 object DatasetState {
-  val EMPTY = DatasetState("state-empty")
-  val RAW = DatasetState("state-raw")
-  val RAW_POCKETS = DatasetState("state-raw-pockets")
-  val SOURCED = DatasetState("state-sourced")
+  val RAW = DatasetState("rawState")
+  val RAW_ANALYZED = DatasetState("rawAnalyzedState")
+  val SOURCED = DatasetState("sourcedState")
+  val MAPPABLE = DatasetState("mappableState")
+  val PROCESSABLE = DatasetState("processableState")
+  val PROCESSED = DatasetState("processedState")
+  val ANALYZED = DatasetState("analyzedState")
+  val SAVED = DatasetState("savedState")
 
-  val ALL_STATES = List(EMPTY, RAW, RAW_POCKETS, SOURCED)
-
-  def datasetStateFromString(string: String): Option[DatasetState] = ALL_STATES.find(s => s.matches(string))
-
-  def datasetStateFromInfo(datasetInfo: NodeSeq) = datasetStateFromString((datasetInfo \ "status" \ "state").text).get
+  val ALL_STATES = List(RAW, RAW_ANALYZED, SOURCED, MAPPABLE, PROCESSABLE, PROCESSED, ANALYZED, SAVED)
 }
 
 class DatasetDb(repoDb: OrgDb, datasetName: String) {
@@ -120,13 +136,8 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
           |   <character>
           |     <prefix>$prefix</prefix>
           |   </character>
-          | let $$status :=
-          |   <status>
-          |     <state>state-empty</state>
-          |     <time>$now</time>
-          |   </status>
           | let $$dataset :=
-          |   <dataset name="$datasetName">{ $$character }{ $$status }</dataset>
+          |   <dataset name="$datasetName">{ $$character }</dataset>
           | return
           |   if (exists($datasetElement))
           |   then replace node $datasetElement with $$dataset
@@ -171,43 +182,33 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     session.query(update).execute()
   }
 
-  def setStatus(state: DatasetState, errorOpt: Option[String] = None) = setProperties(
-    "status",
-    "state" -> state,
-    "time" -> now,
-    "error" -> errorOpt.getOrElse("")
-  )
+  def removeProperties(listName: String): Unit = db { session =>
+    val update = s"""
+          |
+          | let $$block := $datasetElement/$listName
+          | return delete node $$block
+          |
+          """.stripMargin.trim
+    Logger.info(s"$datasetName remove $listName")
+    session.query(update).execute()
+  }
 
-  def setError(message: String) = setProperties(
-    "error",
-    "message" -> message,
+  def setState(state: DatasetState) = setProperties(state.name, "time" -> now)
+
+  def removeState(state: DatasetState) = removeProperties(state.name)
+
+  def setError(message: String) = setProperties("error", "message" -> message, "time" -> now)
+
+  def setRecordCount(count: Int) = setProperties("recordCount", "count" -> count, "time" -> now)
+
+  def setProcessedRecordCounts(validCount: Int, invalidCount: Int) = setProperties(
+    "processedRecordCounts",
+    "valid" -> validCount,
+    "invalid" -> invalidCount,
     "time" -> now
   )
 
-  def setTree(ready: Boolean) = setProperties(
-    "tree",
-    "ready" -> ready,
-    "time" -> now
-  )
-
-  def setSource(ready: Boolean, recordCount: Int) = setProperties(
-    "source",
-    "ready" -> ready,
-    "recordCount" -> recordCount,
-    "time" -> now
-  )
-
-  def setRecords(ready: Boolean, recordCount: Int = 0, invalidRecordCount: Int = 0) = setProperties(
-    "records",
-    "ready" -> ready,
-    "recordCount" -> recordCount,
-    "invalidRecordCount" -> invalidRecordCount,
-    "time" -> now
-  )
-
-  def setNamespaceMap(namespaceMap: Map[String, String]) = setProperties(
-    "namespaces", namespaceMap.toSeq: _*
-  )
+  def setNamespaceMap(namespaces: Map[String, String]) = setProperties("namespaces", namespaces.toSeq: _*)
 
   def setHarvestInfo(harvestType: HarvestType, url: String, dataset: String, prefix: String) = setProperties(
     "harvest",
@@ -224,17 +225,11 @@ class DatasetDb(repoDb: OrgDb, datasetName: String) {
     "unit" -> harvestCron.unit.toString
   )
 
-  def setSipFacts(facts: Map[String, String]) = setProperties(
-    "sipFacts", facts.toSeq: _*
-  )
+  def setSipFacts(facts: Map[String, String]) = setProperties("sipFacts", facts.toSeq: _*)
 
-  def setSipHints(hints: Map[String, String]) = setProperties(
-    "sipHints", hints.toSeq: _*
-  )
+  def setSipHints(hints: Map[String, String]) = setProperties("sipHints", hints.toSeq: _*)
 
-  def setMetadata(metadata: Map[String, String]) = setProperties(
-    "metadata", metadata.toSeq: _*
-  )
+  def setMetadata(metadata: Map[String, String]) = setProperties("metadata", metadata.toSeq: _*)
 
   def setPublication(publishOaiPmh: String, publishIndex: String, publishLoD: String) = setProperties(
     "publication",

@@ -34,13 +34,11 @@ define(["angular"], function () {
 
         datasetService.datasetInfo($scope.datasetName).then(function (info) {
 
-            $scope.state = info.status.state;
-            $scope.rawState = $scope.state == 'state-raw';
-            $scope.sourcedState = $scope.state == 'state-sourced';
-            if (!$scope.rawState) {
-                // all other statuses involve pockets (state-empty, state-raw-pockets, state-sourced)
-                $scope.recordContainer = "/pockets/pocket";
-                $scope.uniqueId = "/pockets/pocket/@id";
+            $scope.rawAnalyzedState = !!info.rawAnalyzedState;
+            $scope.analyzedState = !!info.analyzedState;
+            if (info.analyzedState) {
+                $scope.recordRoot = "/rdf:RDF/rdf:Description";
+                $scope.uniqueId = "/rdf:RDF/rdf:Description/@rdf:about";
             }
 
             datasetService.index($scope.datasetName).then(function (tree) {
@@ -57,31 +55,22 @@ define(["angular"], function () {
                 sortKids(tree);
 
                 function setDelimiterNodes(node) {
-                    var nodePathContainer = node.path.substring(0, node.path.lastIndexOf("/"));
-                    // the only element under pocket will be the record root
-                    if (nodePathContainer == $scope.recordContainer && node.tag.indexOf('@') < 0) {
+                    if (node.path == $scope.recordRoot) {
                         $scope.recordRootNode = node;
-                        $scope.recordRoot = node.path;
                     }
                     else if (node.path == $scope.uniqueId) {
                         $scope.uniqueIdNode = node;
                     }
-                    else {
-                        var rootPart = node.path.substring(0, $scope.recordContainer.length);
-                        if (rootPart != $scope.recordContainer) {
-                            console.log(rootPart + " != " + $scope.recordContainer);
-                            node.path = "";
-                        }
-                        else {
-                            var recPath = node.path.substring($scope.recordContainer.length);
-                            node.sourcePath = $scope.sourceURIPrefix + recPath;
-                        }
+                    else if (node.path.length > $scope.recordRoot.length) {
+                        var recordContainerLength = $scope.recordRoot.lastIndexOf('/');
+                        var sourcePathExtension = node.path.substring(recordContainerLength);
+                        node.sourcePath = $scope.sourceURIPrefix + sourcePathExtension;
                     }
                     for (var index = 0; index < node.kids.length; index++) {
                         setDelimiterNodes(node.kids[index]);
                     }
                 }
-                if ($scope.recordContainer) setDelimiterNodes(tree);
+                if ($scope.recordRoot) setDelimiterNodes(tree);
 
                 datasetService.getTermSourcePaths($scope.datasetName).then(function (data) {
                     console.log('get term source paths', data.sourcePaths);
