@@ -39,97 +39,69 @@
             </div>
         </div>
 
-        <div class="panel-body">
+        <div class="panel-body container">
 
-            <div>
-
-                <div data-ng-show="!file.progress">
-                    <div data-ng-show="file.info.rawState">
-                        Raw {{ file.info.rawState.time }}
-                    </div>
-                    <div data-ng-show="file.info.rawAnalyzedState">
-                        Raw Analyzed  {{ file.info.rawAnalyzedState.time }}
-                    </div>
-                    <div data-ng-show="file.info.sourcedState">
-                        Sourced {{ file.info.sourcedState.time }}
-                    </div>
-                    <div data-ng-show="file.info.mappableState">
-                        Mappable {{ file.info.mappableState.time }}
-                    </div>
-                    <div data-ng-show="file.info.processableState">
-                        Processable {{ file.info.processableState.time }}
+            <div data-ng-show="!file.progress" class="toolbar row">
+                <div data-ng-show="file.info.rawState" class="col-md-1">
+                    <div><strong>Raw</strong></div>
+                    <div><small>{{ file.info.rawState.d }}</small></div>
+                    <div><small>{{ file.info.rawState.t }}</small></div>
+                </div>
+                <div data-ng-show="file.info.rawAnalyzedState" class="col-md-1">
+                    <div><strong>Raw Analyzed</strong></div>
+                    <div><small>{{ file.info.rawAnalyzedState.d }}</small></div>
+                    <div><small>{{ file.info.rawAnalyzedState.t }}</small></div>
+                </div>
+                <div data-ng-show="file.info.sourcedState" class="col-md-1">
+                    <div><strong>Sourced</strong></div>
+                    <div><small>{{ file.info.sourcedState.d }}</small></div>
+                    <div><small>{{ file.info.sourcedState.t }}</small></div>
+                </div>
+                <div data-ng-show="file.info.mappableState" class="col-md-1">
+                    <div><strong>Mappable</strong></div>
+                    <div><small>{{ file.info.mappableState.d }}</small></div>
+                    <div><small>{{ file.info.mappableState.t }}</small></div>
+                    <div><small>Use</small><br/><a href="{{sipCreatorLink}}">SIPCreator</a></div>
+                </div>
+                <div data-ng-show="file.info.processableState" class="col-md-1">
+                    <div><strong>Processable</strong></div>
+                    <div><small>{{ file.info.processableState.d }}</small></div>
+                    <div><small>{{ file.info.processableState.t }}</small></div>
+                    <div>
                         <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
                             <i class="fa fa-cogs"></i> <span>Process</span>
                         </button>
                     </div>
-                    <div data-ng-show="file.info.processedState">
-                        Processed {{ file.info.processedState.time }}
+                </div>
+                <div data-ng-show="file.info.processedState" class="col-md-1">
+                    <div><strong>Processed</strong></div>
+                    <div><small>{{ file.info.processedState.d }}</small></div>
+                    <div><small>{{ file.info.processedState.t }}</small></div>
+                    <div>
                         <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
                             <i class="fa fa-cogs"></i> <span>Analyze</span>
                         </button>
                     </div>
-                    <div data-ng-show="file.info.analyzedState">
-                        Analyzed {{ file.info.analyzedState.time }}
+                </div>
+                <div data-ng-show="file.info.analyzedState" class="col-md-1">
+                    <div><strong>Analyzed</strong></div>
+                    <div><small>{{ file.info.analyzedState.d }}</small></div>
+                    <div><small>{{ file.info.analyzedState.t }}</small></div>
+                    <div>
                         <button class="btn btn-sm btn-success" data-ng-click="viewFile()">
                             <i class="fa fa-eye"></i> <span>Explore</span>
                         </button>
                     </div>
-                    <div data-ng-show="file.info.savedState">
-                        Saved {{ file.info.savedState.time }}
-                    </div>
                 </div>
-
-                <!--<div data-ng-hide="file.progress" class="file-block-toolbar">-->
-                    <!--<button type="button" class="btn btn-danger btn-sm" data-ng-click="discardProcessed()"-->
-                            <!--data-ng-show="file.mappedTime">-->
-                        <!--<i class="fa fa-trash-o"></i>-->
-                        <!--<span>Discard Processed Data</span>-->
-                    <!--</button>-->
-                    <!--<button class="btn btn-sm btn-danger" data-ng-click="discardTree()"-->
-                            <!--data-ng-show="file.treeTime">-->
-                        <!--<i class="fa fa-trash-o"></i>-->
-                        <!--<span>Discard Analysis</span>-->
-                    <!--</button>-->
-                    <!--<button type="button" class="btn btn-danger btn-sm" data-ng-click="discardSource()"-->
-                            <!--data-ng-show="!(file.treeTime || file.mappedTime) && file.state != 'state-empty'">-->
-                        <!--<i class="fa fa-trash-o"></i>-->
-                        <!--<span>Discard Source</span>-->
-                    <!--</button>-->
-                    <!--<button type="button" class="btn btn-danger btn-sm" data-ng-click="deleteDataset()"-->
-                            <!--data-ng-show="file.state == 'state-empty'">-->
-                        <!--<i class="fa fa-trash-o"></i>-->
-                        <!--<span>Delete Dataset</span>-->
-                    <!--</button>-->
-                <!--</div>-->
-
-
-                <!--<span ng-if="file.state">-->
-                    <!--<span ng-switch="file.state">-->
-                        <!--<span class="label label-danger" ng-switch-when="state-empty">Empty</span>-->
-                        <!--<span ng-switch-when="state-raw">-->
-                            <!--<span class="label label-success" data-ng-show="!file.treeTime">Raw</span>-->
-                            <!--<span class="label label-success" data-ng-show="file.treeTime">Raw Analyzed {{ file.treeTime }}</span>-->
-                        <!--</span>-->
-                        <!--<span ng-switch-when="state-raw-pockets">-->
-                            <!--<span class="label label-success" data-ng-show="!file.treeTime">Raw Pockets</span>-->
-                            <!--<span class="label label-success" data-ng-show="file.treeTime">Raw Pockets Analyzed {{ file.treeTime }}</span>-->
-                        <!--</span>-->
-                        <!--<span ng-switch-when="state-sourced">-->
-                            <!--<span class="label label-primary" data-ng-show="!(file.treeTime || file.mappedTime)">Source available</span>-->
-                            <!--<span class="label label-primary" data-ng-show="file.treeTime">-->
-                                <!--<i class="fa fa-eye"></i> Analyzed <span class="small">{{ file.treeTime }}</span>-->
-                            <!--</span>-->
-                            <!--<span class="label label-info" data-ng-show="file.mappedTime">-->
-                                <!--<i class="fa fa-database"></i> Mapped <span class="small">{{ file.mappedTime }}</span>-->
-                            <!--</span>-->
-                        <!--</span>-->
-                    <!--</span>-->
-                <!--</span>-->
+                <div data-ng-show="file.info.savedState" class="col-md-1">
+                    <div><strong>Saved</strong></div>
+                    <div><small>{{ file.info.savedState.d }}</small></div>
+                    <div><small>{{ file.info.savedState.t }}</small></div>
+                </div>
             </div>
 
             <div class="toolbar row" data-ng-if="file.error || file.progress">
-                <hr/>
-                <div class="col-xs-12">
+                <div class="col-sm-6">
                     <div data-ng-if="file.error" class="alert alert-explain alert-small" role="alert">
                         <strong>Message:</strong> {{ file.error }}
                     </div>
@@ -146,7 +118,7 @@
                 </div>
             </div>
 
-            <div data-ng-if="file.expanded">
+            <div data-ng-if="file.expanded" class="file-block">
                 <hr/>
 
                 <h4 data-ng-show="file.info.metadata.name">
@@ -154,7 +126,7 @@
                     <span data-ng-show="file.info.metadata.dataProvider">from "{{ file.info.metadata.dataProvider }}": </span>
                 </h4>
 
-                <div class="tabbable dataset-tabs">
+                <div class="tabbable dataset-tabs" class="col-sm-6">
                     <ul class="nav nav-tabs" role="tablist">
                         <li ng-class="{'active':file.tabOpen === 'metadata'}" >
                             <a href role="tab" data-ng-click="file.tabOpen = 'metadata'">Metadata</a>

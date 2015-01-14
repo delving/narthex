@@ -22,6 +22,24 @@ String.prototype.endsWith = function (suffix) {
 define(["angular"], function () {
     "use strict";
 
+    var states = [
+        'rawState', 'rawAnalyzedState', 'sourcedState',
+        'mappableState', 'processableState', 'processedState',
+        'analyzedState', 'savedState'
+    ];
+
+    var progressStates = {
+        'state-harvesting': "Harvesting",
+        'state-collecting': "Collecting",
+        'state-adopting': "Adopting",
+        'state-generating': "Generating",
+        'state-splitting': "Splitting",
+        'state-collating': "Collating",
+        'state-categorizing': "Categorizing",
+        'state-processing': "Processing",
+        'state-error': "Error"
+    };
+
     /**
      * user is not a service, but stems from userResolve (Check ../user/datasets-services.js) object used by dashboard.routes.
      */
@@ -101,7 +119,17 @@ define(["angular"], function () {
             if (!info.metadata) info.metadata = {};
             if (!info.publication) info.publication = {};
             if (!info.categories) info.categories = {};
+
+            _.forEach(states, function(stateName) {
+                var block = info[stateName];
+                if (block) {
+                    var dt = block.time.split('T');
+                    block.d = dt[0];
+                    block.t = dt[1].split('+')[0];
+                }
+            });
         };
+
 
         $scope.fetchDatasetList = function () {
             datasetsService.listDatasets().then(function (files) {
@@ -177,18 +205,6 @@ define(["angular"], function () {
             });
         };
 
-        var stateNames = {
-            'state-harvesting': "Harvesting",
-            'state-collecting': "Collecting",
-            'state-adopting': "Adopting",
-            'state-generating': "Generating",
-            'state-splitting': "Splitting",
-            'state-collating': "Collating",
-            'state-categorizing': "Categorizing",
-            'state-processing': "Processing",
-            'state-error': "Error"
-        };
-
         function createProgressMessage(p) {
             if (p.count == 0) p.count = 1;
             var pre = '';
@@ -213,7 +229,7 @@ define(["angular"], function () {
                         break;
                 }
                 if (p.count > 15) {
-                    pre = stateNames[p.state] + " ";
+                    pre = progressStates[p.state] + " ";
                 }
             }
             p.message = pre + mid + post;
@@ -376,7 +392,6 @@ define(["angular"], function () {
                 fetchSipFileList();
             });
         };
-
     };
 
     DatasetEntryCtrl.$inject = ["$scope", "datasetsService", "$location", "$timeout", "$upload"];

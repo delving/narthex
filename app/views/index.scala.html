@@ -14,7 +14,7 @@
     </head>
     <body>
 
-        <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="HeaderCtrl" data-ng-init="toggleBar = true">
+        <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="HeaderCtrl" data-ng-init="initialize('@orgId', '@sipCreatorLink')">
 
 
         <!-- Sidebar -->
@@ -75,7 +75,7 @@
             <!-- End Sidebar -->
             <div id="content-wrapper">
                 <div class="page-content">
-                    <div class="row page-header" data-ng-init="setOrg('@orgId')"  data-ng-if="user">
+                    <div class="row page-header" data-ng-if="user">
                         <div class="col-xs-4">
                             <div class="meta fa-3x">
                                 <span class="page">{{ pageTitle }}</span>
@@ -103,11 +103,6 @@
                                         <li class="link">
                                             <a href="" data-ng-click="logout()">
                                                 <span class="glyphicon glyphicon-off"></span> Logout
-                                            </a>
-                                        </li>
-                                        <li class="link">
-                                            <a href="@sipCreatorLink">
-                                                <span class="glyphicon glyphicon-download"></span> SIP app
                                             </a>
                                         </li>
                                     </ul>

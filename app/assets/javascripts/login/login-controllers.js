@@ -45,8 +45,10 @@ define(["angular"], function (angular) {
     /** Controls the header */
     var HeaderCtrl = function ($rootScope, $scope, userService, $location) {
 
-        $scope.setOrg = function (orgId) {
+        $scope.initialize = function(orgId, sipCreatorLink) {
             $rootScope.orgId = orgId;
+            $rootScope.sipCreatorLink = sipCreatorLink;
+            $scope.toggleBar = true;
         };
 
         $scope.freshLogin = function() {
