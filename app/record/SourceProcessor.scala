@@ -16,13 +16,13 @@
 
 package record
 
-import java.io.{File, FileOutputStream}
+import java.io.{File, FileOutputStream, StringReader, StringWriter}
 
 import akka.actor.{Actor, ActorLogging, Props}
+import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import dataset.DatasetActor.{IncrementalSave, InterruptWork, WorkFailure}
 import dataset.DatasetRepo
 import dataset.ProgressState._
-import dataset.Sip._
 import dataset.SipFactory.SipGenerationFacts
 import org.apache.commons.io.FileUtils
 import record.PocketParser.Pocket
@@ -49,8 +49,11 @@ object SourceProcessor {
 
   def props(datasetRepo: DatasetRepo) = Props(new SourceProcessor(datasetRepo))
 
-  val startList = s"""<$RDF_PREFIX:$RDF_ROOT_TAG xmlns:$RDF_PREFIX="$RDF_URI">\n"""
-  val endList = s"""</$RDF_PREFIX:$RDF_ROOT_TAG>\n"""
+  def quadString(graphURI: String, model: Model): String = {
+    val triples = new StringWriter()
+    model.write(triples, "N-TRIPLES")
+    triples.toString.split("\n").map(t => s"<$graphURI> $t").mkString("","\n", "\n")
+  }
 
 }
 
@@ -145,7 +148,6 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
 
         var sourceFile = datasetRepo.processedRepo.createFile
         val sourceOutput = writer(sourceFile)
-        sourceOutput.write(startList)
         var validRecords = 0
         var invalidRecords = 0
         var time = System.currentTimeMillis()
@@ -153,7 +155,8 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
         def catchPocket(rawPocket: Pocket): Unit = {
           val pocketOpt = sipMapper.map(rawPocket)
           pocketOpt.map { pocket =>
-            sourceOutput.write(pocket.text)
+            val model = ModelFactory.createDefaultModel().read(new StringReader(pocket.text), null, "RDF/XML")
+            sourceOutput.write(quadString(pocket.id, model))
             validRecords += 1
           } getOrElse {
             invalidRecords += 1
@@ -188,7 +191,6 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
           }
         }
 
-        sourceOutput.write(endList)
         sourceOutput.close()
         context.parent ! ProcessingComplete(validRecords, invalidRecords)
       }

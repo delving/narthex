@@ -22,7 +22,6 @@ import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import play.api.Play.current
 import play.api.libs.json.JsObject
 import play.api.libs.ws.WS
-import services.NarthexConfig
 
 import scala.concurrent.Future
 
@@ -32,7 +31,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object TripleStoreClient {
 
-  lazy val store = new TripleStoreClient(NarthexConfig.TRIPLE_STORE_URL)
+//  lazy val store = new TripleStoreClient(NarthexConfig.TRIPLE_STORE_URL)
 
 }
 
@@ -91,7 +90,6 @@ class TripleStoreClient(storeURL: String) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
       }
       val rdf = response.body
-      println(s"get response: $rdf")
       ModelFactory.createDefaultModel().read(new StringReader(rdf), null, "TURTLE")
     }
   }

@@ -353,7 +353,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
           Logger.info("Invalid record " + pocket.id)
           None
         } getOrElse {
-          Some(Pocket(pocket.id, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
+          Some(Pocket(rdfAbout, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
         }
       } catch {
         case discard: DiscardRecordException =>

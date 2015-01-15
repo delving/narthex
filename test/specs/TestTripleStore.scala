@@ -1,6 +1,6 @@
 package specs
 
-import java.io.StringReader
+import java.io.{StringReader, StringWriter}
 
 import com.hp.hpl.jena.rdf.model.ModelFactory
 import org.scalatestplus.play._
@@ -33,7 +33,15 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
     val fetched = await(ts.get(graphURI))
 
-    println(s"Get: $fetched")
+    val triples = new StringWriter()
+
+    fetched.write(triples, "N-TRIPLES")
+
+    val quads = triples.toString.split("\n").map(t => s"<$graphURI> $t").mkString("\n")
+
+    println(s"Get:\n$triples")
+
+    println(s"Get:\n$quads")
   }
 
 
