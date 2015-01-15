@@ -47,7 +47,6 @@ libraryDependencies ++= Seq(
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
-//  "org.apache.jena" % "jena-core" % "2.12.1" excludeAll ExclusionRule(organization = "org.slf4j"),
   "org.apache.jena" % "jena-arq" % "2.12.1" excludeAll ExclusionRule(organization = "org.slf4j"),
   "eu.delving" % "sip-core" % "14.12-SNAPSHOT"
 )

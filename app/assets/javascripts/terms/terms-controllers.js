@@ -46,8 +46,7 @@ define(["angular"], function () {
         $scope.histogram = [];
         $scope.histogramVisible = [];
 
-        var sourceURIPath = $scope.path.substring('/rdf:RDF'.length);
-        $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.datasetName + sourceURIPath;
+        $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.datasetName + $scope.path;
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);

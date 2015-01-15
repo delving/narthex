@@ -3,7 +3,6 @@ package specs
 import java.io.StringReader
 
 import com.hp.hpl.jena.query.DatasetFactory
-import com.hp.hpl.jena.rdf.model.ModelFactory
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play._
 import triplestore.TripleStoreClient
@@ -27,11 +26,7 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
        """.stripMargin
 
     val dataset = DatasetFactory.createMem()
-
-    val model = ModelFactory.createDefaultModel().read(new StringReader(record), null, "RDF/XML")
-
-    dataset.addNamedModel(graphURI, model)
-
+    val model = dataset.getNamedModel(graphURI).read(new StringReader(record), null, "RDF/XML")
     RDFDataMgr.write(System.out, dataset, RDFFormat.NQUADS_UTF8)
 
 //    val pr = await(ts.post(graphURI, model))

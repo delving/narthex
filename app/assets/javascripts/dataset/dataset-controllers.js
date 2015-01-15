@@ -37,8 +37,8 @@ define(["angular"], function () {
             $scope.rawAnalyzedState = !!info.rawAnalyzedState;
             $scope.analyzedState = !!info.analyzedState;
             if (info.analyzedState) {
-                $scope.recordRoot = "/rdf:RDF/rdf:Description";
-                $scope.uniqueId = "/rdf:RDF/rdf:Description/@rdf:about";
+                $scope.recordRoot = "/rdf:Description";
+                $scope.uniqueId = "/rdf:Description/@rdf:about";
             }
 
             datasetService.index($scope.datasetName).then(function (tree) {

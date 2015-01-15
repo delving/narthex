@@ -22,7 +22,6 @@ import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{IncrementalSave, InterruptWork, WorkFailure}
 import dataset.DatasetRepo
 import dataset.ProgressState._
-import dataset.Sip._
 import dataset.SipFactory.SipGenerationFacts
 import org.apache.commons.io.FileUtils
 import record.PocketParser.Pocket
@@ -48,9 +47,6 @@ object SourceProcessor {
   case class ProcessingComplete(validRecords: Int, invalidRecords: Int)
 
   def props(datasetRepo: DatasetRepo) = Props(new SourceProcessor(datasetRepo))
-
-  val startList = s"""<$RDF_PREFIX:$RDF_ROOT_TAG xmlns:$RDF_PREFIX="$RDF_URI">\n"""
-  val endList = s"""</$RDF_PREFIX:$RDF_ROOT_TAG>\n"""
 
 }
 
@@ -145,7 +141,6 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
 
         var sourceFile = datasetRepo.processedRepo.createFile
         val sourceOutput = writer(sourceFile)
-        sourceOutput.write(startList)
         var validRecords = 0
         var invalidRecords = 0
         var time = System.currentTimeMillis()
@@ -188,7 +183,6 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
           }
         }
 
-        sourceOutput.write(endList)
         sourceOutput.close()
         context.parent ! ProcessingComplete(validRecords, invalidRecords)
       }
