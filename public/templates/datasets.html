@@ -14,10 +14,10 @@
 
 
 <div class="file-list" data-ng-init="breadcrumbs.dataset=''">
-    <div data-ng-if="!files.length">
+    <div data-ng-if="!files.length" class="col-md-12">
         <h4>No datasets yet</h4>
     </div>
-    <div ng-repeat="file in filteredFiles" class="file-block">
+    <div ng-repeat="file in filteredFiles" class="file-block col-md-6">
         <div data-ng-include="'dataset-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">
@@ -28,101 +28,99 @@
 <script type="text/ng-template" id="dataset-entry.html">
 
     <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary">
+
         <div class="panel-heading" data-ng-click="file.expanded = !file.expanded">
-            <div class="icon">
-                <div class="circle">
-                    <i class="fa {{ getIcon() }} fa-2x fa-fw"></i>
-                </div>
-            </div>
-            <div class="name">
-                <h4>{{ file.datasetName }}</h4>
-            </div>
-            <div class="count">
-                <span data-ng-show="file.info.recordCount">{{ file.info.recordCount.count }}</span>
-            </div>
+
+                <i class="fa fa-fw {{ getIcon() }}"></i>
+
+                <span class="name">{{ file.datasetName }}</span>
+
+                <span data-ng-if="file.error" class="label label-danger">
+                    <i class="fa fa-exclamation-circle"></i> {{ file.error }}
+                </span>
+
+                <span data-ng-show="file.info.recordCount" class="count pull-right">{{ file.info.recordCount.count }}</span>
+
         </div>
 
-        <div class="panel-body container">
+        <div class="panel-body">
 
-            <div data-ng-show="!file.progress" class="toolbar row">
-                <div data-ng-show="file.info.rawState" class="col-md-1">
+            <div data-ng-show="!file.progress" class="ds-states">
+                <div data-ng-show="file.info.rawState" class="ds-state">
                     <div><strong>Raw</strong></div>
-                    <div><small>{{ file.info.rawState.d }}</small></div>
-                    <div><small>{{ file.info.rawState.t }}</small></div>
+                    <div>{{ file.info.rawState.d }}</div>
+                    <div>{{ file.info.rawState.t }}</div>
                 </div>
-                <div data-ng-show="file.info.rawAnalyzedState" class="col-md-1">
+                <div data-ng-show="file.info.rawAnalyzedState" class="ds-state">
                     <div><strong>Raw Analyzed</strong></div>
-                    <div><small>{{ file.info.rawAnalyzedState.d }}</small></div>
-                    <div><small>{{ file.info.rawAnalyzedState.t }}</small></div>
+                    <div>{{ file.info.rawAnalyzedState.d }}</div>
+                    <div>{{ file.info.rawAnalyzedState.t }}</div>
                 </div>
-                <div data-ng-show="file.info.sourcedState" class="col-md-1">
+                <div data-ng-show="file.info.sourcedState" class="ds-state">
                     <div><strong>Sourced</strong></div>
-                    <div><small>{{ file.info.sourcedState.d }}</small></div>
-                    <div><small>{{ file.info.sourcedState.t }}</small></div>
+                    <div>{{ file.info.sourcedState.d }}</div>
+                    <div>{{ file.info.sourcedState.t }}</div>
                 </div>
-                <div data-ng-show="file.info.mappableState" class="col-md-1">
+                <div data-ng-show="file.info.mappableState" class="ds-state">
                     <div><strong>Mappable</strong></div>
-                    <div><small>{{ file.info.mappableState.d }}</small></div>
-                    <div><small>{{ file.info.mappableState.t }}</small></div>
-                    <div><small>Use</small><br/><a href="{{sipCreatorLink}}">SIPCreator</a></div>
+                    <div>{{ file.info.mappableState.d }}</div>
+                    <div>{{ file.info.mappableState.t }}</div>
+                    <div><a href="{{sipCreatorLink}}" class="btn btn-sm btn-default"><i class="fa fa-download"></i> SIPCreator</a></div>
                 </div>
-                <div data-ng-show="file.info.processableState" class="col-md-1">
+                <div data-ng-show="file.info.processableState" class="ds-state">
                     <div><strong>Processable</strong></div>
-                    <div><small>{{ file.info.processableState.d }}</small></div>
-                    <div><small>{{ file.info.processableState.t }}</small></div>
+                    <div>{{ file.info.processableState.d }}</div>
+                    <div>{{ file.info.processableState.t }}</div>
                     <div>
                         <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
                             <i class="fa fa-cogs"></i> <span>Process</span>
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="file.info.processedState" class="col-md-1">
+                <div data-ng-show="file.info.processedState" class="ds-state">
                     <div><strong>Processed</strong></div>
-                    <div><small>{{ file.info.processedState.d }}</small></div>
-                    <div><small>{{ file.info.processedState.t }}</small></div>
+                    <div>{{ file.info.processedState.d }}</div>
+                    <div>{{ file.info.processedState.t }}</div>
                     <div>
                         <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
                             <i class="fa fa-cogs"></i> <span>Analyze</span>
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="file.info.analyzedState" class="col-md-1">
+                <div data-ng-show="file.info.analyzedState" class="ds-state">
                     <div><strong>Analyzed</strong></div>
-                    <div><small>{{ file.info.analyzedState.d }}</small></div>
-                    <div><small>{{ file.info.analyzedState.t }}</small></div>
+                    <div>{{ file.info.analyzedState.d }}</div>
+                    <div>{{ file.info.analyzedState.t }}</div>
                     <div>
                         <button class="btn btn-sm btn-success" data-ng-click="viewFile()">
                             <i class="fa fa-eye"></i> <span>Explore</span>
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="file.info.savedState" class="col-md-1">
+                <div data-ng-show="file.info.savedState" class="ds-state">
                     <div><strong>Saved</strong></div>
-                    <div><small>{{ file.info.savedState.d }}</small></div>
-                    <div><small>{{ file.info.savedState.t }}</small></div>
+                    <div>{{ file.info.savedState.d }}</div>
+                    <div>{{ file.info.savedState.t }}</div>
                 </div>
             </div>
 
-            <div class="toolbar row" data-ng-if="file.error || file.progress">
-                <div class="col-sm-6">
-                    <div data-ng-if="file.error" class="alert alert-explain alert-small" role="alert">
-                        <strong>Message:</strong> {{ file.error }}
-                    </div>
-                    <div data-ng-if="file.progress" class="">
-                        <div class="input-group">
-                            <progressbar class="form-control-feedback" animate="true" value="file.progress.count" max="100">{{ file.progress.message }}</progressbar>
-                            <div class="input-group-btn">
-                                <button type="button" class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="file.progress">
-                                    <i class="fa fa-trash-o"></i> <span>Interrupt</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+            <div data-ng-if="file.progress">
+
+
+            <div class="input-group">
+                <progressbar class="form-control-feedback" animate="true" value="file.progress.count" max="100">{{ file.progress.message }}</progressbar>
+                <div class="input-group-btn">
+                    <button type="button" class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="file.progress">
+                        <i class="fa fa-trash-o"></i> <span>Interrupt</span>
+                    </button>
                 </div>
             </div>
 
-            <div data-ng-if="file.expanded" class="file-block">
-                <hr/>
+
+            </div>
+
+            <div data-ng-if="file.expanded" class="">
+
 
                 <h4 data-ng-show="file.info.metadata.name">
                     <span>"{{ file.info.metadata.name }}"</span>
