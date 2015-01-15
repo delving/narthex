@@ -1,14 +1,17 @@
-<div class="row form-group">
-    <div class="col-sm-10">
-        <div class="input-group search-all-field">
-            <span class="input-group-addon"><i class="fa fa-search"></i> Filter: </span>
-            <input class="form-control" type="text" data-ng-model="specFilter"/>
+<div class="navbar navbar-default">
+    <form class="navbar-form">
+        <div class="form-group">
+            <div class="input-group">
+                <span class="input-group-addon"><i class="fa fa-search"></i> Filter: </span>
+                <input class="form-control" type="text" data-ng-model="specFilter" placeholder="Type here to filter"/>
+            </div>
         </div>
-    </div>
-    <div class="col-sm-2">
-        <a href class="btn btn-info form-control" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
-    </div>
+        <a href class="btn btn-info pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
+    </form>
 </div>
+
+
+
 
 <div class="file-list" data-ng-init="breadcrumbs.dataset=''">
     <div data-ng-if="!files.length">

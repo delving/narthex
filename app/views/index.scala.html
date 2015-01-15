@@ -75,12 +75,12 @@
             <!-- End Sidebar -->
             <div id="content-wrapper">
                 <div class="page-content">
-                    <div class="row page-header" data-ng-init="setOrg('@orgId')"  data-ng-if="user">
+                    <div class="row dash-row page-header" data-ng-init="setOrg('@orgId')"  data-ng-if="user">
                         <div class="col-xs-4">
-                            <div class="meta fa-3x">
+                            <div class="fa-2x">
                                 <span class="page">{{ pageTitle }}</span>
                                 @*<ul class="breadcrumb breadcrumb-links">*@
-                                    <span class="fa fa-bank"></span>
+                                    <span class="fa fa-institution"></span>
                                     <span>@orgId</span>
                                     <!-- todo: add breadcrumbs per view -->
                                 @*</ul>*@
@@ -116,7 +116,7 @@
                         </div>
                     </div>
 
-                    <div class="row">
+                    <div class="row dash-row">
                         <div class="container-fluid">
                             <div data-ng-view></div>
                         </div>
