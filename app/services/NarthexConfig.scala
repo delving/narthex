@@ -50,4 +50,7 @@ object NarthexConfig {
 
   val SHOW_CATEGORIES = configFlag("categories")
   val SHOW_THESAURUS = configFlag("thesaurus")
+
+  val TRIPLE_STORE_URL = configString("tripleStore.URL")
+
 }
