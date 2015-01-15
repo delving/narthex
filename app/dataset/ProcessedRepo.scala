@@ -24,7 +24,7 @@ import services.FileHandling
  */
 
 object ProcessedRepo {
-  val SUFFIX = ".n-quads"
+  val SUFFIX = ".xml"
 }
 
 class ProcessedRepo(val home: File) {
@@ -41,7 +41,7 @@ class ProcessedRepo(val home: File) {
     num.toInt
   }
 
-  private def createProcessedFile(number: Int): File = {
+  private def createXmlFile(number: Int): File = {
     home.mkdir()
     new File(home, sourceFileName(number))
   }
@@ -55,7 +55,7 @@ class ProcessedRepo(val home: File) {
 
   def createFile: File = {
     val fileNumber = listFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
-    createProcessedFile(fileNumber)
+    createXmlFile(fileNumber)
   }
 
   def nonEmpty: Boolean = listFiles.nonEmpty

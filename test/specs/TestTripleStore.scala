@@ -1,10 +1,11 @@
 package specs
 
-import java.io.{StringReader, StringWriter}
+import java.io.StringReader
 
+import com.hp.hpl.jena.query.DatasetFactory
 import com.hp.hpl.jena.rdf.model.ModelFactory
+import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play._
-import play.api.test.Helpers._
 import triplestore.TripleStoreClient
 
 class TestTripleStore extends PlaySpec with OneAppPerSuite {
@@ -25,23 +26,29 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
       |</rdf:Description>
        """.stripMargin
 
+    val dataset = DatasetFactory.createMem()
+
     val model = ModelFactory.createDefaultModel().read(new StringReader(record), null, "RDF/XML")
 
-    val pr = await(ts.post(graphURI, model))
+    dataset.addNamedModel(graphURI, model)
 
-    println(s"Post: $pr")
+    RDFDataMgr.write(System.out, dataset, RDFFormat.NQUADS_UTF8)
 
-    val fetched = await(ts.get(graphURI))
-
-    val triples = new StringWriter()
-
-    fetched.write(triples, "N-TRIPLES")
-
-    val quads = triples.toString.split("\n").map(t => s"<$graphURI> $t").mkString("\n")
-
-    println(s"Get:\n$triples")
-
-    println(s"Get:\n$quads")
+//    val pr = await(ts.post(graphURI, model))
+//
+//    println(s"Post: $pr")
+//
+//    val fetched = await(ts.get(graphURI))
+//
+//    val triples = new StringWriter()
+//
+//    fetched.write(triples, "N-TRIPLES")
+//
+//    val quads = triples.toString.split("\n").map(t => s"<$graphURI> $t").mkString("\n")
+//
+//    println(s"Get:\n$triples")
+//
+//    println(s"Get:\n$quads")
   }
 
 
