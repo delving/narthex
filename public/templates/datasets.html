@@ -17,7 +17,7 @@
     <div data-ng-if="!files.length" class="col-md-12">
         <h4>No datasets yet</h4>
     </div>
-    <div ng-repeat="file in filteredFiles" class="file-block col-md-6">
+    <div ng-repeat="file in filteredFiles" class="file-block col-lg-6">
         <div data-ng-include="'dataset-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">
@@ -105,22 +105,19 @@
             </div>
 
             <div data-ng-if="file.progress">
-
-
-            <div class="input-group">
-                <progressbar class="form-control-feedback" animate="true" value="file.progress.count" max="100">{{ file.progress.message }}</progressbar>
-                <div class="input-group-btn">
-                    <button type="button" class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="file.progress">
-                        <i class="fa fa-trash-o"></i> <span>Interrupt</span>
-                    </button>
+                <div class="input-group">
+                    <progressbar class="form-control-feedback" animate="true" value="file.progress.count" max="100">{{ file.progress.message }}</progressbar>
+                    <div class="input-group-btn">
+                        <button class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="file.progress">
+                            <i class="fa fa-trash-o"></i> <span>Interrupt</span>
+                        </button>
+                    </div>
                 </div>
-            </div>
-
-
             </div>
 
             <div data-ng-if="file.expanded" class="">
 
+                <hr />
 
                 <h4 data-ng-show="file.info.metadata.name">
                     <span>"{{ file.info.metadata.name }}"</span>

@@ -261,13 +261,16 @@ a {
     }
   }
   .ds-states {
-    .clearfix;
+    .clearfix();
   }
   .ds-state {
     width: auto;
     display: inline-block;
     float: left;
     margin-right: 20px;
+  }
+  .progress {
+    margin: 0px;
   }
 }
 
@@ -327,13 +330,6 @@ a {
     text-decoration: none;
     font-size: 1.5em;
   }
-}
-
-.file-info {
-  background: @linnen;
-  border: 1px solid lighten(@tan, 25%);
-  margin-top: 10px;
-  padding: 10px;
 }
 
 .file-drop {
