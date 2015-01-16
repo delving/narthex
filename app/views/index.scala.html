@@ -21,41 +21,71 @@
             <!-- Sidebar -->
 
             <div id="sidebar-wrapper">
-                <ul class="sidebar" sidebar-nav="active">
-                    <li class="sidebar-main">
-                        <a href="" class="">
-                            <span data-ng-click="freshLogin()">
-                                <img src='@routes.Assets.at("images/delving-logo.png")' width="32"/>
-                                <span>NARTHEX</span>
-                            </span>
+
+                <div class="sidebar">
+
+                    <div class="sidebar-header">
+                        <a href="" class="" data-ng-click="freshLogin()">
+                            <img src='@routes.Assets.at("images/delving-logo.png")' width="32"/> NARTHEX
                             <span ng-click="toggleSidebar()" class="menu-icon glyphicon glyphicon-transfer"></span>
                         </a>
-                    </li>
+                    </div>
 
-                        <li class="sidebar-title"><span>NAVIGATION</span></li>
-                        <li class="sidebar-list">
-                            <a href="/#/datasets">Datasets <span class="menu-icon fa fa-cubes"></span></a>
-                        </li>
-                        @if(showCategories) {
-                            <li class="sidebar-list">
-                                <a href="/#/categories">Category Monitor <span class="menu-icon fa fa-calculator"></span></a>
-                            </li>
-                        }
-                        @if(showThesaurus) {
-                            <li class="sidebar-list">
-                                <a href="/#/thesaurus">Thesaurus alignment <span class="menu-icon fa fa-exchange"></span></a>
-                            </li>
-                        }
-                        <li data-ng-show="breadcrumbs.dataset" class="sidebar-title">
-                            <span>LAST VIEWED</span>
-                        </li>
-                        <li class="sidebar-list" data-ng-show="breadcrumbs.dataset">
-                            <a href="/#/dataset/{{ breadcrumbs.dataset }}">
-                                {{ breadcrumbs.dataset }} <span class="menu-icon fa fa-eye"></span>
-                            </a>
-                        </li>
+                    <div data-ng-if="user">
 
-                </ul>
+                        <ul sidebar-nav="active" class="sidebar-nav">
+                            <li class="sidebar-title">
+                                <span>NAVIGATION</span>
+                            </li>
+                            <li class="sidebar-list">
+                                <a href="/#/datasets">
+                                    Datasets <span class="menu-icon fa fa-cubes"></span>
+                                </a>
+                            </li>
+                            @if(showCategories) {
+                                <li class="sidebar-list">
+                                    <a href="/#/categories">
+                                        Category Monitor <span class="menu-icon fa fa-calculator"></span>
+                                    </a>
+                                </li>
+                            }
+                            @if(showThesaurus) {
+                                <li class="sidebar-list">
+                                    <a href="/#/thesaurus">
+                                        Thesaurus alignment <span class="menu-icon fa fa-exchange"></span>
+                                    </a>
+                                </li>
+                            }
+                            <li data-ng-show="breadcrumbs.dataset" class="sidebar-title">
+                                <span>LAST VIEWED</span>
+                            </li>
+                            <li class="sidebar-list" data-ng-show="breadcrumbs.dataset">
+                                <a href="/#/dataset/{{ breadcrumbs.dataset }}">
+                                    {{ breadcrumbs.dataset }} <span class="menu-icon fa fa-eye"></span>
+                                </a>
+                            </li>
+
+                        </ul>
+
+                        <div class="sidebar-user">
+
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-primary btn-block dropdown-toggle" aria-haspopup="true" aria-expanded="false">
+                                    {{user.email}} <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu d" role="menu">
+                                    <li>
+                                        <a href="#" data-ng-click="logout()">Logout</a>
+                                    </li>
+                                </ul>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+
                 <div class="sidebar-footer">
                     <div class="col-xs-4">
                         <a href="https://github.com/delving/narthex" target="_blank">
@@ -77,61 +107,16 @@
 
             <!-- End Sidebar -->
 
+            <!-- Main Views -->
+
             <div id="content-wrapper">
-
-                <div class="page-content">
-                    <div class="row page-header" data-ng-if="user">
-                        <div class="col-xs-4">
-                            <div class="fa-2x">
-                                <span class="page">{{ pageTitle }}</span>
-                                @*<ul class="breadcrumb breadcrumb-links">*@
-                                    <span class="fa fa-institution"></span>
-                                    <span>@orgId</span>
-                                    <!-- todo: add breadcrumbs per view -->
-                                @*</ul>*@
-                            </div>
-                        </div>
-                        <div class="col-xs-6" id="header-options">
-                            <!-- todo: dynamically add functional linkes/buttons/dropdowns/filters depending on view -->
-                        </div>
-                        <div class="col-xs-2" id="header-user">
-                            <div data-ng-switch="!!user" data-ng-cloak>
-                                <div data-ng-switch-when="true" class="user pull-right dropdown">
-                                    <a href="#" class="dropdown-toggle" aria-haspopup="true" aria-expanded="false">
-                                        <i class="fa fa-2x fa-user"></i>
-                                    </a>
-                                    <ul class="dropdown-menu dropdown-menu-left">
-                                        <li class="dropdown-header">
-                                            <span class="glyphicon glyphicon-user"></span> <span>{{user.email}}</span>
-                                        </li>
-                                        <li class="divider"></li>
-                                        <li class="link">
-                                            <a href="" data-ng-click="logout()">
-                                                <span class="glyphicon glyphicon-off"></span> Logout
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row dash-row">
-                        <div class="container-fluid">
-                            <div data-ng-view></div>
-                        </div>
-                    </div>
-
-
-
-
+                <div class="container-fluid">
+                    <div data-ng-view></div>
                 </div>
             </div>
 
-
-
+            <!-- End Main Views -->
         </div>
-
 
     </body>
 </html>

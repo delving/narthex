@@ -1,17 +1,27 @@
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-            <div class="input-group">
-                <span class="input-group-addon"><i class="fa fa-search"></i> Filter: </span>
-                <input class="form-control" type="text" data-ng-model="specFilter" placeholder="Type here to filter"/>
+<div class="page-header">
+    <!-- page specifiction actions/tools -->
+    <div class="actions pull-right">
+        <form class="form-inline">
+            <div class="form-group">
+                <label>Filter datasets:</label>
+                <input type="text" class="form-control" data-ng-model="specFilter" placeholder="Type here to filter"/>
             </div>
+            <div class="form-group">
+                <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
+            </div>
+        </form>
+    </div>
+    <!-- page location, org -->
+    <div class="meta">
+        <div class="page">
+            Datasets
+        </div>
+        <div class="organization">
+            <span class="fa fa-institution"></span>
+            <span>{{ orgId }}</span>
         </div>
     </div>
-    <div class="col-md-6">
-        <a href class="btn btn-info pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
-    </div>
 </div>
-
 
 <div class="file-list" data-ng-init="breadcrumbs.dataset=''">
     <div data-ng-if="!files.length" class="col-md-12">
@@ -115,7 +125,7 @@
                 </div>
             </div>
 
-            <div data-ng-if="file.expanded" class="">
+            <div data-ng-if="file.expanded">
 
                 <hr />
 
@@ -124,7 +134,8 @@
                     <span data-ng-show="file.info.metadata.dataProvider">from "{{ file.info.metadata.dataProvider }}": </span>
                 </h4>
 
-                <div class="tabbable dataset-tabs" class="col-sm-6">
+                <div class="tabbable dataset-tabs">
+
                     <ul class="nav nav-tabs" role="tablist">
                         <li ng-class="{'active':file.tabOpen === 'metadata'}" >
                             <a href role="tab" data-ng-click="file.tabOpen = 'metadata'">Metadata</a>
@@ -151,6 +162,7 @@
                             <a href role="tab" data-ng-click="file.tabOpen = 'sip-zip'">SIP Files</a>
                         </li>
                     </ul>
+
                     <div class="tab-content">
                         <div ng-switch="file.tabOpen">
                             <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
