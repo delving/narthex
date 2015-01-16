@@ -43,7 +43,7 @@ define(["angular"], function (angular) {
     LoginCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
 
     /** Controls the header */
-    var HeaderCtrl = function ($rootScope, $scope, userService, $location) {
+    var IndexCtrl = function ($rootScope, $scope, userService, $location) {
 
         $scope.initialize = function(orgId, sipCreatorLink) {
             $rootScope.orgId = orgId;
@@ -82,10 +82,11 @@ define(["angular"], function (angular) {
         $rootScope.breadcrumbs = {};
 
     };
-    HeaderCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
+
+    IndexCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
 
     return {
-        HeaderCtrl: HeaderCtrl,
+        IndexCtrl: IndexCtrl,
         LoginCtrl: LoginCtrl
     };
 

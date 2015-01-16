@@ -38,7 +38,7 @@ define(
                 "login.services"
             ]
         );
-        narthexLogin.controller("HeaderCtrl", controllers.HeaderCtrl);
+        narthexLogin.controller("IndexCtrl", controllers.IndexCtrl);
         narthexLogin.controller("SidebarCtrl", controllers.SidebarCtrl);
         return narthexLogin;
     }
