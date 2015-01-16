@@ -25,7 +25,7 @@ import play.api.libs.json.{JsObject, JsString}
 import services.BaseX._
 import services.Temporal._
 
-import scala.xml.{Elem, NodeSeq, XML}
+import scala.xml.{Elem, XML}
 
 
 object DatasetDb {
@@ -53,51 +53,6 @@ object DatasetDb {
     "sipHints"
   ) ++ DatasetState.ALL_STATES.map(_.name)
 
-}
-
-case class ProgressType(name: String) {
-  override def toString = name
-
-  def matches(otherName: String) = name == otherName
-}
-
-object ProgressType {
-  val TYPE_IDLE = ProgressType("progress-idle")
-  val BUSY = ProgressType("progress-busy")
-  val PERCENT = ProgressType("progress-percent")
-  val WORKERS = ProgressType("progress-workers")
-  val PAGES = ProgressType("progress-pages")
-
-  val ALL_PROGRESS_TYPES = List(TYPE_IDLE, BUSY, PERCENT, WORKERS, PAGES)
-
-  def progressTypeFromString(string: String): Option[ProgressType] = ALL_PROGRESS_TYPES.find(s => s.matches(string))
-
-  def progressTypeFromInfo(datasetInfo: NodeSeq) = progressTypeFromString((datasetInfo \ "progress" \ "type").text)
-}
-
-case class ProgressState(name: String) {
-  override def toString = name
-
-  def matches(otherName: String) = name == otherName
-}
-
-object ProgressState {
-  val STATE_IDLE = ProgressState("state-idle")
-  val HARVESTING = ProgressState("state-harvesting")
-  val COLLECTING = ProgressState("state-collecting")
-  val ADOPTING = ProgressState("state-adopting")
-  val GENERATING = ProgressState("state-generating")
-  val SPLITTING = ProgressState("state-splitting")
-  val COLLATING = ProgressState("state-collating")
-  val CATEGORIZING = ProgressState("state-categorizing")
-  val PROCESSING = ProgressState("state-processing")
-  val ERROR = ProgressState("state-error")
-
-  val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, PROCESSING, ERROR)
-
-  def progressStateFromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
-
-  def progressStateFromInfo(datasetInfo: NodeSeq) = progressStateFromString((datasetInfo \ "progress" \ "state").text)
 }
 
 

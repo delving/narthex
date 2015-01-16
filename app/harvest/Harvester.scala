@@ -23,13 +23,13 @@ import akka.actor.{Actor, Props}
 import akka.pattern.pipe
 import dataset.DatasetActor.{InterruptWork, WorkFailure}
 import dataset.DatasetRepo
-import dataset.ProgressState._
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, PMHHarvestPage}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
 import services.ProgressReporter
+import services.ProgressReporter.ProgressState._
 
 import scala.concurrent._
 import scala.language.postfixOps

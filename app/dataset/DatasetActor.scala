@@ -24,8 +24,6 @@ import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DatasetState._
-import dataset.ProgressState._
-import dataset.ProgressType._
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType._
@@ -36,6 +34,9 @@ import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import record.SourceProcessor
 import record.SourceProcessor._
+import services.ProgressReporter.ProgressState._
+import services.ProgressReporter.{ProgressState, ProgressType}
+import services.ProgressReporter.ProgressType._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

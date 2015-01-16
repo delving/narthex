@@ -21,12 +21,12 @@ import java.io.{File, FileOutputStream}
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{IncrementalSave, InterruptWork, WorkFailure}
 import dataset.DatasetRepo
-import dataset.ProgressState._
 import dataset.SipFactory.SipGenerationFacts
 import org.apache.commons.io.FileUtils
 import record.PocketParser.Pocket
 import record.SourceProcessor._
 import services.FileHandling._
+import services.ProgressReporter.ProgressState._
 import services.{FileHandling, ProgressReporter}
 
 import scala.concurrent._

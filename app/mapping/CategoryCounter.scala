@@ -18,11 +18,12 @@ package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{InterruptWork, WorkFailure}
-import dataset.{DatasetRepo, ProgressState}
+import dataset.DatasetRepo
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import record.CategoryParser
 import record.CategoryParser.CategoryCount
 import record.PocketParser._
+import services.ProgressReporter.ProgressState._
 import services.{FileHandling, NarthexConfig, ProgressReporter}
 
 import scala.concurrent._
@@ -55,7 +56,7 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
         val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT, categoryMappings)
         val (source, readProgress) = FileHandling.sourceFromFile(datasetRepo.processedRepo.home)
         try {
-          val progressReporter = ProgressReporter(ProgressState.CATEGORIZING, context.parent)
+          val progressReporter = ProgressReporter(CATEGORIZING, context.parent)
           progress = Some(progressReporter)
           progressReporter.setReadProgress(readProgress)
           parser.parse(source, Set.empty[String], progressReporter)

@@ -18,16 +18,63 @@ package services
 
 import akka.actor.ActorRef
 import dataset.DatasetActor.ProgressTick
-import dataset.ProgressState
-import dataset.ProgressType._
 import play.api.Logger
 import services.FileHandling.ReadProgress
+import services.ProgressReporter.ProgressType._
+import services.ProgressReporter._
+
+import scala.xml.NodeSeq
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
  */
 
 object ProgressReporter {
+
+  case class ProgressType(name: String) {
+    override def toString = name
+
+    def matches(otherName: String) = name == otherName
+  }
+
+  object ProgressType {
+    val TYPE_IDLE = ProgressType("progress-idle")
+    val BUSY = ProgressType("progress-busy")
+    val PERCENT = ProgressType("progress-percent")
+    val WORKERS = ProgressType("progress-workers")
+    val PAGES = ProgressType("progress-pages")
+
+    val ALL_PROGRESS_TYPES = List(TYPE_IDLE, BUSY, PERCENT, WORKERS, PAGES)
+
+    def progressTypeFromString(string: String): Option[ProgressType] = ALL_PROGRESS_TYPES.find(s => s.matches(string))
+
+    def progressTypeFromInfo(datasetInfo: NodeSeq) = progressTypeFromString((datasetInfo \ "progress" \ "type").text)
+  }
+
+  case class ProgressState(name: String) {
+    override def toString = name
+
+    def matches(otherName: String) = name == otherName
+  }
+
+  object ProgressState {
+    val STATE_IDLE = ProgressState("state-idle")
+    val HARVESTING = ProgressState("state-harvesting")
+    val COLLECTING = ProgressState("state-collecting")
+    val ADOPTING = ProgressState("state-adopting")
+    val GENERATING = ProgressState("state-generating")
+    val SPLITTING = ProgressState("state-splitting")
+    val COLLATING = ProgressState("state-collating")
+    val CATEGORIZING = ProgressState("state-categorizing")
+    val PROCESSING = ProgressState("state-processing")
+    val ERROR = ProgressState("state-error")
+
+    val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, PROCESSING, ERROR)
+
+    def progressStateFromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
+
+    def progressStateFromInfo(datasetInfo: NodeSeq) = progressStateFromString((datasetInfo \ "progress" \ "state").text)
+  }
 
   def apply(progressState: ProgressState, datasetActor: ActorRef) = new UpdatingProgressReporter(progressState, datasetActor)
 

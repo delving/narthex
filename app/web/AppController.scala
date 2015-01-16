@@ -35,6 +35,7 @@ import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
+import services.ProgressReporter.ProgressType._
 import thesaurus.ThesaurusDb._
 import web.MainController.OkFile
 
@@ -74,7 +75,7 @@ object AppController extends Controller with Security {
     replyData.map {
       case Dormant =>
         Ok(Json.obj(
-          "progressType" -> ProgressType.TYPE_IDLE.name
+          "progressType" -> TYPE_IDLE.name
         ))
       case Active(_, progressState, progressType, count) =>
         Ok(Json.obj(
@@ -84,13 +85,13 @@ object AppController extends Controller with Security {
         ))
       case InError(message) =>
         Ok(Json.obj(
-          "progressType" -> ProgressType.TYPE_IDLE.name,
+          "progressType" -> TYPE_IDLE.name,
           "errorMessage" -> message
         ))
     } recover {
       case t: AskTimeoutException =>
         Ok(Json.obj(
-          "progressType" -> ProgressType.TYPE_IDLE.name,
+          "progressType" -> TYPE_IDLE.name,
           "errorMessage" -> "actor didn't answer"
         ))
     }

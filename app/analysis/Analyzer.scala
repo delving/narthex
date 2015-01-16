@@ -27,10 +27,10 @@ import analysis.Sorter._
 import analysis.TreeNode.RandomSample
 import dataset.DatasetActor.InterruptWork
 import dataset.DatasetRepo
-import dataset.ProgressState._
 import org.apache.commons.io.FileUtils
 import play.api.libs.json._
 import services.FileHandling.{reader, sourceFromFile, writer}
+import services.ProgressReporter.ProgressState._
 import services._
 
 import scala.concurrent._
