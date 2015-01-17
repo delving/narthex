@@ -149,6 +149,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
           val pocketOpt = sipMapper.map(rawPocket)
           pocketOpt.map { pocket =>
             sourceOutput.write(pocket.text)
+            sourceOutput.write(s"<!--<${pocket.id}>-->\n")
             validRecords += 1
           } getOrElse {
             invalidRecords += 1

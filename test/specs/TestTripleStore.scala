@@ -1,34 +1,42 @@
 package specs
 
-import java.io.StringReader
+import java.io.File
 
-import com.hp.hpl.jena.query.DatasetFactory
+import dataset.ProcessedRepo
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play._
-import triplestore.TripleStoreClient
 
 class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
 
   "The triple store " in {
 
-    val ts = new TripleStoreClient("http://localhost:3030/narthex")
+    val home = new File(getClass.getResource(s"/processed").getFile)
+    val repo = new ProcessedRepo(home)
 
-    val graphURI = "http://narthextest/testgraph"
+    val reader = repo.createDatasetReader(2)
 
-    val record =
-      s"""
-      |<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-279">
-      |  <icn:technique>olieverf op karton | oil on cardboard</icn:technique>
-      |  <dc:title>Volendammers in the Snow</dc:title>
-      |  <dc:creator>Abraham Doorgeest</dc:creator>
-      |</rdf:Description>
-       """.stripMargin
+    val dataset = reader.nextDataset.get
 
-    val dataset = DatasetFactory.createMem()
-    val model = dataset.getNamedModel(graphURI).read(new StringReader(record), null, "RDF/XML")
-    RDFDataMgr.write(System.out, dataset, RDFFormat.NQUADS_UTF8)
+    RDFDataMgr.write(System.out, dataset, RDFFormat.TRIG_PRETTY)
 
+//    val ts = new TripleStoreClient("http://localhost:3030/narthex")
+//
+//    val graphURI = "http://narthextest/testgraph"
+//
+//    val record =
+//      s"""
+//      |<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-279">
+//      |  <icn:technique>olieverf op karton | oil on cardboard</icn:technique>
+//      |  <dc:title>Volendammers in the Snow</dc:title>
+//      |  <dc:creator>Abraham Doorgeest</dc:creator>
+//      |</rdf:Description>
+//       """.stripMargin
+//
+//    val dataset = DatasetFactory.createMem()
+//    val model = dataset.getNamedModel(graphURI).read(new StringReader(record), null, "RDF/XML")
+//    RDFDataMgr.write(System.out, dataset, RDFFormat.NQUADS_UTF8)
+//
 //    val pr = await(ts.post(graphURI, model))
 //
 //    println(s"Post: $pr")

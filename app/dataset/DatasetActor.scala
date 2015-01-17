@@ -35,8 +35,8 @@ import org.joda.time.DateTime
 import record.SourceProcessor
 import record.SourceProcessor._
 import services.ProgressReporter.ProgressState._
-import services.ProgressReporter.{ProgressState, ProgressType}
 import services.ProgressReporter.ProgressType._
+import services.ProgressReporter.{ProgressState, ProgressType}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -152,8 +152,9 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
     case Event(StartAnalysis, Dormant) =>
       log.info("Start analysis")
       if (datasetRepo.processedRepo.nonEmpty) {
+        // todo: kill all when finished so this can not lookup, just create
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
-        analyzer ! AnalyzeFile(datasetRepo.processedRepo.home)
+        analyzer ! AnalyzeFile(datasetRepo.processedRepo.baseFile)
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)
       } else datasetRepo.rawFile.map { rawFile =>
         val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))

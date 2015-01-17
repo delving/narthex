@@ -1,0 +1,270 @@
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/mf%20G%202000-5%20b">
+    <icn:technique>foto | photo</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>I Love You</dc:title>
+    <dc:creator>Luuk Wilmering</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:date>1997/98</dc:date>
+    <dc:type>foto; portret | photo; portrait</dc:type>
+    <dc:identifier>mf G 2000-5 b</dc:identifier>
+    <dc:rights>hoge resolutie afbeelding beschikbaar | high resolution image available</dc:rights>
+    <dcterms:medium>foto | photo</dcterms:medium>
+    <europeana:isShownBy>http://mail.franshalsmuseum.nl:15414/image/mk-2000/digck-mf%20g%202000-5%20b.jpg?cache=yes</europeana:isShownBy>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:object>http://mail.franshalsmuseum.nl:15414/image/mk-2000/digck-mf%20g%202000-5%20b.jpg?cache=yes</europeana:object>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/3</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/mf%20G%202000-5%20b>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-279">
+    <icn:technique>olieverf op karton | oil on cardboard</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>Volendammers in the Snow</dc:title>
+    <dc:creator>Abraham Doorgeest</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:type>schilderij; landschap | painting; landscape</dc:type>
+    <dc:identifier>msch 80-279</dc:identifier>
+    <dcterms:medium>olieverf op karton | oil on cardboard</dcterms:medium>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5415</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-279>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-280">
+    <icn:technique>olieverf op doek | oil on canvas</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>View of the Oude Burgwal</dc:title>
+    <dc:creator>Abraham Doorgeest</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:type>schilderij; stadsgezicht | painting; cityscape</dc:type>
+    <dc:identifier>msch 80-280</dc:identifier>
+    <dcterms:medium>olieverf op doek | oil on canvas</dcterms:medium>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5416</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-280>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201191">
+    <icn:technique>olieverf op doek | oil on canvas</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>Studio Impression</dc:title>
+    <dc:creator>Kees Verwey</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:date>1900/95</dc:date>
+    <dc:type>schilderij; stilleven | painting; still life</dc:type>
+    <dc:identifier>ikvsch 1191</dc:identifier>
+    <dcterms:medium>olieverf op doek | oil on canvas</dcterms:medium>
+    <europeana:isShownBy>http://mail.franshalsmuseum.nl:15414/image/ikvsch/ikvsch%201191.jpg?cache=yes</europeana:isShownBy>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:object>http://mail.franshalsmuseum.nl:15414/image/ikvsch/ikvsch%201191.jpg?cache=yes</europeana:object>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5419</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201191>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201192">
+    <icn:technique>olieverf op doek | oil on canvas</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>Portrait of a Woman in a Yellow Jacket</dc:title>
+    <dc:creator>Kees Verwey</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:date>1980</dc:date>
+    <dc:type>schilderij; portret | painting; portrait</dc:type>
+    <dc:identifier>ikvsch 1192</dc:identifier>
+    <dcterms:medium>olieverf op doek | oil on canvas</dcterms:medium>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5430</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201192>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201193">
+    <icn:technique>olieverf op doek | oil on canvas</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>Studio Still Life with Pottery</dc:title>
+    <dc:creator>Kees Verwey</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:date>1978</dc:date>
+    <dc:type>schilderij; stilleven | painting; still life</dc:type>
+    <dc:identifier>ikvsch 1193</dc:identifier>
+    <dcterms:medium>olieverf op doek | oil on canvas</dcterms:medium>
+    <europeana:isShownBy>http://mail.franshalsmuseum.nl:15414/image/ikvsch/ikvsch%201193.jpg?cache=yes</europeana:isShownBy>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:object>http://mail.franshalsmuseum.nl:15414/image/ikvsch/ikvsch%201193.jpg?cache=yes</europeana:object>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5441</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201193>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-312">
+    <icn:technique>olieverf op hardboard | oil on hardboard</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>The Gathering of the NSBers (after the War)</dc:title>
+    <dc:creator>Abraham Doorgeest</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:date>1947</dc:date>
+    <dc:type>schilderij; genrestuk | painting; genre painting</dc:type>
+    <dc:identifier>msch 80-312</dc:identifier>
+    <dcterms:medium>olieverf op hardboard | oil on hardboard</dcterms:medium>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5450</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-312>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201194">
+    <icn:technique>olieverf op doek | oil on canvas</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>Studio Impression with Jar and Mandolin</dc:title>
+    <dc:creator>Kees Verwey</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:date>1980</dc:date>
+    <dc:type>schilderij; stilleven | painting; still life</dc:type>
+    <dc:identifier>ikvsch 1194</dc:identifier>
+    <dcterms:medium>olieverf op doek | oil on canvas</dcterms:medium>
+    <europeana:isShownBy>http://mail.franshalsmuseum.nl:15414/image/ikvsch/ikvsch%201194.jpg?cache=yes</europeana:isShownBy>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:object>http://mail.franshalsmuseum.nl:15414/image/ikvsch/ikvsch%201194.jpg?cache=yes</europeana:object>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5452</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201194>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-315">
+    <icn:technique>olieverf op meubelplaat | oil on blockboard</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>Still Life on Glass</dc:title>
+    <dc:creator>Abraham Doorgeest</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:type>schilderij; stilleven | painting; still life</dc:type>
+    <dc:identifier>msch 80-315</dc:identifier>
+    <dcterms:medium>olieverf op meubelplaat | oil on blockboard</dcterms:medium>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5454</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-315>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-324">
+    <icn:technique>olieverf op doek | oil on canvas</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>Gloria Transita (Still Life)</dc:title>
+    <dc:creator>Abraham Doorgeest</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:type>schilderij; stilleven | painting; still life</dc:type>
+    <dc:identifier>msch 80-324</dc:identifier>
+    <dcterms:medium>olieverf op doek | oil on canvas</dcterms:medium>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5464</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-324>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-329">
+    <icn:technique>olieverf op hardboard | oil on hardboard</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:creator>Abraham Doorgeest</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:date>1940</dc:date>
+    <dc:type>schilderij; portret (zelfportret) | painting; portrait (self-portrait)</dc:type>
+    <dc:identifier>msch 80-329</dc:identifier>
+    <dcterms:medium>olieverf op hardboard | oil on hardboard</dcterms:medium>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/5469</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-329>-->
+<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%20307">
+    <icn:technique>olieverf op doek | oil on canvas</icn:technique>
+    <icn:province>Noord-Holland</icn:province>
+    <icn:collectionPart>Moderne Kunst</icn:collectionPart>
+    <dc:title>The Table</dc:title>
+    <dc:creator>Kees Verwey</dc:creator>
+    <dc:publisher>FHM</dc:publisher>
+    <dc:date>1987</dc:date>
+    <dc:type>schilderij; stilleven | painting; still life</dc:type>
+    <dc:identifier>ikvsch 307</dc:identifier>
+    <dcterms:medium>olieverf op doek | oil on canvas</dcterms:medium>
+    <europeana:isShownBy>http://mail.franshalsmuseum.nl:15414/image/ikvsch%20307.jpg?cache=yes</europeana:isShownBy>
+    <europeana:rights>http://creativecommons.org/licenses/by-nc/3.0/nl/</europeana:rights>
+    <europeana:object>http://mail.franshalsmuseum.nl:15414/image/ikvsch%20307.jpg?cache=yes</europeana:object>
+    <europeana:provider>Frans Halsmuseum</europeana:provider>
+    <europeana:dataProvider>Frans Halsmuseum</europeana:dataProvider>
+    <europeana:type>IMAGE</europeana:type>
+    <europeana:uri>frans-hals-museum/1198</europeana:uri>
+    <europeana:language>nl</europeana:language>
+    <europeana:country>Netherlands</europeana:country>
+    <europeana:collectionName>frans-hals-museum</europeana:collectionName>
+    <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
+</rdf:Description>
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%20307>-->
