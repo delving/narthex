@@ -4,7 +4,6 @@ import java.io.File
 
 import dataset.DatasetInfo._
 import dataset.{DatasetInfo, ProcessedRepo}
-import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play._
 import play.api.test.Helpers._
 import triplestore.TripleStoreClient
@@ -40,10 +39,11 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     cleanStart()
     val info = new DatasetInfo("gumby", ts)
     await(info.getProp(datasetPrefix)) must be(None)
-    val model = await(info.setProp(datasetPrefix, "Gumby!"))
-    RDFDataMgr.write(System.out, model, RDFFormat.NTRIPLES_UTF8)
-    val nowGumby = await(info.getProp(datasetPrefix))
-    nowGumby.get must be("Gumby!")
+    val model = await(info.setProp(datasetPrefix, "pfx"))
+    //    RDFDataMgr.write(System.out, model, RDFFormat.NTRIPLES_UTF8)
+    await(info.getProp(datasetPrefix)) must be(Some("pfx"))
+    await(info.removeProp(datasetPrefix))
+    await(info.getProp(datasetPrefix)) must be(None)
   }
 
 }

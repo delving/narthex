@@ -62,6 +62,7 @@ class TripleStoreClient(storeURL: String) {
 
   def update(sparqlUpdate: String): Future[Unit] = {
     val request = WS.url(s"$storeURL/update").withHeaders("Content-Type" -> "application/sparql-update")
+//    println(s"update:\n$sparqlUpdate")
     request.post(sparqlUpdate).map { response =>
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")

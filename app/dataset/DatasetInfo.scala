@@ -97,15 +97,32 @@ class DatasetInfo(name: String, client: TripleStoreClient) {
   def setProp(prop: NXProp, value: String): Future[Model] = futureModel.flatMap { m =>
     val uri = m.getResource(DATASET_URI)
     val propUri = m.getProperty(prop.uri)
-    m.removeAll(uri, propUri, null)
-    m.add(uri, propUri, m.createLiteral(value))
-    val updateCommand =
+    val sparql =
       s"""
          |WITH <$uri>
          |DELETE { <$uri> <$propUri> ?o }
          |INSERT { <$uri> <$propUri> "$value" }
+         |WHERE { OPTIONAL { <$uri> <$propUri> ?o } }
+       """.stripMargin
+    client.update(sparql).map { ok =>
+      m.removeAll(uri, propUri, null)
+      m.add(uri, propUri, m.createLiteral(value))
+      m
+    }
+  }
+
+  def removeProp(prop: NXProp) = futureModel.flatMap { m =>
+    val uri = m.getResource(DATASET_URI)
+    val propUri = m.getProperty(prop.uri)
+    val sparql =
+      s"""
+         |WITH <$uri>
+         |DELETE { <$uri> <$propUri> ?o }
          |WHERE { <$uri> <$propUri> ?o }
        """.stripMargin
-    client.update(updateCommand).map(ok => m)
+    client.update(sparql).map{ok =>
+      m.removeAll(uri, propUri, null)
+      m
+    }
   }
 }
