@@ -31,7 +31,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object TripleStoreClient {
 
-//  lazy val store = new TripleStoreClient(NarthexConfig.TRIPLE_STORE_URL)
+  //  lazy val store = new TripleStoreClient(NarthexConfig.TRIPLE_STORE_URL)
 
 }
 
@@ -62,6 +62,7 @@ class TripleStoreClient(storeURL: String) {
 
   def update(sparqlUpdate: String): Future[Unit] = {
     val request = WS.url(s"$storeURL/update").withHeaders("Content-Type" -> "application/sparql-update")
+//    println(s"update:\n$sparqlUpdate")
     request.post(sparqlUpdate).map { response =>
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
@@ -74,9 +75,9 @@ class TripleStoreClient(storeURL: String) {
   def dataPost(graphURI: String, model: Model): Future[Boolean] = {
     val sw = new StringWriter()
     model.write(sw, "TURTLE")
-    println(s"posting: $sw")
+//    println(s"posting: $sw")
     dataRequest(graphURI).withHeaders("Content-Type" -> "text/turtle").post(sw.toString).map { response =>
-      println(s"post response: ${response.status}")
+//      println(s"post response: ${response.status}")
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
       }

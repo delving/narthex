@@ -52,7 +52,7 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStoreClient) extends Actor w
      */
 
     case SaveGraphs =>
-      reader = Some(repo.createGraphReader(5))
+      reader = Some(repo.createGraphReader(chunkSize = 5))
       self ! readGraphChunkOpt
 
     case Some(chunk: GraphChunk) =>
@@ -64,11 +64,12 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStoreClient) extends Actor w
           context.parent ! WorkFailure(ex.getMessage, Some(ex))
       }
 
-    case ChunkSent =>
-      self ! readGraphChunkOpt
-
     case None =>
       reader.get.close()
       context.parent ! GraphSaveComplete
+
+    case ChunkSent =>
+      self ! readGraphChunkOpt
+
   }
 }
