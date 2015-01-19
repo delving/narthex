@@ -8,7 +8,7 @@ Since the triple store must describe things in terms of graphs with namespaces, 
 
 ## Users
 
-The users which login to a Narthex instance must be identified and authenticated. Even if this is eventually to become an external system, they should be represented in the triple store as "actors" because they are the people performing mappings, and their identity therefore becomes part of the provenance information.
+The users who login to a Narthex instance must be identified and authenticated. Even if this is eventually to become an external system, they should be represented in the triple store as "actors" because they are the people performing mappings, and their identity therefore becomes part of the provenance information.
 
 The definition here will be minimal, but can of course later be extended to involve roles and more fine-grained permissions.
 
@@ -26,38 +26,34 @@ Every dataset must have some meta-information associated with it for Narthex to 
 Graph name: "narthex:datasets"
 
 	* datasetName
-	* datasetAdministrator -> user
+	* datasetPrefix
+	* datasetAdministrator -> user (email for now)
 	* datasetProvider
 	* datasetLanguage
 	* datasetRights
 	* datasetNotes
 	* datasetRecordCount - int
-	* state
-		* stateRaw - time
-		* stateRawAnalyzed - time
-		* stateSource - time
-		* stateMappable - time
-		* stateProcessable - time
-		* stateProcessed - time
-		* stateAnalyzed - time
-		* stateSaved - time
-	* harvest
-		* harvestType
-		* harvestURL
-		* harvestDataset
-		* harvestPrefix
-	* harvestCron
-		* harvestPreviousTime - time
-		* harvestDelay - int
-		* harvestDelayUnit
-	* publication
-		* publishOAIPMH - flag
-		* publishIndex - flag
-		* publishLOD - flag
-	* inCategoryMonitor - flag
-	* processing
-		* processingValid - int
-		* processingInvalid - int
+    * stateRaw - time
+    * stateRawAnalyzed - time
+    * stateSource - time
+    * stateMappable - time
+    * stateProcessable - time
+    * stateProcessed - time
+    * stateAnalyzed - time
+    * stateSaved - time
+    * harvestType
+    * harvestURL
+    * harvestDataset
+    * harvestPrefix
+    * harvestPreviousTime - time
+    * harvestDelay - int
+    * harvestDelayUnit
+    * publishOAIPMH - flag
+    * publishIndex - flag
+    * publishLOD - flag
+	* categoriesInclude - flag
+    * processedValid - int
+    * processedInvalid - int
 
 ## Records
 

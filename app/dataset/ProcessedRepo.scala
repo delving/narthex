@@ -32,15 +32,15 @@ object ProcessedRepo {
 
   case class GraphChunk(dataset: Dataset) {
 
-    private def sparqlUpdateGraph(dataset: Dataset, graphUri: String) = {
+    def sparqlUpdateGraph(dataset: Dataset, graphUri: String) = {
       val model = dataset.getNamedModel(graphUri)
       val triples = new StringWriter()
       RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
       s"""
-        |DROP SILENT GRAPH <$graphUri>;
-        |INSERT DATA { GRAPH <$graphUri> {
-        |$triples}};
-       """.stripMargin.trim
+      |DROP SILENT GRAPH <$graphUri>;
+      |INSERT DATA { GRAPH <$graphUri> {
+      |$triples}};
+     """.stripMargin.trim
     }
 
     def toSparqlUpdate: String = dataset.listNames().toList.map(g => sparqlUpdateGraph(dataset, g)).mkString("\n")
