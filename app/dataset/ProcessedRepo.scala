@@ -18,7 +18,10 @@ package dataset
 import java.io._
 
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
+import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import services.FileHandling
+
+import scala.collection.JavaConversions._
 
 /**
  * @author Gerald de Jong <gerald@delving.eu>
@@ -27,8 +30,25 @@ import services.FileHandling
 object ProcessedRepo {
   val SUFFIX = ".xml"
 
-  trait DatasetReader {
-    def nextDataset: Option[Dataset]
+  case class GraphChunk(dataset: Dataset) {
+
+    private def sparqlUpdateGraph(dataset: Dataset, graphUri: String) = {
+      val model = dataset.getNamedModel(graphUri)
+      val triples = new StringWriter()
+      RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
+      s"""
+        |DROP SILENT GRAPH <$graphUri>;
+        |INSERT DATA { GRAPH <$graphUri> {
+        |$triples}};
+       """.stripMargin.trim
+    }
+
+    def toSparqlUpdate: String = dataset.listNames().toList.map(g => sparqlUpdateGraph(dataset, g)).mkString("\n")
+  }
+  
+  trait GraphReader {
+    def readChunk: Option[GraphChunk]
+    def close(): Unit
   }
 
 }
@@ -62,14 +82,14 @@ class ProcessedRepo(val home: File) {
 
   def clear() = FileHandling.clearDir(home)
 
-  def createDatasetReader(maxGraphs: Int) = new DatasetReader {
+  def createGraphReader(chunkSize: Int) = new GraphReader {
     val reader = FileHandling.reader(baseFile)
-    lazy val LineId = "<!--<([^>]*)>-->".r
+    var reading = true
+    val LineId = "<!--<([^>]*)>-->".r
 
-    override def nextDataset: Option[Dataset] = {
+    def readChunk: Option[GraphChunk] = {
       val dataset = DatasetFactory.createMem()
       val recordText = new StringBuilder
-      var reading = true
       var graphCount = 0
       while (reading) {
         Option(reader.readLine()).map {
@@ -77,7 +97,7 @@ class ProcessedRepo(val home: File) {
             dataset.getNamedModel(graphName).read(new StringReader(recordText.toString()), null, "RDF/XML")
             graphCount += 1
             recordText.clear()
-            if (graphCount >= maxGraphs) reading = false
+            if (graphCount >= chunkSize) reading = false
           case x: String =>
             recordText.append(x).append("\n")
         } getOrElse {
@@ -85,7 +105,20 @@ class ProcessedRepo(val home: File) {
           reading = false
         }
       }
-      if (graphCount > 0) Some(dataset) else None
+      if (graphCount > 0) Some(GraphChunk(dataset)) else None
+    }
+
+    override def close(): Unit = {
+      reader.close()
     }
   }
+  
+  
+  
+//
+//  class DatasetIteratee(bucketSize: Int) extends Iteratee[String, Dataset] {
+//    override def fold[B](folder: (Step[String, Dataset]) => Future[B])(implicit ec: ExecutionContext): Future[B] = {
+//
+//    }
+//  }
 }

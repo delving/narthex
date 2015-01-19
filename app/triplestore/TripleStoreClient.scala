@@ -71,7 +71,7 @@ class TripleStoreClient(storeURL: String) {
 
   private def dataRequest(graphURI: String) = WS.url(s"$storeURL/data").withQueryString("graph" -> graphURI)
 
-  def post(graphURI: String, model: Model): Future[Boolean] = {
+  def dataPost(graphURI: String, model: Model): Future[Boolean] = {
     val sw = new StringWriter()
     model.write(sw, "TURTLE")
     println(s"posting: $sw")
@@ -84,7 +84,7 @@ class TripleStoreClient(storeURL: String) {
     }
   }
 
-  def get(graphURI: String): Future[Model] = {
+  def dataGet(graphURI: String): Future[Model] = {
     dataRequest(graphURI).withHeaders("Accept" -> "text/turtle").get().map { response =>
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
