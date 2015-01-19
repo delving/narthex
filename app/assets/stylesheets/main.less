@@ -411,18 +411,32 @@ ul.nav-tabs {
 }
 
 .widget-header-tabs {
-  //  margin: 12px 0px -12px 0px !important;
-  margin: 13px 0px -15px 0!important;
+  margin: 0px 0px !important;
   border-bottom: none;
-  float: left;
-  display: inline-block;
-  width: auto !important;
+  position: absolute;
+  bottom: 0px;
 }
 
 .widget-footer .sub-controls {
   min-height: 35px;
+  .btn {
+    font-size: 0.9em;
+  }
 }
 
+.widget-header,
+.widget-footer {
+  background-color: #f6f6f6;
+}
+
+.widget-header-nav-pills {
+  > li > a {
+    background: @white;
+    font-size: 0.9em;
+    padding: 0px 10px;
+    border: 1px solid @gray-lighter;
+  }
+}
 
 /* file-block tabs sip files list *************************************/
 
