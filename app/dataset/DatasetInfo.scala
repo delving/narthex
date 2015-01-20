@@ -94,24 +94,30 @@ class DatasetInfo(name: String, client: TripleStoreClient) {
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
   }
 
-  def setProp(prop: NXProp, value: String): Future[Model] = futureModel.flatMap { m =>
+  def setProps(tuples: (NXProp, String)*): Future[Model] = futureModel.flatMap { m =>
     val uri = m.getResource(DATASET_URI)
-    val propUri = m.getProperty(prop.uri)
-    val sparql =
+    val propVal = tuples.map(t => (m.getProperty(t._1.uri), t._2))
+    val sparqls = propVal.map { pv =>
+      val propUri = pv._1
       s"""
          |WITH <$uri>
          |DELETE { <$uri> <$propUri> ?o }
-         |INSERT { <$uri> <$propUri> "$value" }
+         |INSERT { <$uri> <$propUri> "${pv._2}" }
          |WHERE { OPTIONAL { <$uri> <$propUri> ?o } }
-       """.stripMargin
+       """.stripMargin.trim
+    }
+    val sparql = sparqls.mkString(";\n")
+    println(sparql)
     client.update(sparql).map { ok =>
-      m.removeAll(uri, propUri, null)
-      m.add(uri, propUri, m.createLiteral(value))
+      propVal.foreach { pv =>
+        m.removeAll(uri, pv._1, null)
+        m.add(uri, pv._1, m.createLiteral(pv._2))
+      }
       m
     }
   }
 
-  def removeProp(prop: NXProp) = futureModel.flatMap { m =>
+  def removeProp(prop: NXProp): Future[Model] = futureModel.flatMap { m =>
     val uri = m.getResource(DATASET_URI)
     val propUri = m.getProperty(prop.uri)
     val sparql =
@@ -120,7 +126,7 @@ class DatasetInfo(name: String, client: TripleStoreClient) {
          |DELETE { <$uri> <$propUri> ?o }
          |WHERE { <$uri> <$propUri> ?o }
        """.stripMargin
-    client.update(sparql).map{ok =>
+    client.update(sparql).map { ok =>
       m.removeAll(uri, propUri, null)
       m
     }
