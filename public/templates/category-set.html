@@ -1,7 +1,9 @@
 <div class="page-header">
     <!-- page specifiction actions/tools -->
     <div class="actions pull-right">
-
+        <div class="file-path-info breadcrumb">
+            <span class="file-name">{{datasetName}}</span><span class="file-path">{{path}}</span>
+        </div>
     </div>
     <!-- page location, org -->
     <div class="meta">
@@ -15,34 +17,28 @@
     </div>
 </div>
 
-<div class="row categories-panel">
-    <div class="col-md-12">
-        <div class="file-path-info breadcrumb">
-            <span class="file-name">{{datasetName}}</span><span class="file-path">{{path}}</span>
+<div class="categories-panel">
+    <div class="widget">
+        <div class="widget-header">
+            <div class="btn-group" role="group">
+                <button class="btn btn-default btn-sm" data-ng-class="{ 'btn-success': visible[category.code] == true }"
+                        data-ng-repeat="category in categories" data-ng-click="setCategory(category.code)"
+                        data-ng-mouseover="showCategoryExplain($index)" data-ng-mouseleave="hideCategoryExplain();">
+                    <b>{{ category.code }}</b>
+                </button>
+            </div>
         </div>
-    </div>
-
-    <div id="category-explanation">
-        <div class="alert alert-info">
-            <strong>{{ categoryHelp.code.toUpperCase() }}:</strong> {{ categoryHelp.details }}
-        </div>
-    </div>
-
-    <div class="col-md-12">
-        <div class="btn-toolbar">
-            <button class="btn btn-default btn-xs" data-ng-class="{ 'btn-success': visible[category.code] == true }"
-                    data-ng-repeat="category in categories" data-ng-click="setCategory(category.code)"
-                    data-ng-mouseover="showCategoryExplain($index)" data-ng-mouseleave="hideCategoryExplain();">
-                <b>{{ category.code }}</b>
-            </button>
-        </div>
-    </div>
-
-    <div class="col-md-12">
-        <div class="vertical-scroll" data-scrollable id="term-grid" data-offset="220" data-ng-style="{ 'height': elHeight }">
-            <div class="category-grid" ng-grid="categoryGrid"></div>
+        <div class="widget-body no-padding">
+            <div class="vertical-scroll" data-scrollable id="term-grid" data-offset="160" data-ng-style="{ 'height': elHeight }">
+                <div class="category-grid" ng-grid="categoryGrid"></div>
+            </div>
         </div>
     </div>
 </div>
 
+<div id="category-explanation">
+    <div class="alert alert-info">
+        <strong>{{ categoryHelp.code.toUpperCase() }}:</strong> {{ categoryHelp.details }}
+    </div>
+</div>
 

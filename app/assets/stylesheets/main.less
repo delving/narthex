@@ -566,6 +566,7 @@ code {
   }
 }
 
+
 /****************************
   SKOS TERMS BROWSER
 ****************************/
@@ -634,12 +635,12 @@ div.tooltip {
   background: @brand-success;
 }
 
-.term-broader {
-  background: @gray-light;
-}
-
+.term-broader,
 .term-narrower {
-  background: @gray-light;
+  background: @white;
+  border: 1px solid @gray-lighter;
+  color: @gray;
+  font-weight: normal;
 }
 
 .search-all {
@@ -704,7 +705,7 @@ textarea.code {
 }
 
 .category-cell-busy {
-  background-color: red;
+  background-color: @orange;
 }
 
 .category-count-cell {
@@ -741,14 +742,14 @@ textarea.code {
   display: none;
   margin: auto;
   position: absolute;
-  top: 200px;
-  left: 0;
-  right: 0;
-  width: 200px;
+  top: 240px;
+  left: 20px;
+//  right: 0;
+  width: 210px;
   height: 50px;
   z-index: @zindex-modal;
   &.visible {
-    display: block;
+    display: inline-block;
   }
 }
 
