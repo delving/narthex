@@ -1,8 +1,51 @@
 package specs
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.UserStore
+import org.UserStore.NXUser
+import org.scalatestplus.play._
+import play.api.test.Helpers._
+import triplestore.TripleStoreClient
 
-class TestTermMatching extends FlatSpec with Matchers {
+class TestUsersMapping extends PlaySpec with OneAppPerSuite {
+
+  val TEST_STORE: String = "http://localhost:3030/narthex-test"
+  val ts = new TripleStoreClient(TEST_STORE)
+
+  def cleanStart() = {
+    await(ts.update("DROP ALL"))
+    countGraphs must be(0)
+  }
+
+  def countGraphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")).size
+
+  "The first user should authenticate and become administrator" in {
+//    cleanStart()
+    val userStore = new UserStore(ts)
+    val firstUser = await(userStore.authenticate("gumby", "pokey"))
+    firstUser must be(Some(NXUser("gumby", administrator = true)))
+  }
+
+}
+
+
+//  "A SKOS file" should "be readable by Jena" in {
+//    val example = getClass.getResource("/skos-example.xml")
+//    val conSchemes = ConceptScheme.read(example.openStream(), "example")
+//    conSchemes.map(s => println(s"Scheme: $s"))
+//    val conScheme = conSchemes.head
+//
+//    def searchConceptScheme(sought: String) = conScheme.search("nl", sought, 3)
+//
+//    val searches: List[LabelSearch] = List(
+//      "Europese wetgeving",
+//      "bezoeken",
+//      "wetgevingen"
+//    ).map(searchConceptScheme)
+//
+//    searches.foreach(labelSearch => println(Json.prettyPrint(Json.toJson(labelSearch))))
+//
+//  }
+
 //
 //  val userHome: String = "/tmp/narthex-user"
 //  System.setProperty("user.home", userHome)
@@ -93,4 +136,3 @@ class TestTermMatching extends FlatSpec with Matchers {
 //
 //    recordText should be(expectedString)
 //  }
-}

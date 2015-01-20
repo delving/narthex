@@ -65,7 +65,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     val home = new File(getClass.getResource("/sip_harvest_abbe").getFile)
     val sipRepo = new SipRepo(new File(home, "sips"), "test", "http://aboutprefix")
     val fromSourceDir = new File(home, "source")
-    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
+    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest-1"))
 
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined should be(true)
@@ -111,7 +111,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     val sipRepo = new SipRepo(new File(home, "sips"), "test", "http://aboutprefix")
 
     val fromSourceDir = new File(home, "source")
-    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest"))
+    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-harvest-2"))
 
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined should be(true)
@@ -159,7 +159,7 @@ class TestSipRepo extends FlatSpec with Matchers {
     FileUtils.copyDirectory(home, sipsDir)
     val sipRepo = new SipRepo(sipsDir, "test", "http://aboutprefix")
 
-    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-source"))
+    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-source-3"))
 
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined should be(true)

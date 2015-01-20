@@ -27,12 +27,9 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     val reader = repo.createGraphReader(2)
     val chunk = reader.readChunk.get
     reader.close()
-    await(ts.update(chunk.toSparqlUpdate))
+    val sparql = chunk.toSparqlUpdate
+    await(ts.update(sparql))
     countGraphs must be(2)
-    //    val graphs: List[Map[String, String]] = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }"))
-    //    graphs.foreach { map =>
-    //      println(s"found graph ${map.get("g")}")
-    //    }
   }
 
   "The dataset info object should be able to interact with the store" in {

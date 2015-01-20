@@ -33,6 +33,14 @@ object TripleStoreClient {
 
   //  lazy val store = new TripleStoreClient(NarthexConfig.TRIPLE_STORE_URL)
 
+  case class PropType(uriOpt: Option[String])
+
+  val stringProp = PropType(None)
+  val timeProp = PropType(None)
+  val intProp = PropType(None)
+  val booleanProp = PropType(None)
+  val uriProp = PropType(None)
+
 }
 
 class TripleStoreClient(storeURL: String) {

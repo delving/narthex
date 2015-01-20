@@ -20,56 +20,50 @@ import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
 import triplestore.TripleStoreClient
+import triplestore.TripleStoreClient._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 object DatasetInfo {
 
-  case class PropType(uriOpt: Option[String])
-
-  val stringProp = PropType(None)
-  val timeProp = PropType(None)
-  val intProp = PropType(None)
-  val booleanProp = PropType(None)
-
-  case class NXProp(name: String, dataType: PropType = stringProp) {
+  case class DIProp(name: String, dataType: PropType = stringProp) {
     val uri = s"${NX_NAMESPACE}Dataset-Info-Attributes#$name"
   }
 
-  var datasetName = NXProp("datasetName")
-  var datasetPrefix = NXProp("datasetPrefix")
-  var datasetAdministrator = NXProp("datasetAdministrator")
-  var datasetProvider = NXProp("datasetProvider")
-  var datasetLanguage = NXProp("datasetLanguage")
-  var datasetRights = NXProp("datasetRights")
-  var datasetNotes = NXProp("datasetNotes")
-  var datasetRecordCount = NXProp("datasetRecordCount", intProp)
+  var datasetName = DIProp("datasetName")
+  var datasetPrefix = DIProp("datasetPrefix")
+  var datasetAdministrator = DIProp("datasetAdministrator")
+  var datasetProvider = DIProp("datasetProvider")
+  var datasetLanguage = DIProp("datasetLanguage")
+  var datasetRights = DIProp("datasetRights")
+  var datasetNotes = DIProp("datasetNotes")
+  var datasetRecordCount = DIProp("datasetRecordCount", intProp)
 
-  var stateRaw = NXProp("stateRaw", timeProp)
-  var stateRawAnalyzed = NXProp("stateRawAnalyzed", timeProp)
-  var stateSource = NXProp("stateSource", timeProp)
-  var stateMappable = NXProp("stateMappable", timeProp)
-  var stateProcessable = NXProp("stateProcessable", timeProp)
-  var stateProcessed = NXProp("stateProcessed", timeProp)
-  var stateAnalyzed = NXProp("stateAnalyzed", timeProp)
-  var stateSaved = NXProp("stateSaved", timeProp)
+  var stateRaw = DIProp("stateRaw", timeProp)
+  var stateRawAnalyzed = DIProp("stateRawAnalyzed", timeProp)
+  var stateSource = DIProp("stateSource", timeProp)
+  var stateMappable = DIProp("stateMappable", timeProp)
+  var stateProcessable = DIProp("stateProcessable", timeProp)
+  var stateProcessed = DIProp("stateProcessed", timeProp)
+  var stateAnalyzed = DIProp("stateAnalyzed", timeProp)
+  var stateSaved = DIProp("stateSaved", timeProp)
 
-  var harvestType = NXProp("harvestType")
-  var harvestURL = NXProp("harvestURL")
-  var harvestDataset = NXProp("harvestDataset")
-  var harvestPrefix = NXProp("harvestPrefix")
-  var harvestPreviousTime = NXProp("harvestPreviousTime", timeProp)
-  var harvestDelay = NXProp("harvestDelay")
-  var harvestDelayUnit = NXProp("harvestDelayUnit")
+  var harvestType = DIProp("harvestType")
+  var harvestURL = DIProp("harvestURL")
+  var harvestDataset = DIProp("harvestDataset")
+  var harvestPrefix = DIProp("harvestPrefix")
+  var harvestPreviousTime = DIProp("harvestPreviousTime", timeProp)
+  var harvestDelay = DIProp("harvestDelay")
+  var harvestDelayUnit = DIProp("harvestDelayUnit")
 
-  var processedValid = NXProp("processedValid", intProp)
-  var processedInvalid = NXProp("processedInvalid", intProp)
+  var processedValid = DIProp("processedValid", intProp)
+  var processedInvalid = DIProp("processedInvalid", intProp)
 
-  var publishOAIPMH = NXProp("publishOAIPMH", booleanProp)
-  var publishIndex = NXProp("publishIndex", booleanProp)
-  var publishLOD = NXProp("publishLOD", booleanProp)
-  var categoriesInclude = NXProp("categoriesInclude", booleanProp)
+  var publishOAIPMH = DIProp("publishOAIPMH", booleanProp)
+  var publishIndex = DIProp("publishIndex", booleanProp)
+  var publishLOD = DIProp("publishLOD", booleanProp)
+  var categoriesInclude = DIProp("categoriesInclude", booleanProp)
 
 }
 
@@ -77,25 +71,25 @@ class DatasetInfo(name: String, client: TripleStoreClient) {
 
   import dataset.DatasetInfo._
 
-  val DATASET_URI = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(name)}"
+  val datasetUri = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(name)}"
 
-  val futureModel = client.dataGet(DATASET_URI).fallbackTo {
+  val futureModel = client.dataGet(datasetUri).fallbackTo {
     val m = ModelFactory.createDefaultModel()
-    val uri = m.getResource(DATASET_URI)
+    val uri = m.getResource(datasetUri)
     val propUri = m.getProperty(datasetName.uri)
     m.add(uri, propUri, m.createLiteral(name))
-    client.dataPost(DATASET_URI, m).map(ok => m)
+    client.dataPost(datasetUri, m).map(ok => m)
   }
 
-  def getProp(prop: NXProp): Future[Option[String]] = futureModel.map { m =>
-    val uri = m.getResource(DATASET_URI)
+  def getProp(prop: DIProp): Future[Option[String]] = futureModel.map { m =>
+    val uri = m.getResource(datasetUri)
     val propUri = m.getProperty(prop.uri)
     val objects = m.listObjectsOfProperty(uri, propUri)
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
   }
 
-  def setProps(tuples: (NXProp, String)*): Future[Model] = futureModel.flatMap { m =>
-    val uri = m.getResource(DATASET_URI)
+  def setProps(tuples: (DIProp, String)*): Future[Model] = futureModel.flatMap { m =>
+    val uri = m.getResource(datasetUri)
     val propVal = tuples.map(t => (m.getProperty(t._1.uri), t._2))
     val sparqls = propVal.map { pv =>
       val propUri = pv._1
@@ -107,7 +101,6 @@ class DatasetInfo(name: String, client: TripleStoreClient) {
        """.stripMargin.trim
     }
     val sparql = sparqls.mkString(";\n")
-    println(sparql)
     client.update(sparql).map { ok =>
       propVal.foreach { pv =>
         m.removeAll(uri, pv._1, null)
@@ -117,8 +110,8 @@ class DatasetInfo(name: String, client: TripleStoreClient) {
     }
   }
 
-  def removeProp(prop: NXProp): Future[Model] = futureModel.flatMap { m =>
-    val uri = m.getResource(DATASET_URI)
+  def removeProp(prop: DIProp): Future[Model] = futureModel.flatMap { m =>
+    val uri = m.getResource(datasetUri)
     val propUri = m.getProperty(prop.uri)
     val sparql =
       s"""
