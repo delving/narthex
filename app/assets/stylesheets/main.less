@@ -392,7 +392,9 @@ ul.nav-tabs {
     font-weight: bold;
     //    margin-left: 0px !important;
     text-transform: uppercase;
-    padding: 4px 6px 2px 6px;
+    span {
+//      padding: 4px 6px 2px 6px;
+    }
   }
   .toolbar {
     float: right;
@@ -406,6 +408,15 @@ ul.nav-tabs {
   }
 }
 
+.nav-tabs-right {
+  li {
+    float: right;
+  }
+  li.nav-tabs-title {
+    float: left;
+  }
+}
+
 .navbar-tools {
   background: @silver;
 }
@@ -415,6 +426,9 @@ ul.nav-tabs {
   border-bottom: none;
   position: absolute;
   bottom: 0px;
+  &.nav-tabs-right {
+    right: 20px;
+  }
 }
 
 .widget-footer .sub-controls {
