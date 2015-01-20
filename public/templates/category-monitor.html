@@ -18,39 +18,52 @@
 
 <div class="row">
     <div class="col-sm-8">
-        <div class="file-list">
-            <ul class="list-group list-files">
-                <li ng-repeat="file in files" class="file-block clearfix">
-                    <div data-ng-include="'category-file-entry.html'">entry</div>
-                </li>
-            </ul>
+        <div class="widget">
+            <div class="widget-header">Monitored Datasets</div>
+            <div class="widget-body">
+                <div class="row">
+                    <div class="col-md-6" ng-repeat="file in files" >
+                        <div class="panel panel-primary" data-ng-include="'category-file-entry.html'">entry</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="col-sm-4">
-        <button type="button" class="btn btn-danger btn-sm btn-block" data-ng-click="gatherCategoryCounts()" data-ng-disabled="datasetBusy">
-            <i class="fa fa-leaf"></i>
-            <span>Create new sheet</span>
-        </button>
-        <h4>Sheets:</h4>
-        <ul class="list-unstyled">
-            <li ng-repeat="sheet in sheets">
-                <a ng-href="{{ sheetUrl(sheet) }}" target="_blank">
-                    <i class="fa fa-download"></i>
-                    {{ sheet }}
-                </a>
-            </li>
-        </ul>
+        <div class="widget">
+            <div class="widget-header">
+                Sheets
+                <button type="button" class="btn btn-default btn-sm pull-right"  data-ng-click="gatherCategoryCounts()" data-ng-disabled="datasetBusy">
+                    <i class="fa fa-leaf"></i>
+                    <span>Create new sheet</span>
+                </button>
+            </div>
+            <div class="widget-body">
+                <ul class="list-unstyled">
+                    <li ng-repeat="sheet in sheets">
+                        <a ng-href="{{ sheetUrl(sheet) }}" target="_blank">
+                            <i class="fa fa-download"></i>
+                            {{ sheet }}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+
     </div>
 </div>
 
 <script type="text/ng-template" id="category-file-entry.html">
-    <div>
-        <span class="fa fa-2x">{{ file.name }}</span>
-        <span data-ng-show="file.info.recordCount">{{ file.info.recordCount.count }} ({{ file.info.recordCount.time }})</span>
+    <div class="panel-heading">
+        {{ file.info.metadata.name }}
+        <span data-ng-show="file.info.recordCount" class="pull-right">{{ file.info.recordCount.count }}</span>
     </div>
-    <div data-ng-if="file.progress" class="col-md-12">
-        <progressbar class="progress-striped active" animate="true" value="file.progress.count" max="100" type="success">
-            {{ file.progress.message }}
-        </progressbar>
+    <div class="panel-body">
+        <div data-ng-if="file.progress">
+            <progressbar class="progress-striped active" animate="true" value="file.progress.count" max="100" type="success">
+                {{ file.progress.message }}
+            </progressbar>
+        </div>
     </div>
 </script>
