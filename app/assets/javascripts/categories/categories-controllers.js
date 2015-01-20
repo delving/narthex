@@ -175,6 +175,11 @@ define(["angular"], function (angular) {
                 $scope.files = _.filter(files, function (file) {
                     return file.info.categories && file.info.categories.included == 'true';
                 });
+
+                //todo
+                console.log('scope files', $scope.files);
+
+
                 $scope.datasetBusy = false;
                 _.forEach(files, function (file) {
                     if (file.progress) {
@@ -187,7 +192,7 @@ define(["angular"], function (angular) {
 
         fetchDatasetList();
 
-        var stateNames = {
+        var stateNames = { // todo: probably wrong
             'state-harvesting': "Harvesting from server",
             'state-collecting': "Collecting identifiers",
             'state-generating': "Generating source",
@@ -229,36 +234,27 @@ define(["angular"], function (angular) {
         }
 
         function decorateFile(file) {
-            var info = file.info;
             delete(file.error);
-            if (info.progress) {
-                if (info.progress.type != 'progress-idle') {
-                    file.progress = info.progress;
-                    file.progress.message = createProgressMessage(info.progress);
+
+            // todo: remove!
+            file.info.progress = {
+                state: "state-categorizing",
+                type: "progress-percent",
+                count:50
+            };
+            // todo: remove!
+
+            if (file.info.progress) {
+                if (file.info.progress.type != 'progress-idle') {
+                    file.progress = file.info.progress;
+                    file.progress.message = createProgressMessage(file.info.progress);
                 }
                 else {
-                    if (info.progress.state == 'state-error') {
-                        file.error = info.progress.error;
+                    if (file.info.progress.state == 'state-error') {
+                        file.error = file.info.progress.error;
                     }
                     delete(file.progress);
                 }
-            }
-            file.identity = { datasetName: file.name };
-            if (info.status) {
-                file.state = info.status.state;
-            }
-            if (info.origin) {
-                file.origin = info.origin.type;
-            }
-            if (info.tree) {
-                file.treeTime = info.tree.time;
-            }
-            if (info.delimit && info.delimit.recordCount > 0) {
-                file.identity.recordCount = info.delimit.recordCount;
-            }
-            if (info.metadata) {
-                file.identity.name = info.metadata.name;
-                file.identity.dataProvider = info.metadata.dataProvider;
             }
         }
 
@@ -304,11 +300,6 @@ define(["angular"], function (angular) {
             var absUrl = $location.absUrl();
             var serverUrl = absUrl.substring(0, absUrl.indexOf("#"));
             return serverUrl + "app/sheet/" + name;
-        };
-
-        $scope.viewFile = function (file) {
-            $location.path("/dataset/" + file.name);
-            $location.search({});
         };
     };
 
