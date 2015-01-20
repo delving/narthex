@@ -56,6 +56,9 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStoreClient) extends Actor w
       self ! readGraphChunkOpt
 
     case Some(chunk: GraphChunk) =>
+
+      // todo: this is where enrichment will have to happen
+
       client.update(chunk.toSparqlUpdate).onComplete {
         case Success(nothing) =>
           self ! readGraphChunkOpt

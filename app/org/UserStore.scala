@@ -32,23 +32,38 @@ object UserStore {
 
   case class NXUserDetails(firstName: String, lastName: String, email: String)
 
-  case class NXUser(usernameProposed: String, detailsOpt: Option[NXUserDetails] = None, administrator: Boolean = false) {
-    val username = usernameProposed.replaceAll("[^\\w]", "_").toLowerCase
-    val uri = s"$NX_URI_PREFIX/user/$username"
+  case class NXUser(userNameProposed: String, detailsOpt: Option[NXUserDetails] = None, administrator: Boolean = false) {
+    val userName = userNameProposed.replaceAll("[^\\w]", "_").toLowerCase
+    val uri = s"$NX_URI_PREFIX/user/$userName"
   }
 
   case class USProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"${NX_NAMESPACE}User-Attributes#$name"
+    val uri = s"$NX_NAMESPACE/User-Attributes#$name"
   }
 
   val ADMINISTRATOR_ROLE = "administrator"
 
+  val userName = USProp("userName")
   val userEMail = USProp("userEMail")
   val userFirstName = USProp("userFirstName")
   val userLastName = USProp("userLastName")
   val userRole = USProp("userRole")
   val userPasswordHash = USProp("userPasswordHash")
 
+  def userIntoModel(user: NXUser, passwordHash: Literal, m: Model): Option[NXUser] = {
+    val userResource: Resource = m.getResource(user.uri)
+    val exists = m.listStatements(userResource, m.getProperty(userPasswordHash.uri), null).hasNext
+    if (exists) None
+    else {
+      // userPasswordHash
+      m.add(userResource, m.getProperty(userPasswordHash.uri), passwordHash)
+      // userName
+      m.add(userResource, m.getProperty(userName.uri), user.userName)
+      // optional admin
+      if (user.administrator) m.add(userResource, m.getProperty(userRole.uri), m.createLiteral(ADMINISTRATOR_ROLE))
+      Some(user)
+    }
+  }
 }
 
 class UserStore(client: TripleStoreClient) {
@@ -58,25 +73,24 @@ class UserStore(client: TripleStoreClient) {
   val digest = MessageDigest.getInstance("SHA-256")
   val futureModel = client.dataGet(graphName).fallbackTo(Future(ModelFactory.createDefaultModel()))
 
-  private def hash(string: String) = {
+  private def hashLiteral(string: String, m: Model): Literal = {
     digest.reset()
     val ba = digest.digest(string.getBytes("UTF-8"))
-    ba.map("%02x".format(_)).mkString
+    val hash = ba.map("%02x".format(_)).mkString
+    m.createLiteral(hash)
   }
 
-  def authenticate(username: String, password: String): Future[Option[NXUser]] = futureModel.flatMap { m =>
-    val hashLiteral: Literal = m.createLiteral(hash(username + password))
+  def authenticate(userNameString: String, password: String): Future[Option[NXUser]] = futureModel.flatMap { m =>
+    val hash = hashLiteral(userNameString + password, m)
     if (m.isEmpty) {
-      val godUser = NXUser(username, administrator = true)
-      val userResource: Resource = m.getResource(godUser.uri)
-      m.add(userResource, m.getProperty(userPasswordHash.uri), hashLiteral)
-      m.add(userResource, m.getProperty(userRole.uri), m.createLiteral(ADMINISTRATOR_ROLE))
+      val godUser = NXUser(userNameString, administrator = true)
+      userIntoModel(godUser, hash, m)
       client.dataPost(graphName, m).map(ok => Some(godUser))
     }
     else {
-      val user: NXUser = NXUser(username)
+      val user: NXUser = NXUser(userNameString)
       val userResource: Resource = m.getResource(user.uri)
-      val exists = m.listStatements(userResource, m.getProperty(userPasswordHash.uri), hashLiteral).hasNext
+      val exists = m.listStatements(userResource, m.getProperty(userPasswordHash.uri), hash).hasNext
       val userOpt = if (exists) {
         val admin = m.listStatements(userResource, m.getProperty(userRole.uri), m.createLiteral(ADMINISTRATOR_ROLE)).hasNext
         Some(user.copy(administrator = admin))
@@ -88,5 +102,24 @@ class UserStore(client: TripleStoreClient) {
     }
   }
 
+  def introduce(userNameString: String, password: String): Future[Option[NXUser]] = futureModel.flatMap { m =>
+    val hash = hashLiteral(userNameString + password, m)
+    userIntoModel(NXUser(userNameString), hash, m).map { user: NXUser =>
+      val sparql =
+        s"""
+         |INSERT DATA { GRAPH <$graphName> {
+         | <${user.uri}> <${m.getProperty(userName.uri)}> "${user.userName}" .
+         | <${user.uri}> <${m.getProperty(userPasswordHash.uri)}> "${hash.getString}" .
+         |} }
+       """.stripMargin
+      client.update(sparql).map(ok => Some(user))
+    } getOrElse {
+      Future(None)
+    }
+  }
+
+  def setActive(userNameString: String, active: Boolean): Unit = {
+    // todo: implement
+  }
 
 }

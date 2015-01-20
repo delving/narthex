@@ -19,10 +19,22 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite {
   def countGraphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")).size
 
   "The first user should authenticate and become administrator" in {
-//    cleanStart()
-    val userStore = new UserStore(ts)
-    val firstUser = await(userStore.authenticate("gumby", "pokey"))
-    firstUser must be(Some(NXUser("gumby", administrator = true)))
+    cleanStart()
+
+    // start fresh
+    val us1 = new UserStore(ts)
+    await(us1.authenticate("gumby", "secret gumby")) must be(Some(NXUser("gumby", administrator = true)))
+    await(us1.introduce("pokey", "secret pokey")) must be(Some(NXUser("pokey")))
+    await(us1.introduce("pokey", "secret pokey")) must be(None)
+
+    // this will have to get its data from the triple store again
+    val us2 = new UserStore(ts)
+    await(us2.authenticate("gumby", "secret gumbo")) must be(None)
+    await(us2.authenticate("gumby", "secret gumby")) must be(Some(NXUser("gumby", administrator = true)))
+    await(us2.authenticate("pokey", "secret pokey")) must be(Some(NXUser("pokey")))
+    await(us2.authenticate("third-wheel", "can i join")) must be(None)
+
+
   }
 
 }
