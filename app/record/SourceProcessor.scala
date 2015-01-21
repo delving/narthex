@@ -139,7 +139,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
 
       val work = future {
 
-        var sourceFile = datasetRepo.processedRepo.createFile
+        val sourceFile = datasetRepo.processedRepo.createFile
         val sourceOutput = writer(sourceFile)
         var validRecords = 0
         var invalidRecords = 0
@@ -148,8 +148,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
         def catchPocket(rawPocket: Pocket): Unit = {
           val pocketOpt = sipMapper.map(rawPocket)
           pocketOpt.map { pocket =>
-            sourceOutput.write(pocket.text)
-            sourceOutput.write(s"<!--<${pocket.id}>-->\n")
+            pocket.writeTo(sourceOutput)
             validRecords += 1
           } getOrElse {
             invalidRecords += 1

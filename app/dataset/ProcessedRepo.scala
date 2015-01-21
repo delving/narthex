@@ -47,10 +47,10 @@ object ProcessedRepo {
   }
   
   trait GraphReader {
+    def isActive: Boolean
     def readChunk: Option[GraphChunk]
     def close(): Unit
   }
-
 }
 
 class ProcessedRepo(val home: File) {
@@ -84,41 +84,36 @@ class ProcessedRepo(val home: File) {
 
   def createGraphReader(chunkSize: Int) = new GraphReader {
     val reader = FileHandling.reader(baseFile)
-    var reading = true
     val LineId = "<!--<([^>]*)>-->".r
+    var active = true
 
-    def readChunk: Option[GraphChunk] = {
+    override def isActive = active
+
+    override def readChunk: Option[GraphChunk] = {
       val dataset = DatasetFactory.createMem()
       val recordText = new StringBuilder
       var graphCount = 0
-      while (reading) {
+      var chunkComplete = false
+      while (!chunkComplete && active) {
         Option(reader.readLine()).map {
           case LineId(graphName) =>
             dataset.getNamedModel(graphName).read(new StringReader(recordText.toString()), null, "RDF/XML")
             graphCount += 1
             recordText.clear()
-            if (graphCount >= chunkSize) reading = false
+            if (graphCount >= chunkSize) chunkComplete = true
           case x: String =>
             recordText.append(x).append("\n")
         } getOrElse {
           reader.close()
-          reading = false
+          active = false
         }
       }
       if (graphCount > 0) Some(GraphChunk(dataset)) else None
     }
 
-    override def close(): Unit = {
+    override def close(): Unit = if (active) {
       reader.close()
+      active = true
     }
   }
-  
-  
-  
-//
-//  class DatasetIteratee(bucketSize: Int) extends Iteratee[String, Dataset] {
-//    override def fold[B](folder: (Step[String, Dataset]) => Future[B])(implicit ec: ExecutionContext): Future[B] = {
-//
-//    }
-//  }
 }

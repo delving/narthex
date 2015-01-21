@@ -32,7 +32,7 @@ object DatasetInfo {
   }
 
   var datasetName = DIProp("datasetName")
-  var datasetPrefix = DIProp("datasetPrefix")
+  var datasetMapTo = DIProp("datasetMapTo")
   var datasetAdministrator = DIProp("datasetAdministrator")
   var datasetProvider = DIProp("datasetProvider")
   var datasetLanguage = DIProp("datasetLanguage")

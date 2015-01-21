@@ -1,0 +1,2365 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:dcterms="http://purl.org/dc/terms/" xmlns:skos="http://www.w3.org/2004/02/skos/core#">
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/Genre">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <dc:title xml:lang="nl">Genre</dc:title>
+    <dc:creator xml:lang="nl">Nederlands Instituut voor Beeld en Geluid</dc:creator>
+    <dc:creator xml:lang="en">Netherlands Institute for Sound and Vision</dc:creator>
+    <dc:description xml:lang="nl">Genre-as</dc:description>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30081"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30082"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30084"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30087"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30093"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30098"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30103"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30108"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30114"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30120"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30133"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30134"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30137"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30141"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30168"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30173"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30176"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30177"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30181"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30183"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30192"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30205"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30216"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30223"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30226"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30234"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30236"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30240"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30247"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30260"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30266"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30270"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30273"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30277"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30280"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30281"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30282"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30287"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30289"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30291"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30294"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30308"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30323"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30328"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30329"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30330"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30343"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30344"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30347"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30359"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30361"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30362"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30363"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30375"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30376"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30377"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30380"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30381"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30391"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30395"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30399"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30417"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/30418"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/213228"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/229214"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/232329"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/232521"/>
+    <skos:hasTopConcept rdf:resource="http://data.beeldengeluid.nl/gtaa/233244"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30087">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:30</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:30</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:50:49</dcterms:modified>
+    <skos:notation>30087</skos:notation>
+    <skos:prefLabel xml:lang="nl">animatie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarbij een illusie van bewegend beeld tot stand wordt gebracht bij bewegingloze objecten (foto's, tekeningen, poppen, cut-outs) door middel van beeld-voor-beeld opname en andere animatietechnieken.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 129&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 7-10-2003&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarbij een illusie van bewegend beeld tot stand wordt gebracht bij bewegingloze objecten (foto's, tekeningen, poppen, cut-outs) door middel van beeld-voor-beeld opname en andere animatietechnieken.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30418"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30117"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30206"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30271"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30340"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30234">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:56</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:56</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:52:52</dcterms:modified>
+    <skos:notation>30234</skos:notation>
+    <skos:prefLabel xml:lang="nl">musical</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin het verhaal (grotendeels) verteld wordt via muzikale nummers (liedjes) en meestal ook door dansnummers.</skos:scopeNote>
+    <skos:note xml:lang="nl">Niet te verwarren met opera's, operettes en films óver muziek en/of dans.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 291&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin het verhaal (grotendeels) verteld wordt via muzikale nummers (liedjes) en meestal ook door dansnummers.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30236"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30238"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30200">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:54</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:54</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:09:04</dcterms:modified>
+    <skos:notation>30200</skos:notation>
+    <skos:prefLabel xml:lang="nl">kerkdienst</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Registratie van een religieuze dienst in de kerk.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 255&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Registratie van een religieuze dienst in de kerk.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30289"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30292"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30216"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30418">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:28Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:28Z</dcterms:dateSubmitted>
+    <dcterms:modified>2013-10-29T13:01:47Z</dcterms:modified>
+    <skos:notation>30418</skos:notation>
+    <skos:prefLabel xml:lang="nl">korte film</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">drama</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Speelfilm of animatie met een speelduur korter dan 60 minuten, bedoeld voor vertoning in de bioscoop, op televisie of op het internet.</skos:scopeNote>
+    <skos:note xml:lang="nl">voorstel uitbreiding SN MPallas t.b.v. internetvideo, later nog uitbreiding SN t.b.v. korte filmproducties op tv</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 510
+Datum invoer: 7-10-2003
+Gebruiker invoer: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Speelfilm of animatie met een speelduur korter dan 60 minuten, bedoeld voor vertoning in de bioscoop, op televisie of op het internet.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30087"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30323"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30240">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:56</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:56</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:56:16</dcterms:modified>
+    <skos:notation>30240</skos:notation>
+    <skos:prefLabel xml:lang="nl">natuur- en milieuprogramma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">milieuprogramma</skos:altLabel>
+    <skos:altLabel xml:lang="nl">dierenprogramma</skos:altLabel>
+    <skos:altLabel xml:lang="nl">natuurprogramma</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan de natuur en het milieu.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 297&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 16-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan de natuur en het milieu.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30117">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:48</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:48</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:42:48</dcterms:modified>
+    <skos:notation>30117</skos:notation>
+    <skos:prefLabel xml:lang="nl">computeranimatie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Animatie-productie met behulp van de computer.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 163&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Animatie-productie met behulp van de computer.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30087"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30405">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:25</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:25</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:40:56</dcterms:modified>
+    <skos:notation>30405</skos:notation>
+    <skos:prefLabel xml:lang="nl">genrefilm</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Amateurfilm met een experimenteel en artistiek karakter. Het zijn veelal sterk cinematografische films die meestal ontstaan zijn binnen de gelederen van de Nederlandse Smalfilm Liga (tot 1948) en later de N.O.V.A. (tot heden).</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 496&#13;Datum invoer: 18-7-2001&#13;Gebruiker invoer: cvdpijl&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Amateurfilm met een experimenteel en artistiek karakter. Het zijn veelal sterk cinematografische films die meestal ontstaan zijn binnen de gelederen van de Nederlandse Smalfilm Liga (tot 1948) en later de N.O.V.A. (tot heden).</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30084"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30206">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:54</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:54</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:42:57</dcterms:modified>
+    <skos:notation>30206</skos:notation>
+    <skos:prefLabel xml:lang="nl">klei-animatie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Animatie-productie met behulp van kleifiguren.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 262&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Animatie-productie met behulp van kleifiguren.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30087"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30122">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:48</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:48</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:44:42</dcterms:modified>
+    <skos:notation>30122</skos:notation>
+    <skos:prefLabel xml:lang="nl">cultureel programma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan (gevarieerde onderwerpen op het gebied van) kunst en cultuur.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 169&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 31-10-2007&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan (gevarieerde onderwerpen op het gebied van) kunst en cultuur.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30119"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30424"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30288"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30346"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30361"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30160"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30215"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30218"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30225"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30237"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30238"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30235"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30093">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:31</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:31</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:27:50</dcterms:modified>
+    <skos:notation>30093</skos:notation>
+    <skos:prefLabel xml:lang="nl">bedrijfsfilm</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">opdrachtfilm</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie, met een bedrijf als opdrachtgever, over bepaalde procédés, fabrieken, werkwijzen etc.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 136&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie, met een bedrijf als opdrachtgever, over bepaalde procédés, fabrieken, werkwijzen etc.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30287"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30215">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:55</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:55</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:56:45</dcterms:modified>
+    <skos:notation>30215</skos:notation>
+    <skos:prefLabel xml:lang="nl">kunstprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan diverse beeldende kunsten, zoals ook architectuur en industriële vormgeving.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 271&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan diverse beeldende kunsten, zoals ook architectuur en industriële vormgeving.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30375">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:06</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:06</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:29:29</dcterms:modified>
+    <dcterms:contributor xml:lang="nl">Literatuur: Lopez</dcterms:contributor>
+    <skos:notation>30375</skos:notation>
+    <skos:prefLabel xml:lang="nl">politiek drama</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin het verhaal gebaseerd is op (meestal actuele) politieke thema's, waarbij eventueel politieke misstanden of problemen aan de kaak gesteld worden.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 456&#13;Datum invoer: 14-9-1999&#13;Gebruiker invoer: llie&#13;Datum gewijzigd: 20-4-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin het verhaal gebaseerd is op (meestal actuele) politieke thema's, waarbij eventueel politieke misstanden of problemen aan de kaak gesteld worden.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30282"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30181"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30340">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:03</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:03</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:50:54</dcterms:modified>
+    <skos:notation>30340</skos:notation>
+    <skos:prefLabel xml:lang="nl">tekenfilm</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">cartoon</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Getekende animatie-productie (veelal cel-animatie).</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 409&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Getekende animatie-productie (veelal cel-animatie).</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30087"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30344">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:04</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:04</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:29:53</dcterms:modified>
+    <skos:notation>30344</skos:notation>
+    <skos:prefLabel xml:lang="nl">thriller</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie, bedoeld om bij de toeschouwer of luisteraar spanning op te roepen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 413&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 12-6-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie, bedoeld om bij de toeschouwer of luisteraar spanning op te roepen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30181"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30273">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:59Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:59Z</dcterms:dateSubmitted>
+    <dcterms:modified>2014-04-01T16:19:11Z</dcterms:modified>
+    <skos:notation>30273</skos:notation>
+    <skos:prefLabel xml:lang="nl">populairwetenschappelijke informatie</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">wetenschappelijk programma</skos:altLabel>
+    <skos:hiddenLabel xml:lang="nl">populair-wetenschappelijke informatie</skos:hiddenLabel>
+    <skos:scopeNote xml:lang="nl">Wetenschappelijke informatie voor leken.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 337
+Datum invoer: 13-12-1998
+Gebruiker invoer: DEFAULT
+Datum gewijzigd: 4-10-2006
+Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Wetenschappelijke informatie voor leken.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30137"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30226"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30223">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:55</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:55</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-18T16:56:26</dcterms:modified>
+    <skos:notation>30223</skos:notation>
+    <skos:prefLabel xml:lang="nl">magazine</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">radiomagazine</skos:altLabel>
+    <skos:altLabel xml:lang="nl">televisiemagazine</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Gevarieerd licht-informatief programma met naar vorm en inhoud verschillende items.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 279&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 11-8-2004&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Gevarieerd licht-informatief programma met naar vorm en inhoud verschillende items.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30424"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30423"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30205">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:54</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:54</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:15:42</dcterms:modified>
+    <skos:notation>30205</skos:notation>
+    <skos:prefLabel xml:lang="nl">klankbeeld</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Weergave van een gebeurtenis of stemming in door de radio uitgezonden klanken. Wordt veelal gebruikt voor programma's gemaakt tot medio jaren '60. Voor recentere programma's de term 'documentaire' te gebruiken, tenzij d.m.v. klanken die een zekere sfeer trachten op te roepen alsnog van een 'klankbeeld' kan worden gesproken.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 261&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Weergave van een gebeurtenis of stemming in door de radio uitgezonden klanken. Wordt veelal gebruikt voor programma's gemaakt tot medio jaren '60. Voor recentere programma's de term 'documentaire' te gebruiken, tenzij d.m.v. klanken die een zekere sfeer trachten op te roepen alsnog van een 'klankbeeld' kan worden gesproken.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30134"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30153">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:50</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:50</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:41:46</dcterms:modified>
+    <skos:notation>30153</skos:notation>
+    <skos:prefLabel xml:lang="nl">familiefilm</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">vakantiefilm</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Film waarin de familie het onderwerp is. Met name toe te kennen aan amateurfilms en tijdgebonden opdrachtfilms van o.a. Polygoon.</skos:scopeNote>
+    <skos:note xml:lang="nl">Dit genre niet gebruiken voor een film die geschikt is om met het hele gezin naar te kijken.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 201&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Film waarin de familie het onderwerp is. Met name toe te kennen aan amateurfilms en tijdgebonden opdrachtfilms van o.a. Polygoon.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30084"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30235">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:56</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:56</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:43:55</dcterms:modified>
+    <skos:notation>30235</skos:notation>
+    <skos:prefLabel xml:lang="nl">muziekuitzending</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">verzoekplatenprogramma</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Programma dat geheel of voornamelijk gewijd is aan het afspelen van geregistreerde muziekopnamen, zoals in platenprogramma's.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 292&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma dat geheel of voornamelijk gewijd is aan het afspelen van geregistreerde muziekopnamen, zoals in platenprogramma's.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30237"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30238"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30359"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30346">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:04</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:04</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:46:26</dcterms:modified>
+    <skos:notation>30346</skos:notation>
+    <skos:prefLabel xml:lang="nl">toeristische informatie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Informatie over toeristische bestemmingen en reisinformatie.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 415&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 30-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Informatie over toeristische bestemmingen en reisinformatie.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30291"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30362"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30119"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30381"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30361">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:05</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:05</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T15:08:56</dcterms:modified>
+    <skos:notation>30361</skos:notation>
+    <skos:prefLabel xml:lang="nl">voordracht</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">monoloog</skos:altLabel>
+    <skos:altLabel xml:lang="nl">Bijbellezing</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Het voordragen van een (literaire) tekst.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 430&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 30-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Het voordragen van een (literaire) tekst.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30218"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30261"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30103"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30108"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30261">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:58</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:58</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:45:15</dcterms:modified>
+    <skos:notation>30261</skos:notation>
+    <skos:prefLabel xml:lang="nl">overdenking</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">monoloog</skos:altLabel>
+    <skos:altLabel xml:lang="nl">ochtendwijding</skos:altLabel>
+    <skos:altLabel xml:lang="nl">dagopening</skos:altLabel>
+    <skos:altLabel xml:lang="nl">dagsluiting</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Overpeinzing of verhandeling met een veelal contemplatief karakter in de vorm van een toespraak, gedicht(en) of lied(eren).</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 325&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Overpeinzing of verhandeling met een veelal contemplatief karakter in de vorm van een toespraak, gedicht(en) of lied(eren).</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30361"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30114"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30216"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30225">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:55</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:55</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:57:03</dcterms:modified>
+    <skos:notation>30225</skos:notation>
+    <skos:prefLabel xml:lang="nl">mediaprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan de (traditionele en nieuwe) media.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 281&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 16-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan de (traditionele en nieuwe) media.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30423">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:29</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:29</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T15:56:52</dcterms:modified>
+    <skos:notation>30423</skos:notation>
+    <skos:prefLabel xml:lang="nl">showbizzprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin bericht wordt over, of verslag gedaan wordt van het leven van prominenten, onder wie mensen uit de wereld van&#13;sport en amusement, vorstenhuizen, enz.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 515&#13;Datum invoer: 11-8-2004&#13;Gebruiker invoer: Beng&#13;Datum gewijzigd: 4-10-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin bericht wordt over, of verslag gedaan wordt van het leven van prominenten, onder wie mensen uit de wereld van&#13;sport en amusement, vorstenhuizen, enz.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30223"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30422"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30081"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30341">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:03</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:03</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:38:51</dcterms:modified>
+    <skos:notation>30341</skos:notation>
+    <skos:prefLabel xml:lang="nl">televisiedrama</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">drama</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Speciaal voor televisie geschreven of bewerkt drama (in een of in een beperkt aantal afleveringen).</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 410&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 12-6-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Speciaal voor televisie geschreven of bewerkt drama (in een of in een beperkt aantal afleveringen).</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30375"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30376"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30377"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30344"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30177"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30133"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30316"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30396"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30208"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30115"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30098">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:31</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:31</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:23:49</dcterms:modified>
+    <skos:notation>30098</skos:notation>
+    <skos:prefLabel xml:lang="nl">biografie</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">autobiografie</skos:altLabel>
+    <skos:altLabel xml:lang="nl">egodocument</skos:altLabel>
+    <skos:altLabel xml:lang="nl">in memoriam</skos:altLabel>
+    <skos:altLabel xml:lang="nl">levensschets</skos:altLabel>
+    <skos:altLabel xml:lang="nl">necrologie</skos:altLabel>
+    <skos:altLabel xml:lang="nl">overlijdensbericht</skos:altLabel>
+    <skos:altLabel xml:lang="nl">portret</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Producties die een overzicht geven van het leven (of een belangrijk deel daarvan) en/of het werk van een persoon (geen fictieve personen).</skos:scopeNote>
+    <skos:note xml:lang="nl">Plaats de desbetreffende eigennaam (of -namen) in het daarvoor bestemde veld.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 142&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 18-6-2007&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Producties die een overzicht geven van het leven (of een belangrijk deel daarvan) en/of het werk van een persoon (geen fictieve personen).</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30177"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30260"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30281">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:59</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:59</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:46:02</dcterms:modified>
+    <skos:notation>30281</skos:notation>
+    <skos:prefLabel xml:lang="nl">promotie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie die er op gericht is de kijker of luisteraar ergens van te overtuigen zonder dat dit een commercieel doel dient.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 345&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 12-10-2005&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie die er op gericht is de kijker of luisteraar ergens van te overtuigen zonder dat dit een commercieel doel dient.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30280"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30282"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30287"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30362"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30395">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:22</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:22</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T15:10:25</dcterms:modified>
+    <skos:notation>30395</skos:notation>
+    <skos:prefLabel xml:lang="nl">compilatie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie samengesteld uit delen van andere producties die zijn gemonteerd tot een nieuw eindproduct, bijvoorbeeld rond een bepaald thema.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 486&#13;Datum invoer: 17-7-2001&#13;Gebruiker invoer: kschouten&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie samengesteld uit delen van andere producties die zijn gemonteerd tot een nieuw eindproduct, bijvoorbeeld rond een bepaald thema.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30266"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30218">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:55</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:55</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:44:52</dcterms:modified>
+    <skos:notation>30218</skos:notation>
+    <skos:prefLabel xml:lang="nl">literatuurprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan literatuur in ruime zin; hierbij ook boekenprogramma's.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 274&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan literatuur in ruime zin; hierbij ook boekenprogramma's.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30361"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30176">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:52</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:52</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:41:20</dcterms:modified>
+    <skos:notation>30176</skos:notation>
+    <skos:prefLabel xml:lang="nl">herkenningsgeluid</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">jingle</skos:altLabel>
+    <skos:altLabel xml:lang="nl">pauzeteken</skos:altLabel>
+    <skos:altLabel xml:lang="nl">stationcall</skos:altLabel>
+    <skos:altLabel xml:lang="nl">tijdsein</skos:altLabel>
+    <skos:altLabel xml:lang="nl">tune</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Geluid in de vorm van muziek, gesproken woord en/of anderszins, uitgezonden ter herkenning van een zender, omroep of programma; dan wel om een uitzendpauze of de tijd aan te geven.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 226&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 12-10-2005&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Geluid in de vorm van muziek, gesproken woord en/of anderszins, uitgezonden ter herkenning van een zender, omroep of programma; dan wel om een uitzendpauze of de tijd aan te geven.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30168"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30280"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30288">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:00</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:00</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:47:25</dcterms:modified>
+    <skos:notation>30288</skos:notation>
+    <skos:prefLabel xml:lang="nl">regionaal programma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan regionale onderwerpen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 352&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan regionale onderwerpen.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30424">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:29</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:29</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:16:36</dcterms:modified>
+    <skos:notation>30424</skos:notation>
+    <skos:prefLabel xml:lang="nl">lifestyleprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Licht-informatief programma dat aandacht besteedt aan 'de goede dingen des levens', zoals mode, uiterlijk, gezondheid, trends,&#13;interieur, eten, drinken en uitgaan.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 516&#13;Datum invoer: 11-8-2004&#13;Gebruiker invoer: Beng&#13;Datum gewijzigd: 11-8-2004&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Licht-informatief programma dat aandacht besteedt aan 'de goede dingen des levens', zoals mode, uiterlijk, gezondheid, trends,&#13;interieur, eten, drinken en uitgaan.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30223"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30401"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30402"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30119"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30381"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30255">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:57</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:57</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:13:53</dcterms:modified>
+    <skos:notation>30255</skos:notation>
+    <skos:prefLabel xml:lang="nl">onderwijsfilm</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">schoolfilm</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Speciaal voor het onderwijs gemaakte film, bedoeld als leermiddel.</skos:scopeNote>
+    <skos:note xml:lang="nl">Genre vooral binnen non-fictie.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 318&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Speciaal voor het onderwijs gemaakte film, bedoeld als leermiddel.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30137"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/213228">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>Anneke Kroon</dcterms:creator>
+    <dcterms:dateAccepted>2009-04-23T13:18:19</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2009-04-09T09:52:20</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T15:15:15</dcterms:modified>
+    <skos:notation>213228</skos:notation>
+    <skos:prefLabel xml:lang="nl">interactief programma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">praatradio</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarbij de inbreng van kijkers of luisteraars een belangrijk stempel op het programma drukt.</skos:scopeNote>
+    <skos:note xml:lang="nl">Tim: voorstel ivm nieuw VPRO programma 'De NON'. Geen van bestaande genres van toepassing; ook te gebruiken voor 'Standpunt.nl'.</skos:note>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: Alma Wolthuis</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarbij de inbreng van kijkers of luisteraars een belangrijk stempel op het programma drukt.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30277"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30178">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:52</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:52</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:45:57</dcterms:modified>
+    <skos:notation>30178</skos:notation>
+    <skos:prefLabel xml:lang="nl">historisch programma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma over geschiedenis c.q. programma waarin historische achtergronden van hedendaagse kwesties centraal staan.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 228&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma over geschiedenis c.q. programma waarin historische achtergronden van hedendaagse kwesties centraal staan.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30222">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:55</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:55</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:22:37</dcterms:modified>
+    <skos:notation>30222</skos:notation>
+    <skos:prefLabel xml:lang="nl">maatschappijprogramma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">sociaaleconomisch programma</skos:altLabel>
+    <skos:altLabel xml:lang="nl">emancipatieprogramma</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Programma dat één of meerdere facetten van het maatschappelijk leven tot onderwerp heeft.&#13;Term uitsluitend te gebruiken voor zover geen andere inhoudelijke genre-aanduiding van toepassing is.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 278&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 4-10-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma dat één of meerdere facetten van het maatschappelijk leven tot onderwerp heeft.&#13;Term uitsluitend te gebruiken voor zover geen andere inhoudelijke genre-aanduiding van toepassing is.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30240"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30270"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30292"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30183"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30397"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30421"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30288"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30161"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30178"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30086">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:30</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:30</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:42:06</dcterms:modified>
+    <skos:notation>30086</skos:notation>
+    <skos:prefLabel xml:lang="nl">amusement</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">variété</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Ter verstrooiing en vermaak.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 128&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 4-10-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Ter verstrooiing en vermaak.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30284"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30422"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30302"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30312"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30423"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30325"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30420"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/214956"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30417">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:28</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:28</dcterms:dateSubmitted>
+    <dcterms:modified>2007-12-04T16:42:56</dcterms:modified>
+    <skos:notation>30417</skos:notation>
+    <skos:prefLabel xml:lang="nl">experimenteel programma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin wordt geëxperimenteerd met vorm, techniek en/of inhoud, c.q. programma dat (jonge) programmamakers een podium biedt&#13;voor hun producties. Wees terughoudend in het toekennen van dit genre!</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 509&#13;Datum invoer: 7-10-2003&#13;Gebruiker invoer: awolthuis&#13;Datum gewijzigd: 12-6-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin wordt geëxperimenteerd met vorm, techniek en/of inhoud, c.q. programma dat (jonge) programmamakers een podium biedt&#13;voor hun producties. Wees terughoudend in het toekennen van dit genre!</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30359">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:05Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:05Z</dcterms:dateSubmitted>
+    <dcterms:modified>2013-10-16T09:58:42Z</dcterms:modified>
+    <skos:notation>30359</skos:notation>
+    <skos:prefLabel xml:lang="nl">videoclip</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">music video</skos:altLabel>
+    <skos:altLabel xml:lang="nl">muziekvideo</skos:altLabel>
+    <skos:altLabel xml:lang="nl">clip</skos:altLabel>
+    <skos:altLabel xml:lang="nl">lipdub</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Korte muziekproductie, vooral populair vanaf de jaren tachtig. Oorspronkelijk bedoeld om de verkoop van (een bepaalde) popsong(s) te stimuleren. Het genre heeft zich ontwikkeld van de registratie van de uitvoering van een bepaald nummer tot producties waarin een verhaal of idee centraal staat. De duur kan varëren van 3 (bijvoorbeeld één nummer) tot circa 30 minuten (meerdere nummers en/of een uitgebreid optreden).</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 428
+Datum invoer: 13-12-1998
+Gebruiker invoer: DEFAULT
+Datum gewijzigd: 30-8-2001
+Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Korte muziekproductie, vooral populair vanaf de jaren tachtig. Oorspronkelijk bedoeld om de verkoop van (een bepaalde) popsong(s) te stimuleren. Het genre heeft zich ontwikkeld van de registratie van de uitvoering van een bepaald nummer tot producties waarin een verhaal of idee centraal staat. De duur kan varëren van 3 (bijvoorbeeld één nummer) tot circa 30 minuten (meerdere nummers en/of een uitgebreid optreden).</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30236"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30235"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30177">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:52</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:52</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:29:21</dcterms:modified>
+    <skos:notation>30177</skos:notation>
+    <skos:prefLabel xml:lang="nl">historisch drama</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">kostuumfilm</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie, waarin historische gebeurtenissen verbeeld worden; zowel historisch verantwoorde reconstructies als producties die dat pretenderen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 227&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 20-4-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie, waarin historische gebeurtenissen verbeeld worden; zowel historisch verantwoorde reconstructies als producties die dat pretenderen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30181"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30098"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/229214">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>Alma Wolthuis</dcterms:creator>
+    <dcterms:dateAccepted>2011-09-13T15:28:16Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2011-08-09T11:46:44Z</dcterms:dateSubmitted>
+    <dcterms:modified>2013-03-06T16:50:02Z</dcterms:modified>
+    <skos:notation>229214</skos:notation>
+    <skos:prefLabel xml:lang="nl">screentest</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Registratie van een proefopname voor een televisieprogramma, film enz.</skos:scopeNote>
+    <skos:note xml:lang="nl">suggestie MPeeters; de term komt ook inhoudelijk voor, dus nààst de onderwerpsterm 'screentests'!</skos:note>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: Alma Wolthuis</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Registratie van een proefopname voor een televisieprogramma, film enz.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30137">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:49Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:49Z</dcterms:dateSubmitted>
+    <dcterms:modified>2013-09-11T14:56:21Z</dcterms:modified>
+    <skos:notation>30137</skos:notation>
+    <skos:prefLabel xml:lang="nl">educatie</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">instructiefilm</skos:altLabel>
+    <skos:altLabel xml:lang="nl">schoolradio</skos:altLabel>
+    <skos:altLabel xml:lang="nl">schooltelevisie</skos:altLabel>
+    <skos:altLabel xml:lang="nl">hoorcollege</skos:altLabel>
+    <skos:altLabel xml:lang="nl">tutorial</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie met een opvoedend, onderrichtend of vormend karakter.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 185
+Datum invoer: 13-12-1998
+Gebruiker invoer: DEFAULT
+Datum gewijzigd: 4-10-2006
+Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie met een opvoedend, onderrichtend of vormend karakter.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30273"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30124"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30255"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30084">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:30Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:30Z</dcterms:dateSubmitted>
+    <dcterms:modified>2014-05-06T12:22:50Z</dcterms:modified>
+    <skos:notation>30084</skos:notation>
+    <skos:prefLabel xml:lang="nl">amateuropname</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">home movie</skos:altLabel>
+    <skos:altLabel xml:lang="nl">home video</skos:altLabel>
+    <skos:altLabel xml:lang="nl">privéfilm</skos:altLabel>
+    <skos:altLabel xml:lang="nl">smalfilm</skos:altLabel>
+    <skos:altLabel xml:lang="nl">amateurfilm</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Producties die veelal gemaakt zijn door non-professionals en die niet bestemd zijn voor commerciële uitbreng, maar meestal voor een kleine groep (bekenden, familie).</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 126
+Datum invoer: 13-12-1998
+Gebruiker invoer: DEFAULT
+Datum gewijzigd: 18-11-2003
+Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Producties die veelal gemaakt zijn door non-professionals en die niet bestemd zijn voor commerciële uitbreng, maar meestal voor een kleine groep (bekenden, familie).</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30153"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30405"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30419">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:28</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:28</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:38:03</dcterms:modified>
+    <skos:notation>30419</skos:notation>
+    <skos:prefLabel xml:lang="nl">opera</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Registratie van een hoofdzakelijk gezongen en orkestraal begeleid muziekdrama, gewoonlijk ernstig van aard.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 511&#13;Datum invoer: 7-10-2003&#13;Gebruiker invoer: awolthuis&#13;Datum gewijzigd: 12-10-2005&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Registratie van een hoofdzakelijk gezongen en orkestraal begeleid muziekdrama, gewoonlijk ernstig van aard.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30343"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30238"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30247">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:57</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:57</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:09:38</dcterms:modified>
+    <skos:notation>30247</skos:notation>
+    <skos:prefLabel xml:lang="nl">nieuws</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">nieuwsbulletin</skos:altLabel>
+    <skos:altLabel xml:lang="nl">filmjournaal</skos:altLabel>
+    <skos:altLabel xml:lang="nl">journaal</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Meestal korte, actuele productie bestaande uit een aantal min of meer onafhankelijke nieuwsitems.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 308&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 11-6-2007&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Meestal korte, actuele productie bestaande uit een aantal min of meer onafhankelijke nieuwsitems.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30294"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30081"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30226">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:55</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:55</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T15:54:58</dcterms:modified>
+    <skos:notation>30226</skos:notation>
+    <skos:prefLabel xml:lang="nl">medische informatie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Medische informatie voor leken.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 282&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 4-10-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Medische informatie voor leken.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30273"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30421"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30291">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:00</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:00</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:41:54</dcterms:modified>
+    <skos:notation>30291</skos:notation>
+    <skos:prefLabel xml:lang="nl">reisverslag</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">reisfilm</skos:altLabel>
+    <skos:altLabel xml:lang="nl">vakantiefilm</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin, al dan niet op locatie, verslag wordt gedaan van een reis.</skos:scopeNote>
+    <skos:note xml:lang="nl">Non-fictie.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 355&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin, al dan niet op locatie, verslag wordt gedaan van een reis.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30381"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30346"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30237">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:56</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:56</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:54:27</dcterms:modified>
+    <skos:notation>30237</skos:notation>
+    <skos:prefLabel xml:lang="nl">muziekprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt (in gesproken woord en evt. beeld) aandacht aan gevarieerde onderwerpen op het gebied van muziek.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 294&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt (in gesproken woord en evt. beeld) aandacht aan gevarieerde onderwerpen op het gebied van muziek.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30235"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30238"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30266">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:58</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:58</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:35:57</dcterms:modified>
+    <skos:notation>30266</skos:notation>
+    <skos:prefLabel xml:lang="nl">periode-overzicht</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">jaaroverzicht</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Terugblik op een bepaalde periode zoals jaar, decennium, eeuw.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 330&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Terugblik op een bepaalde periode zoals jaar, decennium, eeuw.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30395"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30421">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:29</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:29</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:09:47</dcterms:modified>
+    <skos:notation>30421</skos:notation>
+    <skos:prefLabel xml:lang="nl">reality-tv</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin, doorgaans in een reeks van afleveringen, gebeurtenissen in de natuurlijke omgeving worden weergegeven,&#13;zoals (medische) hulpverlening, reddingen, enz. Denk hierbij aan het wel en wee in en rond ziekenhuizen en politiediensten. De personen in de uitzending zijn ondergeschikt aan de gebeurtenissen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 513&#13;Datum invoer: 11-8-2004&#13;Gebruiker invoer: Beng&#13;Datum gewijzigd: 4-10-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin, doorgaans in een reeks van afleveringen, gebeurtenissen in de natuurlijke omgeving worden weergegeven,&#13;zoals (medische) hulpverlening, reddingen, enz. Denk hierbij aan het wel en wee in en rond ziekenhuizen en politiediensten. De personen in de uitzending zijn ondergeschikt aan de gebeurtenissen.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30422"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30294"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30226"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30183"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30401">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:24</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:24</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:16:20</dcterms:modified>
+    <skos:notation>30401</skos:notation>
+    <skos:prefLabel xml:lang="nl">culinair programma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">kookprogramma</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin aandacht wordt besteed aan zaken betreffende eten, drinken en koken.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 492&#13;Datum invoer: 17-7-2001&#13;Gebruiker invoer: kschouten&#13;Datum gewijzigd: 11-8-2004&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin aandacht wordt besteed aan zaken betreffende eten, drinken en koken.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30424"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30381"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30325">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:02Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:02Z</dcterms:dateSubmitted>
+    <dcterms:modified>2014-03-12T11:02:07Z</dcterms:modified>
+    <skos:notation>30325</skos:notation>
+    <skos:prefLabel xml:lang="nl">spelprogramma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">belspelletje</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Spelletje met kandidaten in competitiesfeer.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 393
+Datum invoer: 13-12-1998
+Gebruiker invoer: DEFAULT
+Datum gewijzigd: 30-8-2001
+Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Spelletje met kandidaten in competitiesfeer.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30284"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30277">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:59</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:59</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:47:02</dcterms:modified>
+    <skos:notation>30277</skos:notation>
+    <skos:prefLabel xml:lang="nl">praatprogramma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">talkshow</skos:altLabel>
+    <skos:altLabel xml:lang="nl">interview</skos:altLabel>
+    <skos:altLabel xml:lang="nl">discussie</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin (in de studio), met meerdere gasten tegelijk of achtereenvolgens, een gesprek wordt gevoerd.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 341&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin (in de studio), met meerdere gasten tegelijk of achtereenvolgens, een gesprek wordt gevoerd.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/213228"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30363"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30260"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30134">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:49</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:49</dcterms:dateSubmitted>
+    <dcterms:modified>2011-11-17T10:39:45</dcterms:modified>
+    <skos:notation>30134</skos:notation>
+    <skos:prefLabel xml:lang="nl">documentaire</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Geeft een beeld van werkelijke personen en/of gebeurtenissen. Plaats, tijd en handeling vormen meestal geen eenheid. Een documentaire vormt in het algemeen de neerslag van uitgebreid onderzoek; en de identiteit (visie) van de maker speelt een belangrijke rol.</skos:scopeNote>
+    <skos:note xml:lang="nl">Alleen gebruiken voor producties, waarop geen andere non-fictiedescriptor van toepassing is en waarvoor de categorie 'non-fictie' en 'hybride' te weinig specifiek is.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 181&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Geeft een beeld van werkelijke personen en/of gebeurtenissen. Plaats, tijd en handeling vormen meestal geen eenheid. Een documentaire vormt in het algemeen de neerslag van uitgebreid onderzoek; en de identiteit (visie) van de maker speelt een belangrijke rol.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30133"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30205"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30294"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30082">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:30</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:30</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T17:54:42</dcterms:modified>
+    <skos:notation>30082</skos:notation>
+    <skos:prefLabel xml:lang="nl">actuele informatie</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">beursberichten</skos:altLabel>
+    <skos:altLabel xml:lang="nl">scheepvaartberichten</skos:altLabel>
+    <skos:altLabel xml:lang="nl">verkeersinformatie</skos:altLabel>
+    <skos:altLabel xml:lang="nl">waterstanden</skos:altLabel>
+    <skos:altLabel xml:lang="nl">weerberichten</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Berichtgeving voor bepaalde doelgroepen over actuele ontwikkelingen op een specifiek terrein.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 123&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 19-9-2005&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Berichtgeving voor bepaalde doelgroepen over actuele ontwikkelingen op een specifiek terrein.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30081"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30362"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30141">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:49</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:49</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:14:27</dcterms:modified>
+    <skos:notation>30141</skos:notation>
+    <skos:prefLabel xml:lang="nl">erotica</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin seks en/of erotiek een belangrijke rol speelt.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 189&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin seks en/of erotiek een belangrijke rol speelt.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30119">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:48</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:48</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:45:46</dcterms:modified>
+    <skos:notation>30119</skos:notation>
+    <skos:prefLabel xml:lang="nl">consumentenprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Informatie voor de consument, waarin nieuwe producten worden getest of gedemonstreerd of waarin problemen van consumenten met bedrijven of (overheids)instellingen worden behandeld.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 165&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 11-8-2004&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Informatie voor de consument, waarin nieuwe producten worden getest of gedemonstreerd of waarin problemen van consumenten met bedrijven of (overheids)instellingen worden behandeld.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30424"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30346"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30362"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30381"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30312">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:01</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:01</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:10:20</dcterms:modified>
+    <skos:notation>30312</skos:notation>
+    <skos:prefLabel xml:lang="nl">show</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">revue</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Gevarieerde productie met amusement, dans, zang et cetera.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 380&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 30-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Gevarieerde productie met amusement, dans, zang et cetera.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30316">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:01</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:01</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:47:23</dcterms:modified>
+    <skos:notation>30316</skos:notation>
+    <skos:prefLabel xml:lang="nl">soap</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Meestal dagelijks uitgezonden dramaserie over het wel en wee van een groot aantal vaste karakters, met vele plots lopend over meerdere afleveringen meestal zonder duidelijk begin en einde met cliffhangers. Ook te gebruiken voor films over huiselijke thema's van zeer emotionele aard.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 384&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 4-10-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Meestal dagelijks uitgezonden dramaserie over het wel en wee van een groot aantal vaste karakters, met vele plots lopend over meerdere afleveringen meestal zonder duidelijk begin en einde met cliffhangers. Ook te gebruiken voor films over huiselijke thema's van zeer emotionele aard.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30422"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30181"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/214956">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>Alma Wolthuis</dcterms:creator>
+    <dcterms:dateAccepted>2009-10-27T13:49:18</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2009-10-27T13:49:18</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:50:32</dcterms:modified>
+    <skos:notation>214956</skos:notation>
+    <skos:prefLabel xml:lang="nl">improvisatie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Voorstelling of voordracht die op het ogenblik zelf dat zij bedacht is, wordt uitgevoerd of ten &#13;gehore wordt gebracht.</skos:scopeNote>
+    <skos:note xml:lang="nl">was voorgesteld door IvKampen als 'improviseren' in Onderwerpen</skos:note>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: Alma Wolthuis</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Voorstelling of voordracht die op het ogenblik zelf dat zij bedacht is, wordt uitgevoerd of ten &#13;gehore wordt gebracht.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30105"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30343"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30348"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/232521">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>Alma Wolthuis</dcterms:creator>
+    <dcterms:dateAccepted>2012-06-19T14:03:54Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2012-06-19T14:03:54Z</dcterms:dateSubmitted>
+    <dcterms:modified>2013-12-03T10:25:49Z</dcterms:modified>
+    <skos:notation>232521</skos:notation>
+    <skos:prefLabel xml:lang="nl">NADER TE BEPALEN</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">NIET LANGER GEBRUIKEN! (gebruik evt. 'niet bekend')</skos:scopeNote>
+    <skos:note xml:lang="nl">AW: toegevoegd op verzoek van FScherpenhuizen t.b.v. GMI-importen</skos:note>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: Alma Wolthuis</skos:historyNote>
+    <skos:changeNote xml:lang="nl">NIET LANGER GEBRUIKEN! (gebruik evt. 'niet bekend')</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30280">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:59</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:59</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:45:54</dcterms:modified>
+    <skos:notation>30280</skos:notation>
+    <skos:prefLabel xml:lang="nl">promo</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Veelal (ultra-)korte productie, met als hoofddoel een radio- of televisieprogramma onder de aandacht te brengen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 344&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 12-10-2005&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Veelal (ultra-)korte productie, met als hoofddoel een radio- of televisieprogramma onder de aandacht te brengen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30281"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30287"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30362"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30176"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30289">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:00</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:00</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:38:19</dcterms:modified>
+    <skos:notation>30289</skos:notation>
+    <skos:prefLabel xml:lang="nl">registratie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Vastlegging van een gebeurtenis met minimale tussenkomst van de maker.</skos:scopeNote>
+    <skos:note xml:lang="nl">Verder ontsluiten naar wat er geregistreerd wordt met onderwerpstermen.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 353&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 12-10-2005&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Vastlegging van een gebeurtenis met minimale tussenkomst van de maker.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30391"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30380"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30294"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30329"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30343"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30238"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30200"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30103">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:31Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:31Z</dcterms:dateSubmitted>
+    <dcterms:modified>2014-11-18T15:18:32Z</dcterms:modified>
+    <skos:notation>30103</skos:notation>
+    <skos:prefLabel xml:lang="nl">brief</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Geschrift in de vorm van een toespraak, tot een of meer afwezige personen gericht om hem (hen) iets te doen weten.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 148
+Datum invoer: 13-12-1998
+Gebruiker invoer: DEFAULT
+Datum gewijzigd: 5-9-2002
+Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Geschrift in de vorm van een toespraak, tot een of meer afwezige personen gericht om hem (hen) iets te doen weten.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30108"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30114"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30361"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30292">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:00</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:00</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:48:10</dcterms:modified>
+    <skos:notation>30292</skos:notation>
+    <skos:prefLabel xml:lang="nl">religieus programma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">Bijbellezing</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan (gevarieerde onderwerpen op het terrein van de) religie.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 356&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 30-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan (gevarieerde onderwerpen op het terrein van de) religie.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30200"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30216"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/237978">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>Alma Wolthuis</dcterms:creator>
+    <dcterms:dateAccepted>2013-12-03T10:15:54Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2013-12-03T10:15:46Z</dcterms:dateSubmitted>
+    <dcterms:modified>2013-12-03T10:15:54Z</dcterms:modified>
+    <skos:notation>237978</skos:notation>
+    <skos:prefLabel xml:lang="nl">niet bekend</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">alleen toe te voegen wanneer Genre niet te achterhalen is</skos:scopeNote>
+    <skos:note xml:lang="nl">ingevoerd ter geleidelijke vervanging van NADER TE BEPALEN</skos:note>
+    <skos:changeNote xml:lang="nl">alleen toe te voegen wanneer Genre niet te achterhalen is</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30081">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:30</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:30</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:17:36</dcterms:modified>
+    <skos:notation>30081</skos:notation>
+    <skos:prefLabel xml:lang="nl">actualiteiten</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Aan actualiteiten gewijd radio- of televisieprogramma, meestal op vaste tijdstippen uitgezonden.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 122&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 11-6-2007&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Aan actualiteiten gewijd radio- of televisieprogramma, meestal op vaste tijdstippen uitgezonden.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30082"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30247"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30423"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30160">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:51</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:51</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:56:36</dcterms:modified>
+    <skos:notation>30160</skos:notation>
+    <skos:prefLabel xml:lang="nl">filmprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan film(s) en de filmwereld.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 209&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan film(s) en de filmwereld.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30173">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:51</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:51</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:16:54</dcterms:modified>
+    <skos:notation>30173</skos:notation>
+    <skos:prefLabel xml:lang="nl">gymnastiekprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma dat bewegingsoefeningen presenteert en kijkers c.q. luisteraars uitnodigt mee te doen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 223&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 31-10-2007&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma dat bewegingsoefeningen presenteert en kijkers c.q. luisteraars uitnodigt mee te doen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30381"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30183">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:53</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:53</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T15:56:34</dcterms:modified>
+    <skos:notation>30183</skos:notation>
+    <skos:prefLabel xml:lang="nl">human interest</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin het menselijk/persoonlijk element, de gevoelsinbreng centraal staat.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 234&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 4-10-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin het menselijk/persoonlijk element, de gevoelsinbreng centraal staat.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30421"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30422"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30120"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30308">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:01</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:01</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:41:35</dcterms:modified>
+    <skos:notation>30308</skos:notation>
+    <skos:prefLabel xml:lang="nl">sciencefiction</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin nieuwe technologie of een toekomstige wereld wordt voorgeschoteld, met een plausibele wetenschappelijke basis als achtergrond.</skos:scopeNote>
+    <skos:note xml:lang="nl">Sciencefiction kan bevolkt zijn met buitenaardse wezens (aliens), robots en computers; ze gaan over de nabije èn verre toekomst, maar ook over een ver verleden (Prehistorie).</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 375&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin nieuwe technologie of een toekomstige wereld wordt voorgeschoteld, met een plausibele wetenschappelijke basis als achtergrond.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30181">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:52</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:52</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:38:38</dcterms:modified>
+    <skos:notation>30181</skos:notation>
+    <skos:prefLabel xml:lang="nl">hoorspel</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">drama</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Toneelspel voor de radio (ook wel: luisterspel).</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 232&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-5-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Toneelspel voor de radio (ook wel: luisterspel).</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30177"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30375"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30316"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30377"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30344"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30133"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30396"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30115"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30422">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:29</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:29</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:21:57</dcterms:modified>
+    <skos:notation>30422</skos:notation>
+    <skos:prefLabel xml:lang="nl">reallifesoap</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin gedurende een reeks van afleveringen steeds (min of meer) dezelfde persoon of personen worden gevolgd in&#13;hun dagelijks leven of werk, of waarin een groep personen in een 'kunstmatige', gefingeerde omgeving wordt gevolgd.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 514&#13;Datum invoer: 11-8-2004&#13;Gebruiker invoer: Beng&#13;Datum gewijzigd: 4-10-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin gedurende een reeks van afleveringen steeds (min of meer) dezelfde persoon of personen worden gevolgd in&#13;hun dagelijks leven of werk, of waarin een groep personen in een 'kunstmatige', gefingeerde omgeving wordt gevolgd.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30421"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30423"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30316"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30183"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30208">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:54</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:54</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:47:36</dcterms:modified>
+    <skos:notation>30208</skos:notation>
+    <skos:prefLabel xml:lang="nl">komedie</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">klucht</skos:altLabel>
+    <skos:altLabel xml:lang="nl">blijspel</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie met een humoristische bedoeling waarbij meer aandacht is voor plot dan voor karaktertekening.</skos:scopeNote>
+    <skos:note xml:lang="nl">Een éénmalige productie; niet te verwarren met comedy (serie).</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 264&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 6-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie met een humoristische bedoeling waarbij meer aandacht is voor plot dan voor karaktertekening.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30302"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30115"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30133">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:49</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:49</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:29:13</dcterms:modified>
+    <skos:notation>30133</skos:notation>
+    <skos:prefLabel xml:lang="nl">docudrama</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">geënsceneerde documentaire</skos:altLabel>
+    <skos:altLabel xml:lang="nl">speeldocu</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin feitelijke, actuele en historische, gebeurtenissen geënsceneerd worden. Vooral bekend als TV-genre vanaf de jaren zeventig.</skos:scopeNote>
+    <skos:note xml:lang="nl">Niet gebruiken voor non-fictie met gespeelde fragmenten en ook niet voor fictie met fragmenten non-fictie.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 180&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 31-10-2007&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin feitelijke, actuele en historische, gebeurtenissen geënsceneerd worden. Vooral bekend als TV-genre vanaf de jaren zeventig.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30134"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30181"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30216">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:55</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:55</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:52:55</dcterms:modified>
+    <skos:notation>30216</skos:notation>
+    <skos:prefLabel xml:lang="nl">levensbeschouwelijk programma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan beschouwing, opvatting omtrent het leven.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 272&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan beschouwing, opvatting omtrent het leven.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30114"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30261"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30292"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30200"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30271">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:58</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:58</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T13:43:10</dcterms:modified>
+    <skos:notation>30271</skos:notation>
+    <skos:prefLabel xml:lang="nl">poppenfilm</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Animatie-productie met drie-dimensionale figuurtjes. Ook te gebruiken voor poppenseries op de televisie.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 335&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 11-8-2004&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Animatie-productie met drie-dimensionale figuurtjes. Ook te gebruiken voor poppenseries op de televisie.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30087"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30328">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:03</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:03</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:24:29</dcterms:modified>
+    <skos:notation>30328</skos:notation>
+    <skos:prefLabel xml:lang="nl">sportprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Besteedt aandacht aan gevarieerde onderwerpen op het terrein van de sport.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 396&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 30-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Besteedt aandacht aan gevarieerde onderwerpen op het terrein van de sport.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30329"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30348">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:04</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:04</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:40:37</dcterms:modified>
+    <skos:notation>30348</skos:notation>
+    <skos:prefLabel xml:lang="nl">toneeluitvoering</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">tragedie</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Oorspronkelijk in een theater uitgevoerd toneelstuk.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 417&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 30-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Oorspronkelijk in een theater uitgevoerd toneelstuk.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/214956"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30343"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30420">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:28</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:28</dcterms:dateSubmitted>
+    <dcterms:modified>2012-03-19T15:23:45</dcterms:modified>
+    <skos:notation>30420</skos:notation>
+    <skos:prefLabel xml:lang="nl">talentenjacht</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma met een wedstrijdelement, waarin kandidaten hun talenten op muzikaal of ander gebied kunnen presenteren.</skos:scopeNote>
+    <skos:note xml:lang="nl">verruiming SN op voorstel van IvKampen, voorheen: "... op muzikaal of anderszins artistiek gebied ..."</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 512&#13;Datum invoer: 7-10-2003&#13;Gebruiker invoer: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma met een wedstrijdelement, waarin kandidaten hun talenten op muzikaal of ander gebied kunnen presenteren.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30343"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30238"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30168">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:51</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:51</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:29:23</dcterms:modified>
+    <skos:notation>30168</skos:notation>
+    <skos:prefLabel xml:lang="nl">geluidseffect</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Geluid dat geproduceerd is om een effect teweeg te brengen, met name als geluidsdecor.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 218&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 16-6-2000&#13;Gebruiker gewijzigd: llie</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Geluid dat geproduceerd is om een effect teweeg te brengen, met name als geluidsdecor.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30176"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30402">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:24</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:24</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:16:28</dcterms:modified>
+    <skos:notation>30402</skos:notation>
+    <skos:prefLabel xml:lang="nl">hobbyprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin aandacht wordt besteed aan hobby's en/of praktische bezigheden in en om het huis, zoals klussen en tuinieren.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 493&#13;Datum invoer: 17-7-2001&#13;Gebruiker invoer: kschouten&#13;Datum gewijzigd: 11-8-2004&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin aandacht wordt besteed aan hobby's en/of praktische bezigheden in en om het huis, zoals klussen en tuinieren.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30424"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30381"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30302">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:01</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:01</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:39:46</dcterms:modified>
+    <skos:notation>30302</skos:notation>
+    <skos:prefLabel xml:lang="nl">satire</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin personen en/of (actuele) toestanden worden bespot.</skos:scopeNote>
+    <skos:note xml:lang="nl">Filmmuseum niet: gebruik komedie.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 369&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 16-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin personen en/of (actuele) toestanden worden bespot.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30208"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30105"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30282">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:59</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:59</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:46:09</dcterms:modified>
+    <skos:notation>30282</skos:notation>
+    <skos:prefLabel xml:lang="nl">propaganda</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie met een nauw omschreven ideologisch of politiek doel (links, rechts, conservatief, racistisch, revolutionair) en de uitdrukkelijke wil om de kijker te doordringen van het standpunt van de makers en/of opdrachtgevers (regeringen of bepaalde groepen).</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 346&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 28-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie met een nauw omschreven ideologisch of politiek doel (links, rechts, conservatief, racistisch, revolutionair) en de uitdrukkelijke wil om de kijker te doordringen van het standpunt van de makers en/of opdrachtgevers (regeringen of bepaalde groepen).</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30281"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30375"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30362"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30294">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:00</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:00</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:42:48</dcterms:modified>
+    <skos:notation>30294</skos:notation>
+    <skos:prefLabel xml:lang="nl">reportage</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">verslag</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin plaats en handeling een eenheid vormen, bedoeld om informatie over te brengen.</skos:scopeNote>
+    <skos:note xml:lang="nl">Het onderwerp is meestal actueel.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 359&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 11-6-2007&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin plaats en handeling een eenheid vormen, bedoeld om informatie over te brengen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30289"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30421"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30247"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30134"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30120">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:48</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:48</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:32:48</dcterms:modified>
+    <skos:notation>30120</skos:notation>
+    <skos:prefLabel xml:lang="nl">contactprogramma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">datingprogramma</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin mensen (opnieuw) met elkaar in contact gebracht worden.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 166&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin mensen (opnieuw) met elkaar in contact gebracht worden.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30399"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30183"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30238">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:56</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:56</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:27:19</dcterms:modified>
+    <skos:notation>30238</skos:notation>
+    <skos:prefLabel xml:lang="nl">muziekuitvoering</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">concert</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Registratie van een muziekoptreden/voorstelling.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 295&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 7-10-2003&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Registratie van een muziekoptreden/voorstelling.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30234"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30235"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30237"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30289"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30420"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30122"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30419"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30381">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:06</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:06</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:46:18</dcterms:modified>
+    <skos:notation>30381</skos:notation>
+    <skos:prefLabel xml:lang="nl">serviceprogramma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">agenda</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Programma dat gericht is op het bieden van enigerlei dienstverlening aan kijker of luisteraar. Het geeft informatie, voorlichting of tips over te verwachten (culturele of recreatieve) evenementen, over huis-, tuin-, keuken- en consumentenaangelegenheden of vakantiebestemmingen,&#13;beantwoordt vragen van kijkers/luisteraars over deze zaken of verzorgt berichtgeving voor bepaalde doelgroepen over actuele ontwikkelingen op een specifiek terrein.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 463&#13;Datum invoer: 17-9-1999&#13;Gebruiker invoer: cvdpijl&#13;Datum gewijzigd: 11-8-2004&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma dat gericht is op het bieden van enigerlei dienstverlening aan kijker of luisteraar. Het geeft informatie, voorlichting of tips over te verwachten (culturele of recreatieve) evenementen, over huis-, tuin-, keuken- en consumentenaangelegenheden of vakantiebestemmingen,&#13;beantwoordt vragen van kijkers/luisteraars over deze zaken of verzorgt berichtgeving voor bepaalde doelgroepen over actuele ontwikkelingen op een specifiek terrein.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30291"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30362"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30173"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30346"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30401"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30402"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30424"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30119"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30124">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:48</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:48</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:17:04</dcterms:modified>
+    <skos:notation>30124</skos:notation>
+    <skos:prefLabel xml:lang="nl">cursus</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie, dikwijls bestaande uit een reeks uitzendingen, met een duidelijk didactische inhoud.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 171&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 5-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie, dikwijls bestaande uit een reeks uitzendingen, met een duidelijk didactische inhoud.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30137"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30330">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:03</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:03</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:21:47</dcterms:modified>
+    <skos:notation>30330</skos:notation>
+    <skos:prefLabel xml:lang="nl">sprookje</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie naar een sprookje, met elementen als geesten, elfen, heksen, draken, tovenaars. Zowel voor volwassenen als kinderen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 398&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 12-10-2005&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie naar een sprookje, met elementen als geesten, elfen, heksen, draken, tovenaars. Zowel voor volwassenen als kinderen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30376">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:06</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:06</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:29:37</dcterms:modified>
+    <dcterms:contributor xml:lang="nl">Literatuur: Lopez</dcterms:contributor>
+    <skos:notation>30376</skos:notation>
+    <skos:prefLabel xml:lang="nl">psychologisch drama</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarbij de psyche van personage(s) wordt uitgediept. Het/de personage(s) maken veelal een psychologische ontwikkeling door onder invloed van gebeurtenissen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 457&#13;Datum invoer: 14-9-1999&#13;Gebruiker invoer: cvdpijl&#13;Datum gewijzigd: 6-9-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarbij de psyche van personage(s) wordt uitgediept. Het/de personage(s) maken veelal een psychologische ontwikkeling door onder invloed van gebeurtenissen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30287">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:00</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:00</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:42:36</dcterms:modified>
+    <skos:notation>30287</skos:notation>
+    <skos:prefLabel xml:lang="nl">reclame</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">STER-spot</skos:altLabel>
+    <skos:altLabel xml:lang="nl">verkoopfilm</skos:altLabel>
+    <skos:altLabel xml:lang="nl">commercial</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Veelal (ultra)korte productie, waarvan het hoofddoel is om een specifiek product of dienst te verkopen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 351&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 12-10-2005&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Veelal (ultra)korte productie, waarvan het hoofddoel is om een specifiek product of dienst te verkopen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30280"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30281"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30093"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30329">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:03</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:03</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:24:09</dcterms:modified>
+    <skos:notation>30329</skos:notation>
+    <skos:prefLabel xml:lang="nl">sportwedstrijd</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Registratie of verslag van een sportwedstrijd.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 397&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 30-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Registratie of verslag van een sportwedstrijd.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30289"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30328"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30396">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:23</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:23</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:28:55</dcterms:modified>
+    <skos:notation>30396</skos:notation>
+    <skos:prefLabel xml:lang="nl">politieserie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Serie waarin het oplossen door politie, recherche of detective(s) van een misdaad centraal staat. (fictie)</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 487&#13;Datum invoer: 17-7-2001&#13;Gebruiker invoer: kschouten&#13;Datum gewijzigd: 20-4-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Serie waarin het oplossen door politie, recherche of detective(s) van een misdaad centraal staat. (fictie)</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30181"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30323">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:02</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:02</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:40:33</dcterms:modified>
+    <skos:notation>30323</skos:notation>
+    <skos:prefLabel xml:lang="nl">speelfilm</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">drama</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Film waarin door acteurs situaties en verhalen uitgebeeld en verbeeld worden. De situaties en verhalen kunnen verzonnen zijn, maar ook geïnspireerd zijn op 'echte' personen en gebeurtenissen.</skos:scopeNote>
+    <skos:note xml:lang="nl">Term niet in gebruik bij Filmmuseum. Men gebruikt fictie in combinatie met een specifieker genre.</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 391&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 7-10-2003&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Film waarin door acteurs situaties en verhalen uitgebeeld en verbeeld worden. De situaties en verhalen kunnen verzonnen zijn, maar ook geïnspireerd zijn op 'echte' personen en gebeurtenissen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30418"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30343">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:04</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:04</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:42:14</dcterms:modified>
+    <skos:notation>30343</skos:notation>
+    <skos:prefLabel xml:lang="nl">theateruitvoering</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">poppentheater</skos:altLabel>
+    <skos:altLabel xml:lang="nl">revue</skos:altLabel>
+    <skos:altLabel xml:lang="nl">variété</skos:altLabel>
+    <skos:altLabel xml:lang="nl">drama</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Registratie van een voorstelling binnen de podiumkunsten.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 412&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 7-10-2003&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Registratie van een voorstelling binnen de podiumkunsten.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30289"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30420"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/214956"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30419"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30348"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30105"/>
+    <skos:narrower rdf:resource="http://data.beeldengeluid.nl/gtaa/30128"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30399">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:23</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:23</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:42:59</dcterms:modified>
+    <skos:notation>30399</skos:notation>
+    <skos:prefLabel xml:lang="nl">groetenprogramma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">verzoekplatenprogramma</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin kijkers/luisteraars aan het woord komen en de gelegenheid krijgen om bekenden te begroeten/feliciteren of waarin aan hen groeten c.q. felicitaties worden overgebracht.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 490&#13;Datum invoer: 17-7-2001&#13;Gebruiker invoer: kschouten&#13;Datum gewijzigd: 5-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin kijkers/luisteraars aan het woord komen en de gelegenheid krijgen om bekenden te begroeten/feliciteren of waarin aan hen groeten c.q. felicitaties worden overgebracht.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30120"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30115">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:48</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:48</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:28:38</dcterms:modified>
+    <skos:notation>30115</skos:notation>
+    <skos:prefLabel xml:lang="nl">comedy</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">sitcom</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Serie gespeelde komische verwikkelingen, speciaal voor radio of televisie geschreven.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 160&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 20-4-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Serie gespeelde komische verwikkelingen, speciaal voor radio of televisie geschreven.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30208"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30181"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/238797">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>Alma Wolthuis</dcterms:creator>
+    <dcterms:dateAccepted>2014-03-26T09:34:28Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2014-03-12T11:23:23Z</dcterms:dateSubmitted>
+    <dcterms:modified>2014-03-26T09:34:28Z</dcterms:modified>
+    <skos:notation>238797</skos:notation>
+    <skos:prefLabel xml:lang="nl">weblog</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">video weblog</skos:altLabel>
+    <skos:altLabel xml:lang="nl">vlog</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Persoonlijk dagboek op internet, dat regelmatig wordt bijgehouden.</skos:scopeNote>
+    <skos:changeNote xml:lang="nl">Persoonlijk dagboek op internet, dat regelmatig wordt bijgehouden.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/233244"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30261"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30114">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:48</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:48</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T15:08:46</dcterms:modified>
+    <skos:notation>30114</skos:notation>
+    <skos:prefLabel xml:lang="nl">column</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Regelmatig verschijnend, min of meer kritisch en op discussie gericht, gesproken persoonlijk commentaar waarin een specifiek domein van de maatschappij of gevarieerde onderwerpen behandeld worden.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 159&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Regelmatig verschijnend, min of meer kritisch en op discussie gericht, gesproken persoonlijk commentaar waarin een specifiek domein van de maatschappij of gevarieerde onderwerpen behandeld worden.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30103"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30108"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30216"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30261"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30105">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:32</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:32</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:37:45</dcterms:modified>
+    <skos:notation>30105</skos:notation>
+    <skos:prefLabel xml:lang="nl">cabaretuitvoering</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Registratie van conferences, liedjes, sketches et cetera door cabaretartiesten.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 150&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Registratie van conferences, liedjes, sketches et cetera door cabaretartiesten.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30302"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/214956"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30343"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/233244">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>Madelon Nooij-Pallas</dcterms:creator>
+    <dcterms:dateAccepted>2013-03-06T16:31:29Z</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2012-09-20T14:18:52Z</dcterms:dateSubmitted>
+    <dcterms:modified>2013-03-06T16:51:39Z</dcterms:modified>
+    <skos:notation>233244</skos:notation>
+    <skos:prefLabel xml:lang="nl">internetvideo</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">webvideo</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Digitale videofilm, veelal kort en bedoeld om via het internet te bekijken.</skos:scopeNote>
+    <skos:changeNote xml:lang="nl">Digitale videofilm, veelal kort en bedoeld om via het internet te bekijken.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30084"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30418"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30359"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30192">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:53</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:53</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:23:36</dcterms:modified>
+    <skos:notation>30192</skos:notation>
+    <skos:prefLabel xml:lang="nl">inzamelingsactie</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Gericht op het inzamelen van geld dan wel goederen voor een goed doel.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 244&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Gericht op het inzamelen van geld dan wel goederen voor een goed doel.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30391"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30128">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:48</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:48</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:37:53</dcterms:modified>
+    <skos:notation>30128</skos:notation>
+    <skos:prefLabel xml:lang="nl">dansuitvoering</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">balletuitvoering</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Registratie van een dansvoorstelling.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 175&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Registratie van een dansvoorstelling.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30343"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30397">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:23</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:23</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T14:46:06</dcterms:modified>
+    <skos:notation>30397</skos:notation>
+    <skos:prefLabel xml:lang="nl">misdaadprogramma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin aandacht wordt besteed aan diverse aspecten van criminaliteit, misdaadbestrijding en -preventie (non-fictie).</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 488&#13;Datum invoer: 17-7-2001&#13;Gebruiker invoer: kschouten&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin aandacht wordt besteed aan diverse aspecten van criminaliteit, misdaadbestrijding en -preventie (non-fictie).</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30347">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:04</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:04</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:06:21</dcterms:modified>
+    <dcterms:contributor xml:lang="nl">Literatuur: Van Dale</dcterms:contributor>
+    <skos:notation>30347</skos:notation>
+    <skos:prefLabel xml:lang="nl">toespraak</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">rede</skos:altLabel>
+    <skos:altLabel xml:lang="nl">redevoering</skos:altLabel>
+    <skos:altLabel xml:lang="nl">kersttoespraak</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Het min of meer officieel toespreken van kijkers/luisteraars via televisie/radio of van een bijeenkomst, vergadering, conferentie etc.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 416&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 19-7-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Het min of meer officieel toespreken van kijkers/luisteraars via televisie/radio of van een bijeenkomst, vergadering, conferentie etc.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30270">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:58</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:58</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T15:09:41</dcterms:modified>
+    <skos:notation>30270</skos:notation>
+    <skos:prefLabel xml:lang="nl">politiek programma</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Programma dat aandacht besteedt aan onderwerpen m.b.t. politieke aangelegenheden.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 334&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 31-10-2007&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma dat aandacht besteedt aan onderwerpen m.b.t. politieke aangelegenheden.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30380"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30391">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:21</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:21</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:06:45</dcterms:modified>
+    <skos:notation>30391</skos:notation>
+    <skos:prefLabel xml:lang="nl">gelegenheidsproductie</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">kerstproductie</skos:altLabel>
+    <skos:altLabel xml:lang="nl">nieuwjaarsproductie</skos:altLabel>
+    <skos:altLabel xml:lang="nl">oudejaarsproductie</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie bij gelegenheid van een (nationale) feest- of gedenkdag, jaarwisseling, prijsuitreiking, ramp of overlijden van een hoogwaardigheidsbekleder. Veelal, niet noodzakelijk, door de gezamenlijke publieke omroepen verzorgd.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 480&#13;Datum invoer: 5-10-1999&#13;Gebruiker invoer: cvdpijl&#13;Datum gewijzigd: 16-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie bij gelegenheid van een (nationale) feest- of gedenkdag, jaarwisseling, prijsuitreiking, ramp of overlijden van een hoogwaardigheidsbekleder. Veelal, niet noodzakelijk, door de gezamenlijke publieke omroepen verzorgd.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30289"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30192"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30260">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:58</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:58</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:46:53</dcterms:modified>
+    <skos:notation>30260</skos:notation>
+    <skos:prefLabel xml:lang="nl">oral history</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Betreft mondelinge informatieoverdracht door betrokkenen of (oog)getuigen, waardoor een facet van de geschiedenis wordt belicht. Doorgaans niet in eerste instantie bedoeld voor integrale vertoning of uitzending.</skos:scopeNote>
+    <skos:note xml:lang="nl">&#13;</skos:note>
+    <skos:historyNote xml:lang="nl">Recordnummer: 323&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 31-10-2007&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Betreft mondelinge informatieoverdracht door betrokkenen of (oog)getuigen, waardoor een facet van de geschiedenis wordt belicht. Doorgaans niet in eerste instantie bedoeld voor integrale vertoning of uitzending.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30277"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30363"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30098"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30108">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:47</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:47</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:44:34</dcterms:modified>
+    <dcterms:contributor xml:lang="nl">Literatuur: Van Dale</dcterms:contributor>
+    <skos:notation>30108</skos:notation>
+    <skos:prefLabel xml:lang="nl">causerie</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">radiopraatje</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">(Onderhoudende) verhandeling of praatje over enigerlei onderwerp van wetenschap, kunst enz. voor een lekenpubliek, in losse, aangename, onderhoudende vorm geschreven of voorgedragen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 153&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 16-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">(Onderhoudende) verhandeling of praatje over enigerlei onderwerp van wetenschap, kunst enz. voor een lekenpubliek, in losse, aangename, onderhoudende vorm geschreven of voorgedragen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30103"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30114"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30361"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30380">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:06</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:06</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:07:17</dcterms:modified>
+    <skos:notation>30380</skos:notation>
+    <skos:prefLabel xml:lang="nl">parlementaire zitting</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">Kamerdebat</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Registratie van een debat van de Eerste of Tweede Kamer, een commissievergadering of van een (hoor-)zitting van een parlementaire onderzoeks- of enquêtecommissie. Ook te gebruiken voor registraties van parlementaire bijeenkomsten in het buitenland.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 462&#13;Datum invoer: 17-9-1999&#13;Gebruiker invoer: cvdpijl&#13;Datum gewijzigd: 30-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Registratie van een debat van de Eerste of Tweede Kamer, een commissievergadering of van een (hoor-)zitting van een parlementaire onderzoeks- of enquêtecommissie. Ook te gebruiken voor registraties van parlementaire bijeenkomsten in het buitenland.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30270"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30289"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30284">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:59</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:59</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:23:26</dcterms:modified>
+    <skos:notation>30284</skos:notation>
+    <skos:prefLabel xml:lang="nl">quiz</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Vraag- en antwoordspel</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 348&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 10-9-2002&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Vraag- en antwoordspel</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30325"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30086"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30362">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:05</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:05</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:39:43</dcterms:modified>
+    <skos:notation>30362</skos:notation>
+    <skos:prefLabel xml:lang="nl">voorlichting</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">overheidsvoorlichting</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie die er op gericht is de kijker of luisteraar inzicht te geven en te informeren over zaken en/of diensten.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 431&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 12-10-2005&#13;Gebruiker gewijzigd: Beng</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie die er op gericht is de kijker of luisteraar inzicht te geven en te informeren over zaken en/of diensten.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30280"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30281"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30282"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30346"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30381"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30119"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30082"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30363">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:05</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:05</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T15:15:01</dcterms:modified>
+    <skos:notation>30363</skos:notation>
+    <skos:prefLabel xml:lang="nl">vraaggesprek</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">interview</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Productie waarin een interview centraal staat. De geïnterviewde, (meestal een bekend persoon), vertelt over zijn ervaringen bij een bepaalde gelegenheid of over zijn denkbeelden en opvattingen omtrent enig (actueel) vraagstuk of geheel van vraagstukken.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 432&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 30-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Productie waarin een interview centraal staat. De geïnterviewde, (meestal een bekend persoon), vertelt over zijn ervaringen bij een bepaalde gelegenheid of over zijn denkbeelden en opvattingen omtrent enig (actueel) vraagstuk of geheel van vraagstukken.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30277"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30260"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30161">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:51</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:51</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:22:29</dcterms:modified>
+    <skos:notation>30161</skos:notation>
+    <skos:prefLabel xml:lang="nl">economisch programma</skos:prefLabel>
+    <skos:altLabel xml:lang="nl">financieel-economisch programma</skos:altLabel>
+    <skos:altLabel xml:lang="nl">sociaaleconomisch programma</skos:altLabel>
+    <skos:scopeNote xml:lang="nl">Programma waarin sociaal-economische en/of financiële kwesties centraal staan.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 210&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 4-10-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Programma waarin sociaal-economische en/of financiële kwesties centraal staan.</skos:changeNote>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:broader rdf:resource="http://data.beeldengeluid.nl/gtaa/30222"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30236">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:27:56</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:27:56</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:43:45</dcterms:modified>
+    <skos:notation>30236</skos:notation>
+    <skos:prefLabel xml:lang="nl">muziekfilm</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Film waarin muziek een overheersende rol speelt, maar die niet past binnen de omschrijving van 'musical'.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 293&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 28-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Film waarin muziek een overheersende rol speelt, maar die niet past binnen de omschrijving van 'musical'.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30234"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30359"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://data.beeldengeluid.nl/gtaa/30377">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <dcterms:creator>NAA</dcterms:creator>
+    <dcterms:dateAccepted>2007-11-23T15:28:06</dcterms:dateAccepted>
+    <dcterms:dateSubmitted>2007-11-23T15:28:06</dcterms:dateSubmitted>
+    <dcterms:modified>2010-10-19T16:29:44</dcterms:modified>
+    <skos:notation>30377</skos:notation>
+    <skos:prefLabel xml:lang="nl">sociaal drama</skos:prefLabel>
+    <skos:scopeNote xml:lang="nl">Maatschappij-kritische productie waarin de hoofdpersoon vecht tegen 'onrechtvaardig' handelen van de heersende klassen.</skos:scopeNote>
+    <skos:historyNote xml:lang="nl">Recordnummer: 458&#13;Datum invoer: 14-9-1999&#13;Gebruiker invoer: cvdpijl&#13;Datum gewijzigd: 20-4-2006&#13;Gebruiker gewijzigd: awolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>
+    <skos:historyNote xml:lang="nl">Goedgekeurd door: NAA</skos:historyNote>
+    <skos:changeNote xml:lang="nl">Maatschappij-kritische productie waarin de hoofdpersoon vecht tegen 'onrechtvaardig' handelen van de heersende klassen.</skos:changeNote>
+    <skos:topConceptOf rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:inScheme rdf:resource="http://data.beeldengeluid.nl/gtaa/Genre"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30341"/>
+    <skos:related rdf:resource="http://data.beeldengeluid.nl/gtaa/30181"/>
+  </rdf:Description>
+</rdf:RDF>

@@ -58,6 +58,7 @@ class CategoryDb(dbBaseName: String) {
   def withCategoryDb[T](block: ClientSession => T): T = withDbSession[T](categoryDb, Some(name))(block)
 
   def setMapping(categoryMapping: CategoryMapping, member: Boolean) = withCategoryDb { session =>
+    // todo: here we just grab the first one
     val category = categoryMapping.categories.head
     val source = categoryMapping.source
     val wrapped = s"<$category/>"

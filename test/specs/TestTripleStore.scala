@@ -35,17 +35,17 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
   "The dataset info object should be able to interact with the store" in {
     cleanStart()
     val info = new DatasetInfo("gumby", ts)
-    await(info.getProp(datasetPrefix)) must be(None)
+    await(info.getProp(datasetMapTo)) must be(None)
     val model = await(info.setProps(
-      datasetPrefix -> "pfx",
+      datasetMapTo -> "pfx",
       datasetLanguage -> "nl"
     ))
     model.size() must be(3)
 //    import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 //    RDFDataMgr.write(System.out, model, RDFFormat.NTRIPLES_UTF8)
-    await(info.getProp(datasetPrefix)) must be(Some("pfx"))
-    await(info.removeProp(datasetPrefix))
-    await(info.getProp(datasetPrefix)) must be(None)
+    await(info.getProp(datasetMapTo)) must be(Some("pfx"))
+    await(info.removeProp(datasetMapTo))
+    await(info.getProp(datasetMapTo)) must be(None)
     model.size() must be(2)
   }
 

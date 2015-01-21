@@ -16,7 +16,7 @@
 
 package record
 
-import java.io.ByteArrayInputStream
+import java.io.{ByteArrayInputStream, Writer}
 
 import dataset.SourceRepo.SourceFacts
 import org.joda.time.DateTime
@@ -45,6 +45,10 @@ object PocketParser {
 
     def textBytes: ByteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"))
 
+    def writeTo(writer: Writer) = {
+      writer.write(text)
+      writer.write(s"<!--<$id>-->\n")
+    }
   }
 
   val POCKET_LIST = "pockets"

@@ -16,7 +16,7 @@
 
 package triplestore
 
-import java.io.{StringReader, StringWriter}
+import java.io.{File, StringReader, StringWriter}
 
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import play.api.Play.current
@@ -85,6 +85,17 @@ class TripleStoreClient(storeURL: String) {
     model.write(sw, "TURTLE")
 //    println(s"posting: $sw")
     dataRequest(graphURI).withHeaders("Content-Type" -> "text/turtle").post(sw.toString).map { response =>
+//      println(s"post response: ${response.status}")
+      if (response.status / 100 != 2) {
+        throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
+      }
+      true
+    }
+  }
+
+  def dataPostXMLFile(graphURI: String, file: File): Future[Boolean] = {
+    println(s"Posting $file")
+    dataRequest(graphURI).withHeaders("Content-Type" -> "application/rdf+xml").post(file).map { response =>
 //      println(s"post response: ${response.status}")
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")

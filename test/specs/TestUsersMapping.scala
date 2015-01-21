@@ -1,15 +1,21 @@
 package specs
 
+import java.io.File
+
+import dataset.{DatasetInfo, ProcessedRepo, SipRepo, SourceRepo}
 import org.UserStore
 import org.UserStore.NXUser
+import org.apache.commons.io.FileUtils
 import org.scalatestplus.play._
 import play.api.test.Helpers._
+import record.PocketParser.Pocket
+import services.FileHandling._
+import services.{FileHandling, ProgressReporter}
 import triplestore.TripleStoreClient
 
 class TestUsersMapping extends PlaySpec with OneAppPerSuite {
 
-  val TEST_STORE: String = "http://localhost:3030/narthex-test"
-  val ts = new TripleStoreClient(TEST_STORE)
+  val ts = new TripleStoreClient("http://localhost:3030/narthex-test")
 
   def cleanStart() = {
     await(ts.update("DROP ALL"))
@@ -33,8 +39,62 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite {
     await(us2.authenticate("gumby", "secret gumby")) must be(Some(NXUser("gumby", administrator = true)))
     await(us2.authenticate("pokey", "secret pokey")) must be(Some(NXUser("pokey")))
     await(us2.authenticate("third-wheel", "can i join")) must be(None)
+  }
 
+  "A sample SKOS vocabulary should be loaded" in {
+    // check that the user is still there
+    val us = new UserStore(ts)
+    await(us.authenticate("gumby", "secret gumby")) must be(Some(NXUser("gumby", administrator = true)))
+    // push in a SKOS vocabulary
+    val info = new DatasetInfo("gtaa_genre", ts)
+    val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
+    val posted = await(ts.dataPostXMLFile(info.datasetUri, skosFile))
+    posted must be(true)
+  }
 
+  "A dataset should be loaded" in {
+    // prepare for reading and mapping
+    val home = new File(getClass.getResource("/sip_source").getFile)
+    val sipsDir = FileHandling.clearDir(new File("/tmp/test-sip-source-sips"))
+    FileUtils.copyDirectory(home, sipsDir)
+    val datasetName = "frans_hals"
+    val naveDomain = "http://nave"
+    val sipRepo = new SipRepo(sipsDir, datasetName, naveDomain)
+    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-source-4"))
+    val sipOpt = sipRepo.latestSipOpt
+    sipOpt.isDefined must be(true)
+    // create processed repo
+    val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")))
+    var sourceFile = processedRepo.createFile
+    val sourceOutput = writer(sourceFile)
+    // fill processed repo by mapping records
+    sipOpt.foreach { sip =>
+      sip.spec must be(Some("frans-hals-museum"))
+      val source = sip.copySourceToTempFile
+      source.isDefined must be(true)
+      val sourceRepo = SourceRepo.createClean(sourceDir, SourceRepo.DELVING_SIP_SOURCE)
+      sourceRepo.acceptFile(source.get, ProgressReporter())
+      var mappedPockets = List.empty[Pocket]
+      sip.createSipMapper.map { sipMapper =>
+        def pocketCatcher(pocket: Pocket): Unit = {
+          var mappedPocket = sipMapper.map(pocket)
+          mappedPocket.map(_.writeTo(sourceOutput))
+          mappedPockets = mappedPocket.get :: mappedPockets
+        }
+        sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
+      }
+      mappedPockets.size must be(5)
+    }
+    sourceOutput.close()
+    // push the mapped results to the triple store
+    val graphReader = processedRepo.createGraphReader(3)
+    while (graphReader.isActive) {
+      graphReader.readChunk.map { chunk =>
+        val update= chunk.toSparqlUpdate
+        await(ts.update(update))
+      }
+    }
+    countGraphs must be(7)
   }
 
 }
