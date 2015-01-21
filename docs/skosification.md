@@ -30,6 +30,10 @@ The result of this query is up to 12 pieces of work to do.  A piece of work cons
 * **fieldProperty**: the URI of the property that has been skosified
 * **fieldValue**: a literal value which occurs for the given property (needs fixing)
 
+From this another field is composed:
+
+* **fieldValueUri**: a URI which prefixes the value, which is URL encoded
+
 ### Check and Correct
 
 Each literal value will be transformed into its associated URI which is derived from the literal by embedding it in a predictable pattern.  If this URI does not refer to a corresponding entry in the associated SKOS dataset, a new entry will be created.  Either way, the literal is then replaced with the new URI.
@@ -38,15 +42,12 @@ This SPARQL uses substitutions for the above for $dataset, $fieldProperty, $fiel
 
 #### Check existence:
 
-The return value of this is the URI of rdf:concept if it exists, otherwise the result is empty.
-
 	@PREFIX nx: <http://github.com/delving/narthex/wiki/Namespace#>
 	@PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 	@PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 	WITH GRAPH <$datasetSkos>
-	SELECT ?type
-	WHERE {
-		<$fieldValueUri> rdf:type ?type .
+	ASK {
+		<$fieldValueUri> rdf:type skos:Concept .
 		<$fieldValueUri> nx:belongsTo <$dataset> .
 	}
 
@@ -58,7 +59,7 @@ The return value of this is the URI of rdf:concept if it exists, otherwise the r
 	WITH GRAPH 
 	INSERT DATA {
 	    GRAPH <$datasetSkos> {
-			<$fieldValueUri> skos:type skos:Concept .
+			<$fieldValueUri> rdf:type skos:Concept .
 			<$fieldValueUri> skos:prefLabel "$fieldValue" .
 			<$fieldValueUri> nx:belongsTo <$dataset> .
 		}
