@@ -72,7 +72,7 @@ object MappingStore {
   }
 
   case class MAProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"$NX_NAMESPACE/Mapping-Attributes#$name"
+    val uri = s"$NX_NAMESPACE$name"
   }
 
   val mappingDatasetA = MAProp("mappingDatasetA", uriProp)

@@ -53,6 +53,6 @@ object NarthexConfig {
 
 //  val TRIPLE_STORE_URL = configString("tripleStore.URL")
 
-  val NX_NAMESPACE = "http://github.com/delving/narthex/wiki"
+  val NX_NAMESPACE = "http://github.com/delving/narthex/wiki/Namespace#"
   val NX_URI_PREFIX = s"$NARTHEX_DOMAIN/resolve"
 }

@@ -28,7 +28,7 @@ import scala.concurrent.Future
 object DatasetInfo {
 
   case class DIProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"${NX_NAMESPACE}Dataset-Info-Attributes#$name"
+    val uri = s"$NX_NAMESPACE$name"
   }
 
   var datasetName = DIProp("datasetName")
@@ -39,6 +39,7 @@ object DatasetInfo {
   var datasetRights = DIProp("datasetRights")
   var datasetNotes = DIProp("datasetNotes")
   var datasetRecordCount = DIProp("datasetRecordCount", intProp)
+  var skosField = DIProp("skosField")
 
   var stateRaw = DIProp("stateRaw", timeProp)
   var stateRawAnalyzed = DIProp("stateRawAnalyzed", timeProp)

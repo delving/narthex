@@ -3,6 +3,7 @@ package specs
 import java.io.File
 
 import dataset.{DatasetInfo, ProcessedRepo, SipRepo, SourceRepo}
+import mapping.MappingStoreChoose
 import org.UserStore
 import org.UserStore.NXUser
 import org.apache.commons.io.FileUtils
@@ -97,6 +98,10 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite {
     countGraphs must be(7)
   }
 
+  "Just checking" in {
+    val choose = new MappingStoreChoose(ts)
+
+  }
 }
 
 

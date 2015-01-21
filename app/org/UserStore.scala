@@ -28,7 +28,7 @@ import scala.concurrent.Future
 
 object UserStore {
 
-  val graphName = s"$NX_NAMESPACE/users"
+  val graphName = s"${NX_NAMESPACE}Users"
 
   case class NXUserDetails(firstName: String, lastName: String, email: String)
 
@@ -38,7 +38,7 @@ object UserStore {
   }
 
   case class USProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"$NX_NAMESPACE/User-Attributes#$name"
+    val uri = s"$NX_NAMESPACE$name"
   }
 
   val ADMINISTRATOR_ROLE = "administrator"
