@@ -12,7 +12,7 @@ The Skosifier is an actor which periodically scans for work to do and then goes 
 
 The first step for the Skosifier is to detect where work is to be done.  For this it checks for any datasets which have been tagged as containing skosified fields.  It checks the values of these fields in the dataset to see if there are values for a given field which are still RDF literals.  These are triples which need adjustment because a skosified field needs to contain URIs.
 
-	@PREFIX nx: <http://github.com/delving/narthex/wiki/Dataset-Info-Attributes#> .	SELECT ?dataset ?fieldProperty ?fieldValue
+	@PREFIX nx: <http://github.com/delving/narthex/wiki/Dataset-Info-Attributes#>	SELECT ?dataset ?fieldProperty ?fieldValue
 	WHERE {
 		GRAPH ?g {
 			?dataset nx:skosField ?fieldProperty
@@ -39,7 +39,7 @@ This SPARQL uses substitutions for the above for $dataset, $fieldProperty, $fiel
 
 The return value of this is the URI of rdf:concept if it exists, otherwise the result is empty.
 
-	@PREFIX nx: <http://github.com/delving/narthex/wiki/Namespace#> .
+	@PREFIX nx: <http://github.com/delving/narthex/wiki/Namespace#>
 	@PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 	@PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 	WITH GRAPH <$datasetSkos>
@@ -51,7 +51,7 @@ The return value of this is the URI of rdf:concept if it exists, otherwise the r
 
 #### Add to SKOS if not
 
-	@PREFIX nx: <http://github.com/delving/narthex/wiki/Namespace#> .
+	@PREFIX nx: <http://github.com/delving/narthex/wiki/Namespace#>
 	@PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 	@PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 	WITH GRAPH 
