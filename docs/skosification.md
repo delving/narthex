@@ -12,7 +12,7 @@ The Skosifier is an actor which periodically scans for work to do and then goes 
 
 The first step for the Skosifier is to detect where work is to be done.  For this it checks for any datasets which have been tagged as containing skosified fields.  It checks the values of these fields in the dataset to see if there are values for a given field which are still RDF literals.  These are triples which need adjustment because a skosified field needs to contain URIs.
 
-	@PREFIX nx: <http://github.com/delving/narthex/wiki/Dataset-Info-Attributes#>
+	@PREFIX nx: <http://github.com/delving/narthex/wiki/Namespace#>
 	SELECT ?dataset ?fieldProperty ?fieldValue
 	WHERE {
 		GRAPH ?g {
@@ -45,10 +45,11 @@ This SPARQL uses substitutions for the above for $dataset, $fieldProperty, $fiel
 	@PREFIX nx: <http://github.com/delving/narthex/wiki/Namespace#>
 	@PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 	@PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-	WITH GRAPH <$datasetSkos>
 	ASK {
-		<$fieldValueUri> rdf:type skos:Concept .
-		<$fieldValueUri> nx:belongsTo <$dataset> .
+		GRAPH <$datasetSkos> {
+			<$fieldValueUri> rdf:type skos:Concept .
+			<$fieldValueUri> nx:belongsTo <$dataset> .
+		}
 	}
 
 #### Add to SKOS if not
@@ -56,7 +57,6 @@ This SPARQL uses substitutions for the above for $dataset, $fieldProperty, $fiel
 	@PREFIX nx: <http://github.com/delving/narthex/wiki/Namespace#>
 	@PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 	@PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-	WITH GRAPH 
 	INSERT DATA {
 	    GRAPH <$datasetSkos> {
 			<$fieldValueUri> rdf:type skos:Concept .
@@ -70,16 +70,12 @@ This SPARQL uses substitutions for the above for $dataset, $fieldProperty, $fiel
 	@PREFIX nx: <http://github.com/delving/narthex/wiki/Namespace#> .
 	WITH GRAPH ?g
 	DELETE { 
-		?record <$fieldProperty> "$value" .
-	}
+		?record <$fieldProperty> "$fieldValue" .	}
 	INSERT {
-		?record <$fieldProperty> <$fieldValueURI> .
-	}
+		?record <$fieldProperty> <$fieldValueUri> .	}
 	WHERE {
-		?record <$fieldProperty> "$value" .
-		?record nx:belongsTo <$dataset> .
-	}
-	
+		?record <$fieldProperty> "$fieldValue" .
+		?record nx:belongsTo <$dataset> .			}
 
 ### Wash, Rinse, Repeat
 
