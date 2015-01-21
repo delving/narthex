@@ -15,11 +15,13 @@
 //===========================================================================
 package mapping
 
-import services.NarthexConfig.NX_NAMESPACE
+import services.NarthexConfig._
+import services.StringHandling.urlEncodeValue
 
 trait Skosification {
 
   val checkForWork = {
+    // future SkosificiationCase, actor can use pipeTo
     val limit = 12
     s"""
       |@PREFIX nx: <$NX_NAMESPACE>
@@ -33,64 +35,63 @@ trait Skosification {
       |  }
       |}
       |LIMIT $limit
-     """.stripMargin
+      """.stripMargin
   }
 
-  def checkExistence = {
-    val dataset = ""
-    val datasetSkos = ""
-    val fieldValueUri = ""
-    s"""
+  case class SkosificationCase(datasetUri: String,
+                               datasetSkosUri: String,
+                               fieldValue: String,
+                               fieldProperty: String) {
+    // todo: what is illegal?
+    val fieldValueQuoted = fieldValue.replaceAll("\"", "")
+
+    val fieldValueUri = s"$NX_URI_PREFIX/$datasetUri/${urlEncodeValue(fieldValue)}"
+
+    val checkExistence = {
+      s"""
       |@PREFIX nx: <$NX_NAMESPACE>
       |@PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
       |@PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
       |ASK {
-      |   GRAPH <$datasetSkos> {
+      |   GRAPH <$datasetSkosUri> {
       |      <$fieldValueUri> rdf:type skos:Concept .
-      |      <$fieldValueUri> nx:belongsTo <$dataset> .
+      |      <$fieldValueUri> nx:belongsTo <$datasetUri> .
       |   }
       |}
-     """.stripMargin
-  }
+      """.stripMargin
+    }
 
-  def skosAddition = {
-    val dataset = ""
-    val datasetSkos = ""
-    val fieldValueUri = ""
-    val fieldValue = ""
-    s"""
+    val skosAddition = {
+      s"""
       |@PREFIX nx: <$NX_NAMESPACE>
       |@PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
       |@PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
       |INSERT DATA {
-      |   GRAPH <$datasetSkos> {
+      |   GRAPH <$datasetSkosUri> {
       |      <$fieldValueUri> rdf:type skos:Concept .
-      |      <$fieldValueUri> skos:prefLabel "$fieldValue" .
-      |      <$fieldValueUri> nx:belongsTo <$dataset> .
+      |      <$fieldValueUri> skos:prefLabel "$fieldValueQuoted" .
+      |      <$fieldValueUri> nx:belongsTo <$datasetUri> .
       |   }
       |}
-     """.stripMargin
-  }
+      """.stripMargin
+    }
 
-  def literalToUri = {
-    val dataset = ""
-    val datasetSkos = ""
-    val fieldProperty = ""
-    val fieldValueUri = ""
-    val fieldValue = ""
-    s"""
+    val changeLiteralToUri = {
+      s"""
       |@PREFIX nx: <$NX_NAMESPACE>
       |WITH GRAPH ?g
       |DELETE {
-      |  ?record <$fieldProperty> "$fieldValue" .
+      |  ?record <$fieldProperty> "$fieldValueQuoted" .
       |}
       |INSERT {
       |  ?record <$fieldProperty> <$fieldValueUri> .
       |}
       |WHERE {
-      |  ?record <$fieldProperty> "$fieldValue" .
-      |  ?record nx:belongsTo <$dataset> .
+      |  ?record <$fieldProperty> "$fieldValueQuoted" .
+      |  ?record nx:belongsTo <$datasetUri> .
       |}
-     """.stripMargin
+      """.stripMargin
+    }
   }
+
 }

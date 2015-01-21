@@ -102,6 +102,10 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val work = ts.query(checkForWork)
 
   }
+
+  "A mapping must be created" in {
+
+  }
 }
 
 
