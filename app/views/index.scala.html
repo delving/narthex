@@ -38,20 +38,25 @@
                                 <span>NAVIGATION</span>
                             </li>
                             <li class="sidebar-list">
-                                <a href="/#/datasets">
+                                <a href data-ng-click="homePage()">
+                                    Home <span class="menu-icon fa fa-user"></span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list">
+                                <a href data-ng-click="datasetsPage()">
                                     Datasets <span class="menu-icon fa fa-cubes"></span>
                                 </a>
                             </li>
                             @if(showCategories) {
                                 <li class="sidebar-list">
-                                    <a href="/#/categories">
+                                    <a href data-ng-click="categoriesPage()">
                                         Category Monitor <span class="menu-icon fa fa-calculator"></span>
                                     </a>
                                 </li>
                             }
                             @if(showThesaurus) {
                                 <li class="sidebar-list">
-                                    <a href="/#/thesaurus">
+                                    <a href data-ng-click="thesaurusPage()">
                                         Thesaurus alignment <span class="menu-icon fa fa-exchange"></span>
                                     </a>
                                 </li>

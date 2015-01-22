@@ -25,7 +25,6 @@ import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
 import play.api.mvc._
 import services.NarthexConfig._
-import services.{CommonsServices, NarthexConfig, UserProfile}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -52,89 +51,51 @@ object MainController extends Controller with Security {
 
       Logger.info(s"Login $username")
 
-      CommonsServices.services match {
-        case Some(services) =>
-          def getOrCreateUser(username: String, profileMaybe: Option[UserProfile]): SimpleResult = {
-            val profile = profileMaybe.getOrElse(throw new RuntimeException(s"no profile for $username"))
-            val token = java.util.UUID.randomUUID().toString
-            val cachedProfile = CachedProfile(
-              firstName = profile.firstName,
-              lastName = profile.lastName,
-              email = profile.email,
-              apiKey = API_ACCESS_KEYS(0),
-              narthexDomain = NARTHEX_DOMAIN,
-              naveDomain = NAVE_DOMAIN,
-              categoriesEnabled = SHOW_CATEGORIES
-            )
-            Logger.warn("get or create " + username + " " + profile + " with token:" + token)
-            // todo: put the user in the database
-            Ok(Json.obj(
-              "firstName" -> cachedProfile.firstName,
-              "lastName" -> cachedProfile.lastName,
-              "email" -> cachedProfile.email,
-              "apiKey" -> cachedProfile.apiKey,
-              "narthexDomain" -> cachedProfile.narthexDomain,
-              "naveDomain" -> cachedProfile.naveDomain
-            )).withToken(token, cachedProfile)
-          }
-          Logger.info(s"connecting user $username")
-          if (services.connect(username, password)) {
-            val orgId: String = NarthexConfig.configString("commons.orgId")
-            if (services.isAdmin(orgId, username)) {
-              Logger.info(s"Logged in $username of $orgId")
-              getOrCreateUser(username, services.getUserProfile(username))
-            }
-            else {
-              Unauthorized(s"User $username is not an admin of organization $orgId")
-            }
-          }
-          else {
-            Unauthorized("Username password combination failed")
-          }
-
-        case None =>
-          Play.current.configuration.getObjectList("users").map {
-            userList =>
-              userList.map(_.toConfig).find(u => username == u.getString("user")) match {
-                case Some(user) =>
-                  if (password != user.getString("password")) {
-                    Unauthorized("Username/password not found")
-                  }
-                  else {
-                    val token = java.util.UUID.randomUUID().toString
-                    val cachedProfile = CachedProfile(
-                      firstName = user.getString("firstName"),
-                      lastName = user.getString("lastName"),
-                      email = user.getString("email"),
-                      apiKey = API_ACCESS_KEYS(0),
-                      narthexDomain = NARTHEX_DOMAIN,
-                      naveDomain = NAVE_DOMAIN,
-                      categoriesEnabled = SHOW_CATEGORIES
-                    )
-                    Ok(Json.obj(
-                      "firstName" -> cachedProfile.firstName,
-                      "lastName" -> cachedProfile.lastName,
-                      "email" -> cachedProfile.email,
-                      "apiKey" -> cachedProfile.apiKey,
-                      "narthexDomain" -> cachedProfile.narthexDomain,
-                      "naveDomain" -> cachedProfile.naveDomain,
-                      "categoriesEnabled" -> cachedProfile.categoriesEnabled
-                    )).withToken(token, cachedProfile)
-                  }
-
-                case None =>
-                  Unauthorized("Username/password not found")
+      Play.current.configuration.getObjectList("users").map {
+        userList =>
+          userList.map(_.toConfig).find(u => username == u.getString("user")) match {
+            case Some(user) =>
+              if (password != user.getString("password")) {
+                Unauthorized("Username/password not found")
               }
-          } getOrElse Unauthorized("No authentication configuration")
-      }
+              else {
+                val token = java.util.UUID.randomUUID().toString
+                val cachedProfile = CachedProfile(
+                  firstName = user.getString("firstName"),
+                  lastName = user.getString("lastName"),
+                  email = user.getString("email"),
+                  apiKey = API_ACCESS_KEYS(0),
+                  narthexDomain = NARTHEX_DOMAIN,
+                  naveDomain = NAVE_DOMAIN,
+                  categoriesEnabled = SHOW_CATEGORIES
+                )
+                Ok(Json.obj(
+                  "firstName" -> cachedProfile.firstName,
+                  "lastName" -> cachedProfile.lastName,
+                  "email" -> cachedProfile.email,
+                  "apiKey" -> cachedProfile.apiKey,
+                  "narthexDomain" -> cachedProfile.narthexDomain,
+                  "naveDomain" -> cachedProfile.naveDomain,
+                  "categoriesEnabled" -> cachedProfile.categoriesEnabled
+                )).withToken(token, cachedProfile)
+              }
+
+            case None =>
+              Unauthorized("Username/password not found")
+          }
+      } getOrElse Unauthorized("No authentication configuration")
   }
 
   def checkLogin = Action {
     implicit request =>
+
+      Logger.info(s"Check Login")
+
       val maybeToken = request.headers.get(TOKEN)
       maybeToken flatMap {
         token =>
           Cache.getAs[CachedProfile](token) map { cachedProfile =>
+            Logger.info(s"Check Login Yes: $cachedProfile")
             Ok(Json.obj(
               "firstName" -> cachedProfile.firstName,
               "lastName" -> cachedProfile.lastName,
@@ -145,14 +106,15 @@ object MainController extends Controller with Security {
               "categoriesEnabled" -> cachedProfile.categoriesEnabled
             )).withToken(token, cachedProfile)
           }
-      } getOrElse {
-        Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
-      }
+      } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
   }
 
   /** Logs the user out, i.e. invalidated the token. */
   def logout = Action {
     implicit request =>
+
+      Logger.info(s"Logout!")
+
       request.headers.get(TOKEN) match {
         case Some(token) =>
           Ok.discardingToken(token)

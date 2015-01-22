@@ -32,6 +32,7 @@ define(["angular", "common"], function (angular) {
                 var main = playRoutes.web.MainController;
                 return {
                     loginUser: function (credentials) {
+                        console.log("Attempt login");
                         return main.login().post(credentials).then(
                             function (response) {
                                 user = response.data;
@@ -45,13 +46,14 @@ define(["angular", "common"], function (angular) {
                         );
                     },
                     logout: function () {
-                        console.log("notifying the server of logout");
+                        console.log("Attempt logout");
                         return main.logout().get().then(function (response) {
                             user = undefined;
                             return "logged out"
                         });
                     },
                     checkLogin: function () {
+                        console.log("Check login");
                         return main.checkLogin().get().then(
                             function (response) {
                                 user = response.data;

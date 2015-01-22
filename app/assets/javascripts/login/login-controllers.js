@@ -26,11 +26,11 @@ define(["angular"], function (angular) {
             username: $cookies[USERNAME_COOKIE]
         };
         $scope.login = function (credentials) {
+            console.log("Login", $scope.credentials);
             userService.loginUser(credentials).then(
                 function (response) {
                     if (response.profile) {
                         $cookies[USERNAME_COOKIE] = credentials.username;
-                        $location.path("/datasets");
                     }
                     else {
                         $scope.credentials.password = "";
@@ -46,13 +46,26 @@ define(["angular"], function (angular) {
     var IndexCtrl = function ($rootScope, $scope, userService, $location) {
 
         $scope.initialize = function(orgId, sipCreatorLink) {
+            console.log("Initializing index");
             $rootScope.orgId = orgId;
             $rootScope.sipCreatorLink = sipCreatorLink;
             $scope.toggleBar = true;
         };
 
-        $scope.freshLogin = function() {
-            $location.path("/")
+        $scope.homePage = function() {
+            $location.path('/');
+        };
+
+        $scope.datasetsPage = function() {
+            $location.path('/datasets');
+        };
+
+        $scope.categoriesPage = function() {
+            $location.path('/categories');
+        };
+
+        $scope.thesaurusPage = function() {
+            $location.path('/thesaurus');
         };
 
         $scope.toggleSidebar = function() {
@@ -73,7 +86,7 @@ define(["angular"], function (angular) {
         $scope.logout = function () {
             userService.logout().then(function () {
                 $scope.user = undefined;
-                $location.path("/");
+                $scope.homePage();
             }, function (why) {
                 console.log("unable to logout", why);
             });
