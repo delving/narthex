@@ -86,6 +86,10 @@ define(["angular"], function (angular) {
             $location.path('/thesaurus');
         };
 
+        $scope.breadcrumbsPage = function() {
+            $location.path('/dataset/' + $rootScope.breadcrumbs.dataset)
+        };
+
         $scope.toggleSidebar = function () {
             $scope.toggleBar = !$scope.toggleBar;
         };

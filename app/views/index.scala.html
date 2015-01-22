@@ -65,27 +65,12 @@
                                 <span>LAST VIEWED</span>
                             </li>
                             <li class="sidebar-list" data-ng-show="breadcrumbs.dataset">
-                                <a href="/#/dataset/{{ breadcrumbs.dataset }}">
+                                <a href data-ng-click="breadcrumbsPage()">
                                     {{ breadcrumbs.dataset }} <span class="menu-icon fa fa-eye"></span>
                                 </a>
                             </li>
 
                         </ul>
-
-                        <div class="sidebar-user">
-
-                            <div class="dropdown">
-                                <button type="button" class="btn btn-primary btn-block dropdown-toggle" aria-haspopup="true" aria-expanded="false">
-                                    {{user.email}} <span class="caret"></span>
-                                </button>
-                                <ul class="dropdown-menu d" role="menu">
-                                    <li>
-                                        <a href="#" data-ng-click="logout()">Logout</a>
-                                    </li>
-                                </ul>
-                            </div>
-
-                        </div>
 
                     </div>
                 </div>
