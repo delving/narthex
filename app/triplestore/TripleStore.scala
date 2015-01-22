@@ -22,6 +22,7 @@ import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import play.api.Play.current
 import play.api.libs.json.JsObject
 import play.api.libs.ws.WS
+import services.NarthexConfig.TRIPLE_STORE_URL
 
 import scala.concurrent.Future
 
@@ -29,9 +30,9 @@ import scala.concurrent.Future
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object TripleStoreClient {
+object TripleStore {
 
-  //  lazy val store = new TripleStoreClient(NarthexConfig.TRIPLE_STORE_URL)
+  lazy val ts = new TripleStore(TRIPLE_STORE_URL)
 
   case class PropType(uriOpt: Option[String])
 
@@ -43,9 +44,9 @@ object TripleStoreClient {
 
 }
 
-class TripleStoreClient(storeURL: String) {
+class TripleStore(storeURL: String) {
 
-  def ask(sparqlQuery: String) : Future[Boolean] = {
+  def ask(sparqlQuery: String): Future[Boolean] = {
     val request = WS.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
       "output" -> "json"
@@ -83,7 +84,7 @@ class TripleStoreClient(storeURL: String) {
 
   def update(sparqlUpdate: String): Future[Unit] = {
     val request = WS.url(s"$storeURL/update").withHeaders("Content-Type" -> "application/sparql-update")
-//    println(s"update:\n$sparqlUpdate")
+    //    println(s"update:\n$sparqlUpdate")
     request.post(sparqlUpdate).map { response =>
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
@@ -96,9 +97,9 @@ class TripleStoreClient(storeURL: String) {
   def dataPost(graphURI: String, model: Model): Future[Boolean] = {
     val sw = new StringWriter()
     model.write(sw, "TURTLE")
-//    println(s"posting: $sw")
+    //    println(s"posting: $sw")
     dataRequest(graphURI).withHeaders("Content-Type" -> "text/turtle").post(sw.toString).map { response =>
-//      println(s"post response: ${response.status}")
+      //      println(s"post response: ${response.status}")
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
       }
@@ -109,7 +110,7 @@ class TripleStoreClient(storeURL: String) {
   def dataPostXMLFile(graphURI: String, file: File): Future[Boolean] = {
     println(s"Posting $file")
     dataRequest(graphURI).withHeaders("Content-Type" -> "application/rdf+xml").post(file).map { response =>
-//      println(s"post response: ${response.status}")
+      //      println(s"post response: ${response.status}")
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
       }

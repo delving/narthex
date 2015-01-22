@@ -51,7 +51,7 @@ object NarthexConfig {
   val SHOW_CATEGORIES = configFlag("categories")
   val SHOW_THESAURUS = configFlag("thesaurus")
 
-//  val TRIPLE_STORE_URL = configString("tripleStore.URL")
+  val TRIPLE_STORE_URL = configString("triple-store")
 
   val NX_NAMESPACE = "http://github.com/delving/narthex/wiki/Namespace#"
   val NX_URI_PREFIX = s"$NARTHEX_DOMAIN/resolve"

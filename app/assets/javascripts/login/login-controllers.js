@@ -25,6 +25,11 @@ define(["angular"], function (angular) {
         $scope.credentials = {
             username: $cookies[USERNAME_COOKIE]
         };
+
+        userService.checkLogin().then(function (user) {
+            $scope.editedUser = angular.copy(user);
+        });
+
         $scope.login = function (credentials) {
             console.log("Login", $scope.credentials);
             userService.loginUser(credentials).then(
@@ -39,36 +44,49 @@ define(["angular"], function (angular) {
                 }
             );
         };
+
+        function compareUserToEdited() {
+            return $scope.unchangedUser = angular.equals($scope.user, $scope.editedUser);
+        }
+
+        $scope.$watch("editedUser", compareUserToEdited, true);
+
+        $scope.setProfile = function (editedUser) {
+            alert("not implemented but..");
+            $scope.user = angular.copy(editedUser); // better take what is returned
+            compareUserToEdited()
+        };
+
     };
     LoginCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
 
     /** Controls the header */
     var IndexCtrl = function ($rootScope, $scope, userService, $location) {
 
-        $scope.initialize = function(orgId, sipCreatorLink) {
+        $scope.initialize = function (orgId, sipCreatorLink) {
             console.log("Initializing index");
             $rootScope.orgId = orgId;
             $rootScope.sipCreatorLink = sipCreatorLink;
             $scope.toggleBar = true;
         };
 
-        $scope.homePage = function() {
+        $scope.homePage = function () {
             $location.path('/');
         };
 
-        $scope.datasetsPage = function() {
+        $scope.datasetsPage = function () {
             $location.path('/datasets');
         };
 
-        $scope.categoriesPage = function() {
+        $scope.categoriesPage = function () {
             $location.path('/categories');
         };
 
-        $scope.thesaurusPage = function() {
+        $scope.thesaurusPage = function () {
             $location.path('/thesaurus');
         };
 
-        $scope.toggleSidebar = function() {
+        $scope.toggleSidebar = function () {
             $scope.toggleBar = !$scope.toggleBar;
         };
 

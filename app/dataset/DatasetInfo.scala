@@ -19,8 +19,8 @@ package dataset
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
-import triplestore.TripleStoreClient
-import triplestore.TripleStoreClient._
+import triplestore.TripleStore
+import triplestore.TripleStore._
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -70,7 +70,7 @@ object DatasetInfo {
 
 }
 
-class DatasetInfo(name: String, client: TripleStoreClient) {
+class DatasetInfo(name: String, client: TripleStore) {
 
   import dataset.DatasetInfo._
 
@@ -84,7 +84,7 @@ class DatasetInfo(name: String, client: TripleStoreClient) {
     client.dataPost(datasetUri, m).map(ok => m)
   }
 
-  val m = Await.result(futureModel, 20 seconds)
+  val m = Await.result(futureModel, 20.seconds)
 
   def getLiteralProp(prop: DIProp): Option[String] = {
     val uri = m.getResource(datasetUri)

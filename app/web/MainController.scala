@@ -18,6 +18,8 @@ package web
 
 import java.io.{File, FileInputStream, FileNotFoundException}
 
+import org.UserStore
+import org.UserStore.{NXActor, NXProfile}
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
@@ -27,7 +29,9 @@ import play.api.mvc._
 import services.NarthexConfig._
 
 import scala.collection.JavaConversions._
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 object MainController extends Controller with Security {
 
@@ -43,84 +47,73 @@ object MainController extends Controller with Security {
     Ok(views.html.index(ORG_ID, SIP_APP_URL, SHOW_CATEGORIES, SHOW_THESAURUS))
   }
 
-  def login = Action(parse.json) {
-    request =>
+  def login = Action(parse.json) { implicit request =>
 
-      var username = (request.body \ "username").as[String]
-      var password = (request.body \ "password").as[String]
+    var username = (request.body \ "username").as[String]
+    var password = (request.body \ "password").as[String]
+    Logger.info(s"Login $username")
 
-      Logger.info(s"Login $username")
-
-      Play.current.configuration.getObjectList("users").map {
-        userList =>
-          userList.map(_.toConfig).find(u => username == u.getString("user")) match {
-            case Some(user) =>
-              if (password != user.getString("password")) {
-                Unauthorized("Username/password not found")
-              }
-              else {
-                val token = java.util.UUID.randomUUID().toString
-                val cachedProfile = CachedProfile(
-                  firstName = user.getString("firstName"),
-                  lastName = user.getString("lastName"),
-                  email = user.getString("email"),
-                  apiKey = API_ACCESS_KEYS(0),
-                  narthexDomain = NARTHEX_DOMAIN,
-                  naveDomain = NAVE_DOMAIN,
-                  categoriesEnabled = SHOW_CATEGORIES
-                )
-                Ok(Json.obj(
-                  "firstName" -> cachedProfile.firstName,
-                  "lastName" -> cachedProfile.lastName,
-                  "email" -> cachedProfile.email,
-                  "apiKey" -> cachedProfile.apiKey,
-                  "narthexDomain" -> cachedProfile.narthexDomain,
-                  "naveDomain" -> cachedProfile.naveDomain,
-                  "categoriesEnabled" -> cachedProfile.categoriesEnabled
-                )).withToken(token, cachedProfile)
-              }
-
-            case None =>
-              Unauthorized("Username/password not found")
+    Play.current.configuration.getObjectList("users").map { userList =>
+      userList.map(_.toConfig).find(u => username == u.getString("user")) match {
+        case Some(user) =>
+          if (password != user.getString("password")) {
+            Unauthorized("Username/password not found")
           }
-      } getOrElse Unauthorized("No authentication configuration")
+          else {
+            val session = UserSession(
+              NXActor(username, administrator = true),
+              NXProfile(
+                user.getString("firstName"),
+                user.getString("lastName"),
+                user.getString("email")
+              ),
+              apiKey = API_ACCESS_KEYS(0),
+              narthexDomain = NARTHEX_DOMAIN,
+              naveDomain = NAVE_DOMAIN,
+              categoriesEnabled = SHOW_CATEGORIES
+            )
+            Ok(Json.toJson(session)).withToken(java.util.UUID.randomUUID().toString, session)
+          }
+
+        case None =>
+          Unauthorized("Username/password not found")
+      }
+    } getOrElse {
+      val resultFuture = UserStore.us.authenticate(username, password).map { nxActorOpt: Option[NXActor] =>
+        val session = UserSession(
+          NXActor(username, administrator = true),
+          NXProfile("", "", ""), // todo
+          apiKey = API_ACCESS_KEYS(0),
+          narthexDomain = NARTHEX_DOMAIN,
+          naveDomain = NAVE_DOMAIN,
+          categoriesEnabled = SHOW_CATEGORIES
+        )
+        Ok(Json.toJson(session)).withToken(java.util.UUID.randomUUID().toString, session)
+      }
+      Await.result(resultFuture, 10.seconds)
+    }
   }
 
-  def checkLogin = Action {
-    implicit request =>
-
-      Logger.info(s"Check Login")
-
-      val maybeToken = request.headers.get(TOKEN)
-      maybeToken flatMap {
-        token =>
-          Cache.getAs[CachedProfile](token) map { cachedProfile =>
-            Logger.info(s"Check Login Yes: $cachedProfile")
-            Ok(Json.obj(
-              "firstName" -> cachedProfile.firstName,
-              "lastName" -> cachedProfile.lastName,
-              "email" -> cachedProfile.email,
-              "apiKey" -> cachedProfile.apiKey,
-              "narthexDomain" -> cachedProfile.narthexDomain,
-              "naveDomain" -> cachedProfile.naveDomain,
-              "categoriesEnabled" -> cachedProfile.categoriesEnabled
-            )).withToken(token, cachedProfile)
-          }
-      } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
+  def checkLogin = Action { implicit request =>
+    val maybeToken = request.headers.get(TOKEN)
+    maybeToken flatMap {
+      token =>
+        Cache.getAs[UserSession](token) map { us =>
+          Logger.info(s"Check Login Yes: $us")
+          Ok(Json.toJson(us)).withToken(token, us)
+        }
+    } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
   }
 
   /** Logs the user out, i.e. invalidated the token. */
-  def logout = Action {
-    implicit request =>
-
-      Logger.info(s"Logout!")
-
-      request.headers.get(TOKEN) match {
-        case Some(token) =>
-          Ok.discardingToken(token)
-        case None =>
-          Unauthorized(Json.obj("err" -> "Logout failed"))
-      }
+  def logout = Action { implicit request =>
+    Logger.info(s"Logout")
+    request.headers.get(TOKEN) match {
+      case Some(token) =>
+        Ok.discardingToken(token)
+      case None =>
+        Unauthorized(Json.obj("err" -> "Logout failed"))
+    }
   }
 
   // todo: move this

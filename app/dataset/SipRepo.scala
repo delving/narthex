@@ -242,7 +242,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
             }
             changeOpt.foreach { path =>
               nodeMapping.inputPath = Path.create(path)
-              Logger.info(s"Adjust input path: $inputPath => $path")
+              Logger.debug(s"Adjust input path: $inputPath => $path")
             }
             fixGroovyArrays(nodeMapping)
           }
@@ -253,7 +253,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
             if (inputPath.startsWith("/input")) {
               // take input as the record root
               nodeMapping.inputPath = Path.create(inputPath.replaceFirst("/input/", s"/input/$SIP_RECORD_TAG/"))
-              Logger.info(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
+              Logger.debug(s"Adjust input path: $inputPath => ${nodeMapping.inputPath}")
             }
             fixGroovyArrays(nodeMapping)
           }

@@ -299,7 +299,7 @@ object AppController extends Controller with Security {
         conceptScheme = (request.body \ "conceptScheme").as[String],
         attributionName = (request.body \ "attributionName").as[String],
         prefLabel = (request.body \ "prefLabel").as[String],
-        who = profile.email,
+        who = profile.nxActor.uri,
         when = new DateTime()
       )
       datasetRepo.termDb.addMapping(termMapping)
@@ -318,7 +318,7 @@ object AppController extends Controller with Security {
     val termMapping = ThesaurusMapping(
       uriA = (request.body \ "uriA").as[String],
       uriB = (request.body \ "uriB").as[String],
-      who = profile.email,
+      who = profile.nxActor.uri,
       when = new DateTime()
     )
     val added = thesaurusDb.toggleMapping(termMapping)

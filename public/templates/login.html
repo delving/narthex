@@ -1,6 +1,6 @@
 <div class="home row clearfix">
 
-    <div class="col-sm-6 col-sm-push-3">
+    <div class="col-sm-6 col-sm-push-3" data-ng-if="!user">
         <h2>Login</h2>
 
         <form name="form" class="form well clearfix">
@@ -18,6 +18,33 @@
                 </div>
                 <br/>
                 <button class="btn btn-primary pull-right" data-ng-disabled="form.$invalid" data-ng-click="login(credentials)">Log In</button>
+            </fieldset>
+            <div data-ng-show="errorMessage">
+                <br/>
+                <span class="badge badge-warning">{{ errorMessage }}</span>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-sm-6 col-sm-push-3" data-ng-if="user">
+        <h2>"{{ user.username }}"</h2>
+
+        <form name="form" class="form well clearfix">
+            <fieldset>
+                <div class="form-group">
+                    <label for="firstName">First Name</label>
+                    <input id="firstName" class="form-control" data-ng-model="editedUser.firstName" placeholder="John"/><br/>
+                </div>
+                <div class="form-group">
+                    <label for="lastName">Last Name</label>
+                    <input id="lastName" class="form-control" data-ng-model="editedUser.lastName" placeholder="Smith"/>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input id="email" class="form-control" data-ng-model="editedUser.email" placeholder="john@smith.net"/>
+                </div>
+                <br/>
+                <button class="btn btn-primary pull-right" data-ng-disabled="unchangedUser" data-ng-click="setProfile(editedUser)">Save</button>
             </fieldset>
             <div data-ng-show="errorMessage">
                 <br/>

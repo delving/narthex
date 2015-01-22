@@ -16,7 +16,7 @@
 package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
-import triplestore.TripleStoreClient
+import triplestore.TripleStore
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -24,11 +24,11 @@ object Skosifier {
 
   case object WakeupCall
 
-  def props(ts: TripleStoreClient) = Props(new Skosifier(ts))
+  def props(ts: TripleStore) = Props(new Skosifier(ts))
 
 }
 
-class Skosifier(ts: TripleStoreClient) extends Actor with ActorLogging with Skosification {
+class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosification {
 
   import mapping.Skosifier._
 

@@ -16,6 +16,7 @@
 
 package web
 
+import org.UserStore.{NXActor, NXProfile}
 import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -30,14 +31,25 @@ trait Security {
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
   lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
 
-  case class CachedProfile
-  (
-    firstName: String, lastName: String,
-    email:String,
-    apiKey: String,
-    narthexDomain:String, naveDomain:String,
-    categoriesEnabled: Boolean
+  implicit val userSessionWrites = new Writes[UserSession] {
+    def writes(us: UserSession) = Json.obj(
+      "username" -> us.nxActor.actorName,
+      "firstName" -> us.nxProfile.firstName,
+      "lastName" -> us.nxProfile.lastName,
+      "email" -> us.nxProfile.email,
+      "apiKey" -> us.apiKey,
+      "narthexDomain" -> us.narthexDomain,
+      "naveDomain" -> us.naveDomain,
+      "categoriesEnabled" -> us.categoriesEnabled
     )
+  }
+
+  case class UserSession(nxActor: NXActor,
+                         nxProfile: NXProfile,
+                         apiKey: String,
+                         narthexDomain: String,
+                         naveDomain: String,
+                         categoriesEnabled: Boolean)
 
   /*
     To make this work seamlessly with Angular, you should read the token from a header called
@@ -46,26 +58,26 @@ trait Security {
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: CachedProfile => Request[A] => Result): Action[A] = Action(p) { implicit request =>
+  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: UserSession => Request[A] => Result): Action[A] = Action(p) { implicit request =>
     val maybeToken: Option[String] = request.headers.get(TOKEN)
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[CachedProfile](token) map { cachedProfile =>
-        block(cachedProfile)(request).withToken(token, cachedProfile)
+      Cache.getAs[UserSession](token) map { userSession =>
+        block(userSession)(request).withToken(token, userSession)
       }
     } getOrElse {
       Unauthorized(Json.obj("err" -> "Secure session expired"))
     }
   }
 
-  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: CachedProfile => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
+  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: UserSession => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
     val maybeToken: Option[String] = request.headers.get(TOKEN)
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[CachedProfile](token) map { cachedProfile =>
-        block(cachedProfile)(request)
+      Cache.getAs[UserSession](token) map { userSession =>
+        block(userSession)(request)
       }
     } getOrElse {
       Future.successful(Unauthorized(Json.obj("err" -> "Secure async session expired")))
@@ -73,8 +85,8 @@ trait Security {
   }
 
   implicit class ResultWithToken(result: Result) {
-    def withToken(token: String, cachedProfile: CachedProfile): Result = {
-      Cache.set(token, cachedProfile, CACHE_EXPIRATION)
+    def withToken(token: String, userSession: UserSession): Result = {
+      Cache.set(token, userSession, CACHE_EXPIRATION)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, token, None, httpOnly = false))
     }
 

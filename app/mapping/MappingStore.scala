@@ -20,14 +20,14 @@ import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model.Model
 import dataset.DatasetInfo
-import org.UserStore.NXUser
+import org.UserStore.NXActor
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.libs.json.{Json, Writes}
 import services.NarthexConfig._
 import services.Temporal
-import triplestore.TripleStoreClient
-import triplestore.TripleStoreClient._
+import triplestore.TripleStore
+import triplestore.TripleStore._
 
 object MappingStore {
 
@@ -84,11 +84,11 @@ object MappingStore {
   val mappingNotes = MAProp("mappingNotes")
 }
 
-class MappingStoreChoose(client: TripleStoreClient) {
+class MappingStoreChoose(client: TripleStore) {
   // todo: get a whole list of the concept schemes and the accompanying datasets
 }
 
-class MappingStoreEdit(client: TripleStoreClient, user: NXUser,
+class MappingStoreEdit(client: TripleStore, user: NXActor,
                        datasetA: DatasetInfo, datasetB: DatasetInfo) {
 
   import mapping.MappingStore._
@@ -142,7 +142,7 @@ class MappingStoreEdit(client: TripleStoreClient, user: NXUser,
   }
 }
 
-class MappingStoreApply(client: TripleStoreClient,
+class MappingStoreApply(client: TripleStore,
                         dataset: DatasetInfo) {
 
   // todo: get all of the mappings that relate to this dataset

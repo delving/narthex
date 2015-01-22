@@ -32,11 +32,11 @@ object GraphSaver {
 
   case object GraphSaveComplete
 
-  def props(repo: ProcessedRepo, client: TripleStoreClient) = Props(new GraphSaver(repo, client))
+  def props(repo: ProcessedRepo, client: TripleStore) = Props(new GraphSaver(repo, client))
 
 }
 
-class GraphSaver(repo: ProcessedRepo, client: TripleStoreClient) extends Actor with ActorLogging {
+class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with ActorLogging {
 
   import context.dispatcher
 

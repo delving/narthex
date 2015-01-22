@@ -5,18 +5,18 @@ import java.io.File
 import dataset.{DatasetInfo, ProcessedRepo, SipRepo, SourceRepo}
 import mapping.Skosification
 import org.UserStore
-import org.UserStore.NXUser
+import org.UserStore.NXActor
 import org.apache.commons.io.FileUtils
 import org.scalatestplus.play._
 import play.api.test.Helpers._
 import record.PocketParser.Pocket
 import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
-import triplestore.TripleStoreClient
+import triplestore.TripleStore
 
 class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
 
-  val ts = new TripleStoreClient("http://localhost:3030/narthex-test")
+  val ts = new TripleStore("http://localhost:3030/narthex-test")
 
   def cleanStart() = {
     await(ts.update("DROP ALL"))
@@ -30,22 +30,23 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
 
     // start fresh
     val us1 = new UserStore(ts)
-    await(us1.authenticate("gumby", "secret gumby")) must be(Some(NXUser("gumby", administrator = true)))
-    await(us1.introduce("pokey", "secret pokey")) must be(Some(NXUser("pokey")))
-    await(us1.introduce("pokey", "secret pokey")) must be(None)
+    val admin = await(us1.authenticate("gumby", "secret gumby"))
+    admin must be(Some(NXActor("gumby", administrator = true)))
+    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey")))
+    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(None)
 
     // this will have to get its data from the triple store again
     val us2 = new UserStore(ts)
     await(us2.authenticate("gumby", "secret gumbo")) must be(None)
-    await(us2.authenticate("gumby", "secret gumby")) must be(Some(NXUser("gumby", administrator = true)))
-    await(us2.authenticate("pokey", "secret pokey")) must be(Some(NXUser("pokey")))
+    await(us2.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", administrator = true)))
+    await(us2.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey")))
     await(us2.authenticate("third-wheel", "can i join")) must be(None)
   }
 
   "A sample SKOS vocabulary should be loaded" in {
     // check that the user is still there
     val us = new UserStore(ts)
-    await(us.authenticate("gumby", "secret gumby")) must be(Some(NXUser("gumby", administrator = true)))
+    await(us.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", administrator = true)))
     // push in a SKOS vocabulary
     val info = new DatasetInfo("gtaa_genre", ts)
     val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
@@ -114,8 +115,9 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     await(ts.update(sc.skosAddition))
     await(ts.ask(sc.checkExistence)) must be(true)
     val change: String = sc.changeLiteralToUri
-    println(change)
     await(ts.update(change))
+
+    // todo: test if it has changed
 
 //    val checkQuery: String = checkForWork(2)
 //    val work = await(ts.query(checkQuery))

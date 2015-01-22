@@ -6,12 +6,12 @@ import dataset.DatasetInfo._
 import dataset.{DatasetInfo, ProcessedRepo}
 import org.scalatestplus.play._
 import play.api.test.Helpers._
-import triplestore.TripleStoreClient
+import triplestore.TripleStore
 
 class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
   val TEST_STORE: String = "http://localhost:3030/narthex-test"
-  val ts = new TripleStoreClient(TEST_STORE)
+  val ts = new TripleStore(TEST_STORE)
 
   def cleanStart() = {
     await(ts.update("DROP ALL"))
