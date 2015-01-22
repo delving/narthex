@@ -1,16 +1,4 @@
 <div class="page-header">
-    <!-- page specifiction actions/tools -->
-    <div class="actions pull-right">
-        <form class="form-inline">
-            <div class="form-group">
-                <label>Filter datasets:</label>
-                <input type="text" class="form-control" data-ng-model="specFilter" placeholder="Type here to filter"/>
-            </div>
-            <div class="form-group">
-                <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
-            </div>
-        </form>
-    </div>
     <!-- page location, org -->
     <div class="meta">
         <div class="page">
@@ -20,6 +8,18 @@
             <span class="fa fa-institution"></span>
             <span>{{ orgId }}</span>
         </div>
+    </div>
+    <!-- page specifiction actions/tools -->
+    <div class="actions">
+        <form class="form-inline">
+            <div class="form-group">
+                <label>Filter datasets:</label>
+                <input type="text" class="form-control" data-ng-model="specFilter" placeholder="Type here to filter"/>
+            </div>
+            <div class="form-group">
+                <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
+            </div>
+        </form>
     </div>
 </div>
 

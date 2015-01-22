@@ -1,8 +1,4 @@
 <div class="page-header">
-    <!-- page specifiction actions/tools -->
-    <div class="actions pull-right">
-
-    </div>
     <!-- page location, org -->
     <div class="meta">
         <div class="page">
@@ -12,6 +8,10 @@
             <span class="fa fa-institution"></span>
             <span>{{ orgId }}</span>
         </div>
+    </div>
+    <!-- page specifiction actions/tools -->
+    <div class="actions">
+
     </div>
 </div>
 
@@ -91,12 +91,13 @@
     </div>
 
     <div class="col-sm-6">
+
         <div class="input-group input-group-skos-term">
             <label class="input-group-addon">{{ conceptSchemeB }}</label>
             <input class="form-control" type="text" data-ng-model="soughtB"/>
             <span class="input-group-addon"><i class="fa fa-search"></i></span>
-
         </div>
+
         <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-b" data-offset="320" data-ng-style="{ 'height': elHeight }">
 
             <div data-ng-repeat="concept in conceptsB" class="list-group concept-box"

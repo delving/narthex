@@ -18,7 +18,7 @@
     padding: 10px 15px;
     border-bottom: 1px solid #e9e9e9;
     line-height: 30px;
-    min-height: 50px;
+    height: 50px;
     position: relative;
 //    .box-sizing('content-box');
     i {
@@ -26,6 +26,15 @@
     }
     input {
       width: 25%;
+    }
+    .nav-tabs {
+      margin: 0px 0px !important;
+      border-bottom: none;
+      position: absolute;
+      bottom: 0px;
+      &.nav-tabs-right {
+        right: 20px;
+      }
     }
   }
   .widget-body {
@@ -46,9 +55,9 @@
     .error {
       color: #ff0000;
     }
-    button {
-      margin-left: 5px;
-    }
+//    button {
+//      margin-left: 5px;
+//    }
     div.alert {
       margin-bottom: 10px;
     }
@@ -70,9 +79,13 @@
         padding: 20px;
       }
     }
+    &.with-list {
+      padding: 10px 0px 0px;
+    }
   }
   .widget-footer {
     border-top: 1px solid #e9e9e9;
+    height: 60px;
     padding: 10px;
   }
   .widget-icon {
@@ -94,5 +107,50 @@
       font-size: 28px;
       display: block;
     }
+  }
+//  .widget-data {
+//    padding: 10px 0px;
+//  }
+  .list-group {
+      margin: 10px 0px;
+    }
+  .list-group-item {
+    border-color: @gray-lighter;
+    border-right: none;
+    border-left: none;
+  }
+  .list-group-item:first-child, {
+    border-top: none;
+    border-radius: 0px;
+  }
+  .list-group-item:last-child, {
+    border-radius: 2px;
+  }
+}
+
+/* customizations ***********************/
+
+.widget-header-tabs {
+
+}
+
+.widget-footer .sub-controls {
+  min-height: 35px;
+  .btn {
+    font-size: 0.9em;
+  }
+}
+
+.widget-header,
+.widget-footer {
+  background-color: #f6f6f6;
+}
+
+.widget-header-nav-pills {
+  > li > a {
+    background: @white;
+    font-size: 0.9em;
+    padding: 0px 10px;
+    border: 1px solid @gray-lighter;
   }
 }

@@ -294,6 +294,7 @@ define(["angular"], function () {
     TreeCtrl.$inject = ["$scope"];
 
     var NodeCtrl = function ($scope) {
+
     };
 
     NodeCtrl.$inject = ["$scope"];

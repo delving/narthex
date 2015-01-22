@@ -195,17 +195,21 @@ a {
 /* page /view header  *************************************************/
 
 .page-header {
+  .row(12);
   background: @white;
   height: 60px;
-  margin: 0px -15px 15px -15px;
-  padding: 5px 20px;
+  margin-bottom: 15px;
+  .meta {
+    .column(3,12);
+  }
   .page {
     font-size: 1.25em;
     font-weight: bold;
   }
   .actions {
+    .column(9,12);
+    padding: 10px 0px;
     text-align: right;
-    padding-top: 8px;
   }
 }
 
@@ -259,6 +263,7 @@ a {
 }
 
 /* dashboard file list styles *******************************************/
+
 @total-width: 100%;
 
 .file-list {
@@ -284,58 +289,6 @@ a {
     margin: 0px;
   }
 }
-
-.dataset-widget {
-
-}
-
-//.file-block {
-//  .column(6);
-//  .panel-heading {
-//    .clearfix();
-//    &:hover {
-//      cursor: pointer;
-//    }
-//    .icon {
-//      .column(1,12);
-//      .circle {
-//        background: @white;
-//        color: @gray-light;
-//        .border-radius(50px);
-//        padding: 8px 4px;
-//        height:42px;
-//        width: 42px;
-//      }
-//    }
-//    .name {
-//      .column(8,12);
-//      font-weight: bold;
-//    }
-//    .action {
-//      .column(3,12);
-//      text-align: right;
-//    }
-//    .count {
-//      font-size: 1.5em;
-//    }
-//  }
-//  .label {
-//    display: inline-block;
-//  }
-//  .progress {
-//    background: #fff;
-//    text-shadow: 1px 1px #000;
-//    font-size: 12px;
-//    height: 22px;
-//    /*line-height: 32px;*/
-//    margin: 0 0 0 0;
-//    border-radius: 0px;
-//  }
-//}
-
-//@media screen and (max-width: 960px){
-//  .file-block { .column(12); }
-//}
 
 .list-files {
   .list-group-item {
@@ -375,40 +328,22 @@ a {
 
 /* nav-tabs ************************************************************/
 
-ul.nav-tabs {
+.nav-tabs {
   dipsplay: inline-block;
   width: 100%;
   font-size: .9em;
   margin: 10px 0;
-  li {
-    a {
-      background: lighten(@bright-blue, 40%);
-      padding: 4px 8px;
-      margin-right: 1px;
-    }
-    &.active a {
-      background: @white
-    }
+  a {
+    background: lighten(@bright-blue, 40%);
+    padding: 4px 8px;
+    margin-right: 1px;
   }
-  .nav-tabs-title {
-    display: inline-block;
-    color: @gray-light;
-    font-weight: bold;
-    //    margin-left: 0px !important;
-    text-transform: uppercase;
-    span {
-//      padding: 4px 6px 2px 6px;
-    }
+  &.active a {
+    background: @white
   }
-  .toolbar {
-    float: right;
-    .btn {
-      padding: 4px 8px;
-    }
-    .dropdown-menu {
-      left: auto !important;
-      right: 0px !important;
-    }
+  .badge {
+    font-size: smaller;
+    font-weight: normal;
   }
 }
 
@@ -416,45 +351,12 @@ ul.nav-tabs {
   li {
     float: right;
   }
-  li.nav-tabs-title {
-    float: left;
-  }
 }
 
 .navbar-tools {
   background: @silver;
 }
 
-.widget-header-tabs {
-  margin: 0px 0px !important;
-  border-bottom: none;
-  position: absolute;
-  bottom: 0px;
-  &.nav-tabs-right {
-    right: 20px;
-  }
-}
-
-.widget-footer .sub-controls {
-  min-height: 35px;
-  .btn {
-    font-size: 0.9em;
-  }
-}
-
-.widget-header,
-.widget-footer {
-  background-color: #f6f6f6;
-}
-
-.widget-header-nav-pills {
-  > li > a {
-    background: @white;
-    font-size: 0.9em;
-    padding: 0px 10px;
-    border: 1px solid @gray-lighter;
-  }
-}
 
 /* file-block tabs sip files list *************************************/
 
@@ -463,18 +365,20 @@ ul.nav-tabs {
   color: @gray-light;
   .latest {
     color: @brand-success;
-    //    font-weight: bold;
   }
 }
 
 /* dataset/schema view styles *****************************************/
 
 .file-path-info {
-  background: @silver;
-  font-weight: normal;
-  font-size: .85em;
-  margin: 0 0 10px 0;
+  background: transparent;
+  direction:rtl;
   font-family: @font-family-monospace;
+  font-size: .85em;
+  font-weight: normal;
+  margin: 5px 0 10px 0;
+  overflow-x: auto;
+  white-space: nowrap;
   .file-name {
     color: @gray-dark;
   }
@@ -483,43 +387,42 @@ ul.nav-tabs {
   }
 }
 
+
+
 .widget-schema {
-  margin-bottom: 0px;
-  ul {
-    margin: 0 0 0 18px;
-    padding: 0 0 0 0;
-  }
-  div.node {
-    border-bottom: 1px solid @ash-gray;
-    padding: 2px;
-    position: relative;
-    &.active:hover {
+  .node {
+    border-bottom: 1px solid @gray-lighter;
+    padding: 10px 15px;
+    &:hover {
       background: @silver;
       cursor: pointer;
     }
     &.chosen {
-      background: @bright-blue-2;
+      background: #eeeee0;
       cursor: default;
       overflow: none;
     }
   }
+  .inner-node {
+    padding-left: 10px;
+  }
   .badge {
     background: @black;
+    color: @white;
     &.badge-info {
       background: @brand-primary;
-      color: @white;
     }
     &.badge-unique {
       background: @alert-success-bg;
-      color: @alert-success-text;
+      font-weight: normal;
     }
     &.badge-mapped {
-      background: @alert-danger-bg;
-      color: @alert-danger-text;
+      background: @alert-info-bg;
+      font-weight: normal;
     }
     &.badge-record-root {
       background: @alert-warning-bg;
-      color: @alert-warning-text;
+      font-weight: normal;
     }
   }
 }
@@ -549,7 +452,12 @@ code {
 }
 
 .terminology-list {
+
   .list-group-item {
+    padding: 4px 8px;
+    &:first-child {
+      .border-radius(0px);
+    }
     &:hover {
       background: @silver;
       cursor: pointer !important;
@@ -570,19 +478,26 @@ code {
   }
 }
 
+/* list-group *****************************/
+
+.list-group.actionable {
+  li:hover {
+    background: @gray-lighter;
+    cursor: pointer;
+  }
+  .list-item-selected {
+    background: @linnen;
+  }
+  .list-item-mapped {
+    background: @mid-green;
+  }
+}
+
+
 
 /****************************
   SKOS TERMS BROWSER
 ****************************/
-
-.panel-choice {
-  .panel-body {
-    &:hover {
-      background: @ash-gray;
-      cursor: pointer;
-    }
-  }
-}
 
 .input-group-skos-term {
   margin-bottom: 20px;
