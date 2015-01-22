@@ -22,8 +22,10 @@ import services.StringHandling.urlEncodeValue
 import triplestore.TripleStoreClient
 import triplestore.TripleStoreClient._
 
+import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent._
+import scala.concurrent.duration._
 
 object DatasetInfo {
 
@@ -39,7 +41,7 @@ object DatasetInfo {
   var datasetRights = DIProp("datasetRights")
   var datasetNotes = DIProp("datasetNotes")
   var datasetRecordCount = DIProp("datasetRecordCount", intProp)
-  var skosField = DIProp("skosField")
+  var skosField = DIProp("skosField", uriProp)
 
   var stateRaw = DIProp("stateRaw", timeProp)
   var stateRawAnalyzed = DIProp("stateRawAnalyzed", timeProp)
@@ -82,26 +84,36 @@ class DatasetInfo(name: String, client: TripleStoreClient) {
     client.dataPost(datasetUri, m).map(ok => m)
   }
 
-  def getProp(prop: DIProp): Future[Option[String]] = futureModel.map { m =>
+  val m = Await.result(futureModel, 20 seconds)
+
+  def getLiteralProp(prop: DIProp): Option[String] = {
     val uri = m.getResource(datasetUri)
     val propUri = m.getProperty(prop.uri)
     val objects = m.listObjectsOfProperty(uri, propUri)
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
   }
-
-  def setProps(tuples: (DIProp, String)*): Future[Model] = futureModel.flatMap { m =>
+  
+  def setLiteralProps(tuples: (DIProp, String)*): Future[Model] = {
     val uri = m.getResource(datasetUri)
     val propVal = tuples.map(t => (m.getProperty(t._1.uri), t._2))
-    val sparqls = propVal.map { pv =>
+    val sparqlPerProp = propVal.map { pv =>
       val propUri = pv._1
       s"""
          |WITH <$uri>
-         |DELETE { <$uri> <$propUri> ?o }
-         |INSERT { <$uri> <$propUri> "${pv._2}" }
-         |WHERE { OPTIONAL { <$uri> <$propUri> ?o } }
+         |DELETE { 
+         |   <$uri> <$propUri> ?o 
+         |}
+         |INSERT { 
+         |   <$uri> <$propUri> "${pv._2}" 
+         |}
+         |WHERE { 
+         |   OPTIONAL {
+         |      <$uri> <$propUri> ?o
+         |   } 
+         |}
        """.stripMargin.trim
     }
-    val sparql = sparqls.mkString(";\n")
+    val sparql = sparqlPerProp.mkString(";\n")
     client.update(sparql).map { ok =>
       propVal.foreach { pv =>
         m.removeAll(uri, pv._1, null)
@@ -111,17 +123,60 @@ class DatasetInfo(name: String, client: TripleStoreClient) {
     }
   }
 
-  def removeProp(prop: DIProp): Future[Model] = futureModel.flatMap { m =>
+  def removeLiteralProp(prop: DIProp): Future[Model] = {
     val uri = m.getResource(datasetUri)
     val propUri = m.getProperty(prop.uri)
     val sparql =
       s"""
          |WITH <$uri>
-         |DELETE { <$uri> <$propUri> ?o }
-         |WHERE { <$uri> <$propUri> ?o }
+         |DELETE {
+         |   <$uri> <$propUri> ?o
+         |}
+         |WHERE {
+         |   <$uri> <$propUri> ?o
+         |}
        """.stripMargin
     client.update(sparql).map { ok =>
       m.removeAll(uri, propUri, null)
+      m
+    }
+  }
+
+  def getUriProps(prop: DIProp): List[String] = {
+    val uri = m.getResource(datasetUri)
+    val propUri = m.getProperty(prop.uri)
+    m.listObjectsOfProperty(uri, propUri).map(node => node.asResource().toString).toList
+  }
+
+  def setUriProp(prop: DIProp, uriValue: String): Future[Model] = {
+    val uri = m.getResource(datasetUri)
+    val propUri = m.getProperty(prop.uri)
+    val uriValueUri = m.getResource(uriValue)
+    val sparql =s"""
+         |INSERT DATA {
+         |   GRAPH <$uri> {
+         |      <$uri> <$propUri> <$uriValueUri>
+         |   }
+         |}
+       """.stripMargin.trim
+    client.update(sparql).map { ok =>
+      m.add(uri, propUri, uriValueUri)
+      m
+    }
+  }
+
+  def removeIUriProp(prop: DIProp, uriValue: String): Future[Model] = futureModel.flatMap { m =>
+    val uri = m.getResource(datasetUri)
+    val propUri = m.getProperty(prop.uri)
+    val uriValueUri = m.getProperty(uriValue)
+    val sparql =
+      s"""
+         |DELETE DATA FROM <$uri> {
+         |   <$uri> <$propUri> <$uriValueUri>
+         |}
+       """.stripMargin
+    client.update(sparql).map { ok =>
+      m.remove(uri, propUri, uriValueUri)
       m
     }
   }

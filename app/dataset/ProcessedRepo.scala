@@ -20,6 +20,7 @@ import java.io._
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import services.FileHandling
+import services.NarthexConfig.NX_NAMESPACE
 
 import scala.collection.JavaConversions._
 
@@ -29,6 +30,8 @@ import scala.collection.JavaConversions._
 
 object ProcessedRepo {
   val SUFFIX = ".xml"
+
+  val belongsTo = s"${NX_NAMESPACE}belongsTo"
 
   case class GraphChunk(dataset: Dataset) {
 
@@ -53,7 +56,7 @@ object ProcessedRepo {
   }
 }
 
-class ProcessedRepo(val home: File) {
+class ProcessedRepo(val home: File, datasetUri: String) {
 
   import dataset.ProcessedRepo._
 
@@ -97,7 +100,9 @@ class ProcessedRepo(val home: File) {
       while (!chunkComplete && active) {
         Option(reader.readLine()).map {
           case LineId(graphName) =>
-            dataset.getNamedModel(graphName).read(new StringReader(recordText.toString()), null, "RDF/XML")
+            val m = dataset.getNamedModel(graphName)
+            m.read(new StringReader(recordText.toString()), null, "RDF/XML")
+            m.add(m.getResource(graphName), m.getProperty(belongsTo), m.getResource(datasetUri))
             graphCount += 1
             recordText.clear()
             if (graphCount >= chunkSize) chunkComplete = true

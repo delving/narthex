@@ -65,7 +65,8 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined must be(true)
     // create processed repo
-    val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")))
+    val info = new DatasetInfo("frans_hals", ts)
+    val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info.datasetUri)
     var sourceFile = processedRepo.createFile
     val sourceOutput = writer(sourceFile)
     // fill processed repo by mapping records
@@ -95,17 +96,36 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
         await(ts.update(update))
       }
     }
-    countGraphs must be(7)
+    countGraphs must be(8)
   }
 
   "Skosification must work" in {
-    val work = ts.query(checkForWork)
+    // mark a field as skosified
+    val info = new DatasetInfo("frans_hals", ts)
+    await(info.setUriProp(DatasetInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
 
+    val sc = SkosificationCase(
+      datasetUri = info.datasetUri,
+      fieldProperty = "http://purl.org/dc/elements/1.1/type",
+      fieldValue = "schilderij; landschap | painting; landscape"
+    )
+
+    await(ts.ask(sc.checkExistence)) must be(false)
+    await(ts.update(sc.skosAddition))
+    await(ts.ask(sc.checkExistence)) must be(true)
+    val change: String = sc.changeLiteralToUri
+    println(change)
+    await(ts.update(change))
+
+//    val checkQuery: String = checkForWork(2)
+//    val work = await(ts.query(checkQuery))
+//    println(s"work $checkQuery: $work")
+//    work.size must be(2)
   }
 
-  "A mapping must be created" in {
-
-  }
+//  "A mapping must be created" in {
+//
+//  }
 }
 
 

@@ -45,6 +45,19 @@ object TripleStoreClient {
 
 class TripleStoreClient(storeURL: String) {
 
+  def ask(sparqlQuery: String) : Future[Boolean] = {
+    val request = WS.url(s"$storeURL/query").withQueryString(
+      "query" -> sparqlQuery,
+      "output" -> "json"
+    )
+    request.get().map { response =>
+      if (response.status / 100 != 2) {
+        throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
+      }
+      (response.json \ "boolean").as[Boolean]
+    }
+  }
+
   def query(sparqlQuery: String): Future[List[Map[String, String]]] = {
     val request = WS.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,

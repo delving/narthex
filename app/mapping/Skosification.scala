@@ -20,38 +20,50 @@ import services.StringHandling.urlEncodeValue
 
 trait Skosification {
 
-  val checkForWork = {
-    // future SkosificiationCase, actor can use pipeTo
-    val limit = 12
+  def checkForWork(chunkSize: Int) = {
+    // todo: it seems fieldProperty cannot be used as a property because it is a resource
+    // todo: may have to split it into two queries: first get DS/FP and then use DS/FP to get FV
     s"""
-      |@PREFIX nx: <$NX_NAMESPACE>
+      |PREFIX nx: <$NX_NAMESPACE>
       |SELECT ?dataset ?fieldProperty ?fieldValue
       |WHERE {
       |  GRAPH ?g {
-      |    ?dataset nx:skosField ?fieldProperty
-      |    ?record nx:belongsTo ?dataset
-      |    ?record ?fieldProperty ?fieldValue
+      |    ?dataset nx:skosField ?fieldProperty .
+      |    ?record nx:belongsTo ?dataset .
+      |    ?record ?fieldProperty ?fieldValue .
       |    FILTER isLiteral(?fieldValue)
       |  }
       |}
-      |LIMIT $limit
+      |LIMIT $chunkSize
       """.stripMargin
   }
 
+  object SkosificationCase {
+    def apply(workList: List[Map[String, String]]): List[SkosificationCase] = workList.map { workMap =>
+      SkosificationCase(
+        datasetUri = workMap("datasetUri"),
+        fieldProperty = workMap("fieldProperty"),
+        fieldValue = workMap("fieldValue")
+      )
+    }
+  }
+
   case class SkosificationCase(datasetUri: String,
-                               datasetSkosUri: String,
-                               fieldValue: String,
-                               fieldProperty: String) {
+                               fieldProperty: String,
+                               fieldValue: String) {
+
+    val datasetSkosUri = s"$datasetUri/skos"
+
     // todo: what is illegal?
     val fieldValueQuoted = fieldValue.replaceAll("\"", "")
 
-    val fieldValueUri = s"$NX_URI_PREFIX/$datasetUri/${urlEncodeValue(fieldValue)}"
+    val fieldValueUri = s"$datasetUri/${urlEncodeValue(fieldValue)}"
 
-    val checkExistence = {
+    val checkExistence =
       s"""
-      |@PREFIX nx: <$NX_NAMESPACE>
-      |@PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-      |@PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+      |PREFIX nx: <$NX_NAMESPACE>
+      |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
       |ASK {
       |   GRAPH <$datasetSkosUri> {
       |      <$fieldValueUri> rdf:type skos:Concept .
@@ -59,13 +71,12 @@ trait Skosification {
       |   }
       |}
       """.stripMargin
-    }
 
-    val skosAddition = {
+    val skosAddition =
       s"""
-      |@PREFIX nx: <$NX_NAMESPACE>
-      |@PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-      |@PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+      |PREFIX nx: <$NX_NAMESPACE>
+      |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
       |INSERT DATA {
       |   GRAPH <$datasetSkosUri> {
       |      <$fieldValueUri> rdf:type skos:Concept .
@@ -74,24 +85,27 @@ trait Skosification {
       |   }
       |}
       """.stripMargin
-    }
 
-    val changeLiteralToUri = {
+    val changeLiteralToUri =
       s"""
-      |@PREFIX nx: <$NX_NAMESPACE>
-      |WITH GRAPH ?g
+      |PREFIX nx: <$NX_NAMESPACE>
       |DELETE {
-      |  ?record <$fieldProperty> "$fieldValueQuoted" .
+      |  GRAPH ?g {
+      |     ?record <$fieldProperty> "$fieldValueQuoted" .
+      |  }
       |}
       |INSERT {
-      |  ?record <$fieldProperty> <$fieldValueUri> .
+      |  GRAPH ?g {
+      |     ?record <$fieldProperty> <$fieldValueUri> .
+      |  }
       |}
       |WHERE {
-      |  ?record <$fieldProperty> "$fieldValueQuoted" .
-      |  ?record nx:belongsTo <$datasetUri> .
+      |  GRAPH ?g {
+      |     ?record <$fieldProperty> "$fieldValueQuoted" .
+      |     ?record nx:belongsTo <$datasetUri> .
+      |  }
       |}
       """.stripMargin
-    }
   }
 
 }

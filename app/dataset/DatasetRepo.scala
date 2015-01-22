@@ -63,7 +63,10 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir, datasetName, NAVE_DOMAIN)
-  lazy val processedRepo = new ProcessedRepo(processedDir)
+
+  // todo: this has to come from a DatasetInfo thing
+  val dataseturi = "datasetUri"
+  lazy val processedRepo = new ProcessedRepo(processedDir, dataseturi)
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
 
