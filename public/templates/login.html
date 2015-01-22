@@ -28,9 +28,10 @@
 
     <div class="col-sm-6 col-sm-push-3" data-ng-if="user">
         <div>
-            <span class="fa fa-2x">"{{ user.username }}"</span>
+            <span class="fa fa-2x"><span class="fa-user"></span> "{{ user.username }}"</span>
             <span>(<a href="#" data-ng-click="logout()">Logout</a>)</span>
         </div>
+        <hr/>
         <form name="form" class="form well clearfix">
             <fieldset>
                 <div class="form-group">
