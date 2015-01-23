@@ -20,18 +20,39 @@ import services.StringHandling.urlEncodeValue
 
 trait Skosification {
 
-  def checkForWork(chunkSize: Int) = {
-    // todo: it seems fieldProperty cannot be used as a property because it is a resource
-    // todo: may have to split it into two queries: first get DS/FP and then use DS/FP to get FV
+  // TODO: fieldPath is currently still just a property
+
+  def listSkosifiedFields = {
     s"""
       |PREFIX nx: <$NX_NAMESPACE>
-      |SELECT ?dataset ?fieldProperty ?fieldValue
+      |SELECT ?datasetUri ?fieldPath
       |WHERE {
       |  GRAPH ?g {
-      |    ?dataset nx:skosField ?fieldProperty .
-      |    ?record nx:belongsTo ?dataset .
-      |    ?record ?fieldProperty ?fieldValue .
-      |    FILTER isLiteral(?fieldValue)
+      |    ?datasetUri nx:skosField ?fieldPath .
+      |  }
+      |}
+      """.stripMargin
+  }
+
+  object SkosifiedField {
+    def apply(resultMap: Map[String, String]): SkosifiedField = {
+      SkosifiedField(resultMap("datasetUri"), resultMap("fieldPath"))
+    }
+  }
+
+  case class SkosifiedField(datasetUri: String, fieldPath: String) {
+    val datasetSkosUri = s"$datasetUri/skos"
+  }
+
+  def listLiteralValues(skosifiedField: SkosifiedField, chunkSize: Int) = {
+    s"""
+      |PREFIX nx: <$NX_NAMESPACE>
+      |SELECT ?literalValue
+      |WHERE {
+      |  GRAPH ?g {
+      |    ?recordUri nx:belongsTo <${skosifiedField.datasetUri}> .
+      |    ?recordUri <${skosifiedField.fieldPath}> ?literalValue .
+      |    FILTER isLiteral(?literalValue)
       |  }
       |}
       |LIMIT $chunkSize
@@ -39,25 +60,17 @@ trait Skosification {
   }
 
   object SkosificationCase {
-    def apply(workList: List[Map[String, String]]): List[SkosificationCase] = workList.map { workMap =>
-      SkosificationCase(
-        datasetUri = workMap("datasetUri"),
-        fieldProperty = workMap("fieldProperty"),
-        fieldValue = workMap("fieldValue")
-      )
+    def apply(skosifiedField: SkosifiedField, resultMap: Map[String, String]): SkosificationCase = {
+      SkosificationCase(skosifiedField, resultMap("literalValue"))
     }
   }
 
-  case class SkosificationCase(datasetUri: String,
-                               fieldProperty: String,
-                               fieldValue: String) {
-
-    val datasetSkosUri = s"$datasetUri/skos"
+  case class SkosificationCase(skosifiedField: SkosifiedField, literalValue: String) {
 
     // todo: what is illegal?
-    val fieldValueQuoted = fieldValue.replaceAll("\"", "")
+    val literalForQuotes = literalValue.replaceAll("\"", "")
 
-    val fieldValueUri = s"$datasetUri/${urlEncodeValue(fieldValue)}"
+    val fieldValueUri = s"${skosifiedField.datasetUri}/${urlEncodeValue(literalValue)}"
 
     val checkExistence =
       s"""
@@ -65,9 +78,9 @@ trait Skosification {
       |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
       |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
       |ASK {
-      |   GRAPH <$datasetSkosUri> {
+      |   GRAPH <${skosifiedField.datasetSkosUri}> {
       |      <$fieldValueUri> rdf:type skos:Concept .
-      |      <$fieldValueUri> nx:belongsTo <$datasetUri> .
+      |      <$fieldValueUri> nx:belongsTo <${skosifiedField.datasetUri}> .
       |   }
       |}
       """.stripMargin
@@ -78,10 +91,10 @@ trait Skosification {
       |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
       |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
       |INSERT DATA {
-      |   GRAPH <$datasetSkosUri> {
+      |   GRAPH <${skosifiedField.datasetSkosUri}> {
       |      <$fieldValueUri> rdf:type skos:Concept .
-      |      <$fieldValueUri> skos:prefLabel "$fieldValueQuoted" .
-      |      <$fieldValueUri> nx:belongsTo <$datasetUri> .
+      |      <$fieldValueUri> skos:prefLabel "$literalForQuotes" .
+      |      <$fieldValueUri> nx:belongsTo <${skosifiedField.datasetUri}> .
       |   }
       |}
       """.stripMargin
@@ -91,18 +104,18 @@ trait Skosification {
       |PREFIX nx: <$NX_NAMESPACE>
       |DELETE {
       |  GRAPH ?g {
-      |     ?record <$fieldProperty> "$fieldValueQuoted" .
+      |     ?record <${skosifiedField.fieldPath}> "$literalForQuotes" .
       |  }
       |}
       |INSERT {
       |  GRAPH ?g {
-      |     ?record <$fieldProperty> <$fieldValueUri> .
+      |     ?record <${skosifiedField.fieldPath}> <$fieldValueUri> .
       |  }
       |}
       |WHERE {
       |  GRAPH ?g {
-      |     ?record <$fieldProperty> "$fieldValueQuoted" .
-      |     ?record nx:belongsTo <$datasetUri> .
+      |     ?record <${skosifiedField.fieldPath}> "$literalForQuotes" .
+      |     ?record nx:belongsTo <${skosifiedField.datasetUri}> .
       |  }
       |}
       """.stripMargin

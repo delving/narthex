@@ -16,7 +16,7 @@ import triplestore.TripleStore
 
 class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
 
-  val ts = new TripleStore("http://localhost:3030/narthex-test")
+  val ts = new TripleStore("http://localhost:3030/narthex-test", true)
 
   def cleanStart() = {
     await(ts.update("DROP ALL"))
@@ -107,19 +107,21 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val info = new DatasetInfo("frans_hals", ts)
     await(info.setUriProp(DatasetInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
 
-    val sc = SkosificationCase(
-      datasetUri = info.datasetUri,
-      fieldProperty = "http://purl.org/dc/elements/1.1/type",
-      fieldValue = "schilderij; landschap | painting; landscape"
-    )
+    val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
 
-    await(ts.ask(sc.checkExistence)) must be(false)
-    await(ts.update(sc.skosAddition))
-    await(ts.ask(sc.checkExistence)) must be(true)
-    val change: String = sc.changeLiteralToUri
-    await(ts.update(change))
+    val skosificationCases = skosifiedFields.flatMap { sf =>
+      await(ts.query(listLiteralValues(sf, 2))).map(SkosificationCase(sf, _))
+    }
 
-    // todo: test if it has changed
+    skosificationCases.map(println)
+
+    skosificationCases.map { sc =>
+      await(ts.ask(sc.checkExistence)) must be(false)
+      await(ts.update(sc.skosAddition))
+      await(ts.ask(sc.checkExistence)) must be(true)
+      val change: String = sc.changeLiteralToUri
+      await(ts.update(change))
+    }
 
     //    val checkQuery: String = checkForWork(2)
     //    val work = await(ts.query(checkQuery))

@@ -44,9 +44,10 @@ object TripleStore {
 
 }
 
-class TripleStore(storeURL: String) {
+class TripleStore(storeURL: String, printQueries: Boolean = false) {
 
   def ask(sparqlQuery: String): Future[Boolean] = {
+    if (printQueries) println(sparqlQuery)
     val request = WS.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
       "output" -> "json"
@@ -60,6 +61,7 @@ class TripleStore(storeURL: String) {
   }
 
   def query(sparqlQuery: String): Future[List[Map[String, String]]] = {
+    if (printQueries) println(sparqlQuery)
     val request = WS.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
       "output" -> "json"
@@ -83,6 +85,7 @@ class TripleStore(storeURL: String) {
   }
 
   def update(sparqlUpdate: String): Future[Unit] = {
+    if (printQueries) println(sparqlUpdate)
     val request = WS.url(s"$storeURL/update").withHeaders("Content-Type" -> "application/sparql-update")
     //    println(s"update:\n$sparqlUpdate")
     request.post(sparqlUpdate).map { response =>

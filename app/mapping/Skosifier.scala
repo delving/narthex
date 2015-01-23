@@ -37,7 +37,7 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
   def receive = {
 
     case WakeupCall =>
-      ts.query(checkForWork(chunkSize)).map(SkosificationCase(_)).foreach(self ! _)
+//      ts.query(checkForWork(chunkSize)).map(SkosificationCase(_)).foreach(self ! _)
 
     case s: SkosificationCase =>
       ts.query(s.checkExistence).map { answer =>
