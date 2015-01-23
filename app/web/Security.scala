@@ -16,7 +16,7 @@
 
 package web
 
-import org.UserStore.{NXActor, NXProfile}
+import org.UserStore.NXActor
 import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -32,20 +32,26 @@ trait Security {
   lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
 
   implicit val userSessionWrites = new Writes[UserSession] {
-    def writes(us: UserSession) = Json.obj(
-      "username" -> us.nxActor.actorName,
-      "firstName" -> us.nxProfile.firstName,
-      "lastName" -> us.nxProfile.lastName,
-      "email" -> us.nxProfile.email,
-      "apiKey" -> us.apiKey,
-      "narthexDomain" -> us.narthexDomain,
-      "naveDomain" -> us.naveDomain,
-      "categoriesEnabled" -> us.categoriesEnabled
-    )
+    def writes(us: UserSession) = {
+      val maker= us.actor.makerOpt.getOrElse("")
+      val firstName = us.actor.profileOpt.map(_.firstName).getOrElse("")
+      val lastName = us.actor.profileOpt.map(_.lastName).getOrElse("")
+      val email = us.actor.profileOpt.map(_.email).getOrElse("")
+      Json.obj(
+        "username" -> us.actor.actorName,
+        "maker" -> maker,
+        "firstName" -> firstName,
+        "lastName" -> lastName,
+        "email" -> email,
+        "apiKey" -> us.apiKey,
+        "narthexDomain" -> us.narthexDomain,
+        "naveDomain" -> us.naveDomain,
+        "categoriesEnabled" -> us.categoriesEnabled
+      )
+    }
   }
 
-  case class UserSession(nxActor: NXActor,
-                         nxProfile: NXProfile,
+  case class UserSession(actor: NXActor,
                          apiKey: String,
                          narthexDomain: String,
                          naveDomain: String,
@@ -86,7 +92,7 @@ trait Security {
   }
 
   implicit class ResultWithToken(result: Result) {
-    
+
     def withSession(userSession: UserSession): Result = {
       Cache.set(userSession.token, userSession, CACHE_EXPIRATION)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, userSession.token, None, httpOnly = false))

@@ -25,17 +25,19 @@ define(["angular"], function (angular) {
         $scope.credentials = {
             username: $cookies[USERNAME_COOKIE]
         };
-        $scope.editedUser = {};
-
         userService.checkLogin().then(function (user) {
             $scope.editedUser = angular.copy(user);
         });
 
         $scope.login = function (credentials) {
             console.log("Login", $scope.credentials);
+            $scope.errorMessage = undefined;
             userService.loginUser(credentials).then(
                 function (response) {
                     if (response.profile) {
+                        userService.checkLogin().then(function (user) {
+                            $scope.editedUser = angular.copy(user);
+                        });
                         $cookies[USERNAME_COOKIE] = credentials.username;
                     }
                     else {
@@ -55,6 +57,8 @@ define(["angular"], function (angular) {
         $scope.setProfile = function (editedUser) {
             userService.setProfile(editedUser).then(function(user) {
                 $scope.user = user;
+//                $scope.editedUser = angular.copy(user);
+//                console.log('set profile returned', user, $scope.editedUser);
                 compareUserToEdited()
             });
         };

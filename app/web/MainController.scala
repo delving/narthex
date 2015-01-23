@@ -61,12 +61,11 @@ object MainController extends Controller with Security {
           }
           else {
             val session = UserSession(
-              NXActor(username, administrator = true),
-              NXProfile(
+              NXActor(username, None, Some(NXProfile(
                 user.getString("firstName"),
                 user.getString("lastName"),
                 user.getString("email")
-              ),
+              ))),
               apiKey = API_ACCESS_KEYS(0),
               narthexDomain = NARTHEX_DOMAIN,
               naveDomain = NAVE_DOMAIN,
@@ -80,15 +79,16 @@ object MainController extends Controller with Security {
       }
     } getOrElse {
       val resultFuture = UserStore.us.authenticate(username, password).map { nxActorOpt: Option[NXActor] =>
-        val session = UserSession(
-          NXActor(username, administrator = true),
-          NXProfile("", "", ""), // todo
-          apiKey = API_ACCESS_KEYS(0),
-          narthexDomain = NARTHEX_DOMAIN,
-          naveDomain = NAVE_DOMAIN,
-          categoriesEnabled = SHOW_CATEGORIES
-        )
-        Ok(Json.toJson(session)).withSession(session)
+        nxActorOpt.map { nxActor =>
+          val session = UserSession(
+            nxActor,
+            apiKey = API_ACCESS_KEYS(0),
+            narthexDomain = NARTHEX_DOMAIN,
+            naveDomain = NAVE_DOMAIN,
+            categoriesEnabled = SHOW_CATEGORIES
+          )
+          Ok(Json.toJson(session)).withSession(session)
+        } getOrElse Unauthorized("Username/password not found")
       }
       Await.result(resultFuture, 10.seconds)
     }
@@ -117,13 +117,15 @@ object MainController extends Controller with Security {
   }
 
   def setProfile() = SecureAsync(parse.json) { session => implicit request =>
-    val nxProfile = NXProfile(
+    val profile = NXProfile(
       firstName = (request.body \ "firstName").as[String],
       lastName = (request.body \ "lastName").as[String],
       email = (request.body \ "email").as[String]
     )
-    val updatedSession = session.copy(nxProfile = nxProfile)
-    UserStore.us.setProfile(session.nxActor, nxProfile).map(ok => Ok(Json.toJson(session)).withSession(updatedSession))
+    UserStore.us.setProfile(session.actor, profile).map { actorOpt =>
+      val newSession = session.copy(actor = session.actor.copy(profileOpt = Some(profile)))
+      actorOpt.map(actor => Ok(Json.toJson(newSession)).withSession(newSession)).getOrElse(NotFound(Json.obj("err" -> "could not add")))
+    }
   }
 
   // todo: move this
