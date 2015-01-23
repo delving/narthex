@@ -31,22 +31,24 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     // start fresh
     val us1 = new UserStore(ts)
     val admin = await(us1.authenticate("gumby", "secret gumby"))
-    admin must be(Some(NXActor("gumby", administrator = true)))
-    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey")))
-    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(None)
+    admin must be(Some(NXActor("gumby", None)))
+    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
+    //    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(None)
+    us1.listActors(admin.get) must be(List("pokey"))
+    await(us1.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
 
     // this will have to get its data from the triple store again
     val us2 = new UserStore(ts)
     await(us2.authenticate("gumby", "secret gumbo")) must be(None)
-    await(us2.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", administrator = true)))
-    await(us2.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey")))
+    await(us2.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
+    await(us2.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
     await(us2.authenticate("third-wheel", "can i join")) must be(None)
   }
 
   "A sample SKOS vocabulary should be loaded" in {
     // check that the user is still there
     val us = new UserStore(ts)
-    await(us.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", administrator = true)))
+    await(us.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
     // push in a SKOS vocabulary
     val info = new DatasetInfo("gtaa_genre", ts)
     val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
@@ -93,7 +95,7 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val graphReader = processedRepo.createGraphReader(3)
     while (graphReader.isActive) {
       graphReader.readChunk.map { chunk =>
-        val update= chunk.toSparqlUpdate
+        val update = chunk.toSparqlUpdate
         await(ts.update(update))
       }
     }
@@ -119,15 +121,15 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
 
     // todo: test if it has changed
 
-//    val checkQuery: String = checkForWork(2)
-//    val work = await(ts.query(checkQuery))
-//    println(s"work $checkQuery: $work")
-//    work.size must be(2)
+    //    val checkQuery: String = checkForWork(2)
+    //    val work = await(ts.query(checkQuery))
+    //    println(s"work $checkQuery: $work")
+    //    work.size must be(2)
   }
 
-//  "A mapping must be created" in {
-//
-//  }
+  //  "A mapping must be created" in {
+  //
+  //  }
 }
 
 

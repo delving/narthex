@@ -75,6 +75,20 @@ define(["angular", "common"], function (angular) {
                             }
                         );
                     },
+                    listActors: function () {
+                        return main.listActors().get().then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
+                    createActor: function (credentials) {
+                        return main.createActor().post(credentials).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
                     getUser: function () {
                         return user;
                     }

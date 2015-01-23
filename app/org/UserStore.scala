@@ -32,7 +32,9 @@ object UserStore {
 
   val graphName = s"${NX_NAMESPACE}Users"
 
-  case class NXProfile(firstName: String, lastName: String, email: String)
+  case class NXProfile(firstName: String, lastName: String, email: String) {
+    val nonEmpty = if (firstName.isEmpty && lastName.isEmpty && email.isEmpty) None else Some(this)
+  }
 
   case class NXActor(userNameProposed: String, makerOpt: Option[String], profileOpt: Option[NXProfile] = None) {
     val actorName = userNameProposed.replaceAll("[^\\w-]", "").toLowerCase
@@ -64,6 +66,8 @@ class UserStore(client: TripleStore) {
 
   val model = Await.result(futureModel, 20.seconds)
 
+  private def propUri(prop: USProp)= model.getProperty(prop.uri)
+
   private def hashLiteral(string: String): Literal = {
     digest.reset()
     val ba = digest.digest(string.getBytes("UTF-8"))
@@ -71,31 +75,33 @@ class UserStore(client: TripleStore) {
     model.createLiteral(hash)
   }
 
-  private def userIntoModel(nxActor: NXActor, hashLiteral: Literal): Option[NXActor] = {
+  private def userIntoModel(nxActor: NXActor, hashLiteral: Literal, makerOpt: Option[NXActor]): Option[NXActor] = {
     val actorResource: Resource = model.getResource(nxActor.uri)
-    val exists = model.listStatements(actorResource, model.getProperty(passwordHash.uri), null).hasNext
+    val exists = model.listStatements(actorResource, propUri(passwordHash), null).hasNext
     if (!exists) {
-      model.add(actorResource, model.getProperty(passwordHash.uri), hashLiteral)
-      model.add(actorResource, model.getProperty(username.uri), nxActor.actorName)
-      // model.add(actorResource, model.getProperty(userRole.uri), model.createLiteral(ADMINISTRATOR_ROLE))
+      model.add(actorResource, propUri(passwordHash), hashLiteral)
+      makerOpt.map(maker => model.add(actorResource, propUri(userMaker), model.getResource(maker.uri)))
+      model.add(actorResource, propUri(username), nxActor.actorName)
       Some(nxActor)
-    } else None
+    } else {
+      None
+    }
   }
 
   private def profileIntoModel(nxActor: NXActor, nxProfile: NXProfile): Option[NXActor] = {
     val actorResource: Resource = model.getResource(nxActor.uri)
-    val exists = model.listStatements(actorResource, model.getProperty(passwordHash.uri), null).hasNext
+    val exists = model.listStatements(actorResource, propUri(passwordHash), null).hasNext
     if (exists) {
-      model.add(actorResource, model.getProperty(userFirstName.uri), nxProfile.firstName)
-      model.add(actorResource, model.getProperty(userLastName.uri), nxProfile.lastName)
-      model.add(actorResource, model.getProperty(userEMail.uri), nxProfile.email)
-      Some(nxActor.copy(profileOpt = Some(nxProfile)))
+      model.add(actorResource, propUri(userFirstName), nxProfile.firstName)
+      model.add(actorResource, propUri(userLastName), nxProfile.lastName)
+      model.add(actorResource, propUri(userEMail), nxProfile.email)
+      Some(nxActor.copy(profileOpt = nxProfile.nonEmpty))
     } else None
   }
 
   private def getLiteral(nxActor: NXActor, prop: USProp) = {
     val resource: Resource = model.getResource(nxActor.uri)
-    val list = model.listObjectsOfProperty(resource, model.getProperty(prop.uri))
+    val list = model.listObjectsOfProperty(resource, propUri(prop))
     list.map(node => node.asLiteral().getString).toList.headOption.getOrElse("")
   }
 
@@ -104,22 +110,22 @@ class UserStore(client: TripleStore) {
     lastName = getLiteral(nxActor, userLastName),
     email = getLiteral(nxActor, userEMail)
   )
-
-  def authenticate(usernameString: String, password: String): Future[Option[NXActor]] = futureModel.flatMap { newModel =>
+  
+  def authenticate(usernameString: String, password: String): Future[Option[NXActor]] = {
     val hash = hashLiteral(usernameString + password)
-    if (newModel.isEmpty) {
+    if (model.isEmpty) {
       val godUser = NXActor(usernameString, None)
-      userIntoModel(godUser, hash)
-      client.dataPost(graphName, newModel).map(ok => Some(godUser))
+      userIntoModel(godUser, hash, None)
+      client.dataPost(graphName, model).map(ok => Some(godUser))
     }
     else {
-      val nxActor: NXActor = NXActor(usernameString, None)
-      val nxActorResource: Resource = newModel.getResource(nxActor.uri)
-      val exists = newModel.listStatements(nxActorResource, newModel.getProperty(passwordHash.uri), hash).hasNext
+      val actor: NXActor = NXActor(usernameString, None)
+      val actorResource: Resource = model.getResource(actor.uri)
+      val exists = model.listStatements(actorResource, model.getProperty(passwordHash.uri), hash).hasNext
       val userOpt = if (exists) {
-        val makerList = newModel.listObjectsOfProperty(nxActorResource, newModel.getProperty(userMaker.uri))
+        val makerList = model.listObjectsOfProperty(actorResource, propUri(userMaker)).toList
         val makerOpt = makerList.map(node => node.asResource().getURI).toList.headOption
-        Some(nxActor.copy(makerOpt = makerOpt, profileOpt = Some(profileFromModel(nxActor))))
+        Some(actor.copy(makerOpt = makerOpt, profileOpt = profileFromModel(actor).nonEmpty))
       }
       else {
         None
@@ -128,64 +134,79 @@ class UserStore(client: TripleStore) {
     }
   }
 
+  def listActors(nxActor: NXActor): List[String] = {
+    val resource = model.getResource(nxActor.uri)
+    val maker = propUri(userMaker)
+    val usernameResource = propUri(username)
+    val list = model.listSubjectsWithProperty(maker, resource).toList.flatMap { madeActorResource =>
+      model.listObjectsOfProperty(madeActorResource, usernameResource).toList.headOption.map(_.asLiteral().getString)
+    }
+    list.toList
+  }
+
   def createActor(adminActor: NXActor, usernameString: String, password: String): Future[Option[NXActor]] = {
     val hash = hashLiteral(usernameString + password)
-    userIntoModel(NXActor(usernameString, Some(adminActor.uri)), hash).map { user: NXActor =>
+    userIntoModel(NXActor(usernameString, Some(adminActor.uri)), hash, Some(adminActor)).map { user: NXActor =>
       val sparql =
         s"""
          |DELETE {
          |   GRAPH <$graphName> {
-         |      <${user.uri}> <${model.getProperty(username.uri)}> ?userName .
-         |      <${user.uri}> <${model.getProperty(passwordHash.uri)}> ?passwordHash .
+         |      <${user.uri}> <${propUri(username)}> ?userName .
+         |      <${user.uri}> <${propUri(userMaker)}> ?userMaker .
+         |      <${user.uri}> <${propUri(passwordHash)}> ?passwordHash .
          |   }
          |}
          |INSERT {
          |   GRAPH <$graphName> {
-         |      <${user.uri}> <${model.getProperty(username.uri)}> "${user.actorName}" .
-         |      <${user.uri}> <${model.getProperty(passwordHash.uri)}> "${hash.getString}" .
+         |      <${user.uri}> <${propUri(username)}> "${user.actorName}" .
+         |      <${user.uri}> <${propUri(userMaker)}> <${adminActor.uri}> .
+         |      <${user.uri}> <${propUri(passwordHash)}> "${hash.getString}" .
          |   }
          |}
          |WHERE {
-         |   GRAPH <$graphName> {
-         |      <${user.uri}> <${model.getProperty(username.uri)}> ?username .
-         |      <${user.uri}> <${model.getProperty(passwordHash.uri)}> ?passwordHash .
+         |   OPTIONAL {
+         |      GRAPH <$graphName> {
+         |         <${user.uri}> <${propUri(username)}> ?username .
+         |         <${user.uri}> <${propUri(userMaker)}> ?userMaker .
+         |         <${user.uri}> <${propUri(passwordHash)}> ?passwordHash .
+         |      }
          |   }
          |}
        """.stripMargin
       client.update(sparql).map(ok => Some(user))
-    } getOrElse Future(None)
+    } getOrElse {
+      Future(None)
+    }
   }
 
   def setProfile(nxActor: NXActor, nxProfile: NXProfile): Future[Option[NXActor]] = {
-    println(s"set profile $nxProfile")
     profileIntoModel(nxActor, nxProfile).map { actor =>
       val sparql =
         s"""
          |DELETE {
          |   GRAPH <$graphName> {
-         |      <${nxActor.uri}> <${model.getProperty(userFirstName.uri)}> ?firstName .
-         |      <${nxActor.uri}> <${model.getProperty(userLastName.uri)}> ?lastName .
-         |      <${nxActor.uri}> <${model.getProperty(userEMail.uri)}> ?email .
+         |      <${nxActor.uri}> <${propUri(userFirstName)}> ?firstName .
+         |      <${nxActor.uri}> <${propUri(userLastName)}> ?lastName .
+         |      <${nxActor.uri}> <${propUri(userEMail)}> ?email .
          |   }
          |}
          |INSERT {
          |   GRAPH <$graphName> {
-         |      <${nxActor.uri}> <${model.getProperty(userFirstName.uri)}> "${nxProfile.firstName}" .
-         |      <${nxActor.uri}> <${model.getProperty(userLastName.uri)}> "${nxProfile.lastName}" .
-         |      <${nxActor.uri}> <${model.getProperty(userEMail.uri)}> "${nxProfile.email}" .
+         |      <${nxActor.uri}> <${propUri(userFirstName)}> "${nxProfile.firstName}" .
+         |      <${nxActor.uri}> <${propUri(userLastName)}> "${nxProfile.lastName}" .
+         |      <${nxActor.uri}> <${propUri(userEMail)}> "${nxProfile.email}" .
          |   }
          |}
          |WHERE {
          |   GRAPH <$graphName> {
-         |      <${nxActor.uri}> <${model.getProperty(userFirstName.uri)}> ?firstName .
-         |      <${nxActor.uri}> <${model.getProperty(userLastName.uri)}> ?lastName .
-         |      <${nxActor.uri}> <${model.getProperty(userEMail.uri)}> ?email .
+         |      <${nxActor.uri}> <${propUri(userFirstName)}> ?firstName .
+         |      <${nxActor.uri}> <${propUri(userLastName)}> ?lastName .
+         |      <${nxActor.uri}> <${propUri(userEMail)}> ?email .
          |   }
          |}
        """.stripMargin
       client.update(sparql).map(ok => Some(actor))
     } getOrElse {
-      println(s"profile did not go to model $nxProfile")
       Future(None)
     }
   }

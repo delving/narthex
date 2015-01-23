@@ -12,11 +12,13 @@ GET         /narthex/jsroutes.js                                                
 # Routes used by Angular
 # ~~~~
 
-# Authentication
+# Users
 POST        /narthex/login                                                      web.MainController.login
 GET         /narthex/checkLogin                                                 web.MainController.checkLogin
 GET         /narthex/logout                                                     web.MainController.logout
-POST        /narthex/set-profile                                                      web.MainController.setProfile
+POST        /narthex/set-profile                                                web.MainController.setProfile
+GET         /narthex/list-actors                                                web.MainController.listActors
+POST        /narthex/create-actor                                               web.MainController.createActor
 
 # File Handling
 GET         /narthex/app/datasets                                               web.AppController.listDatasets

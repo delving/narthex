@@ -123,8 +123,24 @@ object MainController extends Controller with Security {
       email = (request.body \ "email").as[String]
     )
     UserStore.us.setProfile(session.actor, profile).map { actorOpt =>
-      val newSession = session.copy(actor = session.actor.copy(profileOpt = Some(profile)))
-      actorOpt.map(actor => Ok(Json.toJson(newSession)).withSession(newSession)).getOrElse(NotFound(Json.obj("err" -> "could not add")))
+      actorOpt.map { actor =>
+        val newSession = session.copy(actor = actor)
+        Ok(Json.toJson(newSession)).withSession(newSession)
+      } getOrElse {
+        NotFound(Json.obj("err" -> "could not add"))
+      }
+    }
+  }
+
+  def listActors = Secure() { session => implicit request =>
+    Ok(Json.obj("actorList" -> UserStore.us.listActors(session.actor)))
+  }
+
+  def createActor() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    val password = (request.body \ "password").as[String]
+    UserStore.us.createActor(session.actor, username, password).map { actorOpt =>
+      Ok(Json.obj("actorList" -> UserStore.us.listActors(session.actor)))
     }
   }
 
@@ -174,6 +190,8 @@ object MainController extends Controller with Security {
           routes.javascript.MainController.checkLogin,
           routes.javascript.MainController.logout,
           routes.javascript.MainController.setProfile,
+          routes.javascript.MainController.listActors,
+          routes.javascript.MainController.createActor,
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
           routes.javascript.AppController.create,

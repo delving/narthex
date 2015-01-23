@@ -22,11 +22,15 @@ define(["angular"], function (angular) {
     /** Controls the index page */
     var LoginCtrl = function ($scope, $rootScope, $cookies, $location, userService, $timeout) {
 
-        $scope.credentials = {
-            username: $cookies[USERNAME_COOKIE]
-        };
+        $scope.credentials = {username: $cookies[USERNAME_COOKIE]};
+        $scope.newActor = {};
+
         userService.checkLogin().then(function (user) {
             $scope.editedUser = angular.copy(user);
+        });
+
+        userService.listActors().then(function(actorList) {
+            $scope.actorList = actorList;
         });
 
         $scope.login = function (credentials) {
@@ -55,14 +59,18 @@ define(["angular"], function (angular) {
         $scope.$watch("editedUser", compareUserToEdited, true);
 
         $scope.setProfile = function (editedUser) {
-            userService.setProfile(editedUser).then(function(user) {
+            userService.setProfile(editedUser).then(function (user) {
                 $scope.user = user;
-//                $scope.editedUser = angular.copy(user);
-//                console.log('set profile returned', user, $scope.editedUser);
                 compareUserToEdited()
             });
         };
 
+        $scope.addActor = function (newActor) {
+            userService.createActor(newActor).then(function(actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
+        };
     };
     LoginCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
 
@@ -92,7 +100,7 @@ define(["angular"], function (angular) {
             $location.path('/thesaurus');
         };
 
-        $scope.breadcrumbsPage = function() {
+        $scope.breadcrumbsPage = function () {
             $location.path('/dataset/' + $rootScope.breadcrumbs.dataset)
         };
 
