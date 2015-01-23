@@ -25,13 +25,19 @@ define(["angular"], function (angular) {
         $scope.credentials = {username: $cookies[USERNAME_COOKIE]};
         $scope.newActor = {};
 
-        userService.checkLogin().then(function (user) {
-            $scope.editedUser = angular.copy(user);
-        });
+        function checkLogin() {
+            userService.checkLogin().then(function (user) {
+                $scope.editedUser = angular.copy(user);
+            });
+        }
+        checkLogin()
 
-        userService.listActors().then(function(actorList) {
-            $scope.actorList = actorList;
-        });
+        function listActors() {
+            userService.listActors().then(function(actorList) {
+                $scope.actorList = actorList;
+            });
+        }
+        listActors()
 
         $scope.login = function (credentials) {
             console.log("Login", $scope.credentials);
@@ -39,9 +45,8 @@ define(["angular"], function (angular) {
             userService.loginUser(credentials).then(
                 function (response) {
                     if (response.profile) {
-                        userService.checkLogin().then(function (user) {
-                            $scope.editedUser = angular.copy(user);
-                        });
+                        checkLogin();
+                        listActors();
                         $cookies[USERNAME_COOKIE] = credentials.username;
                     }
                     else {

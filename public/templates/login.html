@@ -28,10 +28,11 @@
 
     <div class="col-sm-6 col-sm-push-3" data-ng-if="user">
         <div>
-            <span class="fa fa-2x"><span class="label label-default fa-user"> Actor</span> "{{ user.username }}"</span>
+            <span class="fa fa-2x"><span class="label label-success fa-user"> "{{ user.username }}"</span></span>
             <span>(<a href="#" data-ng-click="logout()">Logout</a>)</span>
         </div>
         <hr/>
+        <h4>Profile</h4>
         <form name="form" class="form well clearfix">
             <fieldset>
                 <div class="form-group">
@@ -54,8 +55,7 @@
                 <span class="badge badge-warning">{{ errorMessage }}</span>
             </div>
         </form>
-        <hr/>
-        <h4>Create New Actor</h4>
+        <h4>Create New Sub-Actor</h4>
         <form name="form" class="form well clearfix">
             <fieldset>
                 <div class="form-group">
@@ -75,8 +75,10 @@
             </div>
         </form>
         <div data-ng-show="actorList.length">
-            <h4>Actors:</h4>
-            <span data-ng-repeat="actor in actorList">{{ actor }}</span>
+            <h4>Sub-Actors</h4>
+            <div data-ng-repeat="actor in actorList" class="well clearfix">
+                <span class="label label-info fa"><span class="fa-user"/> "{{ actor }}"</span>
+            </div>
         </div>
     </div>
 </div>

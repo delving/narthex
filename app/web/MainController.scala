@@ -99,7 +99,6 @@ object MainController extends Controller with Security {
     maybeToken flatMap {
       token =>
         Cache.getAs[UserSession](token) map { session =>
-          Logger.info(s"Check Login Yes: $session")
           Ok(Json.toJson(session)).withSession(session)
         }
     } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
