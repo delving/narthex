@@ -39,7 +39,7 @@
                             </li>
                             <li class="sidebar-list">
                                 <a href data-ng-click="homePage()">
-                                    Home <span class="menu-icon fa fa-user"></span>
+                                    Actor <span class="menu-icon fa fa-user"></span>
                                 </a>
                             </li>
                             <li class="sidebar-list">
@@ -47,17 +47,17 @@
                                     Datasets <span class="menu-icon fa fa-cubes"></span>
                                 </a>
                             </li>
+                            @if(showThesaurus) {
+                                <li class="sidebar-list">
+                                    <a href data-ng-click="thesaurusPage()">
+                                        SKOS alignment <span class="menu-icon fa fa-exchange"></span>
+                                    </a>
+                                </li>
+                            }
                             @if(showCategories) {
                                 <li class="sidebar-list">
                                     <a href data-ng-click="categoriesPage()">
                                         Category Monitor <span class="menu-icon fa fa-calculator"></span>
-                                    </a>
-                                </li>
-                            }
-                            @if(showThesaurus) {
-                                <li class="sidebar-list">
-                                    <a href data-ng-click="thesaurusPage()">
-                                        Thesaurus alignment <span class="menu-icon fa fa-exchange"></span>
                                     </a>
                                 </li>
                             }
@@ -77,21 +77,21 @@
 
 
                 <div class="sidebar-footer">
-                    <div class="col-xs-4">
+                    <div class="col-xs-12">
                         <a href="https://github.com/delving/narthex" target="_blank">
-                            Github
+                            Github Projct
                         </a>
                     </div>
-                    <div class="col-xs-4">
-                        <a href="https://github.com/delving/narthex/blob/master/README.md" target="_blank">
-                            About
-                        </a>
-                    </div>
-                    <div class="col-xs-4">
-                        <a href="#">
-                            Support
-                        </a>
-                    </div>
+                    @*<div class="col-xs-4">*@
+                        @*<a href="https://github.com/delving/narthex/blob/master/README.md" target="_blank">*@
+                            @*About*@
+                        @*</a>*@
+                    @*</div>*@
+                    @*<div class="col-xs-4">*@
+                        @*<a href="#">*@
+                            @*Support*@
+                        @*</a>*@
+                    @*</div>*@
                 </div>
             </div>
 

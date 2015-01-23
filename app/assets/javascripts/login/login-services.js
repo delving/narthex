@@ -66,6 +66,15 @@ define(["angular", "common"], function (angular) {
                                 return null;
                             });
                     },
+                    setProfile: function (profile) {
+                        return main.setProfile().post(profile).then(
+                            function (response) {
+                                user = response.data;
+                                buildUrls(user);
+                                return user;
+                            }
+                        );
+                    },
                     getUser: function () {
                         return user;
                     }

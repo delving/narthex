@@ -72,7 +72,7 @@ object MainController extends Controller with Security {
               naveDomain = NAVE_DOMAIN,
               categoriesEnabled = SHOW_CATEGORIES
             )
-            Ok(Json.toJson(session)).withToken(java.util.UUID.randomUUID().toString, session)
+            Ok(Json.toJson(session)).withSession(session)
           }
 
         case None =>
@@ -88,7 +88,7 @@ object MainController extends Controller with Security {
           naveDomain = NAVE_DOMAIN,
           categoriesEnabled = SHOW_CATEGORIES
         )
-        Ok(Json.toJson(session)).withToken(java.util.UUID.randomUUID().toString, session)
+        Ok(Json.toJson(session)).withSession(session)
       }
       Await.result(resultFuture, 10.seconds)
     }
@@ -98,9 +98,9 @@ object MainController extends Controller with Security {
     val maybeToken = request.headers.get(TOKEN)
     maybeToken flatMap {
       token =>
-        Cache.getAs[UserSession](token) map { us =>
-          Logger.info(s"Check Login Yes: $us")
-          Ok(Json.toJson(us)).withToken(token, us)
+        Cache.getAs[UserSession](token) map { session =>
+          Logger.info(s"Check Login Yes: $session")
+          Ok(Json.toJson(session)).withSession(session)
         }
     } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
   }
@@ -114,6 +114,16 @@ object MainController extends Controller with Security {
       case None =>
         Unauthorized(Json.obj("err" -> "Logout failed"))
     }
+  }
+
+  def setProfile() = SecureAsync(parse.json) { session => implicit request =>
+    val nxProfile = NXProfile(
+      firstName = (request.body \ "firstName").as[String],
+      lastName = (request.body \ "lastName").as[String],
+      email = (request.body \ "email").as[String]
+    )
+    val updatedSession = session.copy(nxProfile = nxProfile)
+    UserStore.us.setProfile(session.nxActor, nxProfile).map(ok => Ok(Json.toJson(session)).withSession(updatedSession))
   }
 
   // todo: move this
@@ -161,6 +171,7 @@ object MainController extends Controller with Security {
           routes.javascript.MainController.login,
           routes.javascript.MainController.checkLogin,
           routes.javascript.MainController.logout,
+          routes.javascript.MainController.setProfile,
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
           routes.javascript.AppController.create,

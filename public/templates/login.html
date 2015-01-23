@@ -28,7 +28,7 @@
 
     <div class="col-sm-6 col-sm-push-3" data-ng-if="user">
         <div>
-            <span class="fa fa-2x"><span class="fa-user"></span> "{{ user.username }}"</span>
+            <span class="fa fa-2x"><span class="label label-default fa-user"> Actor</span> "{{ user.username }}"</span>
             <span>(<a href="#" data-ng-click="logout()">Logout</a>)</span>
         </div>
         <hr/>
@@ -36,7 +36,7 @@
             <fieldset>
                 <div class="form-group">
                     <label for="firstName">First Name</label>
-                    <input id="firstName" class="form-control" data-ng-model="editedUser.firstName" placeholder="John"/><br/>
+                    <input id="firstName" class="form-control" data-ng-model="editedUser.firstName" placeholder="John"/>
                 </div>
                 <div class="form-group">
                     <label for="lastName">Last Name</label>

@@ -13,9 +13,10 @@ GET         /narthex/jsroutes.js                                                
 # ~~~~
 
 # Authentication
-GET         /narthex/checkLogin                                                 web.MainController.checkLogin
 POST        /narthex/login                                                      web.MainController.login
+GET         /narthex/checkLogin                                                 web.MainController.checkLogin
 GET         /narthex/logout                                                     web.MainController.logout
+POST        /narthex/set-profile                                                      web.MainController.setProfile
 
 # File Handling
 GET         /narthex/app/datasets                                               web.AppController.listDatasets

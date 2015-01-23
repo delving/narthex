@@ -17,25 +17,13 @@
 
 
 <div class="row">
-    <div class="col-sm-8">
-        <div class="widget">
-            <div class="widget-header">Monitored Datasets</div>
-            <div class="widget-body">
-                <div class="row">
-                    <div class="col-md-6" ng-repeat="file in files" >
-                        <div class="panel panel-primary" data-ng-include="'category-file-entry.html'">entry</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-4">
+    <div class="col-sm-6">
         <div class="widget">
             <div class="widget-header">
-                Sheets
+                Spreadsheets
                 <button type="button" class="btn btn-default btn-sm pull-right"  data-ng-click="gatherCategoryCounts()" data-ng-disabled="datasetBusy">
                     <i class="fa fa-leaf"></i>
-                    <span>Create new sheet</span>
+                    <span>Generate new spreadsheet</span>
                 </button>
             </div>
             <div class="widget-body">
@@ -49,8 +37,18 @@
                 </ul>
             </div>
         </div>
-
-
+    </div>
+    <div class="col-sm-6">
+        <div class="widget">
+            <div class="widget-header">Monitored Datasets</div>
+            <div class="widget-body">
+                <div class="row">
+                    <div class="col-md-6" ng-repeat="file in files" >
+                        <div class="panel panel-primary" data-ng-include="'category-file-entry.html'">entry</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

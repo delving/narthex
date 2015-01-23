@@ -49,7 +49,8 @@ trait Security {
                          apiKey: String,
                          narthexDomain: String,
                          naveDomain: String,
-                         categoriesEnabled: Boolean)
+                         categoriesEnabled: Boolean,
+                         token: String = java.util.UUID.randomUUID().toString)
 
   /*
     To make this work seamlessly with Angular, you should read the token from a header called
@@ -64,7 +65,7 @@ trait Security {
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
       Cache.getAs[UserSession](token) map { userSession =>
-        block(userSession)(request).withToken(token, userSession)
+        block(userSession)(request).withSession(userSession)
       }
     } getOrElse {
       Unauthorized(Json.obj("err" -> "Secure session expired"))
@@ -85,9 +86,10 @@ trait Security {
   }
 
   implicit class ResultWithToken(result: Result) {
-    def withToken(token: String, userSession: UserSession): Result = {
-      Cache.set(token, userSession, CACHE_EXPIRATION)
-      result.withCookies(Cookie(TOKEN_COOKIE_KEY, token, None, httpOnly = false))
+    
+    def withSession(userSession: UserSession): Result = {
+      Cache.set(userSession.token, userSession, CACHE_EXPIRATION)
+      result.withCookies(Cookie(TOKEN_COOKIE_KEY, userSession.token, None, httpOnly = false))
     }
 
     def discardingToken(token: String): Result = {

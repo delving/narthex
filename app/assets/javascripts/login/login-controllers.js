@@ -25,6 +25,7 @@ define(["angular"], function (angular) {
         $scope.credentials = {
             username: $cookies[USERNAME_COOKIE]
         };
+        $scope.editedUser = {};
 
         userService.checkLogin().then(function (user) {
             $scope.editedUser = angular.copy(user);
@@ -52,9 +53,10 @@ define(["angular"], function (angular) {
         $scope.$watch("editedUser", compareUserToEdited, true);
 
         $scope.setProfile = function (editedUser) {
-            alert("not implemented but..");
-            $scope.user = angular.copy(editedUser); // better take what is returned
-            compareUserToEdited()
+            userService.setProfile(editedUser).then(function(user) {
+                $scope.user = user;
+                compareUserToEdited()
+            });
         };
 
     };
