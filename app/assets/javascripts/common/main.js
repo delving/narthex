@@ -7,7 +7,6 @@ define(
         "./services/pageScroll",
         "./services/playRoutes",
         "./filters",
-        "./directives/sidebarNav",
         "./directives/scrollable",
         "./directives/fileModel",
         "./venn" // todo: further integrate
@@ -19,7 +18,6 @@ define(
             "common.pageScroll",
             "common.playRoutes",
             "common.filters",
-            "common.directives.sidebarNav",
             "common.directives.scrollable",
             "common.directives.fileModel"
         ]);

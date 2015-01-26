@@ -33,30 +33,30 @@
 
                     <div data-ng-if="user">
 
-                        <ul sidebar-nav="active" class="sidebar-nav">
+                        <ul class="sidebar-nav" id="sidebar-nav">
                             <li class="sidebar-title">
                                 <span>NAVIGATION</span>
                             </li>
                             <li class="sidebar-list">
-                                <a href data-ng-click="homePage()">
-                                    Actor <span class="menu-icon fa fa-user"></span>
+                                <a href id="nav-homepage" data-ng-click="sidebarNav('homepage');" class="active">
+                                    User dashboard <span class="menu-icon fa fa-dashboard"></span>
                                 </a>
                             </li>
                             <li class="sidebar-list">
-                                <a href data-ng-click="datasetsPage()">
+                                <a href id="nav-datasets" data-ng-click="sidebarNav('datasets');">
                                     Datasets <span class="menu-icon fa fa-cubes"></span>
                                 </a>
                             </li>
                             @if(showThesaurus) {
                                 <li class="sidebar-list">
-                                    <a href data-ng-click="thesaurusPage()">
+                                    <a href id="nav-thesaurus" data-ng-click="sidebarNav('thesaurus');">
                                         SKOS alignment <span class="menu-icon fa fa-exchange"></span>
                                     </a>
                                 </li>
                             }
                             @if(showCategories) {
                                 <li class="sidebar-list">
-                                    <a href data-ng-click="categoriesPage()">
+                                    <a href id="nav-categories" data-ng-click="sidebarNav('categories');">
                                         Category Monitor <span class="menu-icon fa fa-calculator"></span>
                                     </a>
                                 </li>
@@ -65,7 +65,7 @@
                                 <span>LAST VIEWED</span>
                             </li>
                             <li class="sidebar-list" data-ng-show="breadcrumbs.dataset">
-                                <a href data-ng-click="breadcrumbsPage()">
+                                <a href id="nav-breadcrumb" data-ng-click="sidebarNav('breadcrumb');">
                                     {{ breadcrumbs.dataset }} <span class="menu-icon fa fa-eye"></span>
                                 </a>
                             </li>
@@ -79,7 +79,7 @@
                 <div class="sidebar-footer">
                     <div class="col-xs-12">
                         <a href="https://github.com/delving/narthex" target="_blank">
-                            Github Projct
+                            Narhtex on Github
                         </a>
                     </div>
                     @*<div class="col-xs-4">*@
@@ -97,6 +97,21 @@
 
             <!-- End Sidebar -->
 
+            <div class="user-actions" data-ng-if="user">
+
+                <div class="dropdown">
+                    <button type="button" class="btn btn-primary btn-block dropdown-toggle" aria-haspopup="true" aria-expanded="false">
+                        {{user.username}} <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <li>
+                            <a href="#" data-ng-click="logout()">Logout</a>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+
             <!-- Main Views -->
 
             <div id="content-wrapper">
@@ -107,6 +122,8 @@
 
             <!-- End Main Views -->
         </div>
+
+
 
     </body>
 </html>
