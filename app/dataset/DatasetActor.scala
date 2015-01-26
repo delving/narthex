@@ -283,7 +283,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
   when(Categorizing) {
 
     case Event(CategoryCountComplete(dataset, categoryCounts), active: Active) =>
-      context.parent ! CategoryCountComplete(datasetRepo.datasetName, categoryCounts)
+      context.parent ! CategoryCountComplete(datasetRepo.datasetInfo.name, categoryCounts)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 

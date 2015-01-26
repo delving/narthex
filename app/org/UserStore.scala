@@ -52,8 +52,6 @@ object UserStore {
   val userLastName = USProp("userLastName")
   val userMaker = USProp("userMaker")
 
-  lazy val us = new UserStore(TripleStore.ts)
-
 }
 
 class UserStore(client: TripleStore) {
