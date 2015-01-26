@@ -18,13 +18,15 @@ package org
 
 import java.io.File
 
-import dataset.{DatasetRepo, Sip, SipFactory}
+import dataset.{DatasetInfo, DatasetRepo, Sip, SipFactory}
 import mapping.{CategoriesRepo, ConceptRepo}
 import org.OrgActor.DatasetsCountCategories
 import org.OrgDb.Dataset
 import org.joda.time.DateTime
+import services.NarthexConfig._
 import services._
 import thesaurus.ThesaurusDb
+import triplestore.TripleStore
 
 import scala.language.postfixOps
 
@@ -59,6 +61,8 @@ class OrgRepo(userHome: String, val orgId: String) {
   val factoryDir = new File(orgRoot, "factory")
   val sipFactory = new SipFactory(factoryDir)
   val orgDb = new OrgDb(orgId)
+  val ts = new TripleStore(TRIPLE_STORE_URL)
+  val us = new UserStore(ts)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
@@ -73,7 +77,8 @@ class OrgRepo(userHome: String, val orgId: String) {
       new ThesaurusDb(conceptSchemeA, conceptSchemeB)
 
   def datasetRepo(datasetName: String): DatasetRepo = {
-    val dr = new DatasetRepo(this, datasetName)
+    val di = new DatasetInfo(datasetName, ts)
+    val dr = new DatasetRepo(this, di)
     dr.mkdirs
     dr
   }

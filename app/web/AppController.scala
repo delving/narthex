@@ -283,7 +283,6 @@ object AppController extends Controller with Security {
 
   def setTermMapping(datasetName: String) = Secure(parse.json) { session => request =>
     val datasetRepo = repo.datasetRepo(datasetName)
-    datasetRepo.invalidateEnrichmentCache()
 
     println(s"body: ${request.body}")
 

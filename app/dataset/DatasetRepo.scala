@@ -28,21 +28,18 @@ import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
 import harvest.Harvesting._
 import mapping.{CategoryDb, TermDb}
-import org.OrgActor.DatasetMessage
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgRepo}
 import play.Logger
-import play.api.Play.current
-import play.api.cache.Cache
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
 import services.NarthexConfig.NAVE_DOMAIN
 import services.Temporal._
 
-class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
+class DatasetRepo(val orgRepo: OrgRepo, val datasetInfo: DatasetInfo) {
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
-  val rootDir = new File(orgRepo.datasetsDir, datasetName)
-  val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetName"
+  val rootDir = new File(orgRepo.datasetsDir, datasetInfo.name)
+  val dbBaseName = s"narthex_${orgRepo.orgId}___$datasetInfo"
 
   val rawDir = new File(rootDir, "raw")
   val sipsDir = new File(rootDir, "sips")
@@ -51,26 +48,24 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   val processedDir = new File(rootDir, "processed")
 
   // todo: maybe not put it in raw
-  val pocketFile = new File(orgRepo.rawDir, s"$datasetName.xml")
+  val pocketFile = new File(orgRepo.rawDir, s"$datasetInfo.xml")
 
-  def createSipFile = new File(orgRepo.sipsDir, s"${datasetName}__${DATE_FORMAT.format(new Date())}.sip.zip")
+  def createSipFile = new File(orgRepo.sipsDir, s"${datasetInfo}__${DATE_FORMAT.format(new Date())}.sip.zip")
 
-  def sipFiles = orgRepo.sipsDir.listFiles.filter(file => file.getName.startsWith(s"${datasetName}__")).sortBy(_.getName).reverse
+  def sipFiles = orgRepo.sipsDir.listFiles.filter(file => file.getName.startsWith(s"${datasetInfo}__")).sortBy(_.getName).reverse
 
   val treeRoot = new NodeRepo(this, treeDir)
 
-  lazy val datasetDb = new DatasetDb(orgRepo.orgDb, datasetName)
+  lazy val datasetDb = new DatasetDb(orgRepo.orgDb, datasetInfo.name)
   lazy val termDb = new TermDb(dbBaseName)
   lazy val categoryDb = new CategoryDb(dbBaseName)
-  lazy val sipRepo = new SipRepo(sipsDir, datasetName, NAVE_DOMAIN)
+  lazy val sipRepo = new SipRepo(sipsDir, datasetInfo.name, NAVE_DOMAIN)
 
   // todo: this has to come from a DatasetInfo thing
   val dataseturi = "datasetUri"
   lazy val processedRepo = new ProcessedRepo(processedDir, dataseturi)
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
-
-  override def toString = datasetName
 
   def mkdirs = {
     rootDir.mkdirs()
@@ -82,7 +77,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   def setRawDelimiters(recordRoot: String, uniqueId: String) = rawFile.map { raw =>
     createSourceRepo(SourceFacts("from-raw", recordRoot, uniqueId, None))
     dropTree()
-    OrgActor.actor ! DatasetMessage(datasetName, AdoptSource(raw))
+    OrgActor.actor ! datasetInfo.createMessage(AdoptSource(raw))
   }
 
   def createSourceRepo(sourceFacts: SourceFacts): SourceRepo = SourceRepo.createClean(sourceDir, sourceFacts)
@@ -127,21 +122,21 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
               // if it's not pockets, there should be source, otherwise we don't expect it
               createSourceRepo(DELVING_SIP_SOURCE)
               sip.copySourceToTempFile.map { sourceFile =>
-                OrgActor.actor ! DatasetMessage(datasetName, AdoptSource(sourceFile))
+                OrgActor.actor ! datasetInfo.createMessage(AdoptSource(sourceFile))
                 None
               } getOrElse {
                 dropSourceRepo()
-                Some(s"No source found in $sipZipFile for $datasetName")
+                Some(s"No source found in $sipZipFile for $datasetInfo")
               }
             }
           }
         } getOrElse {
           deleteQuietly(sipZipFile)
-          Some(s"No mapping found in $sipZipFile for $datasetName")
+          Some(s"No mapping found in $sipZipFile for $datasetInfo")
         }
       } getOrElse {
         deleteQuietly(sipZipFile)
-        Some(s"Unable to use $sipZipFile.getName for $datasetName")
+        Some(s"Unable to use $sipZipFile.getName for $datasetInfo")
       }
     }
     else {
@@ -165,7 +160,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
       StartHarvest(info, None, justDate = true)
     }
     kickoff.map { message =>
-      OrgActor.actor ! DatasetMessage(datasetName, message)
+      OrgActor.actor ! datasetInfo.createMessage(message)
       None
     } getOrElse {
       Some(s"Dataset $this not found!")
@@ -185,13 +180,13 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
           Some(StartHarvest(info, Some(harvestCron.previous), justDate))
         }
         else {
-          Logger.info(s"No re-harvest of $datasetName with cron $harvestCron because it's not time $harvestCron")
+          Logger.info(s"No re-harvest of $datasetInfo with cron $harvestCron because it's not time $harvestCron")
           None
         }
       }
     }
     kickoff.map { message =>
-      OrgActor.actor ! DatasetMessage(datasetName, message)
+      OrgActor.actor ! datasetInfo.createMessage(message)
     }
   }
 
@@ -202,9 +197,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     datasetDb.removeState(SOURCED)
   }
 
-  def startSipZipGeneration() = OrgActor.actor ! DatasetMessage(datasetName, GenerateSipZip)
+  def startSipZipGeneration() = OrgActor.actor ! datasetInfo.createMessage(GenerateSipZip)
 
-  def startProcessing() = OrgActor.actor ! DatasetMessage(datasetName, StartProcessing(None))
+  def startProcessing() = OrgActor.actor ! datasetInfo.createMessage(StartProcessing(None))
 
   def dropProcessedRepo() = {
     deleteQuietly(processedDir)
@@ -214,7 +209,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
   def startAnalysis() = datasetDb.infoOpt.map { info =>
     dropTree()
     // todo: tell it what to analyze, either raw or processed
-    OrgActor.actor ! DatasetMessage(datasetName, StartAnalysis)
+    OrgActor.actor ! datasetInfo.createMessage(StartAnalysis)
   }
 
   def dropTree() = {
@@ -222,7 +217,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
     datasetDb.removeState(ANALYZED)
   }
 
-  def startCategoryCounts() = OrgActor.actor ! DatasetMessage(datasetName, StartCategoryCounting)
+  def startCategoryCounts() = OrgActor.actor ! datasetInfo.createMessage(StartCategoryCounting)
 
   // ==================================================
 
@@ -260,5 +255,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val datasetName: String) {
 
   def histogramText(path: String): Option[File] = nodeRepo(path).map(_.histogramText)
 
-  def invalidateEnrichmentCache() = Cache.remove(datasetName)
+  override def toString = datasetInfo.toString
+
+
 }
