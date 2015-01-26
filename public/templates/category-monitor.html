@@ -17,7 +17,7 @@
 
 
 <div class="row">
-    <div class="col-sm-6">
+    <div class="col-sm-4">
         <div class="widget">
             <div class="widget-header">
                 Spreadsheets
@@ -30,15 +30,14 @@
                 <ul class="list-unstyled">
                     <li ng-repeat="sheet in sheets">
                         <a ng-href="{{ sheetUrl(sheet) }}" target="_blank">
-                            <i class="fa fa-download"></i>
-                            {{ sheet }}
+                            <i class="fa fa-download"></i> {{ sheet }}
                         </a>
                     </li>
                 </ul>
             </div>
         </div>
     </div>
-    <div class="col-sm-6">
+    <div class="col-sm-8">
         <div class="widget">
             <div class="widget-header">Monitored Datasets</div>
             <div class="widget-body">
