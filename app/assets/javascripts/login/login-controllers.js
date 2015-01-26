@@ -89,24 +89,29 @@ define(["angular"], function (angular) {
             $scope.toggleBar = true;
         };
 
-        $scope.homePage = function () {
-            $location.path('/');
-        };
-
-        $scope.datasetsPage = function () {
-            $location.path('/datasets');
-        };
-
-        $scope.categoriesPage = function () {
-            $location.path('/categories');
-        };
-
-        $scope.thesaurusPage = function () {
-            $location.path('/thesaurus');
-        };
-
-        $scope.breadcrumbsPage = function () {
-            $location.path('/dataset/' + $rootScope.breadcrumbs.dataset)
+        $scope.sidebarNav = function (page) {
+            var navlist = $('#sidebar-nav a');
+            navlist.removeClass('active');
+            switch(page) {
+                case 'homepage':
+                    $location.path('/');
+                    break;
+                case 'datasets':
+                    $location.path('/datasets');
+                    break;
+                case 'categories':
+                    $location.path('/categories');
+                    break;
+                case 'thesaurus':
+                    $location.path('/thesaurus');
+                    break;
+                case 'breadcrumb':
+                    $location.path('/dataset/' + $rootScope.breadcrumbs.dataset);
+                    break;
+                default:
+                    $location.path('/');
+            }
+            $('#nav-'+page).addClass('active');
         };
 
         $scope.toggleSidebar = function () {
