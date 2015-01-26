@@ -18,16 +18,17 @@ package org
 
 import java.io.File
 
-import dataset.{DatasetInfo, DatasetRepo, Sip, SipFactory}
+import dataset.{DatasetRepo, DsInfo, Sip, SipFactory}
 import mapping.{CategoriesRepo, ConceptRepo}
 import org.OrgActor.DatasetsCountCategories
-import org.OrgDb.Dataset
 import org.joda.time.DateTime
 import services.NarthexConfig._
 import services._
 import thesaurus.ThesaurusDb
 import triplestore.TripleStore
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.language.postfixOps
 
 object OrgRepo {
@@ -60,7 +61,6 @@ class OrgRepo(userHome: String, val orgId: String) {
   val skosRepo = new ConceptRepo(new File(orgRoot, "skos"))
   val factoryDir = new File(orgRoot, "factory")
   val sipFactory = new SipFactory(factoryDir)
-  val orgDb = new OrgDb(orgId)
   val ts = new TripleStore(TRIPLE_STORE_URL)
   val us = new UserStore(ts)
 
@@ -77,7 +77,7 @@ class OrgRepo(userHome: String, val orgId: String) {
       new ThesaurusDb(conceptSchemeA, conceptSchemeB)
 
   def datasetRepo(datasetName: String): DatasetRepo = {
-    val di = new DatasetInfo(datasetName, ts)
+    val di = new DsInfo(datasetName, ts)
     val dr = new DatasetRepo(this, di)
     dr.mkdirs
     dr
@@ -85,21 +85,30 @@ class OrgRepo(userHome: String, val orgId: String) {
 
   def datasetRepoOption(datasetName: String): Option[DatasetRepo] = {
     val dr = datasetRepo(datasetName)
-    if (dr.datasetDb.infoOpt.isDefined) Some(dr) else None
+    if (dr.dsInfo.exists) Some(dr) else None
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(
     _.getName.endsWith(SIP_EXTENSION)
   ).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
 
-  def uploadedSips: Seq[Sip] = orgDb.listDatasets.flatMap(dataset => datasetRepo(dataset.datasetName).sipRepo.latestSipOpt)
+  def uploadedSips: Future[Seq[Sip]] = {
+    DsInfo.listDsInfo(ts).map { list =>
+      list.flatMap { dsi =>
+        val datasetRepo = new DatasetRepo(this, dsi)
+        datasetRepo.sipRepo.latestSipOpt
+      }
+    }
+  }
 
   def startCategoryCounts() = {
-    val categoryDatasets: Seq[Dataset] = orgDb.listDatasets.flatMap { dataset =>
-      val included = (dataset.info \ "categories" \ "included").text
-      if (included == "true") Some(dataset) else None
+    val categoryDatasets = DsInfo.listDsInfo(ts).map { list =>
+      list.flatMap { dsi =>
+        if (dsi.getBooleanProp(DsInfo.categoriesInclude)) Some(dsi) else None
+      }
     }
-    val datasets = categoryDatasets.map(_.datasetName)
-    OrgActor.actor ! DatasetsCountCategories(datasets)
+    categoryDatasets.map{ dsList =>
+      OrgActor.actor ! DatasetsCountCategories(dsList.map(_.spec))
+    }
   }
 }

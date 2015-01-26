@@ -20,27 +20,30 @@ import java.io.FileInputStream
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
-import dataset.{DatasetDb, Sip}
 import org.OrgRepo.{AvailableSip, repo}
 import org.apache.commons.io.IOUtils
 import play.api.Logger
 import play.api.http.ContentTypes
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.Json
 import play.api.mvc._
 import services._
 import web.MainController.OkFile
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
 object APIController extends Controller {
 
   def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val datasets = repo.orgDb.listDatasets.map {
-      dataset =>
-        val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-        Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))
-    }
-    //      Ok(JsArray(datasets))
-    // todo: this produces a list within a list.  fix it and inform Sjoerd
-    Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
+//    val datasets = repo.orgDb.listDatasets.map {
+//      dataset =>
+//        val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
+//        Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))
+//    }
+//    //      Ok(JsArray(datasets))
+//    // todo: this produces a list within a list.  fix it and inform Sjoerd
+//    Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
+    NotImplemented
   }
 
   def pathsJSON(apiKey: String, datasetName: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
@@ -106,10 +109,10 @@ object APIController extends Controller {
     Ok(xml)
   }
 
-  def listSipZips(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+  def listSipZips(apiKey: String) = KeyFitsAsync(apiKey, parse.anyContent) { implicit request =>
     val availableSips: Seq[AvailableSip] = repo.availableSips
-    val uploadedSips: Seq[Sip] = repo.uploadedSips
-    val xml =
+    repo.uploadedSips.map { uploadedSips =>
+      val xml =
       <sip-zips>
         <available>
           {
@@ -130,7 +133,8 @@ object APIController extends Controller {
           }
         </uploaded>
       </sip-zips>
-    Ok(xml)
+      Ok(xml)
+    }
   }
 
   def downloadSipZip(apiKey: String, datasetName: String) = Action(parse.anyContent) { implicit request =>
@@ -147,6 +151,15 @@ object APIController extends Controller {
     }
     else {
       Unauthorized(Json.obj("err" -> "Invalid API Access key"))
+    }
+  }
+
+  def KeyFitsAsync[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
+    if (NarthexConfig.apiKeyFits(apiKey)) {
+      block(request)
+    }
+    else {
+      Future(Unauthorized(Json.obj("err" -> "Invalid API Access key")))
     }
   }
 }

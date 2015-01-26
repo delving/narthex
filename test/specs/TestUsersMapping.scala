@@ -2,7 +2,7 @@ package specs
 
 import java.io.File
 
-import dataset.{DatasetInfo, ProcessedRepo, SipRepo, SourceRepo}
+import dataset.{DsInfo, ProcessedRepo, SipRepo, SourceRepo}
 import mapping.Skosification
 import org.UserStore
 import org.UserStore.NXActor
@@ -50,7 +50,7 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val us = new UserStore(ts)
     await(us.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
     // push in a SKOS vocabulary
-    val info = new DatasetInfo("gtaa_genre", ts)
+    val info = new DsInfo("gtaa_genre", ts)
     val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
     val posted = await(ts.dataPostXMLFile(info.datasetUri, skosFile))
     posted must be(true)
@@ -68,7 +68,7 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined must be(true)
     // create processed repo
-    val info = new DatasetInfo("frans_hals", ts)
+    val info = new DsInfo("frans_hals", ts)
     val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info.datasetUri)
     var sourceFile = processedRepo.createFile
     val sourceOutput = writer(sourceFile)
@@ -104,8 +104,8 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
 
   "Skosification must work" in {
     // mark a field as skosified
-    val info = new DatasetInfo("frans_hals", ts)
-    await(info.setUriProp(DatasetInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
+    val info = new DsInfo("frans_hals", ts)
+    await(info.setUriProp(DsInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
 
     val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
 

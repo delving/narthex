@@ -55,7 +55,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
   import context.dispatcher
 
   var progress: Option[ProgressReporter] = None
-  val db = datasetRepo.datasetDb
+  val dsInfo = datasetRepo.dsInfo
 
   def receive = {
 
@@ -97,20 +97,15 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
               latestSip.copyWithSourceTo(sipFile, datasetRepo.pocketFile, prefixRepoOpt)
               Some(sipFile)
             } getOrElse {
-              val generationFactsOpt = db.infoOpt.map(SipGenerationFacts(_))
-              generationFactsOpt.map { facts =>
-                val sipPrefixRepo = datasetRepo.orgRepo.sipFactory.prefixRepo(facts.prefix)
-                sipPrefixRepo.map { prefixRepo =>
-                  datasetRepo.sipFiles.foreach(_.delete())
-                  val sipFile = datasetRepo.createSipFile
-                  prefixRepo.initiateSipZip(sipFile, datasetRepo.pocketFile, facts)
-                  Some(sipFile)
-                } getOrElse {
-                  context.parent ! WorkFailure("Unable to build sip for download")
-                  None
-                }
+              val facts = SipGenerationFacts(dsInfo)
+              val sipPrefixRepo = datasetRepo.orgRepo.sipFactory.prefixRepo(facts.prefix)
+              sipPrefixRepo.map { prefixRepo =>
+                datasetRepo.sipFiles.foreach(_.delete())
+                val sipFile = datasetRepo.createSipFile
+                prefixRepo.initiateSipZip(sipFile, datasetRepo.pocketFile, facts)
+                Some(sipFile)
               } getOrElse {
-                context.parent ! WorkFailure("Unable to create sip generation facts")
+                context.parent ! WorkFailure("Unable to build sip for download")
                 None
               }
             }

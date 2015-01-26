@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 import akka.pattern.{AskTimeoutException, ask}
 import akka.util.Timeout
 import dataset.DatasetActor._
-import dataset._
+import dataset.DsInfo._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
@@ -46,11 +46,9 @@ object AppController extends Controller with Security {
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
   def listDatasets = Secure() { session => request =>
-    val datasets = repo.orgDb.listDatasets.map { dataset =>
-      val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-      Json.obj("name" -> dataset.datasetName, "info" -> JsObject(lists))
-    }
-    Ok(JsArray(datasets))
+    NotImplemented
+//    val datasets = repo.orgDb.listDatasets
+//    Ok(JsArray(datasets))
   }
 
   def listPrefixes = Secure() { session => request =>
@@ -59,14 +57,17 @@ object AppController extends Controller with Security {
   }
 
   def datasetInfo(datasetName: String) = Secure() { session => request =>
-    repo.datasetRepo(datasetName).datasetDb.infoOpt.map { info =>
-      val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(info, name))
-      Ok(JsObject(lists))
-    } getOrElse NotFound(Json.obj("problem" -> s"Not found $datasetName"))
+    NotImplemented
+//
+//    repo.datasetRepo(datasetName).datasetDb.infoOpt.map { info =>
+//      val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(info, name))
+//      Ok(JsObject(lists))
+//    } getOrElse NotFound(Json.obj("problem" -> s"Not found $datasetName"))
   }
 
+  // todo: create for a given type, not prefix
   def create(datasetName: String, prefix: String) = Secure() { session => request =>
-    repo.datasetRepo(datasetName).datasetDb.createDataset(prefix)
+//    repo.datasetRepo(datasetName).datasetDb.createDataset(prefix)
     Ok(Json.obj("created" -> s"Dataset $datasetName with prefix $prefix"))
   }
 
@@ -146,8 +147,9 @@ object AppController extends Controller with Security {
           case PMH_REC => required("prefix")
           case ADLIB => ADLIB.name
         }
-        val error = datasetRepo.firstHarvest(harvestType, required("url"), optional("dataset"), prefix)
-        error.map(message => NotAcceptable(Json.obj("problem" -> message))).getOrElse(Ok)
+        datasetRepo.firstHarvest(harvestType, required("url"), optional("dataset"), prefix)
+        // todo: maybe first harvest is not possible
+        Ok
       } getOrElse {
         NotAcceptable(Json.obj("problem" -> s"unknown harvest type: ${optional("harvestType")}"))
       }
@@ -163,7 +165,7 @@ object AppController extends Controller with Security {
       val datasetRepo = repo.datasetRepo(datasetName)
       val cron = Harvesting.harvestCron(required("previous"), required("delay"), required("unit"))
       Logger.info(s"harvest $cron")
-      datasetRepo.datasetDb.setHarvestCron(cron)
+      datasetRepo.dsInfo.setHarvestCron(cron)
       Ok
     } catch {
       case e: IllegalArgumentException =>
@@ -173,11 +175,15 @@ object AppController extends Controller with Security {
 
   def setMetadata(datasetName: String) = Secure(parse.json) { session => request =>
     try {
-      val obj = request.body.as[JsObject]
-      val meta: Map[String, String] = obj.value.map(nv => nv._1 -> nv._2.as[String]).toMap
-      Logger.info(s"saveMetadata: $meta")
+      def value(name: String) = (request.body \ name).asOpt[String].getOrElse("")
       val datasetRepo = repo.datasetRepo(datasetName)
-      datasetRepo.datasetDb.setMetadata(meta)
+      datasetRepo.dsInfo.setMetadata(DsMetadata(
+        name = value("name"),
+        description = value("description"),
+        owner = value("owner"),
+        language = value("language"),
+        rights = value("rights")
+      ))
       Ok
     } catch {
       case e: IllegalArgumentException =>
@@ -190,7 +196,7 @@ object AppController extends Controller with Security {
     def stringParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     try {
       val datasetRepo = repo.datasetRepo(datasetName)
-      datasetRepo.datasetDb.setPublication(boolParam("oaipmh"), boolParam("index"), boolParam("lod"))
+      datasetRepo.dsInfo.setPublication(boolParam("oaipmh"), boolParam("index"), boolParam("lod"))
       Ok
     } catch {
       case e: IllegalArgumentException =>
@@ -202,7 +208,7 @@ object AppController extends Controller with Security {
     def param(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
     try {
       val datasetRepo = repo.datasetRepo(datasetName)
-      datasetRepo.datasetDb.setCategories(param("included"))
+      datasetRepo.dsInfo.setCategories(param("included"))
       Ok
     } catch {
       case e: IllegalArgumentException =>

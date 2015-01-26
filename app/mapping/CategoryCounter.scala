@@ -60,7 +60,7 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
           progress = Some(progressReporter)
           progressReporter.setReadProgress(readProgress)
           parser.parse(source, Set.empty[String], progressReporter)
-          context.parent ! CategoryCountComplete(datasetRepo.datasetInfo.name, parser.categoryCounts)
+          context.parent ! CategoryCountComplete(datasetRepo.dsInfo.spec, parser.categoryCounts)
         }
         catch {
           case e: Exception => context.parent ! WorkFailure(e.getMessage, Some(e))

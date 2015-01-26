@@ -2,9 +2,10 @@ package specs
 
 import java.io.File
 
-import dataset.DatasetInfo._
-import dataset.{DatasetInfo, ProcessedRepo}
+import dataset.DsInfo._
+import dataset.{DsInfo, ProcessedRepo}
 import org.scalatestplus.play._
+import play.api.libs.json.Json
 import play.api.test.Helpers._
 import triplestore.TripleStore
 
@@ -34,19 +35,19 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
   "The dataset info object should be able to interact with the store" in {
     cleanStart()
-    val info = new DatasetInfo("gumby", ts)
-    info.getLiteralProp(datasetMapTo) must be(None)
+    val info = new DsInfo("gumby", ts)
+    info.getLiteralProp(datasetMapToPrefix) must be(None)
     val model = await(info.setLiteralProps(
-      datasetMapTo -> "pfx",
+      datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
     ))
     model.size() must be(3)
-//    import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
-//    RDFDataMgr.write(System.out, model, RDFFormat.NTRIPLES_UTF8)
-    info.getLiteralProp(datasetMapTo) must be(Some("pfx"))
-    await(info.removeLiteralProp(datasetMapTo))
-    info.getLiteralProp(datasetMapTo) must be(None)
+    info.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
+    await(info.removeLiteralProp(datasetMapToPrefix))
+    info.getLiteralProp(datasetMapToPrefix) must be(None)
     model.size() must be(2)
+
+    await(info.setLiteralProps(datasetMapToPrefix -> "pfx2"))
 
     // uri prop
     info.getUriProps(skosField) must be(List.empty)
@@ -54,7 +55,7 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     info.getUriProps(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
     await(info.setUriProp(skosField, "http://purl.org/dc/elements/1.1/creator"))
 
-    def testTwo(di: DatasetInfo) = {
+    def testTwo(di: DsInfo) = {
       val two = di.getUriProps(skosField)
       two.size must be(2)
       two.contains("http://purl.org/dc/elements/1.1/type") must be(true)
@@ -65,7 +66,20 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     testTwo(info)
 
     // a fresh one that has to fetch anew
-    testTwo(new DatasetInfo("gumby", ts))
+    val fresh: DsInfo = new DsInfo("gumby", ts)
+
+    fresh.getLiteralProp(datasetMapToPrefix) must be(Some("pfx2"))
+    testTwo(fresh)
+
+    //    println(Json.prettyPrint(dsInfoWrites.writes(fresh)))
+
+    val second = new DsInfo("pokey", ts)
+
+    val infoList = await(listDsInfo(ts))
+
+    infoList.foreach { info =>
+      println(Json.prettyPrint(dsInfoWrites.writes(info)))
+    }
   }
 
 }
