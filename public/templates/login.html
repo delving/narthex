@@ -1,85 +1,137 @@
-<div class="home row clearfix">
+<div data-ng-if="!user">
 
-    <div class="col-sm-6 col-sm-push-3" data-ng-if="!user">
-        <h2>Login</h2>
-
-        <form name="form" class="form well clearfix">
-            <div class="img pull-left">
-                <img src="/narthex/assets/images/narthex-blue.png" />
+    <div class="page-header">
+        <!-- page location, org -->
+        <div class="meta">
+            <div class="page">
+                Login
             </div>
-            <fieldset>
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input id="username" class="form-control" data-ng-model="credentials.username" placeholder="Username" required/><br/>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input id="password" type="password" class="form-control" data-ng-model="credentials.password" placeholder="Password" required autofocus/>
-                </div>
-                <br/>
-                <button class="btn btn-primary pull-right" data-ng-disabled="form.$invalid" data-ng-click="login(credentials)">Log In</button>
-            </fieldset>
-            <div data-ng-show="errorMessage">
-                <br/>
-                <span class="badge badge-warning">{{ errorMessage }}</span>
-            </div>
-        </form>
-    </div>
-
-    <div class="col-sm-6 col-sm-push-3" data-ng-if="user">
-        <div>
-            <span class="fa fa-2x"><span class="label label-success fa-user"> "{{ user.username }}"</span></span>
-            <span>(<a href="#" data-ng-click="logout()">Logout</a>)</span>
-        </div>
-        <hr/>
-        <h4>Profile</h4>
-        <form name="form" class="form well clearfix">
-            <fieldset>
-                <div class="form-group">
-                    <label for="firstName">First Name</label>
-                    <input id="firstName" class="form-control" data-ng-model="editedUser.firstName" placeholder="John"/>
-                </div>
-                <div class="form-group">
-                    <label for="lastName">Last Name</label>
-                    <input id="lastName" class="form-control" data-ng-model="editedUser.lastName" placeholder="Smith"/>
-                </div>
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input id="email" class="form-control" data-ng-model="editedUser.email" placeholder="john@smith.net"/>
-                </div>
-                <br/>
-                <button class="btn btn-primary pull-right" data-ng-disabled="unchangedUser" data-ng-click="setProfile(editedUser)">Save</button>
-            </fieldset>
-            <div data-ng-show="errorMessage">
-                <br/>
-                <span class="badge badge-warning">{{ errorMessage }}</span>
-            </div>
-        </form>
-        <h4>Create New Sub-Actor</h4>
-        <form name="form" class="form well clearfix">
-            <fieldset>
-                <div class="form-group">
-                    <label for="username2">Username</label>
-                    <input id="username2" class="form-control" data-ng-model="newActor.username" placeholder="user" required/>
-                </div>
-                <div class="form-group">
-                    <label for="password2">Password</label>
-                    <input id="password2" type="password" class="form-control" data-ng-model="newActor.password" placeholder="" required/>
-                </div>
-                <br/>
-                <button class="btn btn-primary pull-right" data-ng-disabled="" data-ng-click="addActor(newActor)">Create</button>
-            </fieldset>
-            <div data-ng-show="errorMessage">
-                <br/>
-                <span class="badge badge-warning">{{ errorMessage }}</span>
-            </div>
-        </form>
-        <div data-ng-show="actorList.length">
-            <h4>Sub-Actors</h4>
-            <div data-ng-repeat="actor in actorList" class="well clearfix">
-                <span class="label label-info fa"><span class="fa-user"/> "{{ actor }}"</span>
+            <div class="organization">
+                <span class="fa fa-institution"></span>
+                <span>{{ orgId }}</span>
             </div>
         </div>
+        <!-- page specifiction actions/tools -->
+        <div class="actions"></div>
     </div>
+
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+
+            <form name="form" class="form well clearfix">
+                <div class="img pull-left" style="margin-right:20px;">
+                    <img src="/narthex/assets/images/narthex-blue.png"/>
+                </div>
+                <fieldset>
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input id="username" class="form-control" data-ng-model="credentials.username" placeholder="Username" required/>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input id="password" type="password" class="form-control" data-ng-model="credentials.password" placeholder="Password" required autofocus/>
+                    </div>
+                    <button class="btn btn-primary pull-right" data-ng-disabled="form.$invalid" data-ng-click="login(credentials)">Log In</button>
+                </fieldset>
+                <div data-ng-show="errorMessage">
+                    <span class="badge badge-warning">{{ errorMessage }}</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </div>
+
+<div data-ng-if="user">
+
+    <div class="page-header">
+        <!-- page location, org -->
+        <div class="meta">
+            <div class="page">
+                Dashboard
+            </div>
+            <div class="organization">
+                <span class="fa fa-institution"></span>
+                <span>{{ orgId }}</span>
+            </div>
+        </div>
+        <!-- page specifiction actions/tools -->
+        <div class="actions">
+
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-6">
+            <div class="widget">
+                <div class="widget-header">User Profile</div>
+                <div class="widget-body">
+                    <form name="form" class="form clearfix">
+                        <fieldset>
+                            <div class="form-group">
+                                <label for="firstName">First Name</label>
+                                <input id="firstName" class="form-control" data-ng-model="editedUser.firstName" placeholder="John"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Last Name</label>
+                                <input id="lastName" class="form-control" data-ng-model="editedUser.lastName" placeholder="Smith"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="userName">Username</label>
+                                <input id="userName" class="form-control" data-ng-model="editedUser.username" placeholder="John" disabled="disabled"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input id="email" class="form-control" data-ng-model="editedUser.email" placeholder="john@smith.net"/>
+                            </div>
+                            <br/>
+                            <button class="btn btn-primary pull-right" data-ng-disabled="unchangedUser" data-ng-click="setProfile(editedUser)">Save</button>
+                        </fieldset>
+                        <div data-ng-show="errorMessage">
+                            <span class="badge badge-warning">{{ errorMessage }}</span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6">
+            <div class="widget">
+                <div class="widget-header">Actors</div>
+                <div class="widget-body">
+                    <h4>Primary-Actor</h4>
+                    <span class="label label-success fa-2x"><i class="fa fa-user"></i> {{ user.username }}</span>
+                    <hr/>
+                    <h4>Create a new Sub-Actor</h4>
+                    <div class="navbar navbar-default">
+                        <form class="form-inline navbar-form">
+                            <div class="form-group">
+                                <label for="username2" class="sr-only">Username</label>
+                                <input type="text" class="form-control" id="username2" placeholder="Username" data-ng-model="newActor.username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password2" class="sr-only">Password</label>
+                                <input type="password" class="form-control" id="password2" placeholder="Password" data-ng-model="newActor.password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary" data-ng-click="addActor(newActor)">Create</button>
+                        </form>
+                    </div>
+                    <div data-ng-show="errorMessage">
+                        <br/>
+                        <span class="badge badge-warning">{{ errorMessage }}</span>
+                    </div>
+
+                    <div data-ng-show="actorList.length">
+                        <hr/>
+                        <h5>Sub-Actors</h5>
+                        <span class="label label-info fa" data-ng-repeat="actor in actorList"><i class="fa fa-user"/></i> {{ actor }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+
 
