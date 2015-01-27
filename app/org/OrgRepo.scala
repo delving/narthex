@@ -18,6 +18,7 @@ package org
 
 import java.io.File
 
+import dataset.DsInfo.Character
 import dataset.{DatasetRepo, DsInfo, Sip, SipFactory}
 import mapping.{CategoriesRepo, ConceptRepo}
 import org.OrgActor.DatasetsCountCategories
@@ -71,11 +72,10 @@ class OrgRepo(userHome: String, val orgId: String) {
   rawDir.mkdirs()
   sipsDir.mkdirs()
 
-  def thesaurusDb(conceptSchemeA: String, conceptSchemeB: String) =
-    if (conceptSchemeA > conceptSchemeB)
-      new ThesaurusDb(conceptSchemeB, conceptSchemeA)
-    else
-      new ThesaurusDb(conceptSchemeA, conceptSchemeB)
+  def createDatasetRepo(spec: String, characterString: String, prefix: String) = {
+    val character: Option[Character] = DsInfo.getCharacter(characterString)
+    character.map(c => DsInfo(spec, c, prefix, ts))
+  }
 
   def datasetRepo(spec: String): DatasetRepo = datasetRepoOption(spec).getOrElse(
     throw new RuntimeException(s"Expected $spec dataset to exist")
@@ -110,4 +110,11 @@ class OrgRepo(userHome: String, val orgId: String) {
       OrgActor.actor ! DatasetsCountCategories(dsList.map(_.spec))
     }
   }
+
+  def thesaurusDb(conceptSchemeA: String, conceptSchemeB: String) =
+    if (conceptSchemeA > conceptSchemeB)
+      new ThesaurusDb(conceptSchemeB, conceptSchemeA)
+    else
+      new ThesaurusDb(conceptSchemeA, conceptSchemeB)
+
 }

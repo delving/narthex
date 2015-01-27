@@ -52,20 +52,20 @@ define(["angular"], function () {
         $scope.percent = null;
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
-        $scope.dataset = { name: "" };
+        $scope.dataset = {};
         $scope.specFilter = "";
         $scope.categoriesEnabled = user.categoriesEnabled;
 
-        function setNewDataset() {
-            var ds = $scope.dataset;
-            if (!ds.name) ds.name = "";
-            var name = ds.name.trim().replace(/\W+/g, "_").replace(/_+/g, "_").toLowerCase();
-            ds.validName = name;
-            if (name.replace(/_/, "").length == 0 || !ds.prefix) ds.validName = undefined
+        function checkNewEnabled() {
+            if ($scope.dataset.specTyped)
+                $scope.dataset.spec = $scope.dataset.specTyped.trim().replace(/\W+/g, "_").replace(/_+/g, "_").toLowerCase();
+            else
+                $scope.dataset.spec = "";
+            $scope.dataset.enabled = $scope.dataset.spec.length && $scope.dataset.character;
         }
 
-        $scope.$watch("dataset.name", setNewDataset);
-        $scope.$watch("dataset.prefix", setNewDataset);
+        $scope.$watch("dataset.specTyped", checkNewEnabled);
+        $scope.$watch("dataset.character", checkNewEnabled);
 
         $scope.$watch("specFilter", function (filter) {
             filter = filter.trim();
@@ -79,8 +79,24 @@ define(["angular"], function () {
             }
         });
 
+        datasetsService.listPrefixes().then(function (prefixes) {
+            $scope.characters = _.map(prefixes, function (prefix) {
+                return {
+                    title: "Mapped to '" + prefix.toUpperCase() + "' format",
+                    code: "character-mapped",
+                    prefix: prefix
+                };
+            });
+            console.log("char", $scope.characters);
+            $scope.characters.push({
+                title: "SKOS Vocabulary",
+                code: "character-skos",
+                prefix: ""
+            });
+        });
+
         $scope.createDataset = function () {
-            datasetsService.create($scope.dataset.validName, $scope.dataset.prefix).then(function () {
+            datasetsService.create($scope.dataset.spec, $scope.dataset.character.code, $scope.dataset.character.prefix).then(function () {
                 $scope.cancelNewFile();
                 $scope.dataset.name = undefined;
                 $scope.fetchDatasetList();
@@ -95,7 +111,7 @@ define(["angular"], function () {
             return _.isEmpty(obj)
         };
 
-        $scope.cancelNewFile = function() {
+        $scope.cancelNewFile = function () {
             $scope.newFileOpen = false;
         };
 
@@ -120,7 +136,7 @@ define(["angular"], function () {
             if (!info.publication) info.publication = {};
             if (!info.categories) info.categories = {};
 
-            _.forEach(states, function(stateName) {
+            _.forEach(states, function (stateName) {
                 var block = info[stateName];
                 if (block) {
                     var dt = block.time.split('T');
@@ -132,28 +148,32 @@ define(["angular"], function () {
 
 
         $scope.fetchDatasetList = function () {
-            datasetsService.listDatasets().then(function (files) {
-                _.forEach($scope.files, function (file) {
-                    if (file.progressCheckerTimeout) {
-                        $timeout.cancel(file.progressCheckerTimeout);
-                        delete(file.progressCheckerTimeout);
-                    }
+            datasetsService.listDatasets().then(function (array) {
+
+
+                // todo
+                _.forEach(array, function (el) {
+                    console.log("listDatasets.element", el);
                 });
-                _.forEach(files, function (file) {
-                    $scope.decorateFile(file, undefined);
-                    file.tabOpen = 'metadata';
-                });
-                $scope.files = $scope.filteredFiles = files;
+
+
+//                _.forEach($scope.files, function (file) {
+//                    if (file.progressCheckerTimeout) {
+//                        $timeout.cancel(file.progressCheckerTimeout);
+//                        delete(file.progressCheckerTimeout);
+//                    }
+//                });
+//                _.forEach(data, function (file) {
+//                    $scope.decorateFile(file, undefined);
+//                    file.tabOpen = 'metadata';
+//                });
+//                $scope.files = $scope.filteredFiles = array;
                 $scope.specFilter = "";
             });
         };
 
         $scope.fetchDatasetList();
 
-        datasetsService.listPrefixes().then(function (prefixes) {
-            $scope.prefixes = prefixes;
-            $scope.dataset.prefix = prefixes.length ? prefixes[0] : undefined
-        });
     };
 
     DatasetsCtrl.$inject = [
@@ -200,7 +220,7 @@ define(["angular"], function () {
         }
 
         $scope.file.fileDropped = function ($files) {
-            fileDropped($scope.file, $files, function() {
+            fileDropped($scope.file, $files, function () {
                 refreshProgress();
             });
         };
@@ -346,7 +366,7 @@ define(["angular"], function () {
             if (areYouSure && !confirm(areYouSure)) return;
             datasetsService.command($scope.file.name, command).then(function (reply) {
                 console.log(reply);
-            }).then(function() {
+            }).then(function () {
                 if (after) after();
             });
         }

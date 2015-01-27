@@ -21,16 +21,17 @@ import java.util.concurrent.TimeUnit
 import akka.pattern.{AskTimeoutException, ask}
 import akka.util.Timeout
 import dataset.DatasetActor._
+import dataset.DsInfo
 import dataset.DsInfo._
 import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
 import mapping.TermDb._
-import org.OrgActor
 import org.OrgActor.DatasetMessage
 import org.OrgRepo.repo
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
+import org.{OrgActor, OrgRepo}
 import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
@@ -45,10 +46,8 @@ object AppController extends Controller with Security {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
-  def listDatasets = Secure() { session => request =>
-    NotImplemented
-//    val datasets = repo.orgDb.listDatasets
-//    Ok(JsArray(datasets))
+  def listDatasets = SecureAsync() { session => request =>
+    listDsInfo(OrgRepo.repo.ts).map(list => Ok(Json.toJson(list)))
   }
 
   def listPrefixes = Secure() { session => request =>
@@ -56,23 +55,19 @@ object AppController extends Controller with Security {
     Ok(Json.toJson(prefixes))
   }
 
-  def datasetInfo(datasetName: String) = Secure() { session => request =>
-    NotImplemented
-//
-//    repo.datasetRepo(datasetName).datasetDb.infoOpt.map { info =>
-//      val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(info, name))
-//      Ok(JsObject(lists))
-//    } getOrElse NotFound(Json.obj("problem" -> s"Not found $datasetName"))
+  def datasetInfo(spec: String) = SecureAsync() { session => request =>
+    DsInfo(spec, OrgRepo.repo.ts).map(info => Ok(Json.toJson(info)))
   }
 
   // todo: create for a given type, not prefix
-  def create(datasetName: String, prefix: String) = Secure() { session => request =>
-//    repo.datasetRepo(datasetName).datasetDb.createDataset(prefix)
-    Ok(Json.obj("created" -> s"Dataset $datasetName with prefix $prefix"))
+  def create(spec: String, character: String, mapToPrefix: String) = Secure() { session => request =>
+    repo.createDatasetRepo(spec, character, mapToPrefix)
+    //    repo.datasetRepo(datasetName).datasetDb.createDataset(prefix)
+    Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
   }
 
-  def datasetProgress(datasetName: String) = SecureAsync() { session => request =>
-    val replyData = (OrgActor.actor ? DatasetMessage(datasetName, CheckState, question = true)).mapTo[DatasetActorData]
+  def datasetProgress(spec: String) = SecureAsync() { session => request =>
+    val replyData = (OrgActor.actor ? DatasetMessage(spec, CheckState, question = true)).mapTo[DatasetActorData]
     replyData.map {
       case Dormant =>
         Ok(Json.obj(
@@ -98,13 +93,13 @@ object AppController extends Controller with Security {
     }
   }
 
-  def command(datasetName: String, command: String) = SecureAsync() { session => request =>
+  def command(spec: String, command: String) = SecureAsync() { session => request =>
     if (command == "interrupt") {
-      OrgActor.actor ! DatasetMessage(datasetName, InterruptWork)
+      OrgActor.actor ! DatasetMessage(spec, InterruptWork)
       Future(Ok("interrupt sent"))
     }
     else {
-      val replyString = (OrgActor.actor ? DatasetMessage(datasetName, Command(command), question = true)).mapTo[String]
+      val replyString = (OrgActor.actor ? DatasetMessage(spec, Command(command), question = true)).mapTo[String]
       replyString.map { reply =>
         Ok(Json.obj("reply" -> reply))
       } recover {
@@ -114,12 +109,12 @@ object AppController extends Controller with Security {
     }
   }
 
-  def upload(datasetName: String) = Secure(parse.multipartFormData) { session => request =>
-    repo.datasetRepoOption(datasetName).map { datasetRepo =>
+  def upload(spec: String) = Secure(parse.multipartFormData) { session => request =>
+    repo.datasetRepoOption(spec).map { datasetRepo =>
       request.body.file("file").map { file =>
         val error = datasetRepo.acceptUpload(file.filename, { target =>
           file.ref.moveTo(target, replace = true)
-          Logger.info(s"Dropped file ${file.filename} on $datasetName: ${target.getAbsolutePath}")
+          Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
           target
         })
         error.map {
@@ -131,16 +126,16 @@ object AppController extends Controller with Security {
         NotAcceptable(Json.obj("problem" -> "Cannot find file in upload"))
       }
     } getOrElse {
-      NotAcceptable(Json.obj("problem" -> s"Cannot find dataset $datasetName"))
+      NotAcceptable(Json.obj("problem" -> s"Cannot find dataset $spec"))
     }
   }
 
-  def harvest(datasetName: String) = Secure(parse.json) { session => request =>
+  def harvest(spec: String) = Secure(parse.json) { session => request =>
     def optional(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
     try {
-      val datasetRepo = repo.datasetRepo(datasetName)
-      Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $datasetName")
+      val datasetRepo = repo.datasetRepo(spec)
+      Logger.info(s"harvest ${required("url")} (${optional("dataset")}) to $spec")
       harvestTypeFromString(required("harvestType")) map { harvestType =>
         val prefix = harvestType match {
           case PMH => required("prefix")
@@ -159,10 +154,10 @@ object AppController extends Controller with Security {
     }
   }
 
-  def setHarvestCron(datasetName: String) = Secure(parse.json) { session => request =>
+  def setHarvestCron(spec: String) = Secure(parse.json) { session => request =>
     def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
     try {
-      val datasetRepo = repo.datasetRepo(datasetName)
+      val datasetRepo = repo.datasetRepo(spec)
       val cron = Harvesting.harvestCron(required("previous"), required("delay"), required("unit"))
       Logger.info(s"harvest $cron")
       datasetRepo.dsInfo.setHarvestCron(cron)
@@ -173,10 +168,10 @@ object AppController extends Controller with Security {
     }
   }
 
-  def setMetadata(datasetName: String) = Secure(parse.json) { session => request =>
+  def setMetadata(spec: String) = Secure(parse.json) { session => request =>
     try {
       def value(name: String) = (request.body \ name).asOpt[String].getOrElse("")
-      val datasetRepo = repo.datasetRepo(datasetName)
+      val datasetRepo = repo.datasetRepo(spec)
       datasetRepo.dsInfo.setMetadata(DsMetadata(
         name = value("name"),
         description = value("description"),
@@ -191,11 +186,11 @@ object AppController extends Controller with Security {
     }
   }
 
-  def setPublication(datasetName: String) = Secure(parse.json) { session => request =>
+  def setPublication(spec: String) = Secure(parse.json) { session => request =>
     def boolParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
     def stringParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     try {
-      val datasetRepo = repo.datasetRepo(datasetName)
+      val datasetRepo = repo.datasetRepo(spec)
       datasetRepo.dsInfo.setPublication(boolParam("oaipmh"), boolParam("index"), boolParam("lod"))
       Ok
     } catch {
@@ -204,10 +199,10 @@ object AppController extends Controller with Security {
     }
   }
 
-  def setCategories(datasetName: String) = Secure(parse.json) { session => request =>
+  def setCategories(spec: String) = Secure(parse.json) { session => request =>
     def param(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
     try {
-      val datasetRepo = repo.datasetRepo(datasetName)
+      val datasetRepo = repo.datasetRepo(spec)
       datasetRepo.dsInfo.setCategories(param("included"))
       Ok
     } catch {
@@ -216,35 +211,35 @@ object AppController extends Controller with Security {
     }
   }
 
-  def index(datasetName: String) = Secure() { session => request =>
-    OkFile(repo.datasetRepo(datasetName).index)
+  def index(spec: String) = Secure() { session => request =>
+    OkFile(repo.datasetRepo(spec).index)
   }
 
-  def nodeStatus(datasetName: String, path: String) = Secure() { session => request =>
-    repo.datasetRepo(datasetName).status(path) match {
+  def nodeStatus(spec: String, path: String) = Secure() { session => request =>
+    repo.datasetRepo(spec).status(path) match {
       case None => NotFound(Json.obj("path" -> path))
       case Some(file) => OkFile(file)
     }
   }
 
-  def sample(datasetName: String, path: String, size: Int) = Secure() { session => request =>
-    repo.datasetRepo(datasetName).sample(path, size) match {
+  def sample(spec: String, path: String, size: Int) = Secure() { session => request =>
+    repo.datasetRepo(spec).sample(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
       case Some(file) => OkFile(file)
     }
   }
 
-  def histogram(datasetName: String, path: String, size: Int) = Secure() { session => request =>
-    repo.datasetRepo(datasetName).histogram(path, size) match {
+  def histogram(spec: String, path: String, size: Int) = Secure() { session => request =>
+    repo.datasetRepo(spec).histogram(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
       case Some(file) => OkFile(file)
     }
   }
 
-  def setRecordDelimiter(datasetName: String) = Secure(parse.json) { session => request =>
+  def setRecordDelimiter(spec: String) = Secure(parse.json) { session => request =>
     var recordRoot = (request.body \ "recordRoot").as[String]
     var uniqueId = (request.body \ "uniqueId").as[String]
-    repo.datasetRepoOption(datasetName).map { datasetRepo =>
+    repo.datasetRepoOption(spec).map { datasetRepo =>
       datasetRepo.setRawDelimiters(recordRoot, uniqueId)
       Ok
     } getOrElse {
@@ -256,8 +251,8 @@ object AppController extends Controller with Security {
     Ok(Json.obj("sheets" -> repo.categoriesRepo.listSheets))
   }
 
-  def sheet(datasetName: String) = Action(parse.anyContent) { implicit request =>
-    OkFile(repo.categoriesRepo.sheet(datasetName))
+  def sheet(spec: String) = Action(parse.anyContent) { implicit request =>
+    OkFile(repo.categoriesRepo.sheet(spec))
   }
 
   def listConceptSchemes = Secure() { session => request =>
@@ -275,20 +270,20 @@ object AppController extends Controller with Security {
     }
   }
 
-  def getTermSourcePaths(datasetName: String) = Secure() { session => request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
+  def getTermSourcePaths(spec: String) = Secure() { session => request =>
+    val datasetRepo = repo.datasetRepo(spec)
     val sourcePaths = datasetRepo.termDb.getSourcePaths
     Ok(Json.obj("sourcePaths" -> sourcePaths))
   }
 
-  def getTermMappings(datasetName: String) = Secure() { session => request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
+  def getTermMappings(spec: String) = Secure() { session => request =>
+    val datasetRepo = repo.datasetRepo(spec)
     val mappings: scala.Seq[TermMapping] = datasetRepo.termDb.getMappings
     Ok(Json.obj("mappings" -> mappings))
   }
 
-  def setTermMapping(datasetName: String) = Secure(parse.json) { session => request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
+  def setTermMapping(spec: String) = Secure(parse.json) { session => request =>
+    val datasetRepo = repo.datasetRepo(spec)
 
     println(s"body: ${request.body}")
 
@@ -343,20 +338,20 @@ object AppController extends Controller with Security {
     Ok
   }
 
-  def getCategorySourcePaths(datasetName: String) = Secure() { session => request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
+  def getCategorySourcePaths(spec: String) = Secure() { session => request =>
+    val datasetRepo = repo.datasetRepo(spec)
     val sourcePaths = datasetRepo.categoryDb.getSourcePaths
     Ok(Json.obj("sourcePaths" -> sourcePaths))
   }
 
-  def getCategoryMappings(datasetName: String) = Secure() { session => request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
+  def getCategoryMappings(spec: String) = Secure() { session => request =>
+    val datasetRepo = repo.datasetRepo(spec)
     val mappings: Seq[CategoryMapping] = datasetRepo.categoryDb.getMappings
     Ok(Json.obj("mappings" -> mappings))
   }
 
-  def setCategoryMapping(datasetName: String) = Secure(parse.json) { session => request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
+  def setCategoryMapping(spec: String) = Secure(parse.json) { session => request =>
+    val datasetRepo = repo.datasetRepo(spec)
     val categoryMapping = CategoryMapping(
       (request.body \ "source").as[String],
       Seq((request.body \ "category").as[String])
@@ -366,17 +361,17 @@ object AppController extends Controller with Security {
     Ok("Mapping " + (if (member) "added" else "removed"))
   }
 
-  def listSipFiles(datasetName: String) = Secure() { session => request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
+  def listSipFiles(spec: String) = Secure() { session => request =>
+    val datasetRepo = repo.datasetRepo(spec)
     val fileNames = datasetRepo.sipRepo.listSips.map(_.file.getName)
     Ok(Json.obj("list" -> fileNames))
   }
 
-  def deleteLatestSipFile(datasetName: String) = Secure() { session => request =>
-    val datasetRepo = repo.datasetRepo(datasetName)
+  def deleteLatestSipFile(spec: String) = Secure() { session => request =>
+    val datasetRepo = repo.datasetRepo(spec)
     val sips = datasetRepo.sipRepo.listSips
     if (sips.size < 2) {
-      NotFound(Json.obj("problem" -> s"Refusing to delete the last SIP file $datasetName"))
+      NotFound(Json.obj("problem" -> s"Refusing to delete the last SIP file $spec"))
     }
     else {
       FileUtils.deleteQuietly(sips.head.file)

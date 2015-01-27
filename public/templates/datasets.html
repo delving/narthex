@@ -35,6 +35,47 @@
     </div>
 </div>
 
+<script type="text/ng-template" id="new-file.html">
+    <div class="aside-backdrop am-fade" style=""></div>
+    <div class="aside right">
+        <div class="aside-dialog">
+            <div class="aside-content">
+                <div class="aside-header">
+                    Create a new file:
+                </div>
+                <div class="aside-body">
+                    <form name="form" class="form">
+                        <fieldset>
+                            <div class="form-group">
+                                <label for="new-name">Dataset Short Name</label>
+                                <input id="new-name" class="form-control" data-ng-model="dataset.specTyped" placeholder="spec" required autofocus/>
+                            </div>
+                            <div>
+                                <label for="new-format">Character</label>
+                                <div id="new-format">
+                                    <span data-ng-repeat="ch in characters" style="padding: 5px">
+                                        <input type="radio" name="character" data-ng-model="dataset.character" data-ng-value="ch"> <span>{{ ch.title }}</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <hr/>
+                            <div class="form-group">
+                                <span typ="button" class="btn btn-success" data-ng-class="{ 'disabled': !dataset.enabled }" data-ng-click="createDataset()">
+                                    <i class="fa fa-plus"></i> <span>Create</span>
+                                    <span>"{{ dataset.spec }}"</span>
+                                </span>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+                <div class="aside-footer">
+                    <button type="button" class="btn btn-default" data-ng-click="cancelNewFile()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+
 <script type="text/ng-template" id="dataset-entry.html">
 
     <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary">
@@ -225,47 +266,6 @@
             <span data-ng-class="{ 'latest': $index == 0}">{{ sip }}</span>
         </li>
     </ul>
-</script>
-
-<script type="text/ng-template" id="new-file.html">
-    <div class="aside-backdrop am-fade" style=""></div>
-    <div class="aside right">
-        <div class="aside-dialog">
-            <div class="aside-content">
-                <div class="aside-header">
-                    Create a new file:
-                </div>
-                <div class="aside-body">
-                    <form name="form" class="form">
-                        <fieldset>
-                            <div class="form-group">
-                                <label for="new-name">Dataset Name</label>
-                                <input id="new-name" class="form-control" data-ng-model="dataset.name" placeholder="name" required autofocus/>
-                            </div>
-                            <div>
-                                <label for="new-format">Metadata Format</label>
-                                <div id="new-format">
-                                    <span data-ng-repeat="prefix in prefixes" style="padding: 5px">
-                                        <input type="radio" name="prefix" data-ng-model="dataset.prefix" data-ng-value="prefix"> <span>{{ prefix }}</span>
-                                    </span>
-                                </div>
-                            </div>
-                            <hr/>
-                            <div class="form-group">
-                                <span typ="button" class="btn btn-success" data-ng-class="{ 'disabled': !dataset.validName }" data-ng-click="createDataset()">
-                                    <i class="fa fa-plus"></i> <span>Create</span>
-                                    <span>"{{ dataset.validName }}"</span>
-                                </span>
-                            </div>
-                        </fieldset>
-                    </form>
-                </div>
-                <div class="aside-footer">
-                    <button type="button" class="btn btn-default" data-ng-click="cancelNewFile()">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </script>
 
 <script type="text/ng-template" id="drop-file.html">

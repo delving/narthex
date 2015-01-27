@@ -34,7 +34,7 @@ object OrgActor {
 
   lazy val actor: ActorRef = Akka.system.actorOf(Props[OrgActor], repo.orgId)
 
-  case class DatasetMessage(name: String, message: AnyRef, question: Boolean = false)
+  case class DatasetMessage(spec: String, message: AnyRef, question: Boolean = false)
 
   case class DatasetQuestion(requester: ActorRef, question: AnyRef)
 

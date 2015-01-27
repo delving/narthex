@@ -35,7 +35,7 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
   "The dataset info object should be able to interact with the store" in {
     cleanStart()
-    val info = await(DsInfo("gumby", CharacterSkos, ts))
+    val info = await(DsInfo("gumby-set", CharacterSkos, "", ts))
     info.getLiteralProp(datasetMapToPrefix) must be(None)
     val model = await(info.setSingularLiteralProps(
       datasetMapToPrefix -> "pfx",
@@ -66,14 +66,14 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     testTwo(info)
 
     // a fresh one that has to fetch anew
-    val fresh: DsInfo = await(DsInfo("gumby", CharacterSkosified, ts))
+    val fresh: DsInfo = await(DsInfo("gumby-set", ts)).get
 
     fresh.getLiteralProp(datasetMapToPrefix) must be(Some("pfx2"))
     testTwo(fresh)
 
     //    println(Json.prettyPrint(dsInfoWrites.writes(fresh)))
 
-    val second = await(DsInfo("pokey", CharacterSkosified, ts))
+    val second = await(DsInfo("pokey-set", CharacterSkosified, "", ts))
 
     val infoList = await(listDsInfo(ts))
 

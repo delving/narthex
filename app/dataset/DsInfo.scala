@@ -24,7 +24,7 @@ import org.OrgActor.DatasetMessage
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
-import play.api.libs.json.{Json, Writes}
+import play.api.libs.json.{JsValue, Json, Writes}
 import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
@@ -50,6 +50,7 @@ object DsInfo {
   val CharacterMapped = Character("character-mapped")
   val CharacterSkos = Character("character-skos")
   val CharacterSkosified = Character("character-skosified")
+  def getCharacter(characterString: String) = List(CharacterMapped, CharacterSkos, CharacterSkosified).find(_.name == characterString)
   val datasetCharacter = DIProp("datasetCharacter")
 
   val datasetSpec = DIProp("datasetSpec")
@@ -59,7 +60,7 @@ object DsInfo {
   val datasetLanguage = DIProp("datasetLanguage")
   val datasetRights = DIProp("datasetRights")
 
-  val datasetMapToPrefix = DIProp("datasetMapTo")
+  val datasetMapToPrefix = DIProp("datasetMapToPrefix")
 
   val datasetRecordCount = DIProp("datasetRecordCount", intProp)
   val datasetErrorTime = DIProp("datasetErrorTime")
@@ -115,7 +116,7 @@ object DsInfo {
                         rights: String)
 
   implicit val dsInfoWrites = new Writes[DsInfo] {
-    def writes(dsInfo: DsInfo) = {
+    def writes(dsInfo: DsInfo): JsValue = {
       val out = new StringWriter()
       RDFDataMgr.write(out, dsInfo.m, RDFFormat.JSONLD_FLAT)
       Json.parse(out.toString)
@@ -143,11 +144,12 @@ object DsInfo {
 
   def getDsUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
 
-  def apply(spec: String, character: Character, ts: TripleStore): Future[DsInfo] = {
+  def apply(spec: String, character: Character, mapToPrefix:String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsUri(spec))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
+    if (mapToPrefix.trim.nonEmpty) m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.dataPost(uri.getURI, m).map(ok => new DsInfo(spec, ts))
   }
 

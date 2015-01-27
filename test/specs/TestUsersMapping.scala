@@ -54,7 +54,7 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val us = new UserStore(ts)
     await(us.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
     // push in a SKOS vocabulary
-    val info = await(DsInfo("gtaa_genre", DsInfo.CharacterSkos, ts))
+    val info = await(DsInfo("gtaa_genre", DsInfo.CharacterSkos, "", ts))
     val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
     val posted = await(ts.dataPostXMLFile(info.dsUri, skosFile))
     posted must be(true)
@@ -72,7 +72,7 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined must be(true)
     // create processed repo
-    val info = await(DsInfo("frans_hals", DsInfo.CharacterMapped, ts))
+    val info = await(DsInfo("frans_hals", DsInfo.CharacterMapped, "icn", ts))
     val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info.dsUri)
     var sourceFile = processedRepo.createFile
     val sourceOutput = writer(sourceFile)
