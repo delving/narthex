@@ -23,6 +23,7 @@ import harvest.Harvesting.{HarvestCron, HarvestType}
 import org.OrgActor.DatasetMessage
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.libs.json.{Json, Writes}
 import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
@@ -37,19 +38,18 @@ import scala.concurrent.duration._
 
 object DsInfo {
 
-  case class DICharacter(name: String) {
-    val uri = s"$NX_NAMESPACE$name"
-  }
-
-  val characterMapped = DICharacter("characterMapped")
-  val characterSkos = DICharacter("characterSkos")
-  val characterSkosified = DICharacter("characterSkosified")
 
   case class DIProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
   }
 
   val datasetActor = DIProp("datasetActor")
+
+  case class Character(name: String)
+
+  val CharacterMapped = Character("character-mapped")
+  val CharacterSkos = Character("character-skos")
+  val CharacterSkosified = Character("character-skosified")
   val datasetCharacter = DIProp("datasetCharacter")
 
   val datasetSpec = DIProp("datasetSpec")
@@ -128,17 +128,40 @@ object DsInfo {
          |SELECT ?spec
          |WHERE {
          |  GRAPH ?g {
-         |    ?s <${datasetSpec.uri}> ?spec
+         |    ?s <${datasetSpec.uri}> ?spec .
          |  }
          |}
          |ORDER BY ?spec
        """.stripMargin
-    ts.query(q).map{ list =>
+    ts.query(q).map { list =>
       list.map { entry =>
         val spec = entry("spec")
         new DsInfo(spec, ts)
       }
     }
+  }
+
+  def getDsUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
+
+  def apply(spec: String, character: Character, ts: TripleStore): Future[DsInfo] = {
+    val m = ModelFactory.createDefaultModel()
+    val uri = m.getResource(getDsUri(spec))
+    m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
+    m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
+    ts.dataPost(uri.getURI, m).map(ok => new DsInfo(spec, ts))
+  }
+
+  def apply(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
+    val dsUri = getDsUri(spec)
+    val q =
+      s"""
+         |ASK {
+         |   GRAPH <$dsUri> {
+         |       <$dsUri> <${datasetSpec.uri}> ?spec .
+         |   }
+         |}
+       """.stripMargin
+    ts.ask(q).map(answer => if (answer) Some(new DsInfo(spec, ts)) else None)
   }
 }
 
@@ -148,32 +171,18 @@ class DsInfo(val spec: String, ts: TripleStore) {
 
   def now: String = timeToString(new DateTime())
 
-  val datasetUri = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
+  val dsUri = getDsUri(spec)
 
   // could cache as well so that the get happens less
-  val futureModel = ts.dataGet(datasetUri).fallbackTo {
-    val m = ModelFactory.createDefaultModel()
-    val uri = m.getResource(datasetUri)
-    val propUri = m.getProperty(datasetSpec.uri)
-    m.add(uri, propUri, m.createLiteral(spec))
-    ts.dataPost(datasetUri, m).map(ok => m)
+  lazy val futureModel = ts.dataGet(dsUri)
+  futureModel.onFailure {
+    case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
   }
-
-  val m: Model = Await.result(futureModel, 20.seconds)
-
-  def create(datasetCharacterValue: DICharacter): Future[Model] = {
-    val datasetResource = m.getResource(datasetUri)
-    val characterResource = m.getResource(datasetCharacterValue.uri)
-    m.add(datasetResource, m.getProperty(datasetCharacter.uri), characterResource)
-    ts.dataPost(datasetUri, m).map(ok => m)
-  }
-
-  def exists: Boolean = getLiteralProp(datasetName).isDefined
+  lazy val m: Model = Await.result(futureModel, 20.seconds)
+  lazy val uri = m.getResource(dsUri)
 
   def getLiteralProp(prop: DIProp): Option[String] = {
-    val uri = m.getResource(datasetUri)
-    val propUri = m.getProperty(prop.uri)
-    val objects = m.listObjectsOfProperty(uri, propUri)
+    val objects = m.listObjectsOfProperty(uri, m.getProperty(prop.uri))
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
   }
 
@@ -181,22 +190,21 @@ class DsInfo(val spec: String, ts: TripleStore) {
 
   def getBooleanProp(prop: DIProp) = getLiteralProp(prop).exists(_ == "true")
 
-  def setLiteralProps(tuples: (DIProp, String)*): Future[Model] = {
-    val uri = m.getResource(datasetUri)
+  def setSingularLiteralProps(tuples: (DIProp, String)*): Future[Model] = {
     val propVal = tuples.map(t => (m.getProperty(t._1.uri), t._2))
     val sparqlPerProp = propVal.map { pv =>
       val propUri = pv._1
       s"""
-         |WITH <$datasetUri>
+         |WITH <$dsUri>
          |DELETE { 
-         |   <$uri> <$propUri> ?o 
+         |   <$dsUri> <$propUri> ?o .
          |}
          |INSERT { 
-         |   <$uri> <$propUri> "${pv._2}" 
+         |   <$dsUri> <$propUri> "${pv._2}" .
          |}
          |WHERE { 
          |   OPTIONAL {
-         |      <$uri> <$propUri> ?o
+         |      <$dsUri> <$propUri> ?o .
          |   } 
          |}
        """.stripMargin.trim
@@ -212,16 +220,15 @@ class DsInfo(val spec: String, ts: TripleStore) {
   }
 
   def removeLiteralProp(prop: DIProp): Future[Model] = {
-    val uri = m.getResource(datasetUri)
     val propUri = m.getProperty(prop.uri)
     val sparql =
       s"""
-         |WITH <$datasetUri>
+         |WITH <$dsUri>
          |DELETE {
-         |   <$uri> <$propUri> ?o
+         |   <$dsUri> <$propUri> ?o .
          |}
          |WHERE {
-         |   <$uri> <$propUri> ?o
+         |   <$dsUri> <$propUri> ?o .
          |}
        """.stripMargin
     ts.update(sparql).map { ok =>
@@ -230,20 +237,18 @@ class DsInfo(val spec: String, ts: TripleStore) {
     }
   }
 
-  def getUriProps(prop: DIProp): List[String] = {
-    val uri = m.getResource(datasetUri)
+  def getUriPropValueList(prop: DIProp): List[String] = {
     val propUri = m.getProperty(prop.uri)
     m.listObjectsOfProperty(uri, propUri).map(node => node.asResource().toString).toList
   }
 
-  def setUriProp(prop: DIProp, uriValue: String): Future[Model] = {
-    val uri = m.getResource(datasetUri)
+  def addUriProp(prop: DIProp, uriValue: String): Future[Model] = {
     val propUri = m.getProperty(prop.uri)
     val uriValueUri = m.getResource(uriValue)
     val sparql = s"""
          |INSERT DATA {
-         |   GRAPH <$datasetUri> {
-         |      <$uri> <$propUri> <$uriValueUri>
+         |   GRAPH <$dsUri> {
+         |      <$dsUri> <$propUri> <$uriValueUri> .
          |   }
          |}
        """.stripMargin.trim
@@ -254,13 +259,12 @@ class DsInfo(val spec: String, ts: TripleStore) {
   }
 
   def removeUriProp(prop: DIProp, uriValue: String): Future[Model] = futureModel.flatMap { m =>
-    val uri = m.getResource(datasetUri)
     val propUri = m.getProperty(prop.uri)
     val uriValueUri = m.getProperty(uriValue)
     val sparql =
       s"""
-         |DELETE DATA FROM <$datasetUri> {
-         |   <$uri> <$propUri> <$uriValueUri>
+         |DELETE DATA FROM <$dsUri> {
+         |   <$dsUri> <$propUri> <$uriValueUri> .
          |}
        """.stripMargin
     ts.update(sparql).map { ok =>
@@ -273,13 +277,13 @@ class DsInfo(val spec: String, ts: TripleStore) {
     val sparql =
       s"""
          |DELETE {
-         |   GRAPH <$datasetUri> {
-         |      <$datasetUri> ?p ?o
+         |   GRAPH <$dsUri> {
+         |      <$dsUri> ?p ?o .
          |   }
          |}
          |WHERE {
-         |   GRAPH <$datasetUri> {
-         |      <$datasetUri> ?p ?o
+         |   GRAPH <$dsUri> {
+         |      <$dsUri> ?p ?o .
          |   }
          |}
        """.stripMargin
@@ -290,44 +294,44 @@ class DsInfo(val spec: String, ts: TripleStore) {
 
   // from the old datasetdb
 
-  def setState(state: DsState) = setLiteralProps(state.prop -> now)
+  def setState(state: DsState) = setSingularLiteralProps(state.prop -> now)
 
   def removeState(state: DsState) = removeLiteralProp(state.prop)
 
-  def setError(message: String) = setLiteralProps(
+  def setError(message: String) = setSingularLiteralProps(
     datasetErrorMessage -> message,
     datasetErrorTime -> now
   )
 
-  def setRecordCount(count: Int) = setLiteralProps(datasetRecordCount -> count.toString)
+  def setRecordCount(count: Int) = setSingularLiteralProps(datasetRecordCount -> count.toString)
 
-  def setProcessedRecordCounts(validCount: Int, invalidCount: Int) = setLiteralProps(
+  def setProcessedRecordCounts(validCount: Int, invalidCount: Int) = setSingularLiteralProps(
     processedValid -> validCount.toString,
     processedInvalid -> invalidCount.toString
   )
 
-  def setHarvestInfo(harvestTypeEnum: HarvestType, url: String, dataset: String, prefix: String) = setLiteralProps(
+  def setHarvestInfo(harvestTypeEnum: HarvestType, url: String, dataset: String, prefix: String) = setSingularLiteralProps(
     harvestType -> harvestTypeEnum.name,
     harvestURL -> url,
     harvestDataset -> dataset,
     harvestPrefix -> prefix
   )
 
-  def setHarvestCron(harvestCron: HarvestCron) = setLiteralProps(
+  def setHarvestCron(harvestCron: HarvestCron) = setSingularLiteralProps(
     harvestPreviousTime -> timeToString(harvestCron.previous),
     harvestDelay -> harvestCron.delay.toString,
     harvestDelayUnit -> harvestCron.unit.toString
   )
 
-  def setPublication(publishOaiPmhString: String, publishIndexString: String, publishLoDString: String) = setLiteralProps(
+  def setPublication(publishOaiPmhString: String, publishIndexString: String, publishLoDString: String) = setSingularLiteralProps(
     publishOAIPMH -> publishOaiPmhString,
     publishIndex -> publishIndexString,
     publishLOD -> publishLoDString
   )
 
-  def setCategories(included: String) = setLiteralProps(categoriesInclude -> included)
+  def setCategories(included: String) = setSingularLiteralProps(categoriesInclude -> included)
 
-  def setMetadata(metadata: DsMetadata) = setLiteralProps(
+  def setMetadata(metadata: DsMetadata) = setSingularLiteralProps(
     datasetName -> metadata.name,
     datasetDescription -> metadata.description,
     datasetOwner -> metadata.owner,

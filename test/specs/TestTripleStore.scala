@@ -35,28 +35,28 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
   "The dataset info object should be able to interact with the store" in {
     cleanStart()
-    val info = new DsInfo("gumby", ts)
+    val info = await(DsInfo("gumby", CharacterSkos, ts))
     info.getLiteralProp(datasetMapToPrefix) must be(None)
-    val model = await(info.setLiteralProps(
+    val model = await(info.setSingularLiteralProps(
       datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
     ))
-    model.size() must be(3)
+    model.size() must be(4)
     info.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
     await(info.removeLiteralProp(datasetMapToPrefix))
     info.getLiteralProp(datasetMapToPrefix) must be(None)
-    model.size() must be(2)
+    model.size() must be(3)
 
-    await(info.setLiteralProps(datasetMapToPrefix -> "pfx2"))
+    await(info.setSingularLiteralProps(datasetMapToPrefix -> "pfx2"))
 
     // uri prop
-    info.getUriProps(skosField) must be(List.empty)
-    await(info.setUriProp(skosField, "http://purl.org/dc/elements/1.1/type"))
-    info.getUriProps(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
-    await(info.setUriProp(skosField, "http://purl.org/dc/elements/1.1/creator"))
+    info.getUriPropValueList(skosField) must be(List.empty)
+    await(info.addUriProp(skosField, "http://purl.org/dc/elements/1.1/type"))
+    info.getUriPropValueList(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
+    await(info.addUriProp(skosField, "http://purl.org/dc/elements/1.1/creator"))
 
     def testTwo(di: DsInfo) = {
-      val two = di.getUriProps(skosField)
+      val two = di.getUriPropValueList(skosField)
       two.size must be(2)
       two.contains("http://purl.org/dc/elements/1.1/type") must be(true)
       two.contains("http://purl.org/dc/elements/1.1/creator") must be(true)
@@ -66,14 +66,14 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     testTwo(info)
 
     // a fresh one that has to fetch anew
-    val fresh: DsInfo = new DsInfo("gumby", ts)
+    val fresh: DsInfo = await(DsInfo("gumby", CharacterSkosified, ts))
 
     fresh.getLiteralProp(datasetMapToPrefix) must be(Some("pfx2"))
     testTwo(fresh)
 
     //    println(Json.prettyPrint(dsInfoWrites.writes(fresh)))
 
-    val second = new DsInfo("pokey", ts)
+    val second = await(DsInfo("pokey", CharacterSkosified, ts))
 
     val infoList = await(listDsInfo(ts))
 

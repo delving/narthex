@@ -28,7 +28,8 @@ import thesaurus.ThesaurusDb
 import triplestore.TripleStore
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 
 object OrgRepo {
@@ -76,16 +77,14 @@ class OrgRepo(userHome: String, val orgId: String) {
     else
       new ThesaurusDb(conceptSchemeA, conceptSchemeB)
 
-  def datasetRepo(datasetName: String): DatasetRepo = {
-    val di = new DsInfo(datasetName, ts)
-    val dr = new DatasetRepo(this, di)
-    dr.mkdirs
-    dr
-  }
+  def datasetRepo(spec: String): DatasetRepo = datasetRepoOption(spec).getOrElse(
+    throw new RuntimeException(s"Expected $spec dataset to exist")
+  )
 
-  def datasetRepoOption(datasetName: String): Option[DatasetRepo] = {
-    val dr = datasetRepo(datasetName)
-    if (dr.dsInfo.exists) Some(dr) else None
+  def datasetRepoOption(spec: String): Option[DatasetRepo] = {
+    val futureInfoOpt = DsInfo(spec, ts)
+    val infoOpt = Await.result(futureInfoOpt, 5.seconds)
+    infoOpt.map(info => new DatasetRepo(this, info).mkdirs)
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(
@@ -107,7 +106,7 @@ class OrgRepo(userHome: String, val orgId: String) {
         if (dsi.getBooleanProp(DsInfo.categoriesInclude)) Some(dsi) else None
       }
     }
-    categoryDatasets.map{ dsList =>
+    categoryDatasets.map { dsList =>
       OrgActor.actor ! DatasetsCountCategories(dsList.map(_.spec))
     }
   }
