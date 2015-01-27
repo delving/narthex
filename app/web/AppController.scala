@@ -23,7 +23,6 @@ import akka.util.Timeout
 import dataset.DatasetActor._
 import dataset.DsInfo
 import dataset.DsInfo._
-import harvest.Harvesting
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
 import mapping.TermDb._
@@ -130,6 +129,22 @@ object AppController extends Controller with Security {
     }
   }
 
+  def setProperties(spec: String) = SecureAsync(parse.json) { session => request =>
+    DsInfo(spec, repo.ts).flatMap { dsInfoOpt =>
+      dsInfoOpt.map { dsInfo =>
+        val propertyList = (request.body \ "propertyList").as[List[String]]
+        Logger.info(s"setProperties $propertyList")
+        val diProps: List[DIProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
+        val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
+        val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
+        dsInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
+      } getOrElse {
+        Future(NotFound(Json.obj("problem" -> s"dataset $spec not found")))
+      }
+    }
+  }
+
+  // todo: just start the harvest, don't expect data!
   def harvest(spec: String) = Secure(parse.json) { session => request =>
     def optional(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
     def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
@@ -148,63 +163,6 @@ object AppController extends Controller with Security {
       } getOrElse {
         NotAcceptable(Json.obj("problem" -> s"unknown harvest type: ${optional("harvestType")}"))
       }
-    } catch {
-      case e: IllegalArgumentException =>
-        NotAcceptable(Json.obj("problem" -> e.getMessage))
-    }
-  }
-
-  def setHarvestCron(spec: String) = Secure(parse.json) { session => request =>
-    def required(tag: String) = (request.body \ tag).asOpt[String] getOrElse (throw new IllegalArgumentException(s"Missing $tag"))
-    try {
-      val datasetRepo = repo.datasetRepo(spec)
-      val cron = Harvesting.harvestCron(required("previous"), required("delay"), required("unit"))
-      Logger.info(s"harvest $cron")
-      datasetRepo.dsInfo.setHarvestCron(cron)
-      Ok
-    } catch {
-      case e: IllegalArgumentException =>
-        NotAcceptable(Json.obj("problem" -> e.getMessage))
-    }
-  }
-
-  def setMetadata(spec: String) = Secure(parse.json) { session => request =>
-    try {
-      def value(name: String) = (request.body \ name).asOpt[String].getOrElse("")
-      val datasetRepo = repo.datasetRepo(spec)
-      datasetRepo.dsInfo.setMetadata(DsMetadata(
-        name = value("name"),
-        description = value("description"),
-        owner = value("owner"),
-        language = value("language"),
-        rights = value("rights")
-      ))
-      Ok
-    } catch {
-      case e: IllegalArgumentException =>
-        NotAcceptable(Json.obj("problem" -> e.getMessage))
-    }
-  }
-
-  def setPublication(spec: String) = Secure(parse.json) { session => request =>
-    def boolParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
-    def stringParam(tag: String) = (request.body \ tag).asOpt[String] getOrElse ""
-    try {
-      val datasetRepo = repo.datasetRepo(spec)
-      datasetRepo.dsInfo.setPublication(boolParam("oaipmh"), boolParam("index"), boolParam("lod"))
-      Ok
-    } catch {
-      case e: IllegalArgumentException =>
-        NotAcceptable(Json.obj("problem" -> e.getMessage))
-    }
-  }
-
-  def setCategories(spec: String) = Secure(parse.json) { session => request =>
-    def param(tag: String) = (request.body \ tag).asOpt[String] getOrElse "false"
-    try {
-      val datasetRepo = repo.datasetRepo(spec)
-      datasetRepo.dsInfo.setCategories(param("included"))
-      Ok
     } catch {
       case e: IllegalArgumentException =>
         NotAcceptable(Json.obj("problem" -> e.getMessage))

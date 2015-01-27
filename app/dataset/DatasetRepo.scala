@@ -146,6 +146,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
     allZip.headOption
   }
 
+  // todo: get the harvest information from the dsInfo rather than as arguments
   def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String): Unit = {
     createSourceRepo(SourceFacts(harvestType))
     dsInfo.setHarvestInfo(harvestType, url, dataset, prefix)

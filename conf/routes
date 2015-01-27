@@ -25,11 +25,8 @@ GET         /narthex/app/datasets                                               
 GET         /narthex/app/prefixes                                               web.AppController.listPrefixes
 GET         /narthex/app/:spec/create/:character/:prefix                        web.AppController.create(spec, character, prefix)
 POST        /narthex/app/:spec/upload                                           web.AppController.upload(spec)
+POST        /narthex/app/:spec/set-properties                                   web.AppController.setProperties(spec)
 POST        /narthex/app/:spec/harvest                                          web.AppController.harvest(spec)
-POST        /narthex/app/:spec/set-harvest-cron                                 web.AppController.setHarvestCron(spec)
-POST        /narthex/app/:spec/set-metadata                                     web.AppController.setMetadata(spec)
-POST        /narthex/app/:spec/set-publication                                  web.AppController.setPublication(spec)
-POST        /narthex/app/:spec/set-categories                                   web.AppController.setCategories(spec)
 POST        /narthex/app/:spec/set-delimiter                                    web.AppController.setRecordDelimiter(spec)
 GET         /narthex/app/:spec/index                                            web.AppController.index(spec)
 GET         /narthex/app/:spec/dataset-info                                     web.AppController.datasetInfo(spec)

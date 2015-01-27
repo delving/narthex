@@ -88,40 +88,17 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                setMetadata: function (spec, metadata) {
-                    return app.setMetadata(spec).post(metadata).then(
+                setProperties: function (spec, payload) {
+                    return app.setProperties(spec).post(payload).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setPublication: function (spec, publication) {
-                    return app.setPublication(spec).post(publication).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                setCategories: function (spec, categories) {
-                    return app.setCategories(spec).post(categories).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
+                // todo: no harvestInfo!
                 harvest: function (spec, harvestInfo) {
                     return app.harvest(spec).post(harvestInfo).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                setHarvestCron: function (spec, harvestCron) {
-                    return app.setHarvestCron(spec).post(harvestCron).then(
                         function (response) {
                             return response.data;
                         },

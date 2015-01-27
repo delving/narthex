@@ -38,9 +38,11 @@ import scala.concurrent.duration._
 
 object DsInfo {
 
+  var allProps = Map.empty[String, DIProp]
 
   case class DIProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
+    allProps = allProps + (name -> this)
   }
 
   val datasetActor = DIProp("datasetActor")
@@ -324,14 +326,6 @@ class DsInfo(val spec: String, ts: TripleStore) {
     harvestDelay -> harvestCron.delay.toString,
     harvestDelayUnit -> harvestCron.unit.toString
   )
-
-  def setPublication(publishOaiPmhString: String, publishIndexString: String, publishLoDString: String) = setSingularLiteralProps(
-    publishOAIPMH -> publishOaiPmhString,
-    publishIndex -> publishIndexString,
-    publishLOD -> publishLoDString
-  )
-
-  def setCategories(included: String) = setSingularLiteralProps(categoriesInclude -> included)
 
   def setMetadata(metadata: DsMetadata) = setSingularLiteralProps(
     datasetName -> metadata.name,
