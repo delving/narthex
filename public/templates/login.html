@@ -99,8 +99,10 @@
                 <div class="widget-header">Actors</div>
                 <div class="widget-body">
                     <h4>Primary-Actor</h4>
-                    <span class="label label-success fa-2x"><i class="fa fa-user"></i> {{ user.username }}</span>
+                    <span class="label label-larger label-success"><i class="fa fa-user"/></i>  {{ user.username }}</span>
+
                     <hr/>
+
                     <h4>Create a new Sub-Actor</h4>
                     <div class="navbar navbar-default">
                         <form class="form-inline navbar-form">
@@ -115,15 +117,14 @@
                             <button type="submit" class="btn btn-primary" data-ng-click="addActor(newActor)">Create</button>
                         </form>
                     </div>
+
                     <div data-ng-show="errorMessage">
-                        <br/>
                         <span class="badge badge-warning">{{ errorMessage }}</span>
                     </div>
 
                     <div data-ng-show="actorList.length">
-                        <hr/>
                         <h5>Sub-Actors</h5>
-                        <span class="label label-info fa" data-ng-repeat="actor in actorList"><i class="fa fa-user"/></i> {{ actor }}</span>
+                        <span class="label label-info label-large" data-ng-repeat="actor in actorList"><i class="fa fa-user"/></i> {{ actor }}</span>
                     </div>
                 </div>
             </div>
