@@ -59,8 +59,8 @@ define(["angular"], function () {
             $scope.newDataset.enabled = $scope.newDataset.spec.length && $scope.newDataset.character;
         }
 
-        $scope.$watch("dataset.specTyped", checkNewEnabled);
-        $scope.$watch("dataset.character", checkNewEnabled);
+        $scope.$watch("newDataset.specTyped", checkNewEnabled);
+        $scope.$watch("newDataset.character", checkNewEnabled);
 
         function filterDatasets() {
             var filter = $scope.specFilter.trim();
