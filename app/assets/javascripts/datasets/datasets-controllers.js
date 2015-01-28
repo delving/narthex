@@ -119,7 +119,8 @@ define(["angular"], function () {
             dataset.edit = angular.copy(dataset);
             dataset.apiMappings = user.narthexAPI + '/' + dataset.datasetSpec + '/mappings';
 //            if (dataset.character) dataset.prefix = info.character.prefix;
-            // split the states into date and time
+//            split the states into date and time
+            var stateVisible = false;
             _.forEach(
                 [
                     'stateRaw', 'stateRawAnalyzed', 'stateSourced',
@@ -129,6 +130,7 @@ define(["angular"], function () {
                 function (stateName) {
                     var time = dataset[stateName];
                     if (time) {
+                        stateVisible = true;
                         var dt = time.time.split('T');
                         dataset[stateName] = {
                             d: dt[0],
@@ -137,6 +139,9 @@ define(["angular"], function () {
                     }
                 }
             );
+            if (!stateVisible) {
+                dataset.empty = true;
+            }
         };
 
 //        $scope.replaceDataset = function (dataset) {
@@ -211,7 +216,7 @@ define(["angular"], function () {
 
         ds.progressCheckerTimeout = $timeout(checkProgress, 1000 + Math.floor(Math.random() * 1000));
 
-        $scope.$watch("dataset", function(newDs) {
+        $scope.$watch("dataset", function (newDs) {
             ds = newDs;
             setUnchanged()
         });

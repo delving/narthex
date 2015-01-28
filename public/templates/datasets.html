@@ -97,6 +97,9 @@
         <div class="panel-body">
 
             <div data-ng-show="!dataset.progress" class="ds-states">
+                <div data-ng-show="dataset.empty">
+                    <div><strong>Empty</strong></div>
+                </div>
                 <div data-ng-show="dataset.stateRaw" class="ds-state">
                     <div><strong>Raw</strong></div>
                     <div>{{ dataset.stateRaw.d }}</div>

@@ -30,7 +30,7 @@ object PeriodicHarvest {
 
   def startTicker() = {
     val harvestTicker = Akka.system.actorOf(props(), "HarvestTicker")
-    Akka.system.scheduler.schedule(10.seconds, 10.seconds, harvestTicker, "tick")
+    Akka.system.scheduler.schedule(5.seconds, 5.minutes, harvestTicker, "tick")
   }
 
 }
