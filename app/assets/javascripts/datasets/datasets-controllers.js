@@ -78,16 +78,12 @@ define(["angular"], function () {
 
         datasetsService.listPrefixes().then(function (prefixes) {
             $scope.characters = _.map(prefixes, function (prefix) {
+                // for each prefix we should be able to accept a pre-mapped file
                 return {
                     title: "Mapped to '" + prefix.toUpperCase() + "' format",
                     code: "character-mapped",
                     prefix: prefix
                 };
-            });
-            $scope.characters.push({
-                title: "SKOS Vocabulary",
-                code: "character-skos",
-                prefix: ""
             });
         });
 

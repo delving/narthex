@@ -49,16 +49,16 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     await(us2.authenticate("third-wheel", "can i join")) must be(None)
   }
 
-  "A sample SKOS vocabulary should be loaded" in {
-    // check that the user is still there
-    val us = new UserStore(ts)
-    await(us.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
-    // push in a SKOS vocabulary
-    val info = await(DsInfo("gtaa_genre", DsInfo.CharacterSkos, "", ts))
-    val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-    val posted = await(ts.dataPostXMLFile(info.dsUri, skosFile))
-    posted must be(true)
-  }
+//  "A sample SKOS vocabulary should be loaded" in {
+//    // check that the user is still there
+//    val us = new UserStore(ts)
+//    await(us.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
+//    // push in a SKOS vocabulary
+//    val info = await(DsInfo("gtaa_genre", DsInfo.CharacterSkos, "", ts))
+//    val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
+//    val posted = await(ts.dataPostXMLFile(info.dsUri, skosFile))
+//    posted must be(true)
+//  }
 
   "A dataset should be loaded" in {
     // prepare for reading and mapping

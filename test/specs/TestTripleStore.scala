@@ -35,8 +35,8 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
   "The dataset info object should be able to interact with the store" in {
     cleanStart()
-    val info = await(DsInfo("gumby-set", CharacterSkos, "", ts))
-    info.getLiteralProp(datasetMapToPrefix) must be(None)
+    val info = await(DsInfo("gumby-set", CharacterMapped, "gfx", ts))
+    info.getLiteralProp(datasetMapToPrefix) must be(Some("gfx"))
     val model = await(info.setSingularLiteralProps(
       datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
@@ -73,7 +73,7 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
     //    println(Json.prettyPrint(dsInfoWrites.writes(fresh)))
 
-    val second = await(DsInfo("pokey-set", CharacterSkosified, "", ts))
+    val second = await(DsInfo("pokey-set", CharacterMapped, "", ts))
 
     val infoList = await(listDsInfo(ts))
 

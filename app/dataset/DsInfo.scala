@@ -50,9 +50,7 @@ object DsInfo {
   case class Character(name: String)
 
   val CharacterMapped = Character("character-mapped")
-  val CharacterSkos = Character("character-skos")
-  val CharacterSkosified = Character("character-skosified")
-  def getCharacter(characterString: String) = List(CharacterMapped, CharacterSkos, CharacterSkosified).find(_.name == characterString)
+  def getCharacter(characterString: String) = List(CharacterMapped).find(_.name == characterString)
   val datasetCharacter = DIProp("datasetCharacter")
 
   val datasetSpec = DIProp("datasetSpec")
@@ -151,7 +149,7 @@ object DsInfo {
     val uri = m.getResource(getDsUri(spec))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
-    if (mapToPrefix.trim.nonEmpty) m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
+    if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.dataPost(uri.getURI, m).map(ok => new DsInfo(spec, ts))
   }
 
