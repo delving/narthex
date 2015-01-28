@@ -12,7 +12,7 @@
     <div class="actions">
         <form class="form-inline">
             <div class="form-group">
-                <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
+                <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New SKOS Dataset</a>
             </div>
         </form>
     </div>
@@ -66,11 +66,11 @@
 <script type="text/ng-template" id="skos-entry.html">
     <div data-ng-controller="SkosListEntryCtrl" class="panel panel-primary">
         <div class="panel-heading" data-ng-click="expanded = !expanded">
-            <i class="fa fa-fw fa-book"></i>
+            <i class="fa fa-book"></i>
             <span class="name">{{ skos.skosSpec }}</span>
         </div>
 
-        <div data-ng-if="expanded">
+        <div data-ng-if="expanded" class="panel-body">
             <div class="tabbable dataset-tabs">
                 <ul class="nav nav-tabs" role="tablist">
                     <li ng-class="{'active':tabOpen === 'metadata'}" >
@@ -102,7 +102,7 @@
                 <label for="meta_owner">Owner</label>
                 <input id="meta_owner" class="form-control input-sm" data-ng-model="skos.edit.skosOwner"/>
             </div>
-            <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()" data-ng-disabled="unchangedMetadata">
+            <button type="button" class="btn btn-success btn-sm pull-right" data-ng-click="setMetadata()" data-ng-disabled="unchangedMetadata">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
