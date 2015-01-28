@@ -51,7 +51,6 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
 
   import context.dispatcher
 
-  val db = datasetRepo.datasetDb
   val log = Logger
   var tempFile = File.createTempFile("narthex-harvest", ".zip")
   val zip = new ZipOutputStream(new FileOutputStream(tempFile))

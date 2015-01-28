@@ -2,9 +2,10 @@ package specs
 
 import java.io.File
 
-import dataset.DatasetInfo._
-import dataset.{DatasetInfo, ProcessedRepo}
+import dataset.DsInfo._
+import dataset.{DsInfo, ProcessedRepo}
 import org.scalatestplus.play._
+import play.api.libs.json.Json
 import play.api.test.Helpers._
 import triplestore.TripleStore
 
@@ -34,28 +35,28 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
   "The dataset info object should be able to interact with the store" in {
     cleanStart()
-    val info = new DatasetInfo("gumby", ts)
-    info.getLiteralProp(datasetMapTo) must be(None)
-    val model = await(info.setLiteralProps(
-      datasetMapTo -> "pfx",
+    val info = await(DsInfo("gumby-set", CharacterSkos, "", ts))
+    info.getLiteralProp(datasetMapToPrefix) must be(None)
+    val model = await(info.setSingularLiteralProps(
+      datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
     ))
+    model.size() must be(4)
+    info.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
+    await(info.removeLiteralProp(datasetMapToPrefix))
+    info.getLiteralProp(datasetMapToPrefix) must be(None)
     model.size() must be(3)
-//    import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
-//    RDFDataMgr.write(System.out, model, RDFFormat.NTRIPLES_UTF8)
-    info.getLiteralProp(datasetMapTo) must be(Some("pfx"))
-    await(info.removeLiteralProp(datasetMapTo))
-    info.getLiteralProp(datasetMapTo) must be(None)
-    model.size() must be(2)
+
+    await(info.setSingularLiteralProps(datasetMapToPrefix -> "pfx2"))
 
     // uri prop
-    info.getUriProps(skosField) must be(List.empty)
-    await(info.setUriProp(skosField, "http://purl.org/dc/elements/1.1/type"))
-    info.getUriProps(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
-    await(info.setUriProp(skosField, "http://purl.org/dc/elements/1.1/creator"))
+    info.getUriPropValueList(skosField) must be(List.empty)
+    await(info.addUriProp(skosField, "http://purl.org/dc/elements/1.1/type"))
+    info.getUriPropValueList(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
+    await(info.addUriProp(skosField, "http://purl.org/dc/elements/1.1/creator"))
 
-    def testTwo(di: DatasetInfo) = {
-      val two = di.getUriProps(skosField)
+    def testTwo(di: DsInfo) = {
+      val two = di.getUriPropValueList(skosField)
       two.size must be(2)
       two.contains("http://purl.org/dc/elements/1.1/type") must be(true)
       two.contains("http://purl.org/dc/elements/1.1/creator") must be(true)
@@ -65,7 +66,20 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     testTwo(info)
 
     // a fresh one that has to fetch anew
-    testTwo(new DatasetInfo("gumby", ts))
+    val fresh: DsInfo = await(DsInfo("gumby-set", ts)).get
+
+    fresh.getLiteralProp(datasetMapToPrefix) must be(Some("pfx2"))
+    testTwo(fresh)
+
+    //    println(Json.prettyPrint(dsInfoWrites.writes(fresh)))
+
+    val second = await(DsInfo("pokey-set", CharacterSkosified, "", ts))
+
+    val infoList = await(listDsInfo(ts))
+
+    infoList.foreach { info =>
+      println(Json.prettyPrint(dsInfoWrites.writes(info)))
+    }
   }
 
 }

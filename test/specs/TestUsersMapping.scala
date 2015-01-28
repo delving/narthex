@@ -2,7 +2,7 @@ package specs
 
 import java.io.File
 
-import dataset.{DatasetInfo, ProcessedRepo, SipRepo, SourceRepo}
+import dataset.{DsInfo, ProcessedRepo, SipRepo, SourceRepo}
 import mapping.Skosification
 import org.UserStore
 import org.UserStore.NXActor
@@ -23,7 +23,11 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     countGraphs must be(0)
   }
 
-  def countGraphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")).size
+  def countGraphs = {
+    val graphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")).map(m => m("g"))
+    println(graphs.mkString("\n"))
+    graphs.size
+  }
 
   "The first user should authenticate and become administrator" in {
     cleanStart()
@@ -50,9 +54,9 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val us = new UserStore(ts)
     await(us.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
     // push in a SKOS vocabulary
-    val info = new DatasetInfo("gtaa_genre", ts)
+    val info = await(DsInfo("gtaa_genre", DsInfo.CharacterSkos, "", ts))
     val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-    val posted = await(ts.dataPostXMLFile(info.datasetUri, skosFile))
+    val posted = await(ts.dataPostXMLFile(info.dsUri, skosFile))
     posted must be(true)
   }
 
@@ -68,8 +72,8 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined must be(true)
     // create processed repo
-    val info = new DatasetInfo("frans_hals", ts)
-    val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info.datasetUri)
+    val info = await(DsInfo("frans_hals", DsInfo.CharacterMapped, "icn", ts))
+    val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info.dsUri)
     var sourceFile = processedRepo.createFile
     val sourceOutput = writer(sourceFile)
     // fill processed repo by mapping records
@@ -104,8 +108,9 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
 
   "Skosification must work" in {
     // mark a field as skosified
-    val info = new DatasetInfo("frans_hals", ts)
-    await(info.setUriProp(DatasetInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
+    countGraphs must be(8)
+    val info = await(DsInfo("frans_hals", ts)).get
+    await(info.addUriProp(DsInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
 
     val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
 

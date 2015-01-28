@@ -17,7 +17,6 @@
 package dataset
 
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
-import org.OrgActor.DatasetMessage
 import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
 import triplestore.TripleStore
@@ -71,7 +70,7 @@ object DatasetInfo {
 
 }
 
-class DatasetInfo(val name: String, client: TripleStore) {
+class DatasetInfo(name: String, client: TripleStore) {
 
   import dataset.DatasetInfo._
 
@@ -181,8 +180,4 @@ class DatasetInfo(val name: String, client: TripleStore) {
       m
     }
   }
-
-  def createMessage(payload: AnyRef, question: Boolean=false) = DatasetMessage(name, payload, question)
-
-  override def toString = name
 }

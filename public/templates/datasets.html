@@ -24,155 +24,199 @@
 </div>
 
 <div class="file-list" data-ng-init="breadcrumbs.dataset=''">
-    <div data-ng-if="!files.length" class="col-md-12">
-        <h4>No datasets yet</h4>
+    <div data-ng-if="!datasets.length" class="col-md-12">
+        <h4>No datasets</h4>
     </div>
-    <div ng-repeat="file in filteredFiles" class="file-block col-lg-6">
+    <div ng-repeat="dataset in filteredDatasets" class="file-block col-lg-6">
         <div data-ng-include="'dataset-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">
-        <div data-ng-include="'new-file.html'">new file</div>
+        <div data-ng-include="'new-dataset.html'">new dataset</div>
     </div>
 </div>
+
+<script type="text/ng-template" id="new-dataset.html">
+    <div class="aside-backdrop am-fade" style=""></div>
+    <div class="aside right">
+        <div class="aside-dialog">
+            <div class="aside-content">
+                <div class="aside-header">
+                    Create a new dataset:
+                </div>
+                <div class="aside-body">
+                    <form name="form" class="form">
+                        <fieldset>
+                            <div class="form-group">
+                                <label for="new-name">Dataset Short Name</label>
+                                <input id="new-name" class="form-control" data-ng-model="newDataset.specTyped" placeholder="spec" required autofocus/>
+                            </div>
+                            <div>
+                                <label for="new-format">Character</label>
+                                <div id="new-format">
+                                    <span data-ng-repeat="ch in characters" style="padding: 5px">
+                                        <input type="radio" name="character" data-ng-model="newDataset.character" data-ng-value="ch"> <span>{{ ch.title }}</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <hr/>
+                            <div class="form-group">
+                                <span typ="button" class="btn btn-success" data-ng-class="{ 'disabled': !newDataset.enabled }" data-ng-click="createDataset()">
+                                    <i class="fa fa-plus"></i> <span>Create</span>
+                                    <span>"{{ newDataset.spec }}"</span>
+                                </span>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+                <div class="aside-footer">
+                    <button type="button" class="btn btn-default" data-ng-click="cancelNewFile()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
 
 <script type="text/ng-template" id="dataset-entry.html">
 
     <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary">
 
-        <div class="panel-heading" data-ng-click="file.expanded = !file.expanded">
+        <div class="panel-heading" data-ng-click="expanded = !expanded">
 
                 <i class="fa fa-fw {{ getIcon() }}"></i>
 
-                <span class="name">{{ file.datasetName }}</span>
+                <span class="name">{{ dataset.datasetSpec }}</span>
 
-                <span data-ng-if="file.error" class="label label-danger">
-                    <i class="fa fa-exclamation-circle"></i> {{ file.error }}
+                <span data-ng-if="dataset.datasetError" class="label label-danger">
+                    <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetError }}
                 </span>
 
-                <span data-ng-show="file.info.recordCount" class="count pull-right">{{ file.info.recordCount.count }}</span>
+                <span data-ng-show="dataset.recordCount" class="count pull-right">{{ dataset.recordCount }}</span>
 
         </div>
 
         <div class="panel-body">
 
-            <div data-ng-show="!file.progress" class="ds-states">
-                <div data-ng-show="file.info.rawState" class="ds-state">
+            <div data-ng-show="!dataset.progress" class="ds-states">
+                <div data-ng-show="dataset.empty">
+                    <div><strong>Empty</strong></div>
+                </div>
+                <div data-ng-show="dataset.stateRaw" class="ds-state">
                     <div><strong>Raw</strong></div>
-                    <div>{{ file.info.rawState.d }}</div>
-                    <div>{{ file.info.rawState.t }}</div>
+                    <div>{{ dataset.stateRaw.d }}</div>
+                    <div>{{ dataset.stateRaw.t }}</div>
                 </div>
-                <div data-ng-show="file.info.rawAnalyzedState" class="ds-state">
+                <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state">
                     <div><strong>Raw Analyzed</strong></div>
-                    <div>{{ file.info.rawAnalyzedState.d }}</div>
-                    <div>{{ file.info.rawAnalyzedState.t }}</div>
+                    <div>{{ dataset.stateRawAnalyzed.d }}</div>
+                    <div>{{ dataset.stateRawAnalyzed.t }}</div>
                 </div>
-                <div data-ng-show="file.info.sourcedState" class="ds-state">
+                <div data-ng-show="dataset.stateSourced" class="ds-state">
                     <div><strong>Sourced</strong></div>
-                    <div>{{ file.info.sourcedState.d }}</div>
-                    <div>{{ file.info.sourcedState.t }}</div>
+                    <div>{{ dataset.stateSourced.d }}</div>
+                    <div>{{ dataset.stateSourced.t }}</div>
                 </div>
-                <div data-ng-show="file.info.mappableState" class="ds-state">
+                <div data-ng-show="dataset.stateMappable" class="ds-state">
                     <div><strong>Mappable</strong></div>
-                    <div>{{ file.info.mappableState.d }}</div>
-                    <div>{{ file.info.mappableState.t }}</div>
+                    <div>{{ dataset.stateMappable.d }}</div>
+                    <div>{{ dataset.stateMappable.t }}</div>
                     <div><a href="{{sipCreatorLink}}" class="btn btn-sm btn-default"><i class="fa fa-download"></i> SIPCreator</a></div>
                 </div>
-                <div data-ng-show="file.info.processableState" class="ds-state">
+                <div data-ng-show="dataset.stateProcessable" class="ds-state">
                     <div><strong>Processable</strong></div>
-                    <div>{{ file.info.processableState.d }}</div>
-                    <div>{{ file.info.processableState.t }}</div>
+                    <div>{{ dataset.stateProcessable.d }}</div>
+                    <div>{{ dataset.stateProcessable.t }}</div>
                     <div>
                         <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
                             <i class="fa fa-cogs"></i> <span>Process</span>
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="file.info.processedState" class="ds-state">
+                <div data-ng-show="dataset.stateProcessed" class="ds-state">
                     <div><strong>Processed</strong></div>
-                    <div>{{ file.info.processedState.d }}</div>
-                    <div>{{ file.info.processedState.t }}</div>
+                    <div>{{ dataset.stateProcessed.d }}</div>
+                    <div>{{ dataset.stateProcessed.t }}</div>
                     <div>
                         <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
                             <i class="fa fa-cogs"></i> <span>Analyze</span>
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="file.info.analyzedState" class="ds-state">
+                <div data-ng-show="dataset.stateAnalyzed" class="ds-state">
                     <div><strong>Analyzed</strong></div>
-                    <div>{{ file.info.analyzedState.d }}</div>
-                    <div>{{ file.info.analyzedState.t }}</div>
+                    <div>{{ dataset.stateAnalyzed.d }}</div>
+                    <div>{{ dataset.stateAnalyzed.t }}</div>
                     <div>
                         <button class="btn btn-sm btn-primary" data-ng-click="viewFile()">
                             <i class="fa fa-eye"></i> <span>Explore</span>
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="file.info.savedState" class="ds-state">
+                <div data-ng-show="dataset.stateSaved" class="ds-state">
                     <div><strong>Saved</strong></div>
-                    <div>{{ file.info.savedState.d }}</div>
-                    <div>{{ file.info.savedState.t }}</div>
+                    <div>{{ dataset.stateSaved.d }}</div>
+                    <div>{{ dataset.stateSaved.t }}</div>
                 </div>
             </div>
 
-            <div data-ng-if="file.progress">
+            <div data-ng-if="dataset.progress">
                 <div class="input-group">
-                    <progressbar class="form-control-feedback" animate="true" value="file.progress.count" max="100">{{ file.progress.message }}</progressbar>
+                    <progressbar class="form-control-feedback" animate="true" value="dataset.progress.count" max="100">{{ dataset.progress.message }}</progressbar>
                     <div class="input-group-btn">
-                        <button class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="file.progress">
+                        <button class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="dataset.progress">
                             <i class="fa fa-trash-o"></i> <span>Interrupt</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div data-ng-if="file.expanded">
+            <div data-ng-if="expanded">
 
                 <hr />
 
-                <h4 data-ng-show="file.info.metadata.name">
-                    <span>"{{ file.info.metadata.name }}"</span>
-                    <span data-ng-show="file.info.metadata.dataProvider">from "{{ file.info.metadata.dataProvider }}": </span>
+                <h4 data-ng-show="dataset.metadata.name">
+                    <span>"{{ dataset.metadata.name }}"</span>
+                    <span data-ng-show="dataset.metadata.dataProvider">from "{{ dataset.metadata.dataProvider }}": </span>
                 </h4>
 
                 <div class="tabbable dataset-tabs">
 
                     <ul class="nav nav-tabs" role="tablist">
-                        <li ng-class="{'active':file.tabOpen === 'metadata'}" >
-                            <a href role="tab" data-ng-click="file.tabOpen = 'metadata'">Metadata</a>
+                        <li ng-class="{'active':tabOpen === 'metadata'}" >
+                            <a href role="tab" data-ng-click="tabOpen = 'metadata'">Metadata</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'drop'}" data-ng-show="dropSupported">
-                            <a href role="tab" data-ng-click="file.tabOpen = 'drop'">File Drop</a>
+                        <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="dropSupported">
+                            <a href role="tab" data-ng-click="tabOpen = 'drop'">File Drop</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'harvest'}">
-                            <a href role="tab" data-ng-click="file.tabOpen ='harvest'">Harvest</a>
+                        <li ng-class="{'active':tabOpen === 'harvest'}">
+                            <a href role="tab" data-ng-click="tabOpen ='harvest'">Harvest</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'harvest-cron'}" data-ng-show="file.info.harvest.url && file.info.sourcedState">
-                            <a href role="tab" data-ng-click="file.tabOpen = 'harvest-cron'">Scheduled Harvest</a>
+                        <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="dataset.harvestType && dataset.stateSourced">
+                            <a href role="tab" data-ng-click="tabOpen = 'harvest-cron'">Scheduled Harvest</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'publication'}">
-                            <a href role="tab" data-ng-click="file.tabOpen = 'publication'">Publication</a>
+                        <li ng-class="{'active':tabOpen === 'publication'}">
+                            <a href role="tab" data-ng-click="tabOpen = 'publication'">Publication</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'categories'}" data-ng-show="categoriesEnabled">
-                            <a href role="tab" data-ng-click="file.tabOpen ='categories'">Categories</a>
+                        <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="categoriesEnabled">
+                            <a href role="tab" data-ng-click="tabOpen ='categories'">Categories</a>
                         </li>
-                        <li ng-class="{'active':file.tabOpen === 'info'}">
-                            <a href role="tab" data-ng-click="file.tabOpen ='info'">Info</a>
-                        </li>
-                        <li ng-class="{'active':file.tabOpen === 'sip-zip'}" data-ng-show="file.info.sipFacts">
-                            <a href role="tab" data-ng-click="file.tabOpen = 'sip-zip'">SIP Files</a>
-                        </li>
+                        <!--<li ng-class="{'active':tabOpen === 'info'}">-->
+                            <!--<a href role="tab" data-ng-click="tabOpen ='info'">Info</a>-->
+                        <!--</li>-->
+                        <!--<li ng-class="{'active':tabOpen === 'sip-zip'}" data-ng-show="dataset.sipFacts">-->
+                            <!--<a href role="tab" data-ng-click="tabOpen = 'sip-zip'">SIP Files</a>-->
+                        <!--</li>-->
                     </ul>
 
                     <div class="tab-content">
-                        <div ng-switch="file.tabOpen">
+                        <div ng-switch="tabOpen">
                             <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
                             <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>
                             <div ng-switch-when="harvest"><div data-ng-include="'harvest-form.html'">harvest form</div></div>
                             <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
                             <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
                             <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
-                            <div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>
-                            <div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>
+                            <!--<div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>-->
+                            <!--<div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>-->
                         </div>
                     </div>
                 </div>
@@ -188,29 +232,24 @@
         <fieldset>
             <div class="form-group">
                 <label for="meta_name">Dataset Name</label>
-                <input id="meta_name" class="form-control input-sm" data-ng-model="file.info.metadata.name"/>
+                <input id="meta_name" class="form-control input-sm" data-ng-model="dataset.edit.datasetName"/>
             </div>
             <div class="form-group">
                 <label for="meta_description">Description</label>
-                <input id="meta_description" class="form-control input-sm" data-ng-model="file.info.metadata.description"/>
+                <input id="meta_description" class="form-control input-sm" data-ng-model="dataset.edit.datasetDescription"/>
             </div>
             <div class="form-group">
-                <label for="meta_owner">Provider or Owner</label>
-                <input id="meta_owner" class="form-control input-sm" data-ng-model="file.info.metadata.provider"/>
-            </div>
-            <div class="form-group">
-                <label for="meta_provider">Data Provider</label>
-                <input id="meta_provider" class="form-control input-sm" data-ng-model="file.info.metadata.dataProvider"/>
+                <label for="meta_owner">Owner</label>
+                <input id="meta_owner" class="form-control input-sm" data-ng-model="dataset.edit.datasetOwner"/>
             </div>
             <div class="form-group">
                 <label for="meta_language">Language</label>
-                <input id="meta_language" class="form-control input-sm" data-ng-model="file.info.metadata.language"/>
+                <input id="meta_language" class="form-control input-sm" data-ng-model="dataset.edit.datasetLanguage"/>
             </div>
             <div class="form-group">
                 <label for="meta_rights">Rights</label>
-                <input id="meta_rights" class="form-control input-sm" data-ng-model="file.info.metadata.rights"/>
+                <input id="meta_rights" class="form-control input-sm" data-ng-model="dataset.edit.datasetRights"/>
             </div>
-            <!--todo: make this enabled whenever fields are different, otherwise not-->
             <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()" data-ng-disabled="unchangedMetadata">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
@@ -219,68 +258,18 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="sip-zip.html">
-    <ul class="sip-files">
-        <li data-ng-repeat="sip in sipFiles">
-            <span data-ng-class="{ 'latest': $index == 0}">{{ sip }}</span>
-        </li>
-    </ul>
-</script>
-
-<script type="text/ng-template" id="new-file.html">
-    <div class="aside-backdrop am-fade" style=""></div>
-    <div class="aside right">
-        <div class="aside-dialog">
-            <div class="aside-content">
-                <div class="aside-header">
-                    Create a new file:
-                </div>
-                <div class="aside-body">
-                    <form name="form" class="form">
-                        <fieldset>
-                            <div class="form-group">
-                                <label for="new-name">Dataset Name</label>
-                                <input id="new-name" class="form-control" data-ng-model="dataset.name" placeholder="name" required autofocus/>
-                            </div>
-                            <div>
-                                <label for="new-format">Metadata Format</label>
-                                <div id="new-format">
-                                    <span data-ng-repeat="prefix in prefixes" style="padding: 5px">
-                                        <input type="radio" name="prefix" data-ng-model="dataset.prefix" data-ng-value="prefix"> <span>{{ prefix }}</span>
-                                    </span>
-                                </div>
-                            </div>
-                            <hr/>
-                            <div class="form-group">
-                                <span typ="button" class="btn btn-success" data-ng-class="{ 'disabled': !dataset.validName }" data-ng-click="createDataset()">
-                                    <i class="fa fa-plus"></i> <span>Create</span>
-                                    <span>"{{ dataset.validName }}"</span>
-                                </span>
-                            </div>
-                        </fieldset>
-                    </form>
-                </div>
-                <div class="aside-footer">
-                    <button type="button" class="btn btn-default" data-ng-click="cancelNewFile()">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</script>
-
 <script type="text/ng-template" id="drop-file.html">
     <div>
-        <div class="file-drop col-md-12" ng-file-drop="file.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
-            <span data-ng-show="!(file.prefix && file.prefix.length)">Prefix required</span>
-            <span data-ng-show="file.prefix && file.prefix.length">Drag and drop your xml source or SIP file into this area</span>
-            <div class="img-holder" data-ng-show="file.uploading">
+        <div class="file-drop col-md-12" ng-file-drop="dataset.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
+            <span>Drag and drop your xml source or SIP file into this area</span>
+            <div class="img-holder" data-ng-show="dataset.uploading">
                 <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
                 <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
                 <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
             </div>
-            <div data-ng-if="file.uploadPercent">
-                <progressbar class="progress-striped active" animate="true" value="file.uploadPercent" max="100" type="success">
-                    <b>{{ file.uploadPercent }}%</b>
+            <div data-ng-if="dataset.uploadPercent">
+                <progressbar class="progress-striped active" animate="true" value="dataset.uploadPercent" max="100" type="success">
+                    <b>{{ dataset.uploadPercent }}%</b>
                 </progressbar>
             </div>
         </div>
@@ -293,39 +282,43 @@
             <div class="form-group">
                 <label for="harvest_type">Harvest Server Type</label>
                 <div id="harvest_type" class="form-control">
-                    <input type="radio" ng-model="file.info.harvest.harvestType" value="pmh">
+                    <input type="radio" ng-model="dataset.edit.harvestType" value="pmh">
                     <span>OAI-PMH (record)</span>
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    <input type="radio" ng-model="file.info.harvest.harvestType" value="pmh-rec">
+                    <input type="radio" ng-model="dataset.edit.harvestType" value="pmh-rec">
                     <span>OAI-PMH (fields)</span>
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    <input type="radio" ng-model="file.info.harvest.harvestType" value="adlib">
+                    <input type="radio" ng-model="dataset.edit.harvestType" value="adlib">
                     <span>AdLib API</span>
                 </div>
             </div>
             <div class="form-group">
                 <label for="harv_url">Server URL</label>
-                <input id="harv_url" class="form-control" data-ng-model="file.info.harvest.url" placeholder="http://..." required/>
+                <input id="harv_url" class="form-control" data-ng-model="dataset.edit.harvestURL" placeholder="http://..." required/>
             </div>
             <div class="form-group">
                 <label for="harv_set">Server Dataset</label>
-                <input id="harv_set" class="form-control" data-ng-model="file.info.harvest.dataset" placeholder="dataset"/>
+                <input id="harv_set" class="form-control" data-ng-model="dataset.edit.harvestDataset" placeholder="dataset"/>
             </div>
-            <div class="form-group" data-ng-show="file.info.harvest.harvestType != 'adlib'">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'adlib'">
                 <label for="harv_prefix">Metadata Prefix</label>
-                <input id="harv_prefix" class="form-control" data-ng-model="file.info.harvest.prefix" placeholder="prefix" required/>
+                <input id="harv_prefix" class="form-control" data-ng-model="dataset.edit.harvestPrefix" placeholder="prefix" required/>
             </div>
-            <div class="form-group" data-ng-show="file.info.harvest.harvestType == 'adlib'">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'adlib'">
                 <label for="harv_search">Search</label>
-                <input id="harv_search" class="form-control" data-ng-model="file.info.harvest.search" placeholder="search" required/>
+                <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
             </div>
-            <button typ="button" class="btn btn-success" data-ng-click="startHarvest()">
-                <i class="fa fa-refresh"></i>
-                <span>Harvest</span>
-                <span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH (record)</span>
-                <span data-ng-show="harvest.harvestType == 'pmh-rec'">from OAI-PMH (fields)</span>
-                <span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>
+            <button type="button" class="btn btn-success" data-ng-click="setHarvest()" data-ng-disabled="unchangedHarvest">
+                <i class="fa fa-check-circle"></i>
+                <span>Save</span>
             </button>
+            <!--<button typ="button" class="btn btn-success" data-ng-click="startHarvest()">-->
+                <!--<i class="fa fa-refresh"></i>-->
+                <!--<span>Harvest</span>-->
+                <!--<span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH (record)</span>-->
+                <!--<span data-ng-show="harvest.harvestType == 'pmh-rec'">from OAI-PMH (fields)</span>-->
+                <!--<span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>-->
+            <!--</button>-->
         </fieldset>
     </form>
 </script>
@@ -335,15 +328,15 @@
         <fieldset>
             <div class="form-group">
                 <label for="hc_prev">Previous</label>
-                <input id="hc_prev" class="form-control" data-ng-model="file.info.harvestCron.previous"/>
+                <input id="hc_prev" class="form-control" data-ng-model="dataset.edit.harvestPreviousTime"/>
             </div>
             <div class="form-group">
                 <label for="hc_delay">Delay</label>
-                <input id="hc_delay" class="form-control" data-ng-model="file.info.harvestCron.delay"/>
+                <input id="hc_delay" class="form-control" data-ng-model="dataset.edit.harvestDelay"/>
             </div>
             <div class="form-group">
                 <label for="hc_unit">Unit</label>
-                <input id="hc_unit" class="form-control" data-ng-model="file.info.harvestCron.unit"/>
+                <input id="hc_unit" class="form-control" data-ng-model="dataset.edit.harvestDelayUnit"/>
             </div>
             <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()" data-ng-disabled="unchangedHarvestCron">
                 <i class="fa fa-check-circle"></i>
@@ -358,20 +351,20 @@
         <fieldset>
             <div class="checkbox">
                 <label for="pub_pmh">Publish via OAI-PMH
-                    <input id="pub_pmh" type="checkbox" data-ng-model="file.info.publication.oaipmh" ng-true-value="'true'" ng-false-value="'false'"/>
+                    <input id="pub_pmh" type="checkbox" data-ng-model="dataset.edit.publishOAIPMH" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
             <div class="checkbox">
                 <label for="pub_index">Publish in the Index
-                    <input id="pub_index" type="checkbox" data-ng-model="file.info.publication.index" ng-true-value="'true'" ng-false-value="'false'"/>
+                    <input id="pub_index" type="checkbox" data-ng-model="dataset.edit.publishIndex" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
             <div class="checkbox">
                 <label for="pub_lod">Publish as Linked Open Data
-                    <input id="pub_lod" type="checkbox" data-ng-model="file.info.publication.lod" ng-true-value="'true'" ng-false-value="'false'"/>
+                    <input id="pub_lod" type="checkbox" data-ng-model="dataset.edit.publishLOD" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
-            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setPublication()" data-ng-disabled="unchangedPublication">
+            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setPublish()" data-ng-disabled="unchangedPublish">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
@@ -384,7 +377,7 @@
         <fieldset>
             <div class="checkbox">
                 <label for="cat">Include in Category Monitor Statistics
-                    <input id="cat" type="checkbox" data-ng-model="file.info.categories.included" ng-true-value="'true'" ng-false-value="'false'"/>
+                    <input id="cat" type="checkbox" data-ng-model="dataset.edit.categoriesIncluded" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
             <button typ="button" class="btn btn-success btn-sm"  data-ng-click="setCategories()" data-ng-disabled="unchangedCategories">
@@ -395,40 +388,48 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="info.html">
-    <div class="file-info-harvest" data-ng-show="nonEmpty(file.info.harvest)">
-        <h4 class="heading">Harvest</h4>
-        <ul class="list-unstyled">
-            <li data-ng-repeat="(key, value) in file.info.harvest">
-                <b>{{ key }}</b> = "{{ value }}"
-            </li>
-        </ul>
-    </div>
-    <div class="file-info-namespace" data-ng-show="nonEmpty(file.info.namespaces)">
-        <h4 class="heading">Namespace(s)</h4>
-        <ul class="list-unstyled">
-            <li data-ng-repeat="(prefix, uri) in file.info.namespaces">
-                <b>{{ prefix }}</b> = "{{ uri }}"
-            </li>
-        </ul>
-    </div>
-    <div class="file-info-sip-facts" data-ng-show="nonEmpty(file.info.sipFacts)">
-        <h4 class="heading">SIP Facts</h4>
-        <ul class="list-unstyled">
-            <li data-ng-repeat="(key, value) in file.info.sipFacts">
-                <b>{{ key }}</b> = "{{ value }}"
-            </li>
-        </ul>
-    </div>
-    <div class="file-info-sip-hints" data-ng-show="nonEmpty(file.info.sipHints)">
-        <h4 class="heading">SIP Hints</h4>
-        <ul class="list-unstyled">
-            <li data-ng-repeat="(key, value) in file.info.sipHints">
-                <b>{{ key }}</b> = "{{ value }}"
-            </li>
-        </ul>
-    </div>
-</script>
+<!--<script type="text/ng-template" id="sip-zip.html">-->
+    <!--<ul class="sip-files">-->
+        <!--<li data-ng-repeat="sip in sipFiles">-->
+            <!--<span data-ng-class="{ 'latest': $index == 0}">{{ sip }}</span>-->
+        <!--</li>-->
+    <!--</ul>-->
+<!--</script>-->
+
+<!--<script type="text/ng-template" id="info.html">-->
+    <!--<div class="file-info-harvest" data-ng-show="nonEmpty(dataset.harvest)">-->
+        <!--<h4 class="heading">Harvest</h4>-->
+        <!--<ul class="list-unstyled">-->
+            <!--<li data-ng-repeat="(key, value) in dataset.harvest">-->
+                <!--<b>{{ key }}</b> = "{{ value }}"-->
+            <!--</li>-->
+        <!--</ul>-->
+    <!--</div>-->
+    <!--<div class="file-info-namespace" data-ng-show="nonEmpty(dataset.namespaces)">-->
+        <!--<h4 class="heading">Namespace(s)</h4>-->
+        <!--<ul class="list-unstyled">-->
+            <!--<li data-ng-repeat="(prefix, uri) in dataset.namespaces">-->
+                <!--<b>{{ prefix }}</b> = "{{ uri }}"-->
+            <!--</li>-->
+        <!--</ul>-->
+    <!--</div>-->
+    <!--<div class="file-info-sip-facts" data-ng-show="nonEmpty(dataset.sipFacts)">-->
+        <!--<h4 class="heading">SIP Facts</h4>-->
+        <!--<ul class="list-unstyled">-->
+            <!--<li data-ng-repeat="(key, value) in dataset.sipFacts">-->
+                <!--<b>{{ key }}</b> = "{{ value }}"-->
+            <!--</li>-->
+        <!--</ul>-->
+    <!--</div>-->
+    <!--<div class="file-info-sip-hints" data-ng-show="nonEmpty(dataset.sipHints)">-->
+        <!--<h4 class="heading">SIP Hints</h4>-->
+        <!--<ul class="list-unstyled">-->
+            <!--<li data-ng-repeat="(key, value) in dataset.sipHints">-->
+                <!--<b>{{ key }}</b> = "{{ value }}"-->
+            <!--</li>-->
+        <!--</ul>-->
+    <!--</div>-->
+<!--</script>-->
 
 <div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
     <h4>HTML5 Drop File is not supported! You need an HTML5 compliant browser.</h4>

@@ -18,8 +18,10 @@ package dataset
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
+import dataset.DsInfo._
 import dataset.SipRepo.FACTS_FILE
 import org.apache.commons.io.IOUtils
+import services.NarthexConfig
 
 import scala.xml.NodeSeq
 
@@ -52,6 +54,19 @@ object SipFactory {
         dataProvider = (meta \ "dataProvider").text,
         language = (meta \ "language").text,
         rights = (meta \ "rights").text
+      )
+    }
+    
+    def apply(dsInfo: DsInfo) = {
+      def info(prop: DIProp) = dsInfo.getLiteralProp(prop).getOrElse("")
+      new SipGenerationFacts(
+        spec = dsInfo.spec,
+        prefix = info(datasetMapToPrefix),
+        name = info(datasetName),
+        provider = NarthexConfig.ORG_ID, // todo: something better?
+        dataProvider = info(datasetOwner),
+        language = info(datasetLanguage),
+        rights = info(datasetRights)
       )
     }
   }

@@ -52,7 +52,6 @@ object Analyzer {
 }
 
 class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
-  val db = datasetRepo.datasetDb
   val LINE = """^ *(\d*) (.*)$""".r
   var progress: Option[ProgressReporter] = None
   var sorters = List.empty[ActorRef]

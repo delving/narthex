@@ -16,19 +16,20 @@
 
 package web
 
-import dataset.Sip
 import org.OrgRepo.{AvailableSip, repo}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
 import web.MainController.{OkFile, SIP_APP_VERSION}
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 object SipAppController extends Controller with Security {
 
-  def listSipZips() = Secure() { profile => implicit request =>
+  def listSipZips() = SecureAsync() { profile => implicit request =>
     val availableSips: Seq[AvailableSip] = repo.availableSips
-    val uploadedSips: Seq[Sip] = repo.uploadedSips
-    val xml =
+    repo.uploadedSips.map { uploadedSips =>
+      val xml =
       <sip-zips sipAppVersion={SIP_APP_VERSION}>
         <available>
           {
@@ -49,7 +50,8 @@ object SipAppController extends Controller with Security {
           }
         </uploaded>
       </sip-zips>
-    Ok(xml)
+      Ok(xml)
+    }
   }
 
   def downloadSipZip(datasetName: String) = Secure() { profile => implicit request =>

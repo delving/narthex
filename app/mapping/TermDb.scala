@@ -16,13 +16,11 @@
 
 package mapping
 
-import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.libs.json.{Json, Writes}
-import services.BaseX._
 import services.Temporal
 
-import scala.xml.{Elem, XML}
+import scala.xml.Elem
 
 /**
  * @author Gerald de Jong <gerald@delving.eu
@@ -56,98 +54,101 @@ class TermDb(dbBaseName: String) {
   val dbDoc = s"$termDb/$termDb.xml"
   val dbPath = s"doc('$dbDoc')/$name"
 
-  def withTermDb[T](block: ClientSession => T): T = withDbSession[T](termDb, Some(name))(block)
+  def addMapping(mapping: TermMapping) = {}
+//  withTermDb { session =>
+//    val upsert = s"""
+//      |
+//      | let $$freshMapping :=
+//      |   <term-mapping>
+//      |     <sourceURI>${mapping.sourceURI}</sourceURI>
+//      |     <targetURI>${mapping.targetURI}</targetURI>
+//      |     <conceptScheme>${mapping.conceptScheme}</conceptScheme>
+//      |     <attributionName>${mapping.attributionName}</attributionName>
+//      |     <prefLabel>${mapping.prefLabel}</prefLabel>
+//      |     <who>${mapping.who}</who>
+//      |     <when>${mapping.whenString}</when>
+//      |   </term-mapping>
+//      |
+//      | let $$termMapping := $dbPath/term-mapping[sourceURI=${quote(mapping.sourceURI)}]
+//      |
+//      | return
+//      |   if (exists($$termMapping))
+//      |   then replace node $$termMapping with $$freshMapping
+//      |   else insert node $$freshMapping into $dbPath
+//      |
+//      """.stripMargin
+//    session.query(upsert).execute()
+//  }
 
-  def addMapping(mapping: TermMapping) = withTermDb { session =>
-    val upsert = s"""
-      |
-      | let $$freshMapping :=
-      |   <term-mapping>
-      |     <sourceURI>${mapping.sourceURI}</sourceURI>
-      |     <targetURI>${mapping.targetURI}</targetURI>
-      |     <conceptScheme>${mapping.conceptScheme}</conceptScheme>
-      |     <attributionName>${mapping.attributionName}</attributionName>
-      |     <prefLabel>${mapping.prefLabel}</prefLabel>
-      |     <who>${mapping.who}</who>
-      |     <when>${mapping.whenString}</when>
-      |   </term-mapping>
-      |
-      | let $$termMapping := $dbPath/term-mapping[sourceURI=${quote(mapping.sourceURI)}]
-      |
-      | return
-      |   if (exists($$termMapping))
-      |   then replace node $$termMapping with $$freshMapping
-      |   else insert node $$freshMapping into $dbPath
-      |
-      """.stripMargin
-    session.query(upsert).execute()
-  }
+  def removeMapping(sourceUri: String) = {}
+//  withTermDb { session =>
+//    val upsert = s"""
+//      |
+//      | let $$termMapping := $dbPath/term-mapping[sourceURI=${quote(sourceUri)}]
+//      |
+//      | return
+//      |   if (exists($$termMapping))
+//      |   then delete node $$termMapping
+//      |   else ()
+//      |
+//      """.stripMargin
+//    session.query(upsert).execute()
+//  }
 
-  def removeMapping(sourceUri: String) = withTermDb { session =>
-    val upsert = s"""
-      |
-      | let $$termMapping := $dbPath/term-mapping[sourceURI=${quote(sourceUri)}]
-      |
-      | return
-      |   if (exists($$termMapping))
-      |   then delete node $$termMapping
-      |   else ()
-      |
-      """.stripMargin
-    session.query(upsert).execute()
-  }
+  def getSourcePaths: Seq[String] = List("these are not", "source paths")
+//    withTermDb[Seq[String]] { session =>
+//    val q = s"""
+//      |
+//      | let $$sources := $dbPath/term-mapping/sourceURI
+//      |
+//      | return
+//      |   <sourceURIs>{
+//      |     for $$s in $$sources
+//      |       return <sourceURI>{$$s/text()}</sourceURI>
+//      |   }</sourceURIs>
+//      |
+//      | """.stripMargin
+//    val result = session.query(q).execute()
+//    val xml = XML.loadString(result)
+//    (xml \ "sourceURI").map(n => n.text.substring(0, n.text.lastIndexOf("/"))).distinct
+//  }
 
-  def getSourcePaths: Seq[String] = withTermDb[Seq[String]] { session =>
-    val q = s"""
-      |
-      | let $$sources := $dbPath/term-mapping/sourceURI
-      |
-      | return
-      |   <sourceURIs>{
-      |     for $$s in $$sources
-      |       return <sourceURI>{$$s/text()}</sourceURI>
-      |   }</sourceURIs>
-      |
-      | """.stripMargin
-    val result = session.query(q).execute()
-    val xml = XML.loadString(result)
-    (xml \ "sourceURI").map(n => n.text.substring(0, n.text.lastIndexOf("/"))).distinct
-  }
+  def getMappings: Seq[TermMapping] = Seq.empty
+//    withTermDb[Seq[TermMapping]] { session =>
+//    val mappings = session.query(dbPath).execute()
+//    val xml = XML.loadString(mappings)
+//    (xml \ "term-mapping").map { node =>
+//      TermMapping(
+//        (node \ "sourceURI").text,
+//        (node \ "targetURI").text,
+//        (node \ "conceptScheme").text,
+//        (node \ "attributionName").text,
+//        (node \ "prefLabel").text,
+//        (node \ "who").text,
+//        Temporal.stringToTime((node \ "when").text)
+//      )
+//    }
+//  }
 
-  def getMappings: Seq[TermMapping] = withTermDb[Seq[TermMapping]] { session =>
-    val mappings = session.query(dbPath).execute()
-    val xml = XML.loadString(mappings)
-    (xml \ "term-mapping").map { node =>
-      TermMapping(
-        (node \ "sourceURI").text,
-        (node \ "targetURI").text,
-        (node \ "conceptScheme").text,
-        (node \ "attributionName").text,
-        (node \ "prefLabel").text,
-        (node \ "who").text,
-        Temporal.stringToTime((node \ "when").text)
-      )
-    }
-  }
-
-  def getMappingsRDF: Elem = withTermDb[Elem] { session =>
-    val rdfQuery = s"""
-      | declare namespace rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
-      | declare namespace skos="http://www.w3.org/2004/02/skos/core#";
-      | let $$mappings := $dbPath/term-mapping
-      | return
-      |   <rdf:RDF>{
-      |     for $$m in $$mappings return
-      |       <skos:Concept rdf:about="{$$m/sourceURI}">
-      |         <skos:exactMatch rdf:resource="{$$m/targetURI}"/>
-      |         <skos:note>Mapped in Narthex by {$$m/who/text()} on {$$m/when/text()}</skos:note>
-      |       </skos:Concept>
-      |   }</rdf:RDF>
-      |
-      """.stripMargin
-
-    val mappings = session.query(rdfQuery).execute()
-    XML.loadString(mappings)
-  }
+  def getMappingsRDF: Elem = <not-rdf/>
+//    withTermDb[Elem] { session =>
+//    val rdfQuery = s"""
+//      | declare namespace rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+//      | declare namespace skos="http://www.w3.org/2004/02/skos/core#";
+//      | let $$mappings := $dbPath/term-mapping
+//      | return
+//      |   <rdf:RDF>{
+//      |     for $$m in $$mappings return
+//      |       <skos:Concept rdf:about="{$$m/sourceURI}">
+//      |         <skos:exactMatch rdf:resource="{$$m/targetURI}"/>
+//      |         <skos:note>Mapped in Narthex by {$$m/who/text()} on {$$m/when/text()}</skos:note>
+//      |       </skos:Concept>
+//      |   }</rdf:RDF>
+//      |
+//      """.stripMargin
+//
+//    val mappings = session.query(rdfQuery).execute()
+//    XML.loadString(mappings)
+//  }
 
 }
