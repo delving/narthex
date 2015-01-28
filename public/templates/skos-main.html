@@ -1,0 +1,51 @@
+<div class="page-header">
+    <!-- page location, org -->
+    <div class="meta">
+        <div class="page">
+            Mapping Concept Schemes
+        </div>
+        <div class="organization">
+            <span class="fa fa-institution"></span>
+            <span>{{ orgId }}</span>
+        </div>
+    </div>
+    <!-- page specifiction actions/tools -->
+    <div class="actions">
+
+    </div>
+</div>
+
+
+<div class="row">
+
+    <div class="col-xs-6">
+        <ul class=" text-right list-group" data-ng-show="conceptSchemeList">
+            <li data-ng-repeat="cs in conceptSchemeList" class="list-group-item">
+                <label for="A{{$index}}">{{ cs }}</label>
+                <input id="A{{$index}}" type="radio" data-ng-model="conceptSchemes.a" data-ng-value="cs"
+                       data-ng-disabled="cs == conceptSchemes.b">
+            </li>
+        </ul>
+    </div>
+    <div class="col-xs-6">
+        <ul class="list-group" data-ng-show="conceptSchemeList">
+            <li data-ng-repeat="cs in conceptSchemeList" class="list-group-item">
+                <input id="B{{$index}}" type="radio" data-ng-model="conceptSchemes.b" data-ng-value="cs"
+                       data-ng-disabled="cs == conceptSchemes.a">
+                <label for="B{{$index}}">{{ cs }}</label>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-sm-4 col-sm-offset-4">
+        <div class="text-center" style="width: 100%" data-ng-show="!conceptSchemeList">Loading..</div>
+        <button type="button" class="btn btn-success btn-block" data-ng-click="goToMapping()"
+                data-ng-disabled="!buttonEnabled" data-ng-show="conceptSchemeList">
+            <span>{{ buttonText }}</span>
+        </button>
+    </div>
+</div>
+
+

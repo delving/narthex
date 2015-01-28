@@ -1,0 +1,146 @@
+<div class="page-header">
+    <!-- page location, org -->
+    <div class="meta">
+        <div class="page">
+            Mapping Concept Schemes
+        </div>
+        <div class="organization">
+            <span class="fa fa-institution"></span>
+            <span>{{ orgId }}</span>
+        </div>
+    </div>
+    <!-- page specifiction actions/tools -->
+    <div class="actions">
+
+    </div>
+</div>
+
+<div class="row search-all">
+
+        <div class="col-sm-3">
+            <ul class="list-inline mapping-status">
+                <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'">
+                    <a href><span class="badge"> all</span></a>
+                </li>
+                <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'">
+                    <a href><span class="badge"><i class="fa fa-link"></i> mapped</span></a>
+                </li>
+                <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'">
+                    <a href><span class="badge"><i class="fa fa-chain-broken"></i> unmapped</span></a>
+                </li>
+            </ul>
+        </div>
+        <div class="col-sm-6">
+            <div class="input-group input-group-skos-term search-all-field">
+                <label class="input-group-addon">Search Both</label>
+                <input class="form-control" type="text" data-ng-model="sought"/>
+                <span class="input-group-addon"><i class="fa fa-search"></i></span>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <a class="" ng-href="{{ downloadUrl }}" target="_blank">
+                <i class="fa fa-download"></i> Download Mapping
+            </a>
+        </div>
+
+</div>
+
+<div class="row">
+    <div class="col-sm-6 concept-pane" style="border-right: 1px solid #ccc;">
+        <div class="input-group input-group-skos-term">
+            <label class="input-group-addon">{{ conceptSchemeA }}</label>
+            <input class="form-control" type="text" data-ng-model="soughtA"/>
+            <span class="input-group-addon"><i class="fa fa-search"></i></span>
+        </div>
+        <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-a" data-offset="320" data-ng-style="{ 'height': elHeight }">
+
+            <div data-ng-repeat="concept in conceptsA" class="list-group concept-box"
+                 data-ng-class="{'concept-selected': conceptA == concept, 'concept-mapped': mappingsAB[concept.uri] }">
+
+                <!-- MATCHTED TERM / ALT TERM -->
+                <button style="vertical-align: bottom" class="btn btn-default" tooltip="Click to map to this term..." tooltip-trigger="mouseenter" tooltip-placement="right"
+                        data-ng-click="selectConceptA(concept)">
+                    <span class="badge">{{ concept.proximity * 100 | number : 0 }}%</span>
+                    <span class="label term-matched" data-ng-class="{ 'term-alt' : !concept.preferred }">{{ concept.label }}</span>
+                </button>
+
+                <!-- PREFERRED TERM -->
+                <span data-ng-show="!concept.preferred" data-ng-click="selectSoughtA(concept.prefLabel)">
+                    <span class="label term-preferred"><!--&#8594;--><i class="fa fa-star"></i> {{ concept.prefLabel }}</span>
+                </span>
+
+                <!-- BROADER TERM -->
+                <span ng-show="concept.broader">
+                    <span data-ng-repeat="b in concept.broader" data-ng-click="selectSoughtA(b)" class="broader-term">
+                         <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b }}</span>
+                    </span>
+                </span>
+
+                <!-- NARROWER TERM -->
+                <span ng-show="concept.narrower">
+                    <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSoughtA(n)" class="narrower-term">
+                        <span class="label term-narrower">&#8600; {{ n }}</span>
+                    </span>
+                </span>
+
+                <div class="concept-bottom">
+                    <a ng-href="{{concept.uri}}" target="_blank">{{ concept.uri }}</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6">
+
+        <div class="input-group input-group-skos-term">
+            <label class="input-group-addon">{{ conceptSchemeB }}</label>
+            <input class="form-control" type="text" data-ng-model="soughtB"/>
+            <span class="input-group-addon"><i class="fa fa-search"></i></span>
+        </div>
+
+        <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-b" data-offset="320" data-ng-style="{ 'height': elHeight }">
+
+            <div data-ng-repeat="concept in conceptsB" class="list-group concept-box"
+                 data-ng-class="{'concept-selected': conceptB == concept, 'concept-mapped': mappingsBA[concept.uri] }">
+
+                <!-- MATCHED TERM / ALT TERM -->
+                <button style="vertical-align: bottom" class="btn btn-default" tooltip="Click to map to this term..." tooltip-trigger="mouseenter" tooltip-placement="right"
+                        data-ng-click="selectConceptB(concept)">
+                    <span class="badge">{{ concept.proximity * 100 | number : 0 }}%</span>
+                    <span class="label term-matched" data-ng-class="{ 'term-alt' : !concept.preferred }">{{ concept.label }}</span>
+                </button>
+
+                <!-- PREFERRED TERM -->
+                <span data-ng-show="!concept.preferred" data-ng-click="selectSoughtB(concept.prefLabel)">
+                    <span class="label term-preferred"><!--&#8594;--><i class="fa fa-star"></i> {{ concept.prefLabel }}</span>
+                </span>
+
+                <!-- BROADER TERM -->
+                <span ng-show="concept.broader">
+                    <span data-ng-repeat="b in concept.broader" data-ng-click="selectSoughtB(b)" class="broader-term">
+                         <span class="label term-broader">&#8599; <!--<i class="fa fa-expand"></i>--> {{ b }}</span>
+                    </span>
+                </span>
+
+                <!-- NARROWER TERM -->
+                <span ng-show="concept.narrower">
+                    <span data-ng-repeat="n in concept.narrower" data-ng-click="selectSoughtB(n)" class="narrower-term">
+                        <span class="label term-narrower">&#8600; {{ n }}</span>
+                    </span>
+                </span>
+
+                <div class="concept-bottom">
+                    <a ng-href="{{concept.uri}}" target="_blank">{{ concept.uri }}</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr/>
+    <button type="button" class="btn btn-success btn-block center-block" data-ng-click="toggleMapping()" data-ng-disabled="!buttonEnabled">
+        <span>{{ buttonText }}</span>
+    </button>
+
+
+

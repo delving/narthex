@@ -99,6 +99,9 @@ define(["angular"], function (angular) {
                 case 'datasets':
                     $location.path('/datasets');
                     break;
+                case 'skos':
+                    $location.path('/skos');
+                    break;
                 case 'categories':
                     $location.path('/categories');
                     break;
@@ -111,6 +114,7 @@ define(["angular"], function (angular) {
                 default:
                     $location.path('/');
             }
+//            $location.search({});
             $('#nav-'+page).addClass('active');
         };
 

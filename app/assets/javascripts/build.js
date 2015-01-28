@@ -25,6 +25,7 @@ requirejs.config({
         "login",
         "datasets",
         "dataset",
+        "skos",
         "terms",
         "categories",
         "thesaurus"
