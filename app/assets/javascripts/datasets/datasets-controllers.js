@@ -131,7 +131,7 @@ define(["angular"], function () {
                     var time = dataset[stateName];
                     if (time) {
                         stateVisible = true;
-                        var dt = time.time.split('T');
+                        var dt = time.split('T');
                         dataset[stateName] = {
                             d: dt[0],
                             t: dt[1].split('+')[0]
