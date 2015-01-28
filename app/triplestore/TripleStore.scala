@@ -22,7 +22,6 @@ import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import play.api.Play.current
 import play.api.libs.json.JsObject
 import play.api.libs.ws.WS
-import services.NarthexConfig.TRIPLE_STORE_URL
 
 import scala.concurrent.Future
 
@@ -31,8 +30,6 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object TripleStore {
-
-  lazy val ts = new TripleStore(TRIPLE_STORE_URL)
 
   case class PropType(uriOpt: Option[String])
 

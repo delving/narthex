@@ -17,7 +17,6 @@
 package harvest
 
 import akka.actor.{Actor, Props}
-import org.OrgRepo
 import play.api.Logger
 import play.libs.Akka
 
@@ -31,7 +30,7 @@ object PeriodicHarvest {
 
   def startTicker() = {
     val harvestTicker = Akka.system.actorOf(props(), "HarvestTicker")
-    Akka.system.scheduler.schedule(10.seconds, 10.seconds, harvestTicker, "tick")
+    Akka.system.scheduler.schedule(5.seconds, 5.minutes, harvestTicker, "tick")
   }
 
 }
@@ -43,14 +42,15 @@ class PeriodicHarvest extends Actor {
   def receive = {
 
     case "tick" =>
-      OrgRepo.repo.orgDb.listDatasets.foreach { dataset =>
-        val harvestCron = Harvesting.harvestCron(dataset.info)
-        if (harvestCron.timeToWork) {
-          log.info(s"Time to work on ${dataset.datasetName}")
-          val datasetRepo = OrgRepo.repo.datasetRepo(dataset.datasetName)
-          datasetRepo.nextHarvest()
-        }
-      }
+      Logger.warn("Periodic harvest not implemented")
+//      OrgRepo.repo.orgDb.listDatasets.foreach { dataset =>
+//        val harvestCron = Harvesting.harvestCron(dataset.info)
+//        if (harvestCron.timeToWork) {
+//          log.info(s"Time to work on ${dataset.datasetName}")
+//          val datasetRepo = OrgRepo.repo.datasetRepo(dataset.datasetName)
+//          datasetRepo.nextHarvest()
+//        }
+//      }
   }
 }
 

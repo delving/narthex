@@ -18,7 +18,7 @@ package web
 
 import java.io.{File, FileInputStream, FileNotFoundException}
 
-import org.UserStore
+import org.OrgRepo
 import org.UserStore.{NXActor, NXProfile}
 import play.api.Play.current
 import play.api._
@@ -78,7 +78,7 @@ object MainController extends Controller with Security {
           Unauthorized("Username/password not found")
       }
     } getOrElse {
-      val resultFuture = UserStore.us.authenticate(username, password).map { nxActorOpt: Option[NXActor] =>
+      val resultFuture = OrgRepo.repo.us.authenticate(username, password).map { nxActorOpt: Option[NXActor] =>
         nxActorOpt.map { nxActor =>
           val session = UserSession(
             nxActor,
@@ -121,7 +121,7 @@ object MainController extends Controller with Security {
       lastName = (request.body \ "lastName").as[String],
       email = (request.body \ "email").as[String]
     )
-    UserStore.us.setProfile(session.actor, profile).map { actorOpt =>
+    OrgRepo.repo.us.setProfile(session.actor, profile).map { actorOpt =>
       actorOpt.map { actor =>
         val newSession = session.copy(actor = actor)
         Ok(Json.toJson(newSession)).withSession(newSession)
@@ -132,14 +132,14 @@ object MainController extends Controller with Security {
   }
 
   def listActors = Secure() { session => implicit request =>
-    Ok(Json.obj("actorList" -> UserStore.us.listActors(session.actor)))
+    Ok(Json.obj("actorList" -> OrgRepo.repo.us.listActors(session.actor)))
   }
 
   def createActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
-    UserStore.us.createActor(session.actor, username, password).map { actorOpt =>
-      Ok(Json.obj("actorList" -> UserStore.us.listActors(session.actor)))
+    OrgRepo.repo.us.createActor(session.actor, username, password).map { actorOpt =>
+      Ok(Json.obj("actorList" -> OrgRepo.repo.us.listActors(session.actor)))
     }
   }
 
@@ -194,11 +194,8 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
           routes.javascript.AppController.create,
+          routes.javascript.AppController.setProperties,
           routes.javascript.AppController.harvest,
-          routes.javascript.AppController.setHarvestCron,
-          routes.javascript.AppController.setMetadata,
-          routes.javascript.AppController.setPublication,
-          routes.javascript.AppController.setCategories,
           routes.javascript.AppController.datasetInfo,
           routes.javascript.AppController.command,
           routes.javascript.AppController.datasetProgress,

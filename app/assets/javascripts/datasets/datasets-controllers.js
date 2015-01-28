@@ -22,11 +22,6 @@ String.prototype.endsWith = function (suffix) {
 define(["angular"], function () {
     "use strict";
 
-    var states = [
-        'rawState', 'rawAnalyzedState', 'sourcedState',
-        'mappableState', 'processableState', 'processedState',
-        'analyzedState', 'savedState'
-    ];
 
     var progressStates = {
         'state-harvesting': "Harvesting",
@@ -47,42 +42,59 @@ define(["angular"], function () {
         if (user == null) $location.path("/");
         $scope.user = user;
         $scope.uploading = false;
-        $scope.filteredFiles = [];
+        $scope.filteredDatasets = [];
         $scope.files = [];
         $scope.percent = null;
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
-        $scope.dataset = { name: "" };
+        $scope.newDataset = {};
         $scope.specFilter = "";
         $scope.categoriesEnabled = user.categoriesEnabled;
 
-        function setNewDataset() {
-            var ds = $scope.dataset;
-            if (!ds.name) ds.name = "";
-            var name = ds.name.trim().replace(/\W+/g, "_").replace(/_+/g, "_").toLowerCase();
-            ds.validName = name;
-            if (name.replace(/_/, "").length == 0 || !ds.prefix) ds.validName = undefined
+        function checkNewEnabled() {
+            if ($scope.newDataset.specTyped)
+                $scope.newDataset.spec = $scope.newDataset.specTyped.trim().replace(/\W+/g, "_").replace(/_+/g, "_").toLowerCase();
+            else
+                $scope.newDataset.spec = "";
+            $scope.newDataset.enabled = $scope.newDataset.spec.length && $scope.newDataset.character;
         }
 
-        $scope.$watch("dataset.name", setNewDataset);
-        $scope.$watch("dataset.prefix", setNewDataset);
+        $scope.$watch("dataset.specTyped", checkNewEnabled);
+        $scope.$watch("dataset.character", checkNewEnabled);
 
-        $scope.$watch("specFilter", function (filter) {
-            filter = filter.trim();
+        function filterDatasets() {
+            var filter = $scope.specFilter.trim();
             if (filter) {
-                $scope.filteredFiles = _.filter($scope.files, function (file) {
-                    return file.name.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
+                $scope.filteredDatasets = _.filter($scope.datasets, function (dataset) {
+                    return dataset.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
                 });
             }
             else {
-                $scope.filteredFiles = $scope.files;
+                $scope.filteredDatasets = $scope.datasets;
             }
+        }
+
+        $scope.$watch("specFilter", filterDatasets);
+
+        datasetsService.listPrefixes().then(function (prefixes) {
+            $scope.characters = _.map(prefixes, function (prefix) {
+                return {
+                    title: "Mapped to '" + prefix.toUpperCase() + "' format",
+                    code: "character-mapped",
+                    prefix: prefix
+                };
+            });
+            $scope.characters.push({
+                title: "SKOS Vocabulary",
+                code: "character-skos",
+                prefix: ""
+            });
         });
 
         $scope.createDataset = function () {
-            datasetsService.create($scope.dataset.validName, $scope.dataset.prefix).then(function () {
+            datasetsService.create($scope.newDataset.spec, $scope.newDataset.character.code, $scope.newDataset.character.prefix).then(function () {
                 $scope.cancelNewFile();
-                $scope.dataset.name = undefined;
+                $scope.newDataset.name = undefined;
                 $scope.fetchDatasetList();
             });
         };
@@ -95,7 +107,7 @@ define(["angular"], function () {
             return _.isEmpty(obj)
         };
 
-        $scope.cancelNewFile = function() {
+        $scope.cancelNewFile = function () {
             $scope.newFileOpen = false;
         };
 
@@ -103,93 +115,138 @@ define(["angular"], function () {
             $scope.dropSupported = true;
         };
 
-        $scope.decorateFile = function (file, info) {
-            if (info) {
-                file.info = info;
-            }
-            else {
-                info = file.info;
-            }
-            file.originalInfo = angular.copy(file.info);
-            if (info.error) file.error = info.error.message;
-            file.apiMappings = user.narthexAPI + '/' + file.name + '/mappings';
-            file.datasetName = file.name;
-            if (info.character) file.prefix = info.character.prefix;
-            if (!info.harvest) info.harvest = {};
-            if (!info.metadata) info.metadata = {};
-            if (!info.publication) info.publication = {};
-            if (!info.categories) info.categories = {};
-
-            _.forEach(states, function(stateName) {
-                var block = info[stateName];
-                if (block) {
-                    var dt = block.time.split('T');
-                    block.d = dt[0];
-                    block.t = dt[1].split('+')[0];
+        $scope.decorateDataset = function (dataset) {
+            dataset.edit = angular.copy(dataset);
+            dataset.apiMappings = user.narthexAPI + '/' + dataset.datasetSpec + '/mappings';
+//            if (dataset.character) dataset.prefix = info.character.prefix;
+//            split the states into date and time
+            var stateVisible = false;
+            _.forEach(
+                [
+                    'stateRaw', 'stateRawAnalyzed', 'stateSourced',
+                    'stateMappable', 'stateProcessable', 'stateProcessed',
+                    'stateAnalyzed', 'stateSaved'
+                ],
+                function (stateName) {
+                    var time = dataset[stateName];
+                    if (time) {
+                        stateVisible = true;
+                        var dt = time.time.split('T');
+                        dataset[stateName] = {
+                            d: dt[0],
+                            t: dt[1].split('+')[0]
+                        };
+                    }
                 }
-            });
+            );
+            if (!stateVisible) {
+                dataset.empty = true;
+            }
         };
 
-
+//        $scope.replaceDataset = function (dataset) {
+//            function replaceInList(list, dataset) {
+//                return _.map(list, function (ds) {
+//                    if (ds.datasetSpec == dataset.datasetSpec) {
+//                        console.log('replaced', ds);
+//                        return dataset;
+//                    }
+//                    else {
+//                        return ds;
+//                    }
+//                });
+//            }
+//            replaceInList($scope.datasets, dataset);
+//            replaceInList($scope.filteredDatasets, dataset);
+//        };
+//
         $scope.fetchDatasetList = function () {
-            datasetsService.listDatasets().then(function (files) {
-                _.forEach($scope.files, function (file) {
-                    if (file.progressCheckerTimeout) {
-                        $timeout.cancel(file.progressCheckerTimeout);
-                        delete(file.progressCheckerTimeout);
+            $scope.specFilter = "";
+            datasetsService.listDatasets().then(function (array) {
+                // kill existing progress checkers
+                if ($scope.datasets) _.forEach($scope.datasets, function (dataset) {
+                    if (dataset.progressCheckerTimeout) {
+                        $timeout.cancel(dataset.progressCheckerTimeout);
+                        delete(dataset.progressCheckerTimeout);
                     }
                 });
-                _.forEach(files, function (file) {
-                    $scope.decorateFile(file, undefined);
-                    file.tabOpen = 'metadata';
-                });
-                $scope.files = $scope.filteredFiles = files;
-                $scope.specFilter = "";
+                _.forEach(array, $scope.decorateDataset);
+                $scope.datasets = $scope.filteredDatasets = array;
             });
         };
 
         $scope.fetchDatasetList();
 
-        datasetsService.listPrefixes().then(function (prefixes) {
-            $scope.prefixes = prefixes;
-            $scope.dataset.prefix = prefixes.length ? prefixes[0] : undefined
-        });
     };
 
     DatasetsCtrl.$inject = [
         "$rootScope", "$scope", "user", "datasetsService", "$location", "$timeout"
     ];
 
+    // these lists must match with DsInfo.scala
+
+    var metadataFields = [
+        "datasetName", "datasetDescription", "datasetOwner", "datasetLanguage", "datasetRights"
+    ];
+
+    var harvestFields = [
+        "harvestType", "harvestURL", "harvestDataset", "harvestPrefix", "harvestSearch"
+    ];
+
+    var harvestCronFields = [
+        "harvestPreviousTime", "harvestDelay", "harvestDelayUnit"
+    ];
+
+    var publishFields = [
+        "publishOAIPMH", "publishIndex", "publishLOD"
+    ];
+
+    var categoriesFields = [
+        "categoriesInclude"
+    ];
+
     var DatasetEntryCtrl = function ($scope, datasetsService, $location, $timeout, $upload) {
 
-        $scope.file.progressCheckerTimeout = $timeout(checkProgress, 1000 + Math.floor(Math.random() * 1000));
+        var ds = $scope.dataset;
 
-        function fileDropped(file, $files, after) {
+        $scope.tabOpen = "metadata";
+        $scope.expanded = false;
+
+        if (!ds) return;
+
+        ds.progressCheckerTimeout = $timeout(checkProgress, 1000 + Math.floor(Math.random() * 1000));
+
+        $scope.$watch("dataset", function (newDs) {
+            ds = newDs;
+            setUnchanged()
+        });
+
+        function fileDropped($files, after) {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
-            if (!($files.length && !file.uploading)) return;
+            if (!($files.length && !ds.uploading)) return;
             var onlyFile = $files[0];
             if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml') || onlyFile.name.endsWith('.sip.zip'))) {
                 alert("Sorry, the file must end with '.xml.gz' or '.xml' or '.sip.zip'");
                 return;
             }
-            file.uploading = true;
+            ds.uploading = true;
             $upload.upload({
-                url: '/narthex/app/' + file.name + '/upload',
+                url: '/narthex/app/' + ds.datasetSpec + '/upload',
                 file: onlyFile
             }).progress(
                 function (evt) {
-                    if (file.uploading) file.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
+                    if (ds.uploading) ds.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
                 }
             ).success(
                 function () {
-                    file.uploading = false;
-                    file.uploadPercent = null;
+                    ds.uploading = false;
+                    ds.uploadPercent = null;
                     if (after) after();
                 }
             ).error(
                 function (data, status, headers, config) {
-                    file.uploading = false;
-                    file.uploadPercent = null;
+                    ds.uploading = false;
+                    ds.uploadPercent = null;
                     console.log("Failure during upload: data", data);
                     console.log("Failure during upload: status", status);
                     console.log("Failure during upload: headers", headers);
@@ -199,10 +256,8 @@ define(["angular"], function () {
             );
         }
 
-        $scope.file.fileDropped = function ($files) {
-            fileDropped($scope.file, $files, function() {
-                refreshProgress();
-            });
+        ds.fileDropped = function ($files) {
+            fileDropped($files, refreshProgress);
         };
 
         function createProgressMessage(p) {
@@ -236,34 +291,34 @@ define(["angular"], function () {
         }
 
         function checkProgress() {
-            datasetsService.datasetProgress($scope.file.name).then(
+            datasetsService.datasetProgress(ds.datasetSpec).then(
                 function (data) {
                     if (data.progressType == 'progress-idle') {
-                        $scope.file.progress = undefined;
+                        ds.progress = undefined;
                         if (data.errorMessage) {
-                            console.log($scope.file.name + " has error message " + data.errorMessage);
-                            $scope.file.error = data.errorMessage;
+                            console.log(ds.datasetSpec + " has error message " + data.errorMessage);
+                            ds.error = data.errorMessage;
                         }
-                        if ($scope.file.refreshAfter) {
-                            delete $scope.file.refreshAfter;
+                        if (ds.refreshAfter) {
+                            delete ds.refreshAfter;
                             refreshInfo();
                         }
-                        delete $scope.file.progress;
+                        delete ds.progress;
                     }
                     else {
-                        console.log($scope.file.name + " is in progress");
-                        $scope.file.progress = {
+                        console.log(ds.datasetSpec + " is in progress");
+                        ds.progress = {
                             state: data.progressState,
                             type: data.progressType,
                             count: parseInt(data.count)
                         };
-                        createProgressMessage($scope.file.progress);
-                        $scope.file.progressCheckerTimeout = $timeout(checkProgress, 900 + Math.floor(Math.random() * 200));
+                        createProgressMessage(ds.progress);
+                        ds.progressCheckerTimeout = $timeout(checkProgress, 900 + Math.floor(Math.random() * 200));
                     }
                 },
                 function (problem) {
                     if (problem.status == 404) {
-                        alert("Processing problem with " + $scope.file.name);
+                        alert("Processing problem with " + ds.datasetSpec);
                     }
                     else {
                         alert("Network problem " + problem.status);
@@ -273,10 +328,10 @@ define(["angular"], function () {
         }
 
         $scope.getIcon = function () {
-            if ($scope.file.info.savedState) { // todo: mapped -> processed, etc
+            if (ds.stateSaved) { // todo: mapped -> processed, etc
                 return "fa-database"
             }
-            else if ($scope.file.info.analyzedState) {
+            else if (ds.stateAnalyzed) {
                 return "fa-eye"
             }
             else {
@@ -284,69 +339,88 @@ define(["angular"], function () {
             }
         };
 
-        function nonEmpty(obj) {
-            if (obj)
-                return obj;
-            else
-                return {};
+        function unchanged(fieldNameList) {
+            var unchanged = true;
+            _.forEach(fieldNameList, function (fieldName) {
+                if (!angular.equals(ds[fieldName], ds.edit[fieldName])) {
+//                    console.log("changed " + fieldName);
+                    unchanged = false;
+                }
+            });
+            return unchanged;
         }
 
-        function compareForSave() {
-            $scope.unchangedMetadata = angular.equals($scope.file.info.metadata, nonEmpty($scope.file.originalInfo.metadata));
-            $scope.unchangedPublication = angular.equals($scope.file.info.publication, nonEmpty($scope.file.originalInfo.publication));
-            $scope.unchangedCategories = angular.equals($scope.file.info.categories, nonEmpty($scope.file.originalInfo.categories));
-            $scope.unchangedHarvestCron = angular.equals($scope.file.info.harvestCron, nonEmpty($scope.file.originalInfo.harvestCron));
+        function setUnchanged() {
+            $scope.unchangedMetadata = unchanged(metadataFields);
+            $scope.unchangedPublish = unchanged(publishFields);
+            $scope.unchangedHarvest = unchanged(harvestFields);
+            $scope.unchangedHarvestCron = unchanged(harvestCronFields);
+            $scope.unchangedCategories = unchanged(categoriesFields);
         }
+
+        $scope.$watch("dataset.edit", setUnchanged, true);
 
         function refreshProgress() {
-            datasetsService.datasetInfo($scope.file.name).then(function (info) {
-                $scope.decorateFile($scope.file, info);
-                $scope.file.refreshAfter = true;
-                if ($scope.file.progressCheckerTimeout) $timeout.cancel($scope.file.progressCheckerTimeout);
-                $scope.file.progressCheckerTimeout = $timeout(checkProgress, 1000);
+            datasetsService.datasetInfo(ds.datasetSpec).then(function (dataset) {
+                if (ds.progressCheckerTimeout) $timeout.cancel(ds.progressCheckerTimeout);
+                $scope.decorateDataset(dataset);
+                $scope.dataset = dataset;
+                dataset.refreshAfter = true;
+                dataset.progressCheckerTimeout = $timeout(checkProgress, 1000);
             });
         }
 
         function refreshInfo() {
-            datasetsService.datasetInfo($scope.file.name).then(function (info) {
-                $scope.file.info = info;
-                $scope.decorateFile($scope.file);
-                compareForSave();
+            datasetsService.datasetInfo(ds.datasetSpec).then(function (dataset) {
+                $scope.decorateDataset(dataset);
+                $scope.dataset = dataset;
             });
         }
 
-        $scope.$watch("file.info", compareForSave, true);
+        function setProperties(propertyList) {
+            var payload = {propertyList: propertyList, values: {}};
+            _.forEach(propertyList, function (propertyName) {
+                payload.values[propertyName] = angular.copy(ds.edit[propertyName]);
+            });
+            datasetsService.setProperties(ds.datasetSpec, payload).then(refreshInfo);
+        }
 
         $scope.setMetadata = function () {
-            datasetsService.setMetadata($scope.file.name, $scope.file.info.metadata).then(refreshInfo);
+            setProperties(metadataFields);
         };
 
-        $scope.setPublication = function () {
-            datasetsService.setPublication($scope.file.name, $scope.file.info.publication).then(refreshInfo);
+        $scope.setPublish = function () {
+            setProperties(publishFields);
         };
 
         $scope.setCategories = function () {
-            datasetsService.setCategories($scope.file.name, $scope.file.info.categories).then(refreshInfo);
+            setProperties(categoriesFields)
+        };
+
+        $scope.setHarvest = function () {
+            setProperties(harvestFields);
         };
 
         $scope.setHarvestCron = function () {
-            datasetsService.setHarvestCron($scope.file.name, $scope.file.info.harvestCron).then(refreshInfo);
+            setProperties(harvestCronFields);
         };
 
         $scope.startHarvest = function () {
-            datasetsService.harvest($scope.file.name, $scope.file.info.harvest).then(refreshProgress);
+            // todo: wrong!
+            alert('start harvest?');
+//            datasetsService.harvest(ds.datasetSpec, ds.info.harvest).then(refreshProgress);
         };
 
         $scope.viewFile = function () {
-            $location.path("/dataset/" + $scope.file.name);
+            $location.path("/dataset/" + ds.datasetSpec);
             $location.search({});
         };
 
         function command(command, areYouSure, after) {
             if (areYouSure && !confirm(areYouSure)) return;
-            datasetsService.command($scope.file.name, command).then(function (reply) {
+            datasetsService.command(ds.datasetSpec, command).then(function (reply) {
                 console.log(reply);
-            }).then(function() {
+            }).then(function () {
                 if (after) after();
             });
         }
@@ -380,7 +454,7 @@ define(["angular"], function () {
         };
 
         function fetchSipFileList() {
-            datasetsService.listSipFiles($scope.file.name).then(function (data) {
+            datasetsService.listSipFiles(ds.datasetSpec).then(function (data) {
                 $scope.sipFiles = (data && data.list && data.list.length) ? data.list : undefined;
             });
         }
@@ -388,7 +462,7 @@ define(["angular"], function () {
         fetchSipFileList();
 
         $scope.deleteSipZip = function () {
-            datasetsService.deleteLatestSipFile($scope.file.name).then(function () {
+            datasetsService.deleteLatestSipFile(ds.datasetSpec).then(function () {
                 fetchSipFileList();
             });
         };

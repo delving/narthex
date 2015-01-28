@@ -19,7 +19,7 @@ package mapping
 import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model.Model
-import dataset.DatasetInfo
+import dataset.DsInfo
 import org.UserStore.NXActor
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
@@ -89,7 +89,7 @@ class MappingStoreChoose(client: TripleStore) {
 }
 
 class MappingStoreEdit(client: TripleStore, user: NXActor,
-                       datasetA: DatasetInfo, datasetB: DatasetInfo) {
+                       datasetA: DsInfo, datasetB: DsInfo) {
 
   import mapping.MappingStore._
 
@@ -143,7 +143,7 @@ class MappingStoreEdit(client: TripleStore, user: NXActor,
 }
 
 class MappingStoreApply(client: TripleStore,
-                        dataset: DatasetInfo) {
+                        dataset: DsInfo) {
 
   // todo: get all of the mappings that relate to this dataset
   // todo: build a big map with uris from this dataset as keys

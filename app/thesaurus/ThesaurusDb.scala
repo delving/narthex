@@ -16,13 +16,11 @@
 
 package thesaurus
 
-import org.basex.server.ClientSession
 import org.joda.time.DateTime
 import play.api.libs.json.{Json, Writes}
-import services.BaseX._
 import services.Temporal
 
-import scala.xml.{Elem, XML}
+import scala.xml.Elem
 
 object ThesaurusDb {
 
@@ -50,71 +48,72 @@ class ThesaurusDb(conceptSchemeA: String, conceptSchemeB: String) {
   val dbDoc = s"$thesaurusDb/$thesaurusDb.xml"
   val dbPath = s"doc('$dbDoc')/$name"
 
-  def withThesaurusDb[T](block: ClientSession => T): T = withDbSession[T](thesaurusDb, Some(name))(block)
+  def toggleMapping(mapping: ThesaurusMapping) = false
+//    withThesaurusDb { session =>
+//    val orQuery = s"$dbPath/thesaurus-mapping[uriA=${quote(mapping.uriA)} or uriB=${quote(mapping.uriB)}]"
+//    val existing = session.query(orQuery).execute().trim
+//    if (existing.isEmpty) {
+//      val insert = s"""
+//      |
+//      | let $$freshMapping :=
+//      |   <thesaurus-mapping>
+//      |     <uriA>${mapping.uriA}</uriA>
+//      |     <uriB>${mapping.uriB}</uriB>
+//      |     <who>${mapping.who}</who>
+//      |     <when>${mapping.whenString}</when>
+//      |   </thesaurus-mapping>
+//      |
+//      | return insert node $$freshMapping into $dbPath
+//      |
+//      """.stripMargin
+//      session.query(insert).execute()
+//      true
+//    }
+//    else {
+//      val insert = s"""
+//      |
+//      | let $$existingMapping := $orQuery
+//      | return delete node $$existingMapping
+//      |
+//      """.stripMargin
+//      session.query(insert).execute()
+//      false
+//    }
+//  }
 
-  def toggleMapping(mapping: ThesaurusMapping) = withThesaurusDb { session =>
-    val orQuery = s"$dbPath/thesaurus-mapping[uriA=${quote(mapping.uriA)} or uriB=${quote(mapping.uriB)}]"
-    val existing = session.query(orQuery).execute().trim
-    if (existing.isEmpty) {
-      val insert = s"""
-      |
-      | let $$freshMapping :=
-      |   <thesaurus-mapping>
-      |     <uriA>${mapping.uriA}</uriA>
-      |     <uriB>${mapping.uriB}</uriB>
-      |     <who>${mapping.who}</who>
-      |     <when>${mapping.whenString}</when>
-      |   </thesaurus-mapping>
-      |
-      | return insert node $$freshMapping into $dbPath
-      |
-      """.stripMargin
-      session.query(insert).execute()
-      true
-    }
-    else {
-      val insert = s"""
-      |
-      | let $$existingMapping := $orQuery
-      | return delete node $$existingMapping
-      |
-      """.stripMargin
-      session.query(insert).execute()
-      false
-    }
-  }
+  def getMappings: Seq[ThesaurusMapping] = Seq.empty
+//    withThesaurusDb[Seq[ThesaurusMapping]] { session =>
+//    val mappings = session.query(dbPath).execute()
+//    val xml = XML.loadString(mappings)
+//    (xml \ "thesaurus-mapping").map { node =>
+//      ThesaurusMapping(
+//        (node \ "uriA").text,
+//        (node \ "uriB").text,
+//        (node \ "who").text,
+//        Temporal.stringToTime((node \ "when").text)
+//      )
+//    }
+//  }
 
-  def getMappings: Seq[ThesaurusMapping] = withThesaurusDb[Seq[ThesaurusMapping]] { session =>
-    val mappings = session.query(dbPath).execute()
-    val xml = XML.loadString(mappings)
-    (xml \ "thesaurus-mapping").map { node =>
-      ThesaurusMapping(
-        (node \ "uriA").text,
-        (node \ "uriB").text,
-        (node \ "who").text,
-        Temporal.stringToTime((node \ "when").text)
-      )
-    }
-  }
-
-  def getMappingsRDF: Elem = withThesaurusDb[Elem] { session =>
-    val rdfQuery = s"""
-      | declare namespace rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
-      | declare namespace skos="http://www.w3.org/2004/02/skos/core#";
-      | let $$mappings := $dbPath/thesaurus-mapping
-      | return
-      |   <rdf:RDF>{
-      |     for $$m in $$mappings return
-      |       <skos:Concept rdf:about="{$$m/uriA}">
-      |         <skos:exactMatch rdf:resource="{$$m/uriB}"/>
-      |         <skos:note>Mapped in Narthex by {$$m/who/text()} on {$$m/when/text()}</skos:note>
-      |       </skos:Concept>
-      |   }</rdf:RDF>
-      |
-      """.stripMargin
-
-    val mappings = session.query(rdfQuery).execute()
-    XML.loadString(mappings)
-  }
+  def getMappingsRDF: Elem = <not-rdf/>
+//    withThesaurusDb[Elem] { session =>
+//    val rdfQuery = s"""
+//      | declare namespace rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+//      | declare namespace skos="http://www.w3.org/2004/02/skos/core#";
+//      | let $$mappings := $dbPath/thesaurus-mapping
+//      | return
+//      |   <rdf:RDF>{
+//      |     for $$m in $$mappings return
+//      |       <skos:Concept rdf:about="{$$m/uriA}">
+//      |         <skos:exactMatch rdf:resource="{$$m/uriB}"/>
+//      |         <skos:note>Mapped in Narthex by {$$m/who/text()} on {$$m/when/text()}</skos:note>
+//      |       </skos:Concept>
+//      |   }</rdf:RDF>
+//      |
+//      """.stripMargin
+//
+//    val mappings = session.query(rdfQuery).execute()
+//    XML.loadString(mappings)
+//  }
 
 }

@@ -23,7 +23,7 @@ import akka.actor._
 import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
-import dataset.DatasetState._
+import dataset.DsInfo._
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType._
@@ -40,7 +40,6 @@ import services.ProgressReporter.{ProgressState, ProgressType}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.xml.Elem
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
@@ -79,7 +78,7 @@ object DatasetActor {
 
   case class Command(name: String)
 
-  case class StartHarvest(info: Elem, modifiedAfter: Option[DateTime], justDate: Boolean)
+  case class StartHarvest(modifiedAfter: Option[DateTime], justDate: Boolean)
 
   case object StartAnalysis
 
@@ -111,22 +110,22 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
     case _: Exception => Stop
   }
 
-  val db = datasetRepo.datasetDb
+  val dsInfo = datasetRepo.dsInfo
 
-  val errorMessage = db.infoOpt.map(info => (info \ "error" \ "message").text).getOrElse("")
+  val errorMessage = dsInfo.getLiteralProp(datasetErrorMessage).getOrElse("")
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
   when(Idle) {
 
-    case Event(StartHarvest(info, modifiedAfter, justDate), Dormant) =>
+    case Event(StartHarvest(modifiedAfter, justDate), Dormant) =>
       datasetRepo.dropTree()
-      val harvest = info \ "harvest"
-      harvestTypeFromString((harvest \ "harvestType").text).map { harvestType =>
-        val url = (harvest \ "url").text
-        val database = (harvest \ "dataset").text
-        val prefix = (harvest \ "prefix").text
-        val search = (harvest \ "search").text
+      // todo: the getOrElse could be better
+      harvestTypeFromString(dsInfo.getLiteralProp(harvestType).getOrElse("")).map { harvestType =>
+        val url = dsInfo.getLiteralProp(harvestURL).getOrElse("")
+        val database = dsInfo.getLiteralProp(harvestDataset).getOrElse("")
+        val prefix = dsInfo.getLiteralProp(harvestPrefix).getOrElse("")
+        val search = dsInfo.getLiteralProp(harvestSearch).getOrElse("")
         val kickoff = harvestType match {
           case PMH => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
           case PMH_REC => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
@@ -185,7 +184,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       val reply = commandName match {
 
         case "delete" =>
-          datasetRepo.datasetDb.dropDataset()
+          datasetRepo.dsInfo.dropDataset
           deleteQuietly(datasetRepo.rootDir)
           "deleted"
 
@@ -222,7 +221,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
     case Event(HarvestComplete(incrementalOpt), active: Active) =>
       incrementalOpt.map { incremental =>
         incremental.fileOpt.map { newFile =>
-          db.setState(SOURCED)
+          dsInfo.setState(DsState.SOURCED)
           self ! StartProcessing(Some(IncrementalSave(incremental.modifiedAfter, newFile)))
         }
       } getOrElse {
@@ -247,8 +246,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
     case Event(SipZipGenerationComplete(recordCount), active: Active) =>
       log.info(s"Generated $recordCount pockets")
-      db.setState(MAPPABLE)
-      db.setRecordCount(recordCount)
+      dsInfo.setState(DsState.MAPPABLE)
+      dsInfo.setRecordCount(recordCount)
       // todo: figure this out
       //        val rawFile = datasetRepo.createRawFile(datasetRepo.pocketFile.getName)
       //        FileUtils.copyFile(datasetRepo.pocketFile, rawFile)
@@ -264,7 +263,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       if (errorOption.isDefined)
         datasetRepo.dropTree()
       else
-        db.setState(ANALYZED)
+        dsInfo.setState(DsState.ANALYZED)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -273,8 +272,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
   when(Processing) {
 
     case Event(ProcessingComplete(validRecords, invalidRecords), active: Active) =>
-      db.setProcessedRecordCounts(validRecords, invalidRecords)
-      db.setState(PROCESSED)
+      dsInfo.setState(DsState.PROCESSED)
+      dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -283,7 +282,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
   when(Categorizing) {
 
     case Event(CategoryCountComplete(dataset, categoryCounts), active: Active) =>
-      context.parent ! CategoryCountComplete(datasetRepo.datasetName, categoryCounts)
+      context.parent ! CategoryCountComplete(datasetRepo.dsInfo.spec, categoryCounts)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -309,7 +308,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Child failure $message while in $active")
       exceptionOpt.map(log.warning(message, _))
-      db.setError(message)
+      dsInfo.setError(message)
       exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using InError(message)

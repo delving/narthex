@@ -43,7 +43,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" % "akka-testkit_2.10" % "2.2.0" % "test",
   "org.scalatestplus" %% "play" % "1.2.0" % "test",
   "commons-io" % "commons-io" % "2.4",
-  "org.basex" % "basex" % "7.9",
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",

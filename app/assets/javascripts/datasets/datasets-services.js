@@ -40,32 +40,32 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                create: function (datasetName, prefix) {
-                    return app.create(datasetName, prefix).get().then(
+                create: function (spec, character, prefix) {
+                    return app.create(spec, character, prefix).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                command: function (datasetName, command) {
-                    return app.command(datasetName, command).get().then(
+                command: function (spec, command) {
+                    return app.command(spec, command).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                datasetInfo: function (datasetName) {
-                    return app.datasetInfo(datasetName).get().then(
+                datasetInfo: function (spec) {
+                    return app.datasetInfo(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                datasetProgress: function (datasetName) {
-                    return app.datasetProgress(datasetName).get().then(
+                datasetProgress: function (spec) {
+                    return app.datasetProgress(spec).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -88,56 +88,33 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                setMetadata: function (datasetName, metadata) {
-                    return app.setMetadata(datasetName).post(metadata).then(
+                setProperties: function (spec, payload) {
+                    return app.setProperties(spec).post(payload).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setPublication: function (datasetName, publication) {
-                    return app.setPublication(datasetName).post(publication).then(
+                // todo: no harvestInfo!
+                harvest: function (spec, harvestInfo) {
+                    return app.harvest(spec).post(harvestInfo).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setCategories: function (datasetName, categories) {
-                    return app.setCategories(datasetName).post(categories).then(
+                listSipFiles: function (spec) {
+                    return app.listSipFiles(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                harvest: function (datasetName, harvestInfo) {
-                    return app.harvest(datasetName).post(harvestInfo).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                setHarvestCron: function (datasetName, harvestCron) {
-                    return app.setHarvestCron(datasetName).post(harvestCron).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                listSipFiles: function (datasetName) {
-                    return app.listSipFiles(datasetName).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                deleteLatestSipFile: function (datasetName) {
-                    return app.deleteLatestSipFile(datasetName).get().then(
+                deleteLatestSipFile: function (spec) {
+                    return app.deleteLatestSipFile(spec).get().then(
                         function (response) {
                             return response.data;
                         },
