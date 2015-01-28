@@ -38,16 +38,17 @@ import scala.concurrent.duration._
 
 object SkosInfo {
 
-  var allProps = Map.empty[String, SIProp]
+  var allSkosProps = Map.empty[String, SIProp]
 
   case class SIProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
-    allProps = allProps + (name -> this)
+    allSkosProps = allSkosProps + (name -> this)
   }
 
   val skosSpec = SIProp("skosSpec")
   val skosName = SIProp("skosName")
-  val skosOwner = SIProp("skosName", uriProp)
+  val skosOwner = SIProp("skosOwner", uriProp)
+  val skosUploadTime = SIProp("skosUploadTime", timeProp)
 
   case class DsMetadata(name: String,
                         description: String,
@@ -63,7 +64,7 @@ object SkosInfo {
     }
   }
 
-  def listDsInfo(ts: TripleStore): Future[List[SkosInfo]] = {
+  def listSkosInfo(ts: TripleStore): Future[List[SkosInfo]] = {
     val q =
       s"""
          |SELECT ?spec
@@ -76,28 +77,34 @@ object SkosInfo {
        """.stripMargin
     ts.query(q).map { list =>
       list.map { entry =>
+
+        Logger.warn(s"skos entry: $entry")
+
+
         val spec = entry("spec")
         new SkosInfo(spec, ts)
       }
     }
   }
 
-  def getSkosUri(spec: String) = s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}"
+  def getInfoUri(spec: String) = s"$NX_URI_PREFIX/skos-info/${urlEncodeValue(spec)}"
+
+  def getDataUri(spec: String) = s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}"
 
   def create(owner: NXActor, spec: String, ts: TripleStore): Future[SkosInfo] = {
     val m = ModelFactory.createDefaultModel()
-    val uri = m.getResource(getSkosUri(spec))
+    val uri = m.getResource(getInfoUri(spec))
     m.add(uri, m.getProperty(skosSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(ActorStore.actorOwner.uri), m.createResource(owner.uri))
     ts.dataPost(uri.getURI, m).map(ok => new SkosInfo(spec, ts))
   }
 
   def check(spec: String, ts: TripleStore): Future[Option[SkosInfo]] = {
-    val skosUri = getSkosUri(spec)
+    val skosUri = getInfoUri(spec)
     val q =
       s"""
          |ASK {
-         |   GRAPH <$skosUri> {
+         |   GRAPH ?g {
          |       <$skosUri> <${skosSpec.uri}> ?spec .
          |   }
          |}
@@ -112,15 +119,16 @@ class SkosInfo(val spec: String, ts: TripleStore) {
 
   def now: String = timeToString(new DateTime())
 
-  val skosUri = getSkosUri(spec)
+  val infoUri = getInfoUri(spec)
+  val dataUri = getDataUri(spec)
 
   // could cache as well so that the get happens less
-  lazy val futureModel = ts.dataGet(skosUri)
+  lazy val futureModel = ts.dataGet(infoUri)
   futureModel.onFailure {
     case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
   }
   lazy val m: Model = Await.result(futureModel, 20.seconds)
-  lazy val uri = m.getResource(skosUri)
+  lazy val uri = m.getResource(infoUri)
 
   def getLiteralProp(prop: SIProp): Option[String] = {
     val objects = m.listObjectsOfProperty(uri, m.getProperty(prop.uri))
@@ -136,16 +144,16 @@ class SkosInfo(val spec: String, ts: TripleStore) {
     val sparqlPerProp = propVal.map { pv =>
       val propUri = pv._1
       s"""
-         |WITH <$skosUri>
+         |WITH <$infoUri>
          |DELETE { 
-         |   <$skosUri> <$propUri> ?o .
+         |   <$infoUri> <$propUri> ?o .
          |}
          |INSERT { 
-         |   <$skosUri> <$propUri> "${pv._2}" .
+         |   <$infoUri> <$propUri> "${pv._2}" .
          |}
          |WHERE { 
          |   OPTIONAL {
-         |      <$skosUri> <$propUri> ?o .
+         |      <$infoUri> <$propUri> ?o .
          |   } 
          |}
        """.stripMargin.trim
@@ -164,12 +172,12 @@ class SkosInfo(val spec: String, ts: TripleStore) {
     val propUri = m.getProperty(prop.uri)
     val sparql =
       s"""
-         |WITH <$skosUri>
+         |WITH <$infoUri>
          |DELETE {
-         |   <$skosUri> <$propUri> ?o .
+         |   <$infoUri> <$propUri> ?o .
          |}
          |WHERE {
-         |   <$skosUri> <$propUri> ?o .
+         |   <$infoUri> <$propUri> ?o .
          |}
        """.stripMargin
     ts.update(sparql).map { ok =>
@@ -188,8 +196,8 @@ class SkosInfo(val spec: String, ts: TripleStore) {
     val uriValueUri = m.getResource(uriValue)
     val sparql = s"""
          |INSERT DATA {
-         |   GRAPH <$skosUri> {
-         |      <$skosUri> <$propUri> <$uriValueUri> .
+         |   GRAPH <$infoUri> {
+         |      <$infoUri> <$propUri> <$uriValueUri> .
          |   }
          |}
        """.stripMargin.trim
@@ -204,8 +212,8 @@ class SkosInfo(val spec: String, ts: TripleStore) {
     val uriValueUri = m.getProperty(uriValue)
     val sparql =
       s"""
-         |DELETE DATA FROM <$skosUri> {
-         |   <$skosUri> <$propUri> <$uriValueUri> .
+         |DELETE DATA FROM <$infoUri> {
+         |   <$infoUri> <$propUri> <$uriValueUri> .
          |}
        """.stripMargin
     ts.update(sparql).map { ok =>
@@ -215,16 +223,17 @@ class SkosInfo(val spec: String, ts: TripleStore) {
   }
 
   def dropDataset = {
+    // todo: delete the data too!
     val sparql =
       s"""
          |DELETE {
-         |   GRAPH <$skosUri> {
-         |      <$skosUri> ?p ?o .
+         |   GRAPH <$infoUri> {
+         |      <$infoUri> ?p ?o .
          |   }
          |}
          |WHERE {
-         |   GRAPH <$skosUri> {
-         |      <$skosUri> ?p ?o .
+         |   GRAPH <$infoUri> {
+         |      <$infoUri> ?p ?o .
          |   }
          |}
        """.stripMargin
@@ -232,6 +241,12 @@ class SkosInfo(val spec: String, ts: TripleStore) {
       true
     }
   }
+
+  def getStatistics = Json.obj(
+    "honesty" -> s"This is not real statistics for $spec, the queries have to be written.  Might look like these.",
+    "conceptSchemeCount" -> 6,
+    "conceptCount" -> 666
+  )
 
   override def toString = spec
 }

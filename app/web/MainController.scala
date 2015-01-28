@@ -193,8 +193,8 @@ object MainController extends Controller with Security {
           routes.javascript.MainController.createActor,
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
-          routes.javascript.AppController.create,
-          routes.javascript.AppController.setProperties,
+          routes.javascript.AppController.createDataset,
+          routes.javascript.AppController.setDatasetProperties,
           routes.javascript.AppController.harvest,
           routes.javascript.AppController.datasetInfo,
           routes.javascript.AppController.command,
@@ -218,7 +218,12 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.setCategoryMapping,
           routes.javascript.AppController.gatherCategoryCounts,
           routes.javascript.AppController.listSipFiles,
-          routes.javascript.AppController.deleteLatestSipFile
+          routes.javascript.AppController.deleteLatestSipFile,
+          routes.javascript.AppController.createSkos,
+          routes.javascript.AppController.setSkosProperties,
+          routes.javascript.AppController.skosInfo,
+          routes.javascript.AppController.skosStatistics,
+          routes.javascript.AppController.listSkos
         )
       ).as(JAVASCRIPT)
   }

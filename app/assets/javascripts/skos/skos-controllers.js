@@ -17,6 +17,157 @@
 define(["angular"], function (angular) {
     "use strict";
 
+    var SkosListCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, user) {
+        if (user == null) $location.path("/");
+
+        $scope.newDataset = {};
+
+        function checkNewEnabled() {
+            if ($scope.newDataset.specTyped)
+                $scope.newDataset.spec = $scope.newDataset.specTyped.trim().replace(/\W+/g, "_").replace(/_+/g, "_").toLowerCase();
+            else
+                $scope.newDataset.spec = "";
+            $scope.newDataset.enabled = $scope.newDataset.spec.length;
+        }
+
+        $scope.$watch("newDataset.specTyped", checkNewEnabled);
+
+        $scope.cancelNewFile = function () {
+            $scope.newFileOpen = false;
+        };
+
+        $scope.decorateSkos = function (skos) {
+            skos.edit = angular.copy(skos);
+            return skos;
+        };
+
+        $scope.fetchSkosList = function () {
+            skosService.listSkos().then(function (data) {
+                $scope.skosList = _.map(data, $scope.decorateSkos);
+            });
+        };
+
+        $scope.fetchSkosList();
+
+        $scope.createSkos = function () {
+            skosService.createSkos($scope.newDataset.spec).then(function () {
+                $scope.cancelNewFile();
+                $scope.newDataset.name = undefined;
+                $scope.fetchSkosList();
+            });
+        };
+
+        $scope.setDropSupported = function () {
+            $scope.dropSupported = true;
+        };
+    };
+
+    SkosListCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService", "user"];
+
+    var metadataFields = [
+        "skosName", "skosOwner"
+    ];
+
+    var SkosListEntryCtrl = function ($scope, skosService, $location, $timeout, $upload) {
+
+        var sk = $scope.skos;
+
+        $scope.tabOpen = "metadata";
+        $scope.expanded = false;
+
+        if (!sk) return;
+
+        $scope.$watch("skos", function (newSk) {
+            sk = newSk;
+            setUnchanged()
+        });
+
+        function fileDropped($files, after) {
+            //$files: an array of files selected, each file has name, size, and type.  Take the first only.
+            if (!($files.length && !sk.uploading)) return;
+            var onlyFile = $files[0];
+            if (!(onlyFile.name.endsWith('.xml'))) {
+                alert("Sorry, the file must end with '.xml'");
+                return;
+            }
+            sk.uploading = true;
+            $upload.upload({
+                url: '/narthex/app/skos/' + sk.skosSpec + '/upload',
+                file: onlyFile
+            }).progress(
+                function (evt) {
+                    if (sk.uploading) sk.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
+                }
+            ).success(
+                function () {
+                    sk.uploading = false;
+                    sk.uploadPercent = null;
+                    if (after) after();
+                }
+            ).error(
+                function (data, status, headers, config) {
+                    sk.uploading = false;
+                    sk.uploadPercent = null;
+                    console.log("Failure during upload: data", data);
+                    console.log("Failure during upload: status", status);
+                    console.log("Failure during upload: headers", headers);
+                    console.log("Failure during upload: config", config);
+                    alert(data.problem);
+                }
+            );
+        }
+
+        function getStatistics() {
+            skosService.skosStatistics(sk.skosSpec).then(function (statistics) {
+                $scope.statistics = statistics;
+            });
+        }
+
+        getStatistics();
+
+        sk.fileDropped = function ($files) {
+            fileDropped($files, getStatistics);
+        };
+
+        function unchanged(fieldNameList) {
+            var unchanged = true;
+            _.forEach(fieldNameList, function (fieldName) {
+                if (!angular.equals(sk[fieldName], sk.edit[fieldName])) {
+//                    console.log("changed " + fieldName);
+                    unchanged = false;
+                }
+            });
+            return unchanged;
+        }
+
+        function setUnchanged() {
+            $scope.unchangedMetadata = unchanged(metadataFields);
+        }
+
+        $scope.$watch("skos.edit", setUnchanged, true);
+
+        function refreshInfo() {
+            skosService.skosInfo(sk.skosSpec).then(function (skos) {
+                $scope.skos = $scope.decorateSkos(skos);
+            });
+        }
+
+        function setProperties(propertyList) {
+            var payload = {propertyList: propertyList, values: {}};
+            _.forEach(propertyList, function (propertyName) {
+                payload.values[propertyName] = angular.copy(sk.edit[propertyName]);
+            });
+            skosService.setProperties(sk.skosSpec, payload).then(refreshInfo);
+        }
+
+        $scope.setMetadata = function () {
+            setProperties(metadataFields);
+        };
+
+    };
+
+    SkosListEntryCtrl.$inject = ["$scope", "skosService", "$location", "$timeout", "$upload"];
+
     var SkosChooseCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, user) {
         if (user == null) $location.path("/");
         $scope.conceptSchemes = {};
@@ -28,7 +179,7 @@ define(["angular"], function (angular) {
 
         $scope.goToMapping = function () {
             if (!($scope.conceptSchemes.a && $scope.conceptSchemes.b)) return;
-            $location.path('/thesaurus/' + $scope.conceptSchemes.a + "/" + $scope.conceptSchemes.b);
+            $location.path('/skos/' + $scope.conceptSchemes.a + "/" + $scope.conceptSchemes.b);
         };
 
         $scope.$watch("conceptSchemes", function (schemes) {
@@ -109,6 +260,7 @@ define(["angular"], function (angular) {
         }
 
         var filterConceptsPromise;
+
         function filterConcepts() {
             $timeout.cancel(filterConceptsPromise);
             filterConceptsPromise = $timeout(filterConceptsNow, 500);
@@ -128,6 +280,7 @@ define(["angular"], function (angular) {
                 });
             });
         }
+
         fetchMappings();
 
         $scope.scrollTo = function (options) {
@@ -144,9 +297,10 @@ define(["angular"], function (angular) {
         }
 
         var searchAPromise;
+
         function searchA(value) {
             $timeout.cancel(searchAPromise);
-            searchAPromise = $timeout(function() {
+            searchAPromise = $timeout(function () {
                 searchANow(value);
             }, 500);
         }
@@ -161,9 +315,10 @@ define(["angular"], function (angular) {
         }
 
         var searchBPromise;
+
         function searchB(value) {
             $timeout.cancel(searchBPromise);
-            searchBPromise = $timeout(function() {
+            searchBPromise = $timeout(function () {
                 searchBNow(value);
             }, 500);
         }
@@ -258,6 +413,8 @@ define(["angular"], function (angular) {
     SkosMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService", "$timeout", "pageScroll", "user"];
 
     return {
+        SkosListCtrl: SkosListCtrl,
+        SkosListEntryCtrl: SkosListEntryCtrl,
         SkosChooseCtrl: SkosChooseCtrl,
         SkosMapCtrl: SkosMapCtrl
     };

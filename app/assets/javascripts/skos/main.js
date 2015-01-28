@@ -20,7 +20,15 @@ define(
                 $routeProvider.when(
                     "/skos",
                     {
-                        templateUrl: "/narthex/assets/templates/skos-main.html",
+                        templateUrl: "/narthex/assets/templates/skos-list.html",
+                        controller: controllers.SkosListCtrl,
+                        resolve: userResolve,
+                        reloadOnSearch: false
+                    }
+                ).when(
+                    "/skos/choose",
+                    {
+                        templateUrl: "/narthex/assets/templates/skos-choose.html",
                         controller: controllers.SkosChooseCtrl,
                         resolve: userResolve,
                         reloadOnSearch: false
@@ -37,11 +45,15 @@ define(
             }
         ]);
 
-        return angular.module("narthex.skos", [
+        var narthexSkos = angular.module("narthex.skos", [
             "ngCookies",
             "ngRoute",
             "skos.routes",
             "skos.services"
         ]);
+
+        narthexSkos.controller('SkosListEntryCtrl', controllers.SkosListEntryCtrl);
+
+        return  narthexSkos;
     }
 );

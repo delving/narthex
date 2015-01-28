@@ -227,7 +227,7 @@ define(["angular"], function () {
             }
             ds.uploading = true;
             $upload.upload({
-                url: '/narthex/app/' + ds.datasetSpec + '/upload',
+                url: '/narthex/app/dataset/' + ds.datasetSpec + '/upload',
                 file: onlyFile
             }).progress(
                 function (evt) {

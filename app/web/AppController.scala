@@ -25,6 +25,8 @@ import dataset.DsInfo
 import dataset.DsInfo._
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
+import mapping.SkosInfo
+import mapping.SkosInfo.{SIProp, listSkosInfo}
 import mapping.TermDb._
 import org.OrgActor.DatasetMessage
 import org.OrgRepo.repo
@@ -58,10 +60,8 @@ object AppController extends Controller with Security {
     DsInfo.check(spec, OrgRepo.repo.ts).map(info => Ok(Json.toJson(info)))
   }
 
-  // todo: create for a given type, not prefix
-  def create(spec: String, character: String, mapToPrefix: String) = Secure() { session => request =>
+  def createDataset(spec: String, character: String, mapToPrefix: String) = Secure() { session => request =>
     repo.createDatasetRepo(session.actor, spec, character, mapToPrefix)
-    //    repo.datasetRepo(datasetName).datasetDb.createDataset(prefix)
     Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
   }
 
@@ -108,7 +108,7 @@ object AppController extends Controller with Security {
     }
   }
 
-  def upload(spec: String) = Secure(parse.multipartFormData) { session => request =>
+  def uploadDataset(spec: String) = Secure(parse.multipartFormData) { session => request =>
     repo.datasetRepoOption(spec).map { datasetRepo =>
       request.body.file("file").map { file =>
         val error = datasetRepo.acceptUpload(file.filename, { target =>
@@ -129,12 +129,12 @@ object AppController extends Controller with Security {
     }
   }
 
-  def setProperties(spec: String) = SecureAsync(parse.json) { session => request =>
+  def setDatasetProperties(spec: String) = SecureAsync(parse.json) { session => request =>
     DsInfo.check(spec, repo.ts).flatMap { dsInfoOpt =>
       dsInfoOpt.map { dsInfo =>
         val propertyList = (request.body \ "propertyList").as[List[String]]
         Logger.info(s"setProperties $propertyList")
-        val diProps: List[DIProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
+        val diProps: List[DIProp] = propertyList.map(name => allDatasetProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
         val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
         val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
         dsInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
@@ -205,13 +205,72 @@ object AppController extends Controller with Security {
     }
   }
 
-  def listSheets = Secure() { session => request =>
-    Ok(Json.obj("sheets" -> repo.categoriesRepo.listSheets))
+  // todo: building the skos interface
+
+  def listSkos = SecureAsync() { session => request =>
+    listSkosInfo(repo.ts).map { list =>
+      Logger.warn(s"listSkos: $list")
+      Ok(Json.toJson(list))
+    }
   }
 
-  def sheet(spec: String) = Action(parse.anyContent) { implicit request =>
-    OkFile(repo.categoriesRepo.sheet(spec))
+  def createSkos(spec: String) = SecureAsync() { session => request =>
+    SkosInfo.create(session.actor, spec, repo.ts).map(ok =>
+      Ok(Json.obj("created" -> s"Skos $spec created"))
+    )
   }
+
+  def uploadSkos(spec: String) = SecureAsync(parse.multipartFormData) { session => request =>
+    SkosInfo.check(spec, repo.ts).flatMap { skosInfoOpt =>
+      skosInfoOpt.map { skosInfo =>
+        request.body.file("file").map { file =>
+          // todo: record when it happened
+          repo.ts.dataPutXMLFile(skosInfo.dataUri, file.ref.file).map(ok => Ok(Json.obj("uploaded" -> file.filename)))
+        } getOrElse {
+          Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
+        }
+      } getOrElse {
+        Future(NotAcceptable(Json.obj("problem" -> s"Cannot find skos dataset $spec")))
+      }
+    }
+  }
+
+  def skosInfo(spec: String) = SecureAsync() { session => request =>
+    SkosInfo.check(spec, OrgRepo.repo.ts).map { infoOpt =>
+      infoOpt.map { info =>
+        Ok(Json.toJson(info))
+      } getOrElse {
+        NotFound(Json.obj("problem" -> s"Cannot find skos dataset $spec"))
+      }
+    }
+  }
+
+  def skosStatistics(spec: String) = SecureAsync() { session => request =>
+    SkosInfo.check(spec, OrgRepo.repo.ts).map { infoOpt =>
+      infoOpt.map { info =>
+        Ok(info.getStatistics)
+      } getOrElse {
+        NotFound(Json.obj("problem" -> s"Cannot find skos dataset $spec"))
+      }
+    }
+  }
+
+  def setSkosProperties(spec: String) = SecureAsync(parse.json) { session => request =>
+    SkosInfo.check(spec, repo.ts).flatMap { skosInfoOpt =>
+      skosInfoOpt.map { skosInfo =>
+        val propertyList = (request.body \ "propertyList").as[List[String]]
+        Logger.info(s"setProperties $propertyList")
+        val diProps: List[SIProp] = propertyList.map(name => SkosInfo.allSkosProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
+        val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
+        val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
+        skosInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
+      } getOrElse {
+        Future(NotFound(Json.obj("problem" -> s"dataset $spec not found")))
+      }
+    }
+  }
+
+  // todo: things under here unfinished
 
   def listConceptSchemes = Secure() { session => request =>
     Ok(Json.obj("list" -> repo.skosRepo.conceptSchemes.map(_.name)))
@@ -317,6 +376,14 @@ object AppController extends Controller with Security {
     val member = (request.body \ "member").as[Boolean]
     datasetRepo.categoryDb.setMapping(categoryMapping, member)
     Ok("Mapping " + (if (member) "added" else "removed"))
+  }
+
+  def listSheets = Secure() { session => request =>
+    Ok(Json.obj("sheets" -> repo.categoriesRepo.listSheets))
+  }
+
+  def sheet(spec: String) = Action(parse.anyContent) { implicit request =>
+    OkFile(repo.categoriesRepo.sheet(spec))
   }
 
   def listSipFiles(spec: String) = Secure() { session => request =>

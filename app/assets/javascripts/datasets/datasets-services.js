@@ -89,7 +89,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setProperties: function (spec, payload) {
-                    return app.setProperties(spec).post(payload).then(
+                    return app.setDatasetProperties(spec).post(payload).then(
                         function (response) {
                             return response.data;
                         },

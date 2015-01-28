@@ -40,6 +40,46 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
+                listSkos: function () {
+                    return app.listSkos().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                createSkos: function (spec) {
+                    return app.createSkos(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                skosInfo: function (spec) {
+                    return app.skosInfo(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                skosStatistics: function (spec) {
+                    return app.skosStatistics(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                setProperties: function (spec, payload) {
+                    return app.setSkosProperties(spec).post(payload).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 listConceptSchemes: function () {
                     return app.listConceptSchemes().get().then(
                         function (response) {

@@ -103,7 +103,7 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
     val info = await(SkosInfo.create(admin, "gtaa_genre", ts))
     val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-    val posted = await(ts.dataPostXMLFile(info.skosUri, skosFile))
+    val posted = await(ts.dataPutXMLFile(info.infoUri, skosFile))
     posted must be(true)
     countGraphs must be(8)
   }

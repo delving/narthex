@@ -40,11 +40,11 @@ import scala.concurrent.duration._
 
 object DsInfo {
 
-  var allProps = Map.empty[String, DIProp]
+  var allDatasetProps = Map.empty[String, DIProp]
 
   case class DIProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
-    allProps = allProps + (name -> this)
+    allDatasetProps = allDatasetProps + (name -> this)
   }
 
   case class Character(name: String)
