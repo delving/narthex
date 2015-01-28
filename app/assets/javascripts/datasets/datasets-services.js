@@ -41,7 +41,7 @@ define(["angular", "common"], function (angular) {
 
             return {
                 create: function (spec, character, prefix) {
-                    return app.create(spec, character, prefix).get().then(
+                    return app.createDataset(spec, character, prefix).get().then(
                         function (response) {
                             return response.data;
                         },
