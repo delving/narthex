@@ -74,7 +74,7 @@ class OrgRepo(userHome: String, val orgId: String) {
 
   def createDatasetRepo(spec: String, characterString: String, prefix: String) = {
     val character: Option[Character] = DsInfo.getCharacter(characterString)
-    character.map(c => DsInfo(spec, c, prefix, ts))
+    character.map(c => DsInfo.create(spec, c, prefix, ts))
   }
 
   def datasetRepo(spec: String): DatasetRepo = datasetRepoOption(spec).getOrElse(
@@ -82,7 +82,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   )
 
   def datasetRepoOption(spec: String): Option[DatasetRepo] = {
-    val futureInfoOpt = DsInfo(spec, ts)
+    val futureInfoOpt = DsInfo.check(spec, ts)
     val infoOpt = Await.result(futureInfoOpt, 5.seconds)
     infoOpt.map(info => new DatasetRepo(this, info).mkdirs)
   }

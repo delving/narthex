@@ -55,7 +55,7 @@ object AppController extends Controller with Security {
   }
 
   def datasetInfo(spec: String) = SecureAsync() { session => request =>
-    DsInfo(spec, OrgRepo.repo.ts).map(info => Ok(Json.toJson(info)))
+    DsInfo.check(spec, OrgRepo.repo.ts).map(info => Ok(Json.toJson(info)))
   }
 
   // todo: create for a given type, not prefix
@@ -130,7 +130,7 @@ object AppController extends Controller with Security {
   }
 
   def setProperties(spec: String) = SecureAsync(parse.json) { session => request =>
-    DsInfo(spec, repo.ts).flatMap { dsInfoOpt =>
+    DsInfo.check(spec, repo.ts).flatMap { dsInfoOpt =>
       dsInfoOpt.map { dsInfo =>
         val propertyList = (request.body \ "propertyList").as[List[String]]
         Logger.info(s"setProperties $propertyList")

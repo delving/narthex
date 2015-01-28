@@ -144,7 +144,7 @@ object DsInfo {
 
   def getDsUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
 
-  def apply(spec: String, character: Character, mapToPrefix:String, ts: TripleStore): Future[DsInfo] = {
+  def create(spec: String, character: Character, mapToPrefix:String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsUri(spec))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
@@ -153,7 +153,7 @@ object DsInfo {
     ts.dataPost(uri.getURI, m).map(ok => new DsInfo(spec, ts))
   }
 
-  def apply(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
+  def check(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
     val dsUri = getDsUri(spec)
     val q =
       s"""

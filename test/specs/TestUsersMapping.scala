@@ -72,7 +72,7 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined must be(true)
     // create processed repo
-    val info = await(DsInfo("frans_hals", DsInfo.CharacterMapped, "icn", ts))
+    val info = await(DsInfo.create("frans_hals", DsInfo.CharacterMapped, "icn", ts))
     val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info.dsUri)
     var sourceFile = processedRepo.createFile
     val sourceOutput = writer(sourceFile)
@@ -103,13 +103,13 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
         await(ts.update(update))
       }
     }
-    countGraphs must be(8)
+    countGraphs must be(7)
   }
 
   "Skosification must work" in {
     // mark a field as skosified
-    countGraphs must be(8)
-    val info = await(DsInfo("frans_hals", ts)).get
+    countGraphs must be(7)
+    val info = await(DsInfo.check("frans_hals", ts)).get
     await(info.addUriProp(DsInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
 
     val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
