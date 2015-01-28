@@ -21,6 +21,7 @@ import java.io.File
 import dataset.DsInfo.Character
 import dataset.{DatasetRepo, DsInfo, Sip, SipFactory}
 import mapping.{CategoriesRepo, ConceptRepo}
+import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
 import org.joda.time.DateTime
 import services.NarthexConfig._
@@ -64,7 +65,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   val factoryDir = new File(orgRoot, "factory")
   val sipFactory = new SipFactory(factoryDir)
   val ts = new TripleStore(TRIPLE_STORE_URL)
-  val us = new UserStore(ts)
+  val us = new ActorStore(ts)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
@@ -72,9 +73,9 @@ class OrgRepo(userHome: String, val orgId: String) {
   rawDir.mkdirs()
   sipsDir.mkdirs()
 
-  def createDatasetRepo(spec: String, characterString: String, prefix: String) = {
+  def createDatasetRepo(owner: NXActor, spec: String, characterString: String, prefix: String) = {
     val character: Option[Character] = DsInfo.getCharacter(characterString)
-    character.map(c => DsInfo.create(spec, c, prefix, ts))
+    character.map(c => DsInfo.create(owner, spec, c, prefix, ts))
   }
 
   def datasetRepo(spec: String): DatasetRepo = datasetRepoOption(spec).getOrElse(

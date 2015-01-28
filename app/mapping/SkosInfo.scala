@@ -19,6 +19,8 @@ package mapping
 import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
+import org.ActorStore
+import org.ActorStore.NXActor
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -80,22 +82,23 @@ object SkosInfo {
     }
   }
 
-  def getSkosUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
+  def getSkosUri(spec: String) = s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}"
 
-  def create(spec: String, ts: TripleStore): Future[SkosInfo] = {
+  def create(owner: NXActor, spec: String, ts: TripleStore): Future[SkosInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getSkosUri(spec))
     m.add(uri, m.getProperty(skosSpec.uri), m.createLiteral(spec))
+    m.add(uri, m.getProperty(ActorStore.actorOwner.uri), m.createResource(owner.uri))
     ts.dataPost(uri.getURI, m).map(ok => new SkosInfo(spec, ts))
   }
 
   def check(spec: String, ts: TripleStore): Future[Option[SkosInfo]] = {
-    val dsUri = getSkosUri(spec)
+    val skosUri = getSkosUri(spec)
     val q =
       s"""
          |ASK {
-         |   GRAPH <$dsUri> {
-         |       <$dsUri> <${skosSpec.uri}> ?spec .
+         |   GRAPH <$skosUri> {
+         |       <$skosUri> <${skosSpec.uri}> ?spec .
          |   }
          |}
        """.stripMargin

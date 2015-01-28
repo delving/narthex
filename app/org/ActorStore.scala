@@ -28,9 +28,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-object UserStore {
+object ActorStore {
 
-  val graphName = s"${NX_NAMESPACE}Users"
+  val graphName = s"${NX_NAMESPACE}Actors"
 
   case class NXProfile(firstName: String, lastName: String, email: String) {
     val nonEmpty = if (firstName.isEmpty && lastName.isEmpty && email.isEmpty) None else Some(this)
@@ -41,22 +41,22 @@ object UserStore {
     val uri = s"$NX_URI_PREFIX/actor/$actorName"
   }
 
-  case class USProp(name: String, dataType: PropType = stringProp) {
+  case class NXProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
   }
 
-  val username = USProp("username")
-  val passwordHash = USProp("passwordHash")
-  val userEMail = USProp("userEMail")
-  val userFirstName = USProp("userFirstName")
-  val userLastName = USProp("userLastName")
-  val userMaker = USProp("userMaker")
+  val username = NXProp("username")
+  val passwordHash = NXProp("passwordHash")
+  val userEMail = NXProp("userEMail")
+  val userFirstName = NXProp("userFirstName")
+  val userLastName = NXProp("userLastName")
+  val actorOwner = NXProp("actorOwner")
 
 }
 
-class UserStore(client: TripleStore) {
+class ActorStore(client: TripleStore) {
 
-  import org.UserStore._
+  import org.ActorStore._
 
   val digest = MessageDigest.getInstance("SHA-256")
 
@@ -64,7 +64,7 @@ class UserStore(client: TripleStore) {
 
   val model = Await.result(futureModel, 20.seconds)
 
-  private def propUri(prop: USProp)= model.getProperty(prop.uri)
+  private def propUri(prop: NXProp)= model.getProperty(prop.uri)
 
   private def hashLiteral(string: String): Literal = {
     digest.reset()
@@ -78,7 +78,7 @@ class UserStore(client: TripleStore) {
     val exists = model.listStatements(actorResource, propUri(passwordHash), null).hasNext
     if (!exists) {
       model.add(actorResource, propUri(passwordHash), hashLiteral)
-      makerOpt.map(maker => model.add(actorResource, propUri(userMaker), model.getResource(maker.uri)))
+      makerOpt.map(maker => model.add(actorResource, propUri(actorOwner), model.getResource(maker.uri)))
       model.add(actorResource, propUri(username), nxActor.actorName)
       Some(nxActor)
     } else {
@@ -97,7 +97,7 @@ class UserStore(client: TripleStore) {
     } else None
   }
 
-  private def getLiteral(nxActor: NXActor, prop: USProp) = {
+  private def getLiteral(nxActor: NXActor, prop: NXProp) = {
     val resource: Resource = model.getResource(nxActor.uri)
     val list = model.listObjectsOfProperty(resource, propUri(prop))
     list.map(node => node.asLiteral().getString).toList.headOption.getOrElse("")
@@ -121,7 +121,7 @@ class UserStore(client: TripleStore) {
       val actorResource: Resource = model.getResource(actor.uri)
       val exists = model.listStatements(actorResource, model.getProperty(passwordHash.uri), hash).hasNext
       val userOpt = if (exists) {
-        val makerList = model.listObjectsOfProperty(actorResource, propUri(userMaker)).toList
+        val makerList = model.listObjectsOfProperty(actorResource, propUri(actorOwner)).toList
         val makerOpt = makerList.map(node => node.asResource().getURI).toList.headOption
         Some(actor.copy(makerOpt = makerOpt, profileOpt = profileFromModel(actor).nonEmpty))
       }
@@ -134,7 +134,7 @@ class UserStore(client: TripleStore) {
 
   def listActors(nxActor: NXActor): List[String] = {
     val resource = model.getResource(nxActor.uri)
-    val maker = propUri(userMaker)
+    val maker = propUri(actorOwner)
     val usernameResource = propUri(username)
     val list = model.listSubjectsWithProperty(maker, resource).toList.flatMap { madeActorResource =>
       model.listObjectsOfProperty(madeActorResource, usernameResource).toList.headOption.map(_.asLiteral().getString)
@@ -150,14 +150,14 @@ class UserStore(client: TripleStore) {
          |DELETE {
          |   GRAPH <$graphName> {
          |      <${user.uri}> <${propUri(username)}> ?userName .
-         |      <${user.uri}> <${propUri(userMaker)}> ?userMaker .
+         |      <${user.uri}> <${propUri(actorOwner)}> ?userMaker .
          |      <${user.uri}> <${propUri(passwordHash)}> ?passwordHash .
          |   }
          |}
          |INSERT {
          |   GRAPH <$graphName> {
          |      <${user.uri}> <${propUri(username)}> "${user.actorName}" .
-         |      <${user.uri}> <${propUri(userMaker)}> <${adminActor.uri}> .
+         |      <${user.uri}> <${propUri(actorOwner)}> <${adminActor.uri}> .
          |      <${user.uri}> <${propUri(passwordHash)}> "${hash.getString}" .
          |   }
          |}
@@ -165,7 +165,7 @@ class UserStore(client: TripleStore) {
          |   OPTIONAL {
          |      GRAPH <$graphName> {
          |         <${user.uri}> <${propUri(username)}> ?username .
-         |         <${user.uri}> <${propUri(userMaker)}> ?userMaker .
+         |         <${user.uri}> <${propUri(actorOwner)}> ?userMaker .
          |         <${user.uri}> <${propUri(passwordHash)}> ?passwordHash .
          |      }
          |   }

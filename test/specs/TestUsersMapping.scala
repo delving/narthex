@@ -3,9 +3,9 @@ package specs
 import java.io.File
 
 import dataset.{DsInfo, ProcessedRepo, SipRepo, SourceRepo}
-import mapping.Skosification
-import org.UserStore
-import org.UserStore.NXActor
+import mapping.{SkosInfo, Skosification}
+import org.ActorStore
+import org.ActorStore.NXActor
 import org.apache.commons.io.FileUtils
 import org.scalatestplus.play._
 import play.api.test.Helpers._
@@ -33,32 +33,21 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     cleanStart()
 
     // start fresh
-    val us1 = new UserStore(ts)
-    val admin = await(us1.authenticate("gumby", "secret gumby"))
+    val actorStore = new ActorStore(ts)
+    val admin = await(actorStore.authenticate("gumby", "secret gumby"))
     admin must be(Some(NXActor("gumby", None)))
-    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
+    await(actorStore.createActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
     //    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(None)
-    us1.listActors(admin.get) must be(List("pokey"))
-    await(us1.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
+    actorStore.listActors(admin.get) must be(List("pokey"))
+    await(actorStore.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
 
     // this will have to get its data from the triple store again
-    val us2 = new UserStore(ts)
-    await(us2.authenticate("gumby", "secret gumbo")) must be(None)
-    await(us2.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
-    await(us2.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
-    await(us2.authenticate("third-wheel", "can i join")) must be(None)
+    val store2 = new ActorStore(ts)
+    await(store2.authenticate("gumby", "secret gumbo")) must be(None)
+    await(store2.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
+    await(store2.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
+    await(store2.authenticate("third-wheel", "can i join")) must be(None)
   }
-
-//  "A sample SKOS vocabulary should be loaded" in {
-//    // check that the user is still there
-//    val us = new UserStore(ts)
-//    await(us.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
-//    // push in a SKOS vocabulary
-//    val info = await(DsInfo("gtaa_genre", DsInfo.CharacterSkos, "", ts))
-//    val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-//    val posted = await(ts.dataPostXMLFile(info.dsUri, skosFile))
-//    posted must be(true)
-//  }
 
   "A dataset should be loaded" in {
     // prepare for reading and mapping
@@ -72,7 +61,9 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined must be(true)
     // create processed repo
-    val info = await(DsInfo.create("frans_hals", DsInfo.CharacterMapped, "icn", ts))
+    val actorStore = new ActorStore(ts)
+    val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
+    val info = await(DsInfo.create(admin, "frans_hals", DsInfo.CharacterMapped, "icn", ts))
     val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info.dsUri)
     var sourceFile = processedRepo.createFile
     val sourceOutput = writer(sourceFile)
@@ -106,9 +97,20 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
     countGraphs must be(7)
   }
 
+  "A sample SKOS vocabulary should be loaded" in {
+    // push in a SKOS vocabulary
+    val actorStore = new ActorStore(ts)
+    val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
+    val info = await(SkosInfo.create(admin, "gtaa_genre", ts))
+    val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
+    val posted = await(ts.dataPostXMLFile(info.skosUri, skosFile))
+    posted must be(true)
+    countGraphs must be(8)
+  }
+
   "Skosification must work" in {
     // mark a field as skosified
-    countGraphs must be(7)
+    countGraphs must be(8)
     val info = await(DsInfo.check("frans_hals", ts)).get
     await(info.addUriProp(DsInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
 

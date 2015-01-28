@@ -19,7 +19,7 @@ package mapping
 import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model.Model
-import org.UserStore.NXActor
+import org.ActorStore.NXActor
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.libs.json.{Json, Writes}

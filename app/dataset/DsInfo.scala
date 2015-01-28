@@ -20,6 +20,8 @@ import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
 import harvest.Harvesting.{HarvestCron, HarvestType}
+import org.ActorStore
+import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
@@ -44,8 +46,6 @@ object DsInfo {
     val uri = s"$NX_NAMESPACE$name"
     allProps = allProps + (name -> this)
   }
-
-  val datasetActor = DIProp("datasetActor")
 
   case class Character(name: String)
 
@@ -144,11 +144,12 @@ object DsInfo {
 
   def getDsUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
 
-  def create(spec: String, character: Character, mapToPrefix:String, ts: TripleStore): Future[DsInfo] = {
+  def create(owner: NXActor, spec: String, character: Character, mapToPrefix:String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsUri(spec))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
+    m.add(uri, m.getProperty(ActorStore.actorOwner.uri), m.createResource(owner.uri))
     if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.dataPost(uri.getURI, m).map(ok => new DsInfo(spec, ts))
   }

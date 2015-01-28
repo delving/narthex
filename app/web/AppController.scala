@@ -60,7 +60,7 @@ object AppController extends Controller with Security {
 
   // todo: create for a given type, not prefix
   def create(spec: String, character: String, mapToPrefix: String) = Secure() { session => request =>
-    repo.createDatasetRepo(spec, character, mapToPrefix)
+    repo.createDatasetRepo(session.actor, spec, character, mapToPrefix)
     //    repo.datasetRepo(datasetName).datasetDb.createDataset(prefix)
     Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
   }

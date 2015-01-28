@@ -16,7 +16,7 @@
 
 package web
 
-import org.UserStore.NXActor
+import org.ActorStore.NXActor
 import play.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -31,9 +31,9 @@ trait Security {
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
   lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
 
-  implicit val userSessionWrites = new Writes[UserSession] {
-    def writes(us: UserSession) = {
-      val maker= us.actor.makerOpt.getOrElse("")
+  implicit val userSessionWrites = new Writes[ActorSession] {
+    def writes(us: ActorSession) = {
+      val maker = us.actor.makerOpt.getOrElse("")
       val firstName = us.actor.profileOpt.map(_.firstName).getOrElse("")
       val lastName = us.actor.profileOpt.map(_.lastName).getOrElse("")
       val email = us.actor.profileOpt.map(_.email).getOrElse("")
@@ -51,12 +51,12 @@ trait Security {
     }
   }
 
-  case class UserSession(actor: NXActor,
-                         apiKey: String,
-                         narthexDomain: String,
-                         naveDomain: String,
-                         categoriesEnabled: Boolean,
-                         token: String = java.util.UUID.randomUUID().toString)
+  case class ActorSession(actor: NXActor,
+                          apiKey: String,
+                          narthexDomain: String,
+                          naveDomain: String,
+                          categoriesEnabled: Boolean,
+                          token: String = java.util.UUID.randomUUID().toString)
 
   /*
     To make this work seamlessly with Angular, you should read the token from a header called
@@ -65,26 +65,26 @@ trait Security {
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: UserSession => Request[A] => Result): Action[A] = Action(p) { implicit request =>
+  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: ActorSession => Request[A] => Result): Action[A] = Action(p) { implicit request =>
     val maybeToken: Option[String] = request.headers.get(TOKEN)
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[UserSession](token) map { userSession =>
-        block(userSession)(request).withSession(userSession)
+      Cache.getAs[ActorSession](token) map { session =>
+        block(session)(request).withSession(session)
       }
     } getOrElse {
       Unauthorized(Json.obj("err" -> "Secure session expired"))
     }
   }
 
-  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: UserSession => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
+  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: ActorSession => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
     val maybeToken: Option[String] = request.headers.get(TOKEN)
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[UserSession](token) map { userSession =>
-        block(userSession)(request)
+      Cache.getAs[ActorSession](token) map { session =>
+        block(session)(request)
       }
     } getOrElse {
       Future.successful(Unauthorized(Json.obj("err" -> "Secure async session expired")))
@@ -93,9 +93,9 @@ trait Security {
 
   implicit class ResultWithToken(result: Result) {
 
-    def withSession(userSession: UserSession): Result = {
-      Cache.set(userSession.token, userSession, CACHE_EXPIRATION)
-      result.withCookies(Cookie(TOKEN_COOKIE_KEY, userSession.token, None, httpOnly = false))
+    def withSession(session: ActorSession): Result = {
+      Cache.set(session.token, session, CACHE_EXPIRATION)
+      result.withCookies(Cookie(TOKEN_COOKIE_KEY, session.token, None, httpOnly = false))
     }
 
     def discardingToken(token: String): Result = {
