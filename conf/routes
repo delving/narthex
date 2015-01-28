@@ -23,37 +23,45 @@ POST        /narthex/create-actor                                               
 # File Handling
 GET         /narthex/app/datasets                                               web.AppController.listDatasets
 GET         /narthex/app/prefixes                                               web.AppController.listPrefixes
-GET         /narthex/app/:spec/create/:character/:prefix                        web.AppController.create(spec, character, prefix)
-POST        /narthex/app/:spec/upload                                           web.AppController.upload(spec)
-POST        /narthex/app/:spec/set-properties                                   web.AppController.setProperties(spec)
-POST        /narthex/app/:spec/harvest                                          web.AppController.harvest(spec)
-POST        /narthex/app/:spec/set-delimiter                                    web.AppController.setRecordDelimiter(spec)
-GET         /narthex/app/:spec/index                                            web.AppController.index(spec)
-GET         /narthex/app/:spec/dataset-info                                     web.AppController.datasetInfo(spec)
-GET         /narthex/app/:spec/dataset-progress                                 web.AppController.datasetProgress(spec)
-GET         /narthex/app/:spec/command/:command                                 web.AppController.command(spec, command)
-GET         /narthex/app/:spec/status/*path                                     web.AppController.nodeStatus(spec, path)
-GET         /narthex/app/:spec/sample/:size/*path                               web.AppController.sample(spec, path, size:Int)
-GET         /narthex/app/:spec/histogram/:size/*path                            web.AppController.histogram(spec, path, size:Int)
+GET         /narthex/app/dataset/:spec/create/:character/:prefix                web.AppController.createDataset(spec, character, prefix)
+POST        /narthex/app/dataset/:spec/upload                                   web.AppController.uploadDataset(spec)
+POST        /narthex/app/dataset/:spec/set-properties                           web.AppController.setDatasetProperties(spec)
+POST        /narthex/app/dataset/:spec/harvest                                  web.AppController.harvest(spec)
+POST        /narthex/app/dataset/:spec/set-delimiter                            web.AppController.setRecordDelimiter(spec)
+GET         /narthex/app/dataset/:spec/index                                    web.AppController.index(spec)
+GET         /narthex/app/dataset/:spec/info                                     web.AppController.datasetInfo(spec)
+GET         /narthex/app/dataset/:spec/progress                                 web.AppController.datasetProgress(spec)
+GET         /narthex/app/dataset/:spec/command/:command                         web.AppController.command(spec, command)
+GET         /narthex/app/dataset/:spec/status/*path                             web.AppController.nodeStatus(spec, path)
+GET         /narthex/app/dataset/:spec/sample/:size/*path                       web.AppController.sample(spec, path, size:Int)
+GET         /narthex/app/dataset/:spec/histogram/:size/*path                    web.AppController.histogram(spec, path, size:Int)
 
-GET         /narthex/app/skos/list                                              web.AppController.listConceptSchemes
+GET         /narthex/app/dataset/:spec/term/source-paths                        web.AppController.getTermSourcePaths(spec)
+GET         /narthex/app/dataset/:spec/term/mappings                            web.AppController.getTermMappings(spec)
+POST        /narthex/app/dataset/:spec/term/set-mapping                         web.AppController.setTermMapping(spec)
+
+GET         /narthex/app/skos/list                                              web.AppController.listSkos
+GET         /narthex/app/skos/:spec/create                                      web.AppController.createSkos(spec)
+POST        /narthex/app/skos/:spec/upload                                      web.AppController.uploadSkos(spec)
+POST        /narthex/app/skos/:spec/set-properties                              web.AppController.setSkosProperties(spec)
+GET         /narthex/app/skos/:spec/info                                        web.AppController.skosInfo(spec)
+GET         /narthex/app/skos/:spec/statistics                                  web.AppController.skosStatistics(spec)
+
+GET         /narthex/app/skos/list-concept-schemes                              web.AppController.listConceptSchemes
 GET         /narthex/app/skos/:conceptSchemeName/:sought                        web.AppController.searchConceptScheme(conceptSchemeName, sought)
 GET         /narthex/app/skos/:schemeNameA/:schemeNameB/get-mappings            web.AppController.getThesaurusMappings(schemeNameA, schemeNameB)
 POST        /narthex/app/skos/:schemeNameA/:schemeNameB/set-mapping             web.AppController.setThesaurusMapping(schemeNameA, schemeNameB)
-GET         /narthex/app/:spec/term/source-paths                                web.AppController.getTermSourcePaths(spec)
-GET         /narthex/app/:spec/term/mappings                                    web.AppController.getTermMappings(spec)
-POST        /narthex/app/:spec/term/set-mapping                                 web.AppController.setTermMapping(spec)
 
 GET         /narthex/app/category-list                                          web.AppController.getCategoryList
 GET         /narthex/app/sheets-list                                            web.AppController.listSheets
 GET         /narthex/app/sheet/:spec                                            web.AppController.sheet(spec)
-GET         /narthex/app/:spec/category/source-paths                            web.AppController.getCategorySourcePaths(spec)
-GET         /narthex/app/:spec/category/mappings                                web.AppController.getCategoryMappings(spec)
-POST        /narthex/app/:spec/category/set-mapping                             web.AppController.setCategoryMapping(spec)
+GET         /narthex/app/dataset/:spec/category/source-paths                    web.AppController.getCategorySourcePaths(spec)
+GET         /narthex/app/dataset/:spec/category/mappings                        web.AppController.getCategoryMappings(spec)
+POST        /narthex/app/dataset/:spec/category/set-mapping                     web.AppController.setCategoryMapping(spec)
 GET         /narthex/app/categories/gather-counts                               web.AppController.gatherCategoryCounts
 
-GET         /narthex/app/:spec/sip-list                                         web.AppController.listSipFiles(spec)
-GET         /narthex/app/:spec/delete-latest                                    web.AppController.deleteLatestSipFile(spec)
+GET         /narthex/app/dataset/:spec/sip-list                                 web.AppController.listSipFiles(spec)
+GET         /narthex/app/dataset/:spec/delete-latest                            web.AppController.deleteLatestSipFile(spec)
 
 # sip-app
 GET         /narthex/sip-app                                                    web.SipAppController.listSipZips()

@@ -25,6 +25,7 @@
             "login",
             "datasets",
             "dataset",
+            "skos",
             "terms",
             "categories",
             "thesaurus"

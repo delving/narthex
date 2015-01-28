@@ -17,9 +17,9 @@
 define(["angular", "common"], function (angular) {
     "use strict";
 
-    var mod = angular.module("datasets.services", ["narthex.common"]);
+    var mod = angular.module("skos.services", ["narthex.common"]);
 
-    mod.service("datasetsService", [
+    mod.service("skosService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
             var app = playRoutes.web.AppController;
@@ -40,48 +40,32 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                create: function (spec, character, prefix) {
-                    return app.create(spec, character, prefix).get().then(
+                listSkos: function () {
+                    return app.listSkos().get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                command: function (spec, command) {
-                    return app.command(spec, command).get().then(
+                createSkos: function (spec) {
+                    return app.createSkos(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                datasetInfo: function (spec) {
-                    return app.datasetInfo(spec).get().then(
+                skosInfo: function (spec) {
+                    return app.skosInfo(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                datasetProgress: function (spec) {
-                    return app.datasetProgress(spec).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                listDatasets: function () {
-                    return app.listDatasets().get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                listPrefixes: function () {
-                    return app.listPrefixes().get().then(
+                skosStatistics: function (spec) {
+                    return app.skosStatistics(spec).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -89,32 +73,39 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 setProperties: function (spec, payload) {
-                    return app.setDatasetProperties(spec).post(payload).then(
+                    return app.setSkosProperties(spec).post(payload).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                // todo: no harvestInfo!
-                harvest: function (spec, harvestInfo) {
-                    return app.harvest(spec).post(harvestInfo).then(
+                listConceptSchemes: function () {
+                    return app.listConceptSchemes().get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                listSipFiles: function (spec) {
-                    return app.listSipFiles(spec).get().then(
+                searchConceptScheme: function (conceptSchemeName, sought) {
+                    return app.searchConceptScheme(conceptSchemeName, sought).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                deleteLatestSipFile: function (spec) {
-                    return app.deleteLatestSipFile(spec).get().then(
+                getThesaurusMappings: function (schemeNameA, schemeNameB) {
+                    return app.getThesaurusMappings(schemeNameA, schemeNameB).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                setThesaurusMapping: function (schemeNameA, schemeNameB, body) {
+                    return app.setThesaurusMapping(schemeNameA, schemeNameB).post(body).then(
                         function (response) {
                             return response.data;
                         },

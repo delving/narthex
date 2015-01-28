@@ -18,8 +18,8 @@ package web
 
 import java.io.{File, FileInputStream, FileNotFoundException}
 
+import org.ActorStore.{NXActor, NXProfile}
 import org.OrgRepo
-import org.UserStore.{NXActor, NXProfile}
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
@@ -60,7 +60,7 @@ object MainController extends Controller with Security {
             Unauthorized("Username/password not found")
           }
           else {
-            val session = UserSession(
+            val session = ActorSession(
               NXActor(username, None, Some(NXProfile(
                 user.getString("firstName"),
                 user.getString("lastName"),
@@ -80,7 +80,7 @@ object MainController extends Controller with Security {
     } getOrElse {
       val resultFuture = OrgRepo.repo.us.authenticate(username, password).map { nxActorOpt: Option[NXActor] =>
         nxActorOpt.map { nxActor =>
-          val session = UserSession(
+          val session = ActorSession(
             nxActor,
             apiKey = API_ACCESS_KEYS(0),
             narthexDomain = NARTHEX_DOMAIN,
@@ -98,7 +98,7 @@ object MainController extends Controller with Security {
     val maybeToken = request.headers.get(TOKEN)
     maybeToken flatMap {
       token =>
-        Cache.getAs[UserSession](token) map { session =>
+        Cache.getAs[ActorSession](token) map { session =>
           Ok(Json.toJson(session)).withSession(session)
         }
     } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
@@ -193,8 +193,8 @@ object MainController extends Controller with Security {
           routes.javascript.MainController.createActor,
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
-          routes.javascript.AppController.create,
-          routes.javascript.AppController.setProperties,
+          routes.javascript.AppController.createDataset,
+          routes.javascript.AppController.setDatasetProperties,
           routes.javascript.AppController.harvest,
           routes.javascript.AppController.datasetInfo,
           routes.javascript.AppController.command,
@@ -218,7 +218,12 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.setCategoryMapping,
           routes.javascript.AppController.gatherCategoryCounts,
           routes.javascript.AppController.listSipFiles,
-          routes.javascript.AppController.deleteLatestSipFile
+          routes.javascript.AppController.deleteLatestSipFile,
+          routes.javascript.AppController.createSkos,
+          routes.javascript.AppController.setSkosProperties,
+          routes.javascript.AppController.skosInfo,
+          routes.javascript.AppController.skosStatistics,
+          routes.javascript.AppController.listSkos
         )
       ).as(JAVASCRIPT)
   }

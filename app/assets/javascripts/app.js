@@ -28,6 +28,7 @@ define(
         "login",
         "datasets",
         "dataset",
+        "skos",
         "terms",
         "categories",
         "thesaurus"
@@ -43,6 +44,7 @@ define(
                 "narthex.login",
                 "narthex.datasets",
                 "narthex.dataset",
+                "narthex.skos",
                 "narthex.terms",
                 "narthex.categories",
                 "narthex.thesaurus",

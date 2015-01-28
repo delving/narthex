@@ -1,0 +1,136 @@
+<div class="page-header">
+    <!-- page location, org -->
+    <div class="meta">
+        <div class="page">
+            SKOS Datasets
+        </div>
+        <div class="organization">
+            <span class="fa fa-institution"></span>
+            <span>{{ orgId }}</span>
+        </div>
+    </div>
+    <div class="actions">
+        <form class="form-inline">
+            <div class="form-group">
+                <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="file-list">
+    <div data-ng-if="!skosList.length" class="col-md-12">
+        <h4>No SKOS datasets</h4>
+    </div>
+    <div ng-repeat="skos in skosList" class="file-block col-lg-6">
+        <div data-ng-include="'skos-entry.html'">entry</div>
+    </div>
+    <div data-ng-show="newFileOpen">
+        <div data-ng-include="'new-skos.html'">new dataset</div>
+    </div>
+</div>
+
+<script type="text/ng-template" id="new-skos.html">
+    <div class="aside-backdrop am-fade" style=""></div>
+    <div class="aside right">
+        <div class="aside-dialog">
+            <div class="aside-content">
+                <div class="aside-header">
+                    Create a new dataset:
+                </div>
+                <div class="aside-body">
+                    <form name="form" class="form">
+                        <fieldset>
+                            <div class="form-group">
+                                <label for="new-name">Short Name</label>
+                                <input id="new-name" class="form-control" data-ng-model="newDataset.specTyped" placeholder="spec" required autofocus/>
+                            </div>
+                            <hr/>
+                            <div class="form-group">
+                                <span typ="button" class="btn btn-success" data-ng-class="{ 'disabled': !newDataset.enabled }" data-ng-click="createSkos()">
+                                    <i class="fa fa-plus"></i> <span>Create</span>
+                                    <span>"{{ newDataset.spec }}"</span>
+                                </span>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+                <div class="aside-footer">
+                    <button type="button" class="btn btn-default" data-ng-click="cancelNewFile()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="skos-entry.html">
+    <div data-ng-controller="SkosListEntryCtrl" class="panel panel-primary">
+        <div class="panel-heading" data-ng-click="expanded = !expanded">
+            <i class="fa fa-fw fa-book"></i>
+            <span class="name">{{ skos.skosSpec }}</span>
+        </div>
+
+        <div data-ng-if="expanded">
+            <div class="tabbable dataset-tabs">
+                <ul class="nav nav-tabs" role="tablist">
+                    <li ng-class="{'active':tabOpen === 'metadata'}" >
+                        <a href role="tab" data-ng-click="tabOpen = 'metadata'">Metadata</a>
+                    </li>
+                    <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="dropSupported">
+                        <a href role="tab" data-ng-click="tabOpen = 'drop'">File Drop</a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div ng-switch="tabOpen">
+                        <div ng-switch-when="metadata"><div data-ng-include="'skos-metadata-form.html'">metadata form</div></div>
+                        <div ng-switch-when="drop"><div data-ng-include="'drop-file-skos.html'">drop file</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="skos-metadata-form.html" class="">
+    <form name="form" class="form file-harvest">
+        <fieldset>
+            <div class="form-group">
+                <label for="meta_name">Name</label>
+                <input id="meta_name" class="form-control input-sm" data-ng-model="skos.edit.skosName"/>
+            </div>
+            <div class="form-group">
+                <label for="meta_owner">Owner</label>
+                <input id="meta_owner" class="form-control input-sm" data-ng-model="skos.edit.skosOwner"/>
+            </div>
+            <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()" data-ng-disabled="unchangedMetadata">
+                <i class="fa fa-check-circle"></i>
+                <span>Save</span>
+            </button>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="drop-file-skos.html">
+    <div>
+        <div class="file-drop col-md-12" ng-file-drop="skos.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
+            <span>Drag and drop your SKOS XML file into this area</span>
+            <div>
+                {{ statistics }}
+            </div>
+            <div class="img-holder" data-ng-show="dataset.uploading">
+                <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
+                <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>
+                <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
+            </div>
+            <div data-ng-if="skos.uploadPercent">
+                <progressbar class="progress-striped active" animate="true" value="skos.uploadPercent" max="100" type="success">
+                    <b>{{ skos.uploadPercent }}%</b>
+                </progressbar>
+            </div>
+        </div>
+    </div>
+</script>
+
+<div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
+    <h4>HTML5 Drop File is not supported! You need an HTML5 compliant browser.</h4>
+</div>

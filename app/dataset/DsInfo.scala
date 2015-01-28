@@ -20,6 +20,8 @@ import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
 import harvest.Harvesting.{HarvestCron, HarvestType}
+import org.ActorStore
+import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
@@ -38,21 +40,17 @@ import scala.concurrent.duration._
 
 object DsInfo {
 
-  var allProps = Map.empty[String, DIProp]
+  var allDatasetProps = Map.empty[String, DIProp]
 
   case class DIProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
-    allProps = allProps + (name -> this)
+    allDatasetProps = allDatasetProps + (name -> this)
   }
-
-  val datasetActor = DIProp("datasetActor")
 
   case class Character(name: String)
 
   val CharacterMapped = Character("character-mapped")
-  val CharacterSkos = Character("character-skos")
-  val CharacterSkosified = Character("character-skosified")
-  def getCharacter(characterString: String) = List(CharacterMapped, CharacterSkos, CharacterSkosified).find(_.name == characterString)
+  def getCharacter(characterString: String) = List(CharacterMapped).find(_.name == characterString)
   val datasetCharacter = DIProp("datasetCharacter")
 
   val datasetSpec = DIProp("datasetSpec")
@@ -146,16 +144,17 @@ object DsInfo {
 
   def getDsUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
 
-  def apply(spec: String, character: Character, mapToPrefix:String, ts: TripleStore): Future[DsInfo] = {
+  def create(owner: NXActor, spec: String, character: Character, mapToPrefix:String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsUri(spec))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
-    if (mapToPrefix.trim.nonEmpty) m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
+    m.add(uri, m.getProperty(ActorStore.actorOwner.uri), m.createResource(owner.uri))
+    if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.dataPost(uri.getURI, m).map(ok => new DsInfo(spec, ts))
   }
 
-  def apply(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
+  def check(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
     val dsUri = getDsUri(spec)
     val q =
       s"""

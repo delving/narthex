@@ -4,6 +4,7 @@ import java.io.File
 
 import dataset.DsInfo._
 import dataset.{DsInfo, ProcessedRepo}
+import org.ActorStore
 import org.scalatestplus.play._
 import play.api.libs.json.Json
 import play.api.test.Helpers._
@@ -35,17 +36,18 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
   "The dataset info object should be able to interact with the store" in {
     cleanStart()
-    val info = await(DsInfo("gumby-set", CharacterSkos, "", ts))
-    info.getLiteralProp(datasetMapToPrefix) must be(None)
+    val admin = await(new ActorStore(ts).authenticate("gumby", "secret gumby")).get
+    val info = await(DsInfo.create(admin, "gumby-set", CharacterMapped, "gfx", ts))
+    info.getLiteralProp(datasetMapToPrefix) must be(Some("gfx"))
     val model = await(info.setSingularLiteralProps(
       datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
     ))
-    model.size() must be(4)
+    model.size() must be(5)
     info.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
     await(info.removeLiteralProp(datasetMapToPrefix))
     info.getLiteralProp(datasetMapToPrefix) must be(None)
-    model.size() must be(3)
+    model.size() must be(4)
 
     await(info.setSingularLiteralProps(datasetMapToPrefix -> "pfx2"))
 
@@ -66,14 +68,14 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     testTwo(info)
 
     // a fresh one that has to fetch anew
-    val fresh: DsInfo = await(DsInfo("gumby-set", ts)).get
+    val fresh: DsInfo = await(DsInfo.check("gumby-set", ts)).get
 
     fresh.getLiteralProp(datasetMapToPrefix) must be(Some("pfx2"))
     testTwo(fresh)
 
     //    println(Json.prettyPrint(dsInfoWrites.writes(fresh)))
 
-    val second = await(DsInfo("pokey-set", CharacterSkosified, "", ts))
+    val second = await(DsInfo.create(admin, "pokey-set", CharacterMapped, "", ts))
 
     val infoList = await(listDsInfo(ts))
 

@@ -209,8 +209,8 @@
 
                     <div class="tab-content">
                         <div ng-switch="tabOpen">
-                            <div ng-switch-when="metadata"><div data-ng-include="'metadata-form.html'">metadata form</div></div>
-                            <div ng-switch-when="drop"><div data-ng-include="'drop-file.html'">drop file</div></div>
+                            <div ng-switch-when="metadata"><div data-ng-include="'dataset-metadata-form.html'">metadata form</div></div>
+                            <div ng-switch-when="drop"><div data-ng-include="'drop-file-dataset.html'">drop file</div></div>
                             <div ng-switch-when="harvest"><div data-ng-include="'harvest-form.html'">harvest form</div></div>
                             <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
                             <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
@@ -227,7 +227,7 @@
 
 </script>
 
-<script type="text/ng-template" id="metadata-form.html" class="">
+<script type="text/ng-template" id="dataset-metadata-form.html" class="">
     <form name="form" class="form file-harvest">
         <fieldset>
             <div class="form-group">
@@ -258,7 +258,7 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="drop-file.html">
+<script type="text/ng-template" id="drop-file-dataset.html">
     <div>
         <div class="file-drop col-md-12" ng-file-drop="dataset.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
             <span>Drag and drop your xml source or SIP file into this area</span>

@@ -107,9 +107,9 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
     }
   }
 
-  def dataPostXMLFile(graphURI: String, file: File): Future[Boolean] = {
+  def dataPutXMLFile(graphURI: String, file: File): Future[Boolean] = {
     println(s"Posting $file")
-    dataRequest(graphURI).withHeaders("Content-Type" -> "application/rdf+xml").post(file).map { response =>
+    dataRequest(graphURI).withHeaders("Content-Type" -> "application/rdf+xml").put(file).map { response =>
       //      println(s"post response: ${response.status}")
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
