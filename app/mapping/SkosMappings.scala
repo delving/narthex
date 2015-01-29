@@ -16,11 +16,9 @@
 
 package mapping
 
-import java.io.StringWriter
-
-import com.hp.hpl.jena.rdf.model.Model
+import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
+import mapping.SkosVocabulary.SKOS
 import org.ActorStore.NXActor
-import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.libs.json.{Json, Writes}
 import services.NarthexConfig._
@@ -28,7 +26,11 @@ import services.Temporal
 import triplestore.TripleStore
 import triplestore.TripleStore._
 
-object MappingStore {
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+
+object SkosMappings {
 
   trait MappingStoreJson {
     implicit val termMappingWrites = new Writes[TermMapping] {
@@ -70,10 +72,16 @@ object MappingStore {
     val whenString = Temporal.timeToString(when)
   }
 
+
+  case class SkosMapping(actor: NXActor, uriA: String, uriB: String, when: DateTime) {
+    val whenString = Temporal.timeToString(when)
+  }
+
   case class MAProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
   }
 
+  val exactMatch = s"${SKOS}exactMatch"
   val mappingDatasetA = MAProp("mappingDatasetA", uriProp)
   val mappingUriA = MAProp("mappingUriA", uriProp)
   val mappingDatasetB = MAProp("mappingDatasetB", uriProp)
@@ -81,70 +89,71 @@ object MappingStore {
   val mappingCreator = MAProp("mappingCreator", uriProp)
   val mappingTime = MAProp("mappingTime", timeProp)
   val mappingNotes = MAProp("mappingNotes")
+
+  def getMappingUri(specA: String, specB: String) =
+    if (specA < specB)
+      s"$NX_URI_PREFIX/$specA-$specB"
+    else
+      s"$NX_URI_PREFIX/$specB-$specA"
+
 }
 
-class MappingStoreChoose(client: TripleStore) {
-  // todo: get a whole list of the concept schemes and the accompanying datasets
-}
+class SkosMappings(skosA: SkosInfo, skosB: SkosInfo, ts: TripleStore) {
 
-class MappingStoreEdit(client: TripleStore, user: NXActor,
-                       datasetA: SkosInfo, datasetB: SkosInfo) {
+  import mapping.SkosMappings._
 
-  import mapping.MappingStore._
+  val skosUri = getMappingUri(skosA.spec, skosB.spec)
 
-  def sparqlUpdateGraph(graphUri: String, model: Model) = {
-    val triples = new StringWriter()
-    RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
-    s"""
-      |DROP SILENT GRAPH <$graphUri>;
-      |INSERT DATA { GRAPH <$graphUri> {
-      |$triples}};
-     """.stripMargin.trim
-  }
+  // could cache as well so that the get happens less
+  lazy val futureModel = ts.dataGet(skosUri).fallbackTo(Future(ModelFactory.createDefaultModel()))
+  lazy val m: Model = Await.result(futureModel, 30.seconds)
 
-  def addTermMapping(mapping: TermMapping) = {
-    // todo: new one overrides an existing one, tells it that it has been overridden
-    // todo: give each one a URI which includes who and when?
-  }
+  def toggleMapping(skosMapping: SkosMapping) = {
+    val a = m.getResource(skosMapping.uriA)
+    val b = m.getResource(skosMapping.uriB)
 
-  def removeTermMapping(sourceUri: String) = {
-    // todo: you can only remove your own
-  }
+    // todo: add same-as
+    // todo:
 
-  def getTermMappings: Seq[TermMapping] = {
-    // todo: should have a dataset URI argument
-    // todo: another method for a user's mappings
-    Seq.empty
-  }
 
-  def setCategoryMapping(mapping: CategoryMapping, member: Boolean) = {
-    if (member) {
-      // todo: add the mapping
-    }
-    else {
-      // todo: remove the mapping
-    }
-  }
 
-  def getCategoryMappings: Seq[CategoryMapping] = {
-    // todo: should have a dataset URI argument
-    // todo: another method for a user's mappings (reverse order, N most recent)
-    Seq.empty
-  }
-
-  def toggleThesaurusMapping(mapping: ThesaurusMapping) = {
     // todo: should this really toggle?  or have a boolean like categories
   }
 
-  def getThesaurusMappings: Seq[ThesaurusMapping] = {
+  def getSkosMappings: Seq[SkosMapping] = {
     Seq.empty
   }
+
+//  def addTermMapping(mapping: TermMapping) = {
+//    // todo: new one overrides an existing one, tells it that it has been overridden
+//    // todo: give each one a URI which includes who and when?
+//  }
+//
+//  def removeTermMapping(sourceUri: String) = {
+//    // todo: you can only remove your own
+//  }
+//
+//  def getTermMappings: Seq[TermMapping] = {
+//    // todo: should have a dataset URI argument
+//    // todo: another method for a user's mappings
+//    Seq.empty
+//  }
+//
+//  def setCategoryMapping(mapping: CategoryMapping, member: Boolean) = {
+//    if (member) {
+//      // todo: add the mapping
+//    }
+//    else {
+//      // todo: remove the mapping
+//    }
+//  }
+//
+//  def getCategoryMappings: Seq[CategoryMapping] = {
+//    // todo: should have a dataset URI argument
+//    // todo: another method for a user's mappings (reverse order, N most recent)
+//    Seq.empty
+//  }
+//
 }
 
-class MappingStoreApply(client: TripleStore,
-                        dataset: SkosInfo) {
-
-  // todo: get all of the mappings that relate to this dataset
-  // todo: build a big map with uris from this dataset as keys
-}
 

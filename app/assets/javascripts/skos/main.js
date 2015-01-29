@@ -26,15 +26,7 @@ define(
                         reloadOnSearch: false
                     }
                 ).when(
-                    "/skos/choose",
-                    {
-                        templateUrl: "/narthex/assets/templates/skos-choose.html",
-                        controller: controllers.SkosChooseCtrl,
-                        resolve: userResolve,
-                        reloadOnSearch: false
-                    }
-                ).when(
-                    "/skos/:conceptSchemeA/:conceptSchemeB",
+                    "/skos/:specA/:specB",
                     {
                         templateUrl: "/narthex/assets/templates/skos-map.html",
                         controller: controllers.SkosMapCtrl,

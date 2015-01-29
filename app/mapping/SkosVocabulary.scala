@@ -16,17 +16,19 @@
 
 package mapping
 
-import java.io.InputStream
-
-import com.hp.hpl.jena.rdf.model.{Model, ModelFactory, Resource}
+import com.hp.hpl.jena.rdf.model.{Model, Resource}
 import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
-import mapping.ConceptScheme._
+import mapping.SkosVocabulary._
+import play.api.Logger
 import play.api.libs.json.{JsObject, Json, Writes}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
-object ConceptScheme {
+object SkosVocabulary {
 
   val XML = "http://www.w3.org/XML/1998/namespace"
   val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -56,15 +58,6 @@ object ConceptScheme {
     model.listStatements(resource, property, null).map(_.getObject.asResource()).toSeq
   }
 
-  def read(inputStream: InputStream, fileName: String): Seq[ConceptScheme] = {
-    val model = ModelFactory.createDefaultModel()
-    model.read(inputStream, null)
-    val inScheme = model.getProperty(SKOS, "inScheme")
-    val statements = model.listStatements(null, inScheme, null).toList
-    val schemeResources = statements.map(_.getObject.asResource()).distinct
-    schemeResources.map(ConceptScheme(_, fileName, model))
-  }
-
   implicit val writesLabelSearch = new Writes[LabelSearch] {
 
     def writeQuery(query: LabelQuery) = Json.obj(
@@ -82,8 +75,8 @@ object ConceptScheme {
         "label" -> result.label.text,
         "prefLabel" -> result.prefLabel.text,
         "uri" -> result.concept.resource.toString,
-        "conceptScheme" -> result.concept.scheme.name,
-        "attributionName" -> result.concept.scheme.fileName,
+//        "conceptScheme" -> result.concept.vocabulary.name,
+        "attributionName" -> result.concept.vocabulary.skosInfo.spec,
         "narrower" -> narrowerLabels.map(_.text),
         "broader" -> broaderLabels.map(_.text)
       )
@@ -105,7 +98,7 @@ object ConceptScheme {
 
   case class ProximityResult(label: Label, prefLabel: Label, proximity: Double, concept: Concept)
 
-  case class Concept(scheme: ConceptScheme, resource: Resource, conceptMap: mutable.HashMap[String, Concept], model: Model) {
+  case class Concept(vocabulary: SkosVocabulary, resource: Resource, conceptMap: mutable.HashMap[String, Concept], model: Model) {
     conceptMap.put(resource.getURI, this)
     lazy val prefLabels = getPrefLabels(resource, model)
     lazy val altLabels = getAltLabels(resource, model)
@@ -135,25 +128,22 @@ object ConceptScheme {
 
 }
 
-case class ConceptScheme(resource: Resource, fileName: String, model: Model) {
+case class SkosVocabulary(skosInfo: SkosInfo) {
 
-  val conceptMap = new mutable.HashMap[String, Concept]()
-
-  lazy val name: String = {
-    val prefLabels = getPrefLabels(resource, model)
-    prefLabels.headOption.map(_.text).getOrElse {
-      val property = model.getProperty(DC, "title")
-      val titles = model.listStatements(resource, property, null).map(_.getObject.asLiteral()).map(
-        literal => literal.getString
-      ).toSeq
-      titles.headOption.getOrElse(throw new RuntimeException(s"Unable to find name for concept scheme $resource"))
-    }
+  // could cache as well so that the get happens less
+  lazy val futureModel = skosInfo.ts.dataGet(skosInfo.dataUri)
+  futureModel.onFailure {
+    case e: Throwable => Logger.warn(s"No data found for skos vocabulary $skosInfo", e)
   }
+  lazy val m: Model = Await.result(futureModel, 30.seconds)
+
+  private val conceptMap = new mutable.HashMap[String, Concept]()
 
   lazy val concepts: Seq[Concept] = {
-    val inScheme = model.getProperty(SKOS, "inScheme")
-    val conceptResources = model.listStatements(null, inScheme, resource).map(_.getSubject).toSeq
-    conceptResources.map(resource => Concept(this, resource, conceptMap, model))
+    val typeProperty = m.getProperty(RDF, "type")
+    val conceptResource = m.getResource(s"${SKOS}Concept")
+    val subjects = m.listSubjectsWithProperty(typeProperty, conceptResource).toSeq
+    subjects.map(statement => Concept(this, statement, conceptMap, m))
   }
 
   def search(language: String, sought: String, count: Int): LabelSearch = {
@@ -163,5 +153,5 @@ case class ConceptScheme(resource: Resource, fileName: String, model: Model) {
     LabelSearch(LabelQuery(language, cleanSought, count), results)
   }
 
-  override def toString: String = s"ConceptScheme($resource): $name $fileName (${concepts.size})"
+  override def toString: String = skosInfo.dataUri
 }

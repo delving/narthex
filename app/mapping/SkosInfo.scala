@@ -113,7 +113,7 @@ object SkosInfo {
   }
 }
 
-class SkosInfo(val spec: String, ts: TripleStore) {
+class SkosInfo(val spec: String, val ts: TripleStore) {
 
   import mapping.SkosInfo._
 
@@ -261,6 +261,8 @@ class SkosInfo(val spec: String, ts: TripleStore) {
       "conceptCount" -> c.toInt
     )
   }
+
+  lazy val vocabulary = new SkosVocabulary(this)
 
   override def toString = spec
 }

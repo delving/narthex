@@ -27,8 +27,7 @@
             "dataset",
             "skos",
             "terms",
-            "categories",
-            "thesaurus"
+            "categories"
         ],
         shim: {
             "jsRoutes": {

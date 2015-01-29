@@ -172,47 +172,24 @@ define(["angular"], function (angular) {
             setProperties(metadataFields);
         };
 
+        $scope.skosListExcept = function(avoid) {
+            return _.filter($scope.skosList, function(entry) {
+                return entry.skosSpec != avoid.skosSpec;
+            });
+        };
     };
 
     SkosListEntryCtrl.$inject = ["$scope", "skosService", "$location", "$timeout", "$upload"];
 
-    var SkosChooseCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, user) {
-        if (user == null) $location.path("/");
-        $scope.conceptSchemes = {};
-        $scope.buttonEnabled = false;
-
-        skosService.listConceptSchemes().then(function (data) {
-            $scope.conceptSchemeList = data.list;
-        });
-
-        $scope.goToMapping = function () {
-            if (!($scope.conceptSchemes.a && $scope.conceptSchemes.b)) return;
-            $location.path('/skos/' + $scope.conceptSchemes.a + "/" + $scope.conceptSchemes.b);
-        };
-
-        $scope.$watch("conceptSchemes", function (schemes) {
-            if (schemes.a && schemes.b) {
-                $scope.buttonText = schemes.a + " <=> " + schemes.b;
-                $scope.buttonEnabled = true;
-            }
-            else {
-                $scope.buttonText = "Select two concept schemes";
-                $scope.buttonEnabled = false;
-            }
-        }, true);
-    };
-
-    SkosChooseCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService", "user"];
-
     var SkosMapCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, $timeout, pageScroll, user) {
         if (user == null) $location.path("/");
-        var a = $routeParams.conceptSchemeA;
-        var b = $routeParams.conceptSchemeB;
-        $scope.conceptSchemeA = (a < b) ? a : b;
-        $scope.conceptSchemeB = (a < b) ? b : a;
+        var a = $routeParams.skosA;
+        var b = $routeParams.skosB;
+        $scope.specA  = (a < b) ? a : b;
+        $scope.specB = (a < b) ? b : a;
         $scope.show = "all";
 
-        $scope.downloadUrl = user.narthexAPI + '/skos/' + $scope.conceptSchemeA + '/' + $scope.conceptSchemeB + '/mappings';
+        $scope.downloadUrl = user.narthexAPI + '/skos/' + $scope.specA + '/' + $scope.specB + '/mappings';
         $scope.mappingsAB = {};
         $scope.mappingsBA = {};
 
@@ -279,7 +256,7 @@ define(["angular"], function (angular) {
         });
 
         function fetchMappings() {
-            skosService.getThesaurusMappings($scope.conceptSchemeA, $scope.conceptSchemeB).then(function (data) {
+            skosService.getThesaurusMappings($scope.specA, $scope.specB).then(function (data) {
                 $scope.mappingsAB = {};
                 $scope.mappingsBA = {};
                 _.forEach(data.mappings, function (m) {
@@ -297,7 +274,7 @@ define(["angular"], function (angular) {
 
         function searchANow(value) {
 //            $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
-            skosService.searchConceptScheme($scope.conceptSchemeA, value).then(function (data) {
+            skosService.searchConceptScheme($scope.specA, value).then(function (data) {
                 fetchedConceptsA = data.search.results;
                 $scope.conceptA = null;
                 filterConceptsNow();
@@ -315,7 +292,7 @@ define(["angular"], function (angular) {
 
         function searchBNow(value) {
 //            $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
-            skosService.searchConceptScheme($scope.conceptSchemeB, value).then(function (data) {
+            skosService.searchConceptScheme($scope.specB, value).then(function (data) {
                 fetchedConceptsB = data.search.results;
                 $scope.conceptB = null;
                 filterConceptsNow();
@@ -402,7 +379,7 @@ define(["angular"], function (angular) {
                 uriA: $scope.conceptA.uri,
                 uriB: $scope.conceptB.uri
             };
-            skosService.setThesaurusMapping($scope.conceptSchemeA, $scope.conceptSchemeB, body).then(function (reply) {
+            skosService.setThesaurusMapping($scope.specA, $scope.specB, body).then(function (reply) {
                 switch (reply.action) {
                     case "added":
                         $scope.mappingsAB[body.uriA] = body.uriB;
@@ -423,7 +400,6 @@ define(["angular"], function (angular) {
     return {
         SkosListCtrl: SkosListCtrl,
         SkosListEntryCtrl: SkosListEntryCtrl,
-        SkosChooseCtrl: SkosChooseCtrl,
         SkosMapCtrl: SkosMapCtrl
     };
 });

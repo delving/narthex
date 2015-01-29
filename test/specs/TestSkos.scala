@@ -2,6 +2,7 @@ package specs
 
 import java.io.File
 
+import mapping.SkosVocabulary.LabelSearch
 import mapping.{SkosInfo, Skosification}
 import org.ActorStore
 import org.scalatestplus.play._
@@ -36,7 +37,15 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
     val stats = await(info.getStatistics)
     val count = stats("conceptCount")
     count must be(117)
-    println(Json.prettyPrint(Json.toJson(stats)))
+    //    println(Json.prettyPrint(Json.toJson(stats)))
+    val vocab = info.vocabulary
+    def searchConceptScheme(sought: String) = vocab.search("nl", sought, 3)
+    val searches: List[LabelSearch] = List(
+      "nieuwsbulletin"
+    ).map(searchConceptScheme)
+
+    searches.foreach(labelSearch => println(Json.prettyPrint(Json.toJson(labelSearch))))
+
   }
 
 }

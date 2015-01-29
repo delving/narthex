@@ -27,8 +27,7 @@ requirejs.config({
         "dataset",
         "skos",
         "terms",
-        "categories",
-        "thesaurus"
+        "categories"
     ],
     paths: {
         // Make the optimizer ignore CDN assets

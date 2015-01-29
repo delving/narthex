@@ -80,14 +80,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                listConceptSchemes: function () {
-                    return app.listConceptSchemes().get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
                 searchConceptScheme: function (conceptSchemeName, sought) {
                     return app.searchConceptScheme(conceptSchemeName, sought).get().then(
                         function (response) {

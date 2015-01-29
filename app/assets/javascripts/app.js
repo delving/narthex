@@ -30,8 +30,7 @@ define(
         "dataset",
         "skos",
         "terms",
-        "categories",
-        "thesaurus"
+        "categories"
     ],
     function (angular) {
         "use strict";
@@ -47,7 +46,6 @@ define(
                 "narthex.skos",
                 "narthex.terms",
                 "narthex.categories",
-                "narthex.thesaurus",
                 "angularFileUpload",
                 "ui.bootstrap.tpls",
                 "ui.bootstrap",

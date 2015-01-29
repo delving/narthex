@@ -1,4 +1,4 @@
-@(orgId: String, sipCreatorLink: String, showCategories: Boolean, showThesaurus: Boolean)
+@(orgId: String, sipCreatorLink: String, showCategories: Boolean)
 <html>
     <head>
         <title>Narthex-@orgId</title>
@@ -52,13 +52,6 @@
                                     SKOS <span class="menu-icon fa fa-book"></span>
                                 </a>
                             </li>
-                            @if(showThesaurus) {
-                                <li class="sidebar-list">
-                                    <a href id="nav-thesaurus" data-ng-click="sidebarNav('thesaurus');">
-                                        Thesaurus alignment <span class="menu-icon fa fa-columns"></span>
-                                    </a>
-                                </li>
-                            }
                             @if(showCategories) {
                                 <li class="sidebar-list">
                                     <a href id="nav-categories" data-ng-click="sidebarNav('categories');">

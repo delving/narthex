@@ -39,7 +39,6 @@ import play.api.libs.json._
 import play.api.mvc._
 import services.ProgressReporter.ProgressType._
 import services.Temporal._
-import thesaurus.ThesaurusDb._
 import web.MainController.OkFile
 
 import scala.concurrent.Future
@@ -275,22 +274,39 @@ object AppController extends Controller with Security {
     }
   }
 
-  // todo: things under here unfinished
+  def getThesaurusMappings(conceptSchemeA: String, conceptSchemeB: String) = Secure() { session => request =>
+//    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
+//    val mappings = thesaurusDb.getMappings
+//    Ok(Json.obj("mappings" -> mappings))
+    NotImplemented
+  }
 
-  def listConceptSchemes = Secure() { session => request =>
-    Ok(Json.obj("list" -> repo.skosRepo.conceptSchemes.map(_.name)))
+  def setThesaurusMapping(conceptSchemeA: String, conceptSchemeB: String) = Secure(parse.json) { session => request =>
+//    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
+//    val termMapping = ThesaurusMapping(
+//      uriA = (request.body \ "uriA").as[String],
+//      uriB = (request.body \ "uriB").as[String],
+//      who = session.actor.uri,
+//      when = new DateTime()
+//    )
+//    val added = thesaurusDb.toggleMapping(termMapping)
+//    Ok(Json.obj("action" -> (if (added) "added" else "removed")))
+    NotImplemented
   }
 
   def searchConceptScheme(conceptSchemeName: String, sought: String) = Secure() { session => request =>
-    val schemeOpt = repo.skosRepo.conceptSchemes.find(scheme => conceptSchemeName == scheme.name)
-    schemeOpt.map { scheme =>
-      val nonemptySought = if (sought == "-") "" else sought
-      val search = scheme.search("nl", nonemptySought, 25)
-      Ok(Json.obj("search" -> search))
-    } getOrElse {
-      NotFound(Json.obj("problem" -> s"No concept scheme named '$conceptSchemeName' found."))
-    }
+//    val schemeOpt = repo.skosRepo.conceptSchemes.find(scheme => conceptSchemeName == scheme.name)
+//    schemeOpt.map { scheme =>
+//      val nonemptySought = if (sought == "-") "" else sought
+//      val search = scheme.search("nl", nonemptySought, 25)
+//      Ok(Json.obj("search" -> search))
+//    } getOrElse {
+//      NotFound(Json.obj("problem" -> s"No concept scheme named '$conceptSchemeName' found."))
+//    }
+    NotImplemented
   }
+
+  // todo: things under here unfinished
 
   def getTermSourcePaths(spec: String) = Secure() { session => request =>
     val datasetRepo = repo.datasetRepo(spec)
@@ -327,24 +343,6 @@ object AppController extends Controller with Security {
       datasetRepo.termDb.addMapping(termMapping)
       Ok("Mapping added")
     }
-  }
-
-  def getThesaurusMappings(conceptSchemeA: String, conceptSchemeB: String) = Secure() { session => request =>
-    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
-    val mappings = thesaurusDb.getMappings
-    Ok(Json.obj("mappings" -> mappings))
-  }
-
-  def setThesaurusMapping(conceptSchemeA: String, conceptSchemeB: String) = Secure(parse.json) { session => request =>
-    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
-    val termMapping = ThesaurusMapping(
-      uriA = (request.body \ "uriA").as[String],
-      uriB = (request.body \ "uriB").as[String],
-      who = session.actor.uri,
-      when = new DateTime()
-    )
-    val added = thesaurusDb.toggleMapping(termMapping)
-    Ok(Json.obj("action" -> (if (added) "added" else "removed")))
   }
 
   def getCategoryList = Secure() { session => request =>

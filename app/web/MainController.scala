@@ -44,7 +44,7 @@ object MainController extends Controller with Security {
   }
 
   def index = Action { request =>
-    Ok(views.html.index(ORG_ID, SIP_APP_URL, SHOW_CATEGORIES, SHOW_THESAURUS))
+    Ok(views.html.index(ORG_ID, SIP_APP_URL, SHOW_CATEGORIES))
   }
 
   def login = Action(parse.json) { implicit request =>
@@ -204,7 +204,6 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.sample,
           routes.javascript.AppController.histogram,
           routes.javascript.AppController.setRecordDelimiter,
-          routes.javascript.AppController.listConceptSchemes,
           routes.javascript.AppController.searchConceptScheme,
           routes.javascript.AppController.getTermSourcePaths,
           routes.javascript.AppController.getTermMappings,

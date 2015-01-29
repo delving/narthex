@@ -47,7 +47,6 @@ POST        /narthex/app/skos/:spec/set-properties                              
 GET         /narthex/app/skos/:spec/info                                        web.AppController.skosInfo(spec)
 GET         /narthex/app/skos/:spec/statistics                                  web.AppController.skosStatistics(spec)
 
-GET         /narthex/app/skos/list-concept-schemes                              web.AppController.listConceptSchemes
 GET         /narthex/app/skos/:conceptSchemeName/:sought                        web.AppController.searchConceptScheme(conceptSchemeName, sought)
 GET         /narthex/app/skos/:schemeNameA/:schemeNameB/get-mappings            web.AppController.getThesaurusMappings(schemeNameA, schemeNameB)
 POST        /narthex/app/skos/:schemeNameA/:schemeNameB/set-mapping             web.AppController.setThesaurusMapping(schemeNameA, schemeNameB)
@@ -76,7 +75,6 @@ GET         /narthex/api/:apiKey/:spec/mappings                                 
 GET         /narthex/api/:apiKey/:spec/index/*path                              web.APIController.indexText(apiKey, spec, path)
 GET         /narthex/api/:apiKey/:spec/unique/*path                             web.APIController.uniqueText(apiKey, spec, path)
 GET         /narthex/api/:apiKey/:spec/histogram/*path                          web.APIController.histogramText(apiKey, spec, path)
-GET         /narthex/api/:apiKey/skos/:schemeNameA/:schemeNameB/mappings        web.APIController.thesaurusMappings(apiKey, schemeNameA, schemeNameB)
 
 # Static
 GET         /narthex/webjars/*file                                              controllers.WebJarAssets.at(file)

@@ -102,13 +102,6 @@ object APIController extends Controller {
     }
   }
 
-  def thesaurusMappings(apiKey: String, conceptSchemeA: String, conceptSchemeB: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    // todo: should be optional, maybe it doesn't exist
-    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
-    val xml = thesaurusDb.getMappingsRDF
-    Ok(xml)
-  }
-
   def listSipZips(apiKey: String) = KeyFitsAsync(apiKey, parse.anyContent) { implicit request =>
     val availableSips: Seq[AvailableSip] = repo.availableSips
     repo.uploadedSips.map { uploadedSips =>

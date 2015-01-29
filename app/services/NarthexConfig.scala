@@ -49,7 +49,6 @@ object NarthexConfig {
   val NAVE_DOMAIN = configString("domains.nave")
 
   val SHOW_CATEGORIES = configFlag("categories")
-  val SHOW_THESAURUS = configFlag("thesaurus")
 
   val TRIPLE_STORE_URL = configString("triple-store")
 

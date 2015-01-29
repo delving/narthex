@@ -49,12 +49,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 listConceptSchemes: function () {
-                    return app.listConceptSchemes().get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
+                    return ["NOT IMPLEMENTED"]
                 },
                 getMappings: function (datasetName) {
                     return app.getTermMappings(datasetName).get().then(

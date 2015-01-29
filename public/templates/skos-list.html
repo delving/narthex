@@ -87,11 +87,15 @@
                     <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="dropSupported">
                         <a href role="tab" data-ng-click="tabOpen = 'drop'">File Drop</a>
                     </li>
+                    <li ng-class="{'active':tabOpen === 'align'}" data-ng-show="dropSupported">
+                        <a href role="tab" data-ng-click="tabOpen = 'align'">Alignment</a>
+                    </li>
                 </ul>
                 <div class="tab-content">
                     <div ng-switch="tabOpen">
                         <div ng-switch-when="metadata"><div data-ng-include="'skos-metadata-form.html'">metadata form</div></div>
                         <div ng-switch-when="drop"><div data-ng-include="'drop-file-skos.html'">drop file</div></div>
+                        <div ng-switch-when="align"><div data-ng-include="'align-skos.html'">map</div></div>
                     </div>
                 </div>
             </div>
@@ -137,6 +141,15 @@
             </div>
         </div>
     </div>
+</script>
+
+<script type="text/ng-template" id="align-skos.html" class="">
+    <h4>Other SKOS datasets</h4>
+    <ul class="list-unstyled">
+        <li ng-repeat="otherSkos in skosListExcept(skos)" style="padding: 5px">
+            <span class="btn btn-info">{{ otherSkos.skosSpec }}</span> <span>(Mapping count?)</span>
+        </li>
+    </ul>
 </script>
 
 <div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">

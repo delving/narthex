@@ -20,13 +20,12 @@ import java.io.File
 
 import dataset.DsInfo.Character
 import dataset.{DatasetRepo, DsInfo, Sip, SipFactory}
-import mapping.{CategoriesRepo, ConceptRepo}
+import mapping.CategoriesRepo
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
 import org.joda.time.DateTime
 import services.NarthexConfig._
 import services._
-import thesaurus.ThesaurusDb
 import triplestore.TripleStore
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -61,7 +60,6 @@ class OrgRepo(userHome: String, val orgId: String) {
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
   val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
-  val skosRepo = new ConceptRepo(new File(orgRoot, "skos"))
   val factoryDir = new File(orgRoot, "factory")
   val sipFactory = new SipFactory(factoryDir)
   val ts = new TripleStore(TRIPLE_STORE_URL)
@@ -112,10 +110,10 @@ class OrgRepo(userHome: String, val orgId: String) {
     }
   }
 
-  def thesaurusDb(conceptSchemeA: String, conceptSchemeB: String) =
-    if (conceptSchemeA > conceptSchemeB)
-      new ThesaurusDb(conceptSchemeB, conceptSchemeA)
-    else
-      new ThesaurusDb(conceptSchemeA, conceptSchemeB)
+//  def thesaurusDb(conceptSchemeA: String, conceptSchemeB: String) =
+//    if (conceptSchemeA > conceptSchemeB)
+//      new ThesaurusDb(conceptSchemeB, conceptSchemeA)
+//    else
+//      new ThesaurusDb(conceptSchemeA, conceptSchemeB)
 
 }

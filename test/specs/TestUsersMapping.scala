@@ -130,37 +130,11 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
       await(ts.update(change))
     }
 
-    //    val checkQuery: String = checkForWork(2)
-    //    val work = await(ts.query(checkQuery))
-    //    println(s"work $checkQuery: $work")
-    //    work.size must be(2)
   }
 
-  //  "A mapping must be created" in {
-  //
-  //  }
 }
 
 
-//  "A SKOS file" should "be readable by Jena" in {
-//    val example = getClass.getResource("/skos-example.xml")
-//    val conSchemes = ConceptScheme.read(example.openStream(), "example")
-//    conSchemes.map(s => println(s"Scheme: $s"))
-//    val conScheme = conSchemes.head
-//
-//    def searchConceptScheme(sought: String) = conScheme.search("nl", sought, 3)
-//
-//    val searches: List[LabelSearch] = List(
-//      "Europese wetgeving",
-//      "bezoeken",
-//      "wetgevingen"
-//    ).map(searchConceptScheme)
-//
-//    searches.foreach(labelSearch => println(Json.prettyPrint(Json.toJson(labelSearch))))
-//
-//  }
-
-//
 //  val userHome: String = "/tmp/narthex-user"
 //  System.setProperty("user.home", userHome)
 //  deleteQuietly(new File(userHome))
