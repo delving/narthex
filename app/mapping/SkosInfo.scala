@@ -242,11 +242,25 @@ class SkosInfo(val spec: String, ts: TripleStore) {
     }
   }
 
-  def getStatistics = Json.obj(
-    "honesty" -> s"This is not real statistics for $spec, the queries have to be written.  Might look like these.",
-    "conceptSchemeCount" -> 6,
-    "conceptCount" -> 666
-  )
+  def getStatistics = {
+    val countQuery =
+      s"""
+         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+         |SELECT (count(?s) as ?count)
+         |WHERE {
+         |    GRAPH <$dataUri> {
+         |       ?s rdf:type skos:Concept .
+         |    }
+         |}
+       """.stripMargin
+    for (
+      cqList <- ts.query(countQuery);
+      c = cqList.head("count")
+    ) yield Map(
+      "conceptCount" -> c.toInt
+    )
+  }
 
   override def toString = spec
 }

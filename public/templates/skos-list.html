@@ -68,6 +68,7 @@
         <div class="panel-heading" data-ng-click="expanded = !expanded">
             <i class="fa fa-book"></i>
             <span class="name">{{ skos.skosSpec }}</span>
+            <span class="count pull-right">{{ statistics.conceptCount }} concepts</span>
         </div>
 
         <div data-ng-if="expanded" class="panel-body">
@@ -114,9 +115,6 @@
     <div>
         <div class="file-drop col-md-12" ng-file-drop="skos.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
             <span>Drag and drop your SKOS XML file into this area</span>
-            <div>
-                {{ statistics }}
-            </div>
             <div class="img-holder" data-ng-show="dataset.uploading">
                 <i class="busy1 fa fa-gear fa-spin fa-5x"></i>
                 <i class="busy2 fa fa-gear fa-spin-left fa-4x"></i>

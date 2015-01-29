@@ -246,13 +246,10 @@ object AppController extends Controller with Security {
   }
 
   def skosStatistics(spec: String) = SecureAsync() { session => request =>
-    SkosInfo.check(spec, OrgRepo.repo.ts).map { infoOpt =>
-      infoOpt.map { info =>
-        Ok(info.getStatistics)
-      } getOrElse {
-        NotFound(Json.obj("problem" -> s"Cannot find skos dataset $spec"))
-      }
-    }
+    for (
+      info <- SkosInfo.check(spec, repo.ts);
+      stats <- info.get.getStatistics
+    ) yield Ok(Json.toJson(stats))
   }
 
   def setSkosProperties(spec: String) = SecureAsync(parse.json) { session => request =>
