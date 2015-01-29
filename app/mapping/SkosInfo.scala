@@ -81,7 +81,7 @@ object SkosInfo {
         Logger.warn(s"skos entry: $entry")
 
 
-        val spec = entry("spec")
+        val spec = entry("spec").text
         new SkosInfo(spec, ts)
       }
     }
@@ -258,7 +258,7 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
       cqList <- ts.query(countQuery);
       c = cqList.head("count")
     ) yield Map(
-      "conceptCount" -> c.toInt
+      "conceptCount" -> c.text.toInt
     )
   }
 

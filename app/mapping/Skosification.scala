@@ -17,6 +17,7 @@ package mapping
 
 import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
+import triplestore.TripleStore.QueryValue
 
 trait Skosification {
 
@@ -35,8 +36,8 @@ trait Skosification {
   }
 
   object SkosifiedField {
-    def apply(resultMap: Map[String, String]): SkosifiedField = {
-      SkosifiedField(resultMap("datasetUri"), resultMap("fieldPath"))
+    def apply(resultMap: Map[String, QueryValue]): SkosifiedField = {
+      SkosifiedField(resultMap("datasetUri").text, resultMap("fieldPath").text)
     }
   }
 
@@ -60,8 +61,8 @@ trait Skosification {
   }
 
   object SkosificationCase {
-    def apply(skosifiedField: SkosifiedField, resultMap: Map[String, String]): SkosificationCase = {
-      SkosificationCase(skosifiedField, resultMap("literalValue"))
+    def apply(skosifiedField: SkosifiedField, resultMap: Map[String, QueryValue]): SkosificationCase = {
+      SkosificationCase(skosifiedField, resultMap("literalValue").text)
     }
   }
 

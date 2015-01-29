@@ -16,13 +16,13 @@
 
 package mapping
 
-import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
+import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
 import mapping.SkosVocabulary.SKOS
 import org.ActorStore.NXActor
 import org.joda.time.DateTime
 import play.api.libs.json.{Json, Writes}
 import services.NarthexConfig._
-import services.Temporal
+import services.{StringHandling, Temporal}
 import triplestore.TripleStore
 import triplestore.TripleStore._
 
@@ -73,8 +73,14 @@ object SkosMappings {
   }
 
 
-  case class SkosMapping(actor: NXActor, uriA: String, uriB: String, when: DateTime) {
+  case class SkosMapping(actor: NXActor,
+                         uriA: String,
+                         vocabularyA: String,
+                         uriB: String,
+                         vocabularyB: String,
+                         when: DateTime = new DateTime) {
     val whenString = Temporal.timeToString(when)
+    val uri = s"${actor.uri}/mapping/${StringHandling.urlEncodeValue(whenString)}"
   }
 
   case class MAProp(name: String, dataType: PropType = stringProp) {
@@ -82,39 +88,56 @@ object SkosMappings {
   }
 
   val exactMatch = s"${SKOS}exactMatch"
-  val mappingDatasetA = MAProp("mappingDatasetA", uriProp)
-  val mappingUriA = MAProp("mappingUriA", uriProp)
-  val mappingDatasetB = MAProp("mappingDatasetB", uriProp)
-  val mappingUriB = MAProp("mappingUriB", uriProp)
-  val mappingCreator = MAProp("mappingCreator", uriProp)
-  val mappingTime = MAProp("mappingTime", timeProp)
-  val mappingNotes = MAProp("mappingNotes")
+  val mappingJoins = MAProp("mappingJoins", uriProp)
 
-  def getMappingUri(specA: String, specB: String) =
-    if (specA < specB)
-      s"$NX_URI_PREFIX/$specA-$specB"
-    else
-      s"$NX_URI_PREFIX/$specB-$specA"
-
+  //  val mappingUriA = MAProp("mappingUriA", uriProp)
+  //  val mappingDatasetB = MAProp("mappingDatasetB", uriProp)
+  //  val mappingUriB = MAProp("mappingUriB", uriProp)
+  //  val mappingCreator = MAProp("mappingCreator", uriProp)
+  //  val mappingTime = MAProp("mappingTime", timeProp)
+  //  val mappingNotes = MAProp("mappingNotes")
 }
 
 class SkosMappings(skosA: SkosInfo, skosB: SkosInfo, ts: TripleStore) {
 
   import mapping.SkosMappings._
 
-  val skosUri = getMappingUri(skosA.spec, skosB.spec)
-
-  // could cache as well so that the get happens less
-  lazy val futureModel = ts.dataGet(skosUri).fallbackTo(Future(ModelFactory.createDefaultModel()))
-  lazy val m: Model = Await.result(futureModel, 30.seconds)
+  lazy val futureDataset = {
+    val dataset = DatasetFactory.createMem()
+    val q =
+      s"""
+         |SELECT ?s ?p ?o ?g
+         |WHERE {
+         |  GRAPH ?g {
+         |    ?s ?p ?o
+         |    ?g <${mappingJoins.uri}> <${skosA.uri}> 
+         |    ?g <${mappingJoins.uri}> <${skosB.uri}> 
+         |  }
+         |}
+       """.stripMargin
+    ts.query(q).map { quadList =>
+      quadList.map { quad =>
+        val (s, p, o, g) = (quad("s"), quad("p"), quad("o"), quad("g"))
+        val m = dataset.getNamedModel(g.text)
+        val v = o.qvt match {
+          case QV_LITERAL => m.getResource(o.text)
+          case QV_URI => m.createLiteral(o.text)
+          case _ => throw new RuntimeException
+        }
+        m.add(m.getResource(s.text), m.getProperty(p.text), v)
+      }
+    }
+    Future(dataset)
+  }
+  lazy val d: Dataset = Await.result(futureDataset, 30.seconds)
 
   def toggleMapping(skosMapping: SkosMapping) = {
-    val a = m.getResource(skosMapping.uriA)
-    val b = m.getResource(skosMapping.uriB)
+
+//    val a = d.getResource(skosMapping.uriA)
+//    val b = d.getResource(skosMapping.uriB)
 
     // todo: add same-as
     // todo:
-
 
 
     // todo: should this really toggle?  or have a boolean like categories
@@ -124,36 +147,36 @@ class SkosMappings(skosA: SkosInfo, skosB: SkosInfo, ts: TripleStore) {
     Seq.empty
   }
 
-//  def addTermMapping(mapping: TermMapping) = {
-//    // todo: new one overrides an existing one, tells it that it has been overridden
-//    // todo: give each one a URI which includes who and when?
-//  }
-//
-//  def removeTermMapping(sourceUri: String) = {
-//    // todo: you can only remove your own
-//  }
-//
-//  def getTermMappings: Seq[TermMapping] = {
-//    // todo: should have a dataset URI argument
-//    // todo: another method for a user's mappings
-//    Seq.empty
-//  }
-//
-//  def setCategoryMapping(mapping: CategoryMapping, member: Boolean) = {
-//    if (member) {
-//      // todo: add the mapping
-//    }
-//    else {
-//      // todo: remove the mapping
-//    }
-//  }
-//
-//  def getCategoryMappings: Seq[CategoryMapping] = {
-//    // todo: should have a dataset URI argument
-//    // todo: another method for a user's mappings (reverse order, N most recent)
-//    Seq.empty
-//  }
-//
+  //  def addTermMapping(mapping: TermMapping) = {
+  //    // todo: new one overrides an existing one, tells it that it has been overridden
+  //    // todo: give each one a URI which includes who and when?
+  //  }
+  //
+  //  def removeTermMapping(sourceUri: String) = {
+  //    // todo: you can only remove your own
+  //  }
+  //
+  //  def getTermMappings: Seq[TermMapping] = {
+  //    // todo: should have a dataset URI argument
+  //    // todo: another method for a user's mappings
+  //    Seq.empty
+  //  }
+  //
+  //  def setCategoryMapping(mapping: CategoryMapping, member: Boolean) = {
+  //    if (member) {
+  //      // todo: add the mapping
+  //    }
+  //    else {
+  //      // todo: remove the mapping
+  //    }
+  //  }
+  //
+  //  def getCategoryMappings: Seq[CategoryMapping] = {
+  //    // todo: should have a dataset URI argument
+  //    // todo: another method for a user's mappings (reverse order, N most recent)
+  //    Seq.empty
+  //  }
+  //
 }
 
 

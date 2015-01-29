@@ -136,7 +136,7 @@ object DsInfo {
        """.stripMargin
     ts.query(q).map { list =>
       list.map { entry =>
-        val spec = entry("spec")
+        val spec = entry("spec").text
         new DsInfo(spec, ts)
       }
     }

@@ -22,6 +22,7 @@ import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import play.api.Play.current
 import play.api.libs.json.JsObject
 import play.api.libs.ws.WS
+import triplestore.TripleStore.QueryValue
 
 import scala.concurrent.Future
 
@@ -38,6 +39,22 @@ object TripleStore {
   val intProp = PropType(None)
   val booleanProp = PropType(None)
   val uriProp = PropType(None)
+
+  case class QueryValueType(name: String)
+
+  val QV_LITERAL = QueryValueType("literal")
+  val QV_URI = QueryValueType("uri")
+
+  case class QueryValue(valueObject: JsObject) {
+    var text = (valueObject \ "value").as[String]
+    var qvt = (valueObject \ "type").as[String] match {
+      case "typed-literal" => QV_LITERAL // todo: worry about the type
+      case "literal" => QV_LITERAL
+      case "uri" => QV_URI
+      case x => throw new RuntimeException(s"Unhandled type $x")
+      // there is type: uri, literal, bnode and also datatype and xml:lang
+    }
+  }
 
 }
 
@@ -57,7 +74,7 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
     }
   }
 
-  def query(sparqlQuery: String): Future[List[Map[String, String]]] = {
+  def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = {
     if (printQueries) println(sparqlQuery)
     val request = WS.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
@@ -71,12 +88,7 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
       val vars = (json \ "head" \ "vars").as[List[String]]
       val bindings = (json \ "results" \ "bindings").as[List[JsObject]]
       bindings.map { binding =>
-        vars.map { v =>
-          var valueObject = (binding \ v).as[JsObject]
-          // there is type: uri, literal, bnode and also datatype and xml:lang
-          var value = (valueObject \ "value").as[String]
-          v -> value
-        }.toMap
+        vars.map(v => v -> QueryValue((binding \ v).as[JsObject])).toMap
       }
     }
   }
