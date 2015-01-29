@@ -38,6 +38,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
 import services.ProgressReporter.ProgressType._
+import services.Temporal._
 import thesaurus.ThesaurusDb._
 import web.MainController.OkFile
 
@@ -223,9 +224,16 @@ object AppController extends Controller with Security {
   def uploadSkos(spec: String) = SecureAsync(parse.multipartFormData) { session => request =>
     SkosInfo.check(spec, repo.ts).flatMap { skosInfoOpt =>
       skosInfoOpt.map { skosInfo =>
-        request.body.file("file").map { file =>
-          // todo: record when it happened
-          repo.ts.dataPutXMLFile(skosInfo.dataUri, file.ref.file).map(ok => Ok(Json.obj("uploaded" -> file.filename)))
+        request.body.file("file").map { bodyFile =>
+          val file = bodyFile.ref.file
+          repo.ts.dataPutXMLFile(skosInfo.dataUri, file).map {
+            case Some(message) =>
+              NotAcceptable(Json.obj("problem" -> message))
+            case None =>
+              val now: String = timeToString(new DateTime())
+              skosInfo.setSingularLiteralProps(SkosInfo.skosUploadTime -> now)
+              Ok
+          }
         } getOrElse {
           Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
         }

@@ -38,6 +38,13 @@ define(["angular"], function (angular) {
 
         $scope.decorateSkos = function (skos) {
             skos.edit = angular.copy(skos);
+            if (skos.skosUploadTime) {
+                var dt = skos.skosUploadTime.split('T');
+                skos.skosUploadTime = {
+                    d: dt[0],
+                    t: dt[1].split('+')[0]
+                };
+            }
             return skos;
         };
 
@@ -110,9 +117,7 @@ define(["angular"], function (angular) {
                     sk.uploadPercent = null;
                     console.log("Failure during upload: data", data);
                     console.log("Failure during upload: status", status);
-                    console.log("Failure during upload: headers", headers);
-                    console.log("Failure during upload: config", config);
-                    alert(data.problem);
+                    sk.error = data.problem;
                 }
             );
         }
@@ -126,7 +131,10 @@ define(["angular"], function (angular) {
         getStatistics();
 
         sk.fileDropped = function ($files) {
-            fileDropped($files, getStatistics);
+            fileDropped($files, function() {
+                getStatistics();
+                refreshInfo();
+            });
         };
 
         function unchanged(fieldNameList) {

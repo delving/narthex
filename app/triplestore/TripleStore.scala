@@ -83,7 +83,7 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
 
   def update(sparqlUpdate: String): Future[Unit] = {
     if (printQueries) println(sparqlUpdate)
-    val request = WS.url(s"$storeURL/update").withHeaders("Content-Type" -> "application/sparql-update")
+    val request = WS.url(s"$storeURL/update").withHeaders("Content-Type" -> "application/sparql-update; charset=utf-8")
     //    println(s"update:\n$sparqlUpdate")
     request.post(sparqlUpdate).map { response =>
       if (response.status / 100 != 2) {
@@ -98,7 +98,7 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
     val sw = new StringWriter()
     model.write(sw, "TURTLE")
     //    println(s"posting: $sw")
-    dataRequest(graphURI).withHeaders("Content-Type" -> "text/turtle").post(sw.toString).map { response =>
+    dataRequest(graphURI).withHeaders("Content-Type" -> "text/turtle; charset=utf-8").post(sw.toString).map { response =>
       //      println(s"post response: ${response.status}")
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
@@ -107,14 +107,15 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
     }
   }
 
-  def dataPutXMLFile(graphURI: String, file: File): Future[Boolean] = {
+  def dataPutXMLFile(graphURI: String, file: File): Future[Option[String]] = {
     println(s"Posting $file")
-    dataRequest(graphURI).withHeaders("Content-Type" -> "application/rdf+xml").put(file).map { response =>
-      //      println(s"post response: ${response.status}")
+    dataRequest(graphURI).withHeaders("Content-Type" -> "application/rdf+xml; charset=utf-8").put(file).map { response =>
       if (response.status / 100 != 2) {
-        throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
+        Some(response.statusText)
       }
-      true
+      else {
+        None
+      }
     }
   }
 

@@ -110,7 +110,7 @@ class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
 
   "Skosification must work" in {
     // mark a field as skosified
-    countGraphs must be(8)
+    countGraphs must be(7)
     val info = await(DsInfo.check("frans_hals", ts)).get
     await(info.addUriProp(DsInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
 

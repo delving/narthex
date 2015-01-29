@@ -31,7 +31,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
     val info = await(SkosInfo.create(admin, "gtaa_genre", ts))
     val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
     val posted = await(ts.dataPutXMLFile(info.dataUri, skosFile))
-    posted must be(true)
+    posted must be(None)
     countGraphs must be(3)
     val stats = await(info.getStatistics)
     val count = stats("conceptCount")
