@@ -27,6 +27,7 @@ import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
 import mapping.SkosInfo
 import mapping.SkosInfo._
+import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
 import mapping.TermDb._
 import org.OrgActor.DatasetMessage
@@ -235,25 +236,6 @@ object AppController extends Controller with Security {
         Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
       }
     }
-//    SkosInfo.check(spec, repo.ts).flatMap { skosInfoOpt =>
-//      skosInfoOpt.map { skosInfo =>
-//        request.body.file("file").map { bodyFile =>
-//          val file = bodyFile.ref.file
-//          repo.ts.dataPutXMLFile(skosInfo.dataUri, file).map {
-//            case Some(message) =>
-//              NotAcceptable(Json.obj("problem" -> message))
-//            case None =>
-//              val now: String = timeToString(new DateTime())
-//              skosInfo.setSingularLiteralProps(SkosInfo.skosUploadTime -> now)
-//              Ok
-//          }
-//        } getOrElse {
-//          Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
-//        }
-//      } getOrElse {
-//        Future(NotAcceptable(Json.obj("problem" -> s"Cannot find skos dataset $spec")))
-//      }
-//    }
   }
 
   def skosInfo(spec: String) = Secure() { session => request =>
@@ -262,7 +244,7 @@ object AppController extends Controller with Security {
 
   def skosStatistics(spec: String) = SecureAsync() { session => request =>
     withSkosInfo(spec) { skosInfo =>
-        skosInfo.getStatistics.map(stats => Ok(Json.toJson(stats)))
+      skosInfo.getStatistics.map(stats => Ok(Json.toJson(stats)))
     }
   }
 
@@ -277,12 +259,6 @@ object AppController extends Controller with Security {
     }
   }
 
-  def getSkosMappings(specA: String, specB: String) = SecureAsync() { session => request =>
-    repo.skosMappingStore(specA, specB).flatMap { store =>
-      store.getMappings.map(tuples => Ok(Json.toJson(tuples.map(t => List(t._1, t._2)))))
-    }
-  }
-
   def searchSkos(spec: String, sought: String) = Secure() { session => request =>
     withSkosInfo(spec) { skosInfo =>
       val v = skosInfo.vocabulary
@@ -291,17 +267,25 @@ object AppController extends Controller with Security {
     }
   }
 
-  def toggleSkosMapping(specA: String, specB: String) = Secure(parse.json) { session => request =>
-    //    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
-    //    val termMapping = ThesaurusMapping(
-    //      uriA = (request.body \ "uriA").as[String],
-    //      uriB = (request.body \ "uriB").as[String],
-    //      who = session.actor.uri,
-    //      when = new DateTime()
-    //    )
-    //    val added = thesaurusDb.toggleMapping(termMapping)
-    //    Ok(Json.obj("action" -> (if (added) "added" else "removed")))
-    NotImplemented
+  def getSkosMappings(specA: String, specB: String) = SecureAsync() { session => request =>
+    val store = repo.skosMappingStore(specA, specB)
+    store.getMappings.map(tuples => Ok(Json.toJson(tuples.map(t => List(t._1, t._2)))))
+  }
+
+  def toggleSkosMapping(specA: String, specB: String) = SecureAsync(parse.json) { session => request =>
+    val uriA = (request.body \ "uriA").as[String]
+    val uriB = (request.body \ "uriB").as[String]
+    val store = repo.skosMappingStore(specA, specB)
+    store.toggleMapping(SkosMapping(session.actor, uriA, uriB)).map { pair =>
+      val errorOpt = pair._2
+      val existed = pair._1
+      errorOpt.map { error =>
+        NotAcceptable(Json.obj("problem" -> "Cannot toggle mapping!"))
+      } getOrElse {
+        val action = if (existed) "removed" else "added"
+        Ok(Json.obj("action" -> action))
+      }
+    }
   }
 
   // todo: things under here unfinished

@@ -86,14 +86,15 @@ class OrgRepo(userHome: String, val orgId: String) {
     infoOpt.map(info => new DatasetRepo(this, info).mkdirs)
   }
 
-  def skosMappingStore(specA: String, specB: String): Future[SkosMappingStore] = {
-    for {
+  def skosMappingStore(specA: String, specB: String): SkosMappingStore = {
+    val futureStore = for {
       skosInfoA <- SkosInfo.check(specA, ts)
       skosInfoB <- SkosInfo.check(specB, ts)
     } yield (skosInfoA, skosInfoB) match {
       case (Some(a), Some(b)) => new SkosMappingStore(a, b, ts)
       case _ => throw new RuntimeException(s"No SKOS mapping found for $specA, $specB")
     }
+    Await.result(futureStore, 5.seconds)
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(

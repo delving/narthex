@@ -19,6 +19,7 @@ package triplestore
 import java.io.{File, StringReader, StringWriter}
 
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
+import com.ning.http.client.providers.netty.NettyResponse
 import play.api.Play.current
 import play.api.libs.json.JsObject
 import play.api.libs.ws.{WS, WSResponse}
@@ -133,8 +134,9 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
       }
-      val rdf = response.body
-      ModelFactory.createDefaultModel().read(new StringReader(rdf), null, "TURTLE")
+      val netty = response.underlying[NettyResponse]
+      val body = netty.getResponseBody("UTF-8")
+      ModelFactory.createDefaultModel().read(new StringReader(body), null, "TURTLE")
     }
   }
 

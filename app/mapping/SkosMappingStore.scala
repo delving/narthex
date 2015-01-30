@@ -125,11 +125,11 @@ class SkosMappingStore(skosA: SkosInfo, skosB: SkosInfo, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
 
-  def toggleMapping(mapping: SkosMapping) = {
+  def toggleMapping(mapping: SkosMapping): Future[(Boolean,Option[String])] = {
     for (
       exists <- ts.ask(mapping.doesMappingExist);
       errorOpt <- ts.update(if (exists) mapping.deleteMapping else mapping.insertMapping(skosA, skosB))
-    ) yield errorOpt
+    ) yield (exists, errorOpt)
   }
 
   def getMappings: Future[Seq[(String, String)]] = {

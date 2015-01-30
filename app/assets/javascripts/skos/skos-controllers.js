@@ -256,13 +256,12 @@ define(["angular"], function (angular) {
         });
 
         function fetchMappings() {
-            skosService.getMappings($routeParams.specA, $routeParams.specB).then(function (data) {
-                console.log("dater", data);
+            skosService.getMappings($routeParams.specA, $routeParams.specB).then(function (mappings) {
                 $scope.mappingsAB = {};
                 $scope.mappingsBA = {};
-                _.forEach(data.mappings, function (m) {
-                    $scope.mappingsAB[m.uriA] = m.uriB;
-                    $scope.mappingsBA[m.uriB] = m.uriA;
+                _.forEach(mappings, function (m) {
+                    $scope.mappingsAB[m[0]] = m[1];
+                    $scope.mappingsBA[m[1]] = m[0];
                 });
             });
         }
