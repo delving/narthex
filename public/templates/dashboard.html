@@ -62,43 +62,63 @@
     </div>
 
     <div class="row">
-        <div class="col-sm-6">
+        <div class="col-sm-6"  style="padding:15px">
             <div class="widget">
                 <div class="widget-header">
                     <span class="label label-larger label-success"><i class="fa fa-user"/></i> "{{ user.username }}"</span>
                 </div>
                 <div class="widget-body">
                     <form name="form" class="form clearfix">
-                        <fieldset>
-                            <div class="form-group">
-                                <label for="firstName">First Name</label>
-                                <input id="firstName" class="form-control" data-ng-model="editedUser.firstName" placeholder="John"/>
-                            </div>
-                            <div class="form-group">
-                                <label for="lastName">Last Name</label>
-                                <input id="lastName" class="form-control" data-ng-model="editedUser.lastName" placeholder="Smith"/>
-                            </div>
-                            <div class="form-group">
-                                <label for="email">Email</label>
-                                <input id="email" class="form-control" data-ng-model="editedUser.email" placeholder="john@smith.net"/>
-                            </div>
-                            <br/>
-                            <button class="btn btn-primary pull-right" data-ng-disabled="unchangedUser" data-ng-click="setProfile(editedUser)">Save</button>
-                        </fieldset>
+                        <h4>Profile</h4>
+                        <hr/>
+                        <div class="form-group">
+                            <label for="firstName">First Name</label>
+                            <input id="firstName" class="form-control" data-ng-model="editedUser.firstName" placeholder="John"/>
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Last Name</label>
+                            <input id="lastName" class="form-control" data-ng-model="editedUser.lastName" placeholder="Smith"/>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input id="email" class="form-control" data-ng-model="editedUser.email" placeholder="john@smith.net"/>
+                        </div>
+                        <br/>
+                        <button class="btn btn-primary pull-right" data-ng-disabled="unchangedUser" data-ng-click="setProfile(editedUser)">Save</button>
                         <div data-ng-show="errorMessage">
                             <span class="badge badge-warning">{{ errorMessage }}</span>
                         </div>
                     </form>
                 </div>
+                <div class="widget-body">
+                    <form name="form" class="form clearfix">
+                        <h4>Change password</h4>
+                        <hr/>
+                        <div class="form-group">
+                            <label for="change-existing">Existing password</label>
+                            <input type="password" class="form-control" id="change-existing" placeholder="Password" data-ng-model="passwordChange.existingPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="change-new-a">New password</label>
+                            <input type="password" class="form-control" id="change-new-a" placeholder="Password" data-ng-model="passwordChange.newPasswordA" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="change-new-b">New password again</label>
+                            <input type="password" class="form-control" id="change-new-b" placeholder="Password" data-ng-model="passwordChange.newPasswordB" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary pull-right" data-ng-click="changePassword(passwordChange)">Change</button>
+                    </form>
+                </div>
             </div>
         </div>
-        <div class="col-sm-6">
+        <div class="col-sm-6"  style="padding:15px">
             <div class="widget">
                 <div class="widget-header">
                     <span class="label label-larger label-info"><i class="fa fa-users"/></i> Sub-Actors</span>
                 </div>
                 <div class="widget-body">
                     <h4>Create a new Sub-Actor</h4>
+                    <hr/>
                     <div class="navbar navbar-default">
                         <form class="form-inline navbar-form">
                             <div class="form-group">
@@ -118,8 +138,12 @@
                     </div>
 
                     <div data-ng-show="actorList.length">
-                        <h5>Sub-Actors</h5>
-                        <span class="label label-info label-large" data-ng-repeat="actor in actorList"><i class="fa fa-user"/></i> "{{ actor }}"</span>
+                        <hr/>
+                        <div data-ng-repeat="actor in actorList" style="padding:8px">
+                            <div class="label label-info">
+                                <i class="fa fa-user"/></i> "{{ actor }}"
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

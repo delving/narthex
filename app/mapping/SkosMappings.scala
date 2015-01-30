@@ -44,38 +44,14 @@ object SkosMappings {
         "when" -> mapping.whenString
       )
     }
-
-    implicit val categoryMappingWrites = new Writes[CategoryMapping] {
-      def writes(mapping: CategoryMapping) = Json.obj(
-        "source" -> mapping.source,
-        "categories" -> mapping.categories
-      )
-    }
-
-    implicit val thesaurusMappingWrites = new Writes[ThesaurusMapping] {
-      def writes(mapping: ThesaurusMapping) = Json.obj(
-        "uriA" -> mapping.uriA,
-        "uriB" -> mapping.uriB,
-        "who" -> mapping.who,
-        "when" -> mapping.whenString
-      )
-    }
   }
 
   case class TermMapping(sourceURI: String, targetURI: String, conceptScheme: String, attributionName: String, prefLabel: String, who: String, when: DateTime) {
     val whenString = timeToString(when)
   }
 
-  case class CategoryMapping(source: String, categories: Seq[String])
-
-  case class ThesaurusMapping(uriA: String, uriB: String, who: String, when: DateTime) {
-    val whenString = timeToString(when)
-  }
-
-
   case class MAProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
-
     override def toString = uri
   }
 
