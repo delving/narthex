@@ -42,12 +42,16 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     actorStore.listActors(admin.get) must be(List("pokey"))
     await(actorStore.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
 
+    // change a password
+    await(actorStore.setPassword(admin.get, "geheim"))
+
     // this will have to get its data from the triple store again
     val store2 = new ActorStore(ts)
-    await(store2.authenticate("gumby", "secret gumbo")) must be(None)
-    await(store2.authenticate("gumby", "secret gumby")) must be(Some(NXActor("gumby", None)))
+    await(store2.authenticate("gumby", "secret gumby")) must be(None)
+    await(store2.authenticate("gumby", "geheim")) must be(Some(NXActor("gumby", None)))
     await(store2.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
     await(store2.authenticate("third-wheel", "can i join")) must be(None)
+
   }
 
   "A dataset should be loaded" in {
@@ -63,7 +67,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     sipOpt.isDefined must be(true)
     // create processed repo
     val actorStore = new ActorStore(ts)
-    val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
+    val admin = await(actorStore.authenticate("gumby", "geheim")).get
     val info = await(DsInfo.create(admin, "frans_hals", DsInfo.CharacterMapped, "icn", ts))
     val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info.dsUri)
     var sourceFile = processedRepo.createFile

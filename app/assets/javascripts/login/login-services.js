@@ -75,6 +75,15 @@ define(["angular", "common"], function (angular) {
                             }
                         );
                     },
+                    setPassword: function (newPassword) {
+                        var payload = { "newPassword": newPassword };
+                        return main.setPassword().post(payload);
+//                        return main.setPassword().post(payload).then(
+//                            function (response) {
+//                                return response;
+//                            }
+//                        );
+                    },
                     listActors: function () {
                         return main.listActors().get().then(
                             function (response) {

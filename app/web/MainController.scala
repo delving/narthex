@@ -143,6 +143,11 @@ object MainController extends Controller with Security {
     }
   }
 
+  def setPassword() = SecureAsync(parse.json) { session => implicit request =>
+    val newPassword = (request.body \ "newPassword").as[String]
+    OrgRepo.repo.us.setPassword(session.actor, newPassword).map(alright => Ok)
+  }
+
   // todo: move this
   def OkFile(file: File, attempt: Int = 0): Result = {
     try {
@@ -191,6 +196,7 @@ object MainController extends Controller with Security {
           routes.javascript.MainController.setProfile,
           routes.javascript.MainController.listActors,
           routes.javascript.MainController.createActor,
+          routes.javascript.MainController.setPassword,
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
           routes.javascript.AppController.createDataset,

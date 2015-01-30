@@ -38,6 +38,8 @@ object ProcessedRepo {
     def sparqlUpdateGraph(dataset: Dataset, graphUri: String) = {
       val model = dataset.getNamedModel(graphUri)
       val triples = new StringWriter()
+
+      // todo: this is the equivalent of graph store protocol, so do it that way
       RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
       s"""
       |DROP SILENT GRAPH <$graphUri>;

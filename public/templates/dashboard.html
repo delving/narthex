@@ -95,18 +95,14 @@
                         <h4>Change password</h4>
                         <hr/>
                         <div class="form-group">
-                            <label for="change-existing">Existing password</label>
-                            <input type="password" class="form-control" id="change-existing" placeholder="Password" data-ng-model="passwordChange.existingPassword" required>
-                        </div>
-                        <div class="form-group">
                             <label for="change-new-a">New password</label>
-                            <input type="password" class="form-control" id="change-new-a" placeholder="Password" data-ng-model="passwordChange.newPasswordA" required>
+                            <input type="password" class="form-control" id="change-new-a" placeholder="Password" data-ng-model="change.a" required>
                         </div>
                         <div class="form-group">
                             <label for="change-new-b">New password again</label>
-                            <input type="password" class="form-control" id="change-new-b" placeholder="Password" data-ng-model="passwordChange.newPasswordB" required>
+                            <input type="password" class="form-control" id="change-new-b" placeholder="Password" data-ng-model="change.b" required>
                         </div>
-                        <button type="submit" class="btn btn-primary pull-right" data-ng-click="changePassword(passwordChange)">Change</button>
+                        <button type="submit" class="btn btn-primary pull-right" data-ng-disabled="changeDisabled" data-ng-click="changePassword()">Change</button>
                     </form>
                 </div>
             </div>

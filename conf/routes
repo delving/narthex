@@ -19,6 +19,7 @@ GET         /narthex/logout                                             web.Main
 POST        /narthex/set-profile                                        web.MainController.setProfile
 GET         /narthex/list-actors                                        web.MainController.listActors
 POST        /narthex/create-actor                                       web.MainController.createActor
+POST        /narthex/set-password                                       web.MainController.setPassword
 
 # File Handling
 GET         /narthex/app/datasets                                       web.AppController.listDatasets

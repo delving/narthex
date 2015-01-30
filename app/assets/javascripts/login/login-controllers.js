@@ -24,20 +24,24 @@ define(["angular"], function (angular) {
 
         $scope.credentials = {username: $cookies[USERNAME_COOKIE]};
         $scope.newActor = {};
+        $scope.change = {};
+        $scope.changeDisabled = true;
 
         function checkLogin() {
             userService.checkLogin().then(function (user) {
                 $scope.editedUser = angular.copy(user);
             });
         }
-        checkLogin()
+
+        checkLogin();
 
         function listActors() {
-            userService.listActors().then(function(actorList) {
+            userService.listActors().then(function (actorList) {
                 $scope.actorList = actorList;
             });
         }
-        listActors()
+
+        listActors();
 
         $scope.login = function (credentials) {
             console.log("Login", $scope.credentials);
@@ -71,9 +75,23 @@ define(["angular"], function (angular) {
         };
 
         $scope.addActor = function (newActor) {
-            userService.createActor(newActor).then(function(actorList) {
+            userService.createActor(newActor).then(function (actorList) {
                 $scope.actorList = actorList;
                 $scope.newActor = {};
+            });
+        };
+
+        function comparePasswords(newValue, oldValue) {
+            var c = $scope.change;
+            $scope.changeDisabled = !(c.a && c.b) || c.a != c.b || !c.a.length;
+        }
+
+        $scope.$watch("change", comparePasswords, true);
+
+        $scope.changePassword = function () {
+            if ($scope.change.a != $scope.change.b) return;
+            userService.setPassword($scope.change.a).then(function () {
+                $scope.change = {};
             });
         };
     };
@@ -92,7 +110,7 @@ define(["angular"], function (angular) {
         $scope.sidebarNav = function (page) {
             var navlist = $('#sidebar-nav a');
             navlist.removeClass('active');
-            switch(page) {
+            switch (page) {
                 case 'homepage':
                     $location.path('/');
                     break;
@@ -115,7 +133,7 @@ define(["angular"], function (angular) {
                     $location.path('/');
             }
             $location.search({});
-            $('#nav-'+page).addClass('active');
+            $('#nav-' + page).addClass('active');
         };
 
         $scope.toggleSidebar = function () {
