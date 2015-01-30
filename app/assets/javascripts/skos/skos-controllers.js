@@ -177,19 +177,19 @@ define(["angular"], function (angular) {
                 return entry.skosSpec != avoid.skosSpec;
             });
         };
+
+        $scope.goToMapping = function(skA, skB) {
+            $location.path("/skos/"+skA.skosSpec+"/"+skB.skosSpec);
+        };
     };
 
     SkosListEntryCtrl.$inject = ["$scope", "skosService", "$location", "$timeout", "$upload"];
 
     var SkosMapCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, $timeout, pageScroll, user) {
         if (user == null) $location.path("/");
-        var a = $routeParams.skosA;
-        var b = $routeParams.skosB;
-        $scope.specA  = (a < b) ? a : b;
-        $scope.specB = (a < b) ? b : a;
         $scope.show = "all";
 
-        $scope.downloadUrl = user.narthexAPI + '/skos/' + $scope.specA + '/' + $scope.specB + '/mappings';
+//        $scope.downloadUrl = user.narthexAPI + '/skos/' + $routeParams.specA + '/' + $routeParams.specB + '/mappings';
         $scope.mappingsAB = {};
         $scope.mappingsBA = {};
 
@@ -256,7 +256,8 @@ define(["angular"], function (angular) {
         });
 
         function fetchMappings() {
-            skosService.getThesaurusMappings($scope.specA, $scope.specB).then(function (data) {
+            skosService.getMappings($routeParams.specA, $routeParams.specB).then(function (data) {
+                console.log("dater", data);
                 $scope.mappingsAB = {};
                 $scope.mappingsBA = {};
                 _.forEach(data.mappings, function (m) {
@@ -273,8 +274,8 @@ define(["angular"], function (angular) {
         };
 
         function searchANow(value) {
-//            $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
-            skosService.searchConceptScheme($scope.specA, value).then(function (data) {
+            $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
+            skosService.search($routeParams.specA, value).then(function (data) {
                 fetchedConceptsA = data.search.results;
                 $scope.conceptA = null;
                 filterConceptsNow();
@@ -291,8 +292,8 @@ define(["angular"], function (angular) {
         }
 
         function searchBNow(value) {
-//            $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
-            skosService.searchConceptScheme($scope.specB, value).then(function (data) {
+            $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
+            skosService.search($routeParams.specB, value).then(function (data) {
                 fetchedConceptsB = data.search.results;
                 $scope.conceptB = null;
                 filterConceptsNow();
@@ -379,7 +380,7 @@ define(["angular"], function (angular) {
                 uriA: $scope.conceptA.uri,
                 uriB: $scope.conceptB.uri
             };
-            skosService.setThesaurusMapping($scope.specA, $scope.specB, body).then(function (reply) {
+            skosService.toggleMapping($routeParams.specA, $routeParams.specB, body).then(function (reply) {
                 switch (reply.action) {
                     case "added":
                         $scope.mappingsAB[body.uriA] = body.uriB;
@@ -395,7 +396,7 @@ define(["angular"], function (angular) {
         };
     };
 
-    SkosMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "thesaurusService", "$timeout", "pageScroll", "user"];
+    SkosMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService", "$timeout", "pageScroll", "user"];
 
     return {
         SkosListCtrl: SkosListCtrl,

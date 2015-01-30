@@ -147,7 +147,7 @@
     <h4>Other SKOS datasets</h4>
     <ul class="list-unstyled">
         <li ng-repeat="otherSkos in skosListExcept(skos)" style="padding: 5px">
-            <span class="btn btn-info">{{ otherSkos.skosSpec }}</span> <span>(Mapping count?)</span>
+            <span class="btn btn-info" data-ng-click="goToMapping(skos, otherSkos)">{{ otherSkos.skosSpec }}</span>
         </li>
     </ul>
 </script>

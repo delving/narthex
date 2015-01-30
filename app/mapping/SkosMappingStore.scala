@@ -30,7 +30,7 @@ import triplestore.TripleStore._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object SkosMappings {
+object SkosMappingStore {
 
   trait MappingStoreJson {
     implicit val termMappingWrites = new Writes[TermMapping] {
@@ -121,9 +121,9 @@ object SkosMappings {
 
 }
 
-class SkosMappings(skosA: SkosInfo, skosB: SkosInfo, ts: TripleStore) {
+class SkosMappingStore(skosA: SkosInfo, skosB: SkosInfo, ts: TripleStore) {
 
-  import mapping.SkosMappings._
+  import mapping.SkosMappingStore._
 
   def toggleMapping(mapping: SkosMapping) = {
     for (

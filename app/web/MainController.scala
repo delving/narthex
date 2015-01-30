@@ -204,12 +204,9 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.sample,
           routes.javascript.AppController.histogram,
           routes.javascript.AppController.setRecordDelimiter,
-          routes.javascript.AppController.searchConceptScheme,
           routes.javascript.AppController.getTermSourcePaths,
           routes.javascript.AppController.getTermMappings,
           routes.javascript.AppController.setTermMapping,
-          routes.javascript.AppController.getThesaurusMappings,
-          routes.javascript.AppController.setThesaurusMapping,
           routes.javascript.AppController.getCategoryList,
           routes.javascript.AppController.listSheets,
           routes.javascript.AppController.getCategorySourcePaths,
@@ -222,7 +219,10 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.setSkosProperties,
           routes.javascript.AppController.skosInfo,
           routes.javascript.AppController.skosStatistics,
-          routes.javascript.AppController.listSkos
+          routes.javascript.AppController.getSkosMappings,
+          routes.javascript.AppController.toggleSkosMapping,
+          routes.javascript.AppController.listSkos,
+          routes.javascript.AppController.searchSkos
         )
       ).as(JAVASCRIPT)
   }

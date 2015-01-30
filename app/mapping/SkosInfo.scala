@@ -19,11 +19,13 @@ package mapping
 import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
-import org.ActorStore
 import org.ActorStore.NXActor
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
+import org.{ActorStore, OrgRepo}
 import play.api.Logger
+import play.api.Play.current
+import play.api.cache.Cache
 import play.api.libs.json.{JsValue, Json, Writes}
 import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
@@ -97,6 +99,19 @@ object SkosInfo {
     m.add(uri, m.getProperty(skosSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(ActorStore.actorOwner.uri), m.createResource(owner.uri))
     ts.dataPost(uri.getURI, m).map(ok => new SkosInfo(spec, ts))
+  }
+
+  def withSkosInfo[T](spec: String)(block: SkosInfo => T) = {
+    val cacheName = getInfoUri(spec)
+    Cache.getAs[SkosInfo](cacheName) map { skosInfo =>
+      block(skosInfo)
+    } getOrElse {
+      val skosInfo = Await.result(check(spec, OrgRepo.repo.ts), 10.seconds).getOrElse{
+        throw new RuntimeException(s"No skos info for $spec")
+      }
+      Cache.set(cacheName, skosInfo, 5.minutes)
+      block(skosInfo)
+    }
   }
 
   def check(spec: String, ts: TripleStore): Future[Option[SkosInfo]] = {

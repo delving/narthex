@@ -2,9 +2,9 @@ package specs
 
 import java.io.File
 
-import mapping.SkosMappings.SkosMapping
+import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary.LabelSearch
-import mapping.{SkosInfo, SkosMappings, Skosification}
+import mapping.{SkosInfo, SkosMappingStore, Skosification}
 import org.ActorStore
 import org.scalatestplus.play._
 import play.api.libs.json.Json
@@ -54,7 +54,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
 
     searches.foreach(labelSearch => println(Json.prettyPrint(Json.toJson(labelSearch))))
 
-    val skosMappings = new SkosMappings(genreInfo, classyInfo, ts)
+    val skosMappings = new SkosMappingStore(genreInfo, classyInfo, ts)
 
     val genreA = "http://data.beeldengeluid.nl/gtaa/30103"
     val classyA = "http://data.beeldengeluid.nl/gtaa/24896"

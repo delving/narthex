@@ -26,7 +26,8 @@ import dataset.DsInfo._
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb._
 import mapping.SkosInfo
-import mapping.SkosInfo.{SIProp, listSkosInfo}
+import mapping.SkosInfo._
+import mapping.SkosVocabulary._
 import mapping.TermDb._
 import org.OrgActor.DatasetMessage
 import org.OrgRepo.repo
@@ -205,8 +206,6 @@ object AppController extends Controller with Security {
     }
   }
 
-  // todo: building the skos interface
-
   def listSkos = SecureAsync() { session => request =>
     listSkosInfo(repo.ts).map { list =>
       Logger.warn(s"listSkos: $list")
@@ -221,88 +220,87 @@ object AppController extends Controller with Security {
   }
 
   def uploadSkos(spec: String) = SecureAsync(parse.multipartFormData) { session => request =>
-    SkosInfo.check(spec, repo.ts).flatMap { skosInfoOpt =>
-      skosInfoOpt.map { skosInfo =>
-        request.body.file("file").map { bodyFile =>
-          val file = bodyFile.ref.file
-          repo.ts.dataPutXMLFile(skosInfo.dataUri, file).map {
-            case Some(message) =>
-              NotAcceptable(Json.obj("problem" -> message))
-            case None =>
-              val now: String = timeToString(new DateTime())
-              skosInfo.setSingularLiteralProps(SkosInfo.skosUploadTime -> now)
-              Ok
-          }
-        } getOrElse {
-          Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
+    withSkosInfo(spec) { skosInfo =>
+      request.body.file("file").map { bodyFile =>
+        val file = bodyFile.ref.file
+        repo.ts.dataPutXMLFile(skosInfo.dataUri, file).map {
+          case Some(message) =>
+            NotAcceptable(Json.obj("problem" -> message))
+          case None =>
+            val now: String = timeToString(new DateTime())
+            skosInfo.setSingularLiteralProps(SkosInfo.skosUploadTime -> now)
+            Ok
         }
       } getOrElse {
-        Future(NotAcceptable(Json.obj("problem" -> s"Cannot find skos dataset $spec")))
+        Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
       }
     }
+//    SkosInfo.check(spec, repo.ts).flatMap { skosInfoOpt =>
+//      skosInfoOpt.map { skosInfo =>
+//        request.body.file("file").map { bodyFile =>
+//          val file = bodyFile.ref.file
+//          repo.ts.dataPutXMLFile(skosInfo.dataUri, file).map {
+//            case Some(message) =>
+//              NotAcceptable(Json.obj("problem" -> message))
+//            case None =>
+//              val now: String = timeToString(new DateTime())
+//              skosInfo.setSingularLiteralProps(SkosInfo.skosUploadTime -> now)
+//              Ok
+//          }
+//        } getOrElse {
+//          Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
+//        }
+//      } getOrElse {
+//        Future(NotAcceptable(Json.obj("problem" -> s"Cannot find skos dataset $spec")))
+//      }
+//    }
   }
 
-  def skosInfo(spec: String) = SecureAsync() { session => request =>
-    SkosInfo.check(spec, OrgRepo.repo.ts).map { infoOpt =>
-      infoOpt.map { info =>
-        Ok(Json.toJson(info))
-      } getOrElse {
-        NotFound(Json.obj("problem" -> s"Cannot find skos dataset $spec"))
-      }
-    }
+  def skosInfo(spec: String) = Secure() { session => request =>
+    withSkosInfo(spec)(skosInfo => Ok(Json.toJson(skosInfo)))
   }
 
   def skosStatistics(spec: String) = SecureAsync() { session => request =>
-    for (
-      info <- SkosInfo.check(spec, repo.ts);
-      stats <- info.get.getStatistics
-    ) yield Ok(Json.toJson(stats))
-  }
-
-  def setSkosProperties(spec: String) = SecureAsync(parse.json) { session => request =>
-    SkosInfo.check(spec, repo.ts).flatMap { skosInfoOpt =>
-      skosInfoOpt.map { skosInfo =>
-        val propertyList = (request.body \ "propertyList").as[List[String]]
-        Logger.info(s"setProperties $propertyList")
-        val diProps: List[SIProp] = propertyList.map(name => SkosInfo.allSkosProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
-        val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
-        val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
-        skosInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
-      } getOrElse {
-        Future(NotFound(Json.obj("problem" -> s"dataset $spec not found")))
-      }
+    withSkosInfo(spec) { skosInfo =>
+        skosInfo.getStatistics.map(stats => Ok(Json.toJson(stats)))
     }
   }
 
-  def getThesaurusMappings(conceptSchemeA: String, conceptSchemeB: String) = Secure() { session => request =>
-//    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
-//    val mappings = thesaurusDb.getMappings
-//    Ok(Json.obj("mappings" -> mappings))
-    NotImplemented
+  def setSkosProperties(spec: String) = SecureAsync(parse.json) { session => request =>
+    withSkosInfo(spec) { skosInfo =>
+      val propertyList = (request.body \ "propertyList").as[List[String]]
+      Logger.info(s"setProperties $propertyList")
+      val diProps: List[SIProp] = propertyList.map(name => SkosInfo.allSkosProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
+      val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
+      val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
+      skosInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
+    }
   }
 
-  def setThesaurusMapping(conceptSchemeA: String, conceptSchemeB: String) = Secure(parse.json) { session => request =>
-//    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
-//    val termMapping = ThesaurusMapping(
-//      uriA = (request.body \ "uriA").as[String],
-//      uriB = (request.body \ "uriB").as[String],
-//      who = session.actor.uri,
-//      when = new DateTime()
-//    )
-//    val added = thesaurusDb.toggleMapping(termMapping)
-//    Ok(Json.obj("action" -> (if (added) "added" else "removed")))
-    NotImplemented
+  def getSkosMappings(specA: String, specB: String) = SecureAsync() { session => request =>
+    repo.skosMappingStore(specA, specB).flatMap { store =>
+      store.getMappings.map(tuples => Ok(Json.toJson(tuples.map(t => List(t._1, t._2)))))
+    }
   }
 
-  def searchConceptScheme(conceptSchemeName: String, sought: String) = Secure() { session => request =>
-//    val schemeOpt = repo.skosRepo.conceptSchemes.find(scheme => conceptSchemeName == scheme.name)
-//    schemeOpt.map { scheme =>
-//      val nonemptySought = if (sought == "-") "" else sought
-//      val search = scheme.search("nl", nonemptySought, 25)
-//      Ok(Json.obj("search" -> search))
-//    } getOrElse {
-//      NotFound(Json.obj("problem" -> s"No concept scheme named '$conceptSchemeName' found."))
-//    }
+  def searchSkos(spec: String, sought: String) = Secure() { session => request =>
+    withSkosInfo(spec) { skosInfo =>
+      val v = skosInfo.vocabulary
+      val labelSearch: LabelSearch = v.search("nl", sought, 25)
+      Ok(Json.obj("search" -> labelSearch))
+    }
+  }
+
+  def toggleSkosMapping(specA: String, specB: String) = Secure(parse.json) { session => request =>
+    //    val thesaurusDb = repo.thesaurusDb(conceptSchemeA, conceptSchemeB)
+    //    val termMapping = ThesaurusMapping(
+    //      uriA = (request.body \ "uriA").as[String],
+    //      uriB = (request.body \ "uriB").as[String],
+    //      who = session.actor.uri,
+    //      when = new DateTime()
+    //    )
+    //    val added = thesaurusDb.toggleMapping(termMapping)
+    //    Ok(Json.obj("action" -> (if (added) "added" else "removed")))
     NotImplemented
   }
 

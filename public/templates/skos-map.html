@@ -16,33 +16,26 @@
 </div>
 
 <div class="row search-all">
-
-        <div class="col-sm-3">
-            <ul class="list-inline mapping-status">
-                <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'">
-                    <a href><span class="badge"> all</span></a>
-                </li>
-                <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'">
-                    <a href><span class="badge"><i class="fa fa-link"></i> mapped</span></a>
-                </li>
-                <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'">
-                    <a href><span class="badge"><i class="fa fa-chain-broken"></i> unmapped</span></a>
-                </li>
-            </ul>
+    <div class="col-sm-3">
+        <ul class="list-inline mapping-status">
+            <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'">
+                <a href><span class="badge"> all</span></a>
+            </li>
+            <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'">
+                <a href><span class="badge"><i class="fa fa-link"></i> mapped</span></a>
+            </li>
+            <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'">
+                <a href><span class="badge"><i class="fa fa-chain-broken"></i> unmapped</span></a>
+            </li>
+        </ul>
+    </div>
+    <div class="col-sm-6">
+        <div class="input-group input-group-skos-term search-all-field">
+            <label class="input-group-addon">Search Both</label>
+            <input class="form-control" type="text" data-ng-model="sought"/>
+            <span class="input-group-addon"><i class="fa fa-search"></i></span>
         </div>
-        <div class="col-sm-6">
-            <div class="input-group input-group-skos-term search-all-field">
-                <label class="input-group-addon">Search Both</label>
-                <input class="form-control" type="text" data-ng-model="sought"/>
-                <span class="input-group-addon"><i class="fa fa-search"></i></span>
-            </div>
-        </div>
-        <div class="col-sm-3">
-            <a class="" ng-href="{{ downloadUrl }}" target="_blank">
-                <i class="fa fa-download"></i> Download Mapping
-            </a>
-        </div>
-
+    </div>
 </div>
 
 <div class="row">

@@ -80,24 +80,24 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                searchConceptScheme: function (conceptSchemeName, sought) {
-                    return app.searchConceptScheme(conceptSchemeName, sought).get().then(
+                getMappings: function (specA, specB) {
+                    return app.getSkosMappings(specA, specB).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                getThesaurusMappings: function (schemeNameA, schemeNameB) {
-                    return app.getThesaurusMappings(schemeNameA, schemeNameB).get().then(
+                search: function (spec, sought) {
+                    return app.searchSkos(spec, sought).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setThesaurusMapping: function (schemeNameA, schemeNameB, body) {
-                    return app.setThesaurusMapping(schemeNameA, schemeNameB).post(body).then(
+                toggleMapping: function (specA, specB, body) {
+                    return app.toggleSkosMapping(specA, specB).post(body).then(
                         function (response) {
                             return response.data;
                         },

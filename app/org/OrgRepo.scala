@@ -20,7 +20,7 @@ import java.io.File
 
 import dataset.DsInfo.Character
 import dataset.{DatasetRepo, DsInfo, Sip, SipFactory}
-import mapping.CategoriesRepo
+import mapping.{CategoriesRepo, SkosInfo, SkosMappingStore}
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
 import org.joda.time.DateTime
@@ -84,6 +84,16 @@ class OrgRepo(userHome: String, val orgId: String) {
     val futureInfoOpt = DsInfo.check(spec, ts)
     val infoOpt = Await.result(futureInfoOpt, 5.seconds)
     infoOpt.map(info => new DatasetRepo(this, info).mkdirs)
+  }
+
+  def skosMappingStore(specA: String, specB: String): Future[SkosMappingStore] = {
+    for {
+      skosInfoA <- SkosInfo.check(specA, ts)
+      skosInfoB <- SkosInfo.check(specB, ts)
+    } yield (skosInfoA, skosInfoB) match {
+      case (Some(a), Some(b)) => new SkosMappingStore(a, b, ts)
+      case _ => throw new RuntimeException(s"No SKOS mapping found for $specA, $specB")
+    }
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(

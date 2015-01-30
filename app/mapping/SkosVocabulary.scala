@@ -130,10 +130,12 @@ object SkosVocabulary {
 
 case class SkosVocabulary(skosInfo: SkosInfo) {
 
-  // could cache as well so that the get happens less
   lazy val futureModel = skosInfo.ts.dataGet(skosInfo.dataUri)
   futureModel.onFailure {
     case e: Throwable => Logger.warn(s"No data found for skos vocabulary $skosInfo", e)
+  }
+  futureModel.onSuccess {
+    case x => Logger.info(s"Loaded $skosInfo")
   }
   lazy val m: Model = Await.result(futureModel, 30.seconds)
 
