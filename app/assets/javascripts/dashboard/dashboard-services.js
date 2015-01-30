@@ -23,7 +23,7 @@ define(["angular", "common"], function (angular) {
 //        console.log("user", user);
     }
 
-    var mod = angular.module("login.services", ["narthex.common"]);
+    var mod = angular.module("dashboard.services", ["narthex.common"]);
     mod.factory(
         "userService",
         ["$http", "$q", "playRoutes",

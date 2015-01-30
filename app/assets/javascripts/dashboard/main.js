@@ -6,20 +6,20 @@
 define(
     [
         "angular",
-        "./login-services",
-        "./login-controllers"
+        "./dashboard-services",
+        "./dashboard-controllers"
     ],
     function (angular, services, controllers) {
         "use strict";
 
-        var loginRoutes = angular.module("login.routes", ["narthex.common"]);
+        var loginRoutes = angular.module("dashboard.routes", ["narthex.common"]);
         loginRoutes.config(["$routeProvider", function ($routeProvider) {
             $routeProvider
                 .when(
                 "/",
                 {
                     templateUrl: "/narthex/assets/templates/dashboard.html",
-                    controller: controllers.LoginCtrl
+                    controller: controllers.DashboardCtrl
                 }
             ).otherwise(
                 {
@@ -29,17 +29,16 @@ define(
         }]);
 
         var narthexLogin = angular.module(
-            "narthex.login",
+            "narthex.dashboard",
             [
                 "ngCookies",
                 "ngRoute",
                 "ngStorage",
-                "login.routes",
-                "login.services"
+                "dashboard.routes",
+                "dashboard.services"
             ]
         );
         narthexLogin.controller("IndexCtrl", controllers.IndexCtrl);
-        narthexLogin.controller("SidebarCtrl", controllers.SidebarCtrl);
         return narthexLogin;
     }
 );

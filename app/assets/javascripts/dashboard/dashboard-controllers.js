@@ -20,7 +20,7 @@ define(["angular"], function (angular) {
     var USERNAME_COOKIE = "NARTHEX-User";
 
     /** Controls the index page */
-    var LoginCtrl = function ($scope, $rootScope, $cookies, $location, userService, $timeout) {
+    var DashboardCtrl = function ($scope, $rootScope, $cookies, $location, userService, $timeout) {
 
         $scope.credentials = {username: $cookies[USERNAME_COOKIE]};
         $scope.newActor = {};
@@ -36,9 +36,11 @@ define(["angular"], function (angular) {
         checkLogin();
 
         function listActors() {
-            userService.listActors().then(function (actorList) {
-                $scope.actorList = actorList;
-            });
+            if (userService.getUser()) {
+                userService.listActors().then(function (actorList) {
+                    $scope.actorList = actorList;
+                });
+            }
         }
 
         listActors();
@@ -95,7 +97,7 @@ define(["angular"], function (angular) {
             });
         };
     };
-    LoginCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
+    DashboardCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
 
     /** Controls the header */
     var IndexCtrl = function ($rootScope, $scope, userService, $location) {
@@ -168,7 +170,7 @@ define(["angular"], function (angular) {
 
     return {
         IndexCtrl: IndexCtrl,
-        LoginCtrl: LoginCtrl
+        DashboardCtrl: DashboardCtrl
     };
 
 });

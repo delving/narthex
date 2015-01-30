@@ -8,12 +8,12 @@ define(
         "angular",
         "./skos-services",
         "./skos-controllers",
-        "../login/login-services"
+        "../dashboard/dashboard-services"
     ],
     function (angular, services, controllers) {
         "use strict";
 
-        var skosRoutes = angular.module("skos.routes", ["narthex.common", "login.services"]);
+        var skosRoutes = angular.module("skos.routes", ["narthex.common", "dashboard.services"]);
         skosRoutes.config([
             "$routeProvider", "userResolve",
             function ($routeProvider, userResolve) {

@@ -25,7 +25,7 @@
 define(
     [
         "angular",
-        "login",
+        "dashboard",
         "datasets",
         "dataset",
         "skos",
@@ -40,7 +40,7 @@ define(
         return angular.module(
             "app",
             [
-                "narthex.login",
+                "narthex.dashboard",
                 "narthex.datasets",
                 "narthex.dataset",
                 "narthex.skos",

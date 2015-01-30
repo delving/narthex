@@ -22,7 +22,7 @@
         // Packages = top-level folders; loads a contained file named "main.js"
         packages: [
             "common",
-            "login",
+            "dashboard",
             "datasets",
             "dataset",
             "skos",

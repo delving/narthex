@@ -22,7 +22,7 @@
 requirejs.config({
     packages: [
         "common",
-        "login",
+        "dashboard",
         "datasets",
         "dataset",
         "skos",

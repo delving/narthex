@@ -7,7 +7,7 @@ define(
     function (angular, controllers) {
         "use strict";
 
-        var datasetsRoutes = angular.module("datasets.routes", ["narthex.common", "login.services"]);
+        var datasetsRoutes = angular.module("datasets.routes", ["narthex.common", "dashboard.services"]);
         datasetsRoutes.config(
             [
                 "$routeProvider", "userResolve",

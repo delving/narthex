@@ -12,7 +12,7 @@ define(
     function (angular, services, controllers) {
         "use strict";
 
-        var termsRoutes = angular.module("terms.routes", ["narthex.common", "login.services"]);
+        var termsRoutes = angular.module("terms.routes", ["narthex.common", "dashboard.services"]);
         termsRoutes.config([
             "$routeProvider", "userResolve",
             function ($routeProvider, userResolve) {
