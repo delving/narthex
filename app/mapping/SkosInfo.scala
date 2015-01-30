@@ -119,19 +119,20 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
 
   def now: String = timeToString(new DateTime())
 
-  val infoUri = getInfoUri(spec)
+  val uri = getInfoUri(spec)
+  
   val dataUri = getDataUri(spec)
 
   // could cache as well so that the get happens less
-  lazy val futureModel = ts.dataGet(infoUri)
+  lazy val futureModel = ts.dataGet(uri)
   futureModel.onFailure {
     case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
   }
   lazy val m: Model = Await.result(futureModel, 20.seconds)
-  lazy val uri = m.getResource(infoUri)
+  lazy val uriResource = m.getResource(uri)
 
   def getLiteralProp(prop: SIProp): Option[String] = {
-    val objects = m.listObjectsOfProperty(uri, m.getProperty(prop.uri))
+    val objects = m.listObjectsOfProperty(uriResource, m.getProperty(prop.uri))
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
   }
 
@@ -144,16 +145,16 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
     val sparqlPerProp = propVal.map { pv =>
       val propUri = pv._1
       s"""
-         |WITH <$infoUri>
+         |WITH <$uri>
          |DELETE { 
-         |   <$infoUri> <$propUri> ?o .
+         |   <$uri> <$propUri> ?o .
          |}
          |INSERT { 
-         |   <$infoUri> <$propUri> "${pv._2}" .
+         |   <$uri> <$propUri> "${pv._2}" .
          |}
          |WHERE { 
          |   OPTIONAL {
-         |      <$infoUri> <$propUri> ?o .
+         |      <$uri> <$propUri> ?o .
          |   } 
          |}
        """.stripMargin.trim
@@ -161,8 +162,8 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
     val sparql = sparqlPerProp.mkString(";\n")
     ts.update(sparql).map { ok =>
       propVal.foreach { pv =>
-        m.removeAll(uri, pv._1, null)
-        m.add(uri, pv._1, m.createLiteral(pv._2))
+        m.removeAll(uriResource, pv._1, null)
+        m.add(uriResource, pv._1, m.createLiteral(pv._2))
       }
       m
     }
@@ -172,23 +173,23 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
     val propUri = m.getProperty(prop.uri)
     val sparql =
       s"""
-         |WITH <$infoUri>
+         |WITH <$uri>
          |DELETE {
-         |   <$infoUri> <$propUri> ?o .
+         |   <$uri> <$propUri> ?o .
          |}
          |WHERE {
-         |   <$infoUri> <$propUri> ?o .
+         |   <$uri> <$propUri> ?o .
          |}
        """.stripMargin
     ts.update(sparql).map { ok =>
-      m.removeAll(uri, propUri, null)
+      m.removeAll(uriResource, propUri, null)
       m
     }
   }
 
   def getUriPropValueList(prop: SIProp): List[String] = {
     val propUri = m.getProperty(prop.uri)
-    m.listObjectsOfProperty(uri, propUri).map(node => node.asResource().toString).toList
+    m.listObjectsOfProperty(uriResource, propUri).map(node => node.asResource().toString).toList
   }
 
   def addUriProp(prop: SIProp, uriValue: String): Future[Model] = {
@@ -196,13 +197,13 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
     val uriValueUri = m.getResource(uriValue)
     val sparql = s"""
          |INSERT DATA {
-         |   GRAPH <$infoUri> {
-         |      <$infoUri> <$propUri> <$uriValueUri> .
+         |   GRAPH <$uri> {
+         |      <$uri> <$propUri> <$uriValueUri> .
          |   }
          |}
        """.stripMargin.trim
     ts.update(sparql).map { ok =>
-      m.add(uri, propUri, uriValueUri)
+      m.add(uriResource, propUri, uriValueUri)
       m
     }
   }
@@ -212,12 +213,12 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
     val uriValueUri = m.getProperty(uriValue)
     val sparql =
       s"""
-         |DELETE DATA FROM <$infoUri> {
-         |   <$infoUri> <$propUri> <$uriValueUri> .
+         |DELETE DATA FROM <$uri> {
+         |   <$uri> <$propUri> <$uriValueUri> .
          |}
        """.stripMargin
     ts.update(sparql).map { ok =>
-      m.remove(uri, propUri, uriValueUri)
+      m.remove(uriResource, propUri, uriValueUri)
       m
     }
   }
@@ -227,13 +228,13 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
     val sparql =
       s"""
          |DELETE {
-         |   GRAPH <$infoUri> {
-         |      <$infoUri> ?p ?o .
+         |   GRAPH <$uri> {
+         |      <$uri> ?p ?o .
          |   }
          |}
          |WHERE {
-         |   GRAPH <$infoUri> {
-         |      <$infoUri> ?p ?o .
+         |   GRAPH <$uri> {
+         |      <$uri> ?p ?o .
          |   }
          |}
        """.stripMargin
@@ -264,5 +265,5 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
 
   lazy val vocabulary = new SkosVocabulary(this)
 
-  override def toString = spec
+  override def toString = uri
 }

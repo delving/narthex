@@ -21,7 +21,7 @@ import java.io.{File, StringReader, StringWriter}
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import play.api.Play.current
 import play.api.libs.json.JsObject
-import play.api.libs.ws.WS
+import play.api.libs.ws.{WS, WSResponse}
 import triplestore.TripleStore.QueryValue
 
 import scala.concurrent.Future
@@ -93,46 +93,43 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
     }
   }
 
-  def update(sparqlUpdate: String): Future[Unit] = {
-    if (printQueries) println(sparqlUpdate)
-    val request = WS.url(s"$storeURL/update").withHeaders("Content-Type" -> "application/sparql-update; charset=utf-8")
-    //    println(s"update:\n$sparqlUpdate")
-    request.post(sparqlUpdate).map { response =>
-      if (response.status / 100 != 2) {
-        throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
-      }
+  private def errorResponse(response: WSResponse) =
+    if (response.status / 100 == 2) None
+    else {
+      Some(response.statusText)
     }
+
+
+  def update(sparqlUpdate: String): Future[Option[String]] = {
+    if (printQueries) println(sparqlUpdate)
+    val request = WS.url(s"$storeURL/update").withHeaders(
+      "Content-Type" -> "application/sparql-update; charset=utf-8"
+    )
+    request.post(sparqlUpdate).map(errorResponse)
   }
 
-  private def dataRequest(graphURI: String) = WS.url(s"$storeURL/data").withQueryString("graph" -> graphURI)
+  private def dataRequest(graphUri: String) = WS.url(s"$storeURL/data").withQueryString("graph" -> graphUri)
 
-  def dataPost(graphURI: String, model: Model): Future[Boolean] = {
+  def dataPost(graphUri: String, model: Model): Future[Option[String]] = {
     val sw = new StringWriter()
     model.write(sw, "TURTLE")
-    //    println(s"posting: $sw")
-    dataRequest(graphURI).withHeaders("Content-Type" -> "text/turtle; charset=utf-8").post(sw.toString).map { response =>
-      //      println(s"post response: ${response.status}")
-      if (response.status / 100 != 2) {
-        throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
-      }
-      true
-    }
+    println(s"posting: $graphUri")
+    dataRequest(graphUri).withHeaders(
+      "Content-Type" -> "text/turtle; charset=utf-8"
+    ).post(sw.toString).map(errorResponse)
   }
 
-  def dataPutXMLFile(graphURI: String, file: File): Future[Option[String]] = {
-    println(s"Posting $file")
-    dataRequest(graphURI).withHeaders("Content-Type" -> "application/rdf+xml; charset=utf-8").put(file).map { response =>
-      if (response.status / 100 != 2) {
-        Some(response.statusText)
-      }
-      else {
-        None
-      }
-    }
+  def dataPutXMLFile(graphUri: String, file: File): Future[Option[String]] = {
+    println(s"Posting $graphUri")
+    dataRequest(graphUri).withHeaders(
+      "Content-Type" -> "application/rdf+xml; charset=utf-8"
+    ).put(file).map(errorResponse)
   }
 
-  def dataGet(graphURI: String): Future[Model] = {
-    dataRequest(graphURI).withHeaders("Accept" -> "text/turtle").get().map { response =>
+  def dataGet(graphUri: String): Future[Model] = {
+    dataRequest(graphUri).withHeaders(
+      "Accept" -> "text/turtle"
+    ).get().map { response =>
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Response not 2XX, but ${response.status}: ${response.statusText}")
       }

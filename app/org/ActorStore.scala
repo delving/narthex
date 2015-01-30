@@ -39,10 +39,12 @@ object ActorStore {
   case class NXActor(userNameProposed: String, makerOpt: Option[String], profileOpt: Option[NXProfile] = None) {
     val actorName = userNameProposed.replaceAll("[^\\w-]", "").toLowerCase
     val uri = s"$NX_URI_PREFIX/actor/$actorName"
+    override def toString = uri
   }
 
   case class NXProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
+    override def toString = uri
   }
 
   val username = NXProp("username")
@@ -147,27 +149,25 @@ class ActorStore(client: TripleStore) {
     userIntoModel(NXActor(usernameString, Some(adminActor.uri)), hash, Some(adminActor)).map { user: NXActor =>
       val sparql =
         s"""
+         |WITH <$graphName>
          |DELETE {
-         |   GRAPH <$graphName> {
-         |      <${user.uri}> <${propUri(username)}> ?userName .
-         |      <${user.uri}> <${propUri(actorOwner)}> ?userMaker .
-         |      <${user.uri}> <${propUri(passwordHash)}> ?passwordHash .
-         |   }
+         |   <${user.uri}>
+         |      <$username> ?userName ;
+         |      <$actorOwner> ?userMaker ;
+         |      <$passwordHash> ?passwordHash .
          |}
          |INSERT {
-         |   GRAPH <$graphName> {
-         |      <${user.uri}> <${propUri(username)}> "${user.actorName}" .
-         |      <${user.uri}> <${propUri(actorOwner)}> <${adminActor.uri}> .
-         |      <${user.uri}> <${propUri(passwordHash)}> "${hash.getString}" .
-         |   }
+         |   <${user.uri}>
+         |      <$username> "${user.actorName}" ;
+         |      <$actorOwner> <${adminActor.uri}> ;
+         |      <$passwordHash> "${hash.getString}" .
          |}
          |WHERE {
          |   OPTIONAL {
-         |      GRAPH <$graphName> {
-         |         <${user.uri}> <${propUri(username)}> ?username .
-         |         <${user.uri}> <${propUri(actorOwner)}> ?userMaker .
-         |         <${user.uri}> <${propUri(passwordHash)}> ?passwordHash .
-         |      }
+         |      <${user.uri}>
+         |         <$username> ?username ;
+         |         <$actorOwner> ?userMaker ;
+         |         <$passwordHash> ?passwordHash .
          |   }
          |}
        """.stripMargin
@@ -181,26 +181,24 @@ class ActorStore(client: TripleStore) {
     profileIntoModel(nxActor, nxProfile).map { actor =>
       val sparql =
         s"""
+         |WITH <$graphName>
          |DELETE {
-         |   GRAPH <$graphName> {
-         |      <${nxActor.uri}> <${propUri(userFirstName)}> ?firstName .
-         |      <${nxActor.uri}> <${propUri(userLastName)}> ?lastName .
-         |      <${nxActor.uri}> <${propUri(userEMail)}> ?email .
-         |   }
+         |   <${nxActor.uri}>
+         |      <$userFirstName> ?firstName ;
+         |      <$userLastName> ?lastName ;
+         |      <$userEMail> ?email .
          |}
          |INSERT {
-         |   GRAPH <$graphName> {
-         |      <${nxActor.uri}> <${propUri(userFirstName)}> "${nxProfile.firstName}" .
-         |      <${nxActor.uri}> <${propUri(userLastName)}> "${nxProfile.lastName}" .
-         |      <${nxActor.uri}> <${propUri(userEMail)}> "${nxProfile.email}" .
-         |   }
+         |   <${nxActor.uri}>
+         |      <$userFirstName> "${nxProfile.firstName}" ;
+         |      <$userLastName> "${nxProfile.lastName}" ;
+         |      <$userEMail> "${nxProfile.email}" .
          |}
          |WHERE {
-         |   GRAPH <$graphName> {
-         |      <${nxActor.uri}> <${propUri(userFirstName)}> ?firstName .
-         |      <${nxActor.uri}> <${propUri(userLastName)}> ?lastName .
-         |      <${nxActor.uri}> <${propUri(userEMail)}> ?email .
-         |   }
+         |   <${nxActor.uri}>
+         |      <$userFirstName> ?firstName ;
+         |      <$userLastName> ?lastName ;
+         |      <$userEMail> ?email .
          |}
        """.stripMargin
       client.update(sparql).map(ok => Some(actor))

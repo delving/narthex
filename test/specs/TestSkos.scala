@@ -2,8 +2,9 @@ package specs
 
 import java.io.File
 
+import mapping.SkosMappings.SkosMapping
 import mapping.SkosVocabulary.LabelSearch
-import mapping.{SkosInfo, Skosification}
+import mapping.{SkosInfo, SkosMappings, Skosification}
 import org.ActorStore
 import org.scalatestplus.play._
 import play.api.libs.json.Json
@@ -25,20 +26,27 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
     graphs.size
   }
 
-  "A sample SKOS vocabulary should be loaded" in {
+  "Mapping toggle should work" in {
     cleanStart()
+
+    // have an actor create two Skos vocabs
     val actorStore = new ActorStore(ts)
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
-    val info = await(SkosInfo.create(admin, "gtaa_genre", ts))
-    val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-    val posted = await(ts.dataPutXMLFile(info.dataUri, skosFile))
-    posted must be(None)
-    countGraphs must be(3)
-    val stats = await(info.getStatistics)
+    val genreInfo = await(SkosInfo.create(admin, "gtaa_genre", ts))
+    val genreFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
+    await(ts.dataPutXMLFile(genreInfo.dataUri, genreFile)) must be(None)
+    val classyInfo = await(SkosInfo.create(admin, "gtaa_classy", ts))
+    val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
+    await(ts.dataPutXMLFile(classyInfo.dataUri, classyFile)) must be(None)
+    countGraphs must be(5)
+
+    // check the stats
+    val stats = await(genreInfo.getStatistics)
     val count = stats("conceptCount")
     count must be(117)
-    //    println(Json.prettyPrint(Json.toJson(stats)))
-    val vocab = info.vocabulary
+
+    // try a search
+    val vocab = genreInfo.vocabulary
     def searchConceptScheme(sought: String) = vocab.search("nl", sought, 3)
     val searches: List[LabelSearch] = List(
       "nieuwsbulletin"
@@ -46,6 +54,25 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
 
     searches.foreach(labelSearch => println(Json.prettyPrint(Json.toJson(labelSearch))))
 
+    val skosMappings = new SkosMappings(genreInfo, classyInfo, ts)
+
+    val genreA = "http://data.beeldengeluid.nl/gtaa/30103"
+    val classyA = "http://data.beeldengeluid.nl/gtaa/24896"
+    val mappingA = SkosMapping(admin, genreA, classyA)
+
+    // toggle while checking
+    await(skosMappings.toggleMapping(mappingA)) must be(None)
+    await(skosMappings.getMappings) must be(Seq((genreA, classyA)))
+    await(skosMappings.toggleMapping(mappingA)) must be(None)
+    await(skosMappings.getMappings) must be(Seq.empty[(String, String)])
+    await(skosMappings.toggleMapping(mappingA)) must be(None)
+    await(skosMappings.getMappings) must be(Seq((genreA, classyA)))
+
+    val genreB = "http://data.beeldengeluid.nl/gtaa/30420"
+    val classyB = "http://data.beeldengeluid.nl/gtaa/24903"
+    val mappingB = SkosMapping(admin, genreB, classyB)
+    await(skosMappings.toggleMapping(mappingB)) must be(None)
+    await(skosMappings.getMappings).sortBy(_._1) must be(Seq((genreA, classyA),(genreB, classyB)))
   }
 
 }

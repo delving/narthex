@@ -14,7 +14,7 @@ import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
 import triplestore.TripleStore
 
-class TestUsersMapping extends PlaySpec with OneAppPerSuite with Skosification {
+class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification {
 
   val ts = new TripleStore("http://localhost:3030/narthex-test", true)
 
