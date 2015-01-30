@@ -18,7 +18,7 @@ define(
                 .when(
                 "/",
                 {
-                    templateUrl: "/narthex/assets/templates/login.html",
+                    templateUrl: "/narthex/assets/templates/dashboard.html",
                     controller: controllers.LoginCtrl
                 }
             ).otherwise(
