@@ -34,6 +34,7 @@ import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
 import services.NarthexConfig.NAVE_DOMAIN
 import services.Temporal._
+import triplestore.GraphProperties.stateSource
 
 class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
 
@@ -155,7 +156,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
   }
 
   def nextHarvest() = {
-    val kickoffOpt = dsInfo.getLiteralProp(DsInfo.stateSource).map { sourceTime =>
+    val kickoffOpt = dsInfo.getLiteralProp(stateSource).map { sourceTime =>
       val harvestCron = dsInfo.harvestCron
       if (harvestCron.timeToWork) {
         val nextHarvestCron = harvestCron.next

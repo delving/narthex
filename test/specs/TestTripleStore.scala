@@ -8,6 +8,7 @@ import org.ActorStore
 import org.scalatestplus.play._
 import play.api.libs.json.Json
 import play.api.test.Helpers._
+import triplestore.GraphProperties._
 import triplestore.TripleStore
 
 class TestTripleStore extends PlaySpec with OneAppPerSuite {

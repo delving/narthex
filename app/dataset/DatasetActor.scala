@@ -37,6 +37,7 @@ import record.SourceProcessor._
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
+import triplestore.GraphProperties._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

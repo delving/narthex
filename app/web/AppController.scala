@@ -41,6 +41,7 @@ import play.api.libs.json._
 import play.api.mvc._
 import services.ProgressReporter.ProgressType._
 import services.Temporal._
+import triplestore.GraphProperties._
 import web.MainController.OkFile
 
 import scala.concurrent.Future
@@ -229,7 +230,7 @@ object AppController extends Controller with Security {
             NotAcceptable(Json.obj("problem" -> message))
           case None =>
             val now: String = timeToString(new DateTime())
-            skosInfo.setSingularLiteralProps(SkosInfo.skosUploadTime -> now)
+            skosInfo.setSingularLiteralProps(skosUploadTime -> now)
             Ok
         }
       } getOrElse {
@@ -252,7 +253,7 @@ object AppController extends Controller with Security {
     withSkosInfo(spec) { skosInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
       Logger.info(s"setProperties $propertyList")
-      val diProps: List[SIProp] = propertyList.map(name => SkosInfo.allSkosProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
+      val diProps: List[SIProp] = propertyList.map(name => allSkosProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
       skosInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)

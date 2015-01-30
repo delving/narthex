@@ -33,14 +33,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object TripleStore {
 
-  case class PropType(uriOpt: Option[String])
-
-  val stringProp = PropType(None)
-  val timeProp = PropType(None)
-  val intProp = PropType(None)
-  val booleanProp = PropType(None)
-  val uriProp = PropType(None)
-
   case class QueryValueType(name: String)
 
   val QV_LITERAL = QueryValueType("literal")

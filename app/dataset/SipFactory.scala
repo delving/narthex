@@ -18,10 +18,10 @@ package dataset
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
-import dataset.DsInfo._
 import dataset.SipRepo.FACTS_FILE
 import org.apache.commons.io.IOUtils
 import services.NarthexConfig
+import triplestore.GraphProperties._
 
 import scala.xml.NodeSeq
 

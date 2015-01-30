@@ -26,6 +26,7 @@ import org.OrgActor.DatasetsCountCategories
 import org.joda.time.DateTime
 import services.NarthexConfig._
 import services._
+import triplestore.GraphProperties.categoriesInclude
 import triplestore.TripleStore
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -113,7 +114,7 @@ class OrgRepo(userHome: String, val orgId: String) {
   def startCategoryCounts() = {
     val categoryDatasets = DsInfo.listDsInfo(ts).map { list =>
       list.flatMap { dsi =>
-        if (dsi.getBooleanProp(DsInfo.categoriesInclude)) Some(dsi) else None
+        if (dsi.getBooleanProp(categoriesInclude)) Some(dsi) else None
       }
     }
     categoryDatasets.map { dsList =>

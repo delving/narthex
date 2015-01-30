@@ -20,9 +20,9 @@ import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
 import org.ActorStore.NXActor
+import org.OrgRepo
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
-import org.{ActorStore, OrgRepo}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -30,8 +30,8 @@ import play.api.libs.json.{JsValue, Json, Writes}
 import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
+import triplestore.GraphProperties._
 import triplestore.TripleStore
-import triplestore.TripleStore._
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -39,18 +39,6 @@ import scala.concurrent._
 import scala.concurrent.duration._
 
 object SkosInfo {
-
-  var allSkosProps = Map.empty[String, SIProp]
-
-  case class SIProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"$NX_NAMESPACE$name"
-    allSkosProps = allSkosProps + (name -> this)
-  }
-
-  val skosSpec = SIProp("skosSpec")
-  val skosName = SIProp("skosName")
-  val skosOwner = SIProp("skosOwner", uriProp)
-  val skosUploadTime = SIProp("skosUploadTime", timeProp)
 
   case class DsMetadata(name: String,
                         description: String,
@@ -97,7 +85,7 @@ object SkosInfo {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getInfoUri(spec))
     m.add(uri, m.getProperty(skosSpec.uri), m.createLiteral(spec))
-    m.add(uri, m.getProperty(ActorStore.actorOwner.uri), m.createResource(owner.uri))
+    m.add(uri, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
     ts.dataPost(uri.getURI, m).map(ok => new SkosInfo(spec, ts))
   }
 

@@ -22,10 +22,9 @@ import mapping.SkosVocabulary.SKOS
 import org.ActorStore.NXActor
 import org.joda.time.DateTime
 import play.api.libs.json.{Json, Writes}
-import services.NarthexConfig._
 import services.Temporal.timeToString
+import triplestore.GraphProperties._
 import triplestore.TripleStore
-import triplestore.TripleStore._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -49,19 +48,6 @@ object SkosMappingStore {
   case class TermMapping(sourceURI: String, targetURI: String, conceptScheme: String, attributionName: String, prefLabel: String, who: String, when: DateTime) {
     val whenString = timeToString(when)
   }
-
-  case class MAProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"$NX_NAMESPACE$name"
-    override def toString = uri
-  }
-
-  val exactMatch = s"${SKOS}exactMatch"
-  val mappingConcept = MAProp("mappingConcept", uriProp)
-  val mappingVocabulary = MAProp("mappingVocabulary", uriProp)
-  val mappingCreator = MAProp("mappingCreator", uriProp)
-  val mappingDeleted = MAProp("mappingDeleted", booleanProp)
-  val mappingDirty = MAProp("mappingDirty", booleanProp)
-  val mappingTime = MAProp("mappingTime", timeProp)
 
   case class SkosMapping(actor: NXActor, uriA: String, uriB: String) {
 

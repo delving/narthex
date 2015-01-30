@@ -20,7 +20,6 @@ import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
 import harvest.Harvesting.{HarvestCron, HarvestType}
-import org.ActorStore
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
@@ -30,8 +29,8 @@ import play.api.libs.json.{JsValue, Json, Writes}
 import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
+import triplestore.GraphProperties._
 import triplestore.TripleStore
-import triplestore.TripleStore._
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -40,59 +39,10 @@ import scala.concurrent.duration._
 
 object DsInfo {
 
-  var allDatasetProps = Map.empty[String, DIProp]
-
-  case class DIProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"$NX_NAMESPACE$name"
-    allDatasetProps = allDatasetProps + (name -> this)
-  }
-
   case class Character(name: String)
 
   val CharacterMapped = Character("character-mapped")
   def getCharacter(characterString: String) = List(CharacterMapped).find(_.name == characterString)
-  val datasetCharacter = DIProp("datasetCharacter")
-
-  val datasetSpec = DIProp("datasetSpec")
-  val datasetName = DIProp("datasetName")
-  val datasetDescription = DIProp("datasetDescription")
-  val datasetOwner = DIProp("datasetOwner")
-  val datasetLanguage = DIProp("datasetLanguage")
-  val datasetRights = DIProp("datasetRights")
-
-  val datasetMapToPrefix = DIProp("datasetMapToPrefix")
-
-  val datasetRecordCount = DIProp("datasetRecordCount", intProp)
-  val datasetErrorTime = DIProp("datasetErrorTime")
-  val datasetErrorMessage = DIProp("datasetErrorMessage")
-
-  val skosField = DIProp("skosField", uriProp)
-
-  val stateRaw = DIProp("stateRaw", timeProp)
-  val stateRawAnalyzed = DIProp("stateRawAnalyzed", timeProp)
-  val stateSource = DIProp("stateSource", timeProp)
-  val stateMappable = DIProp("stateMappable", timeProp)
-  val stateProcessable = DIProp("stateProcessable", timeProp)
-  val stateProcessed = DIProp("stateProcessed", timeProp)
-  val stateAnalyzed = DIProp("stateAnalyzed", timeProp)
-  val stateSaved = DIProp("stateSaved", timeProp)
-
-  val harvestType = DIProp("harvestType")
-  val harvestURL = DIProp("harvestURL")
-  val harvestDataset = DIProp("harvestDataset")
-  val harvestPrefix = DIProp("harvestPrefix")
-  val harvestSearch = DIProp("harvestSearch")
-  val harvestPreviousTime = DIProp("harvestPreviousTime", timeProp)
-  val harvestDelay = DIProp("harvestDelay")
-  val harvestDelayUnit = DIProp("harvestDelayUnit")
-
-  val processedValid = DIProp("processedValid", intProp)
-  val processedInvalid = DIProp("processedInvalid", intProp)
-
-  val publishOAIPMH = DIProp("publishOAIPMH", booleanProp)
-  val publishIndex = DIProp("publishIndex", booleanProp)
-  val publishLOD = DIProp("publishLOD", booleanProp)
-  val categoriesInclude = DIProp("categoriesInclude", booleanProp)
 
   case class DsState(prop: DIProp) {
     override def toString = prop.name
@@ -149,7 +99,7 @@ object DsInfo {
     val uri = m.getResource(getDsUri(spec))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
-    m.add(uri, m.getProperty(ActorStore.actorOwner.uri), m.createResource(owner.uri))
+    m.add(uri, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
     if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.dataPost(uri.getURI, m).map(ok => new DsInfo(spec, ts))
   }

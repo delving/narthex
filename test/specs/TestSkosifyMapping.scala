@@ -12,6 +12,7 @@ import play.api.test.Helpers._
 import record.PocketParser.Pocket
 import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
+import triplestore.GraphProperties.skosField
 import triplestore.TripleStore
 
 class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification {
@@ -112,7 +113,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     // mark a field as skosified
     countGraphs must be(7)
     val info = await(DsInfo.check("frans_hals", ts)).get
-    await(info.addUriProp(DsInfo.skosField, "http://purl.org/dc/elements/1.1/type"))
+    await(info.addUriProp(skosField, "http://purl.org/dc/elements/1.1/type"))
 
     val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
 

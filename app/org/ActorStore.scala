@@ -20,8 +20,8 @@ import java.security.MessageDigest
 
 import com.hp.hpl.jena.rdf.model._
 import services.NarthexConfig._
+import triplestore.GraphProperties._
 import triplestore.TripleStore
-import triplestore.TripleStore._
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -41,18 +41,6 @@ object ActorStore {
     val uri = s"$NX_URI_PREFIX/actor/$actorName"
     override def toString = uri
   }
-
-  case class NXProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"$NX_NAMESPACE$name"
-    override def toString = uri
-  }
-
-  val username = NXProp("username")
-  val passwordHash = NXProp("passwordHash")
-  val userEMail = NXProp("userEMail")
-  val userFirstName = NXProp("userFirstName")
-  val userLastName = NXProp("userLastName")
-  val actorOwner = NXProp("actorOwner")
 
 }
 

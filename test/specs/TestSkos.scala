@@ -61,18 +61,18 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
     val mappingA = SkosMapping(admin, genreA, classyA)
 
     // toggle while checking
-    await(skosMappings.toggleMapping(mappingA)) must be(None)
+    await(skosMappings.toggleMapping(mappingA)) must be((false, None))
     await(skosMappings.getMappings) must be(Seq((genreA, classyA)))
-    await(skosMappings.toggleMapping(mappingA)) must be(None)
+    await(skosMappings.toggleMapping(mappingA)) must be((true, None))
     await(skosMappings.getMappings) must be(Seq.empty[(String, String)])
-    await(skosMappings.toggleMapping(mappingA)) must be(None)
+    await(skosMappings.toggleMapping(mappingA)) must be(false, None)
     await(skosMappings.getMappings) must be(Seq((genreA, classyA)))
 
     val genreB = "http://data.beeldengeluid.nl/gtaa/30420"
     val classyB = "http://data.beeldengeluid.nl/gtaa/24903"
     val mappingB = SkosMapping(admin, genreB, classyB)
-    await(skosMappings.toggleMapping(mappingB)) must be(None)
-    await(skosMappings.getMappings).sortBy(_._1) must be(Seq((genreA, classyA),(genreB, classyB)))
+    await(skosMappings.toggleMapping(mappingB)) must be((false, None))
+    await(skosMappings.getMappings).sortBy(_._1) must be(Seq((genreA, classyA), (genreB, classyB)))
   }
 
 }
