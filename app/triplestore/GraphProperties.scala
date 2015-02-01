@@ -50,6 +50,7 @@ object GraphProperties {
   case class DIProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
     allDatasetProps = allDatasetProps + (name -> this)
+    override def toString = uri
   }
 
   val datasetCharacter = DIProp("datasetCharacter")

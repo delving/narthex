@@ -20,9 +20,9 @@ import triplestore.TripleStore
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object Skosifier {
+object Skosifier extends Skosification {
 
-  case object WakeupCall
+  case object WakeUp
 
   def props(ts: TripleStore) = Props(new Skosifier(ts))
 
@@ -33,15 +33,32 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
   import mapping.Skosifier._
 
   val chunkSize = 12
+  var fieldsBusy = Set.empty[SkosifiedField]
 
   def receive = {
 
-    case WakeupCall =>
-//      ts.query(checkForWork(chunkSize)).map(SkosificationCase(_)).foreach(self ! _)
+    case WakeUp =>
+      ts.query(listSkosifiedFields).onSuccess {
+        case fieldList =>
+          val (busy, idle) = fieldList.map(SkosifiedField(_)).partition(sf => fieldsBusy.contains(sf))
+          idle.map { sf =>
+            ts.query(listLiteralValues(sf, chunkSize)).onSuccess {
+              case valueResult =>
+                if (valueResult.nonEmpty) {
+                  val cases = literalValuesList(valueResult).map(v => SkosificationCase(sf, v))
+                  fieldsBusy += sf
+                }
+                else {
+                  fieldsBusy -= sf
+                }
+            }
+          }
+      }
 
-    case s: SkosificationCase =>
-      ts.query(s.checkExistence).map { answer =>
-        println(s"check existence: $answer")
+    case caseList: List[SkosificationCase] =>
+      val changeLiterals = caseList.map(_.changeLiteralToUri).mkString("\n")
+      ts.update(changeLiterals).map { errorOpt =>
+        println(s"changeLiterals : error=$errorOpt")
       }
   }
 }

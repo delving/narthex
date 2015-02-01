@@ -102,16 +102,16 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     countGraphs must be(7)
   }
 
-//  "A sample SKOS vocabulary should be loaded" in {
-//    // push in a SKOS vocabulary
-//    val actorStore = new ActorStore(ts)
-//    val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
-//    val info = await(SkosInfo.create(admin, "gtaa_genre", ts))
-//    val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-//    val posted = await(ts.dataPutXMLFile(info.dataUri, skosFile))
-//    posted must be(true)
-//    countGraphs must be(8)
-//  }
+  //  "A sample SKOS vocabulary should be loaded" in {
+  //    // push in a SKOS vocabulary
+  //    val actorStore = new ActorStore(ts)
+  //    val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
+  //    val info = await(SkosInfo.create(admin, "gtaa_genre", ts))
+  //    val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
+  //    val posted = await(ts.dataPutXMLFile(info.dataUri, skosFile))
+  //    posted must be(true)
+  //    countGraphs must be(8)
+  //  }
 
   "Skosification must work" in {
     // mark a field as skosified
@@ -121,9 +121,8 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
 
     val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
 
-    skosifiedFields.map { sf =>
-      await(ts.query(listLiteralValues(sf, 12300000))).size must be(5)
-    }
+    val fields = skosifiedFields.map(sf => await(ts.query(listLiteralValues(sf, 100))))
+    fields.size must be(1)
 
     val skosificationCases = skosifiedFields.flatMap { sf =>
       await(ts.query(listLiteralValues(sf, 2))).map(SkosificationCase(sf, _))
@@ -132,14 +131,14 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     skosificationCases.map(println)
 
     skosificationCases.map { sc =>
-      await(ts.ask(sc.checkExistence)) must be(false)
-      await(ts.update(sc.skosAddition))
-      await(ts.ask(sc.checkExistence)) must be(true)
+      await(ts.ask(sc.checkSkosEntry)) must be(false)
+      await(ts.update(sc.addSkosEntry))
+      await(ts.ask(sc.checkSkosEntry)) must be(true)
       await(ts.update(sc.changeLiteralToUri))
     }
 
     skosifiedFields.map { sf =>
-      val remaining = await(ts.query(listLiteralValues(sf, 12300000)))
+      val remaining = await(ts.query(listLiteralValues(sf, 100)))
       remaining.size must be(3)
     }
 
