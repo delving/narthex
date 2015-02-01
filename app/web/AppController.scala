@@ -225,13 +225,10 @@ object AppController extends Controller with Security {
     withSkosInfo(spec) { skosInfo =>
       request.body.file("file").map { bodyFile =>
         val file = bodyFile.ref.file
-        repo.ts.dataPutXMLFile(skosInfo.dataUri, file).map {
-          case Some(message) =>
-            NotAcceptable(Json.obj("problem" -> message))
-          case None =>
-            val now: String = timeToString(new DateTime())
-            skosInfo.setSingularLiteralProps(skosUploadTime -> now)
-            Ok
+        repo.ts.dataPutXMLFile(skosInfo.dataUri, file).map { ok =>
+          val now: String = timeToString(new DateTime())
+          skosInfo.setSingularLiteralProps(skosUploadTime -> now)
+          Ok
         }
       } getOrElse {
         Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
@@ -277,15 +274,8 @@ object AppController extends Controller with Security {
     val uriA = (request.body \ "uriA").as[String]
     val uriB = (request.body \ "uriB").as[String]
     val store = repo.skosMappingStore(specA, specB)
-    store.toggleMapping(SkosMapping(session.actor, uriA, uriB)).map { pair =>
-      val errorOpt = pair._2
-      val existed = pair._1
-      errorOpt.map { error =>
-        NotAcceptable(Json.obj("problem" -> "Cannot toggle mapping!"))
-      } getOrElse {
-        val action = if (existed) "removed" else "added"
-        Ok(Json.obj("action" -> action))
-      }
+    store.toggleMapping(SkosMapping(session.actor, uriA, uriB)).map { action =>
+      Ok(Json.obj("action" -> action))
     }
   }
 

@@ -17,10 +17,11 @@ package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
 import triplestore.TripleStore
+import triplestore.TripleStore.QueryValue
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object Skosifier extends Skosification {
+object Skosifier {
 
   case object ScanForWork
 
@@ -32,41 +33,34 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
 
   import mapping.Skosifier._
 
-  val chunkSize = 12
-  var fieldsBusy = Set.empty[SkosifiedField]
+  val chunkSize = 10
+
+  case class SkosificationJob(sf: SkosifiedField, scResult: List[Map[String, QueryValue]]) {
+    val cases = createCases(sf, scResult)
+    val ensureSkosEntries = cases.map(_.ensureSkosEntry).mkString
+    val changeLiteralsToUris = cases.map(_.changeLiteralToUri).mkString
+  }
 
   def receive = {
 
-    /*
-        scan for fields
-        list literal values for each
-        discard the fields which have no literal values
-        skosify remaining fields until no liter
-     */
-
-
     case ScanForWork =>
-      ts.query(listSkosifiedFields).onSuccess {
-        case fieldList =>
-          val (busy, idle) = fieldList.map(SkosifiedField(_)).partition(sf => fieldsBusy.contains(sf))
-          idle.map { sf =>
-            ts.query(listSkosificationCases(sf, chunkSize)).onSuccess {
-              case valueResult =>
-                if (valueResult.nonEmpty) {
-                  val cases = createCases(sf, valueResult)
-                  fieldsBusy += sf
-                }
-                else {
-                  fieldsBusy -= sf
-                }
-            }
-          }
+      ts.query(listSkosifiedFields).map { sfResult =>
+        sfResult.map(SkosifiedField(_)).map { sf =>
+          ts.ask(skosificationCasesExist(sf)).map(exists => if (exists) {
+            ts.query(listSkosificationCases(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
+          })
+        }
       }
 
-    //    case caseList: List[SkosificationCase] =>
-    //      val changeLiterals = caseList.map(_.changeLiteralToUri).mkString("\n")
-    //      ts.update(changeLiterals).map { errorOpt =>
-    //        println(s"changeLiterals : error=$errorOpt")
-    //      }
+    case job: SkosificationJob =>
+      ts.update(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
+        if (job.cases.size == chunkSize) {
+          ts.query(listSkosificationCases(job.sf, chunkSize)).onSuccess {
+            case scResult if scResult.nonEmpty =>
+              self ! SkosificationJob(job.sf, scResult)
+          }
+        }
+      }
+
   }
 }

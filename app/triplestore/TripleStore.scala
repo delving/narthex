@@ -23,7 +23,7 @@ import com.ning.http.client.providers.netty.NettyResponse
 import play.api.Play.current
 import play.api.libs.json.JsObject
 import play.api.libs.ws.{WS, WSResponse}
-import triplestore.TripleStore.QueryValue
+import triplestore.TripleStore.{QueryValue, TripleStoreException}
 
 import scala.concurrent.Future
 
@@ -53,6 +53,8 @@ object TripleStore {
     // todo: find out what needs replacing
     lazy val quoted = text.replaceAll("\"", "")
   }
+
+  class TripleStoreException(message: String) extends Exception(message)
 
 }
 
@@ -91,37 +93,34 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
     }
   }
 
-  private def errorResponse(response: WSResponse) =
-    if (response.status / 100 == 2) None
-    else {
-      Some(response.statusText)
-    }
+  private def checkResponse(response: WSResponse): Unit = if (response.status / 100 != 2) {
+    throw new TripleStoreException(response.statusText)
+  }
 
-
-  def update(sparqlUpdate: String): Future[Option[String]] = {
+  def update(sparqlUpdate: String) = {
     if (printQueries) println(sparqlUpdate)
     val request = WS.url(s"$storeURL/update").withHeaders(
       "Content-Type" -> "application/sparql-update; charset=utf-8"
     )
-    request.post(sparqlUpdate).map(errorResponse)
+    request.post(sparqlUpdate).map(checkResponse)
   }
 
   private def dataRequest(graphUri: String) = WS.url(s"$storeURL/data").withQueryString("graph" -> graphUri)
 
-  def dataPost(graphUri: String, model: Model): Future[Option[String]] = {
+  def dataPost(graphUri: String, model: Model) = {
     val sw = new StringWriter()
     model.write(sw, "TURTLE")
     println(s"posting: $graphUri")
     dataRequest(graphUri).withHeaders(
       "Content-Type" -> "text/turtle; charset=utf-8"
-    ).post(sw.toString).map(errorResponse)
+    ).post(sw.toString).map(checkResponse)
   }
 
-  def dataPutXMLFile(graphUri: String, file: File): Future[Option[String]] = {
+  def dataPutXMLFile(graphUri: String, file: File) = {
     println(s"Posting $graphUri")
     dataRequest(graphUri).withHeaders(
       "Content-Type" -> "application/rdf+xml; charset=utf-8"
-    ).put(file).map(errorResponse)
+    ).put(file).map(checkResponse)
   }
 
   def dataGet(graphUri: String): Future[Model] = {

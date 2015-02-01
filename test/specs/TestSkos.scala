@@ -34,10 +34,10 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
     val genreInfo = await(SkosInfo.create(admin, "gtaa_genre", ts))
     val genreFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-    await(ts.dataPutXMLFile(genreInfo.dataUri, genreFile)) must be(None)
+    await(ts.dataPutXMLFile(genreInfo.dataUri, genreFile))
     val classyInfo = await(SkosInfo.create(admin, "gtaa_classy", ts))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
-    await(ts.dataPutXMLFile(classyInfo.dataUri, classyFile)) must be(None)
+    await(ts.dataPutXMLFile(classyInfo.dataUri, classyFile))
     countGraphs must be(5)
 
     // check the stats
@@ -61,17 +61,17 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
     val mappingA = SkosMapping(admin, genreA, classyA)
 
     // toggle while checking
-    await(skosMappings.toggleMapping(mappingA)) must be((false, None))
+    await(skosMappings.toggleMapping(mappingA)) must be("added")
     await(skosMappings.getMappings) must be(Seq((genreA, classyA)))
-    await(skosMappings.toggleMapping(mappingA)) must be((true, None))
+    await(skosMappings.toggleMapping(mappingA)) must be("removed")
     await(skosMappings.getMappings) must be(Seq.empty[(String, String)])
-    await(skosMappings.toggleMapping(mappingA)) must be(false, None)
+    await(skosMappings.toggleMapping(mappingA)) must be("added")
     await(skosMappings.getMappings) must be(Seq((genreA, classyA)))
 
     val genreB = "http://data.beeldengeluid.nl/gtaa/30420"
     val classyB = "http://data.beeldengeluid.nl/gtaa/24903"
     val mappingB = SkosMapping(admin, genreB, classyB)
-    await(skosMappings.toggleMapping(mappingB)) must be((false, None))
+    await(skosMappings.toggleMapping(mappingB)) must be("added")
     await(skosMappings.getMappings).sortBy(_._1) must be(Seq((genreA, classyA), (genreB, classyB)))
   }
 
