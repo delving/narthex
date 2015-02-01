@@ -12,7 +12,7 @@ import play.api.test.Helpers._
 import record.PocketParser.Pocket
 import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
-import triplestore.GraphProperties.skosField
+import triplestore.GraphProperties._
 import triplestore.TripleStore
 
 class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification {
@@ -102,17 +102,6 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     countGraphs must be(7)
   }
 
-  //  "A sample SKOS vocabulary should be loaded" in {
-  //    // push in a SKOS vocabulary
-  //    val actorStore = new ActorStore(ts)
-  //    val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
-  //    val info = await(SkosInfo.create(admin, "gtaa_genre", ts))
-  //    val skosFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-  //    val posted = await(ts.dataPutXMLFile(info.dataUri, skosFile))
-  //    posted must be(true)
-  //    countGraphs must be(8)
-  //  }
-
   "Skosification must work" in {
     // mark a field as skosified
     countGraphs must be(7)
@@ -121,27 +110,53 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
 
     val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
 
-    val fields = skosifiedFields.map(sf => await(ts.query(listLiteralValues(sf, 100))))
-    fields.size must be(1)
-
-    val skosificationCases = skosifiedFields.flatMap { sf =>
-      await(ts.query(listLiteralValues(sf, 2))).map(SkosificationCase(sf, _))
-    }
+    val skosificationCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCases(sf, 2)))))
 
     skosificationCases.map(println)
 
     skosificationCases.map { sc =>
-      await(ts.ask(sc.checkSkosEntry)) must be(false)
-      await(ts.update(sc.addSkosEntry))
-      await(ts.ask(sc.checkSkosEntry)) must be(true)
+      val graph = sc.skosifieldField.datasetSkosUri
+      val valueUri: String = sc.mintedUri
+      val checkEntry = s"ASK { GRAPH <$graph> { <$valueUri> a <http://www.w3.org/2004/02/skos/core#Concept> } }"
+      val syncedTrue: String = s"ASK { GRAPH <$graph> { <$valueUri> <$synced> true } }"
+      val syncedFalse: String = s"ASK { GRAPH <$graph> { <$valueUri> <$synced> false } }"
+
+      await(ts.ask(checkEntry)) must be(false)
+      await(ts.update(sc.ensureSkosEntry))
+      // synced should be false
+      await(ts.ask(syncedFalse)) must be(true)
+      await(ts.update(
+        s"""
+           |WITH <$graph>
+           |DELETE { <$valueUri> <$synced> false }
+           |INSERT { <$valueUri> <$synced> true }
+           |WHERE {  <$valueUri> <$synced> false }
+           |""".stripMargin
+      ))
+      // now synced is forced to true
+      await(ts.ask(syncedTrue)) must be(true)
+      await(ts.ask(syncedFalse)) must be(false)
+      await(ts.update(sc.ensureSkosEntry))
+      // it still should be true
+      await(ts.ask(syncedTrue)) must be(true)
+      await(ts.ask(checkEntry)) must be(true)
       await(ts.update(sc.changeLiteralToUri))
     }
 
     skosifiedFields.map { sf =>
-      val remaining = await(ts.query(listLiteralValues(sf, 100)))
+      val remaining = await(ts.query(listSkosificationCases(sf, 100)))
       remaining.size must be(3)
     }
 
+    await(ts.ask(skosificationCasesExist(skosifiedFields.head))) must be(true)
+
+    val finalCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCases(sf, 100)))))
+    finalCases.map { sc =>
+      await(ts.update(sc.ensureSkosEntry))
+      await(ts.update(sc.changeLiteralToUri))
+    }
+
+    await(ts.ask(skosificationCasesExist(skosifiedFields.head))) must be(false)
   }
 
 }

@@ -22,7 +22,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object Skosifier extends Skosification {
 
-  case object WakeUp
+  case object ScanForWork
 
   def props(ts: TripleStore) = Props(new Skosifier(ts))
 
@@ -37,15 +37,23 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
 
   def receive = {
 
-    case WakeUp =>
+    /*
+        scan for fields
+        list literal values for each
+        discard the fields which have no literal values
+        skosify remaining fields until no liter
+     */
+
+
+    case ScanForWork =>
       ts.query(listSkosifiedFields).onSuccess {
         case fieldList =>
           val (busy, idle) = fieldList.map(SkosifiedField(_)).partition(sf => fieldsBusy.contains(sf))
           idle.map { sf =>
-            ts.query(listLiteralValues(sf, chunkSize)).onSuccess {
+            ts.query(listSkosificationCases(sf, chunkSize)).onSuccess {
               case valueResult =>
                 if (valueResult.nonEmpty) {
-                  val cases = literalValuesList(valueResult).map(v => SkosificationCase(sf, v))
+                  val cases = createCases(sf, valueResult)
                   fieldsBusy += sf
                 }
                 else {
@@ -55,10 +63,10 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
           }
       }
 
-    case caseList: List[SkosificationCase] =>
-      val changeLiterals = caseList.map(_.changeLiteralToUri).mkString("\n")
-      ts.update(changeLiterals).map { errorOpt =>
-        println(s"changeLiterals : error=$errorOpt")
-      }
+    //    case caseList: List[SkosificationCase] =>
+    //      val changeLiterals = caseList.map(_.changeLiteralToUri).mkString("\n")
+    //      ts.update(changeLiterals).map { errorOpt =>
+    //        println(s"changeLiterals : error=$errorOpt")
+    //      }
   }
 }

@@ -21,13 +21,6 @@ import triplestore.TripleStore.QueryValue
 
 trait Skosification {
 
-  /*
-      scan for fields
-      list literal values for each
-      discard the fields which have no literal values
-      skosify remaining fields until no liter
-   */
-
   def listSkosifiedFields = {
     s"""
       |SELECT ?datasetUri ?fieldProperty
@@ -49,7 +42,22 @@ trait Skosification {
     val datasetSkosUri = s"$datasetUri/skos"
   }
 
-  def listLiteralValues(skosifiedField: SkosifiedField, chunkSize: Int) = {
+  def skosificationCasesExist(skosifiedField: SkosifiedField) = {
+    val datasetUri = skosifiedField.datasetUri
+    val fieldProperty = skosifiedField.fieldPropertyUri
+    s"""
+      |ASK {
+      |  GRAPH ?g {
+      |    ?record
+      |       <$belongsTo> <$datasetUri> ;
+      |       <$fieldProperty> ?literalValue .
+      |    FILTER isLiteral(?literalValue)
+      |  }
+      |}
+      """.stripMargin
+  }
+
+  def listSkosificationCases(skosifiedField: SkosifiedField, chunkSize: Int) = {
     val datasetUri = skosifiedField.datasetUri
     val fieldProperty = skosifiedField.fieldPropertyUri
     s"""
@@ -66,42 +74,35 @@ trait Skosification {
       """.stripMargin
   }
 
-  def literalValuesList(resultList: List[Map[String, QueryValue]]): List[QueryValue] = resultList.map(_("literalValue"))
-
-  object SkosificationCase {
-    def apply(skosifiedField: SkosifiedField, resultMap: Map[String, QueryValue]): SkosificationCase = {
-      SkosificationCase(skosifiedField, resultMap("literalValue"))
-    }
-  }
+  def createCases(sf: SkosifiedField, resultList: List[Map[String, QueryValue]]): List[SkosificationCase] =
+    resultList.map(_("literalValue")).map(v => SkosificationCase(sf, v))
 
   case class SkosificationCase(skosifieldField: SkosifiedField, literalValue: QueryValue) {
-    private val fieldValueUri = s"${skosifieldField.datasetUri}/${urlEncodeValue(literalValue.text)}"
-    private val fieldProperty = skosifieldField.fieldPropertyUri
-    private val skosGraph = skosifieldField.datasetSkosUri
-    private val datasetUri = skosifieldField.datasetUri
-    private val quotedValue = literalValue.quoted
+    val mintedUri = s"${skosifieldField.datasetUri}/${urlEncodeValue(literalValue.text)}"
+    val fieldProperty = skosifieldField.fieldPropertyUri
+    val skosGraph = skosifieldField.datasetSkosUri
+    val datasetUri = skosifieldField.datasetUri
+    val quotedValue = literalValue.quoted
 
-    val checkSkosEntry =
+    val ensureSkosEntry =
       s"""
       |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-      |ASK {
+      |INSERT {
       |   GRAPH <$skosGraph> {
-      |      <$fieldValueUri> a skos:Concept .
+      |      <$mintedUri> a skos:Concept .
+      |      <$mintedUri> skos:hiddenLabel "$quotedValue" .
+      |      <$mintedUri> <$belongsTo> <$datasetUri> .
+      |      <$mintedUri> <$synced> false .
       |   }
       |}
-      """.stripMargin
-
-    val addSkosEntry =
-      s"""
-      |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-      |INSERT DATA {
-      |   GRAPH <$skosGraph> {
-      |      <$fieldValueUri> a skos:Concept .
-      |      <$fieldValueUri> skos:hiddenLabel "$quotedValue" .
-      |      <$fieldValueUri> <$belongsTo> <$datasetUri> .
-      |      <$fieldValueUri> <$synced> false .
+      |WHERE {
+      |   FILTER NOT EXISTS {
+      |      GRAPH <$skosGraph> {
+      |         ?existing a skos:Concept
+      |         FILTER( ?existing = <$mintedUri> )
+      |      }
       |   }
-      |}
+      |};
       """.stripMargin
 
     val changeLiteralToUri =
@@ -113,7 +114,7 @@ trait Skosification {
       |}
       |INSERT {
       |  GRAPH ?g {
-      |     ?s <$fieldProperty> <$fieldValueUri> .
+      |     ?s <$fieldProperty> <$mintedUri> .
       |  }
       |}
       |WHERE {
