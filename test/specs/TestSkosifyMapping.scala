@@ -121,6 +121,10 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
 
     val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
 
+    skosifiedFields.map { sf =>
+      await(ts.query(listLiteralValues(sf, 12300000))).size must be(5)
+    }
+
     val skosificationCases = skosifiedFields.flatMap { sf =>
       await(ts.query(listLiteralValues(sf, 2))).map(SkosificationCase(sf, _))
     }
@@ -131,8 +135,12 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
       await(ts.ask(sc.checkExistence)) must be(false)
       await(ts.update(sc.skosAddition))
       await(ts.ask(sc.checkExistence)) must be(true)
-      val change: String = sc.changeLiteralToUri
-      await(ts.update(change))
+      await(ts.update(sc.changeLiteralToUri))
+    }
+
+    skosifiedFields.map { sf =>
+      val remaining = await(ts.query(listLiteralValues(sf, 12300000)))
+      remaining.size must be(3)
     }
 
   }

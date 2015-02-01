@@ -16,6 +16,7 @@
 
 package triplestore
 
+import com.hp.hpl.jena.rdf.model.{Model, Property}
 import mapping.SkosVocabulary._
 import services.NarthexConfig._
 
@@ -40,6 +41,9 @@ object GraphProperties {
   val userFirstName = NXProp("userFirstName")
   val userLastName = NXProp("userLastName")
   val actorOwner = NXProp("actorOwner")
+
+  val belongsTo = NXProp("belongsTo")
+  val synced = NXProp("synced")
 
   var allDatasetProps = Map.empty[String, DIProp]
 
@@ -117,5 +121,8 @@ object GraphProperties {
   val mappingDirty = MAProp("mappingDirty", booleanProp)
   val mappingTime = MAProp("mappingTime", timeProp)
 
-
+  def nxProp(m: Model, localName: String): Property = {
+    m.setNsPrefix("nx", NX_NAMESPACE)
+    m.getProperty(NX_NAMESPACE, localName)
+  }
 }

@@ -16,11 +16,12 @@
 package dataset
 
 import java.io._
+import java.lang.Boolean.FALSE
 
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import services.FileHandling
-import services.NarthexConfig.NX_NAMESPACE
+import triplestore.GraphProperties._
 
 import scala.collection.JavaConversions._
 
@@ -31,21 +32,17 @@ import scala.collection.JavaConversions._
 object ProcessedRepo {
   val SUFFIX = ".xml"
 
-  val belongsTo = s"${NX_NAMESPACE}belongsTo"
-
   case class GraphChunk(dataset: Dataset) {
 
     def sparqlUpdateGraph(dataset: Dataset, graphUri: String) = {
       val model = dataset.getNamedModel(graphUri)
       val triples = new StringWriter()
-
-      // todo: this is the equivalent of graph store protocol, so do it that way
       RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
       s"""
-      |DROP SILENT GRAPH <$graphUri>;
-      |INSERT DATA { GRAPH <$graphUri> {
-      |$triples}};
-     """.stripMargin.trim
+        |DROP SILENT GRAPH <$graphUri>;
+        |INSERT DATA { GRAPH <$graphUri> {
+        |$triples}};
+       """.stripMargin.trim
     }
 
     def toSparqlUpdate: String = dataset.listNames().toList.map(g => sparqlUpdateGraph(dataset, g)).mkString("\n")
@@ -104,7 +101,8 @@ class ProcessedRepo(val home: File, datasetUri: String) {
           case LineId(graphName) =>
             val m = dataset.getNamedModel(graphName)
             m.read(new StringReader(recordText.toString()), null, "RDF/XML")
-            m.add(m.getResource(graphName), m.getProperty(belongsTo), m.getResource(datasetUri))
+            m.add(m.getResource(graphName), m.getProperty(belongsTo.uri), m.getResource(datasetUri))
+            m.add(m.getResource(graphName), m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
             graphCount += 1
             recordText.clear()
             if (graphCount >= chunkSize) chunkComplete = true

@@ -37,16 +37,21 @@ object TripleStore {
 
   val QV_LITERAL = QueryValueType("literal")
   val QV_URI = QueryValueType("uri")
+  val QV_UNKNOWN = QueryValueType("unknown")
 
   case class QueryValue(valueObject: JsObject) {
-    var text = (valueObject \ "value").as[String]
-    var qvt = (valueObject \ "type").as[String] match {
+    val text = (valueObject \ "value").as[String]
+    val qvt = (valueObject \ "type").as[String] match {
       case "typed-literal" => QV_LITERAL // todo: worry about the type
       case "literal" => QV_LITERAL
       case "uri" => QV_URI
-      case x => throw new RuntimeException(s"Unhandled type $x")
+      case x =>
+        println(s"Unhandled type $x !")
+        QV_UNKNOWN
       // there is type: uri, literal, bnode and also datatype and xml:lang
     }
+    // todo: find out what needs replacing
+    lazy val quoted = text.replaceAll("\"", "")
   }
 
 }
