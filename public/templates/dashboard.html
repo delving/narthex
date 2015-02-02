@@ -65,12 +65,11 @@
         <div class="col-sm-6"  style="padding:15px">
             <div class="widget">
                 <div class="widget-header">
-                    <span class="label label-larger label-success"><i class="fa fa-user"/></i> "{{ user.username }}"</span>
+                    {{ user.username }}
                 </div>
                 <div class="widget-body">
                     <form name="form" class="form clearfix">
-                        <h4>Profile</h4>
-                        <hr/>
+                        <!--<h4 class="title">Profile</h4>-->
                         <div class="form-group">
                             <label for="firstName">First Name</label>
                             <input id="firstName" class="form-control" data-ng-model="editedUser.firstName" placeholder="John"/>
@@ -83,17 +82,15 @@
                             <label for="email">Email</label>
                             <input id="email" class="form-control" data-ng-model="editedUser.email" placeholder="john@smith.net"/>
                         </div>
-                        <br/>
+                        <a href data-ng-click="showChangePassword = !showChangePassword">Change password</a>
                         <button class="btn btn-primary pull-right" data-ng-disabled="unchangedUser" data-ng-click="setProfile(editedUser)">Save</button>
                         <div data-ng-show="errorMessage">
                             <span class="badge badge-warning">{{ errorMessage }}</span>
                         </div>
                     </form>
-                </div>
-                <div class="widget-body">
-                    <form name="form" class="form clearfix">
-                        <h4>Change password</h4>
-                        <hr/>
+
+                    <form name="form" class="form clearfix" data-ng-show="showChangePassword" data-ng-init="showChangePassword = false">
+                        <h4 class="title">Change password</h4>
                         <div class="form-group">
                             <label for="change-new-a">New password</label>
                             <input type="password" class="form-control" id="change-new-a" placeholder="Password" data-ng-model="change.a" required>
@@ -110,11 +107,23 @@
         <div class="col-sm-6"  style="padding:15px">
             <div class="widget">
                 <div class="widget-header">
-                    <span class="label label-larger label-info"><i class="fa fa-users"/></i> Sub-Actors</span>
+                    Sub-Actors
                 </div>
                 <div class="widget-body">
-                    <h4>Create a new Sub-Actor</h4>
-                    <hr/>
+
+
+                    <div data-ng-show="!actorList.length">
+                        There are currently no Sub-Actors
+                    </div>
+
+                    <div data-ng-show="actorList.length">
+                        <span data-ng-repeat="actor in actorList">
+                            <span class="label label-info" style="margin-right: 4px;">
+                                <i class="fa fa-user fa-2x"/></i> {{ actor }}
+                            </span>
+                        </span>
+                    </div>
+                    <h4 class="title">Create a new Sub-Actor</h4>
                     <div class="navbar navbar-default">
                         <form class="form-inline navbar-form">
                             <div class="form-group">
@@ -133,14 +142,7 @@
                         <span class="badge badge-warning">{{ errorMessage }}</span>
                     </div>
 
-                    <div data-ng-show="actorList.length">
-                        <hr/>
-                        <div data-ng-repeat="actor in actorList" style="padding:8px">
-                            <div class="label label-info">
-                                <i class="fa fa-user"/></i> "{{ actor }}"
-                            </div>
-                        </div>
-                    </div>
+
                 </div>
             </div>
         </div>
