@@ -85,6 +85,9 @@ define(["angular"], function () {
                     prefix: prefix
                 };
             });
+            if ($scope.characters.length == 1) {
+                $scope.newDataset.character = $scope.characters[0];
+            }
         });
 
         $scope.createDataset = function () {
