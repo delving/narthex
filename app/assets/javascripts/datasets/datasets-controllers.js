@@ -454,6 +454,10 @@ define(["angular"], function () {
             command("start saving", null, refreshProgress);
         };
 
+        $scope.clearError = function () {
+            command("clear error", null, refreshInfo());
+        };
+
         $scope.deleteDataset = function () {
             command("delete", "Delete dataset?", $scope.fetchDatasetList);
         };

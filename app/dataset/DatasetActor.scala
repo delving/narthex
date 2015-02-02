@@ -32,6 +32,7 @@ import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import org.OrgActor.DatasetQuestion
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
+import play.api.Logger
 import record.SourceProcessor
 import record.SourceProcessor._
 import services.ProgressReporter.ProgressState._
@@ -41,6 +42,7 @@ import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -101,8 +103,6 @@ object DatasetActor {
   case class WorkFailure(message: String, exceptionOpt: Option[Throwable] = None)
 
   case object CheckState
-
-  case object ClearError
 
   case class ProgressTick(progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0)
 
@@ -328,12 +328,16 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(tick: ProgressTick, active: Active) =>
       stay() using active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)
 
-    case Event(ClearError, InError(message)) =>
-      log.info(s"Cleared error: $message)")
-      goto(Idle) using Dormant
-
     case Event(DatasetQuestion(listener, Command(commandName)), InError(message)) =>
-      listener ! message
+      Logger.info(s"command name: $commandName")
+      if (commandName == "clear error") {
+        dsInfo.removeLiteralProp(datasetErrorMessage).map { m =>
+          listener ! "error cleared"
+        }
+      }
+      else {
+        listener ! message
+      }
       stay()
 
     case Event(InterruptWork, active: Active) =>
