@@ -34,28 +34,6 @@ object FileHandling {
     dir
   }
 
-  def ensureGitRepo(directory: File): Boolean = {
-    val hiddenGit = new File(directory, ".git")
-    if (!hiddenGit.exists()) {
-      val init = s"git init ${directory.getAbsolutePath}".!!
-      Logger.info(s"git init: $init")
-    }
-    hiddenGit.exists()
-  }
-
-  def gitCommit(file: File, comment: String): Boolean = {
-    // assuming all files are in the git root?
-    val home = file.getParentFile.getAbsolutePath
-    val name = file.getName
-    val addCommand = Process(Seq("git", "-C", home, "add", name))
-    Logger.info(s"git add: $addCommand")
-    val add = addCommand.!!
-    val commitCommand = Process(Seq("git", "-C", home, "commit", "-m", comment, name))
-    Logger.info(s"git commit: $commitCommand")
-    val commit = commitCommand.!!
-    true
-  }
-
   def reader(file: File) = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))
 
   def writer(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))
@@ -73,11 +51,7 @@ object FileHandling {
   }
 
   def sourceFromFile(file: File): (Source, ReadProgress) = {
-    if (file.isDirectory) {
-      val fc = new FileConcatXML(file)
-      (fc, fc.readProgress)
-    }
-    else if (file.getName.endsWith(".zip")) {
+    if (file.getName.endsWith(".zip")) {
       val zc = new ZipConcatXML(new ZipFile(file))
       (zc, zc.readProgress)
     }
@@ -214,6 +188,28 @@ object FileHandling {
     }
 
     lazy val readProgress = new FileReadProgress()
+  }
+
+  def ensureGitRepo(directory: File): Boolean = {
+    val hiddenGit = new File(directory, ".git")
+    if (!hiddenGit.exists()) {
+      val init = s"git init ${directory.getAbsolutePath}".!!
+      Logger.info(s"git init: $init")
+    }
+    hiddenGit.exists()
+  }
+
+  def gitCommit(file: File, comment: String): Boolean = {
+    // assuming all files are in the git root?
+    val home = file.getParentFile.getAbsolutePath
+    val name = file.getName
+    val addCommand = Process(Seq("git", "-C", home, "add", name))
+    Logger.info(s"git add: $addCommand")
+    val add = addCommand.!!
+    val commitCommand = Process(Seq("git", "-C", home, "commit", "-m", comment, name))
+    Logger.info(s"git commit: $commitCommand")
+    val commit = commitCommand.!!
+    true
   }
 
 }

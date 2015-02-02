@@ -92,7 +92,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     }
     sourceOutput.close()
     // push the mapped results to the triple store
-    val graphReader = processedRepo.createGraphReader(3)
+    val graphReader = processedRepo.createGraphReader(None, ProgressReporter())
     while (graphReader.isActive) {
       graphReader.readChunk.map { chunk =>
         val update = chunk.toSparqlUpdate

@@ -19,7 +19,7 @@ package record
 import java.io.{File, FileOutputStream}
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{IncrementalSave, InterruptWork, WorkFailure}
+import dataset.DatasetActor.{Incremental, InterruptWork, WorkFailure}
 import dataset.DatasetRepo
 import dataset.SipFactory.SipGenerationFacts
 import org.apache.commons.io.FileUtils
@@ -42,7 +42,7 @@ object SourceProcessor {
 
   case class SipZipGenerationComplete(recordCount: Int)
 
-  case class Process(incrementalOpt: Option[IncrementalSave])
+  case class Process(incrementalOpt: Option[Incremental])
 
   case class ProcessingComplete(validRecords: Int, invalidRecords: Int)
 

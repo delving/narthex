@@ -38,6 +38,8 @@ import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
 import triplestore.GraphProperties._
+import triplestore.GraphSaver
+import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -64,6 +66,8 @@ object DatasetActor {
 
   case object Processing extends DatasetActorState
 
+  case object Saving extends DatasetActorState
+
   case object Categorizing extends DatasetActorState
 
   trait DatasetActorData
@@ -83,9 +87,11 @@ object DatasetActor {
 
   case object StartAnalysis
 
-  case class IncrementalSave(modifiedAfter: DateTime, file: File)
+  case class Incremental(modifiedAfter: DateTime, file: File)
 
-  case class StartProcessing(incrementalOpt: Option[IncrementalSave])
+  case class StartProcessing(incrementalOpt: Option[Incremental])
+
+  case class StartSaving(incrementalOpt: Option[Incremental])
 
   case object StartCategoryCounting
 
@@ -171,6 +177,11 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       sourceProcessor ! Process(incrementalOpt)
       goto(Processing) using Active(Some(sourceProcessor), PROCESSING)
 
+    case Event(StartSaving(incrementalOpt), Dormant) =>
+      val graphSaver = context.actorOf(GraphSaver.props(datasetRepo.processedRepo, datasetRepo.orgRepo.ts), "graph-saver")
+      graphSaver ! SaveGraphs(incrementalOpt)
+      goto(Saving) using Active(Some(graphSaver), PROCESSING)
+
     case Event(StartCategoryCounting, Dormant) =>
       if (datasetRepo.processedRepo.nonEmpty) {
         val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo), "category-counter"))
@@ -223,7 +234,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       incrementalOpt.map { incremental =>
         incremental.fileOpt.map { newFile =>
           dsInfo.setState(DsState.SOURCED)
-          self ! StartProcessing(Some(IncrementalSave(incremental.modifiedAfter, newFile)))
+          self ! StartProcessing(Some(Incremental(incremental.modifiedAfter, newFile)))
         }
       } getOrElse {
         self ! GenerateSipZip
@@ -275,6 +286,15 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
     case Event(ProcessingComplete(validRecords, invalidRecords), active: Active) =>
       dsInfo.setState(DsState.PROCESSED)
       dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
+      active.childOpt.map(_ ! PoisonPill)
+      goto(Idle) using Dormant
+
+  }
+
+  when(Saving) {
+
+    case Event(GraphSaveComplete, active: Active) =>
+      dsInfo.setState(DsState.SAVED)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 

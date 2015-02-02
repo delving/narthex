@@ -20,7 +20,7 @@ import java.lang.Boolean.FALSE
 
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
-import services.FileHandling
+import services.{FileHandling, ProgressReporter}
 import triplestore.GraphProperties._
 
 import scala.collection.JavaConversions._
@@ -30,7 +30,9 @@ import scala.collection.JavaConversions._
  */
 
 object ProcessedRepo {
+
   val SUFFIX = ".xml"
+  val chunkSize = 20
 
   case class GraphChunk(dataset: Dataset) {
 
@@ -47,12 +49,15 @@ object ProcessedRepo {
 
     def toSparqlUpdate: String = dataset.listNames().toList.map(g => sparqlUpdateGraph(dataset, g)).mkString("\n")
   }
-  
+
   trait GraphReader {
     def isActive: Boolean
+
     def readChunk: Option[GraphChunk]
+
     def close(): Unit
   }
+
 }
 
 class ProcessedRepo(val home: File, datasetUri: String) {
@@ -75,7 +80,7 @@ class ProcessedRepo(val home: File, datasetUri: String) {
 
   def nonEmpty: Boolean = baseFile.exists()
 
-  def listFiles: Array[File] = home.listFiles().filter(f => f.getName.endsWith(SUFFIX)).sortBy(_.getName)
+  def listFiles = home.listFiles().filter(f => f.getName.endsWith(SUFFIX)).sortBy(_.getName).toSeq
 
   def createFile: File = {
     val fileNumber = listFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
@@ -84,41 +89,58 @@ class ProcessedRepo(val home: File, datasetUri: String) {
 
   def clear() = FileHandling.clearDir(home)
 
-  def createGraphReader(chunkSize: Int) = new GraphReader {
-    val reader = FileHandling.reader(baseFile)
+  def createGraphReader(fileOpt: Option[File], progressReporter: ProgressReporter) = new GraphReader {
     val LineId = "<!--<([^>]*)>-->".r
-    var active = true
+    var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listFiles)
+    var activeReader: Option[BufferedReader] = None
 
-    override def isActive = active
+    def readerOpt: Option[BufferedReader] =
+      if (activeReader.isDefined) {
+        activeReader
+      }
+      else {
+        files.headOption.map { file =>
+          files = files.tail
+          activeReader = Some(FileHandling.reader(file))
+          activeReader.get
+        }
+      }
+
+    override def isActive = readerOpt.isDefined
 
     override def readChunk: Option[GraphChunk] = {
       val dataset = DatasetFactory.createMem()
       val recordText = new StringBuilder
       var graphCount = 0
       var chunkComplete = false
-      while (!chunkComplete && active) {
-        Option(reader.readLine()).map {
-          case LineId(graphName) =>
-            val m = dataset.getNamedModel(graphName)
-            m.read(new StringReader(recordText.toString()), null, "RDF/XML")
-            m.add(m.getResource(graphName), m.getProperty(belongsTo.uri), m.getResource(datasetUri))
-            m.add(m.getResource(graphName), m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
-            graphCount += 1
-            recordText.clear()
-            if (graphCount >= chunkSize) chunkComplete = true
-          case x: String =>
-            recordText.append(x).append("\n")
+      while (!chunkComplete) {
+        readerOpt.map { reader =>
+          Option(reader.readLine()).map {
+            case LineId(graphName) =>
+              val m = dataset.getNamedModel(graphName)
+              m.read(new StringReader(recordText.toString()), null, "RDF/XML")
+              m.add(m.getResource(graphName), m.getProperty(belongsTo.uri), m.getResource(datasetUri))
+              m.add(m.getResource(graphName), m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
+              graphCount += 1
+              recordText.clear()
+              if (graphCount >= chunkSize) chunkComplete = true
+            case x: String =>
+              recordText.append(x).append("\n")
+          } getOrElse {
+            reader.close()
+            activeReader = None
+          }
         } getOrElse {
-          reader.close()
-          active = false
+          chunkComplete = true
         }
       }
       if (graphCount > 0) Some(GraphChunk(dataset)) else None
     }
 
-    override def close(): Unit = if (active) {
-      reader.close()
-      active = true
+    override def close(): Unit = {
+      activeReader.map(_.close())
+      activeReader = None
+      files = Seq.empty[File]
     }
   }
 }
