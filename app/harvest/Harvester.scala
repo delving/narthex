@@ -22,7 +22,7 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 import akka.actor.{Actor, Props}
 import akka.pattern.pipe
 import dataset.DatasetActor.{InterruptWork, WorkFailure}
-import dataset.DatasetRepo
+import dataset.DatasetContext
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, PMHHarvestPage}
 import org.apache.commons.io.FileUtils
@@ -44,10 +44,10 @@ object Harvester {
 
   case class HarvestComplete(incrementalOpt: Option[IncrementalHarvest])
 
-  def props(datasetRepo: DatasetRepo) = Props(new Harvester(datasetRepo))
+  def props(datasetContext: DatasetContext) = Props(new Harvester(datasetContext))
 }
 
-class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
+class Harvester(val datasetContext: DatasetContext) extends Actor with Harvesting {
 
   import context.dispatcher
 
@@ -73,7 +73,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
       FileUtils.deleteQuietly(tempFile)
       context.parent ! WorkFailure(errorString)
     } getOrElse {
-      datasetRepo.sourceRepoOpt.map { sourceRepo =>
+      datasetContext.sourceRepoOpt.map { sourceRepo =>
         future {
           val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
           val fileOption = sourceRepo.acceptFile(tempFile, acceptZipReporter)
@@ -85,7 +85,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
             context.parent ! WorkFailure(e.getMessage)
         }
       } getOrElse {
-        context.parent ! WorkFailure(s"No source repo for $datasetRepo")
+        context.parent ! WorkFailure(s"No source repo for $datasetContext")
       }
     }
   }
@@ -104,7 +104,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
       if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
 
     case HarvestAdLib(url, database, search, modifiedAfter) =>
-      log.info(s"Harvesting $url $database to $datasetRepo")
+      log.info(s"Harvesting $url $database to $datasetContext")
       val futurePage = fetchAdLibPage(url, database, search, modifiedAfter)
       handleFailure(futurePage, modifiedAfter, "adlib harvest")
       progress = Some(ProgressReporter(HARVESTING, context.parent))
@@ -118,7 +118,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
         else
           progressReporter.sendPercent(diagnostic.percentComplete)
         if (keepGoing) {
-          log.info(s"Harvest Page: $pageNumber - $url $database to $datasetRepo: $diagnostic")
+          log.info(s"Harvest Page: $pageNumber - $url $database to $datasetContext: $diagnostic")
           if (diagnostic.isLast) {
             finish(modifiedAfter, None)
           }
@@ -129,12 +129,12 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
           }
         }
         else {
-          finish(modifiedAfter, Some(s"Interrupted while processing $datasetRepo"))
+          finish(modifiedAfter, Some(s"Interrupted while processing $datasetContext"))
         }
       }
 
     case HarvestPMH(url, set, prefix, modifiedAfter, justDate) =>
-      log.info(s"Harvesting $url $set $prefix to $datasetRepo")
+      log.info(s"Harvesting $url $set $prefix to $datasetContext")
       progress = Some(ProgressReporter(HARVESTING, context.parent))
       val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate)
       handleFailure(futurePage, modifiedAfter, "pmh harvest")
@@ -143,7 +143,7 @@ class Harvester(val datasetRepo: DatasetRepo) extends Actor with Harvesting {
 
     case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, justDate, resumptionToken) =>
       val pageNumber = addPage(records)
-      log.info(s"Harvest Page $pageNumber to $datasetRepo: $resumptionToken")
+      log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
       progress.foreach { progressReporter =>
         resumptionToken.map { token =>
           val keepHarvesting = if (token.hasPercentComplete) {

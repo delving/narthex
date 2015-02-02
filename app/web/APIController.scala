@@ -20,7 +20,7 @@ import java.io.FileInputStream
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
-import org.OrgRepo.{AvailableSip, repo}
+import org.OrgContext.{AvailableSip, orgContext}
 import org.apache.commons.io.IOUtils
 import play.api.Logger
 import play.api.http.ContentTypes
@@ -47,7 +47,7 @@ object APIController extends Controller {
   }
 
   def pathsJSON(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    val treeFile = repo.datasetRepo(spec).index
+    val treeFile = orgContext.datasetContext(spec).index
     if (treeFile.exists()) {
       val string = IOUtils.toString(new FileInputStream(treeFile))
       val json = Json.parse(string)
@@ -62,11 +62,11 @@ object APIController extends Controller {
   }
 
   def indexJSON(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    OkFile(repo.datasetRepo(spec).index)
+    OkFile(orgContext.datasetContext(spec).index)
   }
 
   def indexText(apiKey: String, spec: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    repo.datasetRepo(spec).indexText(path) match {
+    orgContext.datasetContext(spec).indexText(path) match {
       case None =>
         NotFound(s"No index found for $path")
       case Some(file) =>
@@ -75,7 +75,7 @@ object APIController extends Controller {
   }
 
   def uniqueText(apiKey: String, spec: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    repo.datasetRepo(spec).uniqueText(path) match {
+    orgContext.datasetContext(spec).uniqueText(path) match {
       case None =>
         NotFound(s"No list found for $path")
       case Some(file) =>
@@ -84,7 +84,7 @@ object APIController extends Controller {
   }
 
   def histogramText(apiKey: String, spec: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    repo.datasetRepo(spec).histogramText(path) match {
+    orgContext.datasetContext(spec).histogramText(path) match {
       case None =>
         NotFound(s"No list found for $path")
       case Some(file) =>
@@ -93,9 +93,9 @@ object APIController extends Controller {
   }
 
   def termMappings(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    repo.datasetRepoOption(spec) match {
-      case Some(datasetRepo) =>
-        val mappings = datasetRepo.termDb.getMappingsRDF
+    orgContext.datasetContextOption(spec) match {
+      case Some(datasetContext) =>
+        val mappings = datasetContext.termDb.getMappingsRDF
         Ok(mappings)
       case None =>
         NotFound(s"No mappings for $spec")
@@ -103,8 +103,8 @@ object APIController extends Controller {
   }
 
   def listSipZips(apiKey: String) = KeyFitsAsync(apiKey, parse.anyContent) { implicit request =>
-    val availableSips: Seq[AvailableSip] = repo.availableSips
-    repo.uploadedSips.map { uploadedSips =>
+    val availableSips: Seq[AvailableSip] = orgContext.availableSips
+    orgContext.uploadedSips.map { uploadedSips =>
       val xml =
       <sip-zips>
         <available>
@@ -132,8 +132,8 @@ object APIController extends Controller {
 
   def downloadSipZip(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
     Logger.info(s"Download sip-zip $spec")
-    val sipFileOpt = repo.datasetRepoOption(spec).flatMap { datasetRepo =>
-      datasetRepo.sipFiles.headOption
+    val sipFileOpt = orgContext.datasetContextOption(spec).flatMap { datasetContext =>
+      datasetContext.sipFiles.headOption
     }
     sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $spec"))
   }

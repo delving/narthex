@@ -19,7 +19,7 @@ package web
 import java.io.{File, FileInputStream, FileNotFoundException}
 
 import org.ActorStore.{NXActor, NXProfile}
-import org.OrgRepo
+import org.OrgContext
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
@@ -78,7 +78,7 @@ object MainController extends Controller with Security {
           Unauthorized("Username/password not found")
       }
     } getOrElse {
-      val resultFuture = OrgRepo.repo.us.authenticate(username, password).map { nxActorOpt: Option[NXActor] =>
+      val resultFuture = OrgContext.orgContext.us.authenticate(username, password).map { nxActorOpt: Option[NXActor] =>
         nxActorOpt.map { nxActor =>
           val session = ActorSession(
             nxActor,
@@ -121,7 +121,7 @@ object MainController extends Controller with Security {
       lastName = (request.body \ "lastName").as[String],
       email = (request.body \ "email").as[String]
     )
-    OrgRepo.repo.us.setProfile(session.actor, profile).map { actorOpt =>
+    OrgContext.orgContext.us.setProfile(session.actor, profile).map { actorOpt =>
       actorOpt.map { actor =>
         val newSession = session.copy(actor = actor)
         Ok(Json.toJson(newSession)).withSession(newSession)
@@ -132,20 +132,20 @@ object MainController extends Controller with Security {
   }
 
   def listActors = Secure() { session => implicit request =>
-    Ok(Json.obj("actorList" -> OrgRepo.repo.us.listActors(session.actor)))
+    Ok(Json.obj("actorList" -> OrgContext.orgContext.us.listActors(session.actor)))
   }
 
   def createActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
-    OrgRepo.repo.us.createActor(session.actor, username, password).map { actorOpt =>
-      Ok(Json.obj("actorList" -> OrgRepo.repo.us.listActors(session.actor)))
+    OrgContext.orgContext.us.createActor(session.actor, username, password).map { actorOpt =>
+      Ok(Json.obj("actorList" -> OrgContext.orgContext.us.listActors(session.actor)))
     }
   }
 
   def setPassword() = SecureAsync(parse.json) { session => implicit request =>
     val newPassword = (request.body \ "newPassword").as[String]
-    OrgRepo.repo.us.setPassword(session.actor, newPassword).map(alright => Ok)
+    OrgContext.orgContext.us.setPassword(session.actor, newPassword).map(alright => Ok)
   }
 
   // todo: move this

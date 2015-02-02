@@ -17,8 +17,8 @@
 package analysis
 
 import analysis.TreeNode.LengthHistogram
-import dataset.DatasetRepo
-import org.OrgRepo.pathToDirectory
+import dataset.DatasetContext
+import org.OrgContext.pathToDirectory
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils.writeStringToFile
 import play.api.Logger
@@ -36,8 +36,8 @@ import scala.xml.pull._
 
 object TreeNode {
 
-  def apply(source: Source, length: Long, datasetRepo: DatasetRepo, progressReporter: ProgressReporter): Option[TreeNode] = {
-    val base = new TreeNode(datasetRepo.treeRoot, null, null)
+  def apply(source: Source, length: Long, datasetContext: DatasetContext, progressReporter: ProgressReporter): Option[TreeNode] = {
+    val base = new TreeNode(datasetContext.treeRoot, null, null)
     var node = base
     val events = new NarthexEventReader(source)
 
@@ -81,11 +81,11 @@ object TreeNode {
       val root = base.kids.values.head
       base.finish()
       val pretty = Json.prettyPrint(Json.toJson(root))
-      FileUtils.writeStringToFile(datasetRepo.index, pretty, "UTF-8")
+      FileUtils.writeStringToFile(datasetContext.index, pretty, "UTF-8")
       Some(root)
     }
     else {
-      Logger.info(s"Interrupted TreeNode $datasetRepo")
+      Logger.info(s"Interrupted TreeNode $datasetContext")
       None
     }
   }

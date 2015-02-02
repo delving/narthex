@@ -20,7 +20,7 @@ import java.io.{File, FileOutputStream}
 
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Incremental, InterruptWork, WorkFailure}
-import dataset.DatasetRepo
+import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
 import org.apache.commons.io.FileUtils
 import record.PocketParser.Pocket
@@ -46,16 +46,16 @@ object SourceProcessor {
 
   case class ProcessingComplete(validRecords: Int, invalidRecords: Int)
 
-  def props(datasetRepo: DatasetRepo) = Props(new SourceProcessor(datasetRepo))
+  def props(datasetContext: DatasetContext) = Props(new SourceProcessor(datasetContext))
 
 }
 
-class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
+class SourceProcessor(val datasetContext: DatasetContext) extends Actor with ActorLogging {
 
   import context.dispatcher
 
   var progress: Option[ProgressReporter] = None
-  val dsInfo = datasetRepo.dsInfo
+  val dsInfo = datasetContext.dsInfo
 
   def receive = {
 
@@ -64,7 +64,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
 
     case AdoptSource(file) =>
       log.info(s"Adopt source ${file.getAbsolutePath}")
-      datasetRepo.sourceRepoOpt.map { sourceRepo =>
+      datasetContext.sourceRepoOpt.map { sourceRepo =>
         future {
           val progressReporter = ProgressReporter(ADOPTING, context.parent)
           progress = Some(progressReporter)
@@ -82,27 +82,27 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
 
     case GenerateSipZip =>
       log.info("Generate SipZip")
-      datasetRepo.sourceRepoOpt.map { sourceRepo =>
+      datasetContext.sourceRepoOpt.map { sourceRepo =>
         future {
           val progressReporter = ProgressReporter(GENERATING, context.parent)
           progress = Some(progressReporter)
-          val pocketOutput = new FileOutputStream(datasetRepo.pocketFile)
+          val pocketOutput = new FileOutputStream(datasetContext.pocketFile)
           try {
             val pocketCount = sourceRepo.generatePockets(pocketOutput, progressReporter)
-            val sipFileOpt: Option[File] = datasetRepo.sipRepo.latestSipOpt.map { latestSip =>
-              val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetRepo.orgRepo.sipFactory.prefixRepo(mapping.prefix))
-              datasetRepo.sipFiles.foreach(_.delete())
-              val sipFile = datasetRepo.createSipFile
+            val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt.map { latestSip =>
+              val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix))
+              datasetContext.sipFiles.foreach(_.delete())
+              val sipFile = datasetContext.createSipFile
               // todo: pocketFile is not yet closed!
-              latestSip.copyWithSourceTo(sipFile, datasetRepo.pocketFile, prefixRepoOpt)
+              latestSip.copyWithSourceTo(sipFile, datasetContext.pocketFile, prefixRepoOpt)
               Some(sipFile)
             } getOrElse {
               val facts = SipGenerationFacts(dsInfo)
-              val sipPrefixRepo = datasetRepo.orgRepo.sipFactory.prefixRepo(facts.prefix)
+              val sipPrefixRepo = datasetContext.orgContext.sipFactory.prefixRepo(facts.prefix)
               sipPrefixRepo.map { prefixRepo =>
-                datasetRepo.sipFiles.foreach(_.delete())
-                val sipFile = datasetRepo.createSipFile
-                prefixRepo.initiateSipZip(sipFile, datasetRepo.pocketFile, facts)
+                datasetContext.sipFiles.foreach(_.delete())
+                val sipFile = datasetContext.createSipFile
+                prefixRepo.initiateSipZip(sipFile, datasetContext.pocketFile, facts)
                 Some(sipFile)
               } getOrElse {
                 context.parent ! WorkFailure("Unable to build sip for download")
@@ -114,7 +114,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
             }
             else {
               sipFileOpt.map(_.delete())
-              FileUtils.deleteQuietly(datasetRepo.pocketFile)
+              FileUtils.deleteQuietly(datasetContext.pocketFile)
               context.parent ! WorkFailure("Zero pockets generated")
             }
           } finally {
@@ -128,13 +128,13 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
       }
 
     case Process(incrementalOpt) =>
-      val sourceFacts = datasetRepo.sourceRepoOpt.map(_.sourceFacts).getOrElse(throw new RuntimeException(s"No source facts for $datasetRepo"))
-      val sipMapper = datasetRepo.sipMapperOpt.getOrElse(throw new RuntimeException(s"No sip mapper for $datasetRepo"))
-      if (incrementalOpt.isEmpty) datasetRepo.processedRepo.clear()
+      val sourceFacts = datasetContext.sourceRepoOpt.map(_.sourceFacts).getOrElse(throw new RuntimeException(s"No source facts for $datasetContext"))
+      val sipMapper = datasetContext.sipMapperOpt.getOrElse(throw new RuntimeException(s"No sip mapper for $datasetContext"))
+      if (incrementalOpt.isEmpty) datasetContext.processedRepo.clear()
 
       val work = future {
 
-        val sourceFile = datasetRepo.processedRepo.createFile
+        val sourceFile = datasetContext.processedRepo.createFile
         val sourceOutput = writer(sourceFile)
         var validRecords = 0
         var invalidRecords = 0
@@ -171,7 +171,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
           }
         } getOrElse {
           log.info(s"Processing all $sourceFacts")
-          datasetRepo.sourceRepoOpt.map { sourceRepo =>
+          datasetContext.sourceRepoOpt.map { sourceRepo =>
             val progressReporter = ProgressReporter(PROCESSING, context.parent)
             progress = Some(progressReporter)
             sourceRepo.parsePockets(catchPocket, progressReporter)

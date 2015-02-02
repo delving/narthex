@@ -92,74 +92,7 @@
             <span data-ng-show="dataset.datasetRecordCount" class="count pull-right">{{ dataset.datasetRecordCount }}</span>
         </div>
 
-        <div class="panel-body">
-
-            <div data-ng-show="!dataset.progress" class="ds-states">
-                <div data-ng-show="dataset.empty">
-                    <div><strong>Empty</strong></div>
-                </div>
-                <div data-ng-show="dataset.stateRaw" class="ds-state">
-                    <div><strong>Raw</strong></div>
-                    <div>{{ dataset.stateRaw.d }}</div>
-                    <div>{{ dataset.stateRaw.t }}</div>
-                </div>
-                <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state">
-                    <div><strong>Raw Analyzed</strong></div>
-                    <div>{{ dataset.stateRawAnalyzed.d }}</div>
-                    <div>{{ dataset.stateRawAnalyzed.t }}</div>
-                </div>
-                <div data-ng-show="dataset.stateSourced" class="ds-state">
-                    <div><strong>Sourced</strong></div>
-                    <div>{{ dataset.stateSourced.d }}</div>
-                    <div>{{ dataset.stateSourced.t }}</div>
-                </div>
-                <div data-ng-show="dataset.stateMappable" class="ds-state">
-                    <div><strong>Mappable</strong></div>
-                    <div>{{ dataset.stateMappable.d }}</div>
-                    <div>{{ dataset.stateMappable.t }}</div>
-                    <div><a href="{{sipCreatorLink}}" class="btn btn-sm btn-default"><i class="fa fa-download"></i> Mapper</a></div>
-                </div>
-                <div data-ng-show="dataset.stateProcessable" class="ds-state">
-                    <div><strong>Processable</strong></div>
-                    <div>{{ dataset.stateProcessable.d }}</div>
-                    <div>{{ dataset.stateProcessable.t }}</div>
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
-                            <i class="fa fa-cogs"></i> <span>Process</span>
-                        </button>
-                    </div>
-                </div>
-                <div data-ng-show="dataset.stateProcessed" class="ds-state">
-                    <div><strong>Processed</strong></div>
-                    <div>{{ dataset.stateProcessed.d }}</div>
-                    <div>{{ dataset.stateProcessed.t }}</div>
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
-                            <i class="fa fa-bar-chart"></i> <span>Analyze</span>
-                        </button>
-                    </div>
-                </div>
-                <div data-ng-show="dataset.stateAnalyzed" class="ds-state">
-                    <div><strong>Analyzed</strong></div>
-                    <div>{{ dataset.stateAnalyzed.d }}</div>
-                    <div>{{ dataset.stateAnalyzed.t }}</div>
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startSaving()">
-                            <i class="fa fa-database"></i> <span>Save</span>
-                        </button>
-                    </div>
-                </div>
-                <div data-ng-show="dataset.stateSaved" class="ds-state">
-                    <div><strong>Saved</strong></div>
-                    <div>{{ dataset.stateSaved.d }}</div>
-                    <div>{{ dataset.stateSaved.t }}</div>
-                    <div>
-                        <button class="btn btn-sm btn-info" data-ng-click="viewFile()">
-                            <i class="fa fa-eye"></i> <span>Explore</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <div class="panel-body" data-ng-if="expanded && !dataset.progress">
 
             <div data-ng-if="dataset.progress">
                 <div class="input-group">
@@ -172,7 +105,77 @@
                 </div>
             </div>
 
-            <div data-ng-if="expanded">
+            <div>
+
+
+                <!--todo: maybe put this all inside a tab-->
+                <div class="ds-states">
+                    <div data-ng-show="dataset.empty">
+                        <div><strong>Empty</strong></div>
+                    </div>
+                    <div data-ng-show="dataset.stateRaw" class="ds-state">
+                        <div><strong>Raw</strong></div>
+                        <div>{{ dataset.stateRaw.d }}</div>
+                        <div>{{ dataset.stateRaw.t }}</div>
+                    </div>
+                    <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state">
+                        <div><strong>Raw Analyzed</strong></div>
+                        <div>{{ dataset.stateRawAnalyzed.d }}</div>
+                        <div>{{ dataset.stateRawAnalyzed.t }}</div>
+                    </div>
+                    <div data-ng-show="dataset.stateSourced" class="ds-state">
+                        <div><strong>Sourced</strong></div>
+                        <div>{{ dataset.stateSourced.d }}</div>
+                        <div>{{ dataset.stateSourced.t }}</div>
+                    </div>
+                    <div data-ng-show="dataset.stateMappable" class="ds-state">
+                        <div><strong>Mappable</strong></div>
+                        <div>{{ dataset.stateMappable.d }}</div>
+                        <div>{{ dataset.stateMappable.t }}</div>
+                        <div><a href="{{sipCreatorLink}}" class="btn btn-sm btn-default"><i class="fa fa-download"></i> Mapper</a></div>
+                    </div>
+                    <div data-ng-show="dataset.stateProcessable" class="ds-state">
+                        <div><strong>Processable</strong></div>
+                        <div>{{ dataset.stateProcessable.d }}</div>
+                        <div>{{ dataset.stateProcessable.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
+                                <i class="fa fa-cogs"></i> <span>Process</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div data-ng-show="dataset.stateProcessed" class="ds-state">
+                        <div><strong>Processed</strong></div>
+                        <div>{{ dataset.stateProcessed.d }}</div>
+                        <div>{{ dataset.stateProcessed.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
+                                <i class="fa fa-bar-chart"></i> <span>Analyze</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div data-ng-show="dataset.stateAnalyzed" class="ds-state">
+                        <div><strong>Analyzed</strong></div>
+                        <div>{{ dataset.stateAnalyzed.d }}</div>
+                        <div>{{ dataset.stateAnalyzed.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-success" data-ng-click="startSaving()">
+                                <i class="fa fa-database"></i> <span>Save</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div data-ng-show="dataset.stateSaved" class="ds-state">
+                        <div><strong>Saved</strong></div>
+                        <div>{{ dataset.stateSaved.d }}</div>
+                        <div>{{ dataset.stateSaved.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-info" data-ng-click="viewFile()">
+                                <i class="fa fa-eye"></i> <span>Explore</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
 
                 <hr />
 

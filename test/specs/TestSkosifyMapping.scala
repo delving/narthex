@@ -170,22 +170,22 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
 //  //    "A NodeRepo" should "allow terminology mapping" in {
 //  //      val repo = Repo("test@narthex.delving.org")
 //  //      repo.create("password")
-//  //      val datasetRepo = repo.datasetRepo("pretend-file.xml.gz")
+//  //      val datasetContext = repo.datasetContext("pretend-file.xml.gz")
 //  //
 //  //      def createNodeRepo(path: String) = {
-//  //        val nodeDir = path.split('/').toList.foldLeft(datasetRepo.dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
+//  //        val nodeDir = path.split('/').toList.foldLeft(datasetContext.dir)((file, tag) => new File(file, Repo.tagToDirectory(tag)))
 //  //        nodeDir.mkdirs()
-//  //        datasetRepo.nodeRepo(path).get
+//  //        datasetContext.nodeRepo(path).get
 //  //      }
 //  //
 //  //      Repo.startBaseX()
 //  //
-//  //      datasetRepo.setMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink", "cusses", "finky"))
-//  //      datasetRepo.setMapping(TermMapping("bb", "http://gumby.com/pokey", "cusses", "horsey"))
-//  //      datasetRepo.setMapping(TermMapping("a", "http://gumby.com/gumby", "cusses", "clayman"))
+//  //      datasetContext.setMapping(TermMapping("a", "http://gumby.com/gumby-is-a-fink", "cusses", "finky"))
+//  //      datasetContext.setMapping(TermMapping("bb", "http://gumby.com/pokey", "cusses", "horsey"))
+//  //      datasetContext.setMapping(TermMapping("a", "http://gumby.com/gumby", "cusses", "clayman"))
 //  //
-//  //      datasetRepo.getMappings.toString() should be("List(TermMapping(a,http://gumby.com/gumby,cusses,clayman), TermMapping(bb,http://gumby.com/pokey,cusses,horsey))")
-//  //      datasetRepo.getMapping("a") should be("http://gumby.com/gumby")
+//  //      datasetContext.getMappings.toString() should be("List(TermMapping(a,http://gumby.com/gumby,cusses,clayman), TermMapping(bb,http://gumby.com/pokey,cusses,horsey))")
+//  //      datasetContext.getMapping("a") should be("http://gumby.com/gumby")
 //  //    }
 //
 //  "A transformer" should "insert an enrichment" in {

@@ -25,22 +25,24 @@ import dataset.DsInfo.{DsMetadata, DsState}
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
 import harvest.Harvesting.HarvestType._
-import harvest.Harvesting._
 import mapping.{CategoryDb, TermDb}
 import org.apache.commons.io.FileUtils.deleteQuietly
-import org.{OrgActor, OrgRepo}
+import org.{OrgActor, OrgContext}
 import play.Logger
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
 import services.NarthexConfig.NAVE_DOMAIN
 import services.Temporal._
+import triplestore.GraphProperties
 import triplestore.GraphProperties.stateSource
 
-class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
+import scala.concurrent.ExecutionContext.Implicits.global
+
+class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
-  val rootDir = new File(orgRepo.datasetsDir, dsInfo.spec)
-  val dbBaseName = s"narthex_${orgRepo.orgId}___$dsInfo"
+  val rootDir = new File(orgContext.datasetsDir, dsInfo.spec)
+  val dbBaseName = s"narthex_${orgContext.orgId}___$dsInfo"
 
   val rawDir = new File(rootDir, "raw")
   val sipsDir = new File(rootDir, "sips")
@@ -49,11 +51,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
   val processedDir = new File(rootDir, "processed")
 
   // todo: maybe not put it in raw
-  val pocketFile = new File(orgRepo.rawDir, s"$dsInfo.xml")
+  val pocketFile = new File(orgContext.rawDir, s"$dsInfo.xml")
 
-  def createSipFile = new File(orgRepo.sipsDir, s"${dsInfo}__${DATE_FORMAT.format(new Date())}.sip.zip")
+  def createSipFile = new File(orgContext.sipsDir, s"${dsInfo}__${DATE_FORMAT.format(new Date())}.sip.zip")
 
-  def sipFiles = orgRepo.sipsDir.listFiles.filter(file => file.getName.startsWith(s"${dsInfo}__")).sortBy(_.getName).reverse
+  def sipFiles = orgContext.sipsDir.listFiles.filter(file => file.getName.startsWith(s"${dsInfo}__")).sortBy(_.getName).reverse
 
   val treeRoot = new NodeRepo(this, treeDir)
 
@@ -99,7 +101,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
           language = sip.fact("language").getOrElse(""),
           rights = sip.fact("rights").getOrElse("")
         ))
-        dsInfo.setState(DsState.PROCESSABLE)
         sip.sipMappingOpt.map { sipMapping =>
           // must add RDF since the mapping output uses it
           //          val namespaces = sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)
@@ -107,7 +108,9 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
           sip.harvestUrl.map { harvestUrl =>
             // the harvest information is in the Sip, but no source
             val harvestType = if (sip.sipMappingOpt.exists(_.extendWithRecord)) PMH_REC else PMH
-            firstHarvest(harvestType, harvestUrl, sip.harvestSpec.getOrElse(""), sip.harvestPrefix.getOrElse(""))
+            dsInfo.setSingularLiteralProps(GraphProperties.harvestType -> harvestType.toString).map { m =>
+              firstHarvest()
+            }
             None
           } getOrElse {
             // there is no harvest information so there may be source
@@ -146,12 +149,16 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
     allZip.headOption
   }
 
-  // todo: get the harvest information from the dsInfo rather than as arguments
-  def firstHarvest(harvestType: HarvestType, url: String, dataset: String, prefix: String): Unit = {
-    createSourceRepo(SourceFacts(harvestType))
-    dsInfo.setHarvestInfo(harvestType, url, dataset, prefix)
-    dsInfo.setHarvestCron(dsInfo.harvestCron)
-    OrgActor.actor ! dsInfo.createMessage(StartHarvest(None, justDate = true))
+  def firstHarvest(): Unit = {
+    val typeInfo = dsInfo.getLiteralProp(GraphProperties.harvestType)
+    val harvestTypeOpt = typeInfo.flatMap(harvestTypeFromString)
+    harvestTypeOpt.map { harvestType =>
+      createSourceRepo(SourceFacts(harvestType))
+      OrgActor.actor ! dsInfo.createMessage(StartHarvest(None, justDate = true))
+    } getOrElse {
+      val t = dsInfo.getLiteralProp(GraphProperties.harvestType)
+      dsInfo.setError(s"Unable to harvest $this: unknown harvest type [$t]")
+    }
   }
 
   def nextHarvest() = {
@@ -169,9 +176,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
         None
       }
     }
-    kickoffOpt.map { kickoff =>
-      OrgActor.actor ! dsInfo.createMessage(kickoff)
-    }
+    kickoffOpt.map(kickoff => OrgActor.actor ! dsInfo.createMessage(kickoff))
   }
 
   def dropSourceRepo() = {
@@ -202,7 +207,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
   }
 
   def startSaving(incrementalOpt: Option[Incremental]) = {
-    // todo: if not incremental, maybe delete all
+    // todo: if not incremental, maybe delete all records
     OrgActor.actor ! dsInfo.createMessage(StartSaving(incrementalOpt))
   }
 
@@ -213,7 +218,7 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
   def index = new File(treeDir, "index.json")
 
   def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(treeDir)((file, tag) => new File(file, OrgRepo.pathToDirectory(tag)))
+    val nodeDir = path.split('/').toList.foldLeft(treeDir)((file, tag) => new File(file, OrgContext.pathToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 

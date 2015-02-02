@@ -107,17 +107,17 @@ object DatasetActor {
 
   // create one
 
-  def props(datasetRepo: DatasetRepo) = Props(new DatasetActor(datasetRepo))
+  def props(datasetContext: DatasetContext) = Props(new DatasetActor(datasetContext))
 
 }
 
-class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
+class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
 
   override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
     case _: Exception => Stop
   }
 
-  val dsInfo = datasetRepo.dsInfo
+  val dsInfo = datasetContext.dsInfo
 
   val errorMessage = dsInfo.getLiteralProp(datasetErrorMessage).getOrElse("")
 
@@ -126,19 +126,18 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
   when(Idle) {
 
     case Event(StartHarvest(modifiedAfter, justDate), Dormant) =>
-      datasetRepo.dropTree()
-      // todo: the getOrElse could be better
-      harvestTypeFromString(dsInfo.getLiteralProp(harvestType).getOrElse("")).map { harvestType =>
-        val url = dsInfo.getLiteralProp(harvestURL).getOrElse("")
-        val database = dsInfo.getLiteralProp(harvestDataset).getOrElse("")
-        val prefix = dsInfo.getLiteralProp(harvestPrefix).getOrElse("")
-        val search = dsInfo.getLiteralProp(harvestSearch).getOrElse("")
+      datasetContext.dropTree()
+
+      def prop(p: DIProp) = dsInfo.getLiteralProp(p).getOrElse("")
+
+      harvestTypeFromString(prop(harvestType)).map { harvestType =>
+        val (url, ds, pre, se) = (prop(harvestURL), prop(harvestDataset), prop(harvestPrefix), prop(harvestSearch))
         val kickoff = harvestType match {
-          case PMH => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
-          case PMH_REC => HarvestPMH(url, database, prefix, modifiedAfter, justDate)
-          case ADLIB => HarvestAdLib(url, database, search, modifiedAfter)
+          case PMH => HarvestPMH(url, ds, pre, modifiedAfter, justDate)
+          case PMH_REC => HarvestPMH(url, ds, pre, modifiedAfter, justDate)
+          case ADLIB => HarvestAdLib(url, ds, se, modifiedAfter)
         }
-        val harvester = context.actorOf(Harvester.props(datasetRepo), "harvester")
+        val harvester = context.actorOf(Harvester.props(datasetContext), "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(Some(harvester), HARVESTING)
       } getOrElse {
@@ -146,24 +145,24 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       }
 
     case Event(AdoptSource(file), Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "source-adopter")
+      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-adopter")
       sourceProcessor ! AdoptSource(file)
       goto(Adopting) using Active(Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "source-generator")
+      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-generator")
       sourceProcessor ! GenerateSipZip
       goto(Generating) using Active(Some(sourceProcessor), GENERATING)
 
     case Event(StartAnalysis, Dormant) =>
       log.info("Start analysis")
-      if (datasetRepo.processedRepo.nonEmpty) {
+      if (datasetContext.processedRepo.nonEmpty) {
         // todo: kill all when finished so this can not lookup, just create
-        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
-        analyzer ! AnalyzeFile(datasetRepo.processedRepo.baseFile)
+        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetContext), "analyzer"))
+        analyzer ! AnalyzeFile(datasetContext.processedRepo.baseFile)
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)
-      } else datasetRepo.rawFile.map { rawFile =>
-        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetRepo), "analyzer"))
+      } else datasetContext.rawFile.map { rawFile =>
+        val analyzer = context.child("analyzer").getOrElse(context.actorOf(Analyzer.props(datasetContext), "analyzer"))
         analyzer ! AnalyzeFile(rawFile)
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)
       } getOrElse {
@@ -173,56 +172,56 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       }
 
     case Event(StartProcessing(incrementalOpt), Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetRepo), "source-processor")
+      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-processor")
       sourceProcessor ! Process(incrementalOpt)
       goto(Processing) using Active(Some(sourceProcessor), PROCESSING)
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
-      val graphSaver = context.actorOf(GraphSaver.props(datasetRepo.processedRepo, datasetRepo.orgRepo.ts), "graph-saver")
+      val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo, datasetContext.orgContext.ts), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(Some(graphSaver), PROCESSING)
 
     case Event(StartCategoryCounting, Dormant) =>
-      if (datasetRepo.processedRepo.nonEmpty) {
-        val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetRepo), "category-counter"))
+      if (datasetContext.processedRepo.nonEmpty) {
+        val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetContext), "category-counter"))
         categoryCounter ! CountCategories()
         goto(Categorizing) using Active(Some(categoryCounter), CATEGORIZING)
       }
       else {
-        stay() using InError(s"No source file for categorizing $datasetRepo")
+        stay() using InError(s"No source file for categorizing $datasetContext")
       }
 
     case Event(DatasetQuestion(listener, Command(commandName)), Dormant) =>
       val reply = commandName match {
 
         case "delete" =>
-          datasetRepo.dsInfo.dropDataset
-          deleteQuietly(datasetRepo.rootDir)
+          datasetContext.dsInfo.dropDataset
+          deleteQuietly(datasetContext.rootDir)
           "deleted"
 
         case "remove source" =>
-          datasetRepo.dropSourceRepo()
+          datasetContext.dropSourceRepo()
           "source removed"
 
         case "remove processed" =>
-          datasetRepo.dropProcessedRepo()
+          datasetContext.dropProcessedRepo()
           "processed data removed"
 
         case "remove tree" =>
-          datasetRepo.dropTree()
+          datasetContext.dropTree()
           "tree removed"
 
         case "start processing" =>
-          datasetRepo.startProcessing()
+          datasetContext.startProcessing()
           "processing started"
 
         case "start analysis" =>
-          datasetRepo.startAnalysis()
+          datasetContext.startAnalysis()
           "analysis started"
 
         case "start saving" =>
           // full save, not incremental
-          datasetRepo.startSaving(None)
+          datasetContext.startSaving(None)
           "saving started"
 
         case _ =>
@@ -239,6 +238,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       incrementalOpt.map { incremental =>
         incremental.fileOpt.map { newFile =>
           dsInfo.setState(DsState.SOURCED)
+          dsInfo.setHarvestCron(dsInfo.harvestCron)
           self ! StartProcessing(Some(Incremental(incremental.modifiedAfter, newFile)))
         }
       } getOrElse {
@@ -252,7 +252,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
   when(Adopting) {
 
     case Event(SourceAdoptionComplete(file), active: Active) =>
-      datasetRepo.dropTree()
+      datasetContext.dropTree()
       active.childOpt.map(_ ! PoisonPill)
       self ! GenerateSipZip
       goto(Idle) using Dormant
@@ -266,8 +266,8 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
       dsInfo.setState(DsState.MAPPABLE)
       dsInfo.setRecordCount(recordCount)
       // todo: figure this out
-      //        val rawFile = datasetRepo.createRawFile(datasetRepo.pocketFile.getName)
-      //        FileUtils.copyFile(datasetRepo.pocketFile, rawFile)
+      //        val rawFile = datasetContext.createRawFile(datasetContext.pocketFile.getName)
+      //        FileUtils.copyFile(datasetContext.pocketFile, rawFile)
       //        db.setStatus(RAW_POCKETS)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
@@ -278,7 +278,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
 
     case Event(AnalysisComplete(errorOption), active: Active) =>
       if (errorOption.isDefined)
-        datasetRepo.dropTree()
+        datasetContext.dropTree()
       else
         dsInfo.setState(DsState.ANALYZED)
       active.childOpt.map(_ ! PoisonPill)
@@ -308,7 +308,7 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
   when(Categorizing) {
 
     case Event(CategoryCountComplete(dataset, categoryCounts), active: Active) =>
-      context.parent ! CategoryCountComplete(datasetRepo.dsInfo.spec, categoryCounts)
+      context.parent ! CategoryCountComplete(datasetContext.dsInfo.spec, categoryCounts)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
