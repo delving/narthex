@@ -36,6 +36,14 @@ object FileHandling {
 
   def reader(file: File) = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))
 
+  def readerCounting(file: File): (BufferedReader, CountingInputStream) = {
+    val fis: FileInputStream = new FileInputStream(file)
+    val cis = new CountingInputStream(fis)
+    val is = new InputStreamReader(cis, "UTF-8")
+    val br = new BufferedReader(is)
+    (br, cis)
+  }
+
   def writer(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))
 
   def appender(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, true), "UTF-8"))

@@ -61,7 +61,6 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir, dsInfo.spec, NAVE_DOMAIN)
 
-  // todo: this has to come from a DatasetInfo thing
   lazy val processedRepo = new ProcessedRepo(processedDir, dsInfo.spec)
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
@@ -200,6 +199,11 @@ class DatasetRepo(val orgRepo: OrgRepo, val dsInfo: DsInfo) {
   def dropTree() = {
     deleteQuietly(treeDir)
     dsInfo.removeState(DsState.ANALYZED)
+  }
+
+  def startSaving(incrementalOpt: Option[Incremental]) = {
+    // todo: if not incremental, maybe delete all
+    OrgActor.actor ! dsInfo.createMessage(StartSaving(incrementalOpt))
   }
 
   def startCategoryCounts() = OrgActor.actor ! dsInfo.createMessage(StartCategoryCounting)

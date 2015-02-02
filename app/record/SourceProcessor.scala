@@ -60,7 +60,7 @@ class SourceProcessor(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
   def receive = {
 
     case InterruptWork =>
-      if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
+      progress.map(_.interruptBy(sender()))
 
     case AdoptSource(file) =>
       log.info(s"Adopt source ${file.getAbsolutePath}")

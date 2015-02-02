@@ -290,6 +290,7 @@ define(["angular"], function () {
             datasetsService.datasetProgress(ds.datasetSpec).then(
                 function (data) {
                     if (data.progressType == 'progress-idle') {
+                        console.log(ds.datasetSpec + " is idle, stopping check");
                         ds.progress = undefined;
                         if (data.errorMessage) {
                             console.log(ds.datasetSpec + " has error message " + data.errorMessage);
@@ -297,6 +298,7 @@ define(["angular"], function () {
                         }
                         if (ds.refreshAfter) {
                             delete ds.refreshAfter;
+                            console.log(ds.datasetSpec + " refreshing after progress");
                             refreshInfo();
                         }
                         delete ds.progress;
@@ -357,6 +359,7 @@ define(["angular"], function () {
         $scope.$watch("dataset.edit", setUnchanged, true);
 
         function refreshProgress() {
+            console.log('refresh progress');
             datasetsService.datasetInfo(ds.datasetSpec).then(function (dataset) {
                 if (ds.progressCheckerTimeout) $timeout.cancel(ds.progressCheckerTimeout);
                 $scope.decorateDataset(dataset);
@@ -367,6 +370,7 @@ define(["angular"], function () {
         }
 
         function refreshInfo() {
+            console.log('refresh info');
             datasetsService.datasetInfo(ds.datasetSpec).then(function (dataset) {
                 $scope.decorateDataset(dataset);
                 $scope.dataset = dataset;
@@ -443,6 +447,10 @@ define(["angular"], function () {
 
         $scope.startAnalysis = function () {
             command("start analysis", null, refreshProgress);
+        };
+
+        $scope.startSaving = function () {
+            command("start saving", null, refreshProgress);
         };
 
         $scope.deleteDataset = function () {

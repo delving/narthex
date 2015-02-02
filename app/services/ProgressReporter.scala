@@ -200,5 +200,8 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetActor: Actor
 
   override def setMaximum(max: Int): Unit = maximumOption = Some(max)
 
-  override def setReadProgress(readProgress: ReadProgress): Unit = readProgressOption = Some(readProgress)
+  override def setReadProgress(readProgress: ReadProgress): Unit = {
+    readProgressOption = Some(readProgress)
+
+  }
 }

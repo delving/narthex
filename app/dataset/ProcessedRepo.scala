@@ -19,7 +19,9 @@ import java.io._
 import java.lang.Boolean.FALSE
 
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
+import org.apache.commons.io.input.CountingInputStream
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
+import services.FileHandling.ReadProgress
 import services.{FileHandling, ProgressReporter}
 import triplestore.GraphProperties._
 
@@ -92,7 +94,19 @@ class ProcessedRepo(val home: File, datasetUri: String) {
   def createGraphReader(fileOpt: Option[File], progressReporter: ProgressReporter) = new GraphReader {
     val LineId = "<!--<([^>]*)>-->".r
     var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listFiles)
+    val totalLength = (0L /: files.map(_.length()))(_ + _)
     var activeReader: Option[BufferedReader] = None
+    var previousBytesRead = 0L
+    var activeCounter: Option[CountingInputStream] = None
+
+    def activeCount = activeCounter.map(_.getByteCount).getOrElse(0L)
+
+    class ProcessedReadProgress extends ReadProgress {
+      val count = previousBytesRead + activeCount
+      override def getPercentRead: Int = ((100 * count) / totalLength).toInt
+    }
+
+    progressReporter.setReadProgress(new ProcessedReadProgress())
 
     def readerOpt: Option[BufferedReader] =
       if (activeReader.isDefined) {
@@ -101,7 +115,9 @@ class ProcessedRepo(val home: File, datasetUri: String) {
       else {
         files.headOption.map { file =>
           files = files.tail
-          activeReader = Some(FileHandling.reader(file))
+          val (reader, counter) = FileHandling.readerCounting(file)
+          activeReader = Some(reader)
+          activeCounter = Some(counter)
           activeReader.get
         }
       }
@@ -113,7 +129,7 @@ class ProcessedRepo(val home: File, datasetUri: String) {
       val recordText = new StringBuilder
       var graphCount = 0
       var chunkComplete = false
-      while (!chunkComplete) {
+      while (!chunkComplete && progressReporter.keepReading(-1)) {
         readerOpt.map { reader =>
           Option(reader.readLine()).map {
             case LineId(graphName) =>
@@ -128,7 +144,9 @@ class ProcessedRepo(val home: File, datasetUri: String) {
               recordText.append(x).append("\n")
           } getOrElse {
             reader.close()
+            previousBytesRead += activeCount
             activeReader = None
+            activeCounter = None
           }
         } getOrElse {
           chunkComplete = true
@@ -138,8 +156,10 @@ class ProcessedRepo(val home: File, datasetUri: String) {
     }
 
     override def close(): Unit = {
+      previousBytesRead += activeCount
       activeReader.map(_.close())
       activeReader = None
+      activeCounter = None
       files = Seq.empty[File]
     }
   }

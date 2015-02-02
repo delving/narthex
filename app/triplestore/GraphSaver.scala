@@ -17,7 +17,7 @@
 package triplestore
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{Incremental, WorkFailure}
+import dataset.DatasetActor.{Incremental, InterruptWork, WorkFailure}
 import dataset.ProcessedRepo
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import services.ProgressReporter
@@ -47,6 +47,9 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with Ac
 
   override def receive = {
 
+    case InterruptWork =>
+      progress.map(_.interruptBy(sender()))
+
     case SaveGraphs(incrementalOpt) =>
       val progressReporter = ProgressReporter(ADOPTING, context.parent)
       progress = Some(progressReporter)
@@ -55,10 +58,8 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with Ac
 
     case Some(chunk: GraphChunk) =>
       val update = client.update(chunk.toSparqlUpdate)
-      update.map { ok =>
-          self ! readGraphChunkOpt
-      }
-      update.onFailure{
+      update.map(ok => self ! readGraphChunkOpt)
+      update.onFailure {
         case ex: Throwable =>
           reader.map(_.close())
           context.parent ! WorkFailure(ex.getMessage, Some(ex))
@@ -66,6 +67,7 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with Ac
 
     case None =>
       reader.map(_.close())
+      reader = None
       context.parent ! GraphSaveComplete
 
     case ChunkSent =>

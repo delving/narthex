@@ -220,6 +220,11 @@ class DatasetActor(val datasetRepo: DatasetRepo) extends FSM[DatasetActorState, 
           datasetRepo.startAnalysis()
           "analysis started"
 
+        case "start saving" =>
+          // full save, not incremental
+          datasetRepo.startSaving(None)
+          "saving started"
+
         case _ =>
           log.warning(s"$this sent unrecognized command $commandName")
           "unrecognized"

@@ -81,12 +81,12 @@
     <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary">
 
         <div class="panel-heading" data-ng-click="expanded = !expanded">
-                <i class="fa fa-fw {{ getIcon() }}"></i>
-                <span class="name">{{ dataset.datasetSpec }}</span>
-                <span data-ng-if="dataset.datasetError" class="label label-danger">
-                    <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetError }}
-                </span>
-                <span data-ng-show="dataset.datasetRecordCount" class="count pull-right">{{ dataset.datasetRecordCount }}</span>
+            <i class="fa fa-fw {{ getIcon() }}"></i>
+            <span class="name">{{ dataset.datasetSpec }}</span>
+            <span data-ng-if="dataset.datasetError" class="label label-danger">
+                <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetError }}
+            </span>
+            <span data-ng-show="dataset.datasetRecordCount" class="count pull-right">{{ dataset.datasetRecordCount }}</span>
         </div>
 
         <div class="panel-body">
@@ -114,7 +114,7 @@
                     <div><strong>Mappable</strong></div>
                     <div>{{ dataset.stateMappable.d }}</div>
                     <div>{{ dataset.stateMappable.t }}</div>
-                    <div><a href="{{sipCreatorLink}}" class="btn btn-sm btn-default"><i class="fa fa-download"></i> SIPCreator</a></div>
+                    <div><a href="{{sipCreatorLink}}" class="btn btn-sm btn-default"><i class="fa fa-download"></i> Mapper</a></div>
                 </div>
                 <div data-ng-show="dataset.stateProcessable" class="ds-state">
                     <div><strong>Processable</strong></div>
@@ -132,7 +132,7 @@
                     <div>{{ dataset.stateProcessed.t }}</div>
                     <div>
                         <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
-                            <i class="fa fa-cogs"></i> <span>Analyze</span>
+                            <i class="fa fa-bar-chart"></i> <span>Analyze</span>
                         </button>
                     </div>
                 </div>
@@ -141,8 +141,8 @@
                     <div>{{ dataset.stateAnalyzed.d }}</div>
                     <div>{{ dataset.stateAnalyzed.t }}</div>
                     <div>
-                        <button class="btn btn-sm btn-primary" data-ng-click="viewFile()">
-                            <i class="fa fa-eye"></i> <span>Explore</span>
+                        <button class="btn btn-sm btn-success" data-ng-click="startSaving()">
+                            <i class="fa fa-database"></i> <span>Save</span>
                         </button>
                     </div>
                 </div>
@@ -150,6 +150,11 @@
                     <div><strong>Saved</strong></div>
                     <div>{{ dataset.stateSaved.d }}</div>
                     <div>{{ dataset.stateSaved.t }}</div>
+                    <div>
+                        <button class="btn btn-sm btn-info" data-ng-click="viewFile()">
+                            <i class="fa fa-eye"></i> <span>Explore</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -372,7 +377,7 @@
         <fieldset>
             <div class="checkbox">
                 <label for="cat">Include in Category Monitor Statistics
-                    <input id="cat" type="checkbox" data-ng-model="dataset.edit.categoriesIncluded" ng-true-value="'true'" ng-false-value="'false'"/>
+                    <input id="cat" type="checkbox" data-ng-model="dataset.edit.categoriesInclude" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
             <button typ="button" class="btn btn-success btn-sm"  data-ng-click="setCategories()" data-ng-disabled="unchangedCategories">
