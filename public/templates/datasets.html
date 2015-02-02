@@ -86,8 +86,8 @@
         <div class="panel-heading" data-ng-click="expanded = !expanded">
             <i class="fa fa-fw {{ getIcon() }}"></i>
             <span class="name">{{ dataset.datasetSpec }}</span>
-            <span data-ng-if="dataset.datasetError" class="label label-danger">
-                <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetError }}
+            <span data-ng-if="dataset.datasetErrorMessage" class="label label-danger">
+                <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}
             </span>
             <span data-ng-show="dataset.datasetRecordCount" class="count pull-right">{{ dataset.datasetRecordCount }}</span>
         </div>
@@ -314,17 +314,14 @@
                 <label for="harv_search">Search</label>
                 <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
             </div>
+            <button type="button" class="btn btn-warning pull-right" data-ng-click="startFirstHarvest()">
+                <i class="fa fa-download"></i>
+                <span>Harvest</span>
+            </button>
             <button type="button" class="btn btn-success" data-ng-click="setHarvest()" data-ng-disabled="unchangedHarvest">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
-            <!--<button typ="button" class="btn btn-success" data-ng-click="startHarvest()">-->
-                <!--<i class="fa fa-refresh"></i>-->
-                <!--<span>Harvest</span>-->
-                <!--<span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH (record)</span>-->
-                <!--<span data-ng-show="harvest.harvestType == 'pmh-rec'">from OAI-PMH (fields)</span>-->
-                <!--<span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>-->
-            <!--</button>-->
         </fieldset>
     </form>
 </script>

@@ -43,6 +43,7 @@ import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.Try
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
@@ -128,6 +129,8 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(StartHarvest(modifiedAfter, justDate), Dormant) =>
       datasetContext.dropTree()
 
+      log.info(s"Start harvest event")
+
       def prop(p: DIProp) = dsInfo.getLiteralProp(p).getOrElse("")
 
       harvestTypeFromString(prop(harvestType)).map { harvestType =>
@@ -192,43 +195,49 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
 
     case Event(DatasetQuestion(listener, Command(commandName)), Dormant) =>
-      val reply = commandName match {
+      val reply = Try {
+        commandName match {
+          case "delete" =>
+            datasetContext.dsInfo.dropDataset
+            deleteQuietly(datasetContext.rootDir)
+            "deleted"
 
-        case "delete" =>
-          datasetContext.dsInfo.dropDataset
-          deleteQuietly(datasetContext.rootDir)
-          "deleted"
+          case "remove source" =>
+            datasetContext.dropSourceRepo()
+            "source removed"
 
-        case "remove source" =>
-          datasetContext.dropSourceRepo()
-          "source removed"
+          case "remove processed" =>
+            datasetContext.dropProcessedRepo()
+            "processed data removed"
 
-        case "remove processed" =>
-          datasetContext.dropProcessedRepo()
-          "processed data removed"
+          case "remove tree" =>
+            datasetContext.dropTree()
+            "tree removed"
 
-        case "remove tree" =>
-          datasetContext.dropTree()
-          "tree removed"
+          case "start first harvest" =>
+            datasetContext.firstHarvest()
+            "harvest started"
 
-        case "start processing" =>
-          datasetContext.startProcessing()
-          "processing started"
+          case "start processing" =>
+            datasetContext.startProcessing()
+            "processing started"
 
-        case "start analysis" =>
-          datasetContext.startAnalysis()
-          "analysis started"
+          case "start analysis" =>
+            datasetContext.startAnalysis()
+            "analysis started"
 
-        case "start saving" =>
-          // full save, not incremental
-          datasetContext.startSaving(None)
-          "saving started"
+          case "start saving" =>
+            // full save, not incremental
+            datasetContext.startSaving(None)
+            "saving started"
 
-        case _ =>
-          log.warning(s"$this sent unrecognized command $commandName")
-          "unrecognized"
+          case _ =>
+            log.warning(s"$this sent unrecognized command $commandName")
+            "unrecognized"
+        }
       }
-      listener ! reply
+      val replyString: String = reply.getOrElse(s"oops: exception")
+      listener ! replyString
       stay()
   }
 
@@ -322,6 +331,10 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(ClearError, InError(message)) =>
       log.info(s"Cleared error: $message)")
       goto(Idle) using Dormant
+
+    case Event(DatasetQuestion(listener, Command(commandName)), InError(message)) =>
+      listener ! message
+      stay()
 
     case Event(InterruptWork, active: Active) =>
       log.info(s"Sending interrupt while in $stateName/$active)")

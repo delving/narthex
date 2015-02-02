@@ -408,12 +408,6 @@ define(["angular"], function () {
             setProperties(harvestCronFields);
         };
 
-        $scope.startHarvest = function () {
-            // todo: wrong!
-            alert('start harvest?');
-//            datasetsService.harvest(ds.datasetSpec, ds.info.harvest).then(refreshProgress);
-        };
-
         $scope.viewFile = function () {
             $location.path("/dataset/" + ds.datasetSpec);
             $location.search({});
@@ -446,6 +440,10 @@ define(["angular"], function () {
 
         $scope.startProcessing = function () {
             command("start processing", null, refreshProgress);
+        };
+
+        $scope.startFirstHarvest = function () {
+            command("start first harvest", "Erase existing data?", refreshProgress);
         };
 
         $scope.startAnalysis = function () {

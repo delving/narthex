@@ -96,15 +96,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                // todo: no harvestInfo!
-                harvest: function (spec, harvestInfo) {
-                    return app.harvest(spec).post(harvestInfo).then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
                 listSipFiles: function (spec) {
                     return app.listSipFiles(spec).get().then(
                         function (response) {

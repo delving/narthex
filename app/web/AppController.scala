@@ -146,12 +146,6 @@ object AppController extends Controller with Security {
     }
   }
 
-  def harvest(spec: String) = Secure(parse.json) { session => request =>
-    Logger.info(s"First Harvest $spec")
-    orgContext.datasetContext(spec).firstHarvest()
-    Ok
-  }
-
   def index(spec: String) = Secure() { session => request =>
     OkFile(orgContext.datasetContext(spec).index)
   }

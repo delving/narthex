@@ -156,8 +156,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       createSourceRepo(SourceFacts(harvestType))
       OrgActor.actor ! dsInfo.createMessage(StartHarvest(None, justDate = true))
     } getOrElse {
-      val t = dsInfo.getLiteralProp(GraphProperties.harvestType)
-      dsInfo.setError(s"Unable to harvest $this: unknown harvest type [$t]")
+      dsInfo.setError(s"Unable to harvest $this: unknown harvest type [$typeInfo]")
     }
   }
 
