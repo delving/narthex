@@ -42,6 +42,7 @@ object DsInfo {
   case class Character(name: String)
 
   val CharacterMapped = Character("character-mapped")
+
   def getCharacter(characterString: String) = List(CharacterMapped).find(_.name == characterString)
 
   case class DsState(prop: DIProp) {
@@ -94,7 +95,7 @@ object DsInfo {
 
   def getDsUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
 
-  def create(owner: NXActor, spec: String, character: Character, mapToPrefix:String, ts: TripleStore): Future[DsInfo] = {
+  def create(owner: NXActor, spec: String, character: Character, mapToPrefix: String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsUri(spec))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
@@ -252,10 +253,16 @@ class DsInfo(val spec: String, ts: TripleStore) {
 
   def removeState(state: DsState) = removeLiteralProp(state.prop)
 
-  def setError(message: String) = setSingularLiteralProps(
-    datasetErrorMessage -> message,
-    datasetErrorTime -> now
-  )
+  def setError(message: String) = {
+    if (message.isEmpty) {
+      removeLiteralProp(datasetErrorMessage)
+      removeLiteralProp(datasetErrorTime)
+    }
+    else  setSingularLiteralProps(
+      datasetErrorMessage -> message,
+      datasetErrorTime -> now
+    )
+  }
 
   def setRecordCount(count: Int) = setSingularLiteralProps(datasetRecordCount -> count.toString)
 
@@ -301,6 +308,12 @@ class DsInfo(val spec: String, ts: TripleStore) {
   // for actors
 
   def createMessage(payload: AnyRef, question: Boolean = false) = DatasetMessage(spec, payload, question)
+
+  def toTurtle = {
+    val sw = new StringWriter()
+    m.write(sw, "TURTLE")
+    sw.toString
+  }
 
   override def toString = spec
 }

@@ -109,7 +109,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
             // the harvest information is in the Sip, but no source
             val harvestType = if (sip.sipMappingOpt.exists(_.extendWithRecord)) PMH_REC else PMH
             dsInfo.setSingularLiteralProps(GraphProperties.harvestType -> harvestType.toString).map { m =>
-              firstHarvest()
+              // todo: let's not trigger harvest.  was firstHarvest()
             }
             None
           } getOrElse {
@@ -147,17 +147,6 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     val allZip = sourceDir.listFiles.filter(_.getName.endsWith("zip"))
     if (allZip.size > 1) throw new RuntimeException(s"Multiple zip files where one was expected: $allZip")
     allZip.headOption
-  }
-
-  def firstHarvest(): Unit = {
-    val typeInfo = dsInfo.getLiteralProp(GraphProperties.harvestType)
-    val harvestTypeOpt = typeInfo.flatMap(harvestTypeFromString)
-    harvestTypeOpt.map { harvestType =>
-      createSourceRepo(SourceFacts(harvestType))
-      OrgActor.actor ! dsInfo.createMessage(StartHarvest(None, justDate = true))
-    } getOrElse {
-      dsInfo.setError(s"Unable to harvest $this: unknown harvest type [$typeInfo]")
-    }
   }
 
   def nextHarvest() = {

@@ -56,7 +56,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
 
   "A dataset should be loaded" in {
     // prepare for reading and mapping
-    val home = new File(getClass.getResource("/sip_source").getFile)
+    val home = new File(getClass.getResource("/ingest/sip_source").getFile)
     val sipsDir = FileHandling.clearDir(new File("/tmp/test-sip-source-sips"))
     FileUtils.copyDirectory(home, sipsDir)
     val datasetName = "frans_hals"

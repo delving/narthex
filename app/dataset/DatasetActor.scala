@@ -24,6 +24,7 @@ import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DsInfo._
+import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType._
@@ -215,8 +216,19 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             "tree removed"
 
           case "start first harvest" =>
-            datasetContext.firstHarvest()
-            "harvest started"
+            val typeInfo = dsInfo.getLiteralProp(harvestType)
+            val harvestTypeOpt = typeInfo.flatMap(harvestTypeFromString)
+            harvestTypeOpt.map { harvestType =>
+              log.info(s"Starting first harvest with type $harvestType")
+              datasetContext.createSourceRepo(SourceFacts(harvestType))
+              self ! StartHarvest(None, justDate = true)
+              "harvest started"
+            } getOrElse {
+              val message = s"Unable to harvest $datasetContext: unknown harvest type [$typeInfo]"
+              log.info(s"DSINFO:\n${dsInfo.toTurtle}")
+              self ! WorkFailure(message, None)
+              message
+            }
 
           case "start processing" =>
             datasetContext.startProcessing()
@@ -261,6 +273,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Adopting) {
 
     case Event(SourceAdoptionComplete(file), active: Active) =>
+      if (datasetContext.sipRepo.latestSipOpt.isDefined) dsInfo.setState(DsState.PROCESSABLE)
       datasetContext.dropTree()
       active.childOpt.map(_ ! PoisonPill)
       self ! GenerateSipZip
@@ -329,7 +342,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       stay() using active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)
 
     case Event(DatasetQuestion(listener, Command(commandName)), InError(message)) =>
-      Logger.info(s"command name: $commandName")
+      Logger.info(s"In error. Command name: $commandName")
       if (commandName == "clear error") {
         dsInfo.removeLiteralProp(datasetErrorMessage).map { m =>
           listener ! "error cleared"
@@ -349,11 +362,17 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       stay()
 
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
-      log.warning(s"Child failure $message while in $active")
+      log.warning(s"Work failure [$message] while in [$active]")
+      dsInfo.setError(message).map(ok => log.info(s"Set error to [$message]"))
+      exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
+      active.childOpt.map(_ ! PoisonPill)
+      goto(Idle) using InError(message)
+
+    case Event(WorkFailure(message, exceptionOpt), _) =>
+      log.warning(s"Work failure $message while dormant")
       exceptionOpt.map(log.warning(message, _))
       dsInfo.setError(message)
       exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
-      active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using InError(message)
 
     case Event(DatasetQuestion(listener, CheckState), data) =>
