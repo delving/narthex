@@ -19,9 +19,10 @@ define(["angular"], function () {
 
     var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll, user) {
         var MAX_FOR_VOCABULARY = 12500;
-        $scope.datasetName = $routeParams.datasetName;
-        $rootScope.breadcrumbs.dataset = $scope.datasetName;
-        $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.datasetName;
+        // todo: rename to spec
+        $scope.spec = $routeParams.spec;
+        $rootScope.breadcrumbs.dataset = $scope.spec;
+        $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.spec;
         $scope.categoriesEnabled = user.categoriesEnabled;
 
         $scope.scrollTo = function (options) {
@@ -32,16 +33,8 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
-        datasetService.datasetInfo($scope.datasetName).then(function (info) {
-
-            $scope.rawAnalyzedState = !!info.rawAnalyzedState;
-            $scope.analyzedState = !!info.analyzedState;
-            if (info.analyzedState) {
-                $scope.recordRoot = "/rdf:Description";
-                $scope.uniqueId = "/rdf:Description/@rdf:about";
-            }
-
-            datasetService.index($scope.datasetName).then(function (tree) {
+        function fetchTree() {
+            datasetService.index($scope.spec).then(function (tree) {
 
                 function sortKids(node) {
                     if (!node.kids.length) return;
@@ -72,7 +65,7 @@ define(["angular"], function () {
                 }
                 if ($scope.recordRoot) setDelimiterNodes(tree);
 
-                datasetService.getTermSourcePaths($scope.datasetName).then(function (data) {
+                datasetService.getTermSourcePaths($scope.spec).then(function (data) {
                     console.log('get term source paths', data.sourcePaths);
                     function recursive(node, sourcePaths) {
                         node.termMappings = sourcePaths.indexOf(node.sourcePath) >= 0;
@@ -81,7 +74,7 @@ define(["angular"], function () {
                     recursive(tree, data.sourcePaths);
                 });
 
-                datasetService.getCategorySourcePaths($scope.datasetName).then(function (data) {
+                datasetService.getCategorySourcePaths($scope.spec).then(function (data) {
                     function recursive(node, sourcePaths) {
                         if (sourcePaths.indexOf(node.sourcePath) >= 0) node.categoryMappings = true;
                         for (var index = 0; index < node.kids.length; index++) recursive(node.kids[index], sourcePaths);
@@ -107,12 +100,35 @@ define(["angular"], function () {
                 }
                 if ($routeParams.path) selectNode($routeParams.path.substring(1).split('/'), { tag: '', kids: [$scope.tree]});
             });
-        });
+        }
+
+        function fetchInfo(after) {
+            datasetService.datasetInfo($scope.spec).then(function (info) {
+//                console.log("info", info);
+                $scope.info = info;
+                $scope.rawAnalyzedState = !!info.stateRawAnalyzed;
+                $scope.analyzedState = !!info.stateAnalyzed;
+                if (info.analyzedState) {
+                    $scope.recordRoot = "/rdf:Description";
+                    $scope.uniqueId = "/rdf:Description/@rdf:about";
+                }
+                if (after) after()
+            });
+        }
+
+        fetchInfo(fetchTree);
+
+        $scope.toggleSkosField = function(uri) {
+            datasetService.toggleSkosField($scope.spec, uri).then(function(reply) {
+                fetchInfo($scope.fetchHistogram);
+                alert("toggle reply: "+ reply);
+            });
+        };
 
         $scope.goToPage = function (node, page) {
             if (node && node != $scope.selectedNode) return;
-            $rootScope.breadcrumbs.dataset = $scope.datasetName;
-            $location.path("/" + page + "/" + $scope.datasetName);
+            $rootScope.breadcrumbs.dataset = $scope.spec;
+            $location.path("/" + page + "/" + $scope.spec);
             $location.search({
                 path: $routeParams.path,
                 size: $scope.status.histograms[$scope.status.histograms.length - 1]
@@ -140,11 +156,11 @@ define(["angular"], function () {
             if (node.lengths.length == 0 || node.path.length == 0) return;
             $scope.selectedNode = node;
             setActivePath(node.path);
-            datasetService.nodeStatus($scope.datasetName, node.path).then(function (data) {
+            datasetService.nodeStatus($scope.spec, node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
-                $scope.apiPathUnique = user.narthexAPI + "/" + $scope.datasetName + "/unique" + filePath;
-                $scope.apiPathHistogram = user.narthexAPI + "/" + $scope.datasetName + "/histogram" + filePath;
+                $scope.apiPathUnique = user.narthexAPI + "/" + $scope.spec + "/unique" + filePath;
+                $scope.apiPathHistogram = user.narthexAPI + "/" + $scope.spec + "/histogram" + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
                 switch ($routeParams.view) {
@@ -182,7 +198,7 @@ define(["angular"], function () {
                     recordRoot: $scope.recordRootNode.path,
                     uniqueId: $scope.uniqueIdNode.path
                 };
-                datasetService.setRecordDelimiter($scope.datasetName, body).then(function () {
+                datasetService.setRecordDelimiter($scope.spec, body).then(function () {
                     console.log("Record delimiter set, moving to datasets page");
                     $location.path("/datasets");
                 });
@@ -196,15 +212,25 @@ define(["angular"], function () {
         };
 
         $scope.fetchSample = function () {
-            datasetService.sample($scope.datasetName, $routeParams.path, $scope.sampleSize).then(function (data) {
+            datasetService.sample($scope.spec, $routeParams.path, $scope.sampleSize).then(function (data) {
                 $scope.sample = data;
                 $scope.histogram = undefined;
             });
             setActiveView("sample");
         };
 
+        function checkSkosField(uri) {
+            if (!$scope.info) return false;
+            if (_.isArray($scope.info.skosField)) {
+                return _.indexOf($scope.info.skosField, uri);
+            }
+            else {
+                return $scope.info.skosField == uri;
+            }
+        }
+
         $scope.fetchHistogram = function () {
-            datasetService.histogram($scope.datasetName, $routeParams.path, $scope.histogramSize).then(function (data) {
+            datasetService.histogram($scope.spec, $routeParams.path, $scope.histogramSize).then(function (data) {
                 _.forEach(data.histogram, function (entry) {
                     var percent = (100 * entry[0]) / $scope.selectedNode.count;
                     entry.push(percent);
@@ -213,6 +239,7 @@ define(["angular"], function () {
                 $scope.sample = undefined;
                 $scope.histogramUnique = data.histogram[0] && data.histogram[0][0] == 1;
                 $scope.histogramVocabulary = (!$scope.histogramUnique) && ($scope.status.uniqueCount < MAX_FOR_VOCABULARY);
+                $scope.histogramSkosField = checkSkosField($scope.histogram.uri);
             });
             setActiveView("histogram");
         };

@@ -71,17 +71,19 @@
                         </a>
                     </li>
                     <li  data-ng-show="analyzedState && activeView == 'histogram' && histogramVocabulary">
-                        <a href class="" data-ng-click="goToPage(selectedNode, 'terms')">
+                        <a href class="" data-ng-click="toggleSkosField(histogram.uri)">
                             <i class="fa fa-arrow-circle-right"></i>
-                            <span> Terminology Mapping</span>
+                            <span data-ng-show="!histogramSkosField"> Skosify </span>
+                            <span data-ng-show="histogramSkosField"> Un-Skosify </span>
+                            <span class="small">({{ histogram.uri }})</span>
                         </a>
                     </li>
-                    <li data-ng-show="analyzedState && activeView == 'histogram' && histogramVocabulary && categoriesEnabled">
-                        <a href class="" data-ng-click="goToPage(selectedNode, 'categories')">
-                            <i class="fa fa-arrow-circle-right"></i>
-                            <span> Category Mapping</span>
-                        </a>
-                    </li>
+                    <!--<li data-ng-show="analyzedState && activeView == 'histogram' && histogramVocabulary && categoriesEnabled">-->
+                        <!--<a href class="" data-ng-click="goToPage(selectedNode, 'categories')">-->
+                            <!--<i class="fa fa-arrow-circle-right"></i>-->
+                            <!--<span> Category Mapping</span>-->
+                        <!--</a>-->
+                    <!--</li>-->
                     <li>
                         <a href class=" dropdown-toggle" data-toggle="dropdown">
                             <i class="fa fa-eye"></i>&#160;

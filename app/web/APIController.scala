@@ -65,8 +65,8 @@ object APIController extends Controller {
     OkFile(orgContext.datasetContext(spec).index)
   }
 
-  def indexText(apiKey: String, spec: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    orgContext.datasetContext(spec).indexText(path) match {
+  def uriText(apiKey: String, spec: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    orgContext.datasetContext(spec).uriText(path) match {
       case None =>
         NotFound(s"No index found for $path")
       case Some(file) =>

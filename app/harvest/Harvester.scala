@@ -32,6 +32,7 @@ import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 
 import scala.concurrent._
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object Harvester {
@@ -108,7 +109,10 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
       val futurePage = fetchAdLibPage(url, database, search, modifiedAfter)
       handleFailure(futurePage, modifiedAfter, "adlib harvest")
       progress = Some(ProgressReporter(HARVESTING, context.parent))
-      futurePage pipeTo self
+      // todo: should send some progress info.  like this?:
+      progress.get.sendPage(1)
+      val page = Await.result(futurePage, 30.seconds)
+      self ! page
 
     case AdLibHarvestPage(records, url, database, search, modifiedAfter, diagnostic) =>
       progress.foreach { progressReporter =>

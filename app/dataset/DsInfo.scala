@@ -42,6 +42,7 @@ object DsInfo {
   case class Character(name: String)
 
   val CharacterMapped = Character("character-mapped")
+
   def getCharacter(characterString: String) = List(CharacterMapped).find(_.name == characterString)
 
   case class DsState(prop: DIProp) {
@@ -94,7 +95,7 @@ object DsInfo {
 
   def getDsUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
 
-  def create(owner: NXActor, spec: String, character: Character, mapToPrefix:String, ts: TripleStore): Future[DsInfo] = {
+  def create(owner: NXActor, spec: String, character: Character, mapToPrefix: String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsUri(spec))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
@@ -192,36 +193,44 @@ class DsInfo(val spec: String, ts: TripleStore) {
 
   def getUriPropValueList(prop: DIProp): List[String] = {
     val propUri = m.getProperty(prop.uri)
-    m.listObjectsOfProperty(uri, propUri).map(node => node.asResource().toString).toList
+    m.listObjectsOfProperty(uri, propUri).map(node => node.asLiteral().toString).toList
   }
 
-  def addUriProp(prop: DIProp, uriValue: String): Future[Model] = {
+  def addUriProp(prop: DIProp, uriValueString: String): Future[Model] = {
     val propUri = m.getProperty(prop.uri)
-    val uriValueUri = m.getResource(uriValue)
+    val uriValue = m.createLiteral(uriValueString)
     val sparql = s"""
          |INSERT DATA {
          |   GRAPH <$dsUri> {
-         |      <$dsUri> <$propUri> <$uriValueUri> .
+         |      <$dsUri> <$propUri> "$uriValue" .
          |   }
          |}
        """.stripMargin.trim
     ts.update(sparql).map { ok =>
-      m.add(uri, propUri, uriValueUri)
+      m.add(uri, propUri, uriValue)
       m
     }
   }
 
-  def removeUriProp(prop: DIProp, uriValue: String): Future[Model] = futureModel.flatMap { m =>
+  def removeUriProp(prop: DIProp, uriValueString: String): Future[Model] = futureModel.flatMap { m =>
     val propUri = m.getProperty(prop.uri)
-    val uriValueUri = m.getProperty(uriValue)
+    // todo: maybe a list instead of literals
+    val uriValue = m.createLiteral(uriValueString)
     val sparql =
       s"""
-         |DELETE DATA FROM <$dsUri> {
-         |   <$dsUri> <$propUri> <$uriValueUri> .
+         |DELETE {
+         |   GRAPH <$dsUri> {
+         |      <$dsUri> <$propUri> "$uriValue" .
+         |   }
+         |}
+         |WHERE {
+         |   GRAPH <$dsUri> {
+         |      <$dsUri> <$propUri> "$uriValue" .
+         |   }
          |}
        """.stripMargin
     ts.update(sparql).map { ok =>
-      m.remove(uri, propUri, uriValueUri)
+      m.remove(uri, propUri, uriValue)
       m
     }
   }
@@ -252,10 +261,16 @@ class DsInfo(val spec: String, ts: TripleStore) {
 
   def removeState(state: DsState) = removeLiteralProp(state.prop)
 
-  def setError(message: String) = setSingularLiteralProps(
-    datasetErrorMessage -> message,
-    datasetErrorTime -> now
-  )
+  def setError(message: String) = {
+    if (message.isEmpty) {
+      removeLiteralProp(datasetErrorMessage)
+      removeLiteralProp(datasetErrorTime)
+    }
+    else  setSingularLiteralProps(
+      datasetErrorMessage -> message,
+      datasetErrorTime -> now
+    )
+  }
 
   def setRecordCount(count: Int) = setSingularLiteralProps(datasetRecordCount -> count.toString)
 
@@ -301,6 +316,12 @@ class DsInfo(val spec: String, ts: TripleStore) {
   // for actors
 
   def createMessage(payload: AnyRef, question: Boolean = false) = DatasetMessage(spec, payload, question)
+
+  def toTurtle = {
+    val sw = new StringWriter()
+    m.write(sw, "TURTLE")
+    sw.toString
+  }
 
   override def toString = spec
 }

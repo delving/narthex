@@ -22,26 +22,26 @@ class TestSourceRepo extends FlatSpec with Matchers {
     file
   }
 
-  val incoming = fresh("/tmp/source-repo-incoming")
-
   def resourceFile(which: String): File = {
     val name = s"source-$which.zip"
-    val url = getClass.getResource(s"/harvest/$name")
+    val url = getClass.getResource(s"/source_repo/$name")
     new File(url.getFile)
   }
-
-  def incomingZip(which: String): File = new File(incoming, s"source-$which.zip")
 
   def sendProgress(percent: Int): Boolean = true
 
   "A Source Repository" should "accept regular record harvest files" in {
+    val incoming = fresh("/tmp/source-repo-incoming")
+    def incomingZip(which: String): File = new File(incoming, s"source-$which.zip")
 
     List("a", "b", "c", "d").map(resourceFile).foreach(f => FileUtils.copyFile(f, new File(incoming, f.getName)))
+
     val recordRoot = "/envelope/list/thing"
     val uniqueId = s"$recordRoot/@which"
     val sourceDir = fresh("/tmp/test-source-repo-regular")
 
     val sourceRepo = SourceRepo.createClean(sourceDir, SourceFacts("gumby", recordRoot, uniqueId, None))
+
 
     sourceRepo.countFiles should be(0)
     sourceRepo.acceptFile(incomingZip("a"), ProgressReporter())
@@ -82,6 +82,8 @@ class TestSourceRepo extends FlatSpec with Matchers {
   }
 
   "A Source Repository" should "accept pmh record harvest files" in {
+    val incoming = fresh("/tmp/source-repo-incoming")
+    def incomingZip(which: String): File = new File(incoming, s"source-$which.zip")
 
     List("aa", "bb", "cc", "dd").map(resourceFile).foreach(f => FileUtils.copyFile(f, new File(incoming, f.getName)))
 
@@ -116,45 +118,5 @@ class TestSourceRepo extends FlatSpec with Matchers {
     recordCount should be(4)
   }
 
-  "A Source Repository" should "accept delving sip source files" in {
-    val sourceDir = fresh("/tmp/test-source-repo-plain")
-    val sourceFile = new File(getClass.getResource("/source/Martena.xml.gz").getFile)
-    val sourceRepo = SourceRepo.createClean(sourceDir, SourceRepo.DELVING_SIP_SOURCE)
-    sourceRepo.countFiles should be(0)
-    sourceRepo.acceptFile(sourceFile, ProgressReporter())
-    sourceRepo.countFiles should be(3)
-    var recordCount = 0
 
-    def receiveRecord(record: Pocket): Unit = {
-      //      println(s"${record.id}: ${record.text}")
-      recordCount += 1
-    }
-
-    sourceRepo.parsePockets(receiveRecord, ProgressReporter())
-
-    recordCount should be(4724)
-  }
-
-  "A Source Repository" should "handle a source xml file" in {
-
-    val home = new File(getClass.getResource("/source").getFile)
-    val sourceDir = new File("/tmp/test-sip-repo-source")
-    val sourceFile = new File(getClass.getResource("/source/Martena-sample.xml").getFile)
-    val sourceRepo = SourceRepo.createClean(sourceDir, SourceRepo.DELVING_SIP_SOURCE)
-
-    sourceRepo.countFiles should be(0)
-    sourceRepo.acceptFile(sourceFile, ProgressReporter())
-    sourceRepo.countFiles should be(3)
-
-    var recordCount = 0
-
-    def receiveRecord(record: Pocket): Unit = {
-      //      println(s"${record.id}: ${record.text}")
-      recordCount += 1
-    }
-
-    sourceRepo.parsePockets(receiveRecord, ProgressReporter())
-
-    recordCount should be(5)
-  }
 }

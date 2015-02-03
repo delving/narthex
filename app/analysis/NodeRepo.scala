@@ -78,7 +78,7 @@ class NodeRepo(val parent: DatasetContext, val dir: File) {
 
   def sampleJson = List(100, 500, 2500).map(size => (size, f(s"sample-$size.json")))
 
-  def indexText = f("index.txt")
+  def uriText = f("uri.txt")
 
   def uniqueText = f("unique.txt")
 
@@ -95,7 +95,9 @@ class NodeRepo(val parent: DatasetContext, val dir: File) {
     }
 
     def createFile(maximum: Int, entries: mutable.ArrayBuffer[JsArray], histogramFile: File) = {
+      val uri = readFileToString(uriText)
       createJson(histogramFile, Json.obj(
+        "uri" -> uri,
         "uniqueCount" -> uniqueCount,
         "entries" -> entries.size,
         "maximum" -> maximum,

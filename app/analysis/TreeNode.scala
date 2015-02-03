@@ -37,7 +37,7 @@ import scala.xml.pull._
 object TreeNode {
 
   def apply(source: Source, length: Long, datasetContext: DatasetContext, progressReporter: ProgressReporter): Option[TreeNode] = {
-    val base = new TreeNode(datasetContext.treeRoot, null, null)
+    val base = new TreeNode(datasetContext.treeRoot, null, null, null)
     var node = base
     val events = new NarthexEventReader(source)
 
@@ -47,11 +47,17 @@ object TreeNode {
         events.next() match {
 
           case EvElemStart(pre, label, attrs, scope) =>
-            node = node.kid(tag(pre, label)).start()
+            node = node.kid(tag(pre, label), scope.getURI(pre)+label).start()
             attrs.foreach { attr =>
-              val kid = node.kid(s"@${attr.prefixedKey}").start()
-              kid.value(attr.value.toString())
-              kid.end()
+              val kid = if (attr.isPrefixed) {
+                val uri = scope.getURI(attr.stringPrefix)
+                node.kid(s"@${attr.prefixedKey}", uri + attr.key)
+              }
+              else {
+                // todo: get default URI to prefix key?
+                node.kid(s"@${attr.prefixedKey}", attr.key)
+              }
+              kid.start().value(attr.value.toString()).end()
             }
 
           case EvText(text) =>
@@ -196,7 +202,7 @@ object TreeNode {
 }
 
 
-class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
+class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String, val uri: String) {
   val MAX_LIST = 10000
   var kids = Map.empty[String, TreeNode]
   var count = 0
@@ -217,11 +223,11 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
     writer.close()
   }
 
-  def kid(tag: String) = {
+  def kid(tag: String, uri: String) = {
     kids.get(tag) match {
       case Some(kid) => kid
       case None =>
-        val kid = new TreeNode(nodeRepo.child(tag), this, tag)
+        val kid = new TreeNode(nodeRepo.child(tag), this, tag, uri)
         kids += tag -> kid
         kid
     }
@@ -250,8 +256,7 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String) {
 
   def finish(): Unit = {
     flush()
-    val index = kids.values.map(kid => pathToDirectory(kid.tag)).mkString("\n")
-    writeStringToFile(nodeRepo.indexText, index)
+    writeStringToFile(nodeRepo.uriText, uri)
     kids.values.foreach(_.finish())
   }
 

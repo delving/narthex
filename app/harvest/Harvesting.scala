@@ -47,9 +47,9 @@ object Harvesting {
     )
     val PMH_REC = HarvestType(
       name = "pmh-rec",
-      recordRoot = "/OAI-PMH/ListRecords/record",
+      recordRoot = "/OAI-PMH/ListRecords/record/metadata",
       uniqueId = "/OAI-PMH/ListRecords/record/header/identifier",
-      deepRecordContainer = Some("/OAI-PMH/ListRecords/record")
+      deepRecordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
     )
     val ADLIB = HarvestType(
       name = "adlib",

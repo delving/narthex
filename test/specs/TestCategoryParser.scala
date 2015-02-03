@@ -41,7 +41,7 @@ class TestCategoryParser extends FlatSpec with Matchers {
   val categoryMappingList = CategoryDb.getList(categoryMappingSource)
 
   "category parser" should "count the occurrences of single, paired, and triple categories in records" in {
-    val url = getClass.getResource("/source/Martena.xml.gz")
+    val url = getClass.getResource("/categories/Martena.xml.gz")
     val file = new File(url.getFile)
     val (source, readProgress) = FileHandling.sourceFromFile(file)
     val recordRoot = "/delving-sip-source/input"
@@ -63,4 +63,13 @@ class TestCategoryParser extends FlatSpec with Matchers {
     CategoryParser.generateWorkbook(countList).write(fos)
     fos.close()
   }
+
+  //  "category list" should "read in and turn to json" in {
+  //    val url = getClass.getResource("/categories/categories.md")
+  //    val file = new File(url.getFile)
+  //    val catList = CategoryList.load(file)
+  //    val json = Json.toJson(catList)
+  //    println(Json.prettyPrint(json))
+  //  }
+
 }
