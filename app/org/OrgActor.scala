@@ -20,7 +20,7 @@ import akka.actor._
 import dataset.DatasetActor._
 import mapping.CategoryCounter.CategoryCountComplete
 import org.OrgActor._
-import org.OrgRepo.repo
+import org.OrgContext.orgContext
 import play.libs.Akka
 import record.CategoryParser.CategoryCount
 
@@ -32,7 +32,7 @@ import scala.language.postfixOps
 
 object OrgActor {
 
-  lazy val actor: ActorRef = Akka.system.actorOf(Props[OrgActor], repo.orgId)
+  lazy val actor: ActorRef = Akka.system.actorOf(Props[OrgActor], orgContext.orgId)
 
   case class DatasetMessage(spec: String, message: AnyRef, question: Boolean = false)
 
@@ -51,8 +51,8 @@ class OrgActor extends Actor with ActorLogging {
 
     case DatasetMessage(name, message, question) =>
       val actorOpt = context.child(name).map(Some(_)).getOrElse {
-        repo.datasetRepoOption(name).map { datasetRepo =>
-          val datasetActor = context.actorOf(props(datasetRepo), name)
+        orgContext.datasetContextOption(name).map { datasetContext =>
+          val datasetActor = context.actorOf(props(datasetContext), name)
           log.info(s"Created dataset actor $datasetActor")
           context.watch(datasetActor)
           datasetActor
@@ -75,7 +75,7 @@ class OrgActor extends Actor with ActorLogging {
       log.info(s"Category counting complete, counts: $countsInProgress")
       val countLists = countsInProgress.values.flatten
       if (countLists.size == countsInProgress.size) {
-        OrgRepo.repo.categoriesRepo.createSheet(countLists.flatten.toList)
+        OrgContext.orgContext.categoriesRepo.createSheet(countLists.flatten.toList)
         countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
       }
 

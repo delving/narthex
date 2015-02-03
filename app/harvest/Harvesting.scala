@@ -61,8 +61,6 @@ object Harvesting {
     val ALL_TYPES = List(PMH, PMH_REC, ADLIB)
 
     def harvestTypeFromString(string: String): Option[HarvestType] = ALL_TYPES.find(s => s.matches(string))
-
-    def harvestTypeFromInfo(info: NodeSeq) = harvestTypeFromString((info \ "harvest" \ "harvestType").text)
   }
 
   case class AdLibDiagnostic(totalItems: Int, current: Int, pageItems: Int) {

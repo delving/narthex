@@ -47,8 +47,8 @@ class PeriodicHarvest extends Actor {
 //        val harvestCron = Harvesting.harvestCron(dataset.info)
 //        if (harvestCron.timeToWork) {
 //          log.info(s"Time to work on ${dataset.datasetName}")
-//          val datasetRepo = OrgRepo.repo.datasetRepo(dataset.datasetName)
-//          datasetRepo.nextHarvest()
+//          val datasetContext = OrgRepo.repo.datasetContext(dataset.datasetName)
+//          datasetContext.nextHarvest()
 //        }
 //      }
   }

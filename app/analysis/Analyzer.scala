@@ -26,7 +26,7 @@ import analysis.NodeRepo._
 import analysis.Sorter._
 import analysis.TreeNode.RandomSample
 import dataset.DatasetActor.InterruptWork
-import dataset.DatasetRepo
+import dataset.DatasetContext
 import org.apache.commons.io.FileUtils
 import play.api.libs.json._
 import services.FileHandling.{reader, sourceFromFile, writer}
@@ -47,11 +47,11 @@ object Analyzer {
 
   case class AnalysisComplete(error: Option[String] = None)
 
-  def props(datasetRepo: DatasetRepo) = Props(new Analyzer(datasetRepo))
+  def props(datasetContext: DatasetContext) = Props(new Analyzer(datasetContext))
 
 }
 
-class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
+class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLogging {
   val LINE = """^ *(\d*) (.*)$""".r
   var progress: Option[ProgressReporter] = None
   var sorters = List.empty[ActorRef]
@@ -65,7 +65,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
 
     case AnalyzeFile(file) =>
       log.info(s"Analyzer on ${file.getName}")
-      datasetRepo.dropTree()
+      datasetContext.dropTree()
       val (source, readProgress) = sourceFromFile(file)
       import context.dispatcher
       future {
@@ -73,7 +73,7 @@ class Analyzer(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
         progressReporter.setReadProgress(readProgress)
         progress = Some(progressReporter)
         // todo: create a sequence of futures and compose them with Future.sequence()
-        TreeNode(source, file.length, datasetRepo, progressReporter) match {
+        TreeNode(source, file.length, datasetContext, progressReporter) match {
           case Some(tree) =>
             tree.launchSorters { node =>
               if (node.lengths.isEmpty) {

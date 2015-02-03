@@ -20,8 +20,8 @@ import java.io.File
 import java.util.UUID
 
 import analysis.NodeRepo._
-import dataset.DatasetRepo
-import org.OrgRepo
+import dataset.DatasetContext
+import org.OrgContext
 import org.apache.commons.io.FileUtils._
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.FileHandling.reader
@@ -30,8 +30,8 @@ import scala.collection.mutable
 import scala.language.postfixOps
 
 object NodeRepo {
-  def apply(parent: DatasetRepo, parentDir: File, tag: String) = {
-    val dir = if (tag == null) parentDir else new File(parentDir, OrgRepo.pathToDirectory(tag))
+  def apply(parent: DatasetContext, parentDir: File, tag: String) = {
+    val dir = if (tag == null) parentDir else new File(parentDir, OrgContext.pathToDirectory(tag))
     dir.mkdirs()
     new NodeRepo(parent, dir)
   }
@@ -54,7 +54,7 @@ object NodeRepo {
   }
 }
 
-class NodeRepo(val parent: DatasetRepo, val dir: File) {
+class NodeRepo(val parent: DatasetContext, val dir: File) {
 
   def child(childTag: String) = NodeRepo(parent, dir, childTag)
 

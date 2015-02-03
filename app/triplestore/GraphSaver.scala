@@ -17,55 +17,57 @@
 package triplestore
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.WorkFailure
+import dataset.DatasetActor.{Incremental, InterruptWork, WorkFailure}
 import dataset.ProcessedRepo
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
-import triplestore.GraphSaver.{ChunkSent, GraphSaveComplete, SaveGraphs}
-
-import scala.util.{Failure, Success}
+import services.ProgressReporter
+import services.ProgressReporter.ProgressState._
 
 object GraphSaver {
-
-  case object SaveGraphs
 
   case object ChunkSent
 
   case object GraphSaveComplete
 
-  def props(repo: ProcessedRepo, client: TripleStore) = Props(new GraphSaver(repo, client))
+  case class SaveGraphs(incrementalOpt: Option[Incremental])
+
+  def props(repo: ProcessedRepo, ts: TripleStore) = Props(new GraphSaver(repo, ts))
 
 }
 
 class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with ActorLogging {
 
   import context.dispatcher
+  import triplestore.GraphSaver._
 
   var reader: Option[GraphReader] = None
+  var progress: Option[ProgressReporter] = None
 
   def readGraphChunkOpt: Option[GraphChunk] = reader.get.readChunk
 
   override def receive = {
 
-    /*
-      This is still naive because there is no distinction between first and incremental.
-      Not tested yet.
-     */
+    case InterruptWork =>
+      progress.map(_.interruptBy(sender()))
 
-    case SaveGraphs =>
-      reader = Some(repo.createGraphReader(chunkSize = 5))
+    case SaveGraphs(incrementalOpt) =>
+      val progressReporter = ProgressReporter(ADOPTING, context.parent)
+      progress = Some(progressReporter)
+      reader = Some(repo.createGraphReader(incrementalOpt.map(_.file), progressReporter))
       self ! readGraphChunkOpt
 
     case Some(chunk: GraphChunk) =>
-      client.update(chunk.toSparqlUpdate).onComplete {
-        case Success(nothing) =>
-          self ! readGraphChunkOpt
-        case Failure(ex) =>
-          reader.get.close()
+      val update = client.update(chunk.toSparqlUpdate)
+      update.map(ok => self ! readGraphChunkOpt)
+      update.onFailure {
+        case ex: Throwable =>
+          reader.map(_.close())
           context.parent ! WorkFailure(ex.getMessage, Some(ex))
       }
 
     case None =>
-      reader.get.close()
+      reader.map(_.close())
+      reader = None
       context.parent ! GraphSaveComplete
 
     case ChunkSent =>

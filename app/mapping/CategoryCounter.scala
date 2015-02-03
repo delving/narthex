@@ -18,7 +18,7 @@ package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{InterruptWork, WorkFailure}
-import dataset.DatasetRepo
+import dataset.DatasetContext
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import record.CategoryParser
 import record.CategoryParser.CategoryCount
@@ -34,10 +34,10 @@ object CategoryCounter {
 
   case class CategoryCountComplete(dataset: String, categoryCounts: List[CategoryCount])
 
-  def props(datasetRepo: DatasetRepo) = Props(new CategoryCounter(datasetRepo))
+  def props(datasetContext: DatasetContext) = Props(new CategoryCounter(datasetContext))
 }
 
-class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogging {
+class CategoryCounter(val datasetContext: DatasetContext) extends Actor with ActorLogging {
 
   import context.dispatcher
 
@@ -50,17 +50,17 @@ class CategoryCounter(val datasetRepo: DatasetRepo) extends Actor with ActorLogg
 
     case CountCategories() =>
       log.info("Counting categories")
-      val pathPrefix = s"${NarthexConfig.ORG_ID}/$datasetRepo"
+      val pathPrefix = s"${NarthexConfig.ORG_ID}/$datasetContext"
       future {
-        val categoryMappings = datasetRepo.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap
+        val categoryMappings = datasetContext.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap
         val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT, categoryMappings)
-        val (source, readProgress) = FileHandling.sourceFromFile(datasetRepo.processedRepo.home)
+        val (source, readProgress) = FileHandling.sourceFromFile(datasetContext.processedRepo.home)
         try {
           val progressReporter = ProgressReporter(CATEGORIZING, context.parent)
           progress = Some(progressReporter)
           progressReporter.setReadProgress(readProgress)
           parser.parse(source, Set.empty[String], progressReporter)
-          context.parent ! CategoryCountComplete(datasetRepo.dsInfo.spec, parser.categoryCounts)
+          context.parent ! CategoryCountComplete(datasetContext.dsInfo.spec, parser.categoryCounts)
         }
         catch {
           case e: Exception => context.parent ! WorkFailure(e.getMessage, Some(e))

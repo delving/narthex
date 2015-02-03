@@ -227,6 +227,7 @@ class DsInfo(val spec: String, ts: TripleStore) {
   }
 
   def dropDataset = {
+    // todo: there is more to delete!  the records
     val sparql =
       s"""
          |DELETE {

@@ -50,13 +50,16 @@
                                 <label for="new-name">Dataset Short Name</label>
                                 <input id="new-name" class="form-control" data-ng-model="newDataset.specTyped" placeholder="spec" required autofocus/>
                             </div>
-                            <div>
+                            <div data-ng-if="characters.length > 1">
                                 <label for="new-format">Character</label>
                                 <div id="new-format">
                                     <span data-ng-repeat="ch in characters" style="padding: 5px">
                                         <input type="radio" name="character" data-ng-model="newDataset.character" data-ng-value="ch"> <span>{{ ch.title }}</span>
                                     </span>
                                 </div>
+                            </div>
+                            <div data-ng-if="characters.length == 1">
+                                {{ characters[0].title }}
                             </div>
                             <hr/>
                             <div class="form-group">
@@ -81,90 +84,98 @@
     <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary">
 
         <div class="panel-heading" data-ng-click="expanded = !expanded">
-                <i class="fa fa-fw {{ getIcon() }}"></i>
-                <span class="name">{{ dataset.datasetSpec }}</span>
-                <span data-ng-if="dataset.datasetError" class="label label-danger">
-                    <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetError }}
-                </span>
-                <span data-ng-show="dataset.datasetRecordCount" class="count pull-right">{{ dataset.datasetRecordCount }}</span>
+            <i class="fa fa-fw {{ getIcon() }}"></i>
+            <span class="name">{{ dataset.datasetSpec }}</span>
+            <span data-ng-show="dataset.datasetRecordCount" class="count pull-right">{{ dataset.datasetRecordCount }}</span>
         </div>
 
-        <div class="panel-body">
-
-            <div data-ng-show="!dataset.progress" class="ds-states">
-                <div data-ng-show="dataset.empty">
-                    <div><strong>Empty</strong></div>
-                </div>
-                <div data-ng-show="dataset.stateRaw" class="ds-state">
-                    <div><strong>Raw</strong></div>
-                    <div>{{ dataset.stateRaw.d }}</div>
-                    <div>{{ dataset.stateRaw.t }}</div>
-                </div>
-                <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state">
-                    <div><strong>Raw Analyzed</strong></div>
-                    <div>{{ dataset.stateRawAnalyzed.d }}</div>
-                    <div>{{ dataset.stateRawAnalyzed.t }}</div>
-                </div>
-                <div data-ng-show="dataset.stateSourced" class="ds-state">
-                    <div><strong>Sourced</strong></div>
-                    <div>{{ dataset.stateSourced.d }}</div>
-                    <div>{{ dataset.stateSourced.t }}</div>
-                </div>
-                <div data-ng-show="dataset.stateMappable" class="ds-state">
-                    <div><strong>Mappable</strong></div>
-                    <div>{{ dataset.stateMappable.d }}</div>
-                    <div>{{ dataset.stateMappable.t }}</div>
-                    <div><a href="{{sipCreatorLink}}" class="btn btn-sm btn-default"><i class="fa fa-download"></i> SIPCreator</a></div>
-                </div>
-                <div data-ng-show="dataset.stateProcessable" class="ds-state">
-                    <div><strong>Processable</strong></div>
-                    <div>{{ dataset.stateProcessable.d }}</div>
-                    <div>{{ dataset.stateProcessable.t }}</div>
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
-                            <i class="fa fa-cogs"></i> <span>Process</span>
-                        </button>
-                    </div>
-                </div>
-                <div data-ng-show="dataset.stateProcessed" class="ds-state">
-                    <div><strong>Processed</strong></div>
-                    <div>{{ dataset.stateProcessed.d }}</div>
-                    <div>{{ dataset.stateProcessed.t }}</div>
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
-                            <i class="fa fa-cogs"></i> <span>Analyze</span>
-                        </button>
-                    </div>
-                </div>
-                <div data-ng-show="dataset.stateAnalyzed" class="ds-state">
-                    <div><strong>Analyzed</strong></div>
-                    <div>{{ dataset.stateAnalyzed.d }}</div>
-                    <div>{{ dataset.stateAnalyzed.t }}</div>
-                    <div>
-                        <button class="btn btn-sm btn-primary" data-ng-click="viewFile()">
-                            <i class="fa fa-eye"></i> <span>Explore</span>
-                        </button>
-                    </div>
-                </div>
-                <div data-ng-show="dataset.stateSaved" class="ds-state">
-                    <div><strong>Saved</strong></div>
-                    <div>{{ dataset.stateSaved.d }}</div>
-                    <div>{{ dataset.stateSaved.t }}</div>
+        <div data-ng-if="dataset.progress" class="panel-body">
+            <div class="input-group">
+                <progressbar class="form-control-feedback" animate="true" value="dataset.progress.count" max="100">{{ dataset.progress.message }}</progressbar>
+                <div class="input-group-btn">
+                    <button class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="dataset.progress">
+                        <i class="fa fa-trash-o"></i> <span>Interrupt</span>
+                    </button>
                 </div>
             </div>
+        </div>
 
-            <div data-ng-if="dataset.progress">
-                <div class="input-group">
-                    <progressbar class="form-control-feedback" animate="true" value="dataset.progress.count" max="100">{{ dataset.progress.message }}</progressbar>
-                    <div class="input-group-btn">
-                        <button class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="dataset.progress">
-                            <i class="fa fa-trash-o"></i> <span>Interrupt</span>
-                        </button>
+        <div class="panel-body" data-ng-if="expanded && !dataset.progress">
+
+            <div>
+
+                <div data-ng-if="dataset.datasetErrorMessage" class="label label-danger" data-ng-click="clearError()">
+                    <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}
+                </div>
+
+                <!--todo: maybe put this all inside a tab-->
+                <div class="ds-states">
+                    <div data-ng-show="dataset.empty">
+                        <div><strong>Empty</strong></div>
+                    </div>
+                    <div data-ng-show="dataset.stateRaw" class="ds-state">
+                        <div><strong>Raw</strong></div>
+                        <div>{{ dataset.stateRaw.d }}</div>
+                        <div>{{ dataset.stateRaw.t }}</div>
+                    </div>
+                    <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state">
+                        <div><strong>Raw Analyzed</strong></div>
+                        <div>{{ dataset.stateRawAnalyzed.d }}</div>
+                        <div>{{ dataset.stateRawAnalyzed.t }}</div>
+                    </div>
+                    <div data-ng-show="dataset.stateSourced" class="ds-state">
+                        <div><strong>Sourced</strong></div>
+                        <div>{{ dataset.stateSourced.d }}</div>
+                        <div>{{ dataset.stateSourced.t }}</div>
+                    </div>
+                    <div data-ng-show="dataset.stateMappable" class="ds-state">
+                        <div><strong>Mappable</strong></div>
+                        <div>{{ dataset.stateMappable.d }}</div>
+                        <div>{{ dataset.stateMappable.t }}</div>
+                        <div><a href="{{sipCreatorLink}}" class="btn btn-sm btn-default"><i class="fa fa-download"></i> Mapper</a></div>
+                    </div>
+                    <div data-ng-show="dataset.stateProcessable" class="ds-state">
+                        <div><strong>Processable</strong></div>
+                        <div>{{ dataset.stateProcessable.d }}</div>
+                        <div>{{ dataset.stateProcessable.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
+                                <i class="fa fa-cogs"></i> <span>Process</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div data-ng-show="dataset.stateProcessed" class="ds-state">
+                        <div><strong>Processed</strong></div>
+                        <div>{{ dataset.stateProcessed.d }}</div>
+                        <div>{{ dataset.stateProcessed.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
+                                <i class="fa fa-bar-chart"></i> <span>Analyze</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div data-ng-show="dataset.stateAnalyzed" class="ds-state">
+                        <div><strong>Analyzed</strong></div>
+                        <div>{{ dataset.stateAnalyzed.d }}</div>
+                        <div>{{ dataset.stateAnalyzed.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-success" data-ng-click="startSaving()">
+                                <i class="fa fa-database"></i> <span>Save</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div data-ng-show="dataset.stateSaved" class="ds-state">
+                        <div><strong>Saved</strong></div>
+                        <div>{{ dataset.stateSaved.d }}</div>
+                        <div>{{ dataset.stateSaved.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-info" data-ng-click="viewFile()">
+                                <i class="fa fa-eye"></i> <span>Explore</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div data-ng-if="expanded">
 
                 <hr />
 
@@ -303,17 +314,14 @@
                 <label for="harv_search">Search</label>
                 <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
             </div>
+            <button type="button" class="btn btn-warning pull-right" data-ng-click="startFirstHarvest()"  data-ng-disabled="!unchangedHarvest">
+                <i class="fa fa-download"></i>
+                <span>Harvest</span>
+            </button>
             <button type="button" class="btn btn-success" data-ng-click="setHarvest()" data-ng-disabled="unchangedHarvest">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
-            <!--<button typ="button" class="btn btn-success" data-ng-click="startHarvest()">-->
-                <!--<i class="fa fa-refresh"></i>-->
-                <!--<span>Harvest</span>-->
-                <!--<span data-ng-show="harvest.harvestType == 'pmh'">from OAI-PMH (record)</span>-->
-                <!--<span data-ng-show="harvest.harvestType == 'pmh-rec'">from OAI-PMH (fields)</span>-->
-                <!--<span data-ng-show="harvest.harvestType == 'adlib'">from AdLib</span>-->
-            <!--</button>-->
         </fieldset>
     </form>
 </script>
@@ -372,7 +380,7 @@
         <fieldset>
             <div class="checkbox">
                 <label for="cat">Include in Category Monitor Statistics
-                    <input id="cat" type="checkbox" data-ng-model="dataset.edit.categoriesIncluded" ng-true-value="'true'" ng-false-value="'false'"/>
+                    <input id="cat" type="checkbox" data-ng-model="dataset.edit.categoriesInclude" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
             <button typ="button" class="btn btn-success btn-sm"  data-ng-click="setCategories()" data-ng-disabled="unchangedCategories">

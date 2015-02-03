@@ -19,7 +19,7 @@ package org
 import java.io.File
 
 import dataset.DsInfo.Character
-import dataset.{DatasetRepo, DsInfo, Sip, SipFactory}
+import dataset.{DatasetContext, DsInfo, Sip, SipFactory}
 import mapping.{CategoriesRepo, SkosInfo, SkosMappingStore}
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
@@ -34,11 +34,11 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 
-object OrgRepo {
+object OrgContext {
 
   val SIP_EXTENSION = ".sip.zip"
 
-  lazy val repo = new OrgRepo(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
+  lazy val orgContext = new OrgContext(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
 
   def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
 
@@ -51,9 +51,9 @@ object OrgRepo {
 
 }
 
-class OrgRepo(userHome: String, val orgId: String) {
+class OrgContext(userHome: String, val orgId: String) {
 
-  import org.OrgRepo._
+  import org.OrgContext._
 
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
@@ -77,14 +77,14 @@ class OrgRepo(userHome: String, val orgId: String) {
     character.map(c => DsInfo.create(owner, spec, c, prefix, ts))
   }
 
-  def datasetRepo(spec: String): DatasetRepo = datasetRepoOption(spec).getOrElse(
+  def datasetContext(spec: String): DatasetContext = datasetContextOption(spec).getOrElse(
     throw new RuntimeException(s"Expected $spec dataset to exist")
   )
 
-  def datasetRepoOption(spec: String): Option[DatasetRepo] = {
+  def datasetContextOption(spec: String): Option[DatasetContext] = {
     val futureInfoOpt = DsInfo.check(spec, ts)
     val infoOpt = Await.result(futureInfoOpt, 5.seconds)
-    infoOpt.map(info => new DatasetRepo(this, info).mkdirs)
+    infoOpt.map(info => new DatasetContext(this, info).mkdirs)
   }
 
   def skosMappingStore(specA: String, specB: String): SkosMappingStore = {
@@ -105,8 +105,8 @@ class OrgRepo(userHome: String, val orgId: String) {
   def uploadedSips: Future[Seq[Sip]] = {
     DsInfo.listDsInfo(ts).map { list =>
       list.flatMap { dsi =>
-        val datasetRepo = new DatasetRepo(this, dsi)
-        datasetRepo.sipRepo.latestSipOpt
+        val datasetContext = new DatasetContext(this, dsi)
+        datasetContext.sipRepo.latestSipOpt
       }
     }
   }

@@ -20,7 +20,7 @@ import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
 import org.ActorStore.NXActor
-import org.OrgRepo
+import org.OrgContext
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -94,7 +94,7 @@ object SkosInfo {
     Cache.getAs[SkosInfo](cacheName) map { skosInfo =>
       block(skosInfo)
     } getOrElse {
-      val skosInfo = Await.result(check(spec, OrgRepo.repo.ts), 10.seconds).getOrElse{
+      val skosInfo = Await.result(check(spec, OrgContext.orgContext.ts), 10.seconds).getOrElse{
         throw new RuntimeException(s"No skos info for $spec")
       }
       Cache.set(cacheName, skosInfo, 5.minutes)

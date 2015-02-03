@@ -8,6 +8,7 @@ import org.ActorStore
 import org.scalatestplus.play._
 import play.api.libs.json.Json
 import play.api.test.Helpers._
+import services.ProgressReporter
 import triplestore.GraphProperties._
 import triplestore.TripleStore
 
@@ -27,12 +28,12 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     cleanStart()
     val home = new File(getClass.getResource(s"/processed").getFile)
     val repo = new ProcessedRepo(home, "http://dataset.uri")
-    val reader = repo.createGraphReader(2)
+    val reader = repo.createGraphReader(None, ProgressReporter())
     val chunk = reader.readChunk.get
     reader.close()
     val sparql = chunk.toSparqlUpdate
     await(ts.update(sparql))
-    countGraphs must be(2)
+    countGraphs must be(12)
   }
 
   "The dataset info object should be able to interact with the store" in {
