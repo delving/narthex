@@ -56,14 +56,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                getTermSourcePaths: function (spec) {
-                    return app.getTermSourcePaths(spec).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
                 getCategorySourcePaths: function (spec) {
                     return app.getCategorySourcePaths(spec).get().then(
                         function (response) {
