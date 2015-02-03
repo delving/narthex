@@ -40,64 +40,73 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                datasetInfo: function (datasetName) {
-                    return app.datasetInfo(datasetName).get().then(
+                datasetInfo: function (spec) {
+                    return app.datasetInfo(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                index: function (datasetName) {
-                    return app.index(datasetName).get().then(
+                index: function (spec) {
+                    return app.index(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                getTermSourcePaths: function (datasetName) {
-                    return app.getTermSourcePaths(datasetName).get().then(
+                getTermSourcePaths: function (spec) {
+                    return app.getTermSourcePaths(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                getCategorySourcePaths: function (datasetName) {
-                    return app.getCategorySourcePaths(datasetName).get().then(
+                getCategorySourcePaths: function (spec) {
+                    return app.getCategorySourcePaths(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                nodeStatus: function (datasetName, path) {
-                    return app.nodeStatus(datasetName, path).get().then(
+                nodeStatus: function (spec, path) {
+                    return app.nodeStatus(spec, path).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setRecordDelimiter: function (datasetName, body) {
-                    return app.setRecordDelimiter(datasetName).post(body).then(
+                setRecordDelimiter: function (spec, body) {
+                    return app.setRecordDelimiter(spec).post(body).then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                sample: function (datasetName, path, size) {
-                    return app.sample(datasetName, path, size).get().then(
+                toggleSkosField: function (spec, uri) {
+                    var body = { "skosFieldUri": uri };
+                    return app.toggleSkosField(spec).post(body).then(
+                        function (response) {
+                            return response.data.action;
+                        },
+                        rejection
+                    );
+                },
+                sample: function (spec, path, size) {
+                    return app.sample(spec, path, size).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                histogram: function (datasetName, path, size) {
-                    return app.histogram(datasetName, path, size).get().then(
+                histogram: function (spec, path, size) {
+                    return app.histogram(spec, path, size).get().then(
                         function (response) {
                             return response.data;
                         },

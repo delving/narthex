@@ -106,7 +106,13 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     // mark a field as skosified
     countGraphs must be(7)
     val info = await(DsInfo.check("frans_hals", ts)).get
-    await(info.addUriProp(skosField, "http://purl.org/dc/elements/1.1/type"))
+    val dcType: String = "http://purl.org/dc/elements/1.1/type"
+    await(info.addUriProp(skosField, dcType))
+    info.getUriPropValueList(skosField) must be(List(dcType))
+    await(info.removeUriProp(skosField, dcType))
+    info.getUriPropValueList(skosField) must be(List())
+    await(info.addUriProp(skosField, dcType))
+    info.getUriPropValueList(skosField) must be(List(dcType))
 
     val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
 
