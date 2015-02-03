@@ -34,8 +34,10 @@ define(["angular"], function () {
 
         datasetService.datasetInfo($scope.datasetName).then(function (info) {
 
-            $scope.rawAnalyzedState = !!info.rawAnalyzedState;
-            $scope.analyzedState = !!info.analyzedState;
+            console.log("info", info);
+
+            $scope.rawAnalyzedState = !!info.stateRawAnalyzed;
+            $scope.analyzedState = !!info.stateAnalyzed;
             if (info.analyzedState) {
                 $scope.recordRoot = "/rdf:Description";
                 $scope.uniqueId = "/rdf:Description/@rdf:about";

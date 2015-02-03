@@ -231,7 +231,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     fileList.headOption.map(_._2)
   } getOrElse None
 
-  def indexText(path: String): Option[File] = nodeRepo(path).map(_.indexText)
+  def uriText(path: String): Option[File] = nodeRepo(path).map(_.uriText)
 
   def uniqueText(path: String): Option[File] = nodeRepo(path).map(_.uniqueText)
 

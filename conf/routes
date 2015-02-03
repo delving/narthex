@@ -70,9 +70,8 @@ POST        /narthex/sip-app/:spec/:zipFileName                         web.SipA
 GET         /narthex/api/:apiKey                                        web.APIController.listDatasets(apiKey)
 GET         /narthex/api/:apiKey/:spec                                  web.APIController.pathsJSON(apiKey, spec)
 GET         /narthex/api/:apiKey/:spec/tree                             web.APIController.indexJSON(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/index                            web.APIController.indexText(apiKey, spec, path="")
 GET         /narthex/api/:apiKey/:spec/mappings                         web.APIController.termMappings(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/index/*path                      web.APIController.indexText(apiKey, spec, path)
+GET         /narthex/api/:apiKey/:spec/uri/*path                        web.APIController.uri(apiKey, spec, path)
 GET         /narthex/api/:apiKey/:spec/unique/*path                     web.APIController.uniqueText(apiKey, spec, path)
 GET         /narthex/api/:apiKey/:spec/histogram/*path                  web.APIController.histogramText(apiKey, spec, path)
 
