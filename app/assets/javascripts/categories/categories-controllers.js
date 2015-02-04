@@ -20,7 +20,7 @@ define(["angular"], function (angular) {
     var CategorySetCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, pageScroll) {
 
         function getSearchParams() {
-            $scope.datasetName = $routeParams.datasetName;
+            $scope.spec = $routeParams.spec;
             $scope.path = $routeParams.path;
             $scope.histogramSize = parseInt($routeParams.size || "100");
         }
@@ -54,12 +54,10 @@ define(["angular"], function (angular) {
                 $scope.columnDefs.push({
                     field: 'category' + walk,
                     index: walk + 2,
-                    headerCellTemplate:
-                        '<div class="category-header">' +
+                    headerCellTemplate: '<div class="category-header">' +
                         '  <span class="category-header-text">' + code.toUpperCase() + '</span>' +
                         '</div>',
-                    cellTemplate:
-                        '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
+                    cellTemplate: '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
                         '  <input type="checkbox" class="category-checkbox" data-ng-model="row.entity.memberOf[' + codeQuoted + ']" ' +
                         '         data-ng-click="setGridValue(row.entity, ' + codeQuoted + ')"/>' +
                         '</div>'
@@ -75,9 +73,9 @@ define(["angular"], function (angular) {
                 return;
             }
             columnDefinitionsFromCategories();
-            categoriesService.histogram($scope.datasetName, $scope.path, $scope.histogramSize).then(function (histogramData) {
+            categoriesService.histogram($scope.spec, $scope.path, $scope.histogramSize).then(function (histogramData) {
                 $scope.gridData = _.map(histogramData.histogram, function (entry) {
-                    var sourceURI = $rootScope.orgId + "/" + $scope.datasetName + sourceURIPath + "/" + encodeURIComponent(entry[1]);
+                    var sourceURI = $rootScope.orgId + "/" + $scope.spec + sourceURIPath + "/" + encodeURIComponent(entry[1]);
 //                        console.log("sourceURI " + entry[1], sourceURI);
                     return {
                         term: entry[1],
@@ -87,7 +85,7 @@ define(["angular"], function (angular) {
                     }
                 });
 
-                categoriesService.getCategoryMappings($scope.datasetName).then(function (mappingsData) {
+                categoriesService.getCategoryMappings($scope.spec).then(function (mappingsData) {
                     var mappingLookup = {};
                     _.forEach(mappingsData.mappings, function (mapping) {
                         mappingLookup[mapping.sourceURI] = mapping.categories;
@@ -105,10 +103,10 @@ define(["angular"], function (angular) {
         $scope.categoryGrid = {
             data: 'gridData',
             columnDefs: "columnDefs",
-            afterSelectionChange: function(rowItem) {
+            afterSelectionChange: function (rowItem) {
                 var visible = {};
-                _.forEach($scope.categoryGrid.$gridScope.selectedItems, function(selectedItem) {
-                    _.forEach($scope.categories, function(category) {
+                _.forEach($scope.categoryGrid.$gridScope.selectedItems, function (selectedItem) {
+                    _.forEach($scope.categories, function (category) {
                         if (selectedItem.memberOf[category.code]) visible[category.code] = true;
                     });
                 });
@@ -129,13 +127,12 @@ define(["angular"], function (angular) {
 
         $scope.showCategoryExplain = function (index) {
             $scope.categoryHelp = $scope.categories[index];
-            angular.element(document.querySelector( '#category-explanation' )).addClass('visible');
+            angular.element(document.querySelector('#category-explanation')).addClass('visible');
         };
 
         $scope.hideCategoryExplain = function (index) {
-            angular.element(document.querySelector( '#category-explanation' )).removeClass('visible');
+            angular.element(document.querySelector('#category-explanation')).removeClass('visible');
         };
-
 
         $scope.setGridValue = function (entity, code) {
             var body = {
@@ -144,7 +141,7 @@ define(["angular"], function (angular) {
                 member: entity.memberOf[code]
             };
             entity.busyCode = code;
-            categoriesService.setCategoryMapping($scope.datasetName, body).then(function (data) {
+            categoriesService.setCategoryMapping($scope.spec, body).then(function (data) {
                 delete entity.busyCode;
             });
         };
@@ -155,6 +152,19 @@ define(["angular"], function (angular) {
     };
 
     CategorySetCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "categoriesService", "$timeout", "pageScroll"];
+
+    var progressStates = {
+        'state-harvesting': "Harvesting",
+        'state-collecting': "Collecting",
+        'state-adopting': "Adopting",
+        'state-generating': "Generating",
+        'state-splitting': "Splitting",
+        'state-collating': "Collating",
+        'state-categorizing': "Categorizing",
+        'state-processing': "Processing",
+        'state-saving': "Saving",
+        'state-error': "Error"
+    };
 
     var CategoryMonitorCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, user) {
 
@@ -168,40 +178,64 @@ define(["angular"], function (angular) {
 
         fetchSheetList();
 
-        function fetchDatasetList() {
-            categoriesService.listDatasets().then(function (files) {
-                _.forEach($scope.files, cancelChecker);
-                _.forEach(files, decorateFile);
-                $scope.files = _.filter(files, function (file) {
-                    return file.info.categories && file.info.categories.included == 'true';
-                });
-
-                //todo
-                console.log('scope files', $scope.files);
-
-
-                $scope.datasetBusy = false;
-                _.forEach(files, function (file) {
-                    if (file.progress) {
-                        checkProgress(file);
-                        $scope.datasetBusy = true;
+        function checkProgress(dataset) {
+            categoriesService.datasetProgress(dataset.datasetSpec).then(function (data) {
+                if (data.progressType == 'progress-idle') {
+                    console.log(dataset.datasetSpec + " is idle, stopping check");
+                    dataset.progress = undefined;
+                    if (data.errorMessage) {
+                        console.log(dataset.datasetSpec + " has error message " + data.errorMessage);
+                        dataset.error = data.errorMessage;
                     }
+                    if (dataset.refreshAfter) {
+                        delete dataset.refreshAfter;
+                        console.log(dataset.datasetSpec + " refreshing after progress");
+                        refreshInfo();
+                    }
+                    delete dataset.progress;
+                }
+                else {
+                    console.log(dataset.datasetSpec + " is in progress");
+                    dataset.progress = {
+                        state: data.progressState,
+                        type: data.progressType,
+                        count: parseInt(data.count)
+                    };
+                    createProgressMessage(dataset.progress);
+                    dataset.progressCheckerTimeout = $timeout(checkProgress, 900 + Math.floor(Math.random() * 200));
+                }
+            }, function (problem) {
+                if (problem.status == 404) {
+                    alert("Processing problem with " + file.name);
+                    fetchDatasetList()
+                }
+                else {
+                    alert("Network problem " + problem.status);
+                }
+            })
+        }
+
+        function fetchDatasetList() {
+            categoriesService.listDatasets().then(function (array) {
+                if ($scope.datasets) _.forEach($scope.datasets, function (dataset) {
+                    if (dataset.progressCheckerTimeout) {
+                        $timeout.cancel(dataset.progressCheckerTimeout);
+                        delete(dataset.progressCheckerTimeout);
+                    }
+                });
+                $scope.datasets = _.filter(array, function (dataset) {
+                    return dataset.categoriesInclude == 'true';
+                });
+                console.log('included datasets', $scope.datasets);
+                _.forEach($scope.datasets, function (dataset) {
+                    dataset.progressCheckerTimeout = $timeout(function () {
+                        checkProgress(dataset);
+                    }, 1000 + Math.floor(Math.random() * 1000));
                 });
             });
         }
 
         fetchDatasetList();
-
-        var stateNames = { // todo: probably wrong
-            'state-harvesting': "Harvesting from server",
-            'state-collecting': "Collecting identifiers",
-            'state-generating': "Generating source",
-            'state-splitting': "Splitting fields",
-            'state-collating': "Collating values",
-            'state-categorizing': "Categorizing records",
-            'state-processing': "Processing records",
-            'state-error': "Error"
-        };
 
         function createProgressMessage(p) {
             if (p.count == 0) p.count = 1;
@@ -227,73 +261,17 @@ define(["angular"], function (angular) {
                         break;
                 }
                 if (p.count > 15) {
-                    pre = stateNames[p.state] + " ";
+                    pre = progressStates[p.state] + " ";
                 }
             }
             return pre + mid + post;
         }
 
-        function decorateFile(file) {
-            delete(file.error);
-
-            // todo: remove!
-            file.info.progress = {
-                state: "state-categorizing",
-                type: "progress-percent",
-                count:50
-            };
-            // todo: remove!
-
-            if (file.info.progress) {
-                if (file.info.progress.type != 'progress-idle') {
-                    file.progress = file.info.progress;
-                    file.progress.message = createProgressMessage(file.info.progress);
-                }
-                else {
-                    if (file.info.progress.state == 'state-error') {
-                        file.error = file.info.progress.error;
-                    }
-                    delete(file.progress);
-                }
-            }
-        }
-
-        function cancelChecker(file) {
-            if (file.checker) {
-                $timeout.cancel(file.checker);
-                delete(file.checker);
-            }
-        }
-
-        function checkProgress(file) {
-            categoriesService.datasetInfo(file.name).then(function (info) {
-                file.info = info;
-                decorateFile(file);
-                if (!file.progress) {
-                    fetchDatasetList();
-                    $timeout(function () {
-                        fetchSheetList()
-                    }, 3000);
-                    return;
-                }
-                file.checker = $timeout(function () {
-                    checkProgress(file)
-                }, 1000);
-            }, function (problem) {
-                if (problem.status == 404) {
-                    alert("Processing problem with " + file.name);
-                    fetchDatasetList()
-                }
-                else {
-                    alert("Network problem " + problem.status);
-                }
-            })
-        }
-
         $scope.gatherCategoryCounts = function () {
-            categoriesService.gatherCategoryCounts().then(function (files) {
-                fetchDatasetList();
-            });
+            alert("Not yet implemented");
+//            categoriesService.gatherCategoryCounts().then(function (files) {
+//                fetchDatasetList();
+//            });
         };
 
         $scope.sheetUrl = function (name) {
