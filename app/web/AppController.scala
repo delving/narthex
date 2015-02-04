@@ -276,12 +276,6 @@ object AppController extends Controller with Security {
 
   // todo: things under here unfinished
 
-  def getTermSourcePaths(spec: String) = Secure() { session => request =>
-    val datasetContext = orgContext.datasetContext(spec)
-    val sourcePaths = datasetContext.termDb.getSourcePaths
-    Ok(Json.obj("sourcePaths" -> sourcePaths))
-  }
-
   def getTermMappings(spec: String) = Secure() { session => request =>
     val datasetContext = orgContext.datasetContext(spec)
     val mappings: scala.Seq[TermMapping] = datasetContext.termDb.getMappings

@@ -37,7 +37,6 @@ GET         /narthex/app/dataset/:spec/status/*path                     web.AppC
 GET         /narthex/app/dataset/:spec/sample/:size/*path               web.AppController.sample(spec, path, size:Int)
 GET         /narthex/app/dataset/:spec/histogram/:size/*path            web.AppController.histogram(spec, path, size:Int)
 
-GET         /narthex/app/dataset/:spec/term/source-paths                web.AppController.getTermSourcePaths(spec)
 GET         /narthex/app/dataset/:spec/term/mappings                    web.AppController.getTermMappings(spec)
 POST        /narthex/app/dataset/:spec/term/set-mapping                 web.AppController.setTermMapping(spec)
 
