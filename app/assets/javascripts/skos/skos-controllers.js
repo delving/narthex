@@ -201,6 +201,9 @@ define(["angular"], function (angular) {
         $scope.conceptsA = [];
         $scope.conceptsB = [];
 
+        $scope.conceptSchemeA = $routeParams.specA;
+        $scope.conceptSchemeB = $routeParams.specB;
+
         function filterConceptsNow() {
             switch ($scope.show) {
                 case "all":
