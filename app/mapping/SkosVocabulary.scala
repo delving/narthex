@@ -21,6 +21,7 @@ import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
 import mapping.SkosVocabulary._
 import play.api.Logger
 import play.api.libs.json.{JsObject, Json, Writes}
+import triplestore.TripleStore
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -76,7 +77,7 @@ object SkosVocabulary {
         "prefLabel" -> result.prefLabel.text,
         "uri" -> result.concept.resource.toString,
 //        "conceptScheme" -> result.concept.vocabulary.name,
-        "attributionName" -> result.concept.vocabulary.skosInfo.spec,
+        "attributionName" -> result.concept.vocabulary.spec,
         "narrower" -> narrowerLabels.map(_.text),
         "broader" -> broaderLabels.map(_.text)
       )
@@ -128,14 +129,14 @@ object SkosVocabulary {
 
 }
 
-case class SkosVocabulary(skosInfo: SkosInfo) {
+case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore) {
 
-  lazy val futureModel = skosInfo.ts.dataGet(skosInfo.dataUri)
+  lazy val futureModel = ts.dataGet(graphName)
   futureModel.onFailure {
-    case e: Throwable => Logger.warn(s"No data found for skos vocabulary $skosInfo", e)
+    case e: Throwable => Logger.warn(s"No data found for skos vocabulary $graphName", e)
   }
   futureModel.onSuccess {
-    case x => Logger.info(s"Loaded $skosInfo")
+    case x => Logger.info(s"Loaded $graphName")
   }
   lazy val m: Model = Await.result(futureModel, 30.seconds)
 
@@ -155,5 +156,5 @@ case class SkosVocabulary(skosInfo: SkosInfo) {
     LabelSearch(LabelQuery(language, cleanSought, count), results)
   }
 
-  override def toString: String = skosInfo.dataUri
+  override def toString: String = graphName
 }

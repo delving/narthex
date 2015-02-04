@@ -20,6 +20,7 @@ import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
 import harvest.Harvesting.{HarvestCron, HarvestType}
+import mapping.SkosVocabulary
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
 import org.OrgContext._
@@ -95,6 +96,8 @@ object DsInfo {
 
   def getDsUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
 
+  def getSkosUri(datasetUri: String) = s"$datasetUri/skos"
+
   def create(owner: NXActor, spec: String, character: Character, mapToPrefix: String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsUri(spec))
@@ -126,6 +129,8 @@ class DsInfo(val spec: String, ts: TripleStore) {
   def now: String = timeToString(new DateTime())
 
   val uri = getDsUri(spec)
+
+  val skosUri = getSkosUri(uri)
 
   // could cache as well so that the get happens less
   lazy val futureModel = ts.dataGet(uri)
@@ -322,6 +327,8 @@ class DsInfo(val spec: String, ts: TripleStore) {
     m.write(sw, "TURTLE")
     sw.toString
   }
+
+  lazy val vocabulary = new SkosVocabulary(spec, skosUri, ts)
 
   override def toString = spec
 }

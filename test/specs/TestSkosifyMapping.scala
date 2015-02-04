@@ -121,7 +121,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     skosificationCases.map(println)
 
     skosificationCases.map { sc =>
-      val graph = sc.skosifieldField.datasetSkosUri
+      val graph = DsInfo.getSkosUri(sc.skosifieldField.datasetUri)
       val valueUri: String = sc.mintedUri
       val checkEntry = s"ASK { GRAPH <$graph> { <$valueUri> a <http://www.w3.org/2004/02/skos/core#Concept> } }"
       val syncedTrue: String = s"ASK { GRAPH <$graph> { <$valueUri> <$synced> true } }"

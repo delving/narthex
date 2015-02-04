@@ -111,7 +111,7 @@ object SkosInfo {
   }
 }
 
-class SkosInfo(val spec: String, val ts: TripleStore) {
+class SkosInfo(val spec: String, ts: TripleStore) {
 
   import mapping.SkosInfo._
 
@@ -261,7 +261,7 @@ class SkosInfo(val spec: String, val ts: TripleStore) {
     )
   }
 
-  lazy val vocabulary = new SkosVocabulary(this)
+  lazy val vocabulary = new SkosVocabulary(spec, dataUri, ts)
 
   override def toString = uri
 }

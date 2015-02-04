@@ -15,6 +15,7 @@
 //===========================================================================
 package mapping
 
+import dataset.DsInfo.getSkosUri
 import services.StringHandling.urlEncodeValue
 import triplestore.GraphProperties._
 import triplestore.TripleStore.QueryValue
@@ -38,9 +39,7 @@ trait Skosification {
     }
   }
 
-  case class SkosifiedField(datasetUri: String, fieldPropertyUri: String) {
-    val datasetSkosUri = s"$datasetUri/skos"
-  }
+  case class SkosifiedField(datasetUri: String, fieldPropertyUri: String)
 
   def skosificationCasesExist(skosifiedField: SkosifiedField) = {
     val datasetUri = skosifiedField.datasetUri
@@ -79,7 +78,7 @@ trait Skosification {
   case class SkosificationCase(skosifieldField: SkosifiedField, literalValue: QueryValue) {
     val mintedUri = s"${skosifieldField.datasetUri}/${urlEncodeValue(literalValue.text)}"
     val fieldProperty = skosifieldField.fieldPropertyUri
-    val skosGraph = skosifieldField.datasetSkosUri
+    val skosGraph = getSkosUri(skosifieldField.datasetUri)
     val datasetUri = skosifieldField.datasetUri
     val quotedValue = literalValue.quoted
 
