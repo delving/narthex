@@ -20,14 +20,13 @@ import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
 import org.ActorStore.NXActor
-import org.OrgContext
+import org.OrgContext._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json.{JsValue, Json, Writes}
-import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -90,7 +89,7 @@ object SkosInfo {
     Cache.getAs[SkosInfo](cacheName) map { skosInfo =>
       block(skosInfo)
     } getOrElse {
-      val skosInfo = Await.result(check(spec, OrgContext.orgContext.ts), 10.seconds).getOrElse{
+      val skosInfo = Await.result(check(spec, ts), 10.seconds).getOrElse{
         throw new RuntimeException(s"No skos info for $spec")
       }
       Cache.set(cacheName, skosInfo, 5.minutes)

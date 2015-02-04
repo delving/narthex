@@ -26,14 +26,16 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
   "The processed repo should deliver sparql update chunks " in {
     cleanStart()
+    val admin = await(new ActorStore(ts).authenticate("gumby", "secret gumby")).get
+    val info = await(DsInfo.create(admin, "gumby-set", CharacterMapped, "gfx", ts))
     val home = new File(getClass.getResource(s"/processed").getFile)
-    val repo = new ProcessedRepo(home, "http://dataset.uri")
+    val repo = new ProcessedRepo(home, info)
     val reader = repo.createGraphReader(None, ProgressReporter())
     val chunk = reader.readChunk.get
     reader.close()
     val sparql = chunk.toSparqlUpdate
     await(ts.update(sparql))
-    countGraphs must be(12)
+    countGraphs must be(14)
   }
 
   "The dataset info object should be able to interact with the store" in {

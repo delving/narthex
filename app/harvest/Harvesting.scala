@@ -17,11 +17,11 @@
 package harvest
 
 import com.ning.http.client.providers.netty.NettyResponse
+import org.OrgContext._
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.ws.WS
-import services.NarthexConfig
 import services.Temporal._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -147,7 +147,7 @@ trait Harvesting {
   def fetchAdLibPage(url: String, database: String, search: String, modifiedAfter: Option[DateTime],
                      diagnosticOption: Option[AdLibDiagnostic] = None): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
-    val requestUrl = WS.url(url).withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
+    val requestUrl = WS.url(url).withRequestTimeout(HARVEST_TIMEOUT)
     // UMU 2014-10-16T15:00
     val searchModified = modifiedAfter.map(after =>
       s"modification greater '${timeToLocalString(after)}'"
@@ -190,7 +190,7 @@ trait Harvesting {
 
     // Teylers 2014-09-15
     val listRecords = WS.url(url)
-      .withRequestTimeout(NarthexConfig.HARVEST_TIMEOUT)
+      .withRequestTimeout(HARVEST_TIMEOUT)
       .withQueryString("verb" -> "ListRecords")
     val request = resumption match {
       case None =>

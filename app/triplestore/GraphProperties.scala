@@ -18,7 +18,7 @@ package triplestore
 
 import com.hp.hpl.jena.rdf.model.{Model, Property}
 import mapping.SkosVocabulary._
-import services.NarthexConfig._
+import org.OrgContext.NX_NAMESPACE
 
 object GraphProperties {
 

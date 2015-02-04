@@ -69,7 +69,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     val actorStore = new ActorStore(ts)
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
     val info = await(DsInfo.create(admin, "frans_hals", DsInfo.CharacterMapped, "icn", ts))
-    val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info.dsUri)
+    val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info)
     var sourceFile = processedRepo.createFile
     val sourceOutput = writer(sourceFile)
     // fill processed repo by mapping records

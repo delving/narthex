@@ -31,6 +31,7 @@ import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import org.OrgActor.DatasetQuestion
+import org.OrgContext
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import play.api.Logger
@@ -181,7 +182,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       goto(Processing) using Active(Some(sourceProcessor), PROCESSING)
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
-      val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo, datasetContext.orgContext.ts), "graph-saver")
+      val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo, OrgContext.ts), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(Some(graphSaver), PROCESSING)
 

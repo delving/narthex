@@ -18,7 +18,6 @@ package analysis
 
 import analysis.TreeNode.LengthHistogram
 import dataset.DatasetContext
-import org.OrgContext.pathToDirectory
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils.writeStringToFile
 import play.api.Logger

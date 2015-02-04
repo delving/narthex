@@ -29,11 +29,11 @@ import mapping.SkosInfo._
 import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
 import mapping.TermDb._
+import org.OrgActor
 import org.OrgActor.DatasetMessage
-import org.OrgContext.orgContext
+import org.OrgContext.{orgContext, ts}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
-import org.{OrgActor, OrgContext}
 import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
@@ -50,7 +50,7 @@ object AppController extends Controller with Security {
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
   def listDatasets = SecureAsync() { session => request =>
-    listDsInfo(OrgContext.orgContext.ts).map(list => Ok(Json.toJson(list)))
+    listDsInfo(ts).map(list => Ok(Json.toJson(list)))
   }
 
   def listPrefixes = Secure() { session => request =>
@@ -59,7 +59,7 @@ object AppController extends Controller with Security {
   }
 
   def datasetInfo(spec: String) = SecureAsync() { session => request =>
-    DsInfo.check(spec, OrgContext.orgContext.ts).map(info => Ok(Json.toJson(info)))
+    DsInfo.check(spec, ts).map(info => Ok(Json.toJson(info)))
   }
 
   def createDataset(spec: String, character: String, mapToPrefix: String) = Secure() { session => request =>
@@ -132,7 +132,7 @@ object AppController extends Controller with Security {
   }
 
   def setDatasetProperties(spec: String) = SecureAsync(parse.json) { session => request =>
-    DsInfo.check(spec, orgContext.ts).flatMap { dsInfoOpt =>
+    DsInfo.check(spec, ts).flatMap { dsInfoOpt =>
       dsInfoOpt.map { dsInfo =>
         val propertyList = (request.body \ "propertyList").as[List[String]]
         Logger.info(s"setProperties $propertyList")
@@ -149,7 +149,7 @@ object AppController extends Controller with Security {
   def setSkosField(spec: String) = SecureAsync(parse.json) { session => request =>
     val skosFieldUri = (request.body \ "skosFieldUri").as[String]
     val included = (request.body \ "included").as[Boolean]
-    DsInfo.check(spec, orgContext.ts).flatMap { dsInfoOpt =>
+    DsInfo.check(spec, ts).flatMap { dsInfoOpt =>
       dsInfoOpt.map { dsInfo =>
         Logger.info(s"set skos field $skosFieldUri")
         val currentSkosFields = dsInfo.getUriPropValueList(skosField)
@@ -216,11 +216,11 @@ object AppController extends Controller with Security {
   }
 
   def listSkos = SecureAsync() { session => request =>
-    listSkosInfo(orgContext.ts).map(list =>Ok(Json.toJson(list)))
+    listSkosInfo(ts).map(list =>Ok(Json.toJson(list)))
   }
 
   def createSkos(spec: String) = SecureAsync() { session => request =>
-    SkosInfo.create(session.actor, spec, orgContext.ts).map(ok =>
+    SkosInfo.create(session.actor, spec, ts).map(ok =>
       Ok(Json.obj("created" -> s"Skos $spec created"))
     )
   }
@@ -229,7 +229,7 @@ object AppController extends Controller with Security {
     withSkosInfo(spec) { skosInfo =>
       request.body.file("file").map { bodyFile =>
         val file = bodyFile.ref.file
-        orgContext.ts.dataPutXMLFile(skosInfo.dataUri, file).map { ok =>
+        ts.dataPutXMLFile(skosInfo.dataUri, file).map { ok =>
           val now: String = timeToString(new DateTime())
           skosInfo.setSingularLiteralProps(skosUploadTime -> now)
           Ok

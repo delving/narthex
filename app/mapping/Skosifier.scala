@@ -33,20 +33,24 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
 
   import mapping.Skosifier._
 
-  val chunkSize = 10
+  val chunkSize = 25
 
   case class SkosificationJob(sf: SkosifiedField, scResult: List[Map[String, QueryValue]]) {
     val cases = createCases(sf, scResult)
     val ensureSkosEntries = cases.map(_.ensureSkosEntry).mkString
     val changeLiteralsToUris = cases.map(_.changeLiteralToUri).mkString
+    override def toString = sf.toString
   }
 
   def receive = {
 
     case ScanForWork =>
       ts.query(listSkosifiedFields).map { sfResult =>
+        log.info(s"Scan for work")
         sfResult.map(SkosifiedField(_)).map { sf =>
-          ts.ask(skosificationCasesExist(sf)).map(exists => if (exists) {
+          val casesExist = skosificationCasesExist(sf)
+          ts.ask(casesExist).map(exists => if (exists) {
+            log.info(s"Job for $sf")
             ts.query(listSkosificationCases(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
           })
         }
@@ -56,7 +60,10 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
       ts.update(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
         if (job.cases.size == chunkSize) {
           ts.query(listSkosificationCases(job.sf, chunkSize)).map { scResult =>
-            if (scResult.nonEmpty) self ! SkosificationJob(job.sf, scResult)
+            if (scResult.nonEmpty) {
+              log.info(s"Another job for $job")
+              self ! SkosificationJob(job.sf, scResult)
+            }
           }
         }
       }

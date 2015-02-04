@@ -20,11 +20,12 @@ import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{InterruptWork, WorkFailure}
 import dataset.DatasetContext
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
+import org.OrgContext.ORG_ID
 import record.CategoryParser
 import record.CategoryParser.CategoryCount
 import record.PocketParser._
 import services.ProgressReporter.ProgressState._
-import services.{FileHandling, NarthexConfig, ProgressReporter}
+import services.{FileHandling, ProgressReporter}
 
 import scala.concurrent._
 
@@ -50,7 +51,7 @@ class CategoryCounter(val datasetContext: DatasetContext) extends Actor with Act
 
     case CountCategories() =>
       log.info("Counting categories")
-      val pathPrefix = s"${NarthexConfig.ORG_ID}/$datasetContext"
+      val pathPrefix = s"${ORG_ID}/$datasetContext"
       future {
         val categoryMappings = datasetContext.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap
         val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT, categoryMappings)

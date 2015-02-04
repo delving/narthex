@@ -26,12 +26,13 @@ import dataset.Sip.SipMapper
 import dataset.SourceRepo._
 import harvest.Harvesting.HarvestType._
 import mapping.{CategoryDb, TermDb}
+import org.OrgContext._
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
 import play.Logger
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
-import services.NarthexConfig.NAVE_DOMAIN
+import services.StringHandling.pathToDirectory
 import services.Temporal._
 import triplestore.GraphProperties
 import triplestore.GraphProperties.stateSource
@@ -63,7 +64,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir, dsInfo.spec, NAVE_DOMAIN)
 
-  lazy val processedRepo = new ProcessedRepo(processedDir, dsInfo.spec)
+  lazy val processedRepo = new ProcessedRepo(processedDir, dsInfo)
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
 
@@ -206,7 +207,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def index = new File(treeDir, "index.json")
 
   def nodeRepo(path: String): Option[NodeRepo] = {
-    val nodeDir = path.split('/').toList.foldLeft(treeDir)((file, tag) => new File(file, OrgContext.pathToDirectory(tag)))
+    val nodeDir = path.split('/').toList.foldLeft(treeDir)((file, tag) => new File(file, pathToDirectory(tag)))
     if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
   }
 

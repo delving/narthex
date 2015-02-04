@@ -19,8 +19,8 @@ import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import dataset.SipRepo.FACTS_FILE
+import org.OrgContext._
 import org.apache.commons.io.IOUtils
-import services.NarthexConfig
 import triplestore.GraphProperties._
 
 import scala.xml.NodeSeq
@@ -63,7 +63,7 @@ object SipFactory {
         spec = dsInfo.spec,
         prefix = info(datasetMapToPrefix),
         name = info(datasetName),
-        provider = NarthexConfig.ORG_ID, // todo: something better?
+        provider = ORG_ID, // todo: something better?
         dataProvider = info(datasetOwner),
         language = info(datasetLanguage),
         rights = info(datasetRights)

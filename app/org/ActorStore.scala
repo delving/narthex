@@ -19,7 +19,7 @@ package org
 import java.security.MessageDigest
 
 import com.hp.hpl.jena.rdf.model._
-import services.NarthexConfig._
+import org.OrgContext._
 import triplestore.GraphProperties._
 import triplestore.TripleStore
 

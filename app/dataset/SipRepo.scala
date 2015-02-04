@@ -60,6 +60,15 @@ object SipRepo {
   val SIP_SOURCE_UNIQUE_ID = "/delving-sip-source/input/@id"
   val SIP_SOURCE_DEEP_RECORD_CONTAINER = Some(SIP_SOURCE_RECORD_ROOT)
 
+  val SIP_EXTENSION = ".sip.zip"
+
+  case class AvailableSip(file: File) {
+    val n = file.getName
+    if (!n.endsWith(SIP_EXTENSION)) throw new RuntimeException(s"Strange file name $file")
+    val datasetName = n.substring(0, n.indexOf("__"))
+    val dateTime = new DateTime(file.lastModified())
+  }
+
 }
 
 class SipRepo(home: File, datasetName: String, naveDomain: String) {

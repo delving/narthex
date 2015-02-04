@@ -17,44 +17,70 @@
 package org
 
 import java.io.File
+import java.util
 
 import dataset.DsInfo.Character
-import dataset.{DatasetContext, DsInfo, Sip, SipFactory}
-import mapping.{CategoriesRepo, SkosInfo, SkosMappingStore}
+import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
+import dataset._
+import harvest.PeriodicHarvest
+import harvest.PeriodicHarvest.ScanForHarvests
+import mapping.Skosifier.ScanForWork
+import mapping.{CategoriesRepo, SkosInfo, SkosMappingStore, Skosifier}
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
-import org.joda.time.DateTime
+import play.api.Play
+import play.libs.Akka._
 import services.FileHandling.clearDir
-import services.NarthexConfig._
-import services._
 import triplestore.GraphProperties.categoriesInclude
 import triplestore.TripleStore
 
+import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 
 object OrgContext {
+  val config = Play.current.configuration
 
-  val SIP_EXTENSION = ".sip.zip"
+  def configFlag(name: String): Boolean = config.getBoolean(name).getOrElse(false)
+  def configString(name: String) = config.getString(name).getOrElse(
+    throw new RuntimeException(s"Missing config string: $name")
+  )
+  def configInt(name: String) = config.getInt(name).getOrElse(
+    throw new RuntimeException(s"Missing config int: $name")
+  )
+  def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List("secret"))
 
-  lazy val orgContext = new OrgContext(NarthexConfig.USER_HOME, NarthexConfig.ORG_ID)
+  val USER_HOME = System.getProperty("user.home")
+  val NARTHEX = new File(USER_HOME, "NarthexFiles")
 
-  def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
+  lazy val API_ACCESS_KEYS = secretList("api.accessKeys")
 
-  case class AvailableSip(file: File) {
-    val n = file.getName
-    if (!n.endsWith(SIP_EXTENSION)) throw new RuntimeException(s"Strange file name $file")
-    val datasetName = n.substring(0, n.indexOf("__"))
-    val dateTime = new DateTime(file.lastModified())
-  }
+  lazy val HARVEST_TIMEOUT = config.getInt("harvest.timeout").getOrElse(3 * 60 * 1000)
 
+  def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
+
+  val ORG_ID = configString("orgId")
+  val NARTHEX_DOMAIN = configString("domains.narthex")
+  val NAVE_DOMAIN = configString("domains.nave")
+
+  val SHOW_CATEGORIES = configFlag("categories")
+
+  val TRIPLE_STORE_URL = configString("triple-store")
+
+  val NX_NAMESPACE = "http://github.com/delving/narthex/wiki/Namespace#"
+  val NX_URI_PREFIX = s"$NARTHEX_DOMAIN/resolve"
+
+  val ts = new TripleStore(TRIPLE_STORE_URL)
+  val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
+  val harvestTicker = system.scheduler.schedule(5.seconds, 5.minutes, periodicHarvest, ScanForHarvests)
+  val skosifier = system.actorOf(Skosifier.props(ts), "Skosifier")
+  val skosifierTicker = system.scheduler.schedule(5.seconds, 20.seconds, skosifier, ScanForWork)
+  val orgContext = new OrgContext(USER_HOME, ORG_ID, ts)
 }
 
-class OrgContext(userHome: String, val orgId: String) {
-
-  import org.OrgContext._
+class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
 
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
@@ -66,7 +92,6 @@ class OrgContext(userHome: String, val orgId: String) {
 
   val categoriesRepo = new CategoriesRepo(categoriesDir)
   val sipFactory = new SipFactory(factoryDir)
-  val ts = new TripleStore(TRIPLE_STORE_URL)
   val us = new ActorStore(ts)
 
   orgRoot.mkdirs()

@@ -22,11 +22,11 @@ import com.hp.hpl.jena.rdf.model._
 import harvest.Harvesting.{HarvestCron, HarvestType}
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
+import org.OrgContext._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json, Writes}
-import services.NarthexConfig._
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -125,18 +125,18 @@ class DsInfo(val spec: String, ts: TripleStore) {
 
   def now: String = timeToString(new DateTime())
 
-  val dsUri = getDsUri(spec)
+  val uri = getDsUri(spec)
 
   // could cache as well so that the get happens less
-  lazy val futureModel = ts.dataGet(dsUri)
+  lazy val futureModel = ts.dataGet(uri)
   futureModel.onFailure {
     case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
   }
   lazy val m: Model = Await.result(futureModel, 20.seconds)
-  lazy val uri = m.getResource(dsUri)
+  lazy val res = m.getResource(uri)
 
   def getLiteralProp(prop: DIProp): Option[String] = {
-    val objects = m.listObjectsOfProperty(uri, m.getProperty(prop.uri))
+    val objects = m.listObjectsOfProperty(res, m.getProperty(prop.uri))
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
   }
 
@@ -149,16 +149,16 @@ class DsInfo(val spec: String, ts: TripleStore) {
     val sparqlPerProp = propVal.map { pv =>
       val propUri = pv._1
       s"""
-         |WITH <$dsUri>
+         |WITH <$uri>
          |DELETE { 
-         |   <$dsUri> <$propUri> ?o .
+         |   <$uri> <$propUri> ?o .
          |}
          |INSERT { 
-         |   <$dsUri> <$propUri> "${pv._2}" .
+         |   <$uri> <$propUri> "${pv._2}" .
          |}
          |WHERE { 
          |   OPTIONAL {
-         |      <$dsUri> <$propUri> ?o .
+         |      <$uri> <$propUri> ?o .
          |   } 
          |}
        """.stripMargin.trim
@@ -166,8 +166,8 @@ class DsInfo(val spec: String, ts: TripleStore) {
     val sparql = sparqlPerProp.mkString(";\n")
     ts.update(sparql).map { ok =>
       propVal.foreach { pv =>
-        m.removeAll(uri, pv._1, null)
-        m.add(uri, pv._1, m.createLiteral(pv._2))
+        m.removeAll(res, pv._1, null)
+        m.add(res, pv._1, m.createLiteral(pv._2))
       }
       m
     }
@@ -177,23 +177,23 @@ class DsInfo(val spec: String, ts: TripleStore) {
     val propUri = m.getProperty(prop.uri)
     val sparql =
       s"""
-         |WITH <$dsUri>
+         |WITH <$uri>
          |DELETE {
-         |   <$dsUri> <$propUri> ?o .
+         |   <$uri> <$propUri> ?o .
          |}
          |WHERE {
-         |   <$dsUri> <$propUri> ?o .
+         |   <$uri> <$propUri> ?o .
          |}
        """.stripMargin
     ts.update(sparql).map { ok =>
-      m.removeAll(uri, propUri, null)
+      m.removeAll(res, propUri, null)
       m
     }
   }
 
   def getUriPropValueList(prop: DIProp): List[String] = {
     val propUri = m.getProperty(prop.uri)
-    m.listObjectsOfProperty(uri, propUri).map(node => node.asLiteral().toString).toList
+    m.listObjectsOfProperty(res, propUri).map(node => node.asLiteral().toString).toList
   }
 
   def addUriProp(prop: DIProp, uriValueString: String): Future[Model] = {
@@ -201,13 +201,13 @@ class DsInfo(val spec: String, ts: TripleStore) {
     val uriValue = m.createLiteral(uriValueString)
     val sparql = s"""
          |INSERT DATA {
-         |   GRAPH <$dsUri> {
-         |      <$dsUri> <$propUri> "$uriValue" .
+         |   GRAPH <$uri> {
+         |      <$uri> <$propUri> "$uriValue" .
          |   }
          |}
        """.stripMargin.trim
     ts.update(sparql).map { ok =>
-      m.add(uri, propUri, uriValue)
+      m.add(res, propUri, uriValue)
       m
     }
   }
@@ -219,18 +219,18 @@ class DsInfo(val spec: String, ts: TripleStore) {
     val sparql =
       s"""
          |DELETE {
-         |   GRAPH <$dsUri> {
-         |      <$dsUri> <$propUri> "$uriValue" .
+         |   GRAPH <$uri> {
+         |      <$uri> <$propUri> "$uriValue" .
          |   }
          |}
          |WHERE {
-         |   GRAPH <$dsUri> {
-         |      <$dsUri> <$propUri> "$uriValue" .
+         |   GRAPH <$uri> {
+         |      <$uri> <$propUri> "$uriValue" .
          |   }
          |}
        """.stripMargin
     ts.update(sparql).map { ok =>
-      m.remove(uri, propUri, uriValue)
+      m.remove(res, propUri, uriValue)
       m
     }
   }
@@ -240,13 +240,13 @@ class DsInfo(val spec: String, ts: TripleStore) {
     val sparql =
       s"""
          |DELETE {
-         |   GRAPH <$dsUri> {
-         |      <$dsUri> ?p ?o .
+         |   GRAPH <$uri> {
+         |      <$uri> ?p ?o .
          |   }
          |}
          |WHERE {
-         |   GRAPH <$dsUri> {
-         |      <$dsUri> ?p ?o .
+         |   GRAPH <$uri> {
+         |      <$uri> ?p ?o .
          |   }
          |}
        """.stripMargin

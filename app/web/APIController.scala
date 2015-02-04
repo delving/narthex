@@ -20,13 +20,13 @@ import java.io.FileInputStream
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
-import org.OrgContext.{AvailableSip, orgContext}
+import dataset.SipRepo.AvailableSip
+import org.OrgContext.{apiKeyFits, orgContext}
 import org.apache.commons.io.IOUtils
 import play.api.Logger
 import play.api.http.ContentTypes
 import play.api.libs.json.Json
 import play.api.mvc._
-import services._
 import web.MainController.OkFile
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -139,7 +139,7 @@ object APIController extends Controller {
   }
 
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>
-    if (NarthexConfig.apiKeyFits(apiKey)) {
+    if (apiKeyFits(apiKey)) {
       block(request)
     }
     else {
@@ -148,7 +148,7 @@ object APIController extends Controller {
   }
 
   def KeyFitsAsync[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
-    if (NarthexConfig.apiKeyFits(apiKey)) {
+    if (apiKeyFits(apiKey)) {
       block(request)
     }
     else {

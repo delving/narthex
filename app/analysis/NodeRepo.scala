@@ -21,17 +21,17 @@ import java.util.UUID
 
 import analysis.NodeRepo._
 import dataset.DatasetContext
-import org.OrgContext
 import org.apache.commons.io.FileUtils._
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.FileHandling.reader
+import services.StringHandling.pathToDirectory
 
 import scala.collection.mutable
 import scala.language.postfixOps
 
 object NodeRepo {
   def apply(parent: DatasetContext, parentDir: File, tag: String) = {
-    val dir = if (tag == null) parentDir else new File(parentDir, OrgContext.pathToDirectory(tag))
+    val dir = if (tag == null) parentDir else new File(parentDir, pathToDirectory(tag))
     dir.mkdirs()
     new NodeRepo(parent, dir)
   }

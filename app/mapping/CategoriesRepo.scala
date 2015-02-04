@@ -17,11 +17,12 @@ package mapping
 
 import java.io.{File, FileOutputStream}
 
+import org.OrgContext._
 import play.api.libs.json.Json
 import record.CategoryParser
 import record.CategoryParser._
 import services.FileHandling.writer
-import services.{NarthexConfig, Temporal}
+import services.Temporal
 
 class CategoriesRepo(root: File) {
   root.mkdirs()
@@ -43,13 +44,13 @@ class CategoriesRepo(root: File) {
   def sheet(name: String) = new File(sheets, name)
 
   def createSheet(counts: List[CategoryCount]) = {
-    val jsonName = Temporal.nowFileName(NarthexConfig.ORG_ID, JSON)
+    val jsonName = Temporal.nowFileName(ORG_ID, JSON)
     val jsonFile = new File(data, jsonName)
     val jsonList = Json.arr(counts)
     val fw = writer(jsonFile)
     fw.write(Json.prettyPrint(jsonList))
     fw.close()
-    val sheetName = Temporal.nowFileName(NarthexConfig.ORG_ID, SPREADSHEET)
+    val sheetName = Temporal.nowFileName(ORG_ID, SPREADSHEET)
     val sheetFile = new File(sheets, sheetName)
     val fos = new FileOutputStream(sheetFile)
     CategoryParser.generateWorkbook(counts).write(fos)

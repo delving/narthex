@@ -24,6 +24,9 @@ object StringHandling {
 
   def tag(pre: String, label: String) = if (pre == null || pre.isEmpty) label else s"$pre:$label"
 
+  def pathToDirectory(path: String) = path.replace(":", "_").replace("@", "_")
+
+
   def stupidParser(comment: String, addEntity: String => Unit) = {
     if (comment == " unknown entity apos; ") {
       addEntity("apos")

@@ -17,21 +17,16 @@
 package harvest
 
 import akka.actor.{Actor, Props}
+import harvest.PeriodicHarvest.ScanForHarvests
 import play.api.Logger
-import play.libs.Akka
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object PeriodicHarvest {
 
-  def props() = Props[PeriodicHarvest]
+  case object ScanForHarvests
 
-  def startTicker() = {
-    val harvestTicker = Akka.system.actorOf(props(), "HarvestTicker")
-    Akka.system.scheduler.schedule(5.seconds, 5.minutes, harvestTicker, "tick")
-  }
+  def props() = Props[PeriodicHarvest]
 
 }
 
@@ -41,7 +36,7 @@ class PeriodicHarvest extends Actor {
 
   def receive = {
 
-    case "tick" =>
+    case ScanForHarvests =>
       Logger.warn("Periodic harvest not implemented")
 //      OrgRepo.repo.orgDb.listDatasets.foreach { dataset =>
 //        val harvestCron = Harvesting.harvestCron(dataset.info)

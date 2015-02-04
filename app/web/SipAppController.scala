@@ -16,7 +16,8 @@
 
 package web
 
-import org.OrgContext.{AvailableSip, orgContext}
+import dataset.SipRepo.AvailableSip
+import org.OrgContext.orgContext
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._

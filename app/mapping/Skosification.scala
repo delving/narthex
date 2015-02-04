@@ -64,9 +64,8 @@ trait Skosification {
       |SELECT DISTINCT ?literalValue
       |WHERE {
       |  GRAPH ?g {
-      |    ?record
-      |       <$belongsTo> <$datasetUri> ;
-      |       <$fieldProperty> ?literalValue .
+      |    ?record <$belongsTo> <$datasetUri> .
+      |    ?record <$fieldProperty> ?literalValue .
       |    FILTER isLiteral(?literalValue)
       |  }
       |}
