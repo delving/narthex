@@ -411,7 +411,8 @@ define(["angular"], function () {
         };
 
         $scope.isLater = function(currState, nextState) {
-            if (currState && nextState) return currState.dt > nextState.dt;
+            if (!nextState) return true;
+            if (currState) return currState.dt > nextState.dt;
             return false;
         };
 

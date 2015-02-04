@@ -173,7 +173,8 @@
                             </button>
                         </div>
                     </div>
-                    <div data-ng-show="dataset.stateSaved" class="ds-state">
+                    <div data-ng-show="dataset.stateSaved" class="ds-state"
+                         data-ng-class="{ 'later': isLater(dataset.stateSaved, undefined) }">
                         <div><strong>Saved</strong></div>
                         <div class="small">{{ dataset.stateSaved.d }}</div>
                         <div>{{ dataset.stateSaved.t }}</div>
