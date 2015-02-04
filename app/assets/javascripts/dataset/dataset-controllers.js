@@ -36,6 +36,9 @@ define(["angular"], function () {
             datasetService.index($scope.spec).then(function (tree) {
 
                 function sortKids(node) {
+
+                    if (!node.kids) console.log("NO KIDS:", node);
+
                     if (!node.kids.length) return;
                     node.kids = _.sortBy(node.kids, function (kid) {
                         return kid.tag.toLowerCase();
@@ -198,8 +201,8 @@ define(["angular"], function () {
                     uniqueId: $scope.uniqueIdNode.path
                 };
                 datasetService.setRecordDelimiter($scope.spec, body).then(function () {
-                    console.log("Record delimiter set, moving to datasets page");
-                    $location.path("/datasets");
+                    console.log("Record delimiter set, moving to dataset list page");
+                    $location.path("/dataset-list");
                 });
             }
         };

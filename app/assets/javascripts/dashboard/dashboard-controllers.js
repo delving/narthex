@@ -116,8 +116,8 @@ define(["angular"], function (angular) {
                 case 'homepage':
                     $location.path('/');
                     break;
-                case 'datasets':
-                    $location.path('/datasets');
+                case 'dataset-list':
+                    $location.path('/dataset-list');
                     break;
                 case 'skos':
                     $location.path('/skos');

@@ -32,13 +32,14 @@ define(["angular"], function () {
         'state-collating': "Collating",
         'state-categorizing': "Categorizing",
         'state-processing': "Processing",
+        'state-saving': "Saving",
         'state-error': "Error"
     };
 
     /**
-     * user is not a service, but stems from userResolve (Check ../user/datasets-services.js) object used by dashboard.routes.
+     * user is not a service, but stems from userResolve (Check ../user/dataset-list-services.js) object used by dashboard.routes.
      */
-    var DatasetsCtrl = function ($rootScope, $scope, user, datasetsService, $location, $timeout) {
+    var DatasetListCtrl = function ($rootScope, $scope, user, datasetListService, $location, $timeout) {
         if (user == null) $location.path("/");
         $scope.user = user;
         $scope.uploading = false;
@@ -76,7 +77,7 @@ define(["angular"], function () {
 
         $scope.$watch("specFilter", filterDatasets);
 
-        datasetsService.listPrefixes().then(function (prefixes) {
+        datasetListService.listPrefixes().then(function (prefixes) {
             $scope.characters = _.map(prefixes, function (prefix) {
                 // for each prefix we should be able to accept a pre-mapped file
                 return {
@@ -91,7 +92,7 @@ define(["angular"], function () {
         });
 
         $scope.createDataset = function () {
-            datasetsService.create($scope.newDataset.spec, $scope.newDataset.character.code, $scope.newDataset.character.prefix).then(function () {
+            datasetListService.create($scope.newDataset.spec, $scope.newDataset.character.code, $scope.newDataset.character.prefix).then(function () {
                 $scope.cancelNewFile();
                 $scope.newDataset.name = undefined;
                 $scope.fetchDatasetList();
@@ -161,7 +162,7 @@ define(["angular"], function () {
 //
         $scope.fetchDatasetList = function () {
             $scope.specFilter = "";
-            datasetsService.listDatasets().then(function (array) {
+            datasetListService.listDatasets().then(function (array) {
                 // kill existing progress checkers
                 if ($scope.datasets) _.forEach($scope.datasets, function (dataset) {
                     if (dataset.progressCheckerTimeout) {
@@ -178,8 +179,8 @@ define(["angular"], function () {
 
     };
 
-    DatasetsCtrl.$inject = [
-        "$rootScope", "$scope", "user", "datasetsService", "$location", "$timeout"
+    DatasetListCtrl.$inject = [
+        "$rootScope", "$scope", "user", "datasetListService", "$location", "$timeout"
     ];
 
     // these lists must match with DsInfo.scala
@@ -204,7 +205,7 @@ define(["angular"], function () {
         "categoriesInclude"
     ];
 
-    var DatasetEntryCtrl = function ($scope, datasetsService, $location, $timeout, $upload) {
+    var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload) {
 
         var ds = $scope.dataset;
 
@@ -290,7 +291,7 @@ define(["angular"], function () {
         }
 
         function checkProgress() {
-            datasetsService.datasetProgress(ds.datasetSpec).then(
+            datasetListService.datasetProgress(ds.datasetSpec).then(
                 function (data) {
                     if (data.progressType == 'progress-idle') {
                         console.log(ds.datasetSpec + " is idle, stopping check");
@@ -363,7 +364,7 @@ define(["angular"], function () {
 
         function refreshProgress() {
             console.log('refresh progress');
-            datasetsService.datasetInfo(ds.datasetSpec).then(function (dataset) {
+            datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
                 if (ds.progressCheckerTimeout) $timeout.cancel(ds.progressCheckerTimeout);
                 $scope.decorateDataset(dataset);
                 $scope.dataset = dataset;
@@ -374,7 +375,7 @@ define(["angular"], function () {
 
         function refreshInfo() {
             console.log('refresh info');
-            datasetsService.datasetInfo(ds.datasetSpec).then(function (dataset) {
+            datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
                 $scope.decorateDataset(dataset);
                 $scope.dataset = dataset;
             });
@@ -385,7 +386,7 @@ define(["angular"], function () {
             _.forEach(propertyList, function (propertyName) {
                 payload.values[propertyName] = angular.copy(ds.edit[propertyName]);
             });
-            datasetsService.setProperties(ds.datasetSpec, payload).then(refreshInfo);
+            datasetListService.setProperties(ds.datasetSpec, payload).then(refreshInfo);
         }
 
         $scope.setMetadata = function () {
@@ -415,7 +416,7 @@ define(["angular"], function () {
 
         function command(command, areYouSure, after) {
             if (areYouSure && !confirm(areYouSure)) return;
-            datasetsService.command(ds.datasetSpec, command).then(function (reply) {
+            datasetListService.command(ds.datasetSpec, command).then(function (reply) {
                 console.log(reply);
             }).then(function () {
                 if (after) after();
@@ -463,7 +464,7 @@ define(["angular"], function () {
         };
 
         function fetchSipFileList() {
-            datasetsService.listSipFiles(ds.datasetSpec).then(function (data) {
+            datasetListService.listSipFiles(ds.datasetSpec).then(function (data) {
                 $scope.sipFiles = (data && data.list && data.list.length) ? data.list : undefined;
             });
         }
@@ -471,16 +472,16 @@ define(["angular"], function () {
         fetchSipFileList();
 
         $scope.deleteSipZip = function () {
-            datasetsService.deleteLatestSipFile(ds.datasetSpec).then(function () {
+            datasetListService.deleteLatestSipFile(ds.datasetSpec).then(function () {
                 fetchSipFileList();
             });
         };
     };
 
-    DatasetEntryCtrl.$inject = ["$scope", "datasetsService", "$location", "$timeout", "$upload"];
+    DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload"];
 
     return {
-        DatasetsCtrl: DatasetsCtrl,
+        DatasetListCtrl: DatasetListCtrl,
         DatasetEntryCtrl: DatasetEntryCtrl
     };
 

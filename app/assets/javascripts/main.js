@@ -23,7 +23,7 @@
         packages: [
             "common",
             "dashboard",
-            "datasets",
+            "datasetList",
             "dataset",
             "skos",
             "terms",

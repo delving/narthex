@@ -24,6 +24,7 @@ import mapping.{CategoriesRepo, SkosInfo, SkosMappingStore}
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
 import org.joda.time.DateTime
+import services.FileHandling.clearDir
 import services.NarthexConfig._
 import services._
 import triplestore.GraphProperties.categoriesInclude
@@ -57,11 +58,13 @@ class OrgContext(userHome: String, val orgId: String) {
 
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
+  val factoryDir = new File(orgRoot, "factory")
+  val categoriesDir = new File(orgRoot, "categories")
   val datasetsDir = new File(orgRoot, "datasets")
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
-  val categoriesRepo = new CategoriesRepo(new File(orgRoot, "categories"))
-  val factoryDir = new File(orgRoot, "factory")
+
+  val categoriesRepo = new CategoriesRepo(categoriesDir)
   val sipFactory = new SipFactory(factoryDir)
   val ts = new TripleStore(TRIPLE_STORE_URL)
   val us = new ActorStore(ts)
@@ -71,6 +74,13 @@ class OrgContext(userHome: String, val orgId: String) {
   datasetsDir.mkdir()
   rawDir.mkdirs()
   sipsDir.mkdirs()
+
+  def clear() = {
+    clearDir(datasetsDir)
+    clearDir(sipsDir)
+    clearDir(rawDir)
+    // todo: categories too when they are no longer defined there
+  }
 
   def createDatasetRepo(owner: NXActor, spec: String, characterString: String, prefix: String) = {
     val character: Option[Character] = DsInfo.getCharacter(characterString)

@@ -51,7 +51,7 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with Ac
       progress.map(_.interruptBy(sender()))
 
     case SaveGraphs(incrementalOpt) =>
-      val progressReporter = ProgressReporter(ADOPTING, context.parent)
+      val progressReporter = ProgressReporter(SAVING, context.parent)
       progress = Some(progressReporter)
       reader = Some(repo.createGraphReader(incrementalOpt.map(_.file), progressReporter))
       self ! readGraphChunkOpt

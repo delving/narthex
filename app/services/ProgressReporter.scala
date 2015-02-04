@@ -67,6 +67,7 @@ object ProgressReporter {
     val COLLATING = ProgressState("state-collating")
     val CATEGORIZING = ProgressState("state-categorizing")
     val PROCESSING = ProgressState("state-processing")
+    val SAVING = ProgressState("state-saving")
     val ERROR = ProgressState("state-error")
 
     val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, PROCESSING, ERROR)

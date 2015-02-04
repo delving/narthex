@@ -22,7 +22,7 @@ POST        /narthex/create-actor                                       web.Main
 POST        /narthex/set-password                                       web.MainController.setPassword
 
 # File Handling
-GET         /narthex/app/datasets                                       web.AppController.listDatasets
+GET         /narthex/app/dataset-list                                   web.AppController.listDatasets
 GET         /narthex/app/prefixes                                       web.AppController.listPrefixes
 GET         /narthex/app/dataset/:spec/create/:character/:prefix        web.AppController.createDataset(spec, character, prefix)
 POST        /narthex/app/dataset/:spec/upload                           web.AppController.uploadDataset(spec)

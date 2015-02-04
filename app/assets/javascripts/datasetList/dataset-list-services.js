@@ -17,9 +17,9 @@
 define(["angular", "common"], function (angular) {
     "use strict";
 
-    var mod = angular.module("datasets.services", ["narthex.common"]);
+    var mod = angular.module("datasetList.services", ["narthex.common"]);
 
-    mod.service("datasetsService", [
+    mod.service("datasetListService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
             var app = playRoutes.web.AppController;
