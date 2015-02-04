@@ -70,8 +70,8 @@
                     <a href data-ng-click="sidebarNav('skos');" class="pull-right">Add a vocabulary</a>
                 </li>
                 <li class="list-group-item" data-ng-repeat="spec in thesaurusList">
-                    <a href data-ng-click="selectThesaurus(spec)">
-                        <i class="fa fa-fw" ng-class="spec == t ? 'fa-check-square-o' : 'fa-square-o'"></i>
+                    <a href data-ng-click="selectThesaurus(spec)">{{t}}
+                        <i class="fa fa-fw" ng-class="spec == thesaurus ? 'fa-check-square-o' : 'fa-square-o'"></i>
                         <span>{{ spec }}</span>
                     </a>
                 </li>
