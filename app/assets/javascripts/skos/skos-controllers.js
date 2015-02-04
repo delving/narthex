@@ -59,7 +59,7 @@ define(["angular"], function (angular) {
         $scope.createSkos = function () {
             skosService.createSkos($scope.newDataset.spec).then(function () {
                 $scope.cancelNewFile();
-                $scope.newDataset.name = undefined;
+                $scope.newDataset.spec = undefined;
                 $scope.fetchSkosList();
             });
         };

@@ -134,7 +134,8 @@ define(["angular"], function () {
                         var dt = time.split('T');
                         dataset[stateName] = {
                             d: dt[0],
-                            t: dt[1].split('+')[0]
+                            t: dt[1].split('+')[0],
+                            dt: dt
                         };
                     }
                 }
@@ -329,17 +330,17 @@ define(["angular"], function () {
             );
         }
 
-        $scope.getIcon = function () {
-            if (ds.stateSaved) { // todo: mapped -> processed, etc
-                return "fa-database"
-            }
-            else if (ds.stateAnalyzed) {
-                return "fa-eye"
-            }
-            else {
-                return 'fa-folder-o';
-            }
-        };
+//        $scope.getState = function () {
+//            if (ds.stateSaved) { // todo: mapped -> processed, etc
+//                return "fa-database"
+//            }
+//            else if (ds.stateAnalyzed) {
+//                return "fa-eye"
+//            }
+//            else {
+//                return 'fa-folder-o';
+//            }
+//        };
 
         function unchanged(fieldNameList) {
             var unchanged = true;
@@ -409,9 +410,18 @@ define(["angular"], function () {
             setProperties(harvestCronFields);
         };
 
-        $scope.viewFile = function () {
+        $scope.isLater = function(currState, nextState) {
+            if (currState && nextState) return currState.dt > nextState.dt;
+            return false;
+        };
+
+        $scope.goToDataset = function () {
             $location.path("/dataset/" + ds.datasetSpec);
             $location.search({});
+        };
+
+        $scope.goToTerms = function () {
+            alert('Not implemented.  Must be skos-skos first.');
         };
 
         function command(command, areYouSure, after) {

@@ -23,7 +23,7 @@ define(["angular"], function () {
             $scope.spec = $routeParams.spec;
             $scope.path = $routeParams.path;
             $scope.histogramSize = parseInt($routeParams.size || "100");
-            $scope.activeView = $routeParams.view || "thesaurus";
+            $scope.activeView = $routeParams.view || "thesauri";
             $scope.thesaurus = $routeParams.thesaurus;
         }
 
@@ -222,34 +222,36 @@ define(["angular"], function () {
         $scope.$watch("activeView", updateSearchParams());
 
         $scope.setMapping = function (concept) {
-            if (!($scope.sourceEntry && $scope.thesaurus)) return;
-            var body = {
-                sourceURI: $scope.sourceEntry.sourceURI,
-                targetURI: concept.uri,
-                thesaurus: $scope.thesaurus,
-                attributionName: concept.attributionName,
-                prefLabel: concept.prefLabel
-            };
-            if ($scope.mappings[$scope.sourceEntry.sourceURI]) { // it already exists
-                body.remove = "yes";
-            }
-            termsService.setMapping($scope.datasetName, body).then(function (data) {
-                console.log("set mapping returns", data);
-                if (body.remove) {
-                    delete $scope.mappings[$scope.sourceEntry.sourceURI]
-                }
-                else {
-                    $scope.mappings[$scope.sourceEntry.sourceURI] = {
-                        targetURI: concept.uri,
-                        thesaurus: $scope.thesaurus,
-                        attributionName: concept.attributionName,
-                        prefLabel: concept.prefLabel,
-                        who: concept.who,
-                        when: concept.when
-                    };
-                }
-                filterHistogram();
-            });
+            alert("Sorry, not implemented yet");
+//
+//            if (!($scope.sourceEntry && $scope.thesaurus)) return;
+//            var body = {
+//                sourceURI: $scope.sourceEntry.sourceURI,
+//                targetURI: concept.uri,
+//                thesaurus: $scope.thesaurus,
+//                attributionName: concept.attributionName,
+//                prefLabel: concept.prefLabel
+//            };
+//            if ($scope.mappings[$scope.sourceEntry.sourceURI]) { // it already exists
+//                body.remove = "yes";
+//            }
+//            termsService.setMapping($scope.datasetName, body).then(function (data) {
+//                console.log("set mapping returns", data);
+//                if (body.remove) {
+//                    delete $scope.mappings[$scope.sourceEntry.sourceURI]
+//                }
+//                else {
+//                    $scope.mappings[$scope.sourceEntry.sourceURI] = {
+//                        targetURI: concept.uri,
+//                        thesaurus: $scope.thesaurus,
+//                        attributionName: concept.attributionName,
+//                        prefLabel: concept.prefLabel,
+//                        who: concept.who,
+//                        when: concept.when
+//                    };
+//                }
+//                filterHistogram();
+//            });
         };
     };
 

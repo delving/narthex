@@ -124,7 +124,7 @@ define(["angular"], function () {
         $scope.setSkosField = function(uri, included) {
             datasetService.setSkosField($scope.spec, uri, included).then(function(reply) {
                 fetchInfo($scope.fetchHistogram);
-                alert("toggle reply: "+ reply);
+                console.log("toggle reply: "+ reply);
             });
         };
 
