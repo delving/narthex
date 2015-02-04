@@ -56,13 +56,28 @@
             <div class="widget-header">
                 <ul class="nav nav-tabs widget-header-tabs">
                     <li data-ng-class="{ active: activeView == 'thesauri' }">
-                        <a href data-ng-click="thesauriTab()">Thesauri</a>
+                        <a href data-ng-click="thesauriTab()">Vocabularies</a>
                     </li>
                     <li data-ng-class="{ active: activeView == 'skos' }">
                         <a href data-ng-click="skosTab()">Terms</a>
                     </li>
                 </ul>
             </div>
+
+            <!-- AVAILABLE THESAURI -->
+            <ul class="list-group" data-ng-show="thesaurusList && activeView == 'thesauri'">
+                <li class="list-group-item clearfix">
+                    <a href data-ng-click="sidebarNav('skos');" class="pull-right">Add a vocabulary</a>
+                </li>
+                <li class="list-group-item" data-ng-repeat="spec in thesaurusList">
+                    <a href data-ng-click="selectThesaurus(spec)">
+                        <i class="fa fa-fw" ng-class="spec == t ? 'fa-check-square-o' : 'fa-square-o'"></i>
+                        <span>{{ spec }}</span>
+                    </a>
+                </li>
+            </ul>
+
+            <!-- TERMINOLOGY MAPPING -->
             <div class="widget-body" data-ng-if="thesaurus && activeView == 'skos'">
 
                 <!-- SEARCH -->
@@ -125,16 +140,6 @@
                 </div>
 
             </div>
-
-            <!-- AVAILABLE THESAURI -->
-            <ul class="list-group" data-ng-show="thesaurusList && activeView == 'thesauri'">
-                <li class="list-group-item" data-ng-repeat="spec in thesaurusList">
-                    <a href data-ng-click="selectThesaurus(spec)">
-                        <i class="fa fa-fw" ng-class="spec == t ? 'fa-check-square-o' : 'fa-square-o'"></i>
-                        <span>{{ spec }}</span>
-                    </a>
-                </li>
-            </ul>
 
         </div>
 
