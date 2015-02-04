@@ -106,6 +106,7 @@ define(["angular"], function () {
         });
 
         termsService.getMappings($scope.spec).then(function (data) {
+            console.log("What to do with these mappings", data);
 //            _.forEach(data.mappings, function (mapping) {
 //                $scope.mappings[mapping.sourceURI] = {
 //                    targetURI: mapping.targetURI,
@@ -222,6 +223,15 @@ define(["angular"], function () {
         $scope.$watch("activeView", updateSearchParams());
 
         $scope.setMapping = function (concept) {
+            var payload = {
+                // todo: this sourceRUI is not yet right:
+                uriA: $scope.sourceEntry.sourceURI,
+                uriB: concept.uri
+            };
+            console.log("Mapping payload for thesaurus "+ $scope.thesaurus, payload);
+//            termsService.toggleMapping($scope.datasetInfo.datasetSpec, $scope.thesaurus, payload).then(function(data){
+//
+//            });
             alert("Sorry, not implemented yet");
 //
 //            if (!($scope.sourceEntry && $scope.thesaurus)) return;

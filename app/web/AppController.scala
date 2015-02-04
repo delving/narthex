@@ -24,11 +24,10 @@ import dataset.DatasetActor._
 import dataset.DsInfo
 import dataset.DsInfo._
 import mapping.CategoryDb._
-import mapping.SkosInfo
-import mapping.SkosInfo._
 import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
-import mapping.TermDb._
+import mapping.VocabInfo
+import mapping.VocabInfo._
 import org.OrgActor
 import org.OrgActor.DatasetMessage
 import org.OrgContext.{orgContext, ts}
@@ -43,7 +42,8 @@ import services.Temporal._
 import triplestore.GraphProperties._
 import web.MainController.OkFile
 
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 object AppController extends Controller with Security {
 
@@ -216,22 +216,22 @@ object AppController extends Controller with Security {
   }
 
   def listSkos = SecureAsync() { session => request =>
-    listSkosInfo(ts).map(list =>Ok(Json.toJson(list)))
+    listvocabInfo(ts).map(list =>Ok(Json.toJson(list)))
   }
 
   def createSkos(spec: String) = SecureAsync() { session => request =>
-    SkosInfo.create(session.actor, spec, ts).map(ok =>
+    VocabInfo.create(session.actor, spec, ts).map(ok =>
       Ok(Json.obj("created" -> s"Skos $spec created"))
     )
   }
 
   def uploadSkos(spec: String) = SecureAsync(parse.multipartFormData) { session => request =>
-    withSkosInfo(spec) { skosInfo =>
+    withVocabInfo(spec) { vocabInfo =>
       request.body.file("file").map { bodyFile =>
         val file = bodyFile.ref.file
-        ts.dataPutXMLFile(skosInfo.dataUri, file).map { ok =>
+        ts.dataPutXMLFile(vocabInfo.dataUri, file).map { ok =>
           val now: String = timeToString(new DateTime())
-          skosInfo.setSingularLiteralProps(skosUploadTime -> now)
+          vocabInfo.setSingularLiteralProps(skosUploadTime -> now)
           Ok
         }
       } getOrElse {
@@ -240,81 +240,87 @@ object AppController extends Controller with Security {
     }
   }
 
-  def skosInfo(spec: String) = Secure() { session => request =>
-    withSkosInfo(spec)(skosInfo => Ok(Json.toJson(skosInfo)))
+  def vocabInfo(spec: String) = Secure() { session => request =>
+    withVocabInfo(spec)(vocabInfo => Ok(Json.toJson(vocabInfo)))
   }
 
   def skosStatistics(spec: String) = SecureAsync() { session => request =>
-    withSkosInfo(spec) { skosInfo =>
-      skosInfo.getStatistics.map(stats => Ok(Json.toJson(stats)))
+    withVocabInfo(spec) { vocabInfo =>
+      vocabInfo.getStatistics.map(stats => Ok(Json.toJson(stats)))
     }
   }
 
   def setSkosProperties(spec: String) = SecureAsync(parse.json) { session => request =>
-    withSkosInfo(spec) { skosInfo =>
+    withVocabInfo(spec) { vocabInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
       Logger.info(s"setProperties $propertyList")
       val diProps: List[SIProp] = propertyList.map(name => allSkosProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
-      skosInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
+      vocabInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
     }
   }
 
   def searchSkos(spec: String, sought: String) = Secure() { session => request =>
-    withSkosInfo(spec) { skosInfo =>
-      val v = skosInfo.vocabulary
+    withVocabInfo(spec) { vocabInfo =>
+      val v = vocabInfo.vocabulary
       val labelSearch: LabelSearch = v.search("nl", sought, 25)
       Ok(Json.obj("search" -> labelSearch))
     }
   }
 
   def getSkosMappings(specA: String, specB: String) = SecureAsync() { session => request =>
-    val store = orgContext.skosMappingStore(specA, specB)
+    val store = orgContext.vocabMappingStore(specA, specB)
     store.getMappings.map(tuples => Ok(Json.toJson(tuples.map(t => List(t._1, t._2)))))
   }
 
   def toggleSkosMapping(specA: String, specB: String) = SecureAsync(parse.json) { session => request =>
     val uriA = (request.body \ "uriA").as[String]
     val uriB = (request.body \ "uriB").as[String]
-    val store = orgContext.skosMappingStore(specA, specB)
+    val store = orgContext.vocabMappingStore(specA, specB)
     store.toggleMapping(SkosMapping(session.actor, uriA, uriB)).map { action =>
       Ok(Json.obj("action" -> action))
     }
   }
 
-  // todo: things under here unfinished
-
-  def getTermMappings(spec: String) = Secure() { session => request =>
-    val datasetContext = orgContext.datasetContext(spec)
-    val mappings: scala.Seq[TermMapping] = datasetContext.termDb.getMappings
-    Ok(Json.obj("mappings" -> mappings))
+  def getTermMappings(dsSpec: String) = SecureAsync() { session => request =>
+    val store = orgContext.termMappingStore(dsSpec)
+    store.getMappings.map(tuples => Ok(Json.toJson(tuples.map(t => List(t._1, t._2)))))
   }
 
-  def setTermMapping(spec: String) = Secure(parse.json) { session => request =>
+  def toggleTermMapping(dsSpec: String, vocabSpec: String) = SecureAsync(parse.json) { session => request =>
+    val uriA = (request.body \ "uriA").as[String]
+    val uriB = (request.body \ "uriB").as[String]
+    val store = orgContext.termMappingStore(dsSpec)
+    // todo: shouldn't await here, really
+    Await.result(VocabInfo.check(vocabSpec, ts), 20.seconds).map { vocabGraph =>
+      store.toggleMapping(SkosMapping(session.actor, uriA, uriB), vocabGraph).map { action =>
+        Ok(Json.obj("action" -> action))
+      }
+    } getOrElse {
+      Future(NotFound(Json.obj("problem" -> s"No vocabulary found for $vocabSpec")))
+    }
+  }
+
+  def listSipFiles(spec: String) = Secure() { session => request =>
     val datasetContext = orgContext.datasetContext(spec)
+    val fileNames = datasetContext.sipRepo.listSips.map(_.file.getName)
+    Ok(Json.obj("list" -> fileNames))
+  }
 
-    println(s"body: ${request.body}")
-
-    if ((request.body \ "remove").asOpt[String].isDefined) {
-      val sourceUri = (request.body \ "sourceURI").as[String]
-      datasetContext.termDb.removeMapping(sourceUri)
-      Ok("Mapping removed")
+  def deleteLatestSipFile(spec: String) = Secure() { session => request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val sips = datasetContext.sipRepo.listSips
+    if (sips.size < 2) {
+      NotFound(Json.obj("problem" -> s"Refusing to delete the last SIP file $spec"))
     }
     else {
-      val termMapping = TermMapping(
-        sourceURI = (request.body \ "sourceURI").as[String],
-        targetURI = (request.body \ "targetURI").as[String],
-        conceptScheme = (request.body \ "conceptScheme").as[String],
-        attributionName = (request.body \ "attributionName").as[String],
-        prefLabel = (request.body \ "prefLabel").as[String],
-        who = session.actor.uri,
-        when = new DateTime()
-      )
-      datasetContext.termDb.addMapping(termMapping)
-      Ok("Mapping added")
+      FileUtils.deleteQuietly(sips.head.file)
+      Ok(Json.obj("deleted" -> sips.head.file.getName))
     }
   }
+
+  // todo: things under here unfinished
 
   def getCategoryList = Secure() { session => request =>
     orgContext.categoriesRepo.categoryListOption.map { list =>
@@ -360,21 +366,4 @@ object AppController extends Controller with Security {
     OkFile(orgContext.categoriesRepo.sheet(spec))
   }
 
-  def listSipFiles(spec: String) = Secure() { session => request =>
-    val datasetContext = orgContext.datasetContext(spec)
-    val fileNames = datasetContext.sipRepo.listSips.map(_.file.getName)
-    Ok(Json.obj("list" -> fileNames))
-  }
-
-  def deleteLatestSipFile(spec: String) = Secure() { session => request =>
-    val datasetContext = orgContext.datasetContext(spec)
-    val sips = datasetContext.sipRepo.listSips
-    if (sips.size < 2) {
-      NotFound(Json.obj("problem" -> s"Refusing to delete the last SIP file $spec"))
-    }
-    else {
-      FileUtils.deleteQuietly(sips.head.file)
-      Ok(Json.obj("deleted" -> sips.head.file.getName))
-    }
-  }
 }

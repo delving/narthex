@@ -155,7 +155,7 @@ define(["angular"], function (angular) {
         $scope.$watch("skos.edit", setUnchanged, true);
 
         function refreshInfo() {
-            skosService.skosInfo(sk.skosSpec).then(function (skos) {
+            skosService.vocabInfo(sk.skosSpec).then(function (skos) {
                 $scope.skos = $scope.decorateSkos(skos);
             });
         }

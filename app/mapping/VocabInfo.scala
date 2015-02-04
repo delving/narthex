@@ -30,14 +30,14 @@ import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
 import triplestore.GraphProperties._
-import triplestore.TripleStore
+import triplestore.{SkosGraph, TripleStore}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 
-object SkosInfo {
+object VocabInfo {
 
   case class DsMetadata(name: String,
                         description: String,
@@ -45,15 +45,15 @@ object SkosInfo {
                         language: String,
                         rights: String)
 
-  implicit val skosInfoWrites = new Writes[SkosInfo] {
-    def writes(dsInfo: SkosInfo): JsValue = {
+  implicit val vocabInfoWrites = new Writes[VocabInfo] {
+    def writes(dsInfo: VocabInfo): JsValue = {
       val out = new StringWriter()
       RDFDataMgr.write(out, dsInfo.m, RDFFormat.JSONLD_FLAT)
       Json.parse(out.toString)
     }
   }
 
-  def listSkosInfo(ts: TripleStore): Future[List[SkosInfo]] = {
+  def listvocabInfo(ts: TripleStore): Future[List[VocabInfo]] = {
     val q =
       s"""
          |SELECT ?spec
@@ -67,7 +67,7 @@ object SkosInfo {
     ts.query(q).map { list =>
       list.map { entry =>
         val spec = entry("spec").text
-        new SkosInfo(spec, ts)
+        new VocabInfo(spec, ts)
       }
     }
   }
@@ -76,28 +76,28 @@ object SkosInfo {
 
   def getDataUri(spec: String) = s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}"
 
-  def create(owner: NXActor, spec: String, ts: TripleStore): Future[SkosInfo] = {
+  def create(owner: NXActor, spec: String, ts: TripleStore): Future[VocabInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getInfoUri(spec))
     m.add(uri, m.getProperty(skosSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
-    ts.dataPost(uri.getURI, m).map(ok => new SkosInfo(spec, ts))
+    ts.dataPost(uri.getURI, m).map(ok => new VocabInfo(spec, ts))
   }
 
-  def withSkosInfo[T](spec: String)(block: SkosInfo => T) = {
+  def withVocabInfo[T](spec: String)(block: VocabInfo => T) = {
     val cacheName = getInfoUri(spec)
-    Cache.getAs[SkosInfo](cacheName) map { skosInfo =>
-      block(skosInfo)
+    Cache.getAs[VocabInfo](cacheName) map { vocabInfo =>
+      block(vocabInfo)
     } getOrElse {
-      val skosInfo = Await.result(check(spec, ts), 10.seconds).getOrElse{
+      val vocabInfo = Await.result(check(spec, ts), 10.seconds).getOrElse{
         throw new RuntimeException(s"No skos info for $spec")
       }
-      Cache.set(cacheName, skosInfo, 5.minutes)
-      block(skosInfo)
+      Cache.set(cacheName, vocabInfo, 5.minutes)
+      block(vocabInfo)
     }
   }
 
-  def check(spec: String, ts: TripleStore): Future[Option[SkosInfo]] = {
+  def check(spec: String, ts: TripleStore): Future[Option[VocabInfo]] = {
     val skosUri = getInfoUri(spec)
     val q =
       s"""
@@ -107,17 +107,19 @@ object SkosInfo {
          |   }
          |}
        """.stripMargin
-    ts.ask(q).map(answer => if (answer) Some(new SkosInfo(spec, ts)) else None)
+    ts.ask(q).map(answer => if (answer) Some(new VocabInfo(spec, ts)) else None)
   }
 }
 
-class SkosInfo(val spec: String, ts: TripleStore) {
+class VocabInfo(val spec: String, ts: TripleStore) extends SkosGraph {
 
-  import mapping.SkosInfo._
+  import mapping.VocabInfo._
 
   def now: String = timeToString(new DateTime())
 
   val uri = getInfoUri(spec)
+
+  val skosified = false
   
   val dataUri = getDataUri(spec)
 

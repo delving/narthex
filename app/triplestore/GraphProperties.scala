@@ -117,9 +117,7 @@ object GraphProperties {
   val exactMatch = s"${SKOS}exactMatch"
   val mappingConcept = MAProp("mappingConcept", uriProp)
   val mappingVocabulary = MAProp("mappingVocabulary", uriProp)
-  val mappingCreator = MAProp("mappingCreator", uriProp)
   val mappingDeleted = MAProp("mappingDeleted", booleanProp)
-  val mappingDirty = MAProp("mappingDirty", booleanProp)
   val mappingTime = MAProp("mappingTime", timeProp)
 
   def nxProp(m: Model, localName: String): Property = {

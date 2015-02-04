@@ -4,7 +4,7 @@ import java.io.File
 
 import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary.LabelSearch
-import mapping.{SkosInfo, SkosMappingStore, Skosification}
+import mapping.{Skosification, VocabInfo, VocabMappingStore}
 import org.ActorStore
 import org.scalatestplus.play._
 import play.api.libs.json.Json
@@ -32,10 +32,10 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
     // have an actor create two Skos vocabs
     val actorStore = new ActorStore(ts)
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
-    val genreInfo = await(SkosInfo.create(admin, "gtaa_genre", ts))
+    val genreInfo = await(VocabInfo.create(admin, "gtaa_genre", ts))
     val genreFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
     await(ts.dataPutXMLFile(genreInfo.dataUri, genreFile))
-    val classyInfo = await(SkosInfo.create(admin, "gtaa_classy", ts))
+    val classyInfo = await(VocabInfo.create(admin, "gtaa_classy", ts))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
     await(ts.dataPutXMLFile(classyInfo.dataUri, classyFile))
     countGraphs must be(5)
@@ -54,7 +54,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
 
     searches.foreach(labelSearch => println(Json.prettyPrint(Json.toJson(labelSearch))))
 
-    val skosMappings = new SkosMappingStore(genreInfo, classyInfo, ts)
+    val skosMappings = new VocabMappingStore(genreInfo, classyInfo, ts)
 
     val genreA = "http://data.beeldengeluid.nl/gtaa/30103"
     val classyA = "http://data.beeldengeluid.nl/gtaa/24896"

@@ -40,8 +40,8 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                datasetInfo: function (datasetName) {
-                    return app.datasetInfo(datasetName).get().then(
+                datasetInfo: function (spec) {
+                    return app.datasetInfo(spec).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -56,16 +56,9 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                getMappings: function (datasetName) {
-                    return app.getTermMappings(datasetName).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                histogram: function (datasetName, path, size) {
-                    return app.histogram(datasetName, path, size).get().then(
+                // todo: this should be eliminated once we have a skos
+                histogram: function (spec, path, size) {
+                    return app.histogram(spec, path, size).get().then(
                         function (response) {
                             return response.data;
                         },
@@ -80,8 +73,16 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                setMapping: function (name, body) {
-                    return app.setTermMapping(name).post(body).then(
+                getMappings: function (spec) {
+                    return app.getTermMappings(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                toggleMapping: function (spec, vocabSpec, payload) {
+                    return app.toggleTermMapping(vocabSpec).post(payload).then(
                         function (response) {
                             return response.data;
                         },

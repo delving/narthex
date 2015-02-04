@@ -25,7 +25,7 @@ import dataset._
 import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
 import mapping.Skosifier.ScanForWork
-import mapping.{CategoriesRepo, SkosInfo, SkosMappingStore, Skosifier}
+import mapping._
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
 import play.api.Play
@@ -122,15 +122,22 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
     infoOpt.map(info => new DatasetContext(this, info).mkdirs)
   }
 
-  def skosMappingStore(specA: String, specB: String): SkosMappingStore = {
+  def vocabMappingStore(specA: String, specB: String): VocabMappingStore = {
     val futureStore = for {
-      skosInfoA <- SkosInfo.check(specA, ts)
-      skosInfoB <- SkosInfo.check(specB, ts)
-    } yield (skosInfoA, skosInfoB) match {
-      case (Some(a), Some(b)) => new SkosMappingStore(a, b, ts)
-      case _ => throw new RuntimeException(s"No SKOS mapping found for $specA, $specB")
+      infoA <- VocabInfo.check(specA, ts)
+      infoB <- VocabInfo.check(specB, ts)
+    } yield (infoA, infoB) match {
+      case (Some(a), Some(b)) => new VocabMappingStore(a, b, ts)
+      case _ => throw new RuntimeException(s"No vocabulary mapping found for $specA, $specB")
     }
-    Await.result(futureStore, 5.seconds)
+    Await.result(futureStore, 15.seconds)
+  }
+
+  def termMappingStore(dsSpec: String): TermMappingStore = {
+    val futureStore = DsInfo.check(dsSpec, ts).map { dsInfoOpt =>
+      dsInfoOpt.map( info =>new TermMappingStore(info, ts)).getOrElse(throw new RuntimeException(s"No term mapping found for $dsSpec"))
+    }
+    Await.result(futureStore, 15.seconds)
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(

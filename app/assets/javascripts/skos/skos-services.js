@@ -56,8 +56,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                skosInfo: function (spec) {
-                    return app.skosInfo(spec).get().then(
+                vocabInfo: function (spec) {
+                    return app.vocabInfo(spec).get().then(
                         function (response) {
                             return response.data;
                         },

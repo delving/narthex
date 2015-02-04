@@ -31,7 +31,7 @@ import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
 import triplestore.GraphProperties._
-import triplestore.TripleStore
+import triplestore.{SkosGraph, TripleStore}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -122,13 +122,15 @@ object DsInfo {
   }
 }
 
-class DsInfo(val spec: String, ts: TripleStore) {
+class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
 
   import dataset.DsInfo._
 
   def now: String = timeToString(new DateTime())
 
   val uri = getDsUri(spec)
+
+  val skosified = true
 
   val skosUri = getSkosUri(uri)
 
