@@ -84,11 +84,13 @@
     <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary">
 
         <div class="panel-heading">
-            <span class="name clickable fa fa-2x" data-ng-click="expanded = !expanded">
-                <i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i>
+            <!-- todo: should be a caret down to indicate expansion -->
+            <span class="name clickable" data-ng-click="expanded = !expanded">
+                <i class="fa" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i>
                 <span>{{ dataset.datasetSpec }}</span>
             </span>
-            <span data-ng-show="dataset.datasetRecordCount" class="count clickable fa fa-2x pull-right" data-ng-click="goToDataset()">
+            <!-- todo: no icons here, but a button to explore -->
+            <span data-ng-show="dataset.datasetRecordCount" class="count clickable fa pull-right" data-ng-click="goToDataset()">
                 <i class="fa fa-fw fa-eye" data-ng-show="dataset.stateAnalyzed"></i>
                 <span>{{ dataset.datasetRecordCount }}</span>
             </span>

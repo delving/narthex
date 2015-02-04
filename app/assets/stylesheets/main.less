@@ -283,22 +283,30 @@ a {
       cursor: pointer;
     }
   }
-  .ds-states {
-    .clearfix();
-    .later {
-      border: 2px solid @green;
-    }
-  }
-  .ds-state {
-    width: auto;
-    display: inline-block;
-    float: left;
-    margin-right: 10px;
-    padding: 3px;
-    text-align: center;
-  }
   .progress {
     margin: 0px;
+  }
+}
+
+.ds-states {
+  .clearfix();
+  .later {
+    background: lighten(@brand-success, 40%);
+  }
+}
+.ds-state {
+  background: @silver;
+  width: auto;
+  display: inline-block;
+//  float: left;
+  margin: 0px 10px 10px 0px;
+  padding: 10px;
+  * {
+    font-size: 12px;
+  }
+  h6 {
+    margin: 0px 0px 4px 0px;
+    text-transform: uppercase;
   }
 }
 
