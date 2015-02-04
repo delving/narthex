@@ -330,18 +330,6 @@ define(["angular"], function () {
             );
         }
 
-//        $scope.getState = function () {
-//            if (ds.stateSaved) { // todo: mapped -> processed, etc
-//                return "fa-database"
-//            }
-//            else if (ds.stateAnalyzed) {
-//                return "fa-eye"
-//            }
-//            else {
-//                return 'fa-folder-o';
-//            }
-//        };
-
         function unchanged(fieldNameList) {
             var unchanged = true;
             _.forEach(fieldNameList, function (fieldName) {

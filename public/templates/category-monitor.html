@@ -23,7 +23,7 @@
                 Spreadsheets
                 <button type="button" class="btn btn-default btn-sm pull-right"  data-ng-click="gatherCategoryCounts()" data-ng-disabled="datasetBusy">
                     <i class="fa fa-leaf"></i>
-                    <span>Generate new spreadsheet</span>
+                    <span><b>Generate new spreadsheet</b></span>
                 </button>
             </div>
             <div class="widget-body">
@@ -39,11 +39,11 @@
     </div>
     <div class="col-sm-8">
         <div class="widget">
-            <div class="widget-header">Monitored Datasets</div>
+            <div class="widget-header"><b>Monitored Datasets</b></div>
             <div class="widget-body">
                 <div class="row">
-                    <div class="col-md-6" ng-repeat="file in files" >
-                        <div class="panel panel-primary" data-ng-include="'category-file-entry.html'">entry</div>
+                    <div class="col-md-6" ng-repeat="dataset in datasets" >
+                        <div class="panel panel-primary" data-ng-include="'category-dataset-entry.html'">entry</div>
                     </div>
                 </div>
             </div>
@@ -51,16 +51,17 @@
     </div>
 </div>
 
-<script type="text/ng-template" id="category-file-entry.html">
+<script type="text/ng-template" id="category-dataset-entry.html">
     <div class="panel-heading">
-        {{ file.info.metadata.name }}
-        <span data-ng-show="file.info.recordCount" class="pull-right">{{ file.info.recordCount.count }}</span>
+        <span>
+            <i class="fa fa-fw fa-cube"></i>
+            <span>{{ dataset.datasetSpec }}</span>
+        </span>
+        <span data-ng-show="dataset.datasetRecordCount" class="pull-right">{{ dataset.datasetRecordCount }}</span>
     </div>
-    <div class="panel-body">
-        <div data-ng-if="file.progress">
-            <progressbar class="progress-striped active" animate="true" value="file.progress.count" max="100" type="success">
-                {{ file.progress.message }}
-            </progressbar>
-        </div>
+    <div class="panel-body" data-ng-if="dataset.progress" >
+        <progressbar class="progress-striped active" animate="true" value="dataset.progress.count" max="100" type="success">
+            {{ dataset.progress.message }}
+        </progressbar>
     </div>
 </script>

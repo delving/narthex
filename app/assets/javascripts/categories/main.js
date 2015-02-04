@@ -17,7 +17,7 @@ define(
             "$routeProvider", "userResolve",
             function ($routeProvider, userResolve) {
                 $routeProvider.when(
-                    "/categories/:datasetName",
+                    "/categories/:spec",
                     {
                         templateUrl: "/narthex/assets/templates/category-set.html",
                         controller: controllers.CategorySetCtrl,

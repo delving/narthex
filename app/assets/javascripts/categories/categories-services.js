@@ -72,6 +72,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                datasetProgress: function (spec) {
+                    return app.datasetProgress(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 getCategoryList: function () {
                     return app.getCategoryList().get().then(
                         function (response) {
