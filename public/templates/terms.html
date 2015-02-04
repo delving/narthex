@@ -55,19 +55,19 @@
         <div class="widget">
             <div class="widget-header">
                 <ul class="nav nav-tabs widget-header-tabs">
-                    <li data-ng-class="{ active: activeView == 'conceptScheme' }">
-                        <a href data-ng-click="conceptSchemeTab()">Available Thesauri</a>
+                    <li data-ng-class="{ active: activeView == 'thesauri' }">
+                        <a href data-ng-click="thesauriTab()">Thesauri</a>
                     </li>
                     <li data-ng-class="{ active: activeView == 'skos' }">
                         <a href data-ng-click="skosTab()">Terms</a>
                     </li>
                 </ul>
             </div>
-            <div class="widget-body" data-ng-if="conceptScheme && activeView == 'skos'">
+            <div class="widget-body" data-ng-if="thesaurus && activeView == 'skos'">
 
                 <!-- SEARCH -->
                 <div class="input-group input-group-skos-term">
-                    <label class="input-group-addon"><i class="fa fa-search"></i> {{ conceptScheme }}</label>
+                    <label class="input-group-addon"><i class="fa fa-search"></i> {{ thesaurus }}</label>
                     <input class="form-control" type="text" data-ng-model="sought"/>
                 </div>
                 <!-- lEGEND -->
@@ -127,12 +127,11 @@
             </div>
 
             <!-- AVAILABLE THESAURI -->
-            <ul class="list-group" data-ng-show="conceptSchemeList && activeView == 'conceptScheme'">
-                <li class="list-group-item" data-ng-repeat="name in conceptSchemeList">
-                    <a href data-ng-click="selectConceptScheme(name)">
-                        <i class="fa fa-fw" ng-class="name == conceptScheme ? 'fa-check-square-o' : 'fa-square-o'"></i>
-                        &nbsp;
-                        <span>{{ name }}</span>
+            <ul class="list-group" data-ng-show="thesaurusList && activeView == 'thesauri'">
+                <li class="list-group-item" data-ng-repeat="spec in thesaurusList">
+                    <a href data-ng-click="selectThesaurus(spec)">
+                        <i class="fa fa-fw" ng-class="spec == t ? 'fa-check-square-o' : 'fa-square-o'"></i>
+                        <span>{{ spec }}</span>
                     </a>
                 </li>
             </ul>

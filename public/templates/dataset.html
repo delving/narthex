@@ -71,22 +71,24 @@
                         </a>
                     </li>
                     <li  data-ng-show="analyzedState && activeView == 'histogram' && histogramVocabulary">
-                        <a href class="" data-ng-click="toggleSkosField(histogram.uri)">
+                        <a href class="" data-ng-click="setSkosField(histogram.uri, true)" ng-show="!histogramSkosField">
                             <i class="fa fa-arrow-circle-right"></i>
-                            <span data-ng-show="!histogramSkosField"> Skosify </span>
-                            <span data-ng-show="histogramSkosField"> Un-Skosify </span>
-                            <span class="small">({{ histogram.uri }})</span>
+                            <span> Skosify </span><span class="small">({{ histogram.uri }})</span>
                         </a>
+                        <span>
+                            <a href class="btn btn-sm btn-default" data-ng-click="goToPage('terms')" data-ng-show="histogramSkosField">
+                                <i class="fa fa-arrows-h"></i>
+                                <span> Map</span>
+                            </a>
+                            <a href class="btn btn-sm btn-default" data-ng-click="goToPage('categories')" data-ng-show="histogramSkosField && categoriesEnabled">
+                                <i class="fa fa-sitemap"></i>
+                                <span> Categorize</span>
+                            </a>
+                        </span>
                     </li>
-                    <!--<li data-ng-show="analyzedState && activeView == 'histogram' && histogramVocabulary && categoriesEnabled">-->
-                        <!--<a href class="" data-ng-click="goToPage(selectedNode, 'categories')">-->
-                            <!--<i class="fa fa-arrow-circle-right"></i>-->
-                            <!--<span> Category Mapping</span>-->
-                        <!--</a>-->
-                    <!--</li>-->
                     <li>
                         <a href class=" dropdown-toggle" data-toggle="dropdown">
-                            <i class="fa fa-eye"></i>&#160;
+                            <i class="fa fa-eye"></i>&#160;API
                             <span class="caret"></span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-right" role="menu">
@@ -168,13 +170,13 @@
                 <span data-ng-if="node == uniqueIdNode" class="badge badge-unique">
                     Unique Id
                 </span>
-                <span data-ng-if="node.termMappings" class="badge badge-mapped" data-ng-click="goToPage(node, 'terms')">
-                    Terminology
-                </span>
-                <span data-ng-if="node.categoryMappings" class="badge badge-mapped"
-                      data-ng-click="goToPage(node, 'categories')">
-                    Categories
-                </span>
+                <!--<span data-ng-if="node.termMappings" class="badge badge-mapped" data-ng-click="goToPage(node, 'terms')">-->
+                    <!--Terminology-->
+                <!--</span>-->
+                <!--<span data-ng-if="node.categoryMappings" class="badge badge-mapped"-->
+                      <!--data-ng-click="goToPage(node, 'categories')">-->
+                    <!--Categories-->
+                <!--</span>-->
                 <span class="badge badge-info">
                     {{ node.count }}
                 </span>

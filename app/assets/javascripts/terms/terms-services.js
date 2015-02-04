@@ -48,8 +48,13 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                listConceptSchemes: function () {
-                    return ["NOT IMPLEMENTED"]
+                listSkos: function () {
+                    return app.listSkos().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 },
                 getMappings: function (datasetName) {
                     return app.getTermMappings(datasetName).get().then(
@@ -67,8 +72,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                searchConceptScheme: function (conceptSchemeName, sought) {
-                    return app.searchConceptScheme(conceptSchemeName, sought).get().then(
+                searchSkos: function (spec, sought) {
+                    return app.searchSkos(spec, sought).get().then(
                         function (response) {
                             return response.data;
                         },

@@ -67,10 +67,6 @@ object SkosInfo {
        """.stripMargin
     ts.query(q).map { list =>
       list.map { entry =>
-
-        Logger.warn(s"skos entry: $entry")
-
-
         val spec = entry("spec").text
         new SkosInfo(spec, ts)
       }
