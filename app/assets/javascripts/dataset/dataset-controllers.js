@@ -21,7 +21,6 @@ define(["angular"], function () {
         var MAX_FOR_VOCABULARY = 12500;
         // todo: rename to spec
         $scope.spec = $routeParams.spec;
-        $rootScope.breadcrumbs.dataset = $scope.spec;
         $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.spec;
         $scope.categoriesEnabled = user.categoriesEnabled;
 
@@ -37,6 +36,9 @@ define(["angular"], function () {
             datasetService.index($scope.spec).then(function (tree) {
 
                 function sortKids(node) {
+
+                    if (!node.kids) console.log("NO KIDS:", node);
+
                     if (!node.kids.length) return;
                     node.kids = _.sortBy(node.kids, function (kid) {
                         return kid.tag.toLowerCase();
@@ -119,19 +121,18 @@ define(["angular"], function () {
 
         fetchInfo(fetchTree);
 
-        $scope.toggleSkosField = function(uri) {
-            datasetService.toggleSkosField($scope.spec, uri).then(function(reply) {
+        $scope.setSkosField = function(uri, included) {
+            datasetService.setSkosField($scope.spec, uri, included).then(function(reply) {
                 fetchInfo($scope.fetchHistogram);
-                alert("toggle reply: "+ reply);
+                console.log("toggle reply: "+ reply);
             });
         };
 
-        $scope.goToPage = function (node, page) {
-            if (node && node != $scope.selectedNode) return;
-            $rootScope.breadcrumbs.dataset = $scope.spec;
+        $scope.goToPage = function (page) {
             $location.path("/" + page + "/" + $scope.spec);
             $location.search({
                 path: $routeParams.path,
+                // todo: probably URI should be used
                 size: $scope.status.histograms[$scope.status.histograms.length - 1]
             });
         };
@@ -200,8 +201,8 @@ define(["angular"], function () {
                     uniqueId: $scope.uniqueIdNode.path
                 };
                 datasetService.setRecordDelimiter($scope.spec, body).then(function () {
-                    console.log("Record delimiter set, moving to datasets page");
-                    $location.path("/datasets");
+                    console.log("Record delimiter set, moving to dataset list page");
+                    $location.path("/dataset-list");
                 });
             }
         };
@@ -223,7 +224,7 @@ define(["angular"], function () {
         function checkSkosField(uri) {
             if (!$scope.info) return false;
             if (_.isArray($scope.info.skosField)) {
-                return _.indexOf($scope.info.skosField, uri);
+                return _.indexOf($scope.info.skosField, uri) >= 0;
             }
             else {
                 return $scope.info.skosField == uri;

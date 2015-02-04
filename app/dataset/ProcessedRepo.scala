@@ -34,7 +34,7 @@ import scala.collection.JavaConversions._
 object ProcessedRepo {
 
   val SUFFIX = ".xml"
-  val chunkSize = 20
+  val chunkSize = 100
 
   case class GraphChunk(dataset: Dataset) {
 
@@ -101,12 +101,14 @@ class ProcessedRepo(val home: File, datasetUri: String) {
 
     def activeCount = activeCounter.map(_.getByteCount).getOrElse(0L)
 
-    class ProcessedReadProgress extends ReadProgress {
-      val count = previousBytesRead + activeCount
-      override def getPercentRead: Int = ((100 * count) / totalLength).toInt
+    object ProcessedReadProgress extends ReadProgress {
+      override def getPercentRead: Int = {
+        val count = previousBytesRead + activeCount
+        ((100 * count) / totalLength).toInt
+      }
     }
 
-    progressReporter.setReadProgress(new ProcessedReadProgress())
+    progressReporter.setReadProgress(ProcessedReadProgress)
 
     def readerOpt: Option[BufferedReader] =
       if (activeReader.isDefined) {

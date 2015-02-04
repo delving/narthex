@@ -26,7 +26,7 @@ define(
     [
         "angular",
         "dashboard",
-        "datasets",
+        "datasetList",
         "dataset",
         "skos",
         "terms",
@@ -41,7 +41,7 @@ define(
             "app",
             [
                 "narthex.dashboard",
-                "narthex.datasets",
+                "narthex.datasetList",
                 "narthex.dataset",
                 "narthex.skos",
                 "narthex.terms",

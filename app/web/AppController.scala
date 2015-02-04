@@ -146,20 +146,32 @@ object AppController extends Controller with Security {
     }
   }
 
-  def toggleSkosField(spec: String) = SecureAsync(parse.json) { session => request =>
+  def setSkosField(spec: String) = SecureAsync(parse.json) { session => request =>
+    val skosFieldUri = (request.body \ "skosFieldUri").as[String]
+    val included = (request.body \ "included").as[Boolean]
     DsInfo.check(spec, orgContext.ts).flatMap { dsInfoOpt =>
       dsInfoOpt.map { dsInfo =>
-        val skosFieldUri = (request.body \ "skosFieldUri").as[String]
-        Logger.info(s"toggle skos field $skosFieldUri")
+        Logger.info(s"set skos field $skosFieldUri")
         val currentSkosFields = dsInfo.getUriPropValueList(skosField)
-        val (future, action) = if (currentSkosFields.contains(skosFieldUri)) {
-          // here eventual de-skosification could happen
-          (dsInfo.removeUriProp(skosField, skosFieldUri), "removed")
+        val (futureOpt, action) = if (included) {
+          if (currentSkosFields.contains(skosFieldUri)) {
+            (None, "already exists")
+          }
+          else {
+            // rapid skosification could be done here
+            (Some(dsInfo.addUriProp(skosField, skosFieldUri)), "added")
+          }
         }
         else {
-          // rapid skosification could be done here
-          (dsInfo.addUriProp(skosField, skosFieldUri), "added")
+          if (!currentSkosFields.contains(skosFieldUri)) {
+            (None, "did not exists")
+          }
+          else {
+            // here eventual de-skosification could happen
+            (Some(dsInfo.removeUriProp(skosField, skosFieldUri)), "removed")
+          }
         }
+        val future = futureOpt.getOrElse(Future(None))
         future.map(ok => Ok(Json.obj("action" -> action)))
       } getOrElse {
         Future(NotFound(Json.obj("problem" -> s"dataset $spec not found")))
@@ -204,10 +216,7 @@ object AppController extends Controller with Security {
   }
 
   def listSkos = SecureAsync() { session => request =>
-    listSkosInfo(orgContext.ts).map { list =>
-      Logger.warn(s"listSkos: $list")
-      Ok(Json.toJson(list))
-    }
+    listSkosInfo(orgContext.ts).map(list =>Ok(Json.toJson(list)))
   }
 
   def createSkos(spec: String) = SecureAsync() { session => request =>

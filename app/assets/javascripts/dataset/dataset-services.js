@@ -80,9 +80,12 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                toggleSkosField: function (spec, uri) {
-                    var body = { "skosFieldUri": uri };
-                    return app.toggleSkosField(spec).post(body).then(
+                setSkosField: function (spec, uri, included) {
+                    var body = {
+                        "skosFieldUri": uri,
+                        "included": included
+                    };
+                    return app.setSkosField(spec).post(body).then(
                         function (response) {
                             return response.data.action;
                         },

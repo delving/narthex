@@ -43,7 +43,7 @@
                                 </a>
                             </li>
                             <li class="sidebar-list">
-                                <a href id="nav-datasets" data-ng-click="sidebarNav('datasets');">
+                                <a href id="nav-datasets" data-ng-click="sidebarNav('dataset-list');">
                                     Datasets <span class="menu-icon fa fa-cubes"></span>
                                 </a>
                             </li>
@@ -59,15 +59,6 @@
                                     </a>
                                 </li>
                             }
-                            <li data-ng-show="breadcrumbs.dataset" class="sidebar-title">
-                                <span>LAST VIEWED</span>
-                            </li>
-                            <li class="sidebar-list" data-ng-show="breadcrumbs.dataset">
-                                <a href id="nav-breadcrumb" data-ng-click="sidebarNav('breadcrumb');">
-                                    {{ breadcrumbs.dataset }} <span class="menu-icon fa fa-eye"></span>
-                                </a>
-                            </li>
-
                         </ul>
 
                     </div>

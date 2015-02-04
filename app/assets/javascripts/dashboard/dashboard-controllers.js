@@ -46,7 +46,7 @@ define(["angular"], function (angular) {
         listActors();
 
         $scope.login = function (credentials) {
-            console.log("Login", $scope.credentials);
+//            console.log("Login", $scope.credentials);
             $scope.errorMessage = undefined;
             userService.loginUser(credentials).then(
                 function (response) {
@@ -116,8 +116,8 @@ define(["angular"], function (angular) {
                 case 'homepage':
                     $location.path('/');
                     break;
-                case 'datasets':
-                    $location.path('/datasets');
+                case 'dataset-list':
+                    $location.path('/dataset-list');
                     break;
                 case 'skos':
                     $location.path('/skos');
@@ -127,9 +127,6 @@ define(["angular"], function (angular) {
                     break;
                 case 'thesaurus':
                     $location.path('/thesaurus');
-                    break;
-                case 'breadcrumb':
-                    $location.path('/dataset/' + $rootScope.breadcrumbs.dataset);
                     break;
                 default:
                     $location.path('/');
@@ -161,8 +158,6 @@ define(["angular"], function (angular) {
                 console.log("unable to logout", why);
             });
         };
-
-        $rootScope.breadcrumbs = {};
 
     };
 
