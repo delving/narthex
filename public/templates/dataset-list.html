@@ -81,13 +81,13 @@
 
 <script type="text/ng-template" id="dataset-entry.html">
 
-    <div data-ng-controller="DatasetEntryCtrl" class="panel panel-primary">
+    <div data-ng-controller="DatasetEntryCtrl" class="widget">
 
-        <div class="panel-heading">
+        <div class="widget-header">
             <!-- todo: should be a caret down to indicate expansion -->
-            <span class="name clickable" data-ng-click="expanded = !expanded">
-                <i class="fa" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i>
-                <span>{{ dataset.datasetSpec }}</span>
+            <span class="clickable" data-ng-click="expanded = !expanded">
+                <span class="widget-icon"><i class="fa" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
+                <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">("{{ dataset.datasetName }}")</span>
             </span>
             <!-- todo: no icons here, but a button to explore -->
             <span data-ng-show="dataset.datasetRecordCount" class="count clickable fa pull-right" data-ng-click="goToDataset()">
@@ -96,7 +96,7 @@
             </span>
         </div>
 
-        <div data-ng-if="dataset.progress" class="panel-body">
+        <div data-ng-if="dataset.progress" class="widget-body">
             <div class="input-group">
                 <progressbar class="form-control-feedback" animate="true" value="dataset.progress.count" max="100">{{ dataset.progress.message }}</progressbar>
                 <div class="input-group-btn">
@@ -107,7 +107,7 @@
             </div>
         </div>
 
-        <div class="panel-body" data-ng-if="expanded && !dataset.progress">
+        <div class="widget-body" data-ng-if="expanded && !dataset.progress">
 
             <div>
 
@@ -230,7 +230,7 @@
                         <!--</li>-->
                     </ul>
 
-                    <div class="tab-content">
+                    <div class="tab-content clearfix">
                         <div ng-switch="tabOpen">
                             <div ng-switch-when="metadata"><div data-ng-include="'dataset-metadata-form.html'">metadata form</div></div>
                             <div ng-switch-when="drop"><div data-ng-include="'drop-file-dataset.html'">drop file</div></div>
