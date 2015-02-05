@@ -23,18 +23,15 @@
         <div class="widget widget-schema">
             <div class="widget-header">
                 Schema
-                <ul class="nav nav-pills widget-header-nav-pills pull-right">
-                    <li>
-                        <a href class=" dropdown-toggle" data-toggle="dropdown">
-                            <i class="fa fa-eye"></i>&#160;
-                            <span class="caret"></span>
+                    <span class="dropdown pull-right">
+                        <a href class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown">
+                            <i class="fa fa-eye"></i><span class="caret"></span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-right" role="menu">
                             <li><a data-ng-href="{{ apiPrefix }}/{{ datasetName }}/tree" target="_blank">Tree</a></li>
                             <li><a data-ng-href="{{ apiPrefix }}/{{ datasetName }}" target="_blank">Paths</a></li>
                         </ul>
-                    </li>
-                </ul>
+                    </span>
             </div>
             <div class="vertical-scroll list-group" data-scrollable id="schema-tree" data-offset="160" data-ng-style="{ 'height': elHeight }"  data-ng-controller="TreeCtrl" data-ng-include="'node.html'">Node list</div>
         </div>
@@ -62,34 +59,28 @@
                         <a href="" data-ng-click="fetchLengths()">Lengths</a>
                     </li>
                 </ul>
-                <ul class="nav nav-pills widget-header-nav-pills pull-right">
+                <ul class="list-inline pull-right">
                     <li data-ng-show="rawAnalyzedState && activeView == 'histogram' && histogramUnique">
-                        <a href class="btn btn-warning btn-sm" data-ng-click="setUniqueIdNode(selectedNode)"
-                                data-ng-disabled="uniqueIdNode == selectedNode">
-                            <i class="fa fa-check-circle"></i>
-                            <span> Use as Unique Element</span>
+                        <a href class="btn btn-warning btn-sm" data-ng-click="setUniqueIdNode(selectedNode)" data-ng-disabled="uniqueIdNode == selectedNode">
+                            <i class="fa fa-check-circle"></i> <span> Use as Unique Element</span>
                         </a>
                     </li>
                     <li  data-ng-show="analyzedState && activeView == 'histogram' && histogramVocabulary">
-                        <a href class="" data-ng-click="setSkosField(histogram.uri, true)" ng-show="!histogramSkosField">
-                            <i class="fa fa-arrow-circle-right"></i>
-                            <span> Skosify </span><span class="small">({{ histogram.uri }})</span>
+                        <!-- Terminology mapping button -->
+                        <a href data-ng-click="goToPage('terms')" data-ng-show="histogramSkosField">
+                            <i class="fa fa-arrows-h"></i>
+                            Map terms
                         </a>
-                        <span>
-                            <a href class="btn btn-sm btn-default" data-ng-click="goToPage('terms')" data-ng-show="histogramSkosField">
-                                <i class="fa fa-arrows-h"></i>
-                                <span> Map terms</span>
-                            </a>
-                            <a href class="btn btn-sm btn-default" data-ng-click="goToPage('categories')" data-ng-show="histogramSkosField && categoriesEnabled">
-                                <i class="fa fa-sitemap"></i>
-                                <span> Categorize</span>
-                            </a>
-                        </span>
+                        <!-- Categorize button -->
+                        <a href data-ng-click="goToPage('categories')" data-ng-show="histogramSkosField && categoriesEnabled">
+                            <i class="fa fa-sitemap"></i>
+                            Categorize
+                        </a>
+
                     </li>
                     <li>
-                        <a href class=" dropdown-toggle" data-toggle="dropdown">
-                            <i class="fa fa-eye"></i>&#160;API
-                            <span class="caret"></span>
+                        <a href class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown">
+                            <i class="fa fa-eye"></i><span class="caret"></span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-right" role="menu">
                             <li><a ng-href="{{apiPathUnique}}" target="_blank">All Values</a></li>
@@ -115,7 +106,14 @@
             </div>
 
             <div class="vertical-scroll" data-scrollable id="historgram-list" data-offset="200" data-ng-style="{ 'height': elHeight }" ng-show="histogram">
+
                 <ul class="list-group">
+                    <li  data-ng-show="!histogramSkosField" class="list-group-item">
+                        <!-- Skosify button -->
+                        <a href data-ng-click="setSkosField(histogram.uri, true)" class="btn btn-primary btn-block btn-xs">
+                            Skosify ({{ histogram.uri }})
+                        </a>
+                    </li>
                     <li data-ng-repeat="count in histogram.histogram | filter:filterText"
                         class="list-group-item clearfix">
                         <span class="node-content">{{ count[1] }}</span>
