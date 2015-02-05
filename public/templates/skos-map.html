@@ -17,15 +17,15 @@
 
 <div class="row search-all">
     <div class="col-sm-3">
-        <ul class="list-inline mapping-status">
+        <ul class="nav nav-pills pills-small mapping-status">
             <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'">
-                <a href><span class="badge"> all</span></a>
+                <a href>all</a>
             </li>
             <li data-ng-class="{ active: show === 'mapped' }" data-ng-model="show" data-ng-click="show='mapped'">
-                <a href><span class="badge"><i class="fa fa-link"></i> mapped</span></a>
+                <a href><i class="fa fa-link"></i> mapped</a>
             </li>
             <li data-ng-class="{ active: show === 'unmapped' }" data-ng-model="show" data-ng-click="show='unmapped'">
-                <a href><span class="badge"><i class="fa fa-chain-broken"></i> unmapped</span></a>
+                <a href><i class="fa fa-chain-broken"></i> unmapped</a>
             </li>
         </ul>
     </div>
