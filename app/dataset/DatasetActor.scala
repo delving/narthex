@@ -348,11 +348,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         dsInfo.removeLiteralProp(datasetErrorMessage).map { m =>
           listener ! "error cleared"
         }
+        goto(Idle) using Dormant
       }
       else {
         listener ! message
+        stay()
       }
-      stay()
 
     case Event(InterruptWork, active: Active) =>
       log.info(s"Sending interrupt while in $stateName/$active)")

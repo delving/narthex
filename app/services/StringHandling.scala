@@ -59,4 +59,8 @@ object StringHandling {
     .replaceAll("[>]", "&gt;")
     .replaceAll("[\"]", "&quot;")
     .replaceAll("[']", "&apos;")
+
+  def sanitizeSparqlLiteral(literal: String) = literal
+    .replaceAll("[\"]", "&lt;")
+
 }

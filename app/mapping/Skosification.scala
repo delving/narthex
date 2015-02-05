@@ -80,7 +80,7 @@ trait Skosification {
     val fieldProperty = skosifieldField.fieldPropertyUri
     val skosGraph = getSkosUri(skosifieldField.datasetUri)
     val datasetUri = skosifieldField.datasetUri
-    val quotedValue = literalValue.quoted
+    val value = literalValue.text
 
     val ensureSkosEntry =
       s"""
@@ -88,7 +88,7 @@ trait Skosification {
       |INSERT {
       |   GRAPH <$skosGraph> {
       |      <$mintedUri> a skos:Concept .
-      |      <$mintedUri> skos:altLabel "$quotedValue" .
+      |      <$mintedUri> skos:altLabel '''$value''' .
       |      <$mintedUri> <$belongsTo> <$datasetUri> .
       |      <$mintedUri> <$synced> false .
       |   }
@@ -107,7 +107,7 @@ trait Skosification {
       s"""
       |DELETE {
       |  GRAPH ?g {
-      |     ?s <$fieldProperty> "$quotedValue" .
+      |     ?s <$fieldProperty> '''$value''' .
       |  }
       |}
       |INSERT {
@@ -117,7 +117,7 @@ trait Skosification {
       |}
       |WHERE {
       |  GRAPH ?g {
-      |     ?s <$fieldProperty> "$quotedValue" .
+      |     ?s <$fieldProperty> '''$value''' .
       |     ?s <$belongsTo> <$datasetUri> .
       |  }
       |};

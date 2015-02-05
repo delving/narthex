@@ -165,7 +165,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
          |   <$uri> <$propUri> ?o .
          |}
          |INSERT { 
-         |   <$uri> <$propUri> "${pv._2}" .
+         |   <$uri> <$propUri> '''${pv._2}''' .
          |}
          |WHERE { 
          |   OPTIONAL {
@@ -175,6 +175,11 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
        """.stripMargin.trim
     }
     val sparql = sparqlPerProp.mkString(";\n")
+
+
+    println(s"SETTING LITERAL PROPS:\n$sparql")
+
+
     ts.update(sparql).map { ok =>
       propVal.foreach { pv =>
         m.removeAll(res, pv._1, null)
@@ -213,7 +218,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     val sparql = s"""
          |INSERT DATA {
          |   GRAPH <$uri> {
-         |      <$uri> <$propUri> "$uriValue" .
+         |      <$uri> <$propUri> '''$uriValue''' .
          |   }
          |}
        """.stripMargin.trim
@@ -231,12 +236,12 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
       s"""
          |DELETE {
          |   GRAPH <$uri> {
-         |      <$uri> <$propUri> "$uriValue" .
+         |      <$uri> <$propUri> '''$uriValue''' .
          |   }
          |}
          |WHERE {
          |   GRAPH <$uri> {
-         |      <$uri> <$propUri> "$uriValue" .
+         |      <$uri> <$propUri> '''$uriValue''' .
          |   }
          |}
        """.stripMargin
@@ -274,13 +279,20 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
 
   def setError(message: String) = {
     if (message.isEmpty) {
+
+      println(s"removing error message")
+
       removeLiteralProp(datasetErrorMessage)
-      removeLiteralProp(datasetErrorTime)
     }
-    else  setSingularLiteralProps(
-      datasetErrorMessage -> message,
-      datasetErrorTime -> now
-    )
+    else {
+
+      println(s"Setting error message to $message")
+
+      setSingularLiteralProps(
+        datasetErrorMessage -> message,
+        datasetErrorTime -> now
+      )
+    }
   }
 
   def setRecordCount(count: Int) = setSingularLiteralProps(datasetRecordCount -> count.toString)

@@ -43,7 +43,17 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with Ac
   var reader: Option[GraphReader] = None
   var progress: Option[ProgressReporter] = None
 
-  def readGraphChunkOpt: Option[GraphChunk] = reader.get.readChunk
+  def sendGraphChunk() = {
+    try {
+      self ! reader.get.readChunk
+    }
+    catch {
+      case ex: Throwable =>
+        reader.map(_.close())
+        reader = None
+        context.parent ! WorkFailure(ex.getMessage, Some(ex))
+    }
+  }
 
   override def receive = {
 
@@ -54,11 +64,11 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with Ac
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progress = Some(progressReporter)
       reader = Some(repo.createGraphReader(incrementalOpt.map(_.file), progressReporter))
-      self ! readGraphChunkOpt
+      sendGraphChunk()
 
     case Some(chunk: GraphChunk) =>
       val update = client.update(chunk.toSparqlUpdate)
-      update.map(ok => self ! readGraphChunkOpt)
+      update.map(ok => sendGraphChunk())
       update.onFailure {
         case ex: Throwable =>
           reader.map(_.close())
@@ -71,7 +81,7 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with Ac
       context.parent ! GraphSaveComplete
 
     case ChunkSent =>
-      self ! readGraphChunkOpt
+      sendGraphChunk()
 
   }
 }

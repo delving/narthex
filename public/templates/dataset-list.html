@@ -111,10 +111,6 @@
 
             <div>
 
-                <div data-ng-if="dataset.datasetErrorMessage" class="label label-danger" data-ng-click="clearError()">
-                    <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}
-                </div>
-
                 <!--todo: maybe put this all inside a tab-->
                 <div class="ds-states">
                     <div data-ng-show="dataset.empty">
@@ -193,6 +189,10 @@
                     </div>
                 </div>
 
+                <div data-ng-if="dataset.datasetErrorMessage" data-ng-click="clearError()">
+                    <hr/>
+                    <span class="label label-danger"><i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}</span>
+                </div>
 
                 <hr />
 

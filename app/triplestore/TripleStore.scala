@@ -50,8 +50,6 @@ object TripleStore {
         QV_UNKNOWN
       // there is type: uri, literal, bnode and also datatype and xml:lang
     }
-    // todo: find out what needs replacing
-    lazy val quoted = text.replaceAll("\"", "")
   }
 
   class TripleStoreException(message: String) extends Exception(message)
