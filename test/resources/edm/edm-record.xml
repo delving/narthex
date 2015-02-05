@@ -1,10 +1,15 @@
-<rdf:Description xmlns:brac="http://schemas.delving.eu/brac/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:delving="http://schemas.delving.eu/" xmlns:edm="http://www.europeana.eu/schemas/edm/" xmlns:ore="http://www.openarchives.org/ore/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/ton/001">
-    <ore:Aggregation>
+<?xml version='1.0' encoding='UTF-8'?>
+<rdf:RDF xmlns:brac="http://schemas.delving.eu/brac/"
+         xmlns:delving="http://schemas.delving.eu/"
+         xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:ore="http://www.openarchives.org/ore/terms/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:edm="http://www.europeana.eu/schemas/edm/">
+    <ore:Aggregation rdf:about="http://acc.brabantcloud.delving.org/resource//ton-smits-huis/001">
+        <edm:aggregatedCHO rdf:resource="http://acc.brabantcloud.delving.org/resource//document/ton-smits-huis/001"/>
         <edm:dataProvider>Ton Smits Huis</edm:dataProvider>
         <edm:provider>Erfgoed Brabant</edm:provider>
         <edm:rights>http://www.europeana.eu/rights/rr-r/</edm:rights>
     </ore:Aggregation>
-    <edm:ProvidedCHO>
+    <edm:ProvidedCHO rdf:about="http://acc.brabantcloud.delving.org/resource//document/ton-smits-huis/001">
         <dc:creator>Smits, Ton</dc:creator>
         <dc:description>Een ballerina die dansend op een figuratief paard staat</dc:description>
         <dc:identifier>001</dc:identifier>
@@ -19,7 +24,8 @@
         <dc:title>Droom van een ballerina</dc:title>
         <edm:type>IMAGE</edm:type>
     </edm:ProvidedCHO>
-    <edm:BrabantCloud>
+    <edm:BrabantCloud rdf:about="http://acc.brabantcloud.delving.org/resource//brabantcloud/ton-smits-huis/001">
+        <ore:isAggregatedBy rdf:resource="http://acc.brabantcloud.delving.org/resource//aggregation/ton-smits-huis/001"/>
         <brac:citName>ccBrabant_TSH</brac:citName>
         <brac:citOldId>ccBrabant_TSH_001</brac:citOldId>
         <brac:thumbLarge>http://media.delving.org/thumbnail/brabantcloud/ton-smits-huis/001/500</brac:thumbLarge>
@@ -38,7 +44,8 @@
         <brac:place>Eindhoven</brac:place>
         <brac:technique>geschilderd</brac:technique>
     </edm:BrabantCloud>
-    <edm:Delving>
+    <edm:Delving rdf:about="http://acc.brabantcloud.delving.org/resource//delving/ton-smits-huis/001">
+        <ore:isAggregatedBy rdf:resource="http://acc.brabantcloud.delving.org/resource//aggregation/ton-smits-huis/001"/>
         <delving:deepZoomUrl>http://media.delving.org/iip/deepzoom/mnt/tib/tiles/brabantcloud/ton-smits-huis/001.tif.dzi</delving:deepZoomUrl>
     </edm:Delving>
-</rdf:Description>
+</rdf:RDF>

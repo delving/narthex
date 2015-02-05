@@ -175,11 +175,6 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
        """.stripMargin.trim
     }
     val sparql = sparqlPerProp.mkString(";\n")
-
-
-    println(s"SETTING LITERAL PROPS:\n$sparql")
-
-
     ts.update(sparql).map { ok =>
       propVal.foreach { pv =>
         m.removeAll(res, pv._1, null)
@@ -279,15 +274,9 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
 
   def setError(message: String) = {
     if (message.isEmpty) {
-
-      println(s"removing error message")
-
       removeLiteralProp(datasetErrorMessage)
     }
     else {
-
-      println(s"Setting error message to $message")
-
       setSingularLiteralProps(
         datasetErrorMessage -> message,
         datasetErrorTime -> now

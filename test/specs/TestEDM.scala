@@ -14,7 +14,7 @@ class TestEDM extends FlatSpec with Matchers{
     val xmlFile = new File(getClass.getResource("/edm/edm-record.xml").getFile)
     val xmlString = FileUtils.readFileToString(xmlFile)
 
-    println(xmlString)
+//    println(xmlString)
 
     val model = ModelFactory.createDefaultModel()
     model.read(new StringReader(xmlString), null, "RDF/XML")
