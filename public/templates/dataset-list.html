@@ -189,9 +189,8 @@
                     </div>
                 </div>
 
-                <div data-ng-if="dataset.datasetErrorMessage" data-ng-click="clearError()">
-                    <hr/>
-                    <span class="label label-danger"><i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}</span>
+                <div data-ng-click="clearError()" class="alert alert-danger" data-ng-if="dataset.datasetErrorMessage" >
+                    <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}
                 </div>
 
                 <hr />
