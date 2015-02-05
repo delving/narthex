@@ -51,12 +51,9 @@
                                 <input id="new-name" class="form-control" data-ng-model="newDataset.specTyped" placeholder="spec" required autofocus/>
                             </div>
                             <div data-ng-if="characters.length > 1">
-                                <label for="new-format">Character</label>
-                                <div id="new-format">
-                                    <span data-ng-repeat="ch in characters" style="padding: 5px">
-                                        <input type="radio" name="character" data-ng-model="newDataset.character" data-ng-value="ch"> <span>{{ ch.title }}</span>
-                                    </span>
-                                </div>
+                                <span data-ng-repeat="ch in characters" class="radio">
+                                    <label><input type="radio" name="character" data-ng-model="newDataset.character" data-ng-value="ch"> {{ ch.title }}</label>
+                                </span>
                             </div>
                             <div data-ng-if="characters.length == 1">
                                 {{ characters[0].title }}
