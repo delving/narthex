@@ -48,8 +48,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                listSkos: function () {
-                    return app.listSkos().get().then(
+                listVocabularies: function () {
+                    return app.listVocabularies().get().then(
                         function (response) {
                             return response.data;
                         },
@@ -64,8 +64,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                searchSkos: function (spec, sought) {
-                    return app.searchSkos(spec, sought).get().then(
+                searchVocabulary: function (spec, sought) {
+                    return app.searchVocabulary(spec, sought).get().then(
                         function (response) {
                             return response.data;
                         },

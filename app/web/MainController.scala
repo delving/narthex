@@ -220,14 +220,14 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.gatherCategoryCounts,
           routes.javascript.AppController.listSipFiles,
           routes.javascript.AppController.deleteLatestSipFile,
-          routes.javascript.AppController.createSkos,
-          routes.javascript.AppController.setSkosProperties,
-          routes.javascript.AppController.vocabInfo,
-          routes.javascript.AppController.skosStatistics,
+          routes.javascript.AppController.listVocabularies,
+          routes.javascript.AppController.createVocabulary,
+          routes.javascript.AppController.setVocabularyProperties,
+          routes.javascript.AppController.vocabularyInfo,
+          routes.javascript.AppController.vocabularyStatistics,
           routes.javascript.AppController.getSkosMappings,
           routes.javascript.AppController.toggleSkosMapping,
-          routes.javascript.AppController.listSkos,
-          routes.javascript.AppController.searchSkos
+          routes.javascript.AppController.searchVocabulary
         )
       ).as(JAVASCRIPT)
   }

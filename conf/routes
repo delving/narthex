@@ -42,13 +42,13 @@ GET         /narthex/app/dataset/:spec/term/get-mappings                     web
 POST        /narthex/app/dataset/:spec/term/:vocabSpec/toggle-mapping        web.AppController.toggleTermMapping(spec, vocabSpec)
 
 
-GET         /narthex/app/skos/list                                           web.AppController.listSkos
-GET         /narthex/app/skos/:spec/create                                   web.AppController.createSkos(spec)
-POST        /narthex/app/skos/:spec/upload                                   web.AppController.uploadSkos(spec)
-POST        /narthex/app/skos/:spec/set-properties                           web.AppController.setSkosProperties(spec)
-GET         /narthex/app/skos/:spec/info                                     web.AppController.vocabInfo(spec)
-GET         /narthex/app/skos/:spec/statistics                               web.AppController.skosStatistics(spec)
-GET         /narthex/app/skos/:spec/:sought                                  web.AppController.searchSkos(spec, sought)
+GET         /narthex/app/skos/list                                           web.AppController.listVocabularies
+GET         /narthex/app/skos/:spec/create                                   web.AppController.createVocabulary(spec)
+POST        /narthex/app/skos/:spec/upload                                   web.AppController.uploadVocabulary(spec)
+POST        /narthex/app/skos/:spec/set-properties                           web.AppController.setVocabularyProperties(spec)
+GET         /narthex/app/skos/:spec/info                                     web.AppController.vocabularyInfo(spec)
+GET         /narthex/app/skos/:spec/statistics                               web.AppController.vocabularyStatistics(spec)
+GET         /narthex/app/skos/:spec/:sought                                  web.AppController.searchVocabulary(spec, sought)
 GET         /narthex/app/skos/:specA/:specB/get-mappings                     web.AppController.getSkosMappings(specA, specB)
 POST        /narthex/app/skos/:specA/:specB/toggle-mapping                   web.AppController.toggleSkosMapping(specA, specB)
 
@@ -72,7 +72,6 @@ POST        /narthex/sip-app/:spec/:zipFileName                              web
 GET         /narthex/api/:apiKey                                             web.APIController.listDatasets(apiKey)
 GET         /narthex/api/:apiKey/:spec                                       web.APIController.pathsJSON(apiKey, spec)
 GET         /narthex/api/:apiKey/:spec/tree                                  web.APIController.indexJSON(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/mappings                              web.APIController.termMappings(apiKey, spec)
 GET         /narthex/api/:apiKey/:spec/uri/*path                             web.APIController.uriText(apiKey, spec, path)
 GET         /narthex/api/:apiKey/:spec/unique/*path                          web.APIController.uniqueText(apiKey, spec, path)
 GET         /narthex/api/:apiKey/:spec/histogram/*path                       web.APIController.histogramText(apiKey, spec, path)

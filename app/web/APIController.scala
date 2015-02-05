@@ -92,16 +92,6 @@ object APIController extends Controller {
     }
   }
 
-  def termMappings(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    orgContext.datasetContextOption(spec) match {
-      case Some(datasetContext) =>
-        val mappings = datasetContext.termDb.getMappingsRDF
-        Ok(mappings)
-      case None =>
-        NotFound(s"No mappings for $spec")
-    }
-  }
-
   def listSipZips(apiKey: String) = KeyFitsAsync(apiKey, parse.anyContent) { implicit request =>
     val availableSips: Seq[AvailableSip] = orgContext.availableSips
     orgContext.uploadedSips.map { uploadedSips =>

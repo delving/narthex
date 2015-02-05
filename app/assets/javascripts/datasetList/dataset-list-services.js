@@ -88,7 +88,7 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                setProperties: function (spec, payload) {
+                setDatasetProperties: function (spec, payload) {
                     return app.setDatasetProperties(spec).post(payload).then(
                         function (response) {
                             return response.data;

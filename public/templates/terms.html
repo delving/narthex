@@ -83,7 +83,7 @@
                 <!-- SEARCH -->
                 <div class="input-group input-group-skos-term">
                     <label class="input-group-addon"><i class="fa fa-search"></i> {{ thesaurus }}</label>
-                    <input class="form-control" type="text" data-ng-model="sought"/>
+                    <input class="form-control" type="text" data-ng-model="sought.label"/>
                 </div>
                 <!-- lEGEND -->
                 <div data-ng-show="activeView == 'skos'" class="well well-sm">
@@ -94,7 +94,7 @@
                     <span class="label term-narrower">&#8600; <!--<i class="fa fa-compress"></i>-->  narrower term</span>
                 </div>
                 <!-- INITIAL ALERT -->
-                <div data-ng-if="!sought">
+                <div data-ng-if="!sought.label">
                     <b>Click</b> on a term from the list on the left or <b>enter</b> a term in the search field above
                 </div>
                 <!-- LOADING INDICATOR -->

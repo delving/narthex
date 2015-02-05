@@ -49,15 +49,15 @@ define(["angular"], function (angular) {
         };
 
         $scope.fetchSkosList = function () {
-            skosService.listSkos().then(function (data) {
+            skosService.listVocabularies().then(function (data) {
                 $scope.skosList = _.map(data, $scope.decorateSkos);
             });
         };
 
         $scope.fetchSkosList();
 
-        $scope.createSkos = function () {
-            skosService.createSkos($scope.newDataset.spec).then(function () {
+        $scope.createVocabulary = function () {
+            skosService.createVocabulary($scope.newDataset.spec).then(function () {
                 $scope.cancelNewFile();
                 $scope.newDataset.spec = undefined;
                 $scope.fetchSkosList();
@@ -123,7 +123,7 @@ define(["angular"], function (angular) {
         }
 
         function getStatistics() {
-            skosService.skosStatistics(sk.skosSpec).then(function (statistics) {
+            skosService.vocabularyStatistics(sk.skosSpec).then(function (statistics) {
                 $scope.statistics = statistics;
             });
         }
@@ -155,7 +155,7 @@ define(["angular"], function (angular) {
         $scope.$watch("skos.edit", setUnchanged, true);
 
         function refreshInfo() {
-            skosService.vocabInfo(sk.skosSpec).then(function (skos) {
+            skosService.vocabularyInfo(sk.skosSpec).then(function (skos) {
                 $scope.skos = $scope.decorateSkos(skos);
             });
         }
@@ -165,7 +165,7 @@ define(["angular"], function (angular) {
             _.forEach(propertyList, function (propertyName) {
                 payload.values[propertyName] = angular.copy(sk.edit[propertyName]);
             });
-            skosService.setProperties(sk.skosSpec, payload).then(refreshInfo);
+            skosService.setVocabularyProperties(sk.skosSpec, payload).then(refreshInfo);
         }
 
         $scope.setMetadata = function () {
@@ -277,7 +277,7 @@ define(["angular"], function (angular) {
 
         function searchANow(value) {
             $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
-            skosService.search($routeParams.specA, value).then(function (data) {
+            skosService.searchVocabulary($routeParams.specA, value).then(function (data) {
                 fetchedConceptsA = data.search.results;
                 $scope.conceptA = null;
                 filterConceptsNow();
@@ -295,7 +295,7 @@ define(["angular"], function (angular) {
 
         function searchBNow(value) {
             $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
-            skosService.search($routeParams.specB, value).then(function (data) {
+            skosService.searchVocabulary($routeParams.specB, value).then(function (data) {
                 fetchedConceptsB = data.search.results;
                 $scope.conceptB = null;
                 filterConceptsNow();

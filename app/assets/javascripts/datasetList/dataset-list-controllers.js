@@ -375,7 +375,7 @@ define(["angular"], function () {
             _.forEach(propertyList, function (propertyName) {
                 payload.values[propertyName] = angular.copy(ds.edit[propertyName]);
             });
-            datasetListService.setProperties(ds.datasetSpec, payload).then(refreshInfo);
+            datasetListService.setDatasetProperties(ds.datasetSpec, payload).then(refreshInfo);
         }
 
         $scope.setMetadata = function () {

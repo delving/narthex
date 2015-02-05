@@ -135,7 +135,7 @@ object AppController extends Controller with Security {
     DsInfo.check(spec, ts).flatMap { dsInfoOpt =>
       dsInfoOpt.map { dsInfo =>
         val propertyList = (request.body \ "propertyList").as[List[String]]
-        Logger.info(s"setProperties $propertyList")
+        Logger.info(s"setDatasetProperties $propertyList")
         val diProps: List[DIProp] = propertyList.map(name => allDatasetProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
         val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
         val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
@@ -215,17 +215,17 @@ object AppController extends Controller with Security {
     }
   }
 
-  def listSkos = SecureAsync() { session => request =>
+  def listVocabularies = SecureAsync() { session => request =>
     listVocabInfo(ts).map(list => Ok(Json.toJson(list)))
   }
 
-  def createSkos(spec: String) = SecureAsync() { session => request =>
+  def createVocabulary(spec: String) = SecureAsync() { session => request =>
     VocabInfo.create(session.actor, spec, ts).map(ok =>
       Ok(Json.obj("created" -> s"Skos $spec created"))
     )
   }
 
-  def uploadSkos(spec: String) = SecureAsync(parse.multipartFormData) { session => request =>
+  def uploadVocabulary(spec: String) = SecureAsync(parse.multipartFormData) { session => request =>
     withVocabInfo(spec) { vocabInfo =>
       request.body.file("file").map { bodyFile =>
         val file = bodyFile.ref.file
@@ -240,20 +240,20 @@ object AppController extends Controller with Security {
     }
   }
 
-  def vocabInfo(spec: String) = Secure() { session => request =>
+  def vocabularyInfo(spec: String) = Secure() { session => request =>
     withVocabInfo(spec)(vocabInfo => Ok(Json.toJson(vocabInfo)))
   }
 
-  def skosStatistics(spec: String) = SecureAsync() { session => request =>
+  def vocabularyStatistics(spec: String) = SecureAsync() { session => request =>
     withVocabInfo(spec) { vocabInfo =>
       vocabInfo.getStatistics.map(stats => Ok(Json.toJson(stats)))
     }
   }
 
-  def setSkosProperties(spec: String) = SecureAsync(parse.json) { session => request =>
+  def setVocabularyProperties(spec: String) = SecureAsync(parse.json) { session => request =>
     withVocabInfo(spec) { vocabInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
-      Logger.info(s"setProperties $propertyList")
+      Logger.info(s"setVocabularyProperties $propertyList")
       val diProps: List[SIProp] = propertyList.map(name => allSkosProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
@@ -261,7 +261,7 @@ object AppController extends Controller with Security {
     }
   }
 
-  def searchSkos(spec: String, sought: String) = Secure() { session => request =>
+  def searchVocabulary(spec: String, sought: String) = Secure() { session => request =>
     withVocabInfo(spec) { vocabInfo =>
       val v = vocabInfo.vocabulary
       val labelSearch: LabelSearch = v.search(LANGUAGE, sought, 25)

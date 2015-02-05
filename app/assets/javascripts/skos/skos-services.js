@@ -40,40 +40,40 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
-                listSkos: function () {
-                    return app.listSkos().get().then(
+                listVocabularies: function () {
+                    return app.listVocabularies().get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                createSkos: function (spec) {
-                    return app.createSkos(spec).get().then(
+                createVocabulary: function (spec) {
+                    return app.createVocabulary(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                vocabInfo: function (spec) {
-                    return app.vocabInfo(spec).get().then(
+                vocabularyInfo: function (spec) {
+                    return app.vocabularyInfo(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                skosStatistics: function (spec) {
-                    return app.skosStatistics(spec).get().then(
+                vocabularyStatistics: function (spec) {
+                    return app.vocabularyStatistics(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setProperties: function (spec, payload) {
-                    return app.setSkosProperties(spec).post(payload).then(
+                setVocabularyProperties: function (spec, payload) {
+                    return app.setVocabularyProperties(spec).post(payload).then(
                         function (response) {
                             return response.data;
                         },
@@ -88,8 +88,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                search: function (spec, sought) {
-                    return app.searchSkos(spec, sought).get().then(
+                searchVocabluary: function (spec, sought) {
+                    return app.searchVocabulary(spec, sought).get().then(
                         function (response) {
                             return response.data;
                         },

@@ -35,7 +35,7 @@ define(["angular"], function () {
         getSearchParams();
 
         $scope.sourceTerm = undefined; // list selection
-        $scope.sought = ""; // the field model
+        $scope.sought = {}; // the field model
         $scope.mappings = {};
         $scope.show = "all";
         $scope.concepts = [];
@@ -91,7 +91,7 @@ define(["angular"], function () {
         }
 
         // preparations
-        termsService.listSkos().then(function (data) {
+        termsService.listVocabularies().then(function (data) {
             $scope.thesaurusList = _.map(data, function (t) {
                 return t.skosSpec;
             });
@@ -120,7 +120,7 @@ define(["angular"], function () {
         function searchThesaurus(value) {
             if (!value || !$scope.thesaurus) return;
             $scope.scrollTo({element: '#skos-term-list', direction: 'up'});
-            termsService.searchSkos($scope.thesaurus, value).then(function (data) {
+            termsService.searchVocabulary($scope.thesaurus, value).then(function (data) {
                 $scope.conceptSearch = data.search;
                 var mapping = $scope.mappings[$scope.sourceURI];
                 if (mapping) {
@@ -143,7 +143,7 @@ define(["angular"], function () {
             if ($scope.thesaurus) {
                 $scope.activeView = "skos";
                 if ($scope.sourceTerm) {
-                    $scope.sought = $scope.sourceTerm.value;
+                    $scope.sought.label = $scope.sourceTerm.label;
                 }
                 updateSearchParams();
             }
@@ -156,11 +156,11 @@ define(["angular"], function () {
             $scope.sourceTerm = term;
             var mapping = $scope.mappings[term.uri];
             if (mapping && mapping.thesaurus != $scope.thesaurus) {
-                $scope.selectConceptScheme(mapping.thesaurus);
+                $scope.selectThesaurus(mapping.thesaurus);
             }
             switch ($scope.activeView) {
                 case "skos":
-                    $scope.sought = term.label; // will trigger search
+                    $scope.sought.label = term.label; // will trigger search
                     break;
 //                case "record":
 //                    searchRecords(entry.value);
@@ -171,16 +171,16 @@ define(["angular"], function () {
         $scope.selectThesaurus = function (spec) {
             $scope.thesaurus = spec;
             $scope.skosTab();
-            searchThesaurus($scope.sought);
+            searchThesaurus($scope.sought.label);
         };
 
         $scope.selectSought = function (value) {
-            $scope.sought = value;
+            $scope.sought.label = value;
         };
 
         $scope.$watch("sought", function (sought) {
-            if (sought) searchThesaurus(sought);
-        });
+            if (sought.label) searchThesaurus(sought.label);
+        }, true);
 
         $scope.$watch("show", function () {
             filterHistogram();
