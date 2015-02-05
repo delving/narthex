@@ -139,7 +139,7 @@ case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore) {
   private val conceptMap = new mutable.HashMap[String, Concept]()
 
   lazy val concepts: Seq[Concept] = {
-    val typeProperty = m.getProperty(rdfType)
+    val typeProperty = m.getProperty(GraphProperties.rdfType)
     val conceptResource = m.getResource(s"${GraphProperties.SKOS}Concept")
     val subjects = m.listSubjectsWithProperty(typeProperty, conceptResource).toSeq
     subjects.map(statement => Concept(this, statement, conceptMap, m))
