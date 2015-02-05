@@ -37,15 +37,15 @@
             </div>
             <ul class="list-group actionable vertical-scroll" data-scrollable id="histogram-list" data-offset="160"
                 data-ng-style="{ 'height': elHeight }">
-                <li data-ng-repeat="entry in histogramVisible | filter:filterText"
+                <li data-ng-repeat="term in terms"
                     class="list-group-item clearfix"
-                    data-ng-class="{ 'list-item-selected': entry.value ==  sourceEntry.value, 'list-item-mapped' : mappings[entry.sourceURI] }"
-                    data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectSource(entry);">
-                    <span class="term">{{ entry.value }}</span>
-                    <span class="term-mapped" data-ng-show="mappings[entry.sourceURI].prefLabel">
-                        <i class="fa fa-link"></i> {{ mappings[entry.sourceURI].prefLabel }}
+                    data-ng-class="{ 'list-item-selected': term.uri == sourceTerm.uri, 'list-item-mapped' : mappings[term.uri] }"
+                    data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectTerm(term);">
+                    <span class="term">{{ term.label }}</span>
+                    <span class="term-mapped" data-ng-show="mappings[term.uri].prefLabel">
+                        <i class="fa fa-link"></i> {{ mappings[term.uri].prefLabel }}
                     </span>
-                    <span class="node-stats badge">{{ entry.count }}</span>
+                    <span class="node-stats badge">{{ term.frequency }}</span>
                 </li>
             </ul>
         </div>
@@ -59,7 +59,7 @@
                         <a href data-ng-click="thesauriTab()">Vocabularies</a>
                     </li>
                     <li data-ng-class="{ active: activeView == 'skos' }">
-                        <a href data-ng-click="skosTab()">Terms</a>
+                        <a href data-ng-click="skosTab()">Concepts</a>
                     </li>
                 </ul>
             </div>

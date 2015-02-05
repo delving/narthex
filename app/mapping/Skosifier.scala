@@ -46,7 +46,6 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
 
     case ScanForWork =>
       ts.query(listSkosifiedFields).map { sfResult =>
-        log.info(s"Scan for work")
         sfResult.map(SkosifiedField(_)).map { sf =>
           val casesExist = skosificationCasesExist(sf)
           ts.ask(casesExist).map(exists => if (exists) {

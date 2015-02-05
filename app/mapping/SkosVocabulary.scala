@@ -21,6 +21,7 @@ import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
 import mapping.SkosVocabulary._
 import play.api.Logger
 import play.api.libs.json.{JsObject, Json, Writes}
+import triplestore.GraphProperties._
 import triplestore.{GraphProperties, TripleStore}
 
 import scala.collection.JavaConversions._
@@ -35,7 +36,7 @@ object SkosVocabulary {
 
   def getLanguageLabel(labels: Seq[Label], language: String): Label = {
     // try language, default to whatever can be found
-    val languageFit = labels.find(_.language == language)
+    val languageFit: Option[Label] = labels.find(_.language == language)
     languageFit.getOrElse(labels.head)
   }
 
@@ -49,11 +50,6 @@ object SkosVocabulary {
   def getPrefLabels(resource: Resource, model: Model) = getLabels(resource, "prefLabel", preferred = true, model)
 
   def getAltLabels(resource: Resource, model: Model) = getLabels(resource, "altLabel", preferred = false, model)
-
-  def getRelated(resource: Resource, propertyName: String, model: Model): Seq[Resource] = {
-    val property = model.getProperty(GraphProperties.SKOS, propertyName)
-    model.listStatements(resource, property, null).map(_.getObject.asResource()).toSeq
-  }
 
   implicit val writesLabelSearch = new Writes[LabelSearch] {
 
@@ -96,14 +92,25 @@ object SkosVocabulary {
   case class ProximityResult(label: Label, prefLabel: Label, proximity: Double, concept: Concept)
 
   case class Concept(vocabulary: SkosVocabulary, resource: Resource, conceptMap: mutable.HashMap[String, Concept], model: Model) {
+    def getRelated(resource: Resource, propertyName: String, model: Model): Seq[Resource] = {
+      val property = model.getProperty(GraphProperties.SKOS, propertyName)
+      model.listStatements(resource, property, null).map(_.getObject.asResource()).toSeq
+    }
+
     conceptMap.put(resource.getURI, this)
     lazy val prefLabels = getPrefLabels(resource, model)
     lazy val altLabels = getAltLabels(resource, model)
     lazy val labels = prefLabels ++ altLabels
     lazy val narrower: Seq[Concept] = getRelated(resource, "narrower", model).flatMap(resource => conceptMap.get(resource.getURI))
     lazy val broader: Seq[Concept] = getRelated(resource, "broader", model).flatMap(resource => conceptMap.get(resource.getURI))
+    lazy val frequency: Option[Int] = {
+      val frequencyValue = model.listObjectsOfProperty(resource, model.getProperty(skosFrequency)).toList.headOption
+      frequencyValue.map(_.asLiteral().getInt)
+    }
 
     def getPrefLabel(language: String) = getLanguageLabel(prefLabels, language)
+
+    def getAltLabel(language: String) = getLanguageLabel(altLabels, language)
 
     def search(language: String, sought: String): Option[ProximityResult] = {
       val judged = labels.filter(_.language == language).map { label =>
@@ -139,8 +146,8 @@ case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore) {
   private val conceptMap = new mutable.HashMap[String, Concept]()
 
   lazy val concepts: Seq[Concept] = {
-    val typeProperty = m.getProperty(GraphProperties.rdfType)
-    val conceptResource = m.getResource(s"${GraphProperties.SKOS}Concept")
+    val typeProperty = m.getProperty(rdfType)
+    val conceptResource = m.getResource(s"${SKOS}Concept")
     val subjects = m.listSubjectsWithProperty(typeProperty, conceptResource).toSeq
     subjects.map(statement => Concept(this, statement, conceptMap, m))
   }

@@ -21,7 +21,6 @@ define(["angular"], function () {
         var MAX_FOR_VOCABULARY = 12500;
         // todo: rename to spec
         $scope.spec = $routeParams.spec;
-        $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.spec;
         $scope.categoriesEnabled = user.categoriesEnabled;
 
         $scope.scrollTo = function (options) {
@@ -59,7 +58,7 @@ define(["angular"], function () {
                     else if (node.path.length > $scope.recordRoot.length) {
                         var recordContainerLength = $scope.recordRoot.lastIndexOf('/');
                         var sourcePathExtension = node.path.substring(recordContainerLength);
-                        node.sourcePath = $scope.sourceURIPrefix + sourcePathExtension;
+                        node.sourcePath = SOURCE_URI_PREFIX + sourcePathExtension;
                     }
                     for (var index = 0; index < node.kids.length; index++) {
                         setDelimiterNodes(node.kids[index]);

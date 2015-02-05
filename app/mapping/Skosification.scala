@@ -88,7 +88,7 @@ trait Skosification {
       |INSERT {
       |   GRAPH <$skosGraph> {
       |      <$mintedUri> a skos:Concept .
-      |      <$mintedUri> skos:hiddenLabel "$quotedValue" .
+      |      <$mintedUri> skos:altLabel "$quotedValue" .
       |      <$mintedUri> <$belongsTo> <$datasetUri> .
       |      <$mintedUri> <$synced> false .
       |   }

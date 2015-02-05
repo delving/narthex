@@ -21,16 +21,12 @@ define(["angular"], function () {
 
         function getSearchParams() {
             $scope.spec = $routeParams.spec;
-            $scope.path = $routeParams.path;
-            $scope.histogramSize = parseInt($routeParams.size || "100");
             $scope.activeView = $routeParams.view || "thesauri";
             $scope.thesaurus = $routeParams.thesaurus;
         }
 
         function updateSearchParams() {
             $location.search({
-                path: $scope.path,
-                histogramSize: $scope.histogramSize,
                 view: $scope.activeView,
                 thesaurus: $scope.thesaurus
             });
@@ -38,15 +34,13 @@ define(["angular"], function () {
 
         getSearchParams();
 
-        $scope.sourceEntry = undefined; // list selection
+        $scope.sourceTerm = undefined; // list selection
         $scope.sought = ""; // the field model
         $scope.mappings = {};
         $scope.show = "all";
         $scope.concepts = [];
-        $scope.histogram = [];
-        $scope.histogramVisible = [];
-
-        $scope.sourceURIPrefix = user.enrichmentPrefix + "/" + $scope.spec + $scope.path;
+        $scope.terms = [];
+        $scope.termsVisible = [];
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
@@ -61,30 +55,31 @@ define(["angular"], function () {
             var unmapped = 0;
 
             function hasMapping(entry) {
-                var mapping = $scope.mappings[entry.sourceURI];
-                var number = parseInt(entry.count);
-                if (mapping) {
-                    mapped += number;
-                }
-                else {
-                    unmapped += number;
-                }
-                return mapping;
+                return false;
+//                var mapping = $scope.mappings[entry.sourceURI];
+//                var number = parseInt(entry.count);
+//                if (mapping) {
+//                    mapped += number;
+//                }
+//                else {
+//                    unmapped += number;
+//                }
+//                return mapping;
             }
 
             switch ($scope.show) {
                 case "mapped":
-                    $scope.histogramVisible = _.filter($scope.histogram, function (entry) {
+                    $scope.termsVisible = _.filter($scope.terms, function (entry) {
                         return hasMapping(entry);
                     });
                     break;
                 case "unmapped":
-                    $scope.histogramVisible = _.filter($scope.histogram, function (entry) {
+                    $scope.termsVisible = _.filter($scope.terms, function (entry) {
                         return !hasMapping(entry);
                     });
                     break;
                 default:
-                    $scope.histogramVisible = _.filter($scope.histogram, function (entry) {
+                    $scope.termsVisible = _.filter($scope.terms, function (entry) {
                         hasMapping(entry);
                         return true;
                     });
@@ -97,7 +92,7 @@ define(["angular"], function () {
 
         // preparations
         termsService.listSkos().then(function (data) {
-            $scope.thesaurusList = _.map(data,function(t) {
+            $scope.thesaurusList = _.map(data, function (t) {
                 return t.skosSpec;
             });
             if ($scope.thesaurusList.length == 1) {
@@ -117,15 +112,8 @@ define(["angular"], function () {
 //                    when: mapping.when
 //                }
 //            });
-            termsService.histogram($scope.spec, $scope.path, $scope.histogramSize).then(function (data) {
-                $scope.histogram = _.map(data.histogram, function (count) {
-                    var sourceURI = $scope.sourceURIPrefix + "/" + encodeURIComponent(count[1]);
-                    return {
-                        value: count[1],
-                        count: count[0],
-                        sourceURI: sourceURI
-                    }
-                });
+            termsService.termVocabulary($scope.spec).then(function (terms) {
+                $scope.terms = terms;
             });
         });
 
@@ -146,16 +134,6 @@ define(["angular"], function () {
             });
         }
 
-//        function searchRecords(value) {
-//            var body = {
-//                "path": $scope.path,
-//                "value": value
-//            };
-//            termsService.queryRecords($scope.spec, body).then(function (data) {
-//                $scope.records = data;
-//            });
-//        }
-
         $scope.thesauriTab = function () {
             $scope.activeView = "thesauri";
             updateSearchParams();
@@ -164,8 +142,8 @@ define(["angular"], function () {
         $scope.skosTab = function () {
             if ($scope.thesaurus) {
                 $scope.activeView = "skos";
-                if ($scope.sourceEntry) {
-                    $scope.sought = $scope.sourceEntry.value;
+                if ($scope.sourceTerm) {
+                    $scope.sought = $scope.sourceTerm.value;
                 }
                 updateSearchParams();
             }
@@ -174,27 +152,19 @@ define(["angular"], function () {
             }
         };
 
-//        $scope.recordTab = function () {
-//            $scope.activeView = "record";
-//            if ($scope.sourceEntry) {
-//                searchRecords($scope.sourceEntry.value);
-//            }
-//            updateSearchParams();
-//        };
-
-        $scope.selectSource = function (entry) {
-            $scope.sourceEntry = entry;
-            var mapping = $scope.mappings[entry.sourceURI];
+        $scope.selectTerm = function (term) {
+            $scope.sourceTerm = term;
+            var mapping = $scope.mappings[term.uri];
             if (mapping && mapping.thesaurus != $scope.thesaurus) {
                 $scope.selectConceptScheme(mapping.thesaurus);
             }
             switch ($scope.activeView) {
                 case "skos":
-                    $scope.sought = entry.value; // will trigger searchConceptScheme
+                    $scope.sought = term.label; // will trigger search
                     break;
-                case "record":
-                    searchRecords(entry.value);
-                    break;
+//                case "record":
+//                    searchRecords(entry.value);
+//                    break;
             }
         };
 
@@ -225,33 +195,33 @@ define(["angular"], function () {
         $scope.setMapping = function (concept) {
             var payload = {
                 // todo: this sourceRUI is not yet right:
-                uriA: $scope.sourceEntry.sourceURI,
+                uriA: $scope.sourceTerm.sourceURI,
                 uriB: concept.uri
             };
-            console.log("Mapping payload for thesaurus "+ $scope.thesaurus, payload);
+            console.log("Mapping payload for thesaurus " + $scope.thesaurus, payload);
 //            termsService.toggleMapping($scope.datasetInfo.datasetSpec, $scope.thesaurus, payload).then(function(data){
 //
 //            });
             alert("Sorry, not implemented yet");
 //
-//            if (!($scope.sourceEntry && $scope.thesaurus)) return;
+//            if (!($scope.sourceTerm && $scope.thesaurus)) return;
 //            var body = {
-//                sourceURI: $scope.sourceEntry.sourceURI,
+//                sourceURI: $scope.sourceTerm.sourceURI,
 //                targetURI: concept.uri,
 //                thesaurus: $scope.thesaurus,
 //                attributionName: concept.attributionName,
 //                prefLabel: concept.prefLabel
 //            };
-//            if ($scope.mappings[$scope.sourceEntry.sourceURI]) { // it already exists
+//            if ($scope.mappings[$scope.sourceTerm.sourceURI]) { // it already exists
 //                body.remove = "yes";
 //            }
 //            termsService.setMapping($scope.datasetName, body).then(function (data) {
 //                console.log("set mapping returns", data);
 //                if (body.remove) {
-//                    delete $scope.mappings[$scope.sourceEntry.sourceURI]
+//                    delete $scope.mappings[$scope.sourceTerm.sourceURI]
 //                }
 //                else {
-//                    $scope.mappings[$scope.sourceEntry.sourceURI] = {
+//                    $scope.mappings[$scope.sourceTerm.sourceURI] = {
 //                        targetURI: concept.uri,
 //                        thesaurus: $scope.thesaurus,
 //                        attributionName: concept.attributionName,

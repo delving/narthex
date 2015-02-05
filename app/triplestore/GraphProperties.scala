@@ -20,6 +20,8 @@ import com.hp.hpl.jena.rdf.model.{Model, Property}
 
 object GraphProperties {
 
+  val LANGUAGE = "nl"
+
   val NX_NAMESPACE = "http://github.com/delving/narthex/wiki/Namespace#"
 
   val XML = "http://www.w3.org/XML/1998/namespace"
@@ -129,6 +131,8 @@ object GraphProperties {
     m.setNsPrefix("nx", NX_NAMESPACE)
     m.getProperty(NX_NAMESPACE, localName)
   }
+
+  val skosFrequency = s"${NX_NAMESPACE}skosFrequency"
 
   val rdfType = s"${RDF}type"
   val datasetEntity = s"${NX_NAMESPACE}Dataset"

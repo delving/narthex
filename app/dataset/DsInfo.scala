@@ -110,6 +110,9 @@ object DsInfo {
   }
 
   def check(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
+
+    // todo: cache these
+
     val dsUri = getDsUri(spec)
     val q =
       s"""

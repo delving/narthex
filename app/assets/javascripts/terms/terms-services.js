@@ -56,9 +56,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                // todo: this should be eliminated once we have a skos
-                histogram: function (spec, path, size) {
-                    return app.histogram(spec, path, size).get().then(
+                termVocabulary: function (spec) {
+                    return app.getTermVocabulary(spec).get().then(
                         function (response) {
                             return response.data;
                         },

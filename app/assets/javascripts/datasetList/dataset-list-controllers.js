@@ -410,7 +410,8 @@ define(["angular"], function () {
         };
 
         $scope.goToTerms = function () {
-            alert('Not implemented.  Must be skos-skos first.');
+            $location.path("/terms/" + ds.datasetSpec);
+            $location.search({});
         };
 
         function command(command, areYouSure, after) {

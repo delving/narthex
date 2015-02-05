@@ -216,7 +216,7 @@ object AppController extends Controller with Security {
   }
 
   def listSkos = SecureAsync() { session => request =>
-    listVocabInfo(ts).map(list =>Ok(Json.toJson(list)))
+    listVocabInfo(ts).map(list => Ok(Json.toJson(list)))
   }
 
   def createSkos(spec: String) = SecureAsync() { session => request =>
@@ -264,7 +264,7 @@ object AppController extends Controller with Security {
   def searchSkos(spec: String, sought: String) = Secure() { session => request =>
     withVocabInfo(spec) { vocabInfo =>
       val v = vocabInfo.vocabulary
-      val labelSearch: LabelSearch = v.search("nl", sought, 25)
+      val labelSearch: LabelSearch = v.search(LANGUAGE, sought, 25)
       Ok(Json.obj("search" -> labelSearch))
     }
   }
@@ -280,6 +280,24 @@ object AppController extends Controller with Security {
     val store = orgContext.vocabMappingStore(specA, specB)
     store.toggleMapping(SkosMapping(session.actor, uriA, uriB)).map { action =>
       Ok(Json.obj("action" -> action))
+    }
+  }
+
+  def getTermVocabulary(spec: String) = SecureAsync() { session => request =>
+    DsInfo.check(spec, ts).map { dsInfoOpt =>
+      dsInfoOpt.map { dsInfo =>
+        val results = dsInfo.vocabulary.concepts.map(concept => {
+//          val freq: Int = concept.frequency.getOrElse(0)
+          Json.obj(
+            "uri" -> concept.resource.toString,
+            "label" -> concept.getAltLabel(LANGUAGE).text,
+            "frequency" -> concept.frequency
+          )
+        })
+        Ok(Json.toJson(results) )
+      } getOrElse {
+        NotFound(Json.obj("problem" -> s"No term vocabulary found for $spec"))
+      }
     }
   }
 
