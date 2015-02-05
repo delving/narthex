@@ -53,7 +53,7 @@ object VocabInfo {
     }
   }
 
-  def listvocabInfo(ts: TripleStore): Future[List[VocabInfo]] = {
+  def listVocabInfo(ts: TripleStore): Future[List[VocabInfo]] = {
     val q =
       s"""
          |SELECT ?spec
@@ -79,6 +79,7 @@ object VocabInfo {
   def create(owner: NXActor, spec: String, ts: TripleStore): Future[VocabInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getInfoUri(spec))
+    m.add(uri, m.getProperty(rdfType), m.getResource(skosCollection))
     m.add(uri, m.getProperty(skosSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
     ts.dataPost(uri.getURI, m).map(ok => new VocabInfo(spec, ts))

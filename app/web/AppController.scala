@@ -216,7 +216,7 @@ object AppController extends Controller with Security {
   }
 
   def listSkos = SecureAsync() { session => request =>
-    listvocabInfo(ts).map(list =>Ok(Json.toJson(list)))
+    listVocabInfo(ts).map(list =>Ok(Json.toJson(list)))
   }
 
   def createSkos(spec: String) = SecureAsync() { session => request =>

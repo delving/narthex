@@ -101,6 +101,7 @@ object DsInfo {
   def create(owner: NXActor, spec: String, character: Character, mapToPrefix: String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsUri(spec))
+    m.add(uri, m.getProperty(rdfType), m.getResource(datasetEntity))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
     m.add(uri, m.getProperty(actorOwner.uri), m.createResource(owner.uri))

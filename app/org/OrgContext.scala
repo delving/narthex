@@ -69,7 +69,6 @@ object OrgContext {
 
   val TRIPLE_STORE_URL = configString("triple-store")
 
-  val NX_NAMESPACE = "http://github.com/delving/narthex/wiki/Namespace#"
   val NX_URI_PREFIX = s"$NARTHEX_DOMAIN/resolve"
 
   val ts = new TripleStore(TRIPLE_STORE_URL)
@@ -135,7 +134,9 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
 
   def termMappingStore(dsSpec: String): TermMappingStore = {
     val futureStore = DsInfo.check(dsSpec, ts).map { dsInfoOpt =>
-      dsInfoOpt.map( info =>new TermMappingStore(info, ts)).getOrElse(throw new RuntimeException(s"No term mapping found for $dsSpec"))
+      dsInfoOpt.map( info =>new TermMappingStore(info, ts)).getOrElse(
+        throw new RuntimeException(s"No term mapping found for $dsSpec")
+      )
     }
     Await.result(futureStore, 15.seconds)
   }

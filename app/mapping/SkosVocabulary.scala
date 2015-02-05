@@ -21,7 +21,7 @@ import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
 import mapping.SkosVocabulary._
 import play.api.Logger
 import play.api.libs.json.{JsObject, Json, Writes}
-import triplestore.TripleStore
+import triplestore.{GraphProperties, TripleStore}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -31,10 +31,6 @@ import scala.concurrent.duration._
 
 object SkosVocabulary {
 
-  val XML = "http://www.w3.org/XML/1998/namespace"
-  val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  val DC = "http://purl.org/dc/elements/1.1/"
-  val SKOS = "http://www.w3.org/2004/02/skos/core#"
   val IGNORE_BRACKET = """ *[(].*[)]$""".r
 
   def getLanguageLabel(labels: Seq[Label], language: String): Label = {
@@ -44,7 +40,7 @@ object SkosVocabulary {
   }
 
   def getLabels(resource: Resource, propertyName: String, preferred: Boolean, model: Model): Seq[Label] = {
-    val property = model.getProperty(SKOS, propertyName)
+    val property = model.getProperty(GraphProperties.SKOS, propertyName)
     model.listStatements(resource, property, null).map(_.getObject.asLiteral()).map(
       literal => Label(preferred = preferred, literal.getLanguage, literal.getString)
     ).toSeq
@@ -55,7 +51,7 @@ object SkosVocabulary {
   def getAltLabels(resource: Resource, model: Model) = getLabels(resource, "altLabel", preferred = false, model)
 
   def getRelated(resource: Resource, propertyName: String, model: Model): Seq[Resource] = {
-    val property = model.getProperty(SKOS, propertyName)
+    val property = model.getProperty(GraphProperties.SKOS, propertyName)
     model.listStatements(resource, property, null).map(_.getObject.asResource()).toSeq
   }
 
@@ -143,8 +139,8 @@ case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore) {
   private val conceptMap = new mutable.HashMap[String, Concept]()
 
   lazy val concepts: Seq[Concept] = {
-    val typeProperty = m.getProperty(RDF, "type")
-    val conceptResource = m.getResource(s"${SKOS}Concept")
+    val typeProperty = m.getProperty(rdfType)
+    val conceptResource = m.getResource(s"${GraphProperties.SKOS}Concept")
     val subjects = m.listSubjectsWithProperty(typeProperty, conceptResource).toSeq
     subjects.map(statement => Concept(this, statement, conceptMap, m))
   }

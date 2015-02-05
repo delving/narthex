@@ -47,11 +47,11 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
       datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
     ))
-    model.size() must be(5)
+    model.size() must be(6)
     info.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
     await(info.removeLiteralProp(datasetMapToPrefix))
     info.getLiteralProp(datasetMapToPrefix) must be(None)
-    model.size() must be(4)
+    model.size() must be(5)
 
     await(info.setSingularLiteralProps(datasetMapToPrefix -> "pfx2"))
 

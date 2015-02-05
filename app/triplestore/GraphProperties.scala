@@ -17,10 +17,15 @@
 package triplestore
 
 import com.hp.hpl.jena.rdf.model.{Model, Property}
-import mapping.SkosVocabulary._
-import org.OrgContext.NX_NAMESPACE
 
 object GraphProperties {
+
+  val NX_NAMESPACE = "http://github.com/delving/narthex/wiki/Namespace#"
+
+  val XML = "http://www.w3.org/XML/1998/namespace"
+  val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  val DC = "http://purl.org/dc/elements/1.1/"
+  val SKOS = "http://www.w3.org/2004/02/skos/core#"
 
   case class PropType(uriOpt: Option[String])
 
@@ -124,4 +129,12 @@ object GraphProperties {
     m.setNsPrefix("nx", NX_NAMESPACE)
     m.getProperty(NX_NAMESPACE, localName)
   }
+
+  val rdfType = s"${RDF}type"
+  val datasetEntity = s"${NX_NAMESPACE}Dataset"
+  val mappingEntity = s"${NX_NAMESPACE}Mapping"
+  val actorEntity = s"${NX_NAMESPACE}Actor"
+  val skosCollection = s"${SKOS}Collection"
+
+
 }

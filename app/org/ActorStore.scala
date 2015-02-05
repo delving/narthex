@@ -65,14 +65,15 @@ class ActorStore(ts: TripleStore) {
     model.createLiteral(hash)
   }
 
-  private def userIntoModel(nxActor: NXActor, hashLiteral: Literal, makerOpt: Option[NXActor]): Option[NXActor] = {
-    val actorResource: Resource = model.getResource(nxActor.uri)
+  private def userIntoModel(actor: NXActor, hashLiteral: Literal, makerOpt: Option[NXActor]): Option[NXActor] = {
+    val actorResource: Resource = model.getResource(actor.uri)
     val exists = model.listStatements(actorResource, propUri(passwordHash), null).hasNext
     if (!exists) {
+      model.add(actorResource, model.getProperty(rdfType), model.getResource(actorEntity))
       model.add(actorResource, propUri(passwordHash), hashLiteral)
       makerOpt.map(maker => model.add(actorResource, propUri(actorOwner), model.getResource(maker.uri)))
-      model.add(actorResource, propUri(username), nxActor.actorName)
-      Some(nxActor)
+      model.add(actorResource, propUri(username), actor.actorName)
+      Some(actor)
     } else {
       None
     }
@@ -95,10 +96,10 @@ class ActorStore(ts: TripleStore) {
     list.map(node => node.asLiteral().getString).toList.headOption.getOrElse("")
   }
 
-  private def profileFromModel(nxActor: NXActor) = NXProfile(
-    firstName = getLiteral(nxActor, userFirstName),
-    lastName = getLiteral(nxActor, userLastName),
-    email = getLiteral(nxActor, userEMail)
+  private def profileFromModel(actor: NXActor) = NXProfile(
+    firstName = getLiteral(actor, userFirstName),
+    lastName = getLiteral(actor, userLastName),
+    email = getLiteral(actor, userEMail)
   )
 
   def authenticate(actorName: String, password: String): Future[Option[NXActor]] = {
@@ -138,56 +139,60 @@ class ActorStore(ts: TripleStore) {
 
   def createActor(adminActor: NXActor, usernameString: String, password: String): Future[Option[NXActor]] = {
     val hash = hashLiteral(password, usernameString)
-    userIntoModel(NXActor(usernameString, Some(adminActor.uri)), hash, Some(adminActor)).map { user: NXActor =>
+    userIntoModel(NXActor(usernameString, Some(adminActor.uri)), hash, Some(adminActor)).map { actor: NXActor =>
       val sparql =
         s"""
          |WITH <$graphName>
          |DELETE {
-         |   <${user.uri}>
+         |   <$actor>
+         |      a <$actorEntity>;
          |      <$username> ?userName ;
          |      <$actorOwner> ?userMaker ;
          |      <$passwordHash> ?passwordHash .
          |}
          |INSERT {
-         |   <${user.uri}>
-         |      <$username> "${user.actorName}" ;
+         |   <$actor>
+         |      a <$actorEntity>;
+         |      <$username> "${actor.actorName}" ;
          |      <$actorOwner> <${adminActor.uri}> ;
          |      <$passwordHash> "${hash.getString}" .
          |}
          |WHERE {
          |   OPTIONAL {
-         |      <${user.uri}>
+         |      <$actor>
+         |         a <$actorEntity>;
          |         <$username> ?username ;
          |         <$actorOwner> ?userMaker ;
          |         <$passwordHash> ?passwordHash .
          |   }
          |}
        """.stripMargin
-      ts.update(sparql).map(ok => Some(user))
+      ts.update(sparql).map(ok => Some(actor))
     } getOrElse {
       Future(None)
     }
   }
 
-  def setProfile(nxActor: NXActor, nxProfile: NXProfile): Future[Option[NXActor]] = {
-    profileIntoModel(nxActor, nxProfile).map { actor =>
+  def setProfile(actor: NXActor, nxProfile: NXProfile): Future[Option[NXActor]] = {
+    profileIntoModel(actor, nxProfile).map { actor =>
       val sparql =
         s"""
          |WITH <$graphName>
          |DELETE {
-         |   <${nxActor.uri}>
+         |   <$actor>
          |      <$userFirstName> ?firstName ;
          |      <$userLastName> ?lastName ;
          |      <$userEMail> ?email .
          |}
          |INSERT {
-         |   <${nxActor.uri}>
+         |   <$actor>
          |      <$userFirstName> "${nxProfile.firstName}" ;
          |      <$userLastName> "${nxProfile.lastName}" ;
          |      <$userEMail> "${nxProfile.email}" .
          |}
          |WHERE {
-         |   <${nxActor.uri}>
+         |   <$actor>
+         |      a <$actorEntity>;
          |      <$userFirstName> ?firstName ;
          |      <$userLastName> ?lastName ;
          |      <$userEMail> ?email .
@@ -199,23 +204,23 @@ class ActorStore(ts: TripleStore) {
     }
   }
 
-  def setPassword(nxActor: NXActor, newPassword: String) = {
-    val actorResource: Resource = model.getResource(nxActor.uri)
+  def setPassword(actor: NXActor, newPassword: String) = {
+    val actorResource: Resource = model.getResource(actor.uri)
     val prop = model.getProperty(passwordHash.uri)
-    val hash = hashLiteral(newPassword, nxActor.actorName)
+    val hash = hashLiteral(newPassword, actor.actorName)
     model.removeAll(actorResource, prop, null)
     model.add(actorResource, prop, hash)
     val update =
       s"""
          |WITH <$graphName>
          |DELETE {
-         |  <${nxActor.uri}> <$passwordHash> ?oldPassword .
+         |  <$actor> <$passwordHash> ?oldPassword .
          |}
          |INSERT {
-         |  <${nxActor.uri}> <$passwordHash> "${hash.getString}" .
+         |  <$actor> <$passwordHash> "${hash.getString}" .
          |}
          |WHERE {
-         |  <${nxActor.uri}> <$passwordHash> ?oldPassword .
+         |  <$actor> <$passwordHash> ?oldPassword .
          |}
        """.stripMargin
     ts.update(update).map(errorOpt => true)

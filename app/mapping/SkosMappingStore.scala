@@ -18,7 +18,6 @@ package mapping
 
 import java.util.UUID
 
-import mapping.SkosVocabulary.SKOS
 import org.ActorStore.NXActor
 import triplestore.GraphProperties._
 import triplestore.{SkosGraph, TripleStore}
@@ -27,7 +26,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 object SkosMappingStore {
-
+  
   case class SkosMapping(actor: NXActor, uriA: String, uriB: String) {
 
     val uri = s"${actor.uri}/mapping/${UUID.randomUUID().toString}"
@@ -36,8 +35,10 @@ object SkosMappingStore {
       s"""
          |ASK {
          |  GRAPH ?g {
-         |    ?mapping <$mappingConcept> <$uriA> .
-         |    ?mapping <$mappingConcept> <$uriB> .
+         |    ?mapping
+         |       a <$mappingEntity>;
+         |       <$mappingConcept> <$uriA>;
+         |       <$mappingConcept> <$uriB> .
          |  }
          |}
        """.stripMargin
@@ -74,6 +75,7 @@ object SkosMappingStore {
          |  GRAPH <$uri> {
          |    <$uriA> skos:exactMatch <$uriB> .
          |    <$uri>
+         |       a <$mappingEntity>;
          |       <$synced> false;
          |       <$belongsTo> <$actor> ;
          |       <$mappingConcept> <$uriA> ;
@@ -121,22 +123,6 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, ts: TripleStore) {
     ts.query(selectMappings).map(_.map(ab => (ab("a").text, ab("b").text)))
   }
 
-  /*
-    def setCategoryMapping(mapping: CategoryMapping, member: Boolean) = {
-      if (member) {
-        // todo: add the mapping
-      }
-      else {
-        // todo: remove the mapping
-      }
-    }
-
-    def getCategoryMappings: Seq[CategoryMapping] = {
-      // todo: should have a dataset URI argument
-      // todo: another method for a user's mappings (reverse order, N most recent)
-      Seq.empty
-    }
-   */
 }
 
 
@@ -169,6 +155,25 @@ class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
        """.stripMargin
     ts.query(selectMappings).map(_.map(ab => (ab("a").text, ab("b").text)))
   }
+}
+
+class CategoryMappingStore(termGraph: SkosGraph, ts: TripleStore) {
+  /*
+   def setCategoryMapping(mapping: CategoryMapping, member: Boolean) = {
+     if (member) {
+       // todo: add the mapping
+     }
+     else {
+       // todo: remove the mapping
+     }
+   }
+
+   def getCategoryMappings: Seq[CategoryMapping] = {
+     // todo: should have a dataset URI argument
+     // todo: another method for a user's mappings (reverse order, N most recent)
+     Seq.empty
+   }
+  */
 }
 
 
