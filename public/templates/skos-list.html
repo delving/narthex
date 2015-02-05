@@ -64,10 +64,10 @@
 </script>
 
 <script type="text/ng-template" id="skos-entry.html">
-    <div data-ng-controller="SkosListEntryCtrl" class="panel panel-primary">
-        <div class="panel-heading">
-            <i class="fa fa-book"></i>
-            <span class="name">{{ skos.skosSpec }}</span>
+    <div data-ng-controller="SkosListEntryCtrl" class="widget">
+        <div class="widget-header">
+            <span class="widget-icon"><i class="fa fa-book"></i></span>
+            {{ skos.skosSpec }}
             <span data-ng-show="skos.skosUploadTime" class="small">
                 <span>(Uploaded on </span>
                 <span>{{ skos.skosUploadTime.d }}</span>
@@ -78,7 +78,7 @@
             <span class="count pull-right">{{ statistics.conceptCount }} concepts</span>
         </div>
 
-        <div class="panel-body">
+        <div class="widget-body">
             <div class="tabbable dataset-tabs">
                 <ul class="nav nav-tabs" role="tablist">
                     <li ng-class="{'active':tabOpen === 'metadata'}" >
