@@ -120,8 +120,10 @@ trait Skosification {
       |}
       |WHERE {
       |  GRAPH ?g {
+      |     ?record <$belongsTo> <$datasetUri> .
+      |  }
+      |  GRAPH ?g {
       |     ?s <$fieldProperty> '''$value''' .
-      |     ?s <$belongsTo> <$datasetUri> .
       |  }
       |};
       """.stripMargin
