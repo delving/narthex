@@ -224,26 +224,6 @@ class VocabInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     }
   }
 
-  def dropDataset = {
-    // todo: delete the data too!
-    val sparql =
-      s"""
-         |DELETE {
-         |   GRAPH <$uri> {
-         |      <$uri> ?p ?o .
-         |   }
-         |}
-         |WHERE {
-         |   GRAPH <$uri> {
-         |      <$uri> ?p ?o .
-         |   }
-         |}
-       """.stripMargin
-    ts.update(sparql).map { ok =>
-      true
-    }
-  }
-
   def getStatistics = {
     val countQuery =
       s"""
@@ -262,6 +242,25 @@ class VocabInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     ) yield Map(
       "conceptCount" -> c.text.toInt
     )
+  }
+
+  def dropVocabulary = {
+    val sparql =
+      s"""
+         |DELETE {
+         |   GRAPH <$uri> {
+         |      ?s ?p ?o .
+         |   }
+         |}
+         |WHERE {
+         |   GRAPH <$uri> {
+         |      ?s ?p ?o .
+         |   }
+         |}
+       """.stripMargin
+    ts.update(sparql).map { ok =>
+      true
+    }
   }
 
   lazy val vocabulary = new SkosVocabulary(spec, dataUri, ts)

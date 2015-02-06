@@ -81,7 +81,10 @@ object DsInfo {
          |SELECT ?spec
          |WHERE {
          |  GRAPH ?g {
-         |    ?s <${datasetSpec.uri}> ?spec .
+         |    ?s <$datasetSpec> ?spec .
+         |    FILTER NOT EXISTS {
+         |       ?s <$deleted> true .
+         |    }
          |  }
          |}
          |ORDER BY ?spec
@@ -247,19 +250,40 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def dropDataset = {
-    // todo: there is more to delete!  the records
     val sparql =
       s"""
-         |DELETE {
+         |INSERT {
          |   GRAPH <$uri> {
-         |      <$uri> ?p ?o .
+         |      <$uri> <$deleted> true .
          |   }
          |}
          |WHERE {
          |   GRAPH <$uri> {
-         |      <$uri> ?p ?o .
+         |      ?s ?p ?o .
+         |   }
+         |};
+         |DELETE {
+         |   GRAPH <$skosUri> {
+         |      ?s ?p ?o .
          |   }
          |}
+         |WHERE {
+         |   GRAPH <$skosUri> {
+         |      ?s ?p ?o .
+         |   }
+         |};
+         |DELETE {
+         |   GRAPH ?g {
+         |      ?s ?p ?o .
+         |      ?record <$belongsTo> <$uri>
+         |   }
+         |}
+         |WHERE {
+         |   GRAPH ?g {
+         |      ?s ?p ?o .
+         |      ?record <$belongsTo> <$uri>
+         |   }
+         |};
        """.stripMargin
     ts.update(sparql).map { ok =>
       true
