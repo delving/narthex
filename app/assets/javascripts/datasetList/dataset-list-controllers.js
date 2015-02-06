@@ -476,6 +476,11 @@ define(["angular"], function () {
                 fetchSipFileList();
             });
         };
+
+        $scope.deleteDataset = function (dataset) {
+            alert('delete');
+            // todo: delete this dataset and all it's accompanying info;
+        }
     };
 
     DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload"];

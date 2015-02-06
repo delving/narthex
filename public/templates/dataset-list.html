@@ -83,7 +83,7 @@
         <div class="widget-header">
             <!-- todo: should be a caret down to indicate expansion -->
             <span class="clickable" data-ng-click="expanded = !expanded">
-                <span class="widget-icon"><i class="fa" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
+                <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
                 <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">("{{ dataset.datasetName }}")</span>
             </span>
             <!-- todo: no icons here, but a button to explore -->
@@ -186,7 +186,7 @@
                     </div>
                 </div>
 
-                <div data-ng-click="clearError()" class="alert alert-danger" data-ng-if="dataset.datasetErrorMessage" >
+                <div data-ng-click="clearError()" class="alert alert-danger" data-ng-if="dataset.datasetErrorMessage">
                     <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}
                 </div>
 
@@ -218,6 +218,9 @@
                         <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="categoriesEnabled">
                             <a href role="tab" data-ng-click="tabOpen ='categories'">Categories</a>
                         </li>
+                        <li data-ng-class="{'active':tabOpen==='delete'}">
+                            <a href role="tab" data-ng-click="tabOpen ='delete'" class="bg-danger"><i class="fa fa-trash"></i>&nbsp;</a>
+                        </li>
                         <!--<li ng-class="{'active':tabOpen === 'info'}">-->
                             <!--<a href role="tab" data-ng-click="tabOpen ='info'">Info</a>-->
                         <!--</li>-->
@@ -234,6 +237,7 @@
                             <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
                             <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
                             <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
+                            <div ng-switch-when="delete"><div data-ng-include="'dataset-delete.html'">deletion form</div></div>
                             <!--<div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>-->
                             <!--<div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>-->
                         </div>
@@ -400,6 +404,18 @@
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="dataset-delete.html">
+    <div class="alert alert-danger">
+        By clicking the 'Delete' button below you will remove the entire dataset and all it's accompanying information.
+        This process is <em>not</em> reversable so proceed with caution!
+    </div>
+    <form name="form" class="form">
+        <fieldset>
+            <button class="btn btn-danger" data-ng-click="deleteDataset(dataset)"><i class="fa fa-trash"></i> Delete Dataset</button>
         </fieldset>
     </form>
 </script>
