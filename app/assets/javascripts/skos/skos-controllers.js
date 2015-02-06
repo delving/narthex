@@ -24,7 +24,7 @@ define(["angular"], function (angular) {
 
         function checkNewEnabled() {
             if ($scope.newDataset.specTyped)
-                $scope.newDataset.spec = $scope.newDataset.specTyped.trim().replace(/\W+/g, "_").replace(/_+/g, "_").toLowerCase();
+                $scope.newDataset.spec = $scope.newDataset.specTyped.trim().replace(/\W+/g, "-").replace(/[-]+/g, "-").toLowerCase();
             else
                 $scope.newDataset.spec = "";
             $scope.newDataset.enabled = $scope.newDataset.spec.length;
