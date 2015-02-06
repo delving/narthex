@@ -19,6 +19,7 @@ import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import dataset.SipRepo.FACTS_FILE
+import org.OrgContext
 import org.OrgContext._
 import org.apache.commons.io.IOUtils
 import triplestore.GraphProperties._
@@ -110,6 +111,7 @@ class SipPrefixRepo(home: File) {
          |language=${facts.language}
          |schemaVersions=$schemaVersions
          |rights=${facts.rights}
+         |baseUrl=${OrgContext.NAVE_DOMAIN}
          |""".stripMargin
     zos.write(factsString.getBytes("UTF-8"))
     zos.closeEntry()

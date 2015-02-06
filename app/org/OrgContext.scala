@@ -47,6 +47,9 @@ object OrgContext {
   def configString(name: String) = config.getString(name).getOrElse(
     throw new RuntimeException(s"Missing config string: $name")
   )
+
+  def configStringNoSlash(name: String) = configString(name).replaceAll("\\/$", "")
+
   def configInt(name: String) = config.getInt(name).getOrElse(
     throw new RuntimeException(s"Missing config int: $name")
   )
@@ -62,8 +65,8 @@ object OrgContext {
   def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
 
   val ORG_ID = configString("orgId")
-  val NARTHEX_DOMAIN = configString("domains.narthex")
-  val NAVE_DOMAIN = configString("domains.nave")
+  val NARTHEX_DOMAIN = configStringNoSlash("domains.narthex")
+  val NAVE_DOMAIN = configStringNoSlash("domains.nave")
 
   val SHOW_CATEGORIES = configFlag("categories")
 
