@@ -113,19 +113,11 @@
                 </div>
                 <div class="widget-body">
 
-
-                    <div data-ng-show="!actorList.length">
+                    <p data-ng-show="!actorList.length">
                         There are currently no Sub-Actors
-                    </div>
+                    </p>
 
-                    <div data-ng-show="actorList.length">
-                        <span data-ng-repeat="actor in actorList">
-                            <span class="label label-info" style="margin-right: 4px;">
-                                <i class="fa fa-user fa-2x"/></i> {{ actor }}
-                            </span>
-                        </span>
-                    </div>
-                    <h4 class="title">Create a new Sub-Actor</h4>
+                    <h5 class="title">Create a new Sub-Actor</h5>
                     <div class="navbar navbar-default">
                         <form class="form-inline navbar-form">
                             <div class="form-group">
@@ -141,9 +133,17 @@
                     </div>
 
                     <div data-ng-show="errorMessage">
-                        <span class="badge badge-warning">{{ errorMessage }}</span>
+                        <div class="alert alert-danger" role="alert">
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <i class="fa fa-exclamation-circle"></i> {{ errorMessage }}
+                        </div>
                     </div>
 
+                    <ul data-ng-show="actorList.length" class="fa-ul actor-list">
+                        <li data-ng-repeat="actor in actorList">
+                            <i class="fa fa-li fa-user"/></i> {{ actor }}
+                        </li>
+                    </ul>
 
                 </div>
             </div>
