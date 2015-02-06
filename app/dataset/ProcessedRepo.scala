@@ -136,7 +136,14 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
           Option(reader.readLine()).map {
             case LineId(graphName) =>
               val m = dataset.getNamedModel(graphName)
-              m.read(new StringReader(recordText.toString()), null, "RDF/XML")
+              try {
+                m.read(new StringReader(recordText.toString()), null, "RDF/XML")
+              }
+              catch {
+                case e: Throwable =>
+                  println(recordText.toString())
+                  throw e
+              }
               m.add(m.getResource(graphName), m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
               m.add(m.getResource(graphName), m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
               graphCount += 1
