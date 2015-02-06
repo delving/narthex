@@ -14,10 +14,7 @@
     </head>
     <body>
 
-
         <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="IndexCtrl" data-ng-init="initialize('@orgId', '@sipCreatorLink')">
-
-
             <!-- Sidebar -->
 
             <div id="sidebar-wrapper">
@@ -64,7 +61,6 @@
                     </div>
                 </div>
 
-
                 <div class="sidebar-footer">
                     <div class="col-xs-12">
                         <a href="https://github.com/delving/narthex" target="_blank">
@@ -84,20 +80,17 @@
                 </div>
             </div>
 
-            <!-- End Sidebar -->
+            <!-- User dropdown -->
 
             <div class="user-actions" data-ng-if="user">
 
-                <div class="dropdown">
-                    <button type="button" class="btn btn-primary btn-block dropdown-toggle" aria-haspopup="true" aria-expanded="false">
-                        {{user.username}} <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu">
-                        <li>
-                            <a href="#" data-ng-click="logout()">
-                                <i class="fa fa-power-off"></i> Logout
-                            </a>
-                        </li>
+                <div class="btn-group pull-right clearfix">
+                    <button class="btn btn-primary"><i class="fa fa-user fa-fw"></i> {{user.username}}</button>
+                    <a class="btn btn-primary dropdown-toggle" data-toggle="dropdown" href="#">
+                        <i class="fa fa-caret-down"></i>&nbsp;
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href data-ng-click="logout()"><i class="fa fa-lock fa-fw"></i> Logout</a></li>
                     </ul>
                 </div>
 
@@ -111,7 +104,6 @@
                 </div>
             </div>
 
-            <!-- End Main Views -->
         </div>
 
 
