@@ -72,7 +72,7 @@ object OrgContext {
 
   val TRIPLE_STORE_URL = configString("triple-store")
 
-  val NX_URI_PREFIX = s"$NARTHEX_DOMAIN/resolve"
+  val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 
   val ts = new TripleStore(TRIPLE_STORE_URL)
   val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
