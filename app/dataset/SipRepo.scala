@@ -71,7 +71,7 @@ object SipRepo {
 
 }
 
-class SipRepo(home: File, datasetName: String, naveDomain: String) {
+class SipRepo(home: File, spec: String, naveDomain: String) {
 
   def createSipZipFile(sipZipFileName: String) = {
     home.mkdir()
@@ -88,7 +88,7 @@ class SipRepo(home: File, datasetName: String, naveDomain: String) {
           filesLastToFirst.head.delete()
           filesLastToFirst.tail
         }
-      filesLimited.reverse.map(Sip(datasetName, naveDomain, _))
+      filesLimited.reverse.map(Sip(spec, naveDomain, _))
     }
     else Seq.empty[Sip]
   }
@@ -99,7 +99,7 @@ class SipRepo(home: File, datasetName: String, naveDomain: String) {
 
 object Sip {
 
-  case class SipMapping(datasetName: String, prefix: String, version: String,
+  case class SipMapping(spec: String, prefix: String, version: String,
                         recDefTree: RecDefTree, validatorOpt: Option[Validator],
                         recMapping: RecMapping, extendWithRecord: Boolean) {
 
@@ -144,7 +144,7 @@ object Sip {
 
 }
 
-class Sip(val datasetName: String, naveDomain: String, val file: File) {
+class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
   import dataset.Sip._
   import dataset.SipRepo._
@@ -301,7 +301,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
     val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
     val (mapping, extendWithRecord) = recMapping(s"mapping_$prefix.xml", tree)
     SipMapping(
-      datasetName = datasetName,
+      spec = dsInfoSpec,
       prefix = prefix,
       version = version,
       recDefTree = tree,
@@ -330,7 +330,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
     val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
 //    println(runner.getCode)
 
-    override val datasetName = sipMapping.datasetName
+    override val datasetName = sipMapping.spec
 
     override val prefix: String = sipMapping.prefix
 
@@ -343,7 +343,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
         root.removeAttribute("xsi:schemaLocation")
         val cn = root.getChildNodes
         val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
-        val rdfAbout = s"$naveDomain/resource/document/$datasetName/${urlEncodeValue(pocket.id)}"
+        val rdfAbout = s"$naveDomain/resource/graph/$datasetName/${urlEncodeValue(pocket.id)}"
 
         val rootNode = prefix match {
           case "edm" =>
@@ -353,7 +353,6 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
 
           case _ =>
             val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-            val rdfAbout = s"$naveDomain/resource/document/$datasetName/${urlEncodeValue(pocket.id)}"
             rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
             kids.foreach(rdfElement.appendChild)
             rdfElement

@@ -45,7 +45,7 @@ object SipAppController extends Controller with Security {
           {
             for (sip <- uploadedSips) yield
             <sip-zip>
-              <dataset>{ sip.datasetName }</dataset>
+              <dataset>{ sip.dsInfoSpec }</dataset>
               <file>{ sip.file.getName }</file>
             </sip-zip>
           }
