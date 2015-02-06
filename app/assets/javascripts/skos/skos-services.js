@@ -88,7 +88,7 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                searchVocabluary: function (spec, sought) {
+                searchVocabulary: function (spec, sought) {
                     return app.searchVocabulary(spec, sought).get().then(
                         function (response) {
                             return response.data;

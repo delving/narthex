@@ -32,7 +32,7 @@
     <div class="col-sm-6">
         <div class="input-group input-group-skos-term search-all-field">
             <label class="input-group-addon">Search Both</label>
-            <input class="form-control" type="text" data-ng-model="sought"/>
+            <input class="form-control" type="text" data-ng-model="sought.AB"/>
             <span class="input-group-addon"><i class="fa fa-search"></i></span>
         </div>
     </div>
@@ -42,7 +42,7 @@
     <div class="col-sm-6 concept-pane" style="border-right: 1px solid #ccc;">
         <div class="input-group input-group-skos-term">
             <label class="input-group-addon">{{ conceptSchemeA }}</label>
-            <input class="form-control" type="text" data-ng-model="soughtA"/>
+            <input class="form-control" type="text" data-ng-model="sought.A"/>
             <span class="input-group-addon"><i class="fa fa-search"></i></span>
         </div>
         <div class="concepts-list vertical-scroll" data-scrollable id="skos-term-list-a" data-offset="320" data-ng-style="{ 'height': elHeight }">
@@ -87,7 +87,7 @@
 
         <div class="input-group input-group-skos-term">
             <label class="input-group-addon">{{ conceptSchemeB }}</label>
-            <input class="form-control" type="text" data-ng-model="soughtB"/>
+            <input class="form-control" type="text" data-ng-model="sought.B"/>
             <span class="input-group-addon"><i class="fa fa-search"></i></span>
         </div>
 

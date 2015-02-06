@@ -193,9 +193,8 @@ define(["angular"], function (angular) {
         $scope.mappingsAB = {};
         $scope.mappingsBA = {};
 
-        $scope.sought = "";
-        $scope.soughtA = "";
-        $scope.soughtB = "";
+        $scope.sought = {};
+
         var fetchedConceptsA = [];
         var fetchedConceptsB = [];
         $scope.conceptsA = [];
@@ -312,23 +311,23 @@ define(["angular"], function (angular) {
         }
 
         $scope.selectSoughtA = function (value) {
-            $scope.soughtA = value;
+            $scope.sought.A = value;
         };
 
         $scope.selectSoughtB = function (value) {
-            $scope.soughtB = value;
+            $scope.sought.B = value;
         };
 
-        $scope.$watch("sought", function (sought) {
-            $scope.soughtA = $scope.soughtB = sought;
+        $scope.$watch("sought.AB", function (sought) {
+            $scope.sought.A = $scope.sought.B = sought;
         });
 
-        $scope.$watch("soughtA", function (soughtA) {
+        $scope.$watch("sought.A", function (soughtA) {
             if (!soughtA) soughtA = "-";
             searchA(soughtA);
         });
 
-        $scope.$watch("soughtB", function (soughtB) {
+        $scope.$watch("sought.B", function (soughtB) {
             if (!soughtB) soughtB = "-";
             searchB(soughtB);
         });
