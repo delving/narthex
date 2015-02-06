@@ -90,12 +90,16 @@
                     <li ng-class="{'active':tabOpen === 'align'}" data-ng-show="dropSupported">
                         <a href role="tab" data-ng-click="tabOpen = 'align'">Alignment</a>
                     </li>
+                    <li ng-class="{'active':tabOpen === 'delete'}">
+                        <a href role="tab" data-ng-click="tabOpen ='delete'" class="bg-danger"><i class="fa fa-trash"></i>&nbsp;</a>
+                    </li>
                 </ul>
                 <div class="tab-content clearfix">
                     <div ng-switch="tabOpen">
                         <div ng-switch-when="metadata"><div data-ng-include="'skos-metadata-form.html'">metadata form</div></div>
                         <div ng-switch-when="drop"><div data-ng-include="'drop-file-skos.html'">drop file</div></div>
                         <div ng-switch-when="align"><div data-ng-include="'align-skos.html'">map</div></div>
+                        <div ng-switch-when="delete"><div data-ng-include="'delete-skos.html'">map</div></div>
                     </div>
                 </div>
             </div>
@@ -150,6 +154,19 @@
             <a href data-ng-click="goToMapping(skos, otherSkos)"><i class="fa fa-fw fa-book"></i>  {{ otherSkos.skosSpec }}</a>
         </li>
     </ul>
+</script>
+
+
+<script type="text/ng-template" id="delete-skos.html">
+    <div class="alert alert-danger">
+        By clicking the 'Delete' button below you will remove this entiry vocabulary and all it's accompanying information.
+        This process is <em>not</em> reversable so proceed with caution!
+    </div>
+    <form name="form" class="form">
+        <fieldset>
+            <button class="btn btn-danger" data-ng-click="deleteSkosEntry(skos)"><i class="fa fa-trash"></i> Delete Vocabulary</button>
+        </fieldset>
+    </form>
 </script>
 
 <div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">

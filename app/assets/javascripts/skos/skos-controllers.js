@@ -181,6 +181,11 @@ define(["angular"], function (angular) {
         $scope.goToMapping = function(skA, skB) {
             $location.path("/skos/"+skA.skosSpec+"/"+skB.skosSpec);
         };
+
+        $scope.deleteSkosEntry = function (skos) {
+            // todo: delete this skos vocabulary
+            alert('Delete Vocabulary');
+        }
     };
 
     SkosListEntryCtrl.$inject = ["$scope", "skosService", "$location", "$timeout", "$upload"];
@@ -395,6 +400,7 @@ define(["angular"], function (angular) {
                 afterSelect();
             });
         };
+
     };
 
     SkosMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService", "$timeout", "pageScroll", "user"];
