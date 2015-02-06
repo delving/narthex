@@ -53,6 +53,9 @@ class TestIngest extends FlatSpec with Matchers {
         sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
       }
       mappedPockets.size should be(5)
+
+      println(mappedPockets.head.text)
+
       val head = XML.loadString(mappedPockets.head.text)
       val creator = "Kees Verwey"
       val creatorText = (head \ "creator").filter(_.prefix == "dc").text.trim

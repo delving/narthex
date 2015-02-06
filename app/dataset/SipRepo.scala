@@ -224,7 +224,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
       // this stuff can be removed when migration is definitively over
       val extendWithRecord = multipleTagsWithinMetadata(mapping)
       // in the case of a harvest sip, we strip off /metadata/<recordRoot>
-      if (!pockets.isDefined) {
+      if (!pockets.isDefined && mapping.getPrefix != "edm") {
         def fixGroovyArrays(nodeMapping: NodeMapping) = {
           val code = nodeMapping.getGroovyCode
           if (code != null) {
@@ -328,6 +328,7 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
     val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
     val factory = new MetadataRecordFactory(namespaces)
     val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
+//    println(runner.getCode)
 
     override val datasetName = sipMapping.datasetName
 
@@ -335,20 +336,31 @@ class Sip(val datasetName: String, naveDomain: String, val file: File) {
 
     override def map(pocket: Pocket): Option[Pocket] = {
       try {
-        val metadataRecord = factory.metadataRecordFrom(pocket.recordXml)
+        val metadataRecord = factory.metadataRecordFrom(pocket.recordXml, prefix != "edm")
         val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
         val root = result.root().asInstanceOf[Element]
         val doc = root.getOwnerDocument
         root.removeAttribute("xsi:schemaLocation")
         val cn = root.getChildNodes
         val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
-        val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
         val rdfAbout = s"$naveDomain/resource/document/$datasetName/${urlEncodeValue(pocket.id)}"
-        // todo: mod?
-        rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
-        kids.foreach(rdfElement.appendChild)
+
+        val rootNode = prefix match {
+          case "edm" =>
+            val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
+            kids.foreach(rdfWrapper.appendChild)
+            rdfWrapper
+
+          case _ =>
+            val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
+            val rdfAbout = s"$naveDomain/resource/document/$datasetName/${urlEncodeValue(pocket.id)}"
+            rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
+            kids.foreach(rdfElement.appendChild)
+            rdfElement
+        }
+
         // the serializer gives us <?xml..?>
-        val xml = serializer.toXml(rdfElement, true).replaceFirst("<[?].*[?]>\n", "")
+        val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")
         val validationExceptionOpt: Option[Exception] = sipMapping.validatorOpt.flatMap { validator =>
           try {
             validator.validate(new DOMSource(root))
