@@ -48,7 +48,9 @@ trait Skosification {
       |ASK {
       |  GRAPH ?g {
       |    ?record <$belongsTo> <$datasetUri> .
-      |    ?record <$fieldProperty> ?literalValue .
+      |  }
+      |  GRAPH ?g {
+      |    ?anything <$fieldProperty> ?literalValue .
       |    FILTER isLiteral(?literalValue)
       |  }
       |}
@@ -63,7 +65,9 @@ trait Skosification {
       |WHERE {
       |  GRAPH ?g {
       |    ?record <$belongsTo> <$datasetUri> .
-      |    ?record <$fieldProperty> ?literalValue .
+      |  }
+      |  GRAPH ?g {
+      |    ?anything <$fieldProperty> ?literalValue .
       |    FILTER isLiteral(?literalValue)
       |  }
       |}
