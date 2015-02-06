@@ -186,8 +186,14 @@
                     </div>
                 </div>
 
-                <div data-ng-click="clearError()" class="alert alert-danger" data-ng-if="dataset.datasetErrorMessage">
-                    <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}
+
+                <div data-ng-if="dataset.datasetErrorMessage">
+                    <div class="alert alert-danger" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" data-ng-click="clearError()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}
+                        <hr/>
+                        You must <a href data-ng-click="clearError()" class="alert-link">close/clear</a> this error message to continue
+                    </div>
                 </div>
 
                 <hr />
