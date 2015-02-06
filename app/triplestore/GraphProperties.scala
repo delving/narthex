@@ -51,6 +51,7 @@ object GraphProperties {
 
   val belongsTo = NXProp("belongsTo")
   val synced = NXProp("synced")
+  val deleted = NXProp("deleted")
 
   var allDatasetProps = Map.empty[String, DIProp]
 
