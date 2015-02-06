@@ -1,8 +1,10 @@
 package specs
 
-import java.io.File
+import java.io.{File, StringReader, StringWriter}
 
+import com.hp.hpl.jena.rdf.model.ModelFactory
 import dataset.{SipRepo, SourceRepo}
+import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
 import record.PocketParser.Pocket
 import services.FileHandling._
@@ -58,7 +60,15 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
     mappedPockets.size must be(393)
     targetOutput.close()
 
-    println(mappedPockets.head.text)
+    mappedPockets.map { pocket =>
+      var recordString = pocket.text
+//      println(recordString)
+      val model = ModelFactory.createDefaultModel()
+      model.read(new StringReader(recordString), null, "RDF/XML")
+      val triples = new StringWriter()
+      RDFDataMgr.write(triples, model, RDFFormat.TURTLE)
+      println(triples)
+    }
 
   }
 

@@ -16,7 +16,7 @@
 
 package triplestore
 
-import java.io.{File, StringReader, StringWriter}
+import java.io.{File, PrintWriter, StringReader, StringWriter}
 
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import com.ning.http.client.providers.netty.NettyResponse
@@ -56,10 +56,20 @@ object TripleStore {
 
 }
 
-class TripleStore(storeURL: String, printQueries: Boolean = false) {
+class TripleStore(storeURL: String, logQueries: Boolean = false) {
+
+  val logFile = new File("/tmp/triple-store.log")
+  val logOutput = if (logQueries) Some(new PrintWriter(logFile)) else None
+
+  def logSparql(sparql: String) = logOutput.map { w =>
+    val numbered = sparql.split("\n").zipWithIndex.map(tup => s"${tup._2 + 1}: ${tup._1}").mkString("\n")
+    w.println(numbered)
+    w.println("=" * 40)
+    w.flush()
+  }
 
   def ask(sparqlQuery: String): Future[Boolean] = {
-    if (printQueries) println(sparqlQuery)
+    logSparql(sparqlQuery)
     val request = WS.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
       "output" -> "json"
@@ -73,7 +83,7 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
   }
 
   def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = {
-    if (printQueries) println(sparqlQuery)
+    logSparql(sparqlQuery)
     val request = WS.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
       "output" -> "json"
@@ -96,7 +106,7 @@ class TripleStore(storeURL: String, printQueries: Boolean = false) {
   }
 
   def update(sparqlUpdate: String) = {
-    if (printQueries) println(sparqlUpdate)
+    logSparql(sparqlUpdate)
     val request = WS.url(s"$storeURL/update").withHeaders(
       "Content-Type" -> "application/sparql-update; charset=utf-8"
     )
