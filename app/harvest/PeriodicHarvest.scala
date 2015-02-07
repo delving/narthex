@@ -17,9 +17,12 @@
 package harvest
 
 import akka.actor.{Actor, Props}
+import dataset.DsInfo
 import harvest.PeriodicHarvest.ScanForHarvests
+import org.OrgContext.ts
 import play.api.Logger
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 
 object PeriodicHarvest {
@@ -37,15 +40,20 @@ class PeriodicHarvest extends Actor {
   def receive = {
 
     case ScanForHarvests =>
-      Logger.warn("Periodic harvest not implemented")
-//      OrgRepo.repo.orgDb.listDatasets.foreach { dataset =>
-//        val harvestCron = Harvesting.harvestCron(dataset.info)
-//        if (harvestCron.timeToWork) {
-//          log.info(s"Time to work on ${dataset.datasetName}")
-//          val datasetContext = OrgRepo.repo.datasetContext(dataset.datasetName)
-//          datasetContext.nextHarvest()
-//        }
-//      }
+      val futureList = DsInfo.listDsInfo(ts)
+      futureList.onSuccess {
+        case list: List[DsInfo] =>
+          list.map { dsInfo =>
+            val harvestCron = dsInfo.harvestCron
+            if (harvestCron.timeToWork) {
+              log.info(s"Time to work on $dsInfo")
+              Logger.warn(s"Periodic wants to harvest $dsInfo")
+              // todo: let's see it asking for a while, then test
+              //              orgContext.datasetContext(dsInfo.spec).nextHarvest()
+            }
+          }
+
+      }
   }
 }
 
