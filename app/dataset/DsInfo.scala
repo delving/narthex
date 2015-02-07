@@ -31,14 +31,14 @@ import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
 import triplestore.GraphProperties._
-import triplestore.{SkosGraph, TripleStore}
+import triplestore.{SkosGraph, Sparql, TripleStore}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 
-object DsInfo {
+object DsInfo extends Sparql {
 
   case class Character(name: String)
 
@@ -46,7 +46,7 @@ object DsInfo {
 
   def getCharacter(characterString: String) = List(CharacterMapped).find(_.name == characterString)
 
-  case class DsState(prop: DIProp) {
+  case class DsState(prop: NXProp) {
     override def toString = prop.name
   }
 
@@ -77,20 +77,7 @@ object DsInfo {
   }
 
   def listDsInfo(ts: TripleStore): Future[List[DsInfo]] = {
-    val q =
-      s"""
-         |SELECT ?spec
-         |WHERE {
-         |  GRAPH ?g {
-         |    ?s <$datasetSpec> ?spec .
-         |    FILTER NOT EXISTS {
-         |       ?s <$deleted> true .
-         |    }
-         |  }
-         |}
-         |ORDER BY ?spec
-       """.stripMargin
-    ts.query(q).map { list =>
+    ts.query(selectDatasetSpecsQ).map { list =>
       list.map { entry =>
         val spec = entry("spec").text
         new DsInfo(spec, ts)
@@ -114,19 +101,13 @@ object DsInfo {
   }
 
   def check(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
-
     // todo: cache these
-
-    val dsUri = getDsUri(spec)
-    val q =
-      s"""
-         |ASK {
-         |   GRAPH <$dsUri> {
-         |       <$dsUri> <$datasetSpec> ?spec .
-         |   }
-         |}
-       """.stripMargin
-    ts.ask(q).map(answer => if (answer) Some(new DsInfo(spec, ts)) else None)
+    ts.ask(askIfDatasetExistsQ(getDsUri(spec))).map(answer =>
+      if (answer)
+        Some(new DsInfo(spec, ts))
+      else
+        None
+    )
   }
 }
 
@@ -150,145 +131,55 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   lazy val m: Model = Await.result(futureModel, 20.seconds)
   lazy val res = m.getResource(uri)
 
-  def getLiteralProp(prop: DIProp): Option[String] = {
+  def getLiteralProp(prop: NXProp): Option[String] = {
     val objects = m.listObjectsOfProperty(res, m.getProperty(prop.uri))
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
   }
 
-  def getTimeProp(prop: DIProp): Option[DateTime] = getLiteralProp(prop).map(stringToTime)
+  def getTimeProp(prop: NXProp): Option[DateTime] = getLiteralProp(prop).map(stringToTime)
 
-  def getBooleanProp(prop: DIProp) = getLiteralProp(prop).exists(_ == "true")
+  def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
 
-  def setSingularLiteralProps(tuples: (DIProp, String)*): Future[Model] = {
-    val propVal = tuples.map(t => (m.getProperty(t._1.uri), t._2))
-    val sparqlPerProp = propVal.map { pv =>
-      val propUri = pv._1
-      s"""
-         |WITH <$uri>
-         |DELETE { 
-         |   <$uri> <$propUri> ?o .
-         |}
-         |INSERT { 
-         |   <$uri> <$propUri> '''${pv._2}''' .
-         |}
-         |WHERE { 
-         |   OPTIONAL {
-         |      <$uri> <$propUri> ?o .
-         |   } 
-         |}
-       """.stripMargin.trim
-    }
+  def setSingularLiteralProps(propVals: (NXProp, String)*): Future[Model] = {
+    val sparqlPerProp = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2))
     val sparql = sparqlPerProp.mkString(";\n")
     ts.update(sparql).map { ok =>
-      propVal.foreach { pv =>
-        m.removeAll(res, pv._1, null)
-        m.add(res, pv._1, m.createLiteral(pv._2))
+      propVals.foreach { pv =>
+        val prop = m.getProperty(pv._1.uri)
+        m.removeAll(res, prop, null)
+        m.add(res, prop, m.createLiteral(pv._2))
       }
       m
     }
   }
 
-  def removeLiteralProp(prop: DIProp): Future[Model] = {
-    val propUri = m.getProperty(prop.uri)
-    val sparql =
-      s"""
-         |WITH <$uri>
-         |DELETE {
-         |   <$uri> <$propUri> ?o .
-         |}
-         |WHERE {
-         |   <$uri> <$propUri> ?o .
-         |}
-       """.stripMargin
-    ts.update(sparql).map { ok =>
-      m.removeAll(res, propUri, null)
+  def removeLiteralProp(prop: NXProp): Future[Model] = {
+    ts.update(removeLiteralPropertyQ(uri, prop)).map { ok =>
+      m.removeAll(res, m.getProperty(prop.uri), null)
       m
     }
   }
 
-  def getUriPropValueList(prop: DIProp): List[String] = {
-    val propUri = m.getProperty(prop.uri)
-    m.listObjectsOfProperty(res, propUri).map(node => node.asLiteral().toString).toList
+  def getUriPropValueList(prop: NXProp): List[String] = {
+    m.listObjectsOfProperty(res, m.getProperty(prop.uri)).map(node => 
+      node.asLiteral().toString
+    ).toList
   }
 
-  def addUriProp(prop: DIProp, uriValueString: String): Future[Model] = {
-    val propUri = m.getProperty(prop.uri)
-    val uriValue = m.createLiteral(uriValueString)
-    val sparql = s"""
-         |INSERT DATA {
-         |   GRAPH <$uri> {
-         |      <$uri> <$propUri> '''$uriValue''' .
-         |   }
-         |}
-       """.stripMargin.trim
-    ts.update(sparql).map { ok =>
-      m.add(res, propUri, uriValue)
-      m
+  def addUriProp(prop: NXProp, uriValueString: String): Future[Model] = {
+    ts.update(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+      m.add(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
   }
 
-  def removeUriProp(prop: DIProp, uriValueString: String): Future[Model] = futureModel.flatMap { m =>
-    val propUri = m.getProperty(prop.uri)
-    // todo: maybe a list instead of literals
-    val uriValue = m.createLiteral(uriValueString)
-    val sparql =
-      s"""
-         |DELETE {
-         |   GRAPH <$uri> {
-         |      <$uri> <$propUri> '''$uriValue''' .
-         |   }
-         |}
-         |WHERE {
-         |   GRAPH <$uri> {
-         |      <$uri> <$propUri> '''$uriValue''' .
-         |   }
-         |}
-       """.stripMargin
-    ts.update(sparql).map { ok =>
-      m.remove(res, propUri, uriValue)
-      m
+  def removeUriProp(prop: NXProp, uriValueString: String): Future[Model] = futureModel.flatMap { m =>
+    ts.update(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+      m.remove(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
   }
 
   def dropDataset = {
-    val sparql =
-      s"""
-         |INSERT {
-         |   GRAPH <$uri> {
-         |      <$uri> <$deleted> true .
-         |   }
-         |}
-         |WHERE {
-         |   GRAPH <$uri> {
-         |      ?s ?p ?o .
-         |   }
-         |};
-         |DELETE {
-         |   GRAPH <$skosUri> {
-         |      ?s ?p ?o .
-         |   }
-         |}
-         |WHERE {
-         |   GRAPH <$skosUri> {
-         |      ?s ?p ?o .
-         |   }
-         |};
-         |DELETE {
-         |   GRAPH ?g {
-         |      ?s ?p ?o .
-         |      ?record <$belongsTo> <$uri>
-         |   }
-         |}
-         |WHERE {
-         |   GRAPH ?g {
-         |      ?s ?p ?o .
-         |      ?record <$belongsTo> <$uri>
-         |   }
-         |};
-       """.stripMargin
-    ts.update(sparql).map { ok =>
-      true
-    }
+    ts.update(deleteDatasetQ(uri, skosUri)).map(ok => true)
   }
 
   // from the old datasetdb

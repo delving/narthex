@@ -16,8 +16,8 @@
 package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
-import triplestore.TripleStore
 import triplestore.TripleStore.QueryValue
+import triplestore.{Sparql, TripleStore}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -29,7 +29,7 @@ object Skosifier {
 
 }
 
-class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosification {
+class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Sparql {
 
   import mapping.Skosifier._
 
@@ -37,20 +37,20 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
 
   case class SkosificationJob(sf: SkosifiedField, scResult: List[Map[String, QueryValue]]) {
     val cases = createCases(sf, scResult)
-    val ensureSkosEntries = cases.map(_.ensureSkosEntry).mkString
-    val changeLiteralsToUris = cases.map(_.changeLiteralToUri).mkString
+    val ensureSkosEntries = cases.map(_.ensureSkosEntryQ).mkString
+    val changeLiteralsToUris = cases.map(_.literalToUriQ).mkString
     override def toString = sf.toString
   }
 
   def receive = {
 
     case ScanForWork =>
-      ts.query(listSkosifiedFields).map { sfResult =>
+      ts.query(listSkosifiedFieldsQ).map { sfResult =>
         sfResult.map(SkosifiedField(_)).map { sf =>
           val casesExist = skosificationCasesExist(sf)
           ts.ask(casesExist).map(exists => if (exists) {
             log.info(s"Job for $sf")
-            ts.query(listSkosificationCases(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
+            ts.query(listSkosificationCasesQ(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
           })
         }
       }
@@ -59,7 +59,7 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
       log.info(s"Doing $job")
       ts.update(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
         if (job.cases.size == chunkSize) {
-          ts.query(listSkosificationCases(job.sf, chunkSize)).map { scResult =>
+          ts.query(listSkosificationCasesQ(job.sf, chunkSize)).map { scResult =>
             if (scResult.nonEmpty) {
               log.info(s"Another job for $job")
               self ! SkosificationJob(job.sf, scResult)

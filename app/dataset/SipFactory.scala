@@ -58,7 +58,7 @@ object SipFactory {
     }
     
     def apply(dsInfo: DsInfo) = {
-      def info(prop: DIProp) = dsInfo.getLiteralProp(prop).getOrElse("")
+      def info(prop: NXProp) = dsInfo.getLiteralProp(prop).getOrElse("")
       new SipGenerationFacts(
         spec = dsInfo.spec,
         prefix = info(datasetMapToPrefix),

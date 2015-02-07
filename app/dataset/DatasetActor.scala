@@ -133,7 +133,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
       log.info(s"Start harvest event")
 
-      def prop(p: DIProp) = dsInfo.getLiteralProp(p).getOrElse("")
+      def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
 
       harvestTypeFromString(prop(harvestType)).map { harvestType =>
         val (url, ds, pre, se) = (prop(harvestURL), prop(harvestDataset), prop(harvestPrefix), prop(harvestSearch))

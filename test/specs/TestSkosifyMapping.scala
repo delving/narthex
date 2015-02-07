@@ -4,9 +4,10 @@ import java.io.File
 
 import dataset.{DsInfo, ProcessedRepo, SipRepo, SourceRepo}
 import mapping.SkosMappingStore.SkosMapping
-import mapping.{Skosification, TermMappingStore, VocabInfo}
+import mapping.{TermMappingStore, VocabInfo}
 import org.ActorStore
 import org.ActorStore.NXActor
+import org.OrgContext._
 import org.apache.commons.io.FileUtils
 import org.scalatestplus.play._
 import play.api.test.Helpers._
@@ -14,12 +15,13 @@ import record.PocketParser.Pocket
 import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
 import triplestore.GraphProperties._
-import triplestore.TripleStore
+import triplestore.{Sparql, TripleStore}
 
-class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification {
+class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Sparql {
 
   val ts = new TripleStore("http://localhost:3030/narthex-test", true)
-  val dcType: String = "http://purl.org/dc/elements/1.1/type"
+  val dcType = "http://purl.org/dc/elements/1.1/type"
+  lazy val actorPrefix = s"$NX_URI_PREFIX/actor"
 
   def cleanStart() = {
     await(ts.update("DROP ALL"))
@@ -39,10 +41,10 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     val actorStore = new ActorStore(ts)
     val admin = await(actorStore.authenticate("gumby", "secret gumby"))
     admin must be(Some(NXActor("gumby", None)))
-    await(actorStore.createActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
+    await(actorStore.createActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey", Some(s"$actorPrefix/gumby"))))
     //    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(None)
     actorStore.listActors(admin.get) must be(List("pokey"))
-    await(actorStore.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
+    await(actorStore.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some(s"$actorPrefix/gumby"))))
 
     // change a password
     await(actorStore.setPassword(admin.get, "geheim"))
@@ -51,7 +53,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     val store2 = new ActorStore(ts)
     await(store2.authenticate("gumby", "secret gumby")) must be(None)
     await(store2.authenticate("gumby", "geheim")) must be(Some(NXActor("gumby", None)))
-    await(store2.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some("http://localhost:9000/resolve/actor/gumby"))))
+    await(store2.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some(s"$actorPrefix/gumby"))))
     await(store2.authenticate("third-wheel", "can i join")) must be(None)
 
   }
@@ -115,21 +117,21 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
     await(info.addUriProp(skosField, dcType))
     info.getUriPropValueList(skosField) must be(List(dcType))
 
-    val skosifiedFields = await(ts.query(listSkosifiedFields)).map(SkosifiedField(_))
+    val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(SkosifiedField(_))
 
-    val skosificationCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCases(sf, 2)))))
+    val skosificationCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCasesQ(sf, 2)))))
 
     skosificationCases.map(println)
 
     skosificationCases.map { sc =>
-      val graph = DsInfo.getSkosUri(sc.skosifieldField.datasetUri)
+      val graph = DsInfo.getSkosUri(sc.sf.datasetUri)
       val valueUri: String = sc.mintedUri
       val checkEntry = s"ASK { GRAPH <$graph> { <$valueUri> a <http://www.w3.org/2004/02/skos/core#Concept> } }"
       val syncedTrue: String = s"ASK { GRAPH <$graph> { <$valueUri> <$synced> true } }"
       val syncedFalse: String = s"ASK { GRAPH <$graph> { <$valueUri> <$synced> false } }"
 
       await(ts.ask(checkEntry)) must be(false)
-      await(ts.update(sc.ensureSkosEntry))
+      await(ts.update(sc.ensureSkosEntryQ))
       // synced should be false
       await(ts.ask(syncedFalse)) must be(true)
       await(ts.update(
@@ -143,24 +145,24 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Skosification
       // now synced is forced to true
       await(ts.ask(syncedTrue)) must be(true)
       await(ts.ask(syncedFalse)) must be(false)
-      await(ts.update(sc.ensureSkosEntry))
+      await(ts.update(sc.ensureSkosEntryQ))
       // it still should be true
       await(ts.ask(syncedTrue)) must be(true)
       await(ts.ask(checkEntry)) must be(true)
-      await(ts.update(sc.changeLiteralToUri))
+      await(ts.update(sc.literalToUriQ))
     }
 
     skosifiedFields.map { sf =>
-      val remaining = await(ts.query(listSkosificationCases(sf, 100)))
+      val remaining = await(ts.query(listSkosificationCasesQ(sf, 100)))
       remaining.size must be(3)
     }
 
     await(ts.ask(skosificationCasesExist(skosifiedFields.head))) must be(true)
 
-    val finalCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCases(sf, 100)))))
+    val finalCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCasesQ(sf, 100)))))
     finalCases.map { sc =>
-      await(ts.update(sc.ensureSkosEntry))
-      await(ts.update(sc.changeLiteralToUri))
+      await(ts.update(sc.ensureSkosEntryQ))
+      await(ts.update(sc.literalToUriQ))
     }
 
     await(ts.ask(skosificationCasesExist(skosifiedFields.head))) must be(false)

@@ -21,7 +21,7 @@ import java.security.MessageDigest
 import com.hp.hpl.jena.rdf.model._
 import org.OrgContext._
 import triplestore.GraphProperties._
-import triplestore.TripleStore
+import triplestore.{Sparql, TripleStore}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -29,8 +29,6 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 object ActorStore {
-
-  val graphName = s"${NX_NAMESPACE}Actors"
 
   case class NXProfile(firstName: String, lastName: String, email: String) {
     val nonEmpty = if (firstName.isEmpty && lastName.isEmpty && email.isEmpty) None else Some(this)
@@ -45,13 +43,13 @@ object ActorStore {
 
 }
 
-class ActorStore(ts: TripleStore) {
+class ActorStore(ts: TripleStore) extends Sparql {
 
   import org.ActorStore._
 
   val digest = MessageDigest.getInstance("SHA-256")
 
-  val futureModel = ts.dataGet(graphName).fallbackTo(Future(ModelFactory.createDefaultModel()))
+  val futureModel = ts.dataGet(actorsGraph).fallbackTo(Future(ModelFactory.createDefaultModel()))
 
   val model = Await.result(futureModel, 20.seconds)
 
@@ -107,7 +105,7 @@ class ActorStore(ts: TripleStore) {
     if (model.isEmpty) {
       val godUser = NXActor(actorName, None)
       userIntoModel(godUser, hash, None)
-      ts.dataPost(graphName, model).map(ok => Some(godUser))
+      ts.dataPost(actorsGraph, model).map(ok => Some(godUser))
     }
     else {
       val actor: NXActor = NXActor(actorName, None)
@@ -139,35 +137,9 @@ class ActorStore(ts: TripleStore) {
 
   def createActor(adminActor: NXActor, usernameString: String, password: String): Future[Option[NXActor]] = {
     val hash = hashLiteral(password, usernameString)
-    userIntoModel(NXActor(usernameString, Some(adminActor.uri)), hash, Some(adminActor)).map { actor: NXActor =>
-      val sparql =
-        s"""
-         |WITH <$graphName>
-         |DELETE {
-         |   <$actor>
-         |      a <$actorEntity>;
-         |      <$username> ?userName ;
-         |      <$actorOwner> ?userMaker ;
-         |      <$passwordHash> ?passwordHash .
-         |}
-         |INSERT {
-         |   <$actor>
-         |      a <$actorEntity>;
-         |      <$username> "${actor.actorName}" ;
-         |      <$actorOwner> <${adminActor.uri}> ;
-         |      <$passwordHash> "${hash.getString}" .
-         |}
-         |WHERE {
-         |   OPTIONAL {
-         |      <$actor>
-         |         a <$actorEntity>;
-         |         <$username> ?username ;
-         |         <$actorOwner> ?userMaker ;
-         |         <$passwordHash> ?passwordHash .
-         |   }
-         |}
-       """.stripMargin
-      ts.update(sparql).map(ok => Some(actor))
+    val newActor = NXActor(usernameString, Some(adminActor.uri))
+    userIntoModel(newActor, hash, Some(adminActor)).map { actor: NXActor =>
+      ts.update(insertActorQ(newActor, hash.getString, adminActor)).map(ok => Some(actor))
     } getOrElse {
       Future(None)
     }
@@ -175,30 +147,7 @@ class ActorStore(ts: TripleStore) {
 
   def setProfile(actor: NXActor, nxProfile: NXProfile): Future[Option[NXActor]] = {
     profileIntoModel(actor, nxProfile).map { actor =>
-      val sparql =
-        s"""
-         |WITH <$graphName>
-         |DELETE {
-         |   <$actor>
-         |      <$userFirstName> ?firstName ;
-         |      <$userLastName> ?lastName ;
-         |      <$userEMail> ?email .
-         |}
-         |INSERT {
-         |   <$actor>
-         |      <$userFirstName> "${nxProfile.firstName}" ;
-         |      <$userLastName> "${nxProfile.lastName}" ;
-         |      <$userEMail> "${nxProfile.email}" .
-         |}
-         |WHERE {
-         |   <$actor>
-         |      a <$actorEntity>;
-         |      <$userFirstName> ?firstName ;
-         |      <$userLastName> ?lastName ;
-         |      <$userEMail> ?email .
-         |}
-       """.stripMargin
-      ts.update(sparql).map(ok => Some(actor))
+      ts.update(setActorProfileQ(actor, nxProfile)).map(ok => Some(actor))
     } getOrElse {
       Future(None)
     }
@@ -210,19 +159,6 @@ class ActorStore(ts: TripleStore) {
     val hash = hashLiteral(newPassword, actor.actorName)
     model.removeAll(actorResource, prop, null)
     model.add(actorResource, prop, hash)
-    val update =
-      s"""
-         |WITH <$graphName>
-         |DELETE {
-         |  <$actor> <$passwordHash> ?oldPassword .
-         |}
-         |INSERT {
-         |  <$actor> <$passwordHash> "${hash.getString}" .
-         |}
-         |WHERE {
-         |  <$actor> <$passwordHash> ?oldPassword .
-         |}
-       """.stripMargin
-    ts.update(update).map(errorOpt => true)
+    ts.update(setActorPasswordQ(actor, hash.getString)).map(errorOpt => true)
   }
 }

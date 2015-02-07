@@ -4,14 +4,14 @@ import java.io.File
 
 import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary.LabelSearch
-import mapping.{Skosification, VocabInfo, VocabMappingStore}
+import mapping.{VocabInfo, VocabMappingStore}
 import org.ActorStore
 import org.scalatestplus.play._
 import play.api.libs.json.Json
 import play.api.test.Helpers._
-import triplestore.TripleStore
+import triplestore.{Sparql, TripleStore}
 
-class TestSkos extends PlaySpec with OneAppPerSuite with Skosification {
+class TestSkos extends PlaySpec with OneAppPerSuite with Sparql {
 
   val ts = new TripleStore("http://localhost:3030/narthex-test", true)
 

@@ -19,72 +19,22 @@ package mapping
 import java.util.UUID
 
 import org.ActorStore.NXActor
-import triplestore.GraphProperties._
-import triplestore.{SkosGraph, TripleStore}
+import triplestore.{SkosGraph, Sparql, TripleStore}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object SkosMappingStore {
+object SkosMappingStore extends Sparql {
   
   case class SkosMapping(actor: NXActor, uriA: String, uriB: String) {
 
     val uri = s"${actor.uri}/mapping/${UUID.randomUUID().toString}"
 
-    val doesMappingExist =
-      s"""
-         |ASK {
-         |  GRAPH ?g {
-         |    ?mapping
-         |       a <$mappingEntity>;
-         |       <$mappingConcept> <$uriA>;
-         |       <$mappingConcept> <$uriB> .
-         |  }
-         |}
-       """.stripMargin
+    val doesMappingExist = doesMappingExistQ(uriA, uriB)
 
-    val deleteMapping =
-      s"""
-         |DELETE {
-         |  GRAPH ?g {
-         |    ?mapping
-         |      ?p ?o;
-         |      <$mappingConcept> <$uriA> ;
-         |      <$mappingConcept> <$uriB> .
-         |  }
-         |}
-         |INSERT {
-         |  GRAPH ?g {
-         |    ?mapping <$mappingDeleted> true .
-         |  }
-         |}
-         |WHERE {
-         |  GRAPH ?g {
-         |    ?mapping 
-         |      ?p ?o ;
-         |      <$mappingConcept> <$uriA> ;
-         |      <$mappingConcept> <$uriB> .
-         |  }
-         |}
-       """.stripMargin
+    val deleteMapping = deleteMappingQ(uriA, uriB)
 
-    def insertMapping(skosA: SkosGraph, skosB: SkosGraph) =
-      s"""
-         |PREFIX skos: <$SKOS>
-         |INSERT DATA {
-         |  GRAPH <$uri> {
-         |    <$uriA> skos:exactMatch <$uriB> .
-         |    <$uri>
-         |       a <$mappingEntity>;
-         |       <$synced> false;
-         |       <$belongsTo> <$actor> ;
-         |       <$mappingConcept> <$uriA> ;
-         |       <$mappingConcept> <$uriB> ;
-         |       <$mappingVocabulary> <${skosA.uri}> ;
-         |       <$mappingVocabulary> <${skosB.uri}> .
-         |  }
-         |}
-       """.stripMargin
+    def insertMapping(skosA: SkosGraph, skosB: SkosGraph) = insertMappingQ(actor, uri, uriA, uriB, skosA, skosB)
 
     override def toString = uri
   }
@@ -107,20 +57,7 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, ts: TripleStore) {
   }
 
   def getMappings: Future[Seq[(String, String)]] = {
-    val selectMappings =
-      s"""
-         |PREFIX skos: <$SKOS>
-         |SELECT ?a ?b
-         |WHERE {
-         |  GRAPH ?g {
-         |    ?a skos:exactMatch ?b .
-         |    ?s
-         |      <$mappingVocabulary> <${skosA.uri}> ;
-         |      <$mappingVocabulary> <${skosB.uri}> .
-         |  }
-         |}
-       """.stripMargin
-    ts.query(selectMappings).map(_.map(ab => (ab("a").text, ab("b").text)))
+    ts.query(getVocabMappingsQ(skosA, skosB)).map(_.map(ab => (ab("a").text, ab("b").text)))
   }
 
 }
@@ -142,18 +79,7 @@ class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
   }
 
   def getMappings: Future[Seq[(String, String)]] = {
-    val selectMappings =
-      s"""
-         |PREFIX skos: <$SKOS>
-         |SELECT ?a ?b
-         |WHERE {
-         |  GRAPH ?g {
-         |    ?a skos:exactMatch ?b .
-         |    ?s <$mappingVocabulary> <${termGraph.uri}> .
-         |  }
-         |}
-       """.stripMargin
-    ts.query(selectMappings).map(_.map(ab => (ab("a").text, ab("b").text)))
+    ts.query(getTermMappingsQ(termGraph)).map(_.map(ab => (ab("a").text, ab("b").text)))
   }
 }
 

@@ -30,7 +30,7 @@ class TestSipFactory extends FlatSpec with Matchers {
     val copiedSipZip = new File(targetDir, "copied.sip.zip")
 
     val sourceDir = new File(getClass.getResource("/factory/van_abbe/source").getFile)
-    val sourceRepo = SourceRepo(sourceDir)
+    val sourceRepo = new SourceRepo(sourceDir)
     val sourceXmlFile = new File(targetDir, "source.xml")
     val sourceOutput = new FileOutputStream(sourceXmlFile)
     sourceRepo.generatePockets(sourceOutput, ProgressReporter())

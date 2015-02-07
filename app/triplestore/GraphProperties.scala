@@ -37,8 +37,11 @@ object GraphProperties {
   val booleanProp = PropType(None)
   val uriProp = PropType(None)
 
+  var allProps = Map.empty[String, NXProp]
+
   case class NXProp(name: String, dataType: PropType = stringProp) {
     val uri = s"$NX_NAMESPACE$name"
+    allProps = allProps + (name -> this)
     override def toString = uri
   }
 
@@ -53,87 +56,61 @@ object GraphProperties {
   val synced = NXProp("synced")
   val deleted = NXProp("deleted")
 
-  var allDatasetProps = Map.empty[String, DIProp]
+  val datasetCharacter = NXProp("datasetCharacter")
 
-  case class DIProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"$NX_NAMESPACE$name"
-    allDatasetProps = allDatasetProps + (name -> this)
-    override def toString = uri
-  }
+  val datasetSpec = NXProp("datasetSpec")
+  val datasetName = NXProp("datasetName")
+  val datasetDescription = NXProp("datasetDescription")
+  val datasetOwner = NXProp("datasetOwner")
+  val datasetAggregator = NXProp("datasetAggregator")
 
-  val datasetCharacter = DIProp("datasetCharacter")
+  val datasetLanguage = NXProp("datasetLanguage")
+  val datasetRights = NXProp("datasetRights")
 
-  val datasetSpec = DIProp("datasetSpec")
-  val datasetName = DIProp("datasetName")
-  val datasetDescription = DIProp("datasetDescription")
-  val datasetOwner = DIProp("datasetOwner")
-  val datasetAggregator = DIProp("datasetAggregator")
+  val datasetMapToPrefix = NXProp("datasetMapToPrefix")
 
-  val datasetLanguage = DIProp("datasetLanguage")
-  val datasetRights = DIProp("datasetRights")
+  val datasetRecordCount = NXProp("datasetRecordCount", intProp)
+  val datasetErrorTime = NXProp("datasetErrorTime")
+  val datasetErrorMessage = NXProp("datasetErrorMessage")
 
-  val datasetMapToPrefix = DIProp("datasetMapToPrefix")
+  val skosField = NXProp("skosField", uriProp)
 
-  val datasetRecordCount = DIProp("datasetRecordCount", intProp)
-  val datasetErrorTime = DIProp("datasetErrorTime")
-  val datasetErrorMessage = DIProp("datasetErrorMessage")
+  val stateRaw = NXProp("stateRaw", timeProp)
+  val stateRawAnalyzed = NXProp("stateRawAnalyzed", timeProp)
+  val stateSource = NXProp("stateSource", timeProp)
+  val stateMappable = NXProp("stateMappable", timeProp)
+  val stateProcessable = NXProp("stateProcessable", timeProp)
+  val stateProcessed = NXProp("stateProcessed", timeProp)
+  val stateAnalyzed = NXProp("stateAnalyzed", timeProp)
+  val stateSaved = NXProp("stateSaved", timeProp)
 
-  val skosField = DIProp("skosField", uriProp)
+  val harvestType = NXProp("harvestType")
+  val harvestURL = NXProp("harvestURL")
+  val harvestDataset = NXProp("harvestDataset")
+  val harvestPrefix = NXProp("harvestPrefix")
+  val harvestSearch = NXProp("harvestSearch")
+  val harvestPreviousTime = NXProp("harvestPreviousTime", timeProp)
+  val harvestDelay = NXProp("harvestDelay")
+  val harvestDelayUnit = NXProp("harvestDelayUnit")
 
-  val stateRaw = DIProp("stateRaw", timeProp)
-  val stateRawAnalyzed = DIProp("stateRawAnalyzed", timeProp)
-  val stateSource = DIProp("stateSource", timeProp)
-  val stateMappable = DIProp("stateMappable", timeProp)
-  val stateProcessable = DIProp("stateProcessable", timeProp)
-  val stateProcessed = DIProp("stateProcessed", timeProp)
-  val stateAnalyzed = DIProp("stateAnalyzed", timeProp)
-  val stateSaved = DIProp("stateSaved", timeProp)
+  val processedValid = NXProp("processedValid", intProp)
+  val processedInvalid = NXProp("processedInvalid", intProp)
 
-  val harvestType = DIProp("harvestType")
-  val harvestURL = DIProp("harvestURL")
-  val harvestDataset = DIProp("harvestDataset")
-  val harvestPrefix = DIProp("harvestPrefix")
-  val harvestSearch = DIProp("harvestSearch")
-  val harvestPreviousTime = DIProp("harvestPreviousTime", timeProp)
-  val harvestDelay = DIProp("harvestDelay")
-  val harvestDelayUnit = DIProp("harvestDelayUnit")
+  val publishOAIPMH = NXProp("publishOAIPMH", booleanProp)
+  val publishIndex = NXProp("publishIndex", booleanProp)
+  val publishLOD = NXProp("publishLOD", booleanProp)
+  val categoriesInclude = NXProp("categoriesInclude", booleanProp)
 
-  val processedValid = DIProp("processedValid", intProp)
-  val processedInvalid = DIProp("processedInvalid", intProp)
-
-  val publishOAIPMH = DIProp("publishOAIPMH", booleanProp)
-  val publishIndex = DIProp("publishIndex", booleanProp)
-  val publishLOD = DIProp("publishLOD", booleanProp)
-  val categoriesInclude = DIProp("categoriesInclude", booleanProp)
-
-
-  var allSkosProps = Map.empty[String, SIProp]
-
-  case class SIProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"$NX_NAMESPACE$name"
-    allSkosProps = allSkosProps + (name -> this)
-  }
-
-  val skosSpec = SIProp("skosSpec")
-  val skosName = SIProp("skosName")
-  val skosOwner = SIProp("skosOwner", uriProp)
-  val skosUploadTime = SIProp("skosUploadTime", timeProp)
-
-  case class MAProp(name: String, dataType: PropType = stringProp) {
-    val uri = s"$NX_NAMESPACE$name"
-    override def toString = uri
-  }
+  val skosSpec = NXProp("skosSpec")
+  val skosName = NXProp("skosName")
+  val skosOwner = NXProp("skosOwner", uriProp)
+  val skosUploadTime = NXProp("skosUploadTime", timeProp)
 
   val exactMatch = s"${SKOS}exactMatch"
-  val mappingConcept = MAProp("mappingConcept", uriProp)
-  val mappingVocabulary = MAProp("mappingVocabulary", uriProp)
-  val mappingDeleted = MAProp("mappingDeleted", booleanProp)
-  val mappingTime = MAProp("mappingTime", timeProp)
-
-  def nxProp(m: Model, localName: String): Property = {
-    m.setNsPrefix("nx", NX_NAMESPACE)
-    m.getProperty(NX_NAMESPACE, localName)
-  }
+  val mappingConcept = NXProp("mappingConcept", uriProp)
+  val mappingVocabulary = NXProp("mappingVocabulary", uriProp)
+  val mappingDeleted = NXProp("mappingDeleted", booleanProp)
+  val mappingTime = NXProp("mappingTime", timeProp)
 
   val skosFrequency = s"${NX_NAMESPACE}skosFrequency"
 
@@ -142,6 +119,13 @@ object GraphProperties {
   val mappingEntity = s"${NX_NAMESPACE}Mapping"
   val actorEntity = s"${NX_NAMESPACE}Actor"
   val skosCollection = s"${SKOS}Collection"
+  val actorsGraph = s"${NX_NAMESPACE}Actors"
+
+
+  def nxProp(m: Model, localName: String): Property = {
+    m.setNsPrefix("nx", NX_NAMESPACE)
+    m.getProperty(NX_NAMESPACE, localName)
+  }
 
 
 }

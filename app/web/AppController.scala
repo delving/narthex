@@ -136,7 +136,7 @@ object AppController extends Controller with Security {
       dsInfoOpt.map { dsInfo =>
         val propertyList = (request.body \ "propertyList").as[List[String]]
         Logger.info(s"setDatasetProperties $propertyList")
-        val diProps: List[DIProp] = propertyList.map(name => allDatasetProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
+        val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
         val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
         val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
         dsInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
@@ -254,7 +254,7 @@ object AppController extends Controller with Security {
     withVocabInfo(spec) { vocabInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
       Logger.info(s"setVocabularyProperties $propertyList")
-      val diProps: List[SIProp] = propertyList.map(name => allSkosProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
+      val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
       vocabInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
