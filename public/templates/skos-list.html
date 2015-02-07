@@ -148,10 +148,16 @@
 </script>
 
 <script type="text/ng-template" id="align-skos.html" class="">
-    <p>Choose a vocabulary to align this one to:</p>
+    <p>Choose a vocabulary alignment:</p>
     <ul class="nav nav-pills">
         <li ng-repeat="otherSkos in skosListExcept(skos)">
-            <a href data-ng-click="goToMapping(skos, otherSkos)"><i class="fa fa-fw fa-book"></i>  {{ otherSkos.skosSpec }}</a>
+            <button class="btn btn-default" data-ng-click="goToMapping(skos, otherSkos)">
+                <span>{{ skos.skosSpec }}</span>
+                <i class="fa fa-fw fa-book"></i>
+                <i class="fa fa-fw fa-arrows-h"></i>
+                <i class="fa fa-fw fa-book"></i>
+                <span>{{ otherSkos.skosSpec }}</span>
+            </button>
         </li>
     </ul>
 </script>

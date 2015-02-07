@@ -20,7 +20,6 @@ import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import dataset.SipRepo.FACTS_FILE
 import org.OrgContext
-import org.OrgContext._
 import org.apache.commons.io.IOUtils
 import triplestore.GraphProperties._
 
@@ -64,7 +63,7 @@ object SipFactory {
         spec = dsInfo.spec,
         prefix = info(datasetMapToPrefix),
         name = info(datasetName),
-        provider = ORG_ID, // todo: something better?
+        provider = info(datasetAggregator),
         dataProvider = info(datasetOwner),
         language = info(datasetLanguage),
         rights = info(datasetRights)

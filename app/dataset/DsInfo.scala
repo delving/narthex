@@ -63,6 +63,7 @@ object DsInfo {
 
   case class DsMetadata(name: String,
                         description: String,
+                        aggregator: String,
                         owner: String,
                         language: String,
                         rights: String)
@@ -121,7 +122,7 @@ object DsInfo {
       s"""
          |ASK {
          |   GRAPH <$dsUri> {
-         |       <$dsUri> <${datasetSpec.uri}> ?spec .
+         |       <$dsUri> <$datasetSpec> ?spec .
          |   }
          |}
        """.stripMargin
@@ -331,6 +332,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   def setMetadata(metadata: DsMetadata) = setSingularLiteralProps(
     datasetName -> metadata.name,
     datasetDescription -> metadata.description,
+    datasetAggregator -> metadata.aggregator,
     datasetOwner -> metadata.owner,
     datasetLanguage -> metadata.language,
     datasetRights -> metadata.rights

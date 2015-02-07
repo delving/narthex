@@ -67,6 +67,8 @@ object GraphProperties {
   val datasetName = DIProp("datasetName")
   val datasetDescription = DIProp("datasetDescription")
   val datasetOwner = DIProp("datasetOwner")
+  val datasetAggregator = DIProp("datasetAggregator")
+
   val datasetLanguage = DIProp("datasetLanguage")
   val datasetRights = DIProp("datasetRights")
 

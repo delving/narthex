@@ -56,6 +56,7 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Skosificat
       }
 
     case job: SkosificationJob =>
+      log.info(s"Doing $job")
       ts.update(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
         if (job.cases.size == chunkSize) {
           ts.query(listSkosificationCases(job.sf, chunkSize)).map { scResult =>

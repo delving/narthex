@@ -24,6 +24,7 @@ import harvest.Harvesting.HarvestType
 import mapping.CategoryDb.CategoryMapping
 import org.apache.commons.io.input.BOMInputStream
 import org.apache.commons.io.{FileUtils, IOUtils}
+import org.joda.time.DateTime
 import record.CategoryParser.CategoryCount
 import record.PocketParser._
 import record.{CategoryParser, PocketParser}
@@ -93,10 +94,8 @@ object SourceRepo {
          |deepRecordContainer=${sourceFacts.deepRecordContainer.getOrElse("")}
        """.stripMargin
     FileUtils.write(file, facts)
-    apply(home)
+    new SourceRepo(home)
   }
-
-  def apply(home: File): SourceRepo = new SourceRepo(home)
 
 }
 
@@ -304,4 +303,8 @@ class SourceRepo(home: File) {
     recordCount
   }
 
+  // todo: report this to the front end
+  def acquisitionHistory: List[(DateTime, Int)] = {
+    List.empty
+  }
 }

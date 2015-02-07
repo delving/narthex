@@ -82,7 +82,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def createSourceRepo(sourceFacts: SourceFacts): SourceRepo = SourceRepo.createClean(sourceDir, sourceFacts)
 
-  def sourceRepoOpt: Option[SourceRepo] = if (sourceDir.exists()) Some(SourceRepo(sourceDir)) else None
+  def sourceRepoOpt: Option[SourceRepo] = if (sourceDir.exists()) Some(new SourceRepo(sourceDir)) else None
 
   def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
     if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
@@ -97,6 +97,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
         dsInfo.setMetadata(DsMetadata(
           name = sip.fact("name").getOrElse(""),
           description = "",
+          aggregator = sip.fact("provider").getOrElse(""),
           owner = sip.fact("dataProvider").getOrElse(""),
           language = sip.fact("language").getOrElse(""),
           rights = sip.fact("rights").getOrElse("")
