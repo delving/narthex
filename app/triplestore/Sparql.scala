@@ -270,11 +270,16 @@ object Sparql {
   def getTermMappingsQ(terms: SkosGraph) =
     s"""
       |PREFIX skos: <$SKOS>
-      |SELECT ?a ?b
+      |SELECT ?termUri ?vocabUri ?vocabSpec
       |WHERE {
-      |  GRAPH ?g {
-      |    ?a skos:exactMatch ?b .
+      |  GRAPH ?vocabGraph {
+      |    ?vocab <$skosSpec> ?vocabSpec
+      |  }
+      |  GRAPH ?mappingGraph {
+      |    ?termUri skos:exactMatch ?vocabUri .
       |    ?s <$mappingVocabulary> <${terms.uri}> .
+      |    ?s <$mappingVocabulary> ?vocab .
+      |    FILTER (?vocab != <${terms.uri}>)
       |  }
       |}
      """.stripMargin

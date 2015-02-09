@@ -26,7 +26,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 object SkosMappingStore {
-  
+
   case class SkosMapping(actor: NXActor, uriA: String, uriB: String) {
 
     val uri = s"${actor.uri}/mapping/${UUID.randomUUID().toString}"
@@ -79,8 +79,12 @@ class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
     }
   }
 
-  def getMappings: Future[Seq[(String, String)]] = {
-    ts.query(getTermMappingsQ(termGraph)).map(_.map(ab => (ab("a").text, ab("b").text)))
+  def getMappings: Future[List[List[String]]] = {
+    ts.query(getTermMappingsQ(termGraph)).map { resultMap =>
+      resultMap.map { ab =>
+        List(ab("termUri").text, ab("vocabUri").text, ab("vocabSpec").text)
+      }
+    }
   }
 }
 

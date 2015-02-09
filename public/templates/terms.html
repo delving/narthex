@@ -105,7 +105,7 @@
                 <!-- TERMS -->
                 <div data-ng-if="concepts" class="concepts-list vertical-scroll" data-scrollable id="skos-term-list" data-offset="295" data-ng-style="{ 'height': elHeight }">
 
-                    <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceEntry.sourceURI].targetURI == concept.uri }">
+                    <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceTerm.uri].uri == concept.uri }">
 
                         <!-- MATCHTED TERM / ALT TERM -->
                         <button style="vertical-align: bottom" class="btn btn-default" tooltip="Click to map to this term..." tooltip-trigger="mouseenter" tooltip-placement="right" data-ng-click="setMapping(concept)">

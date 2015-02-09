@@ -330,7 +330,7 @@ object AppController extends Controller with Security {
 
   def getTermMappings(dsSpec: String) = SecureAsync() { session => request =>
     val store = orgContext.termMappingStore(dsSpec)
-    store.getMappings.map(tuples => Ok(Json.toJson(tuples.map(t => List(t._1, t._2)))))
+    store.getMappings.map(entries => Ok(Json.toJson(entries)))
   }
 
   def toggleTermMapping(dsSpec: String, vocabSpec: String) = SecureAsync(parse.json) { session => request =>

@@ -81,7 +81,7 @@ define(["angular", "common"], function (angular) {
                     );
                 },
                 toggleMapping: function (spec, vocabSpec, payload) {
-                    return app.toggleTermMapping(vocabSpec).post(payload).then(
+                    return app.toggleTermMapping(spec, vocabSpec).post(payload).then(
                         function (response) {
                             return response.data;
                         },
