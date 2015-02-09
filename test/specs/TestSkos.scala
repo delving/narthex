@@ -75,5 +75,9 @@ class TestSkos extends PlaySpec with OneAppPerSuite with Sparql {
     await(skosMappings.getMappings).sortBy(_._1) must be(Seq((genreA, classyA), (genreB, classyB)))
   }
 
+  "Histogram skosification should work" in {
+    val histogramFile = new File(getClass.getResource("/skos/histogram-100.json").getFile)
+    // todo: skosify with this and check that the frequencies are stored
+  }
 }
 

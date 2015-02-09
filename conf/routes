@@ -44,6 +44,7 @@ POST        /narthex/app/dataset/:spec/term/:vocabSpec/toggle-mapping        web
 
 GET         /narthex/app/skos/list                                           web.AppController.listVocabularies
 GET         /narthex/app/skos/:spec/create                                   web.AppController.createVocabulary(spec)
+GET         /narthex/app/skos/:spec/delete                                   web.AppController.deleteVocabulary(spec)
 POST        /narthex/app/skos/:spec/upload                                   web.AppController.uploadVocabulary(spec)
 POST        /narthex/app/skos/:spec/set-properties                           web.AppController.setVocabularyProperties(spec)
 GET         /narthex/app/skos/:spec/info                                     web.AppController.vocabularyInfo(spec)

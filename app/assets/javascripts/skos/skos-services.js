@@ -56,6 +56,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                deleteVocabulary: function (spec) {
+                    return app.deleteVocabulary(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 vocabularyInfo: function (spec) {
                     return app.vocabularyInfo(spec).get().then(
                         function (response) {

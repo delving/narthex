@@ -225,6 +225,17 @@ object AppController extends Controller with Security {
     )
   }
 
+  def deleteVocabulary(spec: String) = SecureAsync() { session => request =>
+    VocabInfo.check(spec, ts).map { vocabInfoOpt =>
+      vocabInfoOpt.map { vocabInfo =>
+        vocabInfo.dropVocabulary
+        Ok(Json.obj("created" -> s"Vocabulary $spec deleted"))
+      } getOrElse {
+        NotAcceptable(Json.obj("problem" -> s"Cannot find vocabulary $spec to delete"))
+      }
+    }
+  }
+
   def uploadVocabulary(spec: String) = SecureAsync(parse.multipartFormData) { session => request =>
     withVocabInfo(spec) { vocabInfo =>
       request.body.file("file").map { bodyFile =>
@@ -287,14 +298,14 @@ object AppController extends Controller with Security {
     DsInfo.check(spec, ts).map { dsInfoOpt =>
       dsInfoOpt.map { dsInfo =>
         val results = dsInfo.vocabulary.concepts.map(concept => {
-//          val freq: Int = concept.frequency.getOrElse(0)
+          //          val freq: Int = concept.frequency.getOrElse(0)
           Json.obj(
             "uri" -> concept.resource.toString,
             "label" -> concept.getAltLabel(LANGUAGE).text,
             "frequency" -> concept.frequency
           )
         })
-        Ok(Json.toJson(results) )
+        Ok(Json.toJson(results))
       } getOrElse {
         NotFound(Json.obj("problem" -> s"No term vocabulary found for $spec"))
       }

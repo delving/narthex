@@ -222,6 +222,7 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.deleteLatestSipFile,
           routes.javascript.AppController.listVocabularies,
           routes.javascript.AppController.createVocabulary,
+          routes.javascript.AppController.deleteVocabulary,
           routes.javascript.AppController.setVocabularyProperties,
           routes.javascript.AppController.vocabularyInfo,
           routes.javascript.AppController.vocabularyStatistics,

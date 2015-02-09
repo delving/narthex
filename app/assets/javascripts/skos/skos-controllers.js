@@ -131,7 +131,7 @@ define(["angular"], function (angular) {
         getStatistics();
 
         sk.fileDropped = function ($files) {
-            fileDropped($files, function() {
+            fileDropped($files, function () {
                 getStatistics();
                 refreshInfo();
             });
@@ -172,19 +172,19 @@ define(["angular"], function (angular) {
             setProperties(metadataFields);
         };
 
-        $scope.skosListExcept = function(avoid) {
-            return _.filter($scope.skosList, function(entry) {
+        $scope.skosListExcept = function (avoid) {
+            return _.filter($scope.skosList, function (entry) {
                 return entry.skosSpec != avoid.skosSpec;
             });
         };
 
-        $scope.goToMapping = function(skA, skB) {
-            $location.path("/skos/"+skA.skosSpec+"/"+skB.skosSpec);
+        $scope.goToMapping = function (skA, skB) {
+            $location.path("/skos/" + skA.skosSpec + "/" + skB.skosSpec);
         };
 
-        $scope.deleteSkosEntry = function (skos) {
-            // todo: delete this skos vocabulary
-            alert('Delete Vocabulary');
+        $scope.deleteVocabulary = function (skos) {
+            if (!confirm("Delete vocabulary " + skos.skosSpec + "?")) return;
+            skosService.deleteVocabulary(skos.skosSpec).then($scope.fetchSkosList)
         }
     };
 

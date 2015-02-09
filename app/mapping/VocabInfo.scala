@@ -88,8 +88,8 @@ object VocabInfo extends Sparql {
   }
 
   def check(spec: String, ts: TripleStore): Future[Option[VocabInfo]] = {
-    val skosUri = getInfoUri(spec)
-    ts.ask(checkVocabQ(skosUri)).map(answer => if (answer) Some(new VocabInfo(spec, ts)) else None)
+    val infoUri = getInfoUri(spec)
+    ts.ask(checkVocabQ(infoUri)).map(answer => if (answer) Some(new VocabInfo(spec, ts)) else None)
   }
 }
 

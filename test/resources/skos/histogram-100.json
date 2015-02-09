@@ -1,0 +1,8 @@
+{
+  "uri" : "http://schemas.delving.eu/brac/material",
+  "uniqueCount" : 12,
+  "entries" : 12,
+  "maximum" : 100,
+  "complete" : true,
+  "histogram" : [ [ "254", "paneel" ], [ "224", "tempera" ], [ "150", "olieverf" ], [ "111", "doek" ], [ "25", "papier" ], [ "6", "viltstift" ], [ "6", "oostindische inkt" ], [ "4", "slotvernis" ], [ "3", "potlood" ], [ "2", "plakkaatverf" ], [ "2", "hout" ], [ "1", "waterverf" ] ]
+}
