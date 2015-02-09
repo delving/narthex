@@ -18,7 +18,9 @@ package triplestore
 
 import dataset.DsInfo._
 import org.ActorStore.{NXActor, NXProfile}
+import org.joda.time.DateTime
 import services.StringHandling._
+import services.Temporal
 import triplestore.GraphProperties._
 import triplestore.TripleStore.QueryValue
 
@@ -241,6 +243,7 @@ trait Sparql {
       |       a <$mappingEntity>;
       |       <$synced> false;
       |       <$belongsTo> <$actor> ;
+      |       <$mappingTime> '''${Temporal.timeToString(new DateTime)}''' ;
       |       <$mappingConcept> <$uriA> ;
       |       <$mappingConcept> <$uriB> ;
       |       <$mappingVocabulary> <${skosA.uri}> ;
