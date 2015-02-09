@@ -109,8 +109,8 @@ define(["angular"], function () {
             });
 //            console.log("mappings", $scope.mappings);
             termsService.termVocabulary($scope.spec).then(function (terms) {
-                $scope.terms = _.sortBy(terms, function(t) {
-                    return - t.frequency;
+                $scope.terms = _.sortBy(terms, function (t) {
+                    return -t.frequency;
                 })
                 filterHistogram();
             });
@@ -199,7 +199,10 @@ define(["angular"], function () {
             termsService.toggleMapping($scope.datasetInfo.datasetSpec, $scope.thesaurus, payload).then(function (data) {
                 switch (data.action) {
                     case "added":
-                        $scope.mappings[payload.uriA] = payload.uriB;
+                        $scope.mappings[payload.uriA] = {
+                            uri: payload.uriB,
+                            thesaurus: $scope.thesaurus
+                        };
                         break;
                     case "removed":
                         delete $scope.mappings[payload.uriA];
