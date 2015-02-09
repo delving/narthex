@@ -182,7 +182,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
     val uriB = "http://data.beeldengeluid.nl/gtaa/24829"
     val mapping = SkosMapping(admin, uriA, uriB)
     await(store.toggleMapping(mapping, classyInfo)) must be("added")
-    await(store.getMappings) must be(Seq((uriA, uriB)))
+    await(store.getMappings) must be(Seq(List(uriA, uriB, "gtaa_classy")))
     await(store.toggleMapping(mapping, classyInfo)) must be("removed")
     await(store.getMappings) must be(Seq())
   }
