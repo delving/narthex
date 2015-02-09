@@ -21,7 +21,8 @@ import java.security.MessageDigest
 import com.hp.hpl.jena.rdf.model._
 import org.OrgContext._
 import triplestore.GraphProperties._
-import triplestore.{Sparql, TripleStore}
+import triplestore.Sparql._
+import triplestore.TripleStore
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -43,7 +44,7 @@ object ActorStore {
 
 }
 
-class ActorStore(ts: TripleStore) extends Sparql {
+class ActorStore(ts: TripleStore) {
 
   import org.ActorStore._
 

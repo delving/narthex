@@ -15,9 +15,10 @@ import record.PocketParser.Pocket
 import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
 import triplestore.GraphProperties._
+import triplestore.Sparql._
 import triplestore.{Sparql, TripleStore}
 
-class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Sparql {
+class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
 
   val ts = new TripleStore("http://localhost:3030/narthex-test", true)
   val dcType = "http://purl.org/dc/elements/1.1/type"
@@ -117,7 +118,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with Sparql {
     await(info.addUriProp(skosField, dcType))
     info.getUriPropValueList(skosField) must be(List(dcType))
 
-    val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(SkosifiedField(_))
+    val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(Sparql.SkosifiedField(_))
 
     val skosificationCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCasesQ(sf, 2)))))
 

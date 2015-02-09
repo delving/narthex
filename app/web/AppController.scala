@@ -40,6 +40,7 @@ import play.api.mvc._
 import services.ProgressReporter.ProgressType._
 import services.Temporal._
 import triplestore.GraphProperties._
+import triplestore.Sparql
 import web.MainController.OkFile
 
 import scala.concurrent.duration._
@@ -146,38 +147,7 @@ object AppController extends Controller with Security {
     }
   }
 
-  def setSkosField(spec: String) = SecureAsync(parse.json) { session => request =>
-    val skosFieldUri = (request.body \ "skosFieldUri").as[String]
-    val included = (request.body \ "included").as[Boolean]
-    DsInfo.check(spec, ts).flatMap { dsInfoOpt =>
-      dsInfoOpt.map { dsInfo =>
-        Logger.info(s"set skos field $skosFieldUri")
-        val currentSkosFields = dsInfo.getUriPropValueList(skosField)
-        val (futureOpt, action) = if (included) {
-          if (currentSkosFields.contains(skosFieldUri)) {
-            (None, "already exists")
-          }
-          else {
-            // rapid skosification could be done here
-            (Some(dsInfo.addUriProp(skosField, skosFieldUri)), "added")
-          }
-        }
-        else {
-          if (!currentSkosFields.contains(skosFieldUri)) {
-            (None, "did not exists")
-          }
-          else {
-            // here eventual de-skosification could happen
-            (Some(dsInfo.removeUriProp(skosField, skosFieldUri)), "removed")
-          }
-        }
-        val future = futureOpt.getOrElse(Future(None))
-        future.map(ok => Ok(Json.obj("action" -> action)))
-      } getOrElse {
-        Future(NotFound(Json.obj("problem" -> s"dataset $spec not found")))
-      }
-    }
-  }
+  // ====== stats files =====
 
   def index(spec: String) = Secure() { session => request =>
     OkFile(orgContext.datasetContext(spec).index)
@@ -212,6 +182,52 @@ object AppController extends Controller with Security {
       Ok
     } getOrElse {
       NotFound(Json.obj("problem" -> "Dataset not found"))
+    }
+  }
+
+  // ====== vocabularies =====
+
+  def setSkosField(spec: String) = SecureAsync(parse.json) { session => request =>
+    val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
+    val skosFieldUri = (request.body \ "skosFieldUri").as[String]
+    val included = (request.body \ "included").as[Boolean]
+    DsInfo.check(spec, ts).flatMap { dsInfoOpt =>
+      dsInfoOpt.map { dsInfo =>
+        Logger.info(s"set skos field $skosFieldUri")
+        val currentSkosFields = dsInfo.getUriPropValueList(skosField)
+        val (futureOpt, action) = if (included) {
+          if (currentSkosFields.contains(skosFieldUri)) {
+            (None, "already exists")
+          }
+          else {
+            val casesOpt = for {
+              path <- histogramPathOpt
+              nodeRepo <- orgContext.datasetContext(spec).nodeRepo(path)
+              histogram <- nodeRepo.largestHistogram
+            } yield Sparql.createCases(dsInfo, histogram)
+            val futureModel = casesOpt.map { cases =>
+              val update = cases.map(_.ensureSkosEntryQ).mkString
+              ts.update(update).flatMap(ok => dsInfo.addUriProp(skosField, skosFieldUri))
+            } getOrElse {
+              dsInfo.addUriProp(skosField, skosFieldUri)
+            }
+            (Some(futureModel), "added")
+          }
+        }
+        else {
+          if (!currentSkosFields.contains(skosFieldUri)) {
+            (None, "did not exists")
+          }
+          else {
+            // here eventual de-skosification could happen
+            (Some(dsInfo.removeUriProp(skosField, skosFieldUri)), "removed")
+          }
+        }
+        val future = futureOpt.getOrElse(Future(None))
+        future.map(ok => Ok(Json.obj("action" -> action)))
+      } getOrElse {
+        Future(NotFound(Json.obj("problem" -> s"Dataset $spec not found")))
+      }
     }
   }
 

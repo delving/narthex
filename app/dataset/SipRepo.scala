@@ -306,7 +306,8 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
       version = version,
       recDefTree = tree,
       recMapping = mapping,
-      validatorOpt = None, // validator(s"${schemaVersion}_validation.xsd", prefix),
+//      validatorOpt = validator(s"${schemaVersion}_validation.xsd", prefix),
+      validatorOpt = None,
       extendWithRecord = extendWithRecord
     )
   }

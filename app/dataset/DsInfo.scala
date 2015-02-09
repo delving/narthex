@@ -31,18 +31,19 @@ import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
 import triplestore.GraphProperties._
-import triplestore.{SkosGraph, Sparql, TripleStore}
+import triplestore.Sparql._
+import triplestore.{SkosGraph, TripleStore}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 
-object DsInfo extends Sparql {
+object DsInfo {
 
-  case class Character(name: String)
+  case class DsCharacter(name: String)
 
-  val CharacterMapped = Character("character-mapped")
+  val CharacterMapped = DsCharacter("character-mapped")
 
   def getCharacter(characterString: String) = List(CharacterMapped).find(_.name == characterString)
 
@@ -89,7 +90,7 @@ object DsInfo extends Sparql {
 
   def getSkosUri(datasetUri: String) = s"$datasetUri/skos"
 
-  def create(owner: NXActor, spec: String, character: Character, mapToPrefix: String, ts: TripleStore): Future[DsInfo] = {
+  def create(owner: NXActor, spec: String, character: DsCharacter, mapToPrefix: String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsUri(spec))
     m.add(uri, m.getProperty(rdfType), m.getResource(datasetEntity))

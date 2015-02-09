@@ -80,12 +80,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                setSkosField: function (spec, uri, included) {
-                    var body = {
-                        "skosFieldUri": uri,
-                        "included": included
-                    };
-                    return app.setSkosField(spec).post(body).then(
+                setSkosField: function (spec, payload) {
+                    return app.setSkosField(spec).post(payload).then(
                         function (response) {
                             return response.data.action;
                         },

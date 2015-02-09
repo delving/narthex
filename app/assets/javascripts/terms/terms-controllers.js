@@ -113,7 +113,9 @@ define(["angular"], function () {
 //                }
 //            });
             termsService.termVocabulary($scope.spec).then(function (terms) {
-                $scope.terms = terms;
+                $scope.terms = _.sortBy(terms, function(t) {
+                    return - t.frequency;
+                })
             });
         });
 

@@ -16,6 +16,7 @@
 package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
+import triplestore.Sparql.SkosifiedField
 import triplestore.TripleStore.QueryValue
 import triplestore.{Sparql, TripleStore}
 
@@ -29,14 +30,14 @@ object Skosifier {
 
 }
 
-class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Sparql {
+class Skosifier(ts: TripleStore) extends Actor with ActorLogging {
 
   import mapping.Skosifier._
 
   val chunkSize = 25
 
   case class SkosificationJob(sf: SkosifiedField, scResult: List[Map[String, QueryValue]]) {
-    val cases = createCases(sf, scResult)
+    val cases = Sparql.createCases(sf, scResult)
     val ensureSkosEntries = cases.map(_.ensureSkosEntryQ).mkString
     val changeLiteralsToUris = cases.map(_.literalToUriQ).mkString
     override def toString = sf.toString
@@ -45,12 +46,12 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Sparql {
   def receive = {
 
     case ScanForWork =>
-      ts.query(listSkosifiedFieldsQ).map { sfResult =>
+      ts.query(Sparql.listSkosifiedFieldsQ).map { sfResult =>
         sfResult.map(SkosifiedField(_)).map { sf =>
-          val casesExist = skosificationCasesExist(sf)
+          val casesExist = Sparql.skosificationCasesExist(sf)
           ts.ask(casesExist).map(exists => if (exists) {
             log.info(s"Job for $sf")
-            ts.query(listSkosificationCasesQ(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
+            ts.query(Sparql.listSkosificationCasesQ(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
           })
         }
       }
@@ -59,7 +60,7 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging with Sparql {
       log.info(s"Doing $job")
       ts.update(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
         if (job.cases.size == chunkSize) {
-          ts.query(listSkosificationCasesQ(job.sf, chunkSize)).map { scResult =>
+          ts.query(Sparql.listSkosificationCasesQ(job.sf, chunkSize)).map { scResult =>
             if (scResult.nonEmpty) {
               log.info(s"Another job for $job")
               self ! SkosificationJob(job.sf, scResult)

@@ -19,12 +19,13 @@ package mapping
 import java.util.UUID
 
 import org.ActorStore.NXActor
-import triplestore.{SkosGraph, Sparql, TripleStore}
+import triplestore.Sparql._
+import triplestore.{SkosGraph, TripleStore}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object SkosMappingStore extends Sparql {
+object SkosMappingStore {
   
   case class SkosMapping(actor: NXActor, uriA: String, uriB: String) {
 

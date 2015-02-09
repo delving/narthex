@@ -16,15 +16,17 @@
 
 package triplestore
 
+import dataset.DsInfo
 import dataset.DsInfo._
 import org.ActorStore.{NXActor, NXProfile}
 import org.joda.time.DateTime
+import play.api.libs.json.JsValue
 import services.StringHandling._
 import services.Temporal
 import triplestore.GraphProperties._
 import triplestore.TripleStore.QueryValue
 
-trait Sparql {
+object Sparql {
   // === actor store ===
 
   def insertActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
@@ -320,14 +322,21 @@ trait Sparql {
      """.stripMargin
 
   def createCases(sf: SkosifiedField, resultList: List[Map[String, QueryValue]]): List[SkosificationCase] =
-    resultList.map(_("literalValue")).map(v => SkosificationCase(sf, v))
+    resultList.map(_("literalValue")).map(v => SkosificationCase(sf, v.text))
 
-  case class SkosificationCase(sf: SkosifiedField, literalValue: QueryValue) {
-    val mintedUri = s"${sf.datasetUri}/${urlEncodeValue(literalValue.text)}"
+  def createCases(dsInfo: DsInfo, json: JsValue): List[SkosificationCase] = {
+    val fieldPropertyUri = (json \ "uri").as[String]
+    val histogram = (json \ "histogram").as[List[List[String]]]
+    val sf = SkosifiedField(dsInfo.uri, fieldPropertyUri)
+    histogram.map(count => SkosificationCase(sf, count(1), Some(count(0).toInt)))
+  }
+
+  case class SkosificationCase(sf: SkosifiedField, literalValueText: String, frequencyOpt: Option[Int] = None) {
+    val mintedUri = s"${sf.datasetUri}/${urlEncodeValue(literalValueText)}"
     val fieldProperty = sf.fieldPropertyUri
     val skosGraph = getSkosUri(sf.datasetUri)
     val datasetUri = sf.datasetUri
-    val value = literalValue.text
+    val value = literalValueText
 
     val ensureSkosEntryQ =
       s"""
@@ -338,6 +347,7 @@ trait Sparql {
         |      <$mintedUri> skos:altLabel '''$value''' .
         |      <$mintedUri> <$belongsTo> <$datasetUri> .
         |      <$mintedUri> <$synced> false .
+        |      ${ frequencyOpt.map(freq => s"<$mintedUri> <$skosFrequency> '''$freq''' .").getOrElse("")  }
         |   }
         |}
         |WHERE {

@@ -21,6 +21,7 @@ import java.util.UUID
 
 import analysis.NodeRepo._
 import dataset.DatasetContext
+import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils._
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.FileHandling.reader
@@ -75,6 +76,11 @@ class NodeRepo(val parent: DatasetContext, val dir: File) {
   val sizeFactor = 5 // relates to the lists below
 
   def histogramJson = List(100, 500, 2500, 12500).map(size => (size, f(s"histogram-$size.json")))
+
+  def largestHistogram: Option[JsValue] = {
+    val existingFiles = histogramJson.map(_._2).filter(f => f.exists())
+    existingFiles.lastOption.map(f => Json.parse(FileUtils.readFileToString(f, "UTF-8")))
+  }
 
   def sampleJson = List(100, 500, 2500).map(size => (size, f(s"sample-$size.json")))
 

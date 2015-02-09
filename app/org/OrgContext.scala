@@ -19,7 +19,7 @@ package org
 import java.io.File
 import java.util
 
-import dataset.DsInfo.Character
+import dataset.DsInfo.DsCharacter
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
 import harvest.PeriodicHarvest
@@ -110,7 +110,7 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
   }
 
   def createDatasetRepo(owner: NXActor, spec: String, characterString: String, prefix: String) = {
-    val character: Option[Character] = DsInfo.getCharacter(characterString)
+    val character: Option[DsCharacter] = DsInfo.getCharacter(characterString)
     character.map(c => DsInfo.create(owner, spec, c, prefix, ts))
   }
 

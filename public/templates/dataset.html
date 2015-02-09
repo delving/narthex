@@ -124,27 +124,27 @@
             <div class="widget-footer">
                 <div class="sub-controls">
                     <span data-ng-if="histogram">
-                    <span class="btn count-btn">( {{histogram.entries}} / {{histogram.uniqueCount}} )</span>
-                    <button class="btn btn-default" data-ng-class="{ disabled: !isMoreHistogram() }"
-                    data-ng-click="moreHistogram();scrollTo({element: '#historgram-list', direction: 'down'})">
-                    More histogram entries
-                    </button>
-                    <span data-ng-if="histogram.uniqueCount > 30">
-                    <button class="btn btn-default"
-                    data-ng-click="scrollTo({element: '#historgram-list', direction: 'up'})">
-                    <i class="fa fa-hand-o-up"></i>&#160;
-                    </button>
-                    <button class="btn btn-default"
-                    data-ng-click="scrollTo({element: '#historgram-list', direction: 'down'})">
-                    <i class="fa fa-hand-o-down"></i>&nbsp;
-                    </button>
-                    </span>
+                        <span class="btn count-btn">( {{histogram.entries}} / {{histogram.uniqueCount}} )</span>
+                        <button class="btn btn-default" data-ng-class="{ disabled: !isMoreHistogram() }"
+                            data-ng-click="moreHistogram();scrollTo({element: '#historgram-list', direction: 'down'})">
+                            More histogram entries
+                        </button>
+                        <span data-ng-if="histogram.uniqueCount > 30">
+                            <button class="btn btn-default"
+                                data-ng-click="scrollTo({element: '#historgram-list', direction: 'up'})">
+                                <i class="fa fa-hand-o-up"></i>&#160;
+                            </button>
+                            <button class="btn btn-default"
+                                data-ng-click="scrollTo({element: '#historgram-list', direction: 'down'})">
+                                <i class="fa fa-hand-o-down"></i>&nbsp;
+                            </button>
+                        </span>
                     </span>
                     <span data-ng-if="sample">
-                    <button class="btn btn-primary btn-sm" data-ng-show="isMoreSample()"
-                    data-ng-click="moreSample();scrollTo({element: '#sample-list', direction: 'down'})">
-                    <i class="fa fa-plus-circle"></i> More samples
-                    </button>
+                        <button class="btn btn-primary btn-sm" data-ng-show="isMoreSample()"
+                            data-ng-click="moreSample();scrollTo({element: '#sample-list', direction: 'down'})">
+                            <i class="fa fa-plus-circle"></i> More samples
+                        </button>
                     </span>
                 </div>
             </div>

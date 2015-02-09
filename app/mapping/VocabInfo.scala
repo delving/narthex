@@ -30,13 +30,14 @@ import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
 import triplestore.GraphProperties._
-import triplestore.{SkosGraph, Sparql, TripleStore}
+import triplestore.Sparql._
+import triplestore.{SkosGraph, TripleStore}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 
-object VocabInfo extends Sparql {
+object VocabInfo {
 
   case class DsMetadata(name: String,
                         description: String,
