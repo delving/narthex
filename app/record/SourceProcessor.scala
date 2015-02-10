@@ -87,13 +87,12 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
           val progressReporter = ProgressReporter(GENERATING, context.parent)
           progress = Some(progressReporter)
           val pocketOutput = new FileOutputStream(datasetContext.pocketFile)
-          try {
             val pocketCount = sourceRepo.generatePockets(pocketOutput, progressReporter)
             val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt.map { latestSip =>
               val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix))
               datasetContext.sipFiles.foreach(_.delete())
               val sipFile = datasetContext.createSipFile
-              // todo: pocketFile is not yet closed!
+              pocketOutput.close()
               latestSip.copyWithSourceTo(sipFile, datasetContext.pocketFile, prefixRepoOpt)
               Some(sipFile)
             } getOrElse {
@@ -102,9 +101,11 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
               sipPrefixRepo.map { prefixRepo =>
                 datasetContext.sipFiles.foreach(_.delete())
                 val sipFile = datasetContext.createSipFile
+                pocketOutput.close()
                 prefixRepo.initiateSipZip(sipFile, datasetContext.pocketFile, facts)
                 Some(sipFile)
               } getOrElse {
+                pocketOutput.close()
                 context.parent ! WorkFailure("Unable to build sip for download")
                 None
               }
@@ -117,9 +118,6 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
               FileUtils.deleteQuietly(datasetContext.pocketFile)
               context.parent ! WorkFailure("Zero pockets generated")
             }
-          } finally {
-            pocketOutput.close()
-          }
         } onFailure {
           case t => context.parent ! WorkFailure(t.getMessage, Some(t))
         }

@@ -1,13 +1,16 @@
 package specs
 
-import java.io.{File, StringReader}
+import java.io.{File, StringReader, StringWriter}
 
 import com.hp.hpl.jena.rdf.model.ModelFactory
 import dataset.{SipRepo, SourceRepo}
+import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
 import record.PocketParser.Pocket
 import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
+
+import scala.collection.JavaConversions._
 
 class TestEDM extends PlaySpec with OneAppPerSuite {
 
@@ -56,17 +59,29 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
       }
       sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
     }
-    mappedPockets.size must be(393)
+    mappedPockets.size must be(3)
     targetOutput.close()
 
-    mappedPockets.map { pocket =>
+    mappedPockets.take(1).map { pocket =>
       var recordString = pocket.text
+
 //      println(recordString)
+
       val model = ModelFactory.createDefaultModel()
       model.read(new StringReader(recordString), null, "RDF/XML")
-//      val triples = new StringWriter()
-//      RDFDataMgr.write(triples, model, RDFFormat.TURTLE)
-//      println(triples)
+
+      val subject = "http://acc.brabantcloud.delving.org/resource/delving/ton-smits-huis/R003"
+      val isShownBy = "http://www.europeana.eu/schemas/edm/isShownBy"
+      val shownList = model.listObjectsOfProperty(model.getProperty(isShownBy)).toList
+
+      shownList.size() must be(1)
+      shownList.map { obj =>
+        println(s"isShownBy: $obj")
+      }
+
+      val turtle = new StringWriter()
+      RDFDataMgr.write(turtle, model, RDFFormat.TURTLE)
+      println(turtle)
     }
 
   }
