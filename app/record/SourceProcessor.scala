@@ -87,37 +87,37 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
           val progressReporter = ProgressReporter(GENERATING, context.parent)
           progress = Some(progressReporter)
           val pocketOutput = new FileOutputStream(datasetContext.pocketFile)
-            val pocketCount = sourceRepo.generatePockets(pocketOutput, progressReporter)
-            val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt.map { latestSip =>
-              val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix))
+          val pocketCount = sourceRepo.generatePockets(pocketOutput, progressReporter)
+          val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt.map { latestSip =>
+            val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix))
+            datasetContext.sipFiles.foreach(_.delete())
+            val sipFile = datasetContext.createSipFile
+            pocketOutput.close()
+            latestSip.copyWithSourceTo(sipFile, datasetContext.pocketFile, prefixRepoOpt)
+            Some(sipFile)
+          } getOrElse {
+            val facts = SipGenerationFacts(dsInfo)
+            val sipPrefixRepo = datasetContext.orgContext.sipFactory.prefixRepo(facts.prefix)
+            sipPrefixRepo.map { prefixRepo =>
               datasetContext.sipFiles.foreach(_.delete())
               val sipFile = datasetContext.createSipFile
               pocketOutput.close()
-              latestSip.copyWithSourceTo(sipFile, datasetContext.pocketFile, prefixRepoOpt)
+              prefixRepo.initiateSipZip(sipFile, datasetContext.pocketFile, facts)
               Some(sipFile)
             } getOrElse {
-              val facts = SipGenerationFacts(dsInfo)
-              val sipPrefixRepo = datasetContext.orgContext.sipFactory.prefixRepo(facts.prefix)
-              sipPrefixRepo.map { prefixRepo =>
-                datasetContext.sipFiles.foreach(_.delete())
-                val sipFile = datasetContext.createSipFile
-                pocketOutput.close()
-                prefixRepo.initiateSipZip(sipFile, datasetContext.pocketFile, facts)
-                Some(sipFile)
-              } getOrElse {
-                pocketOutput.close()
-                context.parent ! WorkFailure("Unable to build sip for download")
-                None
-              }
+              pocketOutput.close()
+              context.parent ! WorkFailure("Unable to build sip for download")
+              None
             }
-            if (pocketCount > 0) {
-              context.parent ! SipZipGenerationComplete(pocketCount)
-            }
-            else {
-              sipFileOpt.map(_.delete())
-              FileUtils.deleteQuietly(datasetContext.pocketFile)
-              context.parent ! WorkFailure("Zero pockets generated")
-            }
+          }
+          if (pocketCount > 0) {
+            context.parent ! SipZipGenerationComplete(pocketCount)
+          }
+          else {
+            sipFileOpt.map(_.delete())
+            FileUtils.deleteQuietly(datasetContext.pocketFile)
+            context.parent ! WorkFailure("Zero pockets generated")
+          }
         } onFailure {
           case t => context.parent ! WorkFailure(t.getMessage, Some(t))
         }
