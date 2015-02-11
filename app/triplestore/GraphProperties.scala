@@ -22,7 +22,7 @@ object GraphProperties {
 
   val LANGUAGE = "nl"
 
-  val NX_NAMESPACE = "http://schemas.delving.eu/narthex#"
+  val NX_NAMESPACE = "http://schemas.delving.eu/narthex/terms/"
 
   val XML = "http://www.w3.org/XML/1998/namespace"
   val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
