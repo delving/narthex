@@ -402,7 +402,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
     zipFile.entries.foreach { entry =>
 
       def copyEntry(): Unit = {
-        zos.putNextEntry(entry)
+        zos.putNextEntry(new ZipEntry(entry.getName))
         val is = zipFile.getInputStream(entry)
         IOUtils.copy(is, zos)
         zos.closeEntry()
