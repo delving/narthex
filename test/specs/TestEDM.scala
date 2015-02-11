@@ -1,9 +1,9 @@
 package specs
 
-import java.io.{File, StringReader, StringWriter}
+import java.io.{File, FileOutputStream, StringReader, StringWriter}
 
 import com.hp.hpl.jena.rdf.model.ModelFactory
-import dataset.{SipRepo, SourceRepo}
+import dataset.{SipFactory, SipRepo, SourceRepo}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
 import record.PocketParser.Pocket
@@ -53,6 +53,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
     var mappedPockets = List.empty[Pocket]
     sip.createSipMapper.map { sipMapper =>
       def pocketCatcher(pocket: Pocket): Unit = {
+//        println(s"parsed pocket:\n$pocket")
         var mappedPocket = sipMapper.map(pocket)
         mappedPocket.map(_.writeTo(targetOutput))
         mappedPockets = mappedPocket.get :: mappedPockets
@@ -64,25 +65,38 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
 
     mappedPockets.take(1).map { pocket =>
       var recordString = pocket.text
-
-//      println(recordString)
-
+//      println(s"mapped pocket:\n$pocket")
       val model = ModelFactory.createDefaultModel()
       model.read(new StringReader(recordString), null, "RDF/XML")
 
       val subject = "http://acc.brabantcloud.delving.org/resource/delving/ton-smits-huis/R003"
       val isShownBy = "http://www.europeana.eu/schemas/edm/isShownBy"
       val shownList = model.listObjectsOfProperty(model.getProperty(isShownBy)).toList
-
       shownList.size() must be(1)
       shownList.map { obj =>
         println(s"isShownBy: $obj")
+      }
+      val dcSubject = "http://purl.org/dc/elements/1.1/subject"
+      val dcSubjectList = model.listObjectsOfProperty(model.getProperty(dcSubject)).toList
+      dcSubjectList.size() must be(6)
+      dcSubjectList.map { obj =>
+        println(s"dcSubject: $obj")
       }
 
       val turtle = new StringWriter()
       RDFDataMgr.write(turtle, model, RDFFormat.TURTLE)
       println(turtle)
     }
+
+    val pocketFile = new File(targetDir, "pockets.xml")
+    val pocketOutput = new FileOutputStream(pocketFile)
+    val genPock = sourceRepo.generatePockets(pocketOutput, ProgressReporter())
+    pocketOutput.close()
+
+    val sipFactoryDir = new File(sipsDir, "factory")
+    val sipFactory = new SipFactory(sipFactoryDir)
+    val sipFile = new File(targetDir, "sip-creator-download.sip.zip")
+    sip.copyWithSourceTo(sipFile, pocketFile, sipFactory.prefixRepo("edm"))
 
   }
 

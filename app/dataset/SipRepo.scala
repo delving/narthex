@@ -224,7 +224,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
       // this stuff can be removed when migration is definitively over
       val extendWithRecord = multipleTagsWithinMetadata(mapping)
       // in the case of a harvest sip, we strip off /metadata/<recordRoot>
-      if (!pockets.isDefined && mapping.getPrefix != "edm") {
+      if (!pockets.isDefined) {
         def fixGroovyArrays(nodeMapping: NodeMapping) = {
           val code = nodeMapping.getGroovyCode
           if (code != null) {
@@ -266,6 +266,14 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
             }
             fixGroovyArrays(nodeMapping)
           }
+
+          // todo: this is an attempt to add a root mapping
+          //          val nm = new NodeMapping
+          //          nm.inputPath = Path.create("/input")
+          //          nm.outputPath = Path.create("/edm:RDF")
+          //          mapping.getNodeMappings.add(0, nm)
+          // todo: this is an attempt to add a root mapping
+
         }
       }
       (mapping, extendWithRecord)
@@ -306,7 +314,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
       version = version,
       recDefTree = tree,
       recMapping = mapping,
-//      validatorOpt = validator(s"${schemaVersion}_validation.xsd", prefix),
+      //      validatorOpt = validator(s"${schemaVersion}_validation.xsd", prefix),
       validatorOpt = None,
       extendWithRecord = extendWithRecord
     )
@@ -329,6 +337,8 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
     val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
     val factory = new MetadataRecordFactory(namespaces)
     val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
+
+//    println(s"input paths:\n${sipMapping.recMapping.getNodeMappings.toList.map(nm => s"${nm.inputPath} -> ${nm.outputPath}").mkString("\n")}")
 //    println(runner.getCode)
 
     override val datasetName = sipMapping.spec
@@ -337,7 +347,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
     override def map(pocket: Pocket): Option[Pocket] = {
       try {
-        val metadataRecord = factory.metadataRecordFrom(pocket.recordXml, prefix != "edm")
+        val metadataRecord = factory.metadataRecordFrom(pocket.recordXml, pocket.id)
         val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
         val root = result.root().asInstanceOf[Element]
         val doc = root.getOwnerDocument
