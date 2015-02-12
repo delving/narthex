@@ -19,6 +19,7 @@ package record
 import java.io.{ByteArrayInputStream, Writer}
 
 import dataset.SourceRepo.SourceFacts
+import eu.delving.metadata.StringUtil
 import org.joda.time.DateTime
 import play.Logger
 import services.StringHandling._
@@ -156,8 +157,9 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
           flushStartElement()
           indent()
           recordText.append(s"</${if (introduceRecord) SIP_RECORD_TAG else tag}>\n")
-          val record = uniqueId.map { id =>
-            if (id.isEmpty) throw new RuntimeException("Empty unique id!")
+          val record = uniqueId.map { idUnclean =>
+            if (idUnclean.isEmpty) throw new RuntimeException("Empty unique id!")
+            val id = StringUtil.sanitizeId(idUnclean)
             if (avoidIds.contains(id)) None
             else {
               val recordContent = recordText.toString()
