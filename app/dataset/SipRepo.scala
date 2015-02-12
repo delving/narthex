@@ -350,7 +350,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
     override def map(pocket: Pocket): Option[Pocket] = {
       try {
-        val metadataRecord = factory.metadataRecordFrom(pocket.recordXml, pocket.id)
+        val metadataRecord = factory.metadataRecordFrom(pocket.recordXml, false)
         val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
         val root = result.root().asInstanceOf[Element]
         val doc = root.getOwnerDocument
