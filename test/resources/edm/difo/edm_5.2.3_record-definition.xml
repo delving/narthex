@@ -1,0 +1,1980 @@
+<?xml version="1.0"?>
+<record-definition prefix="edm" version="5.2.3" flat="false">
+
+    <namespaces>
+        <namespace prefix="dc" uri="http://purl.org/dc/elements/1.1/"
+                   schema="https://raw.githubusercontent.com/europeana/corelib/blob/master/corelib-solr-definitions/src/main/resources/eu/DC.xsd"/>
+        <namespace prefix="dcterms" uri="http://purl.org/dc/terms/"
+                   schema="https://raw.githubusercontent.com/europeana/corelib/blob/master/corelib-solr-definitions/src/main/resources/eu/DCTERMS.xsd"/>
+        <namespace prefix="rdf" uri="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                   schema="https://raw.githubusercontent.com/europeana/corelib/blob/master/corelib-solr-definitions/src/main/resources/eu/RDF.xsd"/>
+        <namespace prefix="owl" uri="http://www.w3.org/2002/07/owl#"
+                   schema="https://raw.githubusercontent.com/europeana/corelib/blob/master/corelib-solr-definitions/src/main/resources/eu/OWL.xsd"/>
+        <namespace prefix="edm" uri="http://www.europeana.eu/schemas/edm/"
+                   schema="https://raw.githubusercontent.com/europeana/corelib/blob/master/corelib-solr-definitions/src/main/resources/eu/EDM-EXTERNAL-MAIN.xsd"/>
+        <namespace prefix="ore" uri="http://www.openarchives.org/ore/terms/"
+                   schema="http://schemas.delving.eu/xsd/external/ORE.xsd"/>/>
+        <namespace prefix="skos" uri="http://www.w3.org/2004/02/skos/core#"
+                   schema="https://raw.githubusercontent.com/europeana/corelib/blob/master/corelib-solr-definitions/src/main/resources/eu/SKOS.xsd"/>
+        <namespace prefix="foaf" uri="http://xmlns.com/foaf/0.1/"
+                   schema="https://raw.githubusercontent.com/europeana/corelib/blob/master/corelib-solr-definitions/src/main/resources/eu/FOAF.xsd"/>
+        <namespace prefix="rdaGr2" uri="http://RDVocab.info/ElementsGr2/"
+                   schema="https://raw.githubusercontent.com/europeana/corelib/blob/master/corelib-solr-definitions/src/main/resources/eu/RDAGR2.xsd"/>
+        <namespace prefix="wgs84_pos" uri="http://www.w3.org/2003/01/geo/wgs84_pos#"
+                   schema="https://raw.githubusercontent.com/europeana/corelib/master/corelib-solr-definitions/src/main/resources/eu/WGS84.xsd"/>
+        <namespace prefix="nave" uri="http://schemas.delving.eu/nave/terms/" schema="nave-1.0.xsd"/>
+    </namespaces>
+
+    <functions>
+        <mapping-function name="convertToUTM">
+            <groovy-code>
+                <string>def utmOut = true</string>
+                <string>String string = it.toString()</string>
+                <string>def sridMatcher = (~/\s*SRID=(\d+);POINT\((\d+)[, ](\d+)\)/).matcher(string)</string>
+                <string>def utm33Matcher = (~/(\d+) V (\d+\.\d+|\d+) *(\d+\.\d+|\d+)/).matcher(string)</string>
+                <string>def commaMatcher = (~/(\d+\.\d+|\d+), *(\d+\.\d+|\d+)/).matcher(string)</string>
+                <string>def spaceMatcher = (~/(\d+\.\d+|\d+) (\d+\.\d+|\d+)/).matcher(string)</string>
+                <string>if (sridMatcher.matches()) {</string>
+                <string>def id = sridMatcher[0][1].toInteger()</string>
+                <string>def zone = id % 100</string>
+                <string>def east = sridMatcher[0][2].toDouble()</string>
+                <string>def north = sridMatcher[0][3].toDouble()</string>
+                <string>if (utmOut) {</string>
+                <string>&quot;${it}&quot;</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>uk.me.jstott.jcoord.LatLng latlng = new uk.me.jstott.jcoord.UTMRef(east, north, &apos;V&apos; as char, zone).toLatLng()</string>
+                <string>&quot;${latlng.lat},${latlng.lng}&quot;</string>
+                <string>}</string>
+                <string>}</string>
+                <string>else if (utm33Matcher.matches()) {</string>
+                <string>def zone = utm33Matcher[0][1].toInteger()</string>
+                <string>def east = utm33Matcher[0][2].toDouble()</string>
+                <string>def north = utm33Matcher[0][3].toDouble()</string>
+                <string>if (utmOut) {</string>
+                <string>&quot;SRID=326${zone};POINT(${east},${north})&quot;</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>uk.me.jstott.jcoord.LatLng latlng = new uk.me.jstott.jcoord.UTMRef(east, north, &apos;V&apos; as char, zone).toLatLng()</string>
+                <string>&quot;${latlng.lat},${latlng.lng}&quot;</string>
+                <string>}</string>
+                <string>}</string>
+                <string>else if (spaceMatcher.matches()) {</string>
+                <string>def east = spaceMatcher[0][1].toDouble()</string>
+                <string>def north = spaceMatcher[0][2].toDouble()</string>
+                <string>if (utmOut) {</string>
+                <string>&quot;SRID=32633;POINT(${east},${north})&quot;</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>uk.me.jstott.jcoord.LatLng latlng = new uk.me.jstott.jcoord.UTMRef(east, north, &apos;V&apos; as char, 33).toLatLng()</string>
+                <string>&quot;${latlng.lat},${latlng.lng}&quot;</string>
+                <string>}</string>
+                <string>}</string>
+                <string>else if (commaMatcher.matches()) {</string>
+                <string>def latitude = commaMatcher[0][1].toDouble()</string>
+                <string>def longitude = commaMatcher[0][2].toDouble()</string>
+                <string>if (utmOut) {</string>
+                <string>uk.me.jstott.jcoord.UTMRef utmValue = new uk.me.jstott.jcoord.LatLng(latitude,longitude).toUTMRef()</string>
+                <string>&quot;SRID=326${utmValue.lngZone};POINT(${utmValue.easting},${utmValue.northing})&quot;</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>&quot;${latitude},${longitude}&quot;</string>
+                <string>}</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>&apos;&apos;</string>
+                <string>}</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="convertToLATLONG">
+            <groovy-code>
+                <string>def utmOut = false</string>
+                <string>String string = it.toString()</string>
+                <string>def sridMatcher = (~/\s*SRID=(\d+);POINT\((\d+)[, ](\d+)\)/).matcher(string)</string>
+                <string>def utm33Matcher = (~/(\d+) V (\d+\.\d+|\d+) *(\d+\.\d+|\d+)/).matcher(string)</string>
+                <string>def commaMatcher = (~/(\d+\.\d+|\d+), *(\d+\.\d+|\d+)/).matcher(string)</string>
+                <string>def spaceMatcher = (~/(\d+\.\d+|\d+) (\d+\.\d+|\d+)/).matcher(string)</string>
+                <string>if (sridMatcher.matches()) {</string>
+                <string>def id = sridMatcher[0][1].toInteger()</string>
+                <string>def zone = id % 100</string>
+                <string>def east = sridMatcher[0][2].toDouble()</string>
+                <string>def north = sridMatcher[0][3].toDouble()</string>
+                <string>if (utmOut) {</string>
+                <string>&quot;${it}&quot;</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>uk.me.jstott.jcoord.LatLng latlng = new uk.me.jstott.jcoord.UTMRef(east, north, &apos;V&apos; as char, zone).toLatLng()</string>
+                <string>&quot;${latlng.lat},${latlng.lng}&quot;</string>
+                <string>}</string>
+                <string>}</string>
+                <string>else if (utm33Matcher.matches()) {</string>
+                <string>def zone = utm33Matcher[0][1].toInteger()</string>
+                <string>def east = utm33Matcher[0][2].toDouble()</string>
+                <string>def north = utm33Matcher[0][3].toDouble()</string>
+                <string>if (utmOut) {</string>
+                <string>&quot;SRID=326${zone};POINT(${east},${north})&quot;</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>uk.me.jstott.jcoord.LatLng latlng = new uk.me.jstott.jcoord.UTMRef(east, north, &apos;V&apos; as char, zone).toLatLng()</string>
+                <string>&quot;${latlng.lat},${latlng.lng}&quot;</string>
+                <string>}</string>
+                <string>}</string>
+                <string>else if (spaceMatcher.matches()) {</string>
+                <string>def east = spaceMatcher[0][1].toDouble()</string>
+                <string>def north = spaceMatcher[0][2].toDouble()</string>
+                <string>if (utmOut) {</string>
+                <string>&quot;SRID=32633;POINT(${east},${north})&quot;</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>uk.me.jstott.jcoord.LatLng latlng = new uk.me.jstott.jcoord.UTMRef(east, north, &apos;V&apos; as char, 33).toLatLng()</string>
+                <string>&quot;${latlng.lat},${latlng.lng}&quot;</string>
+                <string>}</string>
+                <string>}</string>
+                <string>else if (commaMatcher.matches()) {</string>
+                <string>def latitude = commaMatcher[0][1].toDouble()</string>
+                <string>def longitude = commaMatcher[0][2].toDouble()</string>
+                <string>if (utmOut) {</string>
+                <string>uk.me.jstott.jcoord.UTMRef utmValue = new uk.me.jstott.jcoord.LatLng(latitude,longitude).toUTMRef()</string>
+                <string>&quot;SRID=326${utmValue.lngZone};POINT(${utmValue.easting},${utmValue.northing})&quot;</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>&quot;${latitude},${longitude}&quot;</string>
+                <string>}</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>&apos;&apos;</string>
+                <string>}</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="cleanAdlibImageReference">
+            <sample-input>
+                <string>..\..\..\Images PH\OKS 1989-001 [01].JPG</string>
+                <string>../../../Images PH/OKS 1989-001 [01].JPG</string>
+            </sample-input>
+            <groovy-code>
+                <string>it.replaceAll(&apos;; &apos;, &apos;_&apos;).replaceAll(&apos;JPG&apos;, &apos;jpg&apos;).replaceAll(&quot;.*?[\\\\|//]&quot;,
+                    &quot;&quot;).replaceAll(&quot; &quot;, &quot;%20&quot;).replaceAll(&quot;\\[&quot;, &quot;%5B&quot;).replaceAll(&quot;]&quot;,
+                    &quot;%5D&quot;)
+                </string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="createBrabantCloudUri">
+            <sample-input>
+                <string>Heidi Rafto</string>
+            </sample-input>
+            <groovy-code>
+                <string>StringBuilder out = new StringBuilder()</string>
+                <string>for (char c : it.toString().chars) {</string>
+                <string>switch (c) {</string>
+                <string>case &apos; &apos;:</string>
+                <string>out.append(&apos;%20&apos;)</string>
+                <string>break;</string>
+                <string>case &apos;[&apos;:</string>
+                <string>out.append(&apos;%5B&apos;)</string>
+                <string>break;</string>
+                <string>case &apos;]&apos;:</string>
+                <string>out.append(&apos;%5D&apos;)</string>
+                <string>break;</string>
+                <string>case &apos;\\&apos;:</string>
+                <string>out.append(&apos;%5C&apos;)</string>
+                <string>break;</string>
+                <string>default:</string>
+                <string>out.append(c);</string>
+                <string>}</string>
+                <string>}</string>
+                <string>identifier = out.toString()</string>
+                <string>&quot;${baseUrl}/resource/brabantcloud/${spec}/${identifier}&quot;</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="createEDMAgentUri">
+            <sample-input>
+                <string>Heidi Rafto</string>
+            </sample-input>
+            <groovy-code>
+                <string>StringBuilder out = new StringBuilder()</string>
+                <string>for (char c : it.toString().chars) {</string>
+                <string>switch (c) {</string>
+                <string>case &apos; &apos;:</string>
+                <string>out.append(&apos;%20&apos;)</string>
+                <string>break;</string>
+                <string>case &apos;[&apos;:</string>
+                <string>out.append(&apos;%5B&apos;)</string>
+                <string>break;</string>
+                <string>case &apos;]&apos;:</string>
+                <string>out.append(&apos;%5D&apos;)</string>
+                <string>break;</string>
+                <string>case &apos;\\&apos;:</string>
+                <string>out.append(&apos;%5C&apos;)</string>
+                <string>break;</string>
+                <string>default:</string>
+                <string>out.append(c);</string>
+                <string>}</string>
+                <string>}</string>
+                <string>identifier = out.toString()</string>
+                <string>&quot;${baseUrl}/resource/agent/${spec}/${identifier}&quot;</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="createEDMPlaceUri">
+            <groovy-code>
+                <string>StringBuilder out = new StringBuilder()</string>
+                <string>for (char c : it.toString().chars) {</string>
+                <string>switch (c) {</string>
+                <string>case &apos; &apos;:</string>
+                <string>out.append(&apos;%20&apos;)</string>
+                <string>break;</string>
+                <string>case &apos;[&apos;:</string>
+                <string>out.append(&apos;%5B&apos;)</string>
+                <string>break;</string>
+                <string>case &apos;]&apos;:</string>
+                <string>out.append(&apos;%5D&apos;)</string>
+                <string>break;</string>
+                <string>case &apos;\\&apos;:</string>
+                <string>out.append(&apos;%5C&apos;)</string>
+                <string>break;</string>
+                <string>default:</string>
+                <string>out.append(c);</string>
+                <string>}</string>
+                <string>}</string>
+                <string>identifier = out.toString()</string>
+                <string>&quot;${baseUrl}/resource/place/${spec}/${identifier}&quot;</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="deepZoomUrl">
+            <sample-input>
+                <string>D:/Documents/Schilderij/010.jpg</string>
+            </sample-input>
+            <groovy-code>
+                <string>image = it.toString().replaceAll(&apos;^.*[\\/|\\\\]&apos;,&apos;&apos;).replaceAll(&apos;(?i)\\.jpg|\\.jpeg|\\.tif|\\.tiff|\\.png|\\.gif&apos;,&apos;.tif.dzi&apos;)</string>
+                <string>
+                    &quot;http://media.delving.org/iip/deepzoom/mnt/tib/tiles/${orgId}/${spec}/${image}&quot;</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="isShownAt">
+            <sample-input>
+                <string>123</string>
+            </sample-input>
+            <groovy-code>
+                <string>&quot;http://www.thuisinbrabant.nl/${spec}/${it}&quot;</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="largeThumbnail">
+            <sample-input>
+                <string>D:/Documents/Schilderij/010.jpg</string>
+            </sample-input>
+            <groovy-code>
+                <string>&quot;http://media.delving.org/thumbnail/brabantcloud/${spec}/${it.replaceAll(&apos;^.*[\\/|\\\\]&apos;,&apos;&apos;).replaceAll(&apos;(?i)\\.jpg|\\.jpeg|\\.tif|\\.tiff|\\.png|\\.gif&apos;, &apos;&apos;)}/500&quot;</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="lowercase">
+            <sample-input>
+                <string>Bla bla</string>
+                <string>BLA bla bla</string>
+            </sample-input>
+            <groovy-code>
+                <string>&quot;${it.toString().toLowerCase()}&quot;</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="reverseNames">
+            <sample-input>
+                <string>Sjoerd Siebinga</string>
+                <string>Siebinga, Sjoerd</string>
+                <string>Siebinga, Sjoerd Michiel</string>
+            </sample-input>
+            <groovy-code>
+                <string>parts = it.toString().split(&quot;,&quot;)</string>
+                <string>if (parts.length &gt; 1) {</string>
+                <string>&quot;${parts[1].trim()} ${parts[0]}&quot;</string>
+                <string>}</string>
+                <string>else {</string>
+                <string>&quot;${it}&quot;</string>
+                <string>}</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="smallThumbnail">
+            <groovy-code>
+                <string>&quot;http://media.delving.org/thumbnail/${orgId}/${spec}/${it.replaceAll(&apos;^.*[\\/|\\\\]&apos;,&apos;&apos;).replaceAll(&apos;(?i)\\.jpg|\\.jpeg|\\.tif|\\.tiff|\\.png|\\.gif&apos;, &apos;&apos;)}/180&quot;</string>
+            </groovy-code>
+        </mapping-function>
+        <mapping-function name="toLocalId">
+            <sample-input>
+                <string>1231231</string>
+                <string>232455</string>
+                <string>12345</string>
+            </sample-input>
+            <groovy-code>
+                <string>&quot;${spec}/${it}&quot;</string>
+            </groovy-code>
+        </mapping-function>
+    </functions>
+
+    <attrs>
+        <attr tag="rdf:about"/>
+        <attr tag="rdf:resource"/>
+        <attr tag="rdf:datatype"/>
+        <!--<attr tag="owl:sameAs"/>-->
+        <attr tag="rdf:type"/>
+        <attr tag="xml:lang"/>
+    </attrs>
+
+    <root tag="RDF">
+
+        <elem tag="ore:Aggregation">
+            <attr tag="rdf:about">
+                <node-mapping inputPath="/input" outputPath="/edm:RDF/ore:Aggregation/@rdf:about">
+                    <groovy-code>
+                        <string>&quot;${baseUrl}/resource/aggregation/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                    </groovy-code>
+                </node-mapping>
+
+            </attr>
+            <elem tag="ore:aggregates" attrs="rdf:resource" unmappable="true"/>
+            <elem tag="edm:aggregatedCHO">
+                <attr tag="rdf:resource">
+                    <node-mapping inputPath="/input"
+                                  outputPath="/edm:RDF/ore:Aggregation/edm:aggregatedCHO/@rdf:resource">
+                        <groovy-code>
+                            <string>&quot;${baseUrl}/resource/document/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                        </groovy-code>
+                    </node-mapping>
+                </attr>
+            </elem>
+            <elem tag="edm:dataProvider" attrs="rdf:resource"/>
+            <elem tag="edm:hasView" attrs="rdf:resource"/>
+            <elem tag="edm:isShownAt" attrs="rdf:resource"/>
+            <elem tag="edm:isShownBy" attrs="rdf:resource"/>
+            <elem tag="edm:object" attrs="rdf:resource"/>
+            <elem tag="edm:provider" attrs="rdf:resource"/>
+            <elem tag="dc:rights" attrs="rdf:resource"/>
+            <elem tag="edm:rights" attrs="rdf:resource"/>
+            <elem tag="edm:unstored" attrs="rdf:resource"/>
+        </elem>
+
+        <elem tag="edm:ProvidedCHO">
+            <attr tag="rdf:about">
+                <node-mapping inputPath="/input"
+                              outputPath="/edm:RDF/ore:Aggregation/edm:aggregatedCHO/edm:ProvidedCHO/@rdf:about">
+                    <groovy-code>
+                        <string>&quot;${baseUrl}/resource/document/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                    </groovy-code>
+                </node-mapping>
+            </attr>
+            <elem tag="dc:contributor" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:coverage" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:creator" attrs="xml:lang">
+                <!--<attr tag="rdf:resource">-->
+                <!---->
+                <!--</attr>-->
+            </elem>
+            <elem tag="dc:date" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:description" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:format" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:identifier"/>
+            <elem tag="dc:language"/>
+            <elem tag="dc:publisher" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:relation" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:rights" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:source" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:subject" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dc:title" attrs="xml:lang"/>
+            <elem tag="dc:type" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:alternative" attrs="xml:lang"/>
+            <elem tag="dcterms:conformsTo" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:created" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:extent" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:hasFormat" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:hasPart" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:hasVersion" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:isFormatOf" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:isPartOf" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:isReferencedBy" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:isReplacedBy" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:isRequiredBy" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:issued" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:isVersionOf" attrs="rdf:resource,xml:lang"/>
+            <!--literal or REL??-->
+            <elem tag="dcterms:medium" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:provenance" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:references" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:replaces" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:requires" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:spatial" attrs="rdf:resource,xml:lang"/>
+            <elem tag="dcterms:tableOfContents" attrs="xml:lang"/>
+            <elem tag="dcterms:temporal" attrs="rdf:resource,xml:lang"/>
+            <elem tag="edm:type"/>
+            <elem tag="edm:unstored"/>
+            <elem tag="edm:currentLocation" attrs="rdf:resource"/>
+            <elem tag="edm:hasMet" attrs="rdf:resource"/>
+            <elem tag="edm:hasType" attrs="rdf:resource"/>
+            <elem tag="edm:incorporates" attrs="rdf:resource"/>
+            <elem tag="edm:isDerivativeOf" attrs="rdf:resource"/>
+            <elem tag="edm:isNextInSequence" attrs="rdf:resource"/>
+            <elem tag="edm:isRelatedTo" attrs="rdf:resource"/>
+            <elem tag="edm:isRepresentationOf" attrs="rdf:resource"/>
+            <elem tag="edm:isSimilarTo" attrs="rdf:resource"/>
+            <elem tag="edm:isSuccessorOf" attrs="rdf:resource"/>
+            <elem tag="edm:realizes" attrs="rdf:resource"/>
+            <elem tag="edm:wasPresentAt" attrs="rdf:resource"/>
+        </elem>
+
+        <elem tag="edm:WebResource" attrs="rdf:about">
+            <elem tag="dc:description" attrs="rdf:resource"/>
+            <elem tag="dc:format" attrs="rdf:resource"/>
+            <elem tag="dc:rights" attrs="rdf:resource"/>
+            <elem tag="dc:source" attrs="rdf:resource"/>
+            <elem tag="dcterms:extent" attrs="rdf:resource"/>
+            <elem tag="dcterms:issued"/>
+            <elem tag="dcterms:created" attrs="rdf:resource"/>
+            <elem tag="dcterms:conformsTo" attrs="rdf:resource"/>
+            <elem tag="dcterms:isFormatOf" attrs="rdf:resource"/>
+            <elem tag="edm:rights" attrs="rdf:resource"/>
+            <elem tag="dcterms:hasPart" attrs="rdf:resource"/>
+            <elem tag="edm:isNextInSequence" attrs="rdf:resource"/>
+        </elem>
+
+        <elem tag="edm:Agent" attrs="rdf:about">
+            <elem tag="edm:wasPresentAt" attrs="rdf:resource"/>
+            <elem tag="edm:hasMet" attrs="rdf:resource"/>
+            <elem tag="edm:isRelatedTo" attrs="rdf:resource"/>
+            <elem tag="edm:isRelatedTo" attrs="rdf:resource"/>
+            <elem tag="skos:prefLabel" attrs="xml:lang"/>
+            <elem tag="skos:altLabel" attrs="xml:lang"/>
+            <elem tag="skos:altLabel" attrs="xml:lang"/>
+            <elem tag="skos:note"/>
+            <elem tag="skos:hiddenLabel" attrs="xml:lang"/>
+            <elem tag="owl:sameAs" attrs="rdf:resource"/>
+            <elem tag="foaf:name"/>
+            <elem tag="dc:date" attrs="rdf:resource"/>
+            <elem tag="dc:identifier" attrs="rdf:resource"/>
+            <elem tag="rdaGr2:dateOfBirth"/>
+            <elem tag="rdaGr2:dateOfDeath"/>
+            <elem tag="rdaGr2:dateOfEstablishment"/>
+            <elem tag="rdaGr2:dateOfTermination"/>
+            <elem tag="rdaGr2:gender"/>
+            <elem tag="rdaGr2:professionOrOccupation" attrs="rdf:resource"/>
+            <elem tag="rdaGr2:biographicalInformation" attrs="rdf:resource"/>
+            <elem tag="edm:begin"/>
+            <elem tag="edm:end"/>
+        </elem>
+
+        <elem tag="edm:Place" attrs="rdf:about">
+            <elem tag="wgs84_pos:lat"/>
+            <elem tag="wgs84_pos:long"/>
+            <elem tag="wgs84_pos:alt"/>
+            <elem tag="wgs84_pos:lat_long"/>
+            <elem tag="skos:prefLabel" attrs="xml:lang"/>
+            <elem tag="skos:altLabel" attrs="xml:lang"/>
+            <elem tag="skos:note" attrs="xml:lang"/>
+            <elem tag="skos:hiddenLabel"/>
+            <elem tag="dcterms:hasPart" attrs="rdf:resource"/>
+            <elem tag="dcterms:isPartOf" attrs="rdf:resource"/>
+            <elem tag="owl:sameAs" attrs="rdf:resource"/>
+        </elem>
+
+        <elem tag="edm:TimeSpan" attrs="rdf:about">
+            <elem tag="skos:prefLabel" attrs="xml:lang"/>
+            <elem tag="skos:altLabel" attrs="xml:lang"/>
+            <elem tag="skos:note" attrs="xml:lang"/>
+            <elem tag="dcterms:hasPart" attrs="rdf:resource"/>
+            <elem tag="dcterms:isPartOf" attrs="rdf:resource"/>
+            <elem tag="owl:sameAs" attrs="rdf:resource"/>
+            <elem tag="crm:P79F.beginning_is_qualified_by"/>
+            <elem tag="crm:P80F.end_is_qualified_by"/>
+            <elem tag="edm:begin"/>
+            <elem tag="edm:end"/>
+        </elem>
+
+        <elem tag="skos:Concept" attrs="rdf:about">
+            <elem tag="skos:prefLabel" attrs="xml:lang"/>
+            <elem tag="skos:altLabel" attrs="xml:lang"/>
+            <elem tag="skos:broader" attrs="rdf:resource"/>
+            <elem tag="skos:narrower" attrs="rdf:resource"/>
+            <elem tag="skos:related" attrs="rdf:resource"/>
+            <elem tag="skos:note" attrs="xml:lang"/>
+            <elem tag="skos:hiddenLabel" attrs="xml:lang"/>
+            <elem tag="skos:broadMatch" attrs="rdf:resource"/>
+            <elem tag="skos:narrowMatch" attrs="rdf:resource"/>
+            <elem tag="skos:relatedMatch" attrs="rdf:resource"/>
+            <elem tag="skos:exactMatch" attrs="rdf:resource"/>
+            <elem tag="skos:closeMatch" attrs="rdf:resource"/>
+            <elem tag="skos:notation" attribute="rdf:datatype"/>
+            <!--string (+ rdf:datatype attribute)-->
+            <elem tag="skos:inScheme" attrs="rdf:resource"/>
+        </elem>
+
+        <elem tag="nave:BrabantCloudResource">
+            <attr tag="rdf:about">
+                <node-mapping inputPath="/input" outputPath="/edm:RDF/nave:BrabantCloud/@rdf:about">
+                    <groovy-code>
+                        <string>&quot;${baseUrl}/resource/brabantcloud/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                    </groovy-code>
+                </node-mapping>
+            </attr>
+            <!-- tib -->
+            <elem tag="ore:isAggregatedBy">
+                <attr tag="rdf:resource">
+                    <node-mapping inputPath="/input"
+                                  outputPath="/edm:RDF/edm:BrabantCloud/ore:isAggregatedBy/@rdf:about">
+                        <groovy-code>
+                            <string>&quot;${baseUrl}/resource/aggregation/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                        </groovy-code>
+                    </node-mapping>
+                </attr>
+            </elem>
+            <elem tag="nave:citName"/>
+            <elem tag="nave:citOldId"/>
+            <elem tag="nave:collection"/>
+            <elem tag="nave:collectionPart"/>
+            <elem tag="nave:color" function="lowercase" fieldType="string"/>
+            <elem tag="nave:colorHex" function="lowercase" fieldType="string"/>
+            <elem tag="nave:creatorBirthYear"/>
+            <elem tag="nave:creatorDeathYear"/>
+            <elem tag="nave:creatorRole" function="lowercase"/>
+            <elem tag="nave:date"/>
+            <elem tag="nave:design" function="lowercase" fieldType="string"/>
+            <elem tag="nave:dimension"/>
+            <elem tag="nave:event"/>
+            <elem tag="nave:exhibition" function="lowercase" fieldType="string"/>
+            <elem tag="nave:formatted"/>
+            <elem tag="nave:location"/>
+            <elem tag="nave:material" function="lowercase"/>
+            <elem tag="nave:objectNumber"/>
+            <elem tag="nave:objectSoort" function="lowercase"/>
+            <elem tag="nave:pageEnd"/>
+            <elem tag="nave:pageStart"/>
+            <elem tag="nave:pages"/>
+            <elem tag="nave:person"/>
+            <elem tag="nave:place"/>
+            <elem tag="nave:productionEnd"/>
+            <elem tag="nave:productionPeriod" fieldType="string"/>
+            <elem tag="nave:productionStart"/>
+            <elem tag="nave:region"/>
+            <elem tag="nave:subjectDepicted" function="lowercase" fieldType="string"/>
+            <elem tag="nave:technique" function="lowercase" fieldType="string"/>
+            <elem tag="nave:theme"/>
+            <elem tag="nave:thumbLarge" fieldType="link" function="largeThumbnail"/>
+            <elem tag="nave:thumbSmall" fieldType="link" function="smallThumbnail"/>
+            <elem tag="nave:vindplaats"/>
+            <elem tag="nave:year"/>
+        </elem>
+
+        <elem tag="nave:DimconResource">
+            <attr tag="rdf:about">
+                <node-mapping inputPath="/input" outputPath="/edm:RDF/nave:DimconResource/@rdf:about">
+                    <groovy-code>
+                        <string>&quot;${baseUrl}/resource/dimcon/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                    </groovy-code>
+                </node-mapping>
+            </attr>
+            <elem tag="ore:isAggregatedBy">
+                <attr tag="rdf:resource">
+                    <node-mapping inputPath="/input"
+                                  outputPath="/edm:RDF/nave:DimconResource/ore:isAggregatedBy/@rdf:about">
+                        <groovy-code>
+                            <string>&quot;${baseUrl}/resource/dimcon/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                        </groovy-code>
+                    </node-mapping>
+                </attr>
+            </elem>
+            <elem tag="nave:creatorYearOfBirth"/>
+            <elem tag="nave:creatorYearOfDeath"/>
+            <elem tag="nave:creatorRole"/>
+            <elem tag="nave:technique"/>
+            <elem tag="nave:material"/>
+            <elem tag="nave:location"/>
+            <elem tag="nave:province"/>
+            <elem tag="nave:collectionPart"/>
+            <elem tag="nave:collectionType"/>
+
+
+            <elem tag="nave:musipCollectionUri"/>
+            <elem tag="nave:musipCollectionDisplayName" hidden="true"/>
+            <elem tag="nave:musipMuseumUri"/>
+            <elem tag="nave:musipMuseumDisplayName" hidden="true"/>
+        </elem>
+
+        <elem tag="nave:Museometrie">
+            <attr tag="rdf:about">
+                <node-mapping inputPath="/input" outputPath="/edm:RDF/nave:Museometrie/@rdf:about">
+                    <groovy-code>
+                        <string>&quot;${baseUrl}/resource/museometrie/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                    </groovy-code>
+                </node-mapping>
+            </attr>
+            <elem tag="ore:isAggregatedBy">
+                <attr tag="rdf:resource">
+                    <node-mapping inputPath="/input"
+                                  outputPath="/edm:RDF/nave:Museometrie/ore:isAggregatedBy/@rdf:about">
+                        <groovy-code>
+                            <string>&quot;${baseUrl}/resource/museometrie/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                        </groovy-code>
+                    </node-mapping>
+                </attr>
+                </elem>
+                <elem tag="nave:currentLocation"/>
+                <elem tag="nave:acquisitionYear"/>
+                <elem tag="nave:acquiredWithHelpFrom"/>
+                <elem tag="nave:physicalState"/>
+                <elem tag="nave:purchasePrice"/>
+                <elem tag="nave:acquisitionMeans"/>
+        </elem>
+
+        <elem tag="nave:RijksCollection">
+            <attr tag="rdf:about">
+                <node-mapping inputPath="/input" outputPath="/edm:RDF/nave:RijksCollection/@rdf:about">
+                    <groovy-code>
+                        <string>&quot;${baseUrl}/resource/rijkscollection/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                    </groovy-code>
+                </node-mapping>
+            </attr>
+            <elem tag="ore:isAggregatedBy">
+                <attr tag="rdf:resource">
+                    <node-mapping inputPath="/input"
+                                  outputPath="/edm:RDF/nave:RijksCollection/ore:isAggregatedBy/@rdf:about">
+                        <groovy-code>
+                            <string>&quot;${baseUrl}/resource/rijkscollection/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                        </groovy-code>
+                    </node-mapping>
+                </attr>
+            </elem>
+            <elem tag="nave:acceptedStateCharges"/>
+             
+            <elem tag="nave:acceptedStateChargesReason"/>
+            <!-- subproperty of skos:prefLabel-->
+            <elem tag="nave:rijksCollection" fieldType="string"/>
+            <elem tag="nave:expulsionMeans"/>
+             <elem tag="nave:expulsionYear"/> 
+            <elem tag="nave:legalStatus"/> 
+        </elem>
+
+        <elem tag="nave:NorvegianaResource">
+            <attr tag="rdf:about">
+                <node-mapping inputPath="/input" outputPath="/edm:RDF/nave:DimconResource/@rdf:about">
+                    <groovy-code>
+                        <string>&quot;${baseUrl}/resource/norvegiana/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                    </groovy-code>
+                </node-mapping>
+            </attr>
+            <elem tag="ore:isAggregatedBy">
+                <attr tag="rdf:resource">
+                    <node-mapping inputPath="/input"
+                                  outputPath="/edm:RDF/nave:DimconResource/ore:isAggregatedBy/@rdf:about">
+                        <groovy-code>
+                            <string>&quot;${baseUrl}/resource/norvegiana/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                        </groovy-code>
+                    </node-mapping>
+                </attr>
+            </elem>
+            <elem tag="nave:municipality"/>
+            <elem tag="nave:municipalityNr"/>
+            <elem tag="nave:aboutPerson"/>
+            <elem tag="nave:county"/>
+            <elem tag="nave:countyNr"/>
+            <elem tag="nave:country"/>
+            <elem tag="nave:namedPlace"/>
+            <elem tag="nave:estateName"/>
+            <elem tag="nave:estateNr"/>
+            <elem tag="nave:propertyName"/>
+            <elem tag="nave:propertyNr"/>
+            <!--required="true"-->
+            <elem tag="nave:contentProvider" />
+            <elem tag="nave:address"/>
+            <elem tag="nave:digitised"/>
+            <elem tag="nave:introduction"/>
+            <elem tag="nave:classification"/>
+            <!-- This is the full utm33 string 32 V 258644.154187 6648939.72091
+          SRID=32633;POINT(148013,6964590)
+          -->
+            <elem tag="nave:utm" function="convertToUTM"/>
+            <elem tag="nave:polygon_utm"/>
+            <elem tag="nave:polygon_latLong"/>
+            <!-- 59.907116,10.682953 -->
+            <elem tag="nave:latLong" fieldType="geohash" function="convertToLATLONG"/>
+
+            <elem tag="nave:type"/>
+            <!-- knet, knreise, all -->
+            <!--required="true"-->
+            <elem tag="nave:collectionType"/>
+            <elem tag="nave:category"/>
+
+            <elem tag="nave:creatorUri" fieldType="string"/>
+            <elem tag="nave:videoUri" fieldType="string"/>
+            <elem tag="nave:soundUri" fieldType="string"/>
+            <elem tag="nave:imageUri" fieldType="string"/>
+            <elem tag="nave:textUri" fieldType="string"/>
+        </elem>
+
+
+        <elem tag="nave:DelvingResource">
+            <attr tag="rdf:about">
+                <node-mapping inputPath="/input" outputPath="/edm:RDF/delving:DelvingResource/@rdf:about">
+                    <groovy-code>
+                        <string>&quot;${baseUrl}/resource/delving/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                    </groovy-code>
+                </node-mapping>
+            </attr>
+            <elem tag="ore:isAggregatedBy">
+                <attr tag="rdf:resource">
+                    <node-mapping inputPath="/input"
+                                  outputPath="/edm:RDF/edm:DelvingResource/ore:isAggregatedBy/@rdf:about">
+                        <groovy-code>
+                            <string>&quot;${baseUrl}/resource/aggregation/${spec}/${_uniqueIdentifier.sanitizeURI()}&quot;</string>
+                        </groovy-code>
+                    </node-mapping>
+                </attr>
+            </elem>
+            <elem tag="nave:year"/> 
+            <elem tag="nave:thumbnail" fieldType="link" function="smallThumbnail"/>
+             <elem tag="nave:deepZoomUrl" fieldType="link" function="deepZoomUrl"/> 
+            <elem tag="nave:fullTextObjectUrl" fieldType="link"/> 
+            <elem tag="nave:fullText"/>
+             
+            <elem tag="delving:geohash"/>
+        </elem>
+    </root>
+
+    <opts>
+        <opt-list dictionary="LEGAL" path="/RDF/nave:RijksCollection/nave:legalStatus" displayName="Legal Status">
+            <opt value="Eigenaar: Rijks"/>
+            <opt value="Eigenaar: Anders dan Rijk"/>
+            <opt value="Aan de zorg van het Rijk toevertrouwd"/>
+            <opt value="Bruikleen van X"/>
+            <opt value="Onbekend"/>
+        </opt-list>
+        <opt-list dictionary="CHARGES" path="/RDF/nave:RijksCollection/nave:acceptedStateCharges"
+                  displayName="Accepted State Charges">
+            <opt value="No"/>
+            <opt value="Yes"/>
+        </opt-list>
+        <opt-list dictionary="EXPULSION" path="/RDF/nave:RijksCollection/nave:expulsionMeans"
+                  displayName="Expulsion means">
+            <opt value="Sale"/>
+            <opt value="Destruction"/>
+            <opt value="Gift"/>
+            <opt value="Trade"/>
+        </opt-list>
+        <opt-list dictionary="HHCat" path="/RDF/nave:NorvegianaResource/nave:category"
+                  displayName="Norvegiana Category">
+            <opt value="Arkeologi"/>
+            <opt value="Kulturminner"/>
+            <opt value="Historie og samfunn"/>
+            <opt value="Arkitektur"/>
+            <opt value="Dyr"/>
+            <opt value="Planter"/>
+            <opt value="Verneområder"/>
+            <opt value="Kunst"/>
+            <opt value="Stedsnavn"/>
+            <opt value="Fugler"/>
+        </opt-list>
+    </opts>
+
+    <field-markers>
+
+        <!--<field-marker name="CREATOR" path="/RDF/dc:creator"/>-->
+        <!--<field-marker name="delving:title" path="/RDF/edm:ProvidedCHO/dc:title"/>-->
+        <!--<field-marker name="DESCRIPTION" path="/RDF/dc:description"/>-->
+        <!--<field-marker name="OWNER" path="/RDF/europeana:dataProvider"/>-->
+        <!--<field-marker name="PROVIDER" path="/RDF/europeana:provider"/>-->
+        <!--<field-marker name="LANDING_PAGE" path="/RDF/europeana:isShownAt"/>-->
+        <!--<field-marker name="THUMBNAIL" path="/RDF/europeana:object"/>-->
+        <!--<field-marker name="GEOHASH" path="/RDF/abm:geo"/>-->
+        <!--<field-marker name="ADDRESS" path="/RDF/abm:address"/>-->
+
+        <!--&lt;!&ndash; todo: these should have paths, currently they are checked for presence but not resolved&ndash;&gt;-->
+        <!--<field-marker name="SPEC"/>-->
+        <!--<field-marker name="DEEP_ZOOM_URL"/>-->
+
+        <!--<field-marker type="search" name="SNIPPET" path="/RDF/dc:subject"/>-->
+        <!--<field-marker type="search" name="SNIPPET" path="/RDF/dcterms:alternative"/>-->
+        <!--<field-marker type="search" name="SNIPPET" path="/RDF/europeana:collectionTitle"/>-->
+
+        <!--<field-marker type="fact" name="spec" path="/RDF/europeana:collectionName"/>-->
+        <!--<field-marker type="fact" name="name" path="/RDF/europeana:collectionTitle"/>-->
+        <!--<field-marker type="fact" name="country" path="/RDF/europeana:country"/>-->
+        <!--<field-marker type="fact" name="dataProvider" path="/RDF/europeana:dataProvider"/>-->
+        <!--<field-marker type="fact" name="language" path="/RDF/europeana:language"/>-->
+        <!--<field-marker type="fact" name="provider" path="/RDF/europeana:provider"/>-->
+        <!--<field-marker type="fact" name="rights" path="/RDF/europeana:rights"/>-->
+        <!--<field-marker type="fact" name="type" path="/RDF/europeana:type"/>-->
+
+    </field-markers>
+
+
+    <docs>
+        <doc path="/RDF/edm:ProvidedCHO">
+            <para name="Note">
+                These are the properties that can be used for the class of edm:ProvidedCHO.  This means that they are
+                the attributes of the original cultural heritage object (CHO) itself, not the digital representation of
+                it.  E.g. attributes of the Mona Lisa, not the digitised image of the painting.  Note that the greyed
+                out properties will not be used in the first implementation so any values provided for them will not be
+                used.
+            </para>
+        </doc>
+        <!--<doc path="/RDF/edm:ProvidedCHO/owl:sameAs">-->
+        <!--<para name="Note">Use to point to your own (linked data) representation of the object, if you have already minted a URI identifier for it.  It is also possible to provide URIs minted by third‐parties for the object.</para>-->
+        <!--<para name="Value type">ref</para>-->
+        <!--<para name="Obligation and Occurrence">min 0, max unbounded</para>-->
+        <!--</doc>-->
+        <!--<doc path="/RDF/edm:ProvidedCHO/rdf:type">-->
+        <!--<para name="Note">Use to indicate if this resource is of a given “real‐world object” type – it could be edm:PhysicalThing or a more specific class.</para>-->
+        <!--<para name="Value type">ref</para>-->
+        <!--<para name="Obligation and Occurrence">min 0, max unbounded</para>-->
+        <!--</doc>-->
+        <!--<doc path="/edm:RDF/edm:ProvidedCHO/dc:contributor">-->
+
+        <!--<para name="Note">For contributors to the CHO.  If possible supply the identifier of the contributor from an authority source.</para>-->
+        <!--<para name="Value type">literal or ref</para>-->
+        <!--<para name="Obligation and Occurrence">min 0, max unbounded</para>-->
+
+        <!--</doc>-->
+        <doc path="/RDF/edm:ProvidedCHO/dc:coverage">
+            <para name="Note">The spatial or temporal topic of the CHO.  Use the more precise dcterms:spatial or
+                dcterms:temporal properties if the data will support it.  One of dc:coverage or dc:subject or dc:type or
+                dcterms:spatial must be provided.
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:creator">
+            <para name="Note">For the creator of the CHO.  If possible supply the identifier of the creator from an
+                authority source.
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:date">
+            <para name="Note">Use for a significant date in the life of the CHO.  Consider the sub‐properties of
+                dcterms:created or dcterms:issued
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:description">
+            <para name="Note">A description of the CHO.  Either dc:description or dc:title must be provided</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:format">
+            <para name="Note">Use for the format of a born digital cultural heritage objects or for other terms applied
+                to the CHO
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:identifier">
+            <para name="Note">An identifier of the original CHO.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:language">
+            <para name="Note">The language of text CHOs and also for other types of CHO if there is a language aspect.
+                Mandatory for TEXT objects, strongly recommended for other object types with a language element.
+            </para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:publisher">
+            <para name="Note">The name of the publisher of the CHO.  If possible supply the identifier of the publisher
+                from an authority source.
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:relation">
+            <para name="Note">The name or identifier of a related resource, generally used for other related CHOs.  Cf
+                edm:isRelatedT
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:rights">
+            <para name="Note">Use to give the name of the rights holder of the CHO if possible or for more general
+                rights information.  Note the difference between this property and the use of the controlled edm:rights
+                property which relates to the digital objects (see WebResource and Aggregation tables).
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:source">
+            <para name="Note">The source of the original CHO.  This property should no longer be used for the name of
+                the content holder: for this, see edm:dataProvider in the ore:Aggregation table belo
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:subject">
+            <para name="Note">The subject of the CHO.  One of dc:subject or dc:coverage or dc:type or dcterms:spatial
+                must be provided
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:title">
+            <para name="Note">The title of the CHO.  Either dc:title or dc:description must be provided.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dc:type">
+            <para name="Note">The nature or genre of the CHO.  Ideally the term(s) will be taken from a controlled
+                vocabulary.  One of dc:type or dc:subject or dc:coverage or dcterms:spatial must be provided
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:alternative">
+            <para name="Note">Any alternative title of the CHO including abbreviations or translations.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:conformsTo">
+            <para name="Note">An established standard to which the CHO conforms.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:created">
+            <para name="Note">The date of creation of the CHO.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:extent">
+            <para name="Note">The size or duration of the CHO.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:hasFormat">
+            <para name="Note">A resource related to the CHO that is substantially the same as the CHO but in another
+                format.
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:hasPart">
+            <para name="Note">A resource that is included either physically or logically in the CHO.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:hasVersion">
+            <para name="Note">Another resource that is a version, edition or adaptation of the CHO demonstrating
+                substantive changes in content rather than format.
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:isFormatOf">
+            <para name="Note">Another resource that is substantially the same as the CHO but in another format.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:isPartOf">
+            <para name="Note">A resource in which the CHO is physically or logically included.  This property can be
+                used for objects that are part of a hierarchy and will be used to support an appropriate display in the
+                portal.  For that purpose it will be necessary to supply an identifier as the value.  
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:isReferencedBy">
+            <para name="Note">Another resource that references, cites or otherwise points to the CHO</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:isReplacedBy">
+            <para name="Note">Another resource that supplants , displaces, or supersedes the CHO.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:isRequiredBy">
+            <para name="Note">Another related resource that requires the CHO to support its function, delivery or
+                coherence
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:issued">
+            <para name="Note">Date of formal issuance or publication of the CHO.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:isVersionOf">
+            <para name="Note">Another resource of which the CHO is a version, edition or adaptation, demonstrating
+                substantive changes in content rather than format.
+            </para>
+            <para name="Value type">literal or rel</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:medium">
+            <para name="Note">The material or physical carrier of the CHO.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:provenance">
+            <para name="Note">A statement of changes in ownership and custody of the CHO since its creation. Significant
+                for authenticity, integrity and interpretation.
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:references">
+            <para name="Note">Other resources referenced, cited or otherwise pointed to by the CHO.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:replaces">
+            <para name="Note">A related resource that is supplanted, displaced, or superseded by the CHO.  </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:requires">
+            <para name="Note">Another resource that is required by the described resource to support its function,
+                delivery or coherence.
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:spatial">
+            <para name="Note">Spatial characteristics of the CHO. i.e. what the CHO represents or depicts in terms of
+                space (e.g. a location, co‐ordinate or place).  Either dcterms:spatial or dc:type or dc:subject or
+                dc:coverage must be provided
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:tableOfContents">
+            <para name="Note">sA list of sub‐units of the CHO.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/dcterms:temporal">
+            <para name="Note">Temporal characteristics of the CHO. i.e. what the CHO is about or depicts in terms of
+                time (e.g. a period, date or date range.)
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:type">
+            <para name="Note">The provided object is one of the types accepted by Europeana and will govern which facet
+                it appears under in the portal ‐ TEXT, VIDEO, SOUND, IMAGE, (3D after January 2012)
+            </para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 1, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:unstored">
+            <para name="Note"></para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:currentLocation">
+            <para name="Note">The geographic location whose boundaries presently include the CHO.  If the name of a
+                repository, building, site, or other entity is used then it should include an indication of its
+                geographic location
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:hasMet">
+            <para name="Note">The identifier of an agent, a place, a time period or any other identifiable entity that
+                the CHO may have “met” in its life. 
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:hasType">
+            <para name="Note">The identifier of a concept, or a word or phrase from a controlled vocabulary (thesaurus
+                etc) giving the type of the CHO.  E.g. Painting from the AAT thesaurus.  This property can be seen as a
+                super‐property of e.g. dc:format or dc:type to support “What” questions
+            </para>
+            <para name="Value type">ref or litera</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:incorporates">
+            <para name="Note">The identifier of another resource that is incorporated in the described CHO. E.g. the
+                movie “A Clockwork Orange” incorporates Rossini’s La Gazza Ladra” in its soundtrack
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:isDerivativeOf">
+            <para name="Note">The identifier of another resource from which the described CHO has been derived. E.g. the
+                identifier of Moby Dick when the Italian translation is the described CHO
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:isNextInSequence">
+            <para name="Note">The identifier of the preceding object where both objects are part of the same overall
+                resource. Use this for objects that are part of a hierarchy or sequence to ensure correct display in the
+                portal
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:isRelatedTo">
+            <para name="Note">The identifier or name of a concept or other resource to which the described CHO is
+                related.  E.g. Moby Dick is related to XIX Century literature. Cf dc:relation.
+            </para>
+            <para name="Value type">ref or literal </para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:isRepresentationOf">
+            <para name="Note">The identifier of another object of which the described CHO is a representation. E.g. the
+                identifier of the statue when the CHO being described is a painting of that statue
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:isSimilarTo">
+            <para name="Note">The identifier of another resource to which the described CHO is similar</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:isSuccessorOf">
+            <para name="Note">The identifier of a resource to which the described CHO is a successor.  E.g. issue 53 of
+                “Le Temps” isSuccessorOf issue 52. 
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:realizes">
+            <para name="Note">If the CHO described is of type edm:PhysicalThing it may realize an information
+                object.  E.g. a copy of the Gutenberg publication realizes the Bible
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:ProvidedCHO/edm:wasPresentAt">
+            <para name="Note">The identifier of an event at which the described object was present.  E.g. the Stone of
+                Scone was present at the coronation of King James I of England
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+
+        <!--edm:WebResource-->
+        <doc path="/RDF/edm:WebResource">
+            <para name="Note">These are the properties that can be used for the class of edm:WebResource. This means
+                that they are attributes of the digital representation of the provided cultural heritage object, not the
+                cultural heritage object itself.   
+                There may be more than one edm:WebResource for each edm:ProvidedCHO and they will be associated via the
+                ore:Aggregation using edm:isShownBy, edm:isShownAt, edm:hasView or edm:object.  Each web resource
+                provided should have its own set of properties."
+            </para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/dc:description">
+            <para name="Note">Use for an account or description of this digital representation.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/dc:rights">
+            <para name="Note">Use for the name of the rights holder of this digital representation if possible or for
+                more general rights information.  Note the difference between this property and the use of the
+                mandatory, controlled edm:rights property below
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/dc:source">
+            <para name="Note">A related resource from which this web resource is derived in whole or in part. This
+                property should no longer be used for the name of the content holder: for this, see edm:dataProvider in
+                the ore:Aggregation table below. 
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/dcterms:extent">
+            <para name="Note">The size or duration of the web resourc</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/dcterms:issued">
+            <para name="Note">Date of formal issuance or publication of the web resource</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/dcterms:conformsTo">
+            <para name="Note">An established standard to which the web resource conforms.</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/dcterms:isFormatOf">
+            <para name="Note">Another resource that is substantially the same as the web resource but in another
+                format
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/edm:rights">
+            <para name="Note">The value in this element will indicate the usage and access rights that apply to this
+                digital representation. For the first implementation of EDM only the rights associated with the
+                ore:Aggregation class will be implemented.  Later implementations will be able to use the edm:rights
+                associated with individual WebResources so it is strongly recommended that a value is supplied for this
+                property for each instance of a WebResource.  
+                See also edm:rights in the ore:Aggregation table
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max</para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/dcterms:hasPart">
+            <para name="Note">A resource that is included either physically or logically in the web resource</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:WebResource/edm:isNextInSequence">
+            <para name="Note">Where one CHO has several web resources, shown by multiple instances of the edm:hasView
+                property on the ore:Aggregation, then this property can be used to show the sequence of the objects
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max</para>
+        </doc>
+
+        ore:Aggregation
+        <doc path="/RDF/ore:Aggregation">
+            <para name="Note">These are the properties that can be used for the class of ore:Aggregation. This means
+                that they are attributes that apply to the whole set of related resources about one particular provided
+                CHO. For each ore:Aggregation a set of these properties should be provided. 
+            </para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/ore:aggregates">
+            <para name="Note">This property exists in principle only as it is stated through edm:aggregatedCHO and
+                edm:hasView statement
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/edm:aggregatedCHO">
+            <para name="Note">The identifier of the source object e.g. the Mona Lisa itself.  This could be a full
+                linked open data URI or an internal identifier
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 1, max 1</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/edm:dataProvider">
+            <para name="Note">The name or identifier of the data provider of the object (i.e. the organisation providing
+                data to an aggregator).  Identifiers will not be available until Europeana has implemented its
+                Organisation profile
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 1, max 1</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/edm:hasView">
+            <para name="Note">The URL of a web resource which is a digital representation of the CHO.  This may be the
+                source object itself in the case of a born digital cultural heritage object. 
+                edm:hasView  should only be used where there are several views of the CHO and one (or both) of the
+                mandatory edm:isShownAt or edm:isShownBy properties have already been used.  It is for cases where one
+                CHO has several views of the same object.  (e.g. a shoe and a detail of the label of the shoe)
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/edm:isShownBy">
+            <para name="Note">The URL of a web view of the object.  Either edm:isShownAt or edm:isShownBy is
+                mandatory.  For the rights that will apply to previews please see edm:rights below
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/edm:isShownAt">
+            <para name="Note">The URL of a web view of the object in full information context. Either edm:isShownAt or
+                edm:isShownBy is mandatory. For the rights that will apply to  previews please see edm:rights below
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/edm:object">
+            <para name="Note">The URL of a representation of the CHO which will be used for generating previews for use
+                in the Europeana portal.  This may be the same URL as edm:isShownBy.
+                See Europeana Portal Image Guidelines (http://version1.europeana.eu/web/guest/technical‐requirements/)
+                for information regarding the specifications of previews
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/edm:provider">
+            <para name="Note">The name or identifier of the provider of the object (i.e. the organisation providing data
+                directly to Europeana).  Identifiers will not be available until Europeana has implemented its
+                Organisation profile
+            </para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 1, max</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/dc:rights">
+            <para name="Note">Ideally this should be applied to the edm:WebResource or the edm:ProvidedCHO.  It is
+                included here for the conversion of data from ESE where it is not known which object the rights apply t
+            </para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/edm:rights">
+            <para name="Note">This is a mandatory property and the value given here should be the rights statement that
+                applies to the digital representation at the URL given in edm:object or edm:isShownAt/By. The value
+                should be taken from one of those listed in the Europeana Rights Guidelines
+                (http://version1.europeana.eu/web/guest/technical‐requirements/) The rights statement given in this
+                property will also apply to the previews used in the portal and will be the source of:
+                * the entry in the Rights facet in the portal
+                * the license badge that appears under the preview on the result page  
+                  
+                Where there are several web resources attached to one edm:ProvidedCHO the rights statement given here
+                will be regarded as the “reference” value for all the web resources so a suitable value should be chosen
+                if the rights statements vary between different resources. In future implementations it is hoped to
+                handle rights statements for separate web resources associated with one CHO separately.
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 1, max 1</para>
+        </doc>
+        <doc path="/RDF/ore:Aggregation/edm:unstored">
+            <para name="Note">Ideally this should be applied to the edm:WebResource or the edm:ProvidedCHO.  It is only
+                included here for the conversion of data from ESE where it is not known which object the data applies to
+            </para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+
+        <!--edm:Agent-->
+        <doc path="/RDF/edm:Agent">
+            <para name="Note">The class edm:Agent comprises people, either individually or in groups, who have the
+                potential to perform intentional actions for which they can be held responsible.  Please refer to the
+                EDM Definition 5.2.2 for a fuller definition of the EDM properties
+            </para>
+        </doc>
+        <doc path="/RDF/edm:Agent/edm:wasPresentAt">
+            <para name="Note">The identifier of an event at which the agent was present.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/edm:hasMet">
+            <para name="Note">The identifier of another entity which the agent has “met” in a broad sense</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/edm:isRelatedTo">
+            <para name="Note">The identifier of other entities, particularly other agents, with whom the agent is
+                related in a generic sense
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/skos:prefLabel">
+            <para name="Note">The preferred form of the name of the agent.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1 per lang tag</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/skos:altLabel">
+            <para name="Note">Alternative forms of the name of the agent</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/skos:note">
+            <para name="Note">A note about the agent e.g. biographical note</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/skos:hiddenLabel">
+            <para name="Note">Used for non‐standard forms of the name, such as misspellings, usually in text‐based
+                search functions
+            </para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/owl:sameAs">
+            <para name="Note">The URI of an agent.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/foaf:name">
+            <para name="Note">The name of the agent as a simple textual string</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/dc:date">
+            <para name="Note">A significant date associated with the Agent.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/dc:identifier">
+            <para name="Note">An identifier of the agent.</para>
+            <para name="Value type">ref  </para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/rdaGr2:dateOfBirth">
+            <para name="Note">The date the agent (person) was born.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/rdaGr2:dateOfDeath">
+            <para name="Note">The date the agent (person) died.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/rdaGr2:dateOfEstablishment">
+            <para name="Note">The date on which the agent (corporate body) was established or founded</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/rdaGr2:dateOfTermination">
+            <para name="Note">The date on which the agent (corporate body) was terminated or dissolved</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/rdaGr2:gender">
+            <para name="Note">The gender with which the agent identifies.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/rdaGr2:professionOrOccupation">
+            <para name="Note">The profession or occupation in which the agent works or has worked</para>
+            <para name="Value type">literal or ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/rdaGr2:biographicalInformation">
+            <para name="Note">Information pertaining to the life or history of the agent.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/edm:begin">
+            <para name="Note">The date the agent was born/established.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max</para>
+        </doc>
+        <doc path="/RDF/edm:Agent/edm:end">
+            <para name="Note">The date the agent died/terminated.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max</para>
+        </doc>
+
+        <!-- edm:Place -->
+        <!--<doc path="/RDF/edm:Place">-->
+        <!--<para name="Note">A spatial location identified by the provider and named according to some vocabulary or local convention.</para>-->
+        <!--</doc>-->
+        <doc path="/RDF/edm:Place/wgs84_pos:lat">
+            <para name="Note">The latitude of a spatial thing (decimal degrees).</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:Place/wgs84_pos:long">
+            <para name="Note">The longitude of a spatial thing (decimal degrees.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:Place/wgs84_pos:alt">
+            <para name="Note">The altitude of a spatial thing (decimal metres above the reference</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:Place/wgs84_pos:lat_long">
+            <para name="Note">A comma separated representation of a latitude, longitude co‐ordinate</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:Place/skos:prefLabel">
+            <para name="Note">The preferred form of the name of the place.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1 per lang tag</para>
+        </doc>
+        <doc path="/RDF/edm:Place/skos:altLabel">
+            <para name="Note">Alternative forms of the name of the place.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Place/skos:note">
+            <para name="Note">Information relating to the place.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Place/skos:hiddenLabel">
+            <para name="Note">Used for non‐standard forms of the name, such as misspellings, usually in text‐based
+                search functions
+            </para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Place/dcterms:hasPart">
+            <para name="Note">identifier of a place that is part of the place being described.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Place/dcterms:isPartOf">
+            <para name="Note">identifier of a place that the described place is part of.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:Place/owl:sameAs">
+            <para name="Note">URI of a Place.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+
+        <!-- edm:TimeSpan -->
+        <!--<doc path="/RDF/edm:TimeSpan">-->
+        <!--<para name="Note">A period of time having a beginning, an end and a duration.</para>-->
+        <!--</doc>-->
+        <doc path="/RDF/edm:TimeSpan/skos:prefLabel">
+            <para name="Note">The preferred form of the name of the timespan or period</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1 per lang tag</para>
+        </doc>
+        <doc path="/RDF/edm:TimeSpan/skos:altLabel">
+            <para name="Note">Alternative forms of the name of the timespan or period.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:TimeSpan/skos:note">
+            <para name="Note">Information relating to the timespan or period.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:TimeSpan/dcterms:hasPart">
+            <para name="Note">The identifier of a timespan which is part of the described timespan.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:TimeSpan/dcterms:isPartOf">
+            <para name="Note">/The identifier of a timespan of which the described timespan is a part.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:TimeSpan/owl:sameAs">
+            <para name="Note">The URI of a timespan.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:TimeSpan/crm:P79F.beginning_is_qualified_by">
+            <para name="Note">Qualifying information about the start of the timespan – such as degree of certainty,
+                precision, source etc
+            </para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:TimeSpan/crm:P80F.end_is_qualified_by">
+            <para name="Note">Qualifying information about the end of the timespan – such as degree of certainty,
+                precision, source etc
+            </para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/edm:TimeSpan/edm:begin">
+            <para name="Note">The date the timespan started.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+        <doc path="/RDF/edm:TimeSpan/edm:end">
+            <para name="Note">The date the timespan finished.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1</para>
+        </doc>
+
+        <!-- skos:Concept -->
+        <!--<doc path="/RDF/skos:Concept">-->
+        <!--<para name="Note">A unit of thought or meaning that comes from an organised knowledge base (such as subject terms from a thesaurus or controlled vocabulary) where URIs or local identifiers have been created to represent each concept.  In the cultural heritage world there are many such controlled vocabularies such as the Library of Congress Subject Headings or AAT</para>-->
+        <!--</doc>-->
+        <doc path="/RDF/skos:Concept/skos:prefLabel">
+            <para name="Note">The preferred form of the name of the concept.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max 1 per lang tag</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:altLabel">
+            <para name="Note">Alternative forms of the name of the concept.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:broader">
+            <para name="Note">The identifier of a broader concept in the same thesaurus or controlled vocabulary.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:narrower">
+            <para name="Note">The identifier of a narrower concept.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:related">
+            <para name="Note">The identifier of a related concept.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:note">
+            <para name="Note">Information relating to the concept.</para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:hiddenLabel">
+            <para name="Note">Used for non‐standard forms of the name, such as misspellings, usually in text‐based
+                search function
+            </para>
+            <para name="Value type">literal</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:broadMatch">
+            <para name="Note">The identifier of a broader, narrower or related matching concepts from other concept
+                scheme.
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:narrowMatch">
+            <para name="Note">The identifier of a broader, narrower or related matching concepts from other concept
+                scheme.
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:relatedMatch">
+            <para name="Note">The identifier of a broader, narrower or related matching concepts from other concept
+                scheme.
+            </para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:exactMatch">
+            <para name="Note">The identifier of close or exactly matching concepts from other concept schemes.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:closeMatch">
+            <para name="Note">The identifier of close or exactly matching concepts from other concept schemes.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:notation">
+            <para name="Note">The notation in which the concept is represented.  This may not be words in natural
+                language for some knowledge organisation systems e.g. algebr
+            </para>
+            <para name="Value type">string (+ rdf:datatype attribute)</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <doc path="/RDF/skos:Concept/skos:inScheme">
+            <para name="Note">The URI of a concept scheme.</para>
+            <para name="Value type">ref</para>
+            <para name="Obligation and Occurrence">min 0, max unbounded</para>
+        </doc>
+        <!-- Norvegiana docs-->
+        <doc path="/RDF/nave:NorvegianaResource/nave:introduction">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Should the input text have both an introductory text and main body of text, map the introduction to abm:introduction and the main body of text to dc:description. Note that for ESE you will need to ensure the abm:introduction is mapped to DC:description before providing it to Europeana.	
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional	
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:classification">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+		    Structural classification  - additional to the information that can be mapped to dc:source  and dc:subject
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:creatorUri">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Unique identifier (URI) of the creator
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+        <doc path="/RDF/nave:NorvegianaResource/nave:category">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Select from the predetermined list, relevant for Kultur-og Naturreise prosjekt: Eg. Archeology, Animals, Plant, Place names. Art, Industrial Heritage, Social history. Categorization can be applied to a mapping of a Virtual Collection of Digitalt Fortalt data. This will be “Facetable”.
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:aboutPerson">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			A person that is the subject of the described resource, eg. Persons described in documents,  persons depicted in photos, paintings and statues/busts, etc
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+        <doc path="/RDF/nave:NorvegianaResource/nave:contentProvider">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Same as Europeana:dataprovider
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+        <doc path="/RDF/nave:NorvegianaResource/nave:digitised">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Date resource was digitised
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+        <doc path="/RDF/nave:NorvegianaResource/nave:latLong">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+                            ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Mandatory if you have lat/long  coordinates			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:polygon_latLong">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			The abm:latLong field is the combined lat/long fields - used by the Solr GeoSearch. Format the coordinates in this field: lat,long
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:polygon_utm">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+                            ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:utm">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+                            ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:address">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			o be given as a text string, if possible  according to a Syntax Encoding Scheme for addresses (yet to be specified),  or the syntax encoding scheme DCMI Point (http://dublincore.org/documents/dcmi-point/) for spatial points 
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:country">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Recommended best practice is to use country names conforming to ISO 3166, like [europeana:country]. Note: This property has to do with the topical coverage of the described resource, whereas [Europeana:country] denotes the country of the provider.
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+        <doc path="/RDF/nave:NorvegianaResource/nave:county">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			(Fykesnavn) To be given as a text string, if possible according to a Syntax Encoding Scheme for counties (yet to be specified) - names  conforming  to an authorised list of counties or the syntax encoding scheme DCMI Point (http://dublincore.org/documents/dcmi-point/) for spatial points
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:countyNr">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			(Fylkesnummer) numbers conforming  to an authorised list of counties or the syntax encoding scheme DCMI Point (http://dublincore.org/documents/dcmi-point/) for spatial points
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:estateName">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Gårdsnavn : To be given as a text string, if possible according to a Syntax Encoding Scheme for landed properties (yet to be specified) -  name conforming to the authorised registry of landed properties or the syntax encoding scheme DCMI Point (http://dublincore.org/documents/dcmi-point/) for spatial points 
+EXAMPLE: “Hellerud”
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:estateNr">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Gårdsnummer: conforming to the authorised registry of landed properties or the syntax encoding scheme DCMI Point (http://dublincore.org/documents/dcmi-point/) for spatial points 
+EXAMPLE: “314”
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:propertyName">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Bruksnavn: conforming to the authorised registry of landed properties or the syntax encoding scheme DCMI Point (http://dublincore.org/documents/dcmi-point/) for spatial points 
+EXAMPLE: “Solbakken”
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:propertyNr">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			Bruksnummer: EXAMPLE: ”013”
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:municipality">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			(Kommune) To be given as a text string, if possible according to a Syntax Encoding Scheme for municipalities (yet to be specified), 
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:municipalityNr">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			(Kommunenummer) numbers conforming  to an authorised list of counties or the syntax encoding scheme DCMI Point (http://dublincore.org/documents/dcmi-point/) for spatial points
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+
+        <doc path="/RDF/nave:NorvegianaResource/nave:namedPlace">
+            <paras>
+                <para name="Definition">
+                    <![CDATA[
+			To be given as a text string, if possible according to a Syntax Encoding Scheme for municipalities (yet to be specified), including names conforming  to an authorised list of named places or the syntax encoding scheme DCMI Point for spatial points.  EXAMPLE: Rosenhoff, Sinsen
+		        ]]>
+                </para>
+                <para name="Requirements">
+                    <![CDATA[
+			Optional			
+                    ]]>
+                </para>
+            </paras>
+        </doc>
+    </docs>
+
+</record-definition>
+
+
+
+
+

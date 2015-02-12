@@ -1,9 +1,11 @@
 package specs
 
-import java.io.{File, FileOutputStream, StringReader, StringWriter}
+import java.io._
+import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import com.hp.hpl.jena.rdf.model.ModelFactory
 import dataset.{SipFactory, SipRepo, SourceRepo}
+import org.apache.commons.io.IOUtils
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
 import record.PocketParser.Pocket
@@ -14,38 +16,50 @@ import scala.collection.JavaConversions._
 
 class TestEDM extends PlaySpec with OneAppPerSuite {
 
-  //  "An EDM record should be read into a jena model" in {
-  //
-  //    val xmlFile = new File(getClass.getResource("/edm/edm-record.xml").getFile)
-  //    val xmlString = FileUtils.readFileToString(xmlFile)
-  //
-  //    println(xmlString)
-  //
-  //    val model = ModelFactory.createDefaultModel()
-  //    model.read(new StringReader(xmlString), null, "RDF/XML")
-  //
-  //    val triples = new StringWriter()
-  //    RDFDataMgr.write(triples, model, RDFFormat.TURTLE)
-  //
-  //    println(triples)
-  //
-  //  }
+  val naveDomain = "http://nave"
+  val sipsDir = new File(getClass.getResource("/edm").getFile)
+  val sipZipFile = new File(sipsDir, "test-edm.sip.zip")
+
+  def copyFile(zos: ZipOutputStream, sourceFile: File): Unit = {
+    val file = if (sourceFile.getName == "source.xml") {
+      val gzFile = new File(sourceFile.getParentFile, "source.xml.gz")
+      val gz = new GZIPOutputStream(new FileOutputStream(gzFile))
+      val is = new FileInputStream(sourceFile)
+      IOUtils.copy(is, gz)
+      gz.close()
+      gzFile
+    }
+    else {
+      sourceFile
+    }
+    println(s"including $file")
+    zos.putNextEntry(new ZipEntry(file.getName))
+    val is = new FileInputStream(file)
+    IOUtils.copy(is, zos)
+    zos.closeEntry()
+  }
+
+  def createSipRepoFromDir(dirName: String): SipRepo = {
+    val source = new File(sipsDir, dirName)
+    val zos = new ZipOutputStream(new FileOutputStream(sipZipFile))
+    source.listFiles().toList.filter(!_.getName.endsWith(".gz")).map(f => copyFile(zos, f))
+    zos.close()
+    println(s"created $sipZipFile")
+    new SipRepo(sipsDir, dirName, naveDomain)
+  }
 
   "A dataset should be loaded" in {
-    // prepare for reading and mapping
-    val sipsDir = new File(getClass.getResource("/edm").getFile)
-    val datasetName = "ton_smits_huis"
-    val naveDomain = "http://nave"
-    val sipRepo = new SipRepo(sipsDir, datasetName, naveDomain)
-    val sourceDir = FileHandling.clearDir(new File("/tmp/test-edm"))
-    val targetDir = FileHandling.clearDir(new File("/tmp/test-edm-target"))
+    val whichOne = 0
+    val dirName = List("ton-smits", "difo")(whichOne)
+    val sipRepo = createSipRepoFromDir(dirName)
+    val sourceDir = FileHandling.clearDir(new File(s"/tmp/test-edm/$dirName/source"))
+    val targetDir = FileHandling.clearDir(new File(s"/tmp/test-edm/$dirName/target"))
     val targetFile = new File(targetDir, "edm.xml")
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined must be(true)
     val sip = sipOpt.get
     val targetOutput = writer(targetFile)
     // fill processed repo by mapping records
-    sip.spec must be(Some("ton-smits-huis"))
     val source = sip.copySourceToTempFile
     source.isDefined must be(true)
     val sourceRepo = SourceRepo.createClean(sourceDir, SourceRepo.DELVING_SIP_SOURCE)
@@ -53,7 +67,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
     var mappedPockets = List.empty[Pocket]
     sip.createSipMapper.map { sipMapper =>
       def pocketCatcher(pocket: Pocket): Unit = {
-//        println(s"parsed pocket:\n$pocket")
+        //        println(s"### parsed pocket:\n$pocket")
         var mappedPocket = sipMapper.map(pocket)
         mappedPocket.map(_.writeTo(targetOutput))
         mappedPockets = mappedPocket.get :: mappedPockets
@@ -65,7 +79,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
 
     mappedPockets.take(1).map { pocket =>
       var recordString = pocket.text
-//      println(s"mapped pocket:\n$pocket")
+      println(s"### mapped pocket:\n$pocket")
       val model = ModelFactory.createDefaultModel()
       model.read(new StringReader(recordString), null, "RDF/XML")
 
@@ -78,7 +92,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
       }
       val dcSubject = "http://purl.org/dc/elements/1.1/subject"
       val dcSubjectList = model.listObjectsOfProperty(model.getProperty(dcSubject)).toList
-      dcSubjectList.size() must be(6)
+      (dcSubjectList.size() > 2) must be(true)
       dcSubjectList.map { obj =>
         println(s"dcSubject: $obj")
       }
@@ -97,7 +111,6 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
     val sipFactory = new SipFactory(sipFactoryDir)
     val sipFile = new File(targetDir, "sip-creator-download.sip.zip")
     sip.copyWithSourceTo(sipFile, pocketFile, sipFactory.prefixRepo("edm"))
-
   }
 
 }

@@ -1,0 +1,119 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<pockets>
+  <pocket id="H-DF-DF.5011">
+    <sip-record id="H-DF-DF.5011"><dc:identifier xmlns:dc="http://purl.org/dc/elements/1.1/">H-DF/DF.5011</dc:identifier>
+<dc:title xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">Tysk luftvernbunkers, Tennevoll - Lavangen</dc:title>
+<dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Jentoft Teigland</dc:creator>
+<abm:county xmlns:abm="http://abmu.org/abm">Troms</abm:county>
+<abm:countyNr xmlns:abm="http://abmu.org/abm">19</abm:countyNr>
+<abm:municipality xmlns:abm="http://abmu.org/abm">Lavangen</abm:municipality>
+<abm:municipalityNr xmlns:abm="http://abmu.org/abm">1920</abm:municipalityNr>
+<abm:type xmlns:abm="http://abmu.org/abm">PhysicalObject</abm:type>
+<abm:introduction xmlns:abm="http://abmu.org/abm" xml:lang="nor">De fleste tyske bunkerser er i dag sprengt bort og fjernet fra krigstiden, men luftvernbunkersen på Tennevoll er fremdeles intakt.</abm:introduction>
+<dc:description xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">&lt;p&gt;På boligtomta like overfor Lavangen skole, ligger det nedi bakken en helt intakt luftvernbunkers fra siste krig, antakelig bygd i 1943. Den er ca. 2x2 m, med eget rom for luftvernkanonen på 1,3x1,3 m, og med trapp mellom rommene. Taket og veggene i bunkersen er 0,5 m tykke. Selve bunkersen er bygd av betongstein, og taket ligger 0,5 m under bakkenivå. Den hadde utgang under jorda til skyttergravene som gikk under bakkekanten.&lt;/p&gt;&lt;p&gt;På samme tomt hadde tyskerne ei kontorbrakke hvor Ortzkomandanten hadde sine kontorer. Denne brakka ble brukt til skole for Tennevoll krets fra 1945 til første byggetrinn av nyskolen sto ferdig i 1950.&lt;/p&gt;&lt;p&gt;Slike betongbunkere fra krigens dager finner en rester etter på flere steder i kommunen, bl.a. på Sandnes, på Soløy bak kirka og nede i grustaket. De fleste av bunkersene fra krigstiden er sprengt bort og fjernet i dag.&lt;/p&gt;&lt;p&gt;Kartreferanse. 33 W, akse øst 613668, akse nord 7628803&lt;/p&gt;&lt;p&gt;Koordineringssystem: Ellipsoide, EUREF89&lt;br&gt;&lt;/p&gt;</dc:description>
+<dc:subject xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">krigsminnelandskap-troms</dc:subject>
+<dc:subject xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">krigsminneprosjekt-sør-troms</dc:subject>
+<dc:subject xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">okkupasjonen</dc:subject>
+<dc:subject xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">2.-verdenskrigen</dc:subject>
+<dc:subject xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">bunkers</dc:subject>
+<abm:classification xmlns:abm="http://abmu.org/abm" xml:lang="nor">Kultur og samfunn(23)</abm:classification>
+<abm:classification xmlns:abm="http://abmu.org/abm" xml:lang="nor">Kulturminne(24)</abm:classification>
+<dcterms:references xmlns:dcterms="http://purl.org/dc/terms/">Registrerte kulturminner i Lavangen kommune (written_sources)</dcterms:references>
+<europeana:rights xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://creativecommons.org/licenses/by-sa/3.0/</europeana:rights>
+<abm:lat xmlns:abm="http://abmu.org/abm">68.74605930241964</abm:lat>
+<abm:long xmlns:abm="http://abmu.org/abm">17.813680029648822</abm:long>
+<abm:contentProvider xmlns:abm="http://abmu.org/abm">DigitaltFortalt</abm:contentProvider>
+<dcterms:created xmlns:dcterms="http://purl.org/dc/terms/">2013-11-04</dcterms:created>
+<europeana:object xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://media31.dimu.no/media/image/H-DF/DF.5011/0?byIndex=true&amp;height=400&amp;width=400</europeana:object>
+<europeana:isShownBy xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://media31.dimu.no/media/image/H-DF/DF.5011/0?byIndex=true&amp;height=800&amp;width=800</europeana:isShownBy>
+<abm:image xmlns:abm="http://abmu.org/abm" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<abm:imageUri>http://media31.dimu.no/media/image/H-DF/DF.5011/12429?height=400&amp;width=400</abm:imageUri>
+<europeana:type>IMAGE</europeana:type>
+<dc:description>Luftvernbunkers på Tennevoll</dc:description>
+</abm:image>
+<europeana:type xmlns:europeana="http://www.europeana.eu/schemas/ese/">IMAGE</europeana:type>
+<europeana:isShownAt xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://digitaltfortalt.no/things/thing/H-DF/DF.5011</europeana:isShownAt>
+<abm:digitised xmlns:abm="http://abmu.org/abm">2013-11-04</abm:digitised>
+</sip-record>
+  </pocket>
+  <pocket id="H-DF-DF.6292">
+    <sip-record id="H-DF-DF.6292"><dc:identifier xmlns:dc="http://purl.org/dc/elements/1.1/">H-DF/DF.6292</dc:identifier>
+<dc:title xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">Mammut i Gudbrandsdalen</dc:title>
+<dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Torveig Dahl</dc:creator>
+<dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Gudbrandsdalsmusea</dc:creator>
+<abm:county xmlns:abm="http://abmu.org/abm">Oppland</abm:county>
+<abm:countyNr xmlns:abm="http://abmu.org/abm">05</abm:countyNr>
+<abm:municipality xmlns:abm="http://abmu.org/abm">Ringebu</abm:municipality>
+<abm:municipalityNr xmlns:abm="http://abmu.org/abm">0520</abm:municipalityNr>
+<abm:type xmlns:abm="http://abmu.org/abm">PhysicalObject</abm:type>
+<abm:introduction xmlns:abm="http://abmu.org/abm" xml:lang="nor">Mammutane levde truleg over store delar av den nordlege halvkula. Dei vart borte for ca 10-12 000 år sidan. Det er funne store mengder bein, heile skjelett, tenner, støttenner og heile dyr godt bevara i myrjord,. I Noreg er det funne ganske lite, totalt 25 registrerte funn, to funn i Akershus, resten i Oppland, i Gudbrandsdalen og på Skreia på Toten. Det fyrste kjente funnet var i 1886 og det siste funnet var på Fåvang, rett opp for Fåvang stasjon i 2013.</abm:introduction>
+<dc:description xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">Den ullhåra mammuten levde samstundes med reinsdyra, vår villrein i Rondane stammar genetisk frå desse reinsdyra som levde side ved side av mammuten. Funna i Noreg er eldre enn dei fleste andre funn som er gjort., m.a. i Sibir, Alaska, Nordsjøen, og Sveits/Sør-Tysklnand.&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;I Gudbrandsdalen har ein dei seinare åra jobba med formidling av meir kunnskap om desse dyra, og den vegetasjon og fauna dei var del av. &amp;nbsp;Det har vore fleire skuleprosjekt som har vore svært vellukka. Funna er i hovudsak berre fragment - og er funne i grusavsetningar/morene truleg frå før siste &amp;nbsp;istid. &amp;nbsp;Funna er levert til hhv. Universitetet i Oslo og Bergen, slik at de kan bli forska meir på.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Takka vera observante gravemaskinkøyrarar og andre, er det stadig meir som blir funne - slik at vi kan få veta meir om dette eksotiske dyret og korleis dei levde.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Prosjektet i Ringebu er i regi av I Nasjonalparker v/Morten Liebe og Gudbrandsdalsmusea v/Torveig Dahl - i godt samarbeid med lokalkontakt Kåre Solbakken og Finn Audun Grøndahl Randsfjordsmuseene/Naturhistorisk nettverk i Oppland. Arbeidsgruppa la i 2013 fram forprosjektrapport, men manglar finansiering til vidare arbeid.&lt;/div&gt;</dc:description>
+<dc:subject xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">mammut</dc:subject>
+<abm:classification xmlns:abm="http://abmu.org/abm" xml:lang="nor">Naturhistorie(9)</abm:classification>
+<abm:classification xmlns:abm="http://abmu.org/abm" xml:lang="nor">Historie og geografi(22)</abm:classification>
+<dc:rights xmlns:dc="http://purl.org/dc/elements/1.1/">Opphavsrett</dc:rights>
+<abm:lat xmlns:abm="http://abmu.org/abm">61.45071357514168</abm:lat>
+<abm:long xmlns:abm="http://abmu.org/abm">10.179484784603119</abm:long>
+<abm:contentProvider xmlns:abm="http://abmu.org/abm">DigitaltFortalt</abm:contentProvider>
+<dcterms:created xmlns:dcterms="http://purl.org/dc/terms/">2014-10-15</dcterms:created>
+<europeana:dataProvider xmlns:europeana="http://www.europeana.eu/schemas/ese/">Gudbrandsdalsmusea</europeana:dataProvider>
+<europeana:object xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://media31.dimu.no/media/image/H-DF/DF.6292/0?byIndex=true&amp;height=400&amp;width=400</europeana:object>
+<europeana:isShownBy xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://media31.dimu.no/media/image/H-DF/DF.6292/0?byIndex=true&amp;height=800&amp;width=800</europeana:isShownBy>
+<abm:image xmlns:abm="http://abmu.org/abm" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<abm:imageUri>http://media31.dimu.no/media/image/H-DF/DF.6292/18339?height=400&amp;width=400</abm:imageUri>
+<europeana:type>IMAGE</europeana:type>
+<dc:description>Forskarar frå Universitetet i Bergen på befaring - er det meir her tru?</dc:description>
+<dc:creator>Torveig Dahl, Gudbrandsdalsmusea</dc:creator>
+</abm:image>
+<abm:image xmlns:abm="http://abmu.org/abm" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<abm:imageUri>http://media31.dimu.no/media/image/H-DF/DF.6292/18340?height=400&amp;width=400</abm:imageUri>
+<europeana:type>IMAGE</europeana:type>
+<dc:description>Funn i Myre Grustak 24. juni 2013. Observante gravemaskinkøyrarar gjer unikt funn, største del av tann som er funne i landet.</dc:description>
+<dc:creator>Kåre Solbakken</dc:creator>
+</abm:image>
+<europeana:type xmlns:europeana="http://www.europeana.eu/schemas/ese/">IMAGE</europeana:type>
+<europeana:isShownAt xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://digitaltfortalt.no/things/thing/H-DF/DF.6292</europeana:isShownAt>
+<abm:digitised xmlns:abm="http://abmu.org/abm">2014-10-15</abm:digitised>
+</sip-record>
+  </pocket>
+  <pocket id="H-DF-DF.1428">
+    <sip-record id="H-DF-DF.1428"><dc:identifier xmlns:dc="http://purl.org/dc/elements/1.1/">H-DF/DF.1428</dc:identifier>
+<dc:title xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">Anleggsarbeid som attåtnæring</dc:title>
+<dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Kulturhistorisk vegbok Hordaland</dc:creator>
+<abm:county xmlns:abm="http://abmu.org/abm">Hordaland</abm:county>
+<abm:countyNr xmlns:abm="http://abmu.org/abm">12</abm:countyNr>
+<abm:municipality xmlns:abm="http://abmu.org/abm">Samnanger</abm:municipality>
+<abm:municipalityNr xmlns:abm="http://abmu.org/abm">1242</abm:municipalityNr>
+<abm:type xmlns:abm="http://abmu.org/abm">PhysicalObject</abm:type>
+<abm:introduction xmlns:abm="http://abmu.org/abm" xml:lang="nor">Straks etter at Vossebanen var opna, vart det sett i gang vegarbeid frå Trengereid stasjon til Ådland i Samnanger (1883-1885). Vegen vart ført vidare frå Ådland til Tysse 1893-95, for så å nå fram til Norheimsund i 1906. Mange småbrukarar i Samnanger fann seg kjærkomen attåtnæring på veganlegga og då Bergen Lysverker tok til med kraftutbygging i Samnanger i 1910, vart det meir arbeid å få.</abm:introduction>
+<dc:description xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">&lt;h3&gt;Anleggsarbeidarar&lt;/h3&gt;&lt;p&gt;Etter kvart vart samningar å finna på alle slag anleggsarbeid over store delar av Vestlandet og vidare med. Frå å vera ei lita attåtnæring til jordbruket har anleggsarbeid vorte hovudnæring for mange, slik at Samnanger med tida har vorte ein av dei mest typiske anleggsarbeidarkommunane i Hordaland.&lt;/p&gt;</dc:description>
+<dc:subject xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">anleggsarbeidarar</dc:subject>
+<dc:subject xmlns:dc="http://purl.org/dc/elements/1.1/" xml:lang="nor">vegar</dc:subject>
+<abm:classification xmlns:abm="http://abmu.org/abm" xml:lang="nor">Kultur og samfunn(23)</abm:classification>
+<abm:classification xmlns:abm="http://abmu.org/abm" xml:lang="nor">Natur, teknikk og næring(28)</abm:classification>
+<abm:classification xmlns:abm="http://abmu.org/abm" xml:lang="nor">Hordaland(33)</abm:classification>
+<dc:rights xmlns:dc="http://purl.org/dc/elements/1.1/">Opphavsrett</dc:rights>
+<abm:lat xmlns:abm="http://abmu.org/abm">60.3765385848428</abm:lat>
+<abm:long xmlns:abm="http://abmu.org/abm">5.76102972625345</abm:long>
+<abm:contentProvider xmlns:abm="http://abmu.org/abm">DigitaltFortalt</abm:contentProvider>
+<dcterms:created xmlns:dcterms="http://purl.org/dc/terms/">2009-12-20</dcterms:created>
+<europeana:object xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://media31.dimu.no/media/image/H-DF/DF.1428/0?byIndex=true&amp;height=400&amp;width=400</europeana:object>
+<europeana:isShownBy xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://media31.dimu.no/media/image/H-DF/DF.1428/0?byIndex=true&amp;height=800&amp;width=800</europeana:isShownBy>
+<abm:image xmlns:abm="http://abmu.org/abm" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<abm:imageUri>http://media31.dimu.no/media/image/H-DF/DF.1428/3598?height=400&amp;width=400</abm:imageUri>
+<europeana:type>IMAGE</europeana:type>
+<dc:description>Middagskvild i tverrslaget under kraftutbygginga i Samnangervassdraget. To hundre mann jobba her i anleggstida. Foto 1910.</dc:description>
+<dc:creator>ukjend</dc:creator>
+</abm:image>
+<abm:image xmlns:abm="http://abmu.org/abm" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<abm:imageUri>http://media31.dimu.no/media/image/H-DF/DF.1428/3597?height=400&amp;width=400</abm:imageUri>
+<europeana:type>IMAGE</europeana:type>
+<dc:description>Å vera anleggsslusk var både hardt og farleg. 13 menneske mista livet under kraftutbygginga i Samnanger. Her frå oppreinskinga under tunnelavløpet til inntaksdammen ved Fiskevatn, ca 1910. | Eier: Privat eige. kopi Hordaland fylkekommune.</dc:description>
+<dc:creator>Ingeniør Ingebrigt Lunde</dc:creator>
+</abm:image>
+<europeana:type xmlns:europeana="http://www.europeana.eu/schemas/ese/">IMAGE</europeana:type>
+<europeana:isShownAt xmlns:europeana="http://www.europeana.eu/schemas/ese/">http://digitaltfortalt.no/things/thing/H-DF/DF.1428</europeana:isShownAt>
+<abm:digitised xmlns:abm="http://abmu.org/abm">2009-12-20</abm:digitised>
+</sip-record>
+  </pocket>
+</pockets>

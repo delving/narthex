@@ -1,0 +1,332 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<rec-mapping prefix="edm" schemaVersion="5.2.3" locked="false">
+  <facts>
+    <entry>
+      <string>orgId</string>
+      <string>kulturnett</string>
+    </entry>
+    <entry>
+      <string>spec</string>
+      <string>difo</string>
+    </entry>
+    <entry>
+      <string>dataProvider</string>
+      <string>Digitalt fortalt / Norsk kulturråd</string>
+    </entry>
+    <entry>
+      <string>schemaVersions</string>
+      <string>abm_1.0.9, ese_3.4.0</string>
+    </entry>
+    <entry>
+      <string>name</string>
+      <string>Digitalt fortalt</string>
+    </entry>
+    <entry>
+      <string>rights</string>
+      <string>http://www.europeana.eu/rights/unknown/</string>
+    </entry>
+    <entry>
+      <string>provider</string>
+      <string>Arts Council Norway</string>
+    </entry>
+    <entry>
+      <string>language</string>
+      <string>no</string>
+    </entry>
+    <entry>
+      <string>type</string>
+      <string>IMAGE</string>
+    </entry>
+    <entry>
+      <string>country</string>
+      <string>Norway</string>
+    </entry>
+  <entry><string>baseUrl</string><string>http://acc.norvegiana.delving.org</string></entry></facts>
+  <functions>
+    <mapping-function name="cleanSRID">
+      <sample-input>
+        <string>SRID=32633;POINT(272027,6895706)</string>
+      </sample-input>
+      <groovy-code>
+        <string>"${it.replaceAll("SRID=32633\\;POINT\\((.*)\\)","\$1")}"</string>
+      </groovy-code>
+    </mapping-function>
+    <mapping-function name="convertToIdentifier">
+      <sample-input>
+        <string>someidentifier</string>
+      </sample-input>
+      <groovy-code>
+        <string>def uriBytes = it.toString().getBytes("UTF-8");</string>
+        <string>def digest = java.security.MessageDigest.getInstance("SHA-1")</string>
+        <string>def hash = new StringBuilder()</string>
+        <string>for (Byte b in digest.digest(uriBytes)) {</string>
+        <string>hash.append('0123456789ABCDEF'[(b &amp; 0xF0) &gt;&gt; 4])</string>
+        <string>hash.append('0123456789ABCDEF'[b &amp; 0x0F])</string>
+        <string>}</string>
+        <string>"$spec/$hash".toString()</string>
+      </groovy-code>
+    </mapping-function>
+    <mapping-function name="splitArrayTostring"/>
+    <mapping-function name="turnAuthor">
+      <sample-input>
+        <string>Sjoerd Siebinga</string>
+        <string>McSeveny, Sarah</string>
+      </sample-input>
+      <groovy-code>
+        <string>parts = it.toString().split(' ')</string>
+        <string>if (parts.length &gt; 1){</string>
+        <string>"${parts[1].trim()} ${parts[0]}"</string>
+        <string>}</string>
+        <string>else {</string>
+        <string>"${it}"</string>
+        <string>}</string>
+      </groovy-code>
+    </mapping-function>
+  </functions>
+  <dyn-opts/>
+  <node-mappings>
+    <node-mapping inputPath="/input/sip-record/abm:municipality" outputPath="/edm:RDF/nave:NorvegianaResource/nave:municipality"/>
+    <node-mapping inputPath="/input/sip-record/abm:municipalityNr" outputPath="/edm:RDF/nave:NorvegianaResource/nave:municipalityNr"/>
+    <node-mapping inputPath="/input/sip-record/abm:county" outputPath="/edm:RDF/nave:NorvegianaResource/nave:county"/>
+    <node-mapping inputPath="/input/sip-record/abm:countyNr" outputPath="/edm:RDF/nave:NorvegianaResource/nave:countyNr"/>
+    <node-mapping inputPath="/constant" outputPath="/edm:RDF/nave:NorvegianaResource/nave:contentProvider">
+      <groovy-code>
+        <string>'Digitalt fortalt'</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/abm:digitised" outputPath="/edm:RDF/nave:NorvegianaResource/nave:digitised"/>
+    <node-mapping inputPath="/input/sip-record/abm:introduction" outputPath="/edm:RDF/nave:NorvegianaResource/nave:introduction" operator="SPACE_DELIM"/>
+    <node-mapping inputPath="/input/sip-record/abm:classification" outputPath="/edm:RDF/nave:NorvegianaResource/nave:classification"/>
+    <node-mapping inputPath="/input/sip-record/abm:lat" outputPath="/edm:RDF/nave:NorvegianaResource/nave:latLong">
+      <siblings>
+        <path>/input/sip-record/abm:long</path>
+      </siblings>
+      <groovy-code>
+        <string>convertToLATLONG(convertToLATLONG("${_M3['abmlat']},${_M3['abmlong']}".toString()))</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/@id" outputPath="/edm:RDF/nave:NorvegianaResource/nave:collectionType">
+      <groovy-code>
+        <string>[ "Kulturnett", "KNreise" ]</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/abm:classification" outputPath="/edm:RDF/nave:NorvegianaResource/nave:category" operator="FIRST">
+      <dictionary class="tree-map">
+        <entry>
+          <string>Arkeologi og forminne(14)</string>
+          <string>Arkeologi</string>
+        </entry>
+        <entry>
+          <string>Arkitektur(1)</string>
+          <string>Arkitektur</string>
+        </entry>
+        <entry>
+          <string>Bildekunst(2)</string>
+          <string>Kunst</string>
+        </entry>
+        <entry>
+          <string>Dans(17)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Design og formgjeving(18)</string>
+          <string>Kunst</string>
+        </entry>
+        <entry>
+          <string>Film(19)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Fiske og fiskeindustri(11)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Fleirkultur og minoritetar(20)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Fotografi(21)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Historie og geografi(22)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Historie(15)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Hordaland(33)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Kultur og samfunn(23)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Kulturminne(24)</string>
+          <string>Kulturminner</string>
+        </entry>
+        <entry>
+          <string>Litteratur(25)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Media(26)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Musikk(6)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Natur, teknikk og næring(28)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Naturhistorie(9)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Rallarvegen(32)</string>
+          <string>Kulturminner</string>
+        </entry>
+        <entry>
+          <string>Sjøfart og kystkultur(10)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Skip- og båtbygging(12)</string>
+          <string>Kulturminner</string>
+        </entry>
+        <entry>
+          <string>Sport og friluftsliv(7)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Språk(29)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Teater(30)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Teikneseriar(31)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Teknikk, industri og bergverk(13)</string>
+          <string>Historie og samfunn</string>
+        </entry>
+        <entry>
+          <string>Tradisjonsmat og drikke(5)</string>
+          <string>Kulturminner</string>
+        </entry>
+      </dictionary>
+      <groovy-code>
+        <string>if (_absent_) {</string>
+        <string>"Historie og samfunn"</string>
+        <string>}</string>
+        <string>else if ("${lookupHHCat0(_abmclassification)}" == "") {</string>
+        <string>"unclassified"</string>
+        <string>}</string>
+        <string>else {</string>
+        <string>"${lookupHHCat0(_abmclassification)}"</string>
+        <string>}</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/abm:media/abm:videoUri" outputPath="/edm:RDF/nave:NorvegianaResource/nave:videoUri">
+      <groovy-code>
+        <string>"${_abmvideoUri.sanitizeURI()}"</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/abm:media/abm:soundUri" outputPath="/edm:RDF/nave:NorvegianaResource/nave:soundUri">
+      <groovy-code>
+        <string>"${_abmsoundUri.sanitizeURI()}"</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/abm:image/abm:imageUri" outputPath="/edm:RDF/nave:NorvegianaResource/nave:imageUri">
+      <groovy-code>
+        <string>"${_abmimageUri.sanitizeURI()}"</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/dc:creator" outputPath="/edm:RDF/edm:ProvidedCHO/dc:creator"/>
+    <node-mapping inputPath="/input/sip-record/dc:date" outputPath="/edm:RDF/edm:ProvidedCHO/dc:date"/>
+    <node-mapping inputPath="/input/sip-record/dc:description" outputPath="/edm:RDF/edm:ProvidedCHO/dc:description" operator="SPACE_DELIM"/>
+    <node-mapping inputPath="/input/sip-record/@id" outputPath="/edm:RDF/edm:ProvidedCHO/dc:identifier">
+      <groovy-code>
+        <string>if ("${_id}" =~ /^NMK-[ABD]\//) {</string>
+        <string>discard("Artikler fra Nasjonalmuset for arkitektur, bilde og design skal ikke være med pga BONO")</string>
+        <string>}</string>
+        <string>"${_id}"</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/constant" outputPath="/edm:RDF/edm:ProvidedCHO/dc:language">
+      <groovy-code>
+        <string>'no'</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/dc:rights" outputPath="/edm:RDF/edm:ProvidedCHO/dc:rights"/>
+    <node-mapping inputPath="/input/sip-record/abm:classification" outputPath="/edm:RDF/edm:ProvidedCHO/dc:subject"/>
+    <node-mapping inputPath="/input/sip-record/dc:subject" outputPath="/edm:RDF/edm:ProvidedCHO/dc:subject"/>
+    <node-mapping inputPath="/input/sip-record/dc:title" outputPath="/edm:RDF/edm:ProvidedCHO/dc:title"/>
+    <node-mapping inputPath="/input/sip-record/abm:type" outputPath="/edm:RDF/edm:ProvidedCHO/dc:type"/>
+    <node-mapping inputPath="/input/sip-record/dcterms:created" outputPath="/edm:RDF/edm:ProvidedCHO/dcterms:created"/>
+    <node-mapping inputPath="/input/sip-record/dcterms:references" outputPath="/edm:RDF/edm:ProvidedCHO/dcterms:references">
+      <groovy-code>
+        <string>if (_dctermsreferences.a_ &amp;&amp; ("${_dctermsreferences}" == "")) {</string>
+        <string>def link = _dctermsreferences.a_</string>
+        <string>"${link['@href'][0].sanitizeURI()} ${link}"</string>
+        <string>}</string>
+        <string>else {</string>
+        <string>"${_dctermsreferences}"</string>
+        <string>}</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/abm:county" outputPath="/edm:RDF/edm:ProvidedCHO/dcterms:spatial"/>
+    <node-mapping inputPath="/input/sip-record/abm:countyNr" outputPath="/edm:RDF/edm:ProvidedCHO/dcterms:spatial">
+      <groovy-code>
+        <string>String omr = "${_abmcountyNr}".replaceFirst("^0*","")</string>
+        <string>if (omr.isEmpty() || omr.toInteger() &lt;= 22) "Norge"</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/abm:municipality" outputPath="/edm:RDF/edm:ProvidedCHO/dcterms:spatial"/>
+    <node-mapping inputPath="/input/sip-record/dcterms:temporal" outputPath="/edm:RDF/edm:ProvidedCHO/dcterms:temporal"/>
+    <node-mapping inputPath="/input/sip-record/europeana:isShownBy" outputPath="/edm:RDF/ore:Aggregation/edm:isShownBy/@rdf:resource"/>
+    <node-mapping inputPath="/input/sip-record/europeana:rights" outputPath="/edm:RDF/ore:Aggregation/edm:rights">
+      <groovy-code>
+        <string>if (_absent_) {</string>
+        <string>"${rights}"</string>
+        <string>}</string>
+        <string>else {</string>
+        <string>"${_europeanarights.sanitizeURI()}"</string>
+        <string>}</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/europeana:isShownAt" outputPath="/edm:RDF/ore:Aggregation/edm:isShownAt/@rdf:resource"/>
+    <node-mapping inputPath="/input/sip-record/europeana:object" outputPath="/edm:RDF/ore:Aggregation/edm:object/@rdf:resource"/>
+    <node-mapping inputPath="/facts/provider" outputPath="/edm:RDF/ore:Aggregation/edm:provider"/>
+    <node-mapping inputPath="/input/sip-record/europeana:dataProvider" outputPath="/edm:RDF/ore:Aggregation/edm:dataProvider" operator="AS_ARRAY">
+      <groovy-code>
+        <string>(_europeanadataProvider.size() == 0 ? [ "${dataProvider}" ] : _europeanadataProvider).unique().join('; ')</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/europeana:type" outputPath="/edm:RDF/edm:ProvidedCHO/edm:type">
+      <groovy-code>
+        <string>if (_absent_) {</string>
+        <string>"${type}"</string>
+        <string>}</string>
+        <string>else {</string>
+        <string>"${_europeanatype}"</string>
+        <string>}</string>
+      </groovy-code>
+    </node-mapping>
+    <node-mapping inputPath="/input/sip-record/@id" outputPath="/edm:RDF/ore:Aggregation/edm:uri"/>
+    <node-mapping inputPath="/facts/language" outputPath="/edm:RDF/ore:Aggregation/edm:language"/>
+    <node-mapping inputPath="/facts/country" outputPath="/edm:RDF/ore:Aggregation/edm:country"/>
+    <node-mapping inputPath="/facts/spec" outputPath="/edm:RDF/ore:Aggregation/edm:collectionName"/>
+    <node-mapping inputPath="/facts/name" outputPath="/edm:RDF/ore:Aggregation/edm:collectionTitle"/>
+  </node-mappings>
+</rec-mapping>

@@ -1,0 +1,4 @@
+maxUniqueValueLength=60
+uniqueElementPath=/pockets/pocket/sip-record
+recordRootPath=/pockets/pocket/sip-record/@id
+recordCount=4131

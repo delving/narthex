@@ -1,0 +1,11 @@
+name=Digitalt fortalt
+language=no
+rights=http://www.europeana.eu/rights/unknown/
+country=Norway
+baseUrl=http://acc.norvegiana.delving.org
+orgId=kulturnett
+provider=Arts Council Norway
+schemaVersions=edm_5.2.3
+dataProvider=Digitalt fortalt / Norsk kulturråd
+type=IMAGE
+spec=difo

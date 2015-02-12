@@ -30,6 +30,7 @@ object FileHandling {
 
   def clearDir(dir: File) = {
     deleteQuietly(dir)
+    dir.getParentFile.mkdirs()
     dir.mkdir()
     dir
   }

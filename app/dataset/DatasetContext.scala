@@ -108,14 +108,13 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
           //          db.setNamespaceMap(namespaces)
           sip.harvestUrl.map { harvestUrl =>
             // the harvest information is in the Sip, but no source
-            val harvestType = if (sip.sipMappingOpt.exists(_.extendWithRecord)) PMH_REC else PMH
-            dsInfo.setSingularLiteralProps(GraphProperties.harvestType -> harvestType.toString).map { m =>
+            dsInfo.setSingularLiteralProps(GraphProperties.harvestType -> PMH.toString).map { m =>
               // todo: let's not trigger harvest.  was firstHarvest()
             }
             None
           } getOrElse {
             // there is no harvest information so there may be source
-            if (sip.pockets.isDefined) None
+            if (sip.containsSource) None
             else {
               // if it's not pockets, there should be source, otherwise we don't expect it
               createSourceRepo(DELVING_SIP_SOURCE)
