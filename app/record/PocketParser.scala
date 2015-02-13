@@ -35,14 +35,7 @@ object PocketParser {
 
   def apply(sourceFacts: SourceFacts) = new PocketParser(sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.deepRecordContainer)
 
-  val PocketRegex = "(?s).*<pocket[^>]*>(.*)</pocket>.*".r
-
   case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
-
-    def recordXml: String = {
-      val PocketRegex(content) = text
-      content.trim
-    }
 
     def textBytes: ByteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"))
 
