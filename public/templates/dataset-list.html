@@ -293,7 +293,7 @@
 
 <script type="text/ng-template" id="drop-file-dataset.html">
     <div>
-        <div class="file-drop col-md-12" ng-file-drop="dataset.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
+        <div class="file-drop col-md-12" ng-file-drop="receiveDropped($files)" ng-file-drag-over-class="file-drop-over" style="height: 300px">
             <span>Drag and drop your xml source or SIP file into this area</span>
             <div class="img-holder" data-ng-show="dataset.uploading">
                 <i class="busy1 fa fa-gear fa-spin fa-5x"></i>

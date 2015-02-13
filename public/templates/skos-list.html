@@ -128,7 +128,7 @@
 
 <script type="text/ng-template" id="drop-file-skos.html">
     <div>
-        <div class="file-drop col-md-12" ng-file-drop="skos.fileDropped($files)" ng-file-drag-over-class="file-drop-over">
+        <div class="file-drop col-md-12" ng-file-drop="receiveDropped($files)" ng-file-drag-over-class="file-drop-over">
             <div>Drag and drop your SKOS XML file into this area</div>
             <div data-ng-show="skos.error" class="label label-danger" style="padding: 15px">
                 <i class="fa fa-exclamation-circle"></i> {{ skos.error }}

@@ -210,8 +210,75 @@ define(["angular"], function () {
 
         var ds = $scope.dataset;
 
+        function checkProgress() {
+            datasetListService.datasetProgress(ds.datasetSpec).then(
+                function (data) {
+                    if (data.progressType == 'progress-idle') {
+                        console.log(ds.datasetSpec + " is idle, stopping check");
+                        ds.progress = undefined;
+                        if (data.errorMessage) {
+                            console.log(ds.datasetSpec + " has error message " + data.errorMessage);
+                            ds.error = data.errorMessage;
+                        }
+                        if (ds.refreshAfter) {
+                            delete ds.refreshAfter;
+                            console.log(ds.datasetSpec + " refreshing after progress");
+                            refreshInfo();
+                        }
+                        delete ds.progress;
+                    }
+                    else {
+                        console.log(ds.datasetSpec + " is in progress");
+                        ds.progress = {
+                            state: data.progressState,
+                            type: data.progressType,
+                            count: parseInt(data.count)
+                        };
+                        createProgressMessage(ds.progress);
+                        ds.progressCheckerTimeout = $timeout(checkProgress, 900 + Math.floor(Math.random() * 200));
+                    }
+                },
+                function (problem) {
+                    if (problem.status == 404) {
+                        alert("Processing problem with " + ds.datasetSpec);
+                    }
+                    else {
+                        alert("Network problem " + problem.status);
+                    }
+                }
+            );
+        }
+
+        function refreshProgress() {
+            console.log('refresh progress');
+            datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
+                if (ds.progressCheckerTimeout) $timeout.cancel(ds.progressCheckerTimeout);
+                $scope.decorateDataset(dataset);
+                $scope.dataset = dataset;
+                dataset.refreshAfter = true;
+                dataset.progressCheckerTimeout = $timeout(checkProgress, 1000);
+            });
+        }
+
+        function refreshInfo() {
+            console.log('refresh info');
+            datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
+                $scope.decorateDataset(dataset);
+                $scope.dataset = dataset;
+            });
+        }
+
         $scope.tabOpen = "metadata";
         $scope.expanded = false;
+
+        $scope.$watch("expanded", function(expanded) {
+            if (expanded) {
+                refreshInfo();
+            }
+            else {
+                refreshProgress();
+            }
+        });
 
         if (!ds) return;
 
@@ -257,7 +324,7 @@ define(["angular"], function () {
             );
         }
 
-        ds.fileDropped = function ($files) {
+        $scope.receiveDropped = function ($files) {
             fileDropped($files, refreshProgress);
         };
 
@@ -291,44 +358,7 @@ define(["angular"], function () {
             p.message = pre + mid + post;
         }
 
-        function checkProgress() {
-            datasetListService.datasetProgress(ds.datasetSpec).then(
-                function (data) {
-                    if (data.progressType == 'progress-idle') {
-                        console.log(ds.datasetSpec + " is idle, stopping check");
-                        ds.progress = undefined;
-                        if (data.errorMessage) {
-                            console.log(ds.datasetSpec + " has error message " + data.errorMessage);
-                            ds.error = data.errorMessage;
-                        }
-                        if (ds.refreshAfter) {
-                            delete ds.refreshAfter;
-                            console.log(ds.datasetSpec + " refreshing after progress");
-                            refreshInfo();
-                        }
-                        delete ds.progress;
-                    }
-                    else {
-                        console.log(ds.datasetSpec + " is in progress");
-                        ds.progress = {
-                            state: data.progressState,
-                            type: data.progressType,
-                            count: parseInt(data.count)
-                        };
-                        createProgressMessage(ds.progress);
-                        ds.progressCheckerTimeout = $timeout(checkProgress, 900 + Math.floor(Math.random() * 200));
-                    }
-                },
-                function (problem) {
-                    if (problem.status == 404) {
-                        alert("Processing problem with " + ds.datasetSpec);
-                    }
-                    else {
-                        alert("Network problem " + problem.status);
-                    }
-                }
-            );
-        }
+
 
         function unchanged(fieldNameList) {
             var unchanged = true;
@@ -350,25 +380,6 @@ define(["angular"], function () {
         }
 
         $scope.$watch("dataset.edit", setUnchanged, true);
-
-        function refreshProgress() {
-            console.log('refresh progress');
-            datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
-                if (ds.progressCheckerTimeout) $timeout.cancel(ds.progressCheckerTimeout);
-                $scope.decorateDataset(dataset);
-                $scope.dataset = dataset;
-                dataset.refreshAfter = true;
-                dataset.progressCheckerTimeout = $timeout(checkProgress, 1000);
-            });
-        }
-
-        function refreshInfo() {
-            console.log('refresh info');
-            datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
-                $scope.decorateDataset(dataset);
-                $scope.dataset = dataset;
-            });
-        }
 
         function setProperties(propertyList) {
             var payload = {propertyList: propertyList, values: {}};

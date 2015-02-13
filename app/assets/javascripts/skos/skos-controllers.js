@@ -130,7 +130,7 @@ define(["angular"], function (angular) {
 
         getStatistics();
 
-        sk.fileDropped = function ($files) {
+        $scope.receiveDropped = function ($files) {
             fileDropped($files, function () {
                 getStatistics();
                 refreshInfo();
