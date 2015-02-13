@@ -142,8 +142,9 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
 
   def setSingularLiteralProps(propVals: (NXProp, String)*): Future[Model] = {
-    val sparqlPerProp = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2))
-    val sparql = sparqlPerProp.mkString(";\n")
+    val sparqlPerProp = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2)).toList
+    val withSynced = updateSyncedFalse(uri) :: sparqlPerProp
+    val sparql = withSynced.mkString(";\n")
     ts.update(sparql).map { ok =>
       propVals.foreach { pv =>
         val prop = m.getProperty(pv._1.uri)

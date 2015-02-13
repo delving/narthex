@@ -110,13 +110,23 @@ object Sparql {
       |}
      """.stripMargin
 
-  def updatePropertyQ(uri: String, prop: NXProp, value: String) =
+  def updatePropertyQ(uri: String, prop: NXProp, value: String): String =
     s"""
       |WITH <$uri>
       |DELETE { <$uri> <$prop> ?o }
       |INSERT { <$uri> <$prop> '''$value''' }
       |WHERE {
       |   OPTIONAL { <$uri> <$prop> ?o }
+      |}
+     """.stripMargin.trim
+
+  def updateSyncedFalse(uri: String): String =
+    s"""
+      |WITH <$uri>
+      |DELETE { <$uri> <$synced> ?o }
+      |INSERT { <$uri> <$synced> false }
+      |WHERE {
+      |   OPTIONAL { <$uri> <$synced> ?o }
       |}
      """.stripMargin.trim
 
