@@ -54,7 +54,7 @@ class CategoryCounter(val datasetContext: DatasetContext) extends Actor with Act
       val pathPrefix = s"${ORG_ID}/$datasetContext"
       future {
         val categoryMappings = datasetContext.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap
-        val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT, categoryMappings)
+        val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_RECORD_CONTAINER, categoryMappings)
         val (source, readProgress) = FileHandling.sourceFromFile(datasetContext.processedRepo.home)
         try {
           val progressReporter = ProgressReporter(CATEGORIZING, context.parent)

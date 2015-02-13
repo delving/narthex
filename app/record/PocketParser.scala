@@ -20,10 +20,8 @@ import java.io.{ByteArrayInputStream, Writer}
 
 import dataset.SourceRepo.SourceFacts
 import eu.delving.metadata.StringUtil
-import org.joda.time.DateTime
 import play.Logger
 import services.StringHandling._
-import services.Temporal._
 import services._
 
 import scala.collection.mutable
@@ -32,8 +30,6 @@ import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object PocketParser {
-
-  def apply(sourceFacts: SourceFacts) = new PocketParser(sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.deepRecordContainer)
 
   case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
 
@@ -50,18 +46,21 @@ object PocketParser {
   val POCKET_ID = "@id"
   val POCKET_RECORD_ROOT = s"/$POCKET_LIST/$POCKET"
   val POCKET_UNIQUE_ID = s"$POCKET_RECORD_ROOT/$POCKET_ID"
-  val POCKET_DEEP_RECORD_ROOT = Some(POCKET_RECORD_ROOT)
+  val POCKET_RECORD_CONTAINER = Some(POCKET_RECORD_ROOT)
+
+  val POCKET_SOURCE_FACTS = SourceFacts("delving-pocket-source", POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_RECORD_CONTAINER)
 
   val SIP_RECORD_TAG = "sip-record"
 
 }
 
-class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None) {
+class PocketParser(facts: SourceFacts) {
 
   import record.PocketParser._
 
   val path = new mutable.Stack[(String, StringBuilder)]
-  val introduceRecord = deepRecordContainer.exists(_ == recordRootPath)
+  val introduceRecord = false // todo: still useful? was deepRecordContainer.exists(_ == recordRootPath)
+  val pocketWrap = facts != POCKET_SOURCE_FACTS
   var percentWas = -1
   var lastProgress = 0l
   var recordCount = 0
@@ -102,7 +101,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
       def findUniqueId(attrs: List[MetaData]) = attrs.foreach { attr =>
         path.push((s"@${attr.prefixedKey}", new StringBuilder()))
         val ps = pathString
-        if (ps == uniqueIdPath) uniqueId = Some(attr.value.toString())
+        if (ps == facts.uniqueId) uniqueId = Some(attr.value.toString())
         path.pop()
       }
       path.push((tag, new StringBuilder()))
@@ -113,15 +112,15 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
         startElement = Some(startElementString(tag, attrs))
         findUniqueId(attrs.toList)
       }
-      else if (string == recordRootPath) {
-        if (deepRecordContainer.isEmpty || deepRecordContainer.get.equals(recordRootPath)) {
+      else if (string == facts.recordRoot) {
+        if (facts.recordContainer.isEmpty || facts.recordContainer.get.equals(facts.recordRoot)) {
           depth = 1
           startElement = Some(startElementString(if (introduceRecord) SIP_RECORD_TAG else tag, attrs))
         }
         findUniqueId(attrs.toList)
       }
-      else if (!introduceRecord) deepRecordContainer.foreach { recordContainer =>
-        if (pathContainer(string) == recordContainer) {
+      else if (!introduceRecord) facts.recordContainer.foreach { container =>
+        if (pathContainer(string) == container) {
           depth = 1
           startElement = Some(startElementString(tag, attrs))
         }
@@ -138,14 +137,14 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
       path.pop()
       if (depth > 0) {
         // deep record means check container instead
-        val hitRecordRoot = deepRecordContainer.map { recordContainer =>
-          if (recordContainer == recordRootPath) {
-            string == recordRootPath
+        val hitRecordRoot = facts.recordContainer.map { container =>
+          if (container == facts.recordRoot) {
+            string == facts.recordRoot
           }
           else {
-            pathContainer(string) == recordContainer
+            pathContainer(string) == container
           }
-        }.getOrElse(string == recordRootPath)
+        }.getOrElse(string == facts.recordRoot)
         if (hitRecordRoot) {
           flushStartElement()
           indent()
@@ -157,10 +156,14 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
             else {
               val recordContent = recordText.toString()
               val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
-              val mod = timeToString(new DateTime())
               val scopedRecordContent = recordContent.replaceFirst(">", s" $scope>")
-              val wrapped = s"""<$POCKET id="$id" mod="$mod">\n$scopedRecordContent</$POCKET>\n"""
-              Some(Pocket(id, wrapped, namespaceMap))
+              if (pocketWrap) {
+                val wrapped = s"""<$POCKET id="$id">\n$scopedRecordContent</$POCKET>\n"""
+                Some(Pocket(id, wrapped, namespaceMap))
+              }
+              else {
+                Some(Pocket(id, scopedRecordContent, namespaceMap))
+              }
             }
           } getOrElse {
             Logger.error("MISSING ID!")
@@ -174,7 +177,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
           depth = 0
         }
         else {
-          if (string == uniqueIdPath) uniqueId = Some(text)
+          if (string == facts.uniqueId) uniqueId = Some(text)
           indent()
           depth -= 1
           if (startElement.isDefined) {
@@ -186,7 +189,7 @@ class PocketParser(recordRootPath: String, uniqueIdPath: String, deepRecordConta
           recordText.append(s"</$tag>\n")
         }
       }
-      else if (deepRecordContainer.isDefined && string == uniqueIdPath) {
+      else if (facts.recordContainer.isDefined && string == facts.uniqueId) {
         // if there is a deep record, we find the unique idea outside of it
         uniqueId = Some(text)
       }

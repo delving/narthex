@@ -2,6 +2,7 @@ package specs
 
 import java.io.File
 
+import dataset.SourceRepo.SourceFacts
 import dataset.{DsInfo, ProcessedRepo, SipRepo, SourceRepo}
 import mapping.SkosMappingStore.SkosMapping
 import mapping.{TermMappingStore, VocabInfo}
@@ -82,7 +83,13 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
       sip.spec must be(Some("frans-hals-museum"))
       val source = sip.copySourceToTempFile
       source.isDefined must be(true)
-      val sourceRepo = SourceRepo.createClean(sourceDir, SourceRepo.DELVING_SIP_SOURCE)
+      val sourceFacts = SourceFacts(
+        "delving-sip-source",
+        "/delving-sip-source/input",
+        "/delving-sip-source/input/@id",
+        Some("/delving-sip-source/input/@id")
+      )
+      val sourceRepo = SourceRepo.createClean(sourceDir, sourceFacts)
       sourceRepo.acceptFile(source.get, ProgressReporter())
       var mappedPockets = List.empty[Pocket]
       sip.createSipMapper.map { sipMapper =>

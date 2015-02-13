@@ -161,7 +161,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
             val progressReporter = ProgressReporter(PROCESSING, context.parent)
             progressReporter.setReadProgress(readProgress)
             progress = Some(progressReporter)
-            val parser = PocketParser(sourceFacts)
+            val parser = new PocketParser(sourceFacts)
             parser.parse(source, Set.empty[String], catchPocket, progressReporter)
           }
           finally {

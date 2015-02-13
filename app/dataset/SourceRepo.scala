@@ -19,7 +19,6 @@ import java.io._
 import java.nio.file.Files
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
 
-import dataset.SipRepo._
 import harvest.Harvesting.HarvestType
 import mapping.CategoryDb.CategoryMapping
 import org.apache.commons.io.input.BOMInputStream
@@ -57,15 +56,11 @@ object SourceRepo {
       harvestType.name,
       harvestType.recordRoot,
       harvestType.uniqueId,
-      harvestType.deepRecordContainer
+      harvestType.recordContainer
     )
   }
 
-  case class SourceFacts(sourceType: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String])
-
-  def DELVING_SIP_SOURCE = SourceFacts("delving-sip-source", SIP_SOURCE_RECORD_ROOT, SIP_SOURCE_UNIQUE_ID, SIP_SOURCE_DEEP_RECORD_CONTAINER)
-
-  def DELVING_POCKET_SOURCE = SourceFacts("delving-pocket-source", POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_DEEP_RECORD_ROOT)
+  case class SourceFacts(sourceType: String, recordRoot: String, uniqueId: String, recordContainer: Option[String])
 
   def sourceFactsFile(home: File) = new File(home, SOURCE_FACTS_FILE)
 
@@ -79,8 +74,8 @@ object SourceRepo {
     val sourceType = map.getOrElse("sourceType", throw new RuntimeException(s"Source type missing!"))
     val recordRoot = map.getOrElse("recordRoot", throw new RuntimeException(s"Record root missing!"))
     val uniqueId = map.getOrElse("uniqueId", throw new RuntimeException(s"Unique ID missing!"))
-    val deepRecordContainer = map.getOrElse("deepRecordContainer", throw new RuntimeException(s"Record root missing!"))
-    SourceFacts(sourceType, recordRoot, uniqueId, Option(deepRecordContainer).find(_.nonEmpty))
+    val recordContainer = map.getOrElse("recordContainer", throw new RuntimeException(s"Record root missing!"))
+    SourceFacts(sourceType, recordRoot, uniqueId, Option(recordContainer).find(_.nonEmpty))
   }
 
   def createClean(home: File, sourceFacts: SourceFacts): SourceRepo = {
@@ -91,7 +86,7 @@ object SourceRepo {
          |sourceType=${sourceFacts.sourceType}
          |recordRoot=${sourceFacts.recordRoot}
          |uniqueId=${sourceFacts.uniqueId}
-         |deepRecordContainer=${sourceFacts.deepRecordContainer.getOrElse("")}
+         |recordContainer=${sourceFacts.recordContainer.getOrElse("")}
        """.stripMargin
     FileUtils.write(file, facts)
     new SourceRepo(home)
@@ -171,7 +166,7 @@ class SourceRepo(home: File) {
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = provideZipFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
-    val parser = PocketParser(sourceFacts)
+    val parser = new PocketParser(sourceFacts)
     def receiveRecord(record: Pocket): Unit = idSet.add(record.id)
     val (source, readProgress) = sourceFromFile(file)
     progressReporter.setReadProgress(readProgress)
@@ -252,7 +247,7 @@ class SourceRepo(home: File) {
   })
 
   def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progressReporter: ProgressReporter): List[CategoryCount] = {
-    val parser = new CategoryParser(pathPrefix, sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.deepRecordContainer, categoryMappings)
+    val parser = new CategoryParser(pathPrefix, sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.recordContainer, categoryMappings)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
@@ -268,7 +263,7 @@ class SourceRepo(home: File) {
   }
 
   def parsePockets(output: Pocket => Unit, progressReporter: ProgressReporter): Int = {
-    val parser = PocketParser(sourceFacts)
+    val parser = new PocketParser(sourceFacts)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)

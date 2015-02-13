@@ -20,24 +20,24 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import analysis.NodeRepo
+import com.hp.hpl.jena.rdf.model.Model
 import dataset.DatasetActor._
 import dataset.DsInfo.{DsMetadata, DsState}
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
-import harvest.Harvesting.HarvestType._
 import mapping.CategoryDb
 import org.OrgContext._
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
 import play.Logger
+import record.PocketParser
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
 import services.StringHandling.pathToDirectory
 import services.Temporal._
-import triplestore.GraphProperties
 import triplestore.GraphProperties.stateSource
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
@@ -94,7 +94,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     else if (fileName.endsWith(".sip.zip")) {
       val sipZipFile = setTargetFile(sipRepo.createSipZipFile(fileName))
       sipRepo.latestSipOpt.map { sip =>
-        dsInfo.setMetadata(DsMetadata(
+        val futureSet: Future[Model] = dsInfo.setMetadata(DsMetadata(
           name = sip.fact("name").getOrElse(""),
           description = "",
           aggregator = sip.fact("provider").getOrElse(""),
@@ -102,30 +102,20 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
           language = sip.fact("language").getOrElse(""),
           rights = sip.fact("rights").getOrElse("")
         ))
+        // todo: should probably wait for the above future
         sip.sipMappingOpt.map { sipMapping =>
-          // must add RDF since the mapping output uses it
-          //          val namespaces = sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)
-          //          db.setNamespaceMap(namespaces)
-          sip.harvestUrl.map { harvestUrl =>
-            // the harvest information is in the Sip, but no source
-            dsInfo.setSingularLiteralProps(GraphProperties.harvestType -> PMH.toString).map { m =>
-              // todo: let's not trigger harvest.  was firstHarvest()
+          if (sip.containsSource) {
+            createSourceRepo(PocketParser.POCKET_SOURCE_FACTS)
+            sip.copySourceToTempFile.map { sourceFile =>
+              OrgActor.actor ! dsInfo.createMessage(AdoptSource(sourceFile))
+              None
+            } getOrElse {
+              dropSourceRepo()
+              Some(s"No source found in $sipZipFile for $dsInfo")
             }
+          }
+          else {
             None
-          } getOrElse {
-            // there is no harvest information so there may be source
-            if (sip.containsSource) None
-            else {
-              // if it's not pockets, there should be source, otherwise we don't expect it
-              createSourceRepo(DELVING_SIP_SOURCE)
-              sip.copySourceToTempFile.map { sourceFile =>
-                OrgActor.actor ! dsInfo.createMessage(AdoptSource(sourceFile))
-                None
-              } getOrElse {
-                dropSourceRepo()
-                Some(s"No source found in $sipZipFile for $dsInfo")
-              }
-            }
           }
         } getOrElse {
           deleteQuietly(sipZipFile)

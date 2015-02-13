@@ -2,6 +2,7 @@ package specs
 
 import java.io.File
 
+import dataset.SourceRepo.SourceFacts
 import dataset.{SipRepo, SourceRepo}
 import org.apache.commons.io.FileUtils
 import org.scalatest.{FlatSpec, Matchers}
@@ -41,7 +42,13 @@ class TestIngest extends FlatSpec with Matchers {
       sip.spec should be(Some("frans-hals-museum"))
       val source = sip.copySourceToTempFile
       source.isDefined should be(true)
-      val sourceRepo = SourceRepo.createClean(sourceDir, SourceRepo.DELVING_SIP_SOURCE)
+      val sourceFacts = SourceFacts(
+        "delving-sip-source",
+        "/delving-sip-source/input",
+        "/delving-sip-source/input/@id",
+        Some("/delving-sip-source/input/@id")
+      )
+      val sourceRepo = SourceRepo.createClean(sourceDir, sourceFacts)
       sourceRepo.acceptFile(source.get, ProgressReporter())
       var mappedPockets = List.empty[Pocket]
       sip.createSipMapper.map { sipMapper =>

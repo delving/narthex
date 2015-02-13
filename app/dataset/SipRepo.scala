@@ -55,14 +55,6 @@ object SipRepo {
   val RecordDefinitionPattern = ".*_record-definition.xml".r
   val ValidationPattern = ".*_validation.xsd".r
 
-
-  val SIP_SOURCE_RECORD_ROOT = "/pockets/pocket"
-  val SIP_SOURCE_UNIQUE_ID = "/pockets/pocket/@id"
-  val SIP_SOURCE_DEEP_RECORD_CONTAINER = Some(SIP_SOURCE_RECORD_ROOT)
-//  val SIP_SOURCE_RECORD_ROOT = "/delving-sip-source/input"
-//  val SIP_SOURCE_UNIQUE_ID = "/delving-sip-source/input/@id"
-//  val SIP_SOURCE_DEEP_RECORD_CONTAINER = Some(SIP_SOURCE_RECORD_ROOT)
-
   val SIP_EXTENSION = ".sip.zip"
 
   case class AvailableSip(file: File) {

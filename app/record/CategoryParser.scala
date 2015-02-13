@@ -191,7 +191,7 @@ object CategoryParser {
 
 }
 
-class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: String, deepRecordContainer: Option[String] = None, categoryMappings: Map[String, CategoryMapping]) {
+class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: String, recordContainer: Option[String] = None, categoryMappings: Map[String, CategoryMapping]) {
   var countMap = new collection.mutable.HashMap[String, Counter]()
   var percentWas = -1
   var lastProgress = 0l
@@ -231,7 +231,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
 
     def pathString = path.reverse.map(_._1).mkString("/", "/", "")
 
-    def recordPathString = if (deepRecordContainer.isDefined && deepRecordContainer.get == recordRootPath) {
+    def recordPathString = if (recordContainer.isDefined && recordContainer.get == recordRootPath) {
       pathString.substring(recordRootPath.length)
     }
     else {
@@ -265,7 +265,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
         findUniqueId(attrs)
       }
       else if (string == recordRootPath) {
-        if (deepRecordContainer.isEmpty) {
+        if (recordContainer.isEmpty) {
           depth = 1
           startTag = true
           recordCategories.clear()
@@ -273,8 +273,8 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
         }
         findUniqueId(attrs)
       }
-      else deepRecordContainer.foreach { recordContainer =>
-        if (pathContainer(string) == recordContainer) {
+      else recordContainer.foreach { container =>
+        if (pathContainer(string) == container) {
           depth = 1
           recordCategories.clear()
           startTag = true
@@ -292,7 +292,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
       fieldText.clear()
       if (depth > 0) {
         // deep record means check container instead
-        val hitRecordRoot = deepRecordContainer.map(pathContainer(string) == _ && !string.contains('@')).getOrElse(string == recordRootPath)
+        val hitRecordRoot = recordContainer.map(pathContainer(string) == _ && !string.contains('@')).getOrElse(string == recordRootPath)
         if (hitRecordRoot) {
           val categorySet: Option[List[String]] = uniqueId.map { id =>
             if (id.isEmpty) throw new RuntimeException("Empty unique id!")
@@ -317,7 +317,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
           }
         }
       }
-      else if (deepRecordContainer.isDefined && string == uniqueIdPath) {
+      else if (recordContainer.isDefined && string == uniqueIdPath) {
         // if there is a deep record, we find the unique idea outside of it
         uniqueId = Some(text)
       }

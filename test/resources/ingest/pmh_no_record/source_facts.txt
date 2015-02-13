@@ -2,4 +2,4 @@
 sourceType=pmh
 recordRoot=/OAI-PMH/ListRecords/record/metadata
 uniqueId=/OAI-PMH/ListRecords/record/header/identifier
-deepRecordContainer=/OAI-PMH/ListRecords/record/metadata
+recordContainer=/OAI-PMH/ListRecords/record/metadata

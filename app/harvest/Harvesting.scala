@@ -32,7 +32,7 @@ import scala.xml.{Elem, NodeSeq, XML}
 
 object Harvesting {
 
-  case class HarvestType(name: String, recordRoot: String, uniqueId: String, deepRecordContainer: Option[String] = None) {
+  case class HarvestType(name: String, recordRoot: String, uniqueId: String, recordContainer: Option[String] = None) {
     override def toString = name
 
     def matches(otherName: String) = name == otherName
@@ -43,19 +43,19 @@ object Harvesting {
       name = "pmh",
       recordRoot = "/OAI-PMH/ListRecords/record",
       uniqueId = "/OAI-PMH/ListRecords/record/header/identifier",
-      deepRecordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
+      recordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
     )
     val PMH_REC = HarvestType(
       name = "pmh-rec",
       recordRoot = "/OAI-PMH/ListRecords/record/metadata",
       uniqueId = "/OAI-PMH/ListRecords/record/header/identifier",
-      deepRecordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
+      recordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
     )
     val ADLIB = HarvestType(
       name = "adlib",
       recordRoot = "/adlibXML/recordList/record",
       uniqueId = "/adlibXML/recordList/record/@priref",
-      deepRecordContainer = None
+      recordContainer = None
     )
 
     val ALL_TYPES = List(PMH, PMH_REC, ADLIB)

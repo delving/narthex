@@ -8,6 +8,7 @@ import dataset.{SipFactory, SipRepo, SourceRepo}
 import org.apache.commons.io.IOUtils
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
+import record.PocketParser
 import record.PocketParser.Pocket
 import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
@@ -49,7 +50,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
   }
 
   "A dataset should be loaded" in {
-    val whichOne = 0
+    val whichOne = 1
     val dirName = List("ton-smits", "difo")(whichOne)
     val sipRepo = createSipRepoFromDir(dirName)
     val sourceDir = FileHandling.clearDir(new File(s"/tmp/test-edm/$dirName/source"))
@@ -62,7 +63,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
     // fill processed repo by mapping records
     val source = sip.copySourceToTempFile
     source.isDefined must be(true)
-    val sourceRepo = SourceRepo.createClean(sourceDir, SourceRepo.DELVING_SIP_SOURCE)
+    val sourceRepo = SourceRepo.createClean(sourceDir, PocketParser.POCKET_SOURCE_FACTS)
     sourceRepo.acceptFile(source.get, ProgressReporter())
     var mappedPockets = List.empty[Pocket]
     sip.createSipMapper.map { sipMapper =>
