@@ -27,7 +27,7 @@
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
     </div>
-    <div ng-repeat="dataset in filteredDatasets" class="file-block col-lg-6">
+    <div ng-repeat="dataset in filteredDatasets" class="col-lg-6">
         <div data-ng-include="'dataset-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">
@@ -133,7 +133,11 @@
                         <div><strong>Mappable</strong></div>
                         <div class="small">{{ dataset.stateMappable.d }}</div>
                         <div>{{ dataset.stateMappable.t }}</div>
-                        <div><a href="{{sipCreatorLink}}" class="btn btn-sm btn-default"><i class="fa fa-download"></i> Mapper</a></div>
+                        <div>
+                            <a href="{{sipCreatorLink}}" class="btn btn-sm btn-default">
+                                <i class="fa fa-fw fa-download"></i> Mapper
+                            </a>
+                        </div>
                     </div>
                     <div data-ng-show="dataset.stateProcessable" class="ds-state"
                          data-ng-class="{ 'later': isLater(dataset.stateProcessable, dataset.stateProcessed) }">
@@ -142,7 +146,7 @@
                         <div>{{ dataset.stateProcessable.t }}</div>
                         <div>
                             <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
-                                <i class="fa fa-cogs"></i> <span>Process</span>
+                                <i class="fa fa-fw fa-cogs"></i> <span>Process</span>
                             </button>
                         </div>
                     </div>
@@ -153,7 +157,7 @@
                         <div>{{ dataset.stateProcessed.t }}</div>
                         <div>
                             <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
-                                <i class="fa fa-bar-chart"></i> <span>Analyze</span>
+                                <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
                             </button>
                         </div>
                     </div>
@@ -164,7 +168,7 @@
                         <div>{{ dataset.stateAnalyzed.t }}</div>
                         <div>
                             <button class="btn btn-sm btn-success" data-ng-click="startSaving()">
-                                <i class="fa fa-database"></i> <span>Save</span>
+                                <i class="fa fa-fw fa-database"></i> <span>Save</span>
                             </button>
                         </div>
                     </div>
@@ -175,12 +179,12 @@
                         <div>{{ dataset.stateSaved.t }}</div>
                         <div data-ng-show="!dataset.skosField">
                             <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
-                                <i class="fa fa-eye"></i> <span>Explore</span>
+                                <i class="fa fa-fw fa-eye"></i> <span>Explore</span>
                             </button>
                         </div>
                         <div data-ng-show="dataset.skosField">
                             <button class="btn btn-sm btn-info" data-ng-click="goToTerms()">
-                                <i class="fa fa-arrows-h"></i> <span>Map</span>
+                                <i class="fa fa-fw fa-arrows-h"></i> <span>Map</span>
                             </button>
                         </div>
                     </div>
@@ -195,8 +199,6 @@
                         You must <a href data-ng-click="clearError()" class="alert-link">close/clear</a> this error message to continue
                     </div>
                 </div>
-
-                <hr />
 
                 <h4 data-ng-show="dataset.metadata.name">
                     <span>"{{ dataset.metadata.name }}"</span>
@@ -225,7 +227,7 @@
                             <a href role="tab" data-ng-click="tabOpen ='categories'">Categories</a>
                         </li>
                         <li data-ng-class="{'active':tabOpen==='delete'}">
-                            <a href role="tab" data-ng-click="tabOpen ='delete'" class="bg-danger"><i class="fa fa-trash"></i>&nbsp;</a>
+                            <a href role="tab" data-ng-click="tabOpen ='delete'" class="bg-danger"><i class="fa fa-trash fa-lg"></i>&nbsp;</a>
                         </li>
                         <!--<li ng-class="{'active':tabOpen === 'info'}">-->
                             <!--<a href role="tab" data-ng-click="tabOpen ='info'">Info</a>-->
