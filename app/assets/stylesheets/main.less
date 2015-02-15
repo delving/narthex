@@ -106,6 +106,10 @@
 
 /* global utilitly classes ********************************************/
 
+.a-right {
+  text-align: right;
+}
+
 .clearfix() {
   &:before,
   &:after {
@@ -117,14 +121,15 @@
   }
 }
 
+.clickable {
+  &:hover {
+    cursor: pointer;
+  }
+}
+
 .pointer {
   cursor: pointer;
 }
-
-.a-right {
-  text-align: right;
-}
-
 /* html element styles **************************************************/
 
 body {
@@ -140,9 +145,10 @@ a {
 .user-actions {
   position: absolute;
   top: 10px;
-  right: 20px;
-  width: 170px;
+  right: 0px;
+//  width: 170px;
 //  text-align: right;
+  .column(2,12);
 }
 
 .actor-list {
@@ -272,16 +278,9 @@ a {
 
 .file-list {
   .row(12);
-}
-
-.file-block {
-  .clickable {
-    &:hover {
-      cursor: pointer;
-    }
-  }
   .progress {
-    margin: 0px;
+    margin-bottom: 0px;
+    height: 22px;
   }
 }
 
@@ -335,14 +334,6 @@ a {
   padding: 10px;
 }
 
-//.panel-footer {
-//  height: 40px;
-//}
-
-//.file-block-toolbar {
-//  text-align: right;
-//}
-
 /* nav-tabs ************************************************************/
 
 .nav-tabs {
@@ -363,8 +354,11 @@ a {
     font-weight: normal;
   }
   .bg-danger {
-    background: @brand-danger;
+    background: lighten(@brand-danger, 15%);
     color: @white;
+    &:hover{
+      background: @brand-danger;
+    }
   }
 }
 
