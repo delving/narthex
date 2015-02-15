@@ -162,6 +162,7 @@ define(["angular"], function () {
 //        };
 //
         $scope.fetchDatasetList = function () {
+            console.log('fetching list');
             $scope.specFilter = "";
             datasetListService.listDatasets().then(function (array) {
                 // kill existing progress checkers
