@@ -2,7 +2,7 @@
     <!-- page location, org -->
     <div class="meta">
         <div class="page">
-            Dataset: {{datasetName}}
+            Dataset: {{spec}}
         </div>
         <div class="organization">
             <span class="fa fa-institution"></span>
@@ -12,7 +12,7 @@
     <!-- page specifiction actions/tools -->
     <div class="actions">
         <div class="file-path-info breadcrumb">
-            <span class="file-name">{{datasetName}}</span><span class="file-path">{{activePath}}</span>
+            <span class="file-name">{{spec}}</span><span class="file-path">{{activePath}}</span>
         </div>
     </div>
 </div>
@@ -156,8 +156,7 @@
 <script type="text/ng-template" id="node.html">
         <div class="node" data-ng-class="{ 'chosen': node == selectedNode, 'active': node.lengths.length != 0 }" data-ng-click="selectNode(node, $event)" class="outer-node">
             <span data-ng-show="!node.lengths.length > 0" data-ng-click="node.collapsed = !node.collapsed">
-                <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}"
-                   class="fa pointer"></i>
+                <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}" class="fa pointer"></i>
             </span>
             <span>{{ node.tag }}</span>
             <span class="pull-right">
