@@ -20,6 +20,9 @@ import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipOutputStream}
 import javax.xml.transform.stream.StreamSource
 import javax.xml.validation.Validator
 
+import eu.delving.XMLToolFactory
+import eu.delving.groovy._
+import eu.delving.metadata._
 import eu.delving.schema.SchemaVersion
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime

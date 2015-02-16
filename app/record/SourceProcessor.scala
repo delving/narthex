@@ -23,6 +23,7 @@ import dataset.DatasetActor.{Incremental, InterruptWork, WorkFailure}
 import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
 import dataset.SipRepo.URIErrorsException
+import eu.delving.groovy.DiscardRecordException
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import record.PocketParser.Pocket
