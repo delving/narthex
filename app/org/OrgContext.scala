@@ -74,7 +74,7 @@ object OrgContext {
 
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 
-  val ts = new TripleStore(TRIPLE_STORE_URL, true)
+  val ts = new TripleStore(TRIPLE_STORE_URL)
   val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
   val harvestTicker = system.scheduler.schedule(5.seconds, 5.minutes, periodicHarvest, ScanForHarvests)
   val skosifier = system.actorOf(Skosifier.props(ts), "Skosifier")
