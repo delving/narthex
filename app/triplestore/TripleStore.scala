@@ -131,6 +131,15 @@ class TripleStore(storeURL: String, logQueries: Boolean = false) {
     ).put(file).map(checkResponse)
   }
 
+  def dataPutGraph(graphUri: String, model: Model) = {
+    val sw = new StringWriter()
+    model.write(sw, "TURTLE")
+    println(s"posting: $graphUri")
+    dataRequest(graphUri).withHeaders(
+      "Content-Type" -> "text/turtle; charset=utf-8"
+    ).put(sw.toString).map(checkResponse)
+  }
+
   def dataGet(graphUri: String): Future[Model] = {
     dataRequest(graphUri).withHeaders(
       "Accept" -> "text/turtle"

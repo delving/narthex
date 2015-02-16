@@ -154,6 +154,7 @@ define(["angular"], function (angular) {
     CategorySetCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "categoriesService", "$timeout", "pageScroll"];
 
     var progressStates = {
+        'state-preparing': "Preparing",
         'state-harvesting': "Harvesting",
         'state-collecting': "Collecting",
         'state-adopting': "Adopting",

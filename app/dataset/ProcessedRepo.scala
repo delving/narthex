@@ -34,7 +34,7 @@ import scala.collection.JavaConversions._
 object ProcessedRepo {
 
   val SUFFIX = ".xml"
-  val chunkSize = 100
+  val chunkSize = 1000
 
   case class GraphChunk(dataset: Dataset) {
 

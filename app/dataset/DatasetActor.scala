@@ -126,9 +126,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
+  def sendBusy() = self ! ProgressTick(PREPARING, BUSY, 100)
+
   when(Idle) {
 
     case Event(StartHarvest(modifiedAfter, justDate), Dormant) =>
+      sendBusy()
       datasetContext.dropTree()
 
       log.info(s"Start harvest event")
@@ -150,16 +153,19 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
 
     case Event(AdoptSource(file), Dormant) =>
+      sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-adopter")
       sourceProcessor ! AdoptSource(file)
       goto(Adopting) using Active(Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>
+      sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-generator")
       sourceProcessor ! GenerateSipZip
       goto(Generating) using Active(Some(sourceProcessor), GENERATING)
 
     case Event(StartAnalysis, Dormant) =>
+      sendBusy()
       log.info("Start analysis")
       if (datasetContext.processedRepo.nonEmpty) {
         // todo: kill all when finished so this can not lookup, just create
@@ -177,16 +183,19 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
 
     case Event(StartProcessing(incrementalOpt), Dormant) =>
+      sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-processor")
       sourceProcessor ! Process(incrementalOpt)
       goto(Processing) using Active(Some(sourceProcessor), PROCESSING)
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
+      sendBusy()
       val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo, OrgContext.ts), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(Some(graphSaver), PROCESSING)
 
     case Event(StartCategoryCounting, Dormant) =>
+      sendBusy()
       if (datasetContext.processedRepo.nonEmpty) {
         val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetContext), "category-counter"))
         categoryCounter ! CountCategories()

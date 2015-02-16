@@ -24,6 +24,7 @@ define(["angular"], function () {
 
 
     var progressStates = {
+        'state-preparing': "Preparing",
         'state-harvesting': "Harvesting",
         'state-collecting': "Collecting",
         'state-adopting': "Adopting",

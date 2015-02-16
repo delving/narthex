@@ -61,12 +61,14 @@ class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with Ac
       progress.map(_.interruptBy(sender()))
 
     case SaveGraphs(incrementalOpt) =>
+      log.info("Save graphs")
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progress = Some(progressReporter)
       reader = Some(repo.createGraphReader(incrementalOpt.map(_.file), progressReporter))
       sendGraphChunk()
 
     case Some(chunk: GraphChunk) =>
+      log.info("Save chunk")
       val update = client.update(chunk.toSparqlUpdate)
       update.map(ok => sendGraphChunk())
       update.onFailure {
