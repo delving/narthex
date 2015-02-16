@@ -17,13 +17,9 @@ package dataset
 
 import java.io._
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipOutputStream}
-import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamSource
 import javax.xml.validation.Validator
 
-import eu.delving.XMLToolFactory
-import eu.delving.groovy._
-import eu.delving.metadata._
 import eu.delving.schema.SchemaVersion
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
@@ -34,6 +30,7 @@ import services.StringHandling.urlEncodeValue
 
 import scala.collection.JavaConversions._
 import scala.io.Source
+import scala.util.Try
 
 /**
  * A repository of sip files which knows everything about what a sip means, revealing all of the contained
@@ -62,6 +59,9 @@ object SipRepo {
     if (!n.endsWith(SIP_EXTENSION)) throw new RuntimeException(s"Strange file name $file")
     val datasetName = n.substring(0, n.indexOf("__"))
     val dateTime = new DateTime(file.lastModified())
+  }
+
+  class URIErrorsException(val uriErrors: List[String]) extends Exception {
   }
 
 }
@@ -109,7 +109,7 @@ object Sip {
 
     val prefix: String
 
-    def map(pocket: Pocket): Option[Pocket]
+    def executeMapping(pocket: Pocket): Try[Pocket]
   }
 
   val PrefixVersion = "(.*)_(.*)".r
@@ -270,62 +270,59 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
     val factory = new MetadataRecordFactory(namespaces)
     val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
 
-//    println(s"input paths:\n${sipMapping.recMapping.getNodeMappings.toList.map(nm => s"${nm.inputPath} -> ${nm.outputPath}").mkString("\n")}")
+    //    println(s"input paths:\n${sipMapping.recMapping.getNodeMappings.toList.map(nm => s"${nm.inputPath} -> ${nm.outputPath}").mkString("\n")}")
 //    println(runner.getCode)
 
     override val datasetName = sipMapping.spec
 
     override val prefix: String = sipMapping.prefix
 
-    override def map(pocket: Pocket): Option[Pocket] = {
-      try {
-
-//        println(s"### BEGIN RecordXml ${"-" * 30}\n${pocket.text}\n### END RecordXml ${"-" * 30}")
-
-        val metadataRecord = factory.metadataRecordFrom(pocket.text, false)
-        val result = new MappingResultImpl(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree).resolve
-        val root = result.root().asInstanceOf[Element]
-        val doc = root.getOwnerDocument
-        root.removeAttribute("xsi:schemaLocation")
-        val cn = root.getChildNodes
-        val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
-        val rdfAbout = s"$naveDomain/resource/graph/$datasetName/${urlEncodeValue(pocket.id)}"
-
-        val rootNode = prefix match {
-          case "edm" =>
-            val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-            kids.foreach(rdfWrapper.appendChild)
-            rdfWrapper
-
-          case _ =>
-            val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-            rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
-            kids.foreach(rdfElement.appendChild)
-            rdfElement
-        }
-
-        // the serializer gives us <?xml..?>
-        val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")
-        val validationExceptionOpt: Option[Exception] = sipMapping.validatorOpt.flatMap { validator =>
-          try {
-            validator.validate(new DOMSource(root))
-            None
-          }
-          catch {
-            case e: Exception => Some(e)
-          }
-        }
-        validationExceptionOpt.map { validationException =>
-          Logger.info("Invalid record " + pocket.id)
-          None
-        } getOrElse {
-          Some(Pocket(rdfAbout, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
-        }
-      } catch {
-        case discard: DiscardRecordException =>
-          Logger.info("Discarded record " + pocket.id)
-          None
+    override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
+      //        println(s"### BEGIN RecordXml ${"-" * 30}\n${pocket.text}\n### END RecordXml ${"-" * 30}")
+      val metadataRecord = factory.metadataRecordFrom(pocket.text)
+      val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree)
+      val uriErrors = result.getUriErrors.toList
+      if (uriErrors.nonEmpty) {
+        throw new URIErrorsException(uriErrors)
       }
+      val root = result.root().asInstanceOf[Element]
+      val doc = root.getOwnerDocument
+      root.removeAttribute("xsi:schemaLocation")
+      val cn = root.getChildNodes
+      val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
+      val rdfAbout = s"$naveDomain/resource/graph/$datasetName/${urlEncodeValue(pocket.id)}"
+      val rootNode = prefix match {
+        case "edm" =>
+          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
+          kids.foreach(rdfWrapper.appendChild)
+          rdfWrapper
+
+        case _ =>
+          val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
+          rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
+          kids.foreach(rdfElement.appendChild)
+          rdfElement
+      }
+      val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")
+      Pocket(rdfAbout, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI))
+
+      // the serializer gives us <?xml..?>
+      //        val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")
+      //        val validationExceptionOpt: Option[Exception] = sipMapping.validatorOpt.flatMap { validator =>
+      //          try {
+      //            validator.validate(new DOMSource(root))
+      //            None
+      //          }
+      //          catch {
+      //            case e: Exception => Some(e)
+      //          }
+      //        }
+      //        validationExceptionOpt.map { validationException =>
+      //          Logger.info("Invalid record " + pocket.id)
+      //          None
+      //        } getOrElse {
+      //          Some(Pocket(rdfAbout, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
+      //        }
     }
   }
 

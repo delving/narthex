@@ -22,7 +22,9 @@ import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Incremental, InterruptWork, WorkFailure}
 import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
+import dataset.SipRepo.URIErrorsException
 import org.apache.commons.io.FileUtils
+import play.api.Logger
 import record.PocketParser.Pocket
 import record.SourceProcessor._
 import services.FileHandling._
@@ -31,6 +33,7 @@ import services.{FileHandling, ProgressReporter}
 
 import scala.concurrent._
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 object SourceProcessor {
 
@@ -139,12 +142,27 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         var time = System.currentTimeMillis()
 
         def catchPocket(rawPocket: Pocket): Unit = {
-          val pocketOpt = sipMapper.map(rawPocket)
-          pocketOpt.map { pocket =>
-            pocket.writeTo(sourceOutput)
-            validRecords += 1
-          } getOrElse {
-            invalidRecords += 1
+          val pocketTry = sipMapper.executeMapping(rawPocket)
+          pocketTry match {
+            case Success(pocket) =>
+              pocket.writeTo(sourceOutput)
+              validRecords += 1
+
+            case Failure(ue: URIErrorsException) =>
+              // todo: write to errors file
+              Logger.info(s"Discard record: URI errors\n${ue.uriErrors.mkString("\n")}")
+              invalidRecords += 1
+
+            case Failure(disc: DiscardRecordException) =>
+              Logger.info("Discard record: Discard record exception")
+              // todo: write to errors file
+              invalidRecords += 1
+
+            case Failure(unexpected) =>
+              Logger.info("Discard record: unexpected")
+              // todo: write to errors file
+              invalidRecords += 1
+
           }
           val total = validRecords + invalidRecords
           if (total % 10000 == 0) {

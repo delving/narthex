@@ -23,7 +23,7 @@ import akka.actor._
 import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
-import dataset.DsInfo._
+import dataset.DsInfo.DsState._
 import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
@@ -259,7 +259,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(HarvestComplete(incrementalOpt), active: Active) =>
       incrementalOpt.map { incremental =>
         incremental.fileOpt.map { newFile =>
-          dsInfo.setState(DsState.SOURCED)
+          dsInfo.setState(SOURCED)
           dsInfo.setHarvestCron(dsInfo.harvestCron)
           self ! StartProcessing(Some(Incremental(incremental.modifiedAfter, newFile)))
         }
@@ -274,7 +274,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Adopting) {
 
     case Event(SourceAdoptionComplete(file), active: Active) =>
-      if (datasetContext.sipRepo.latestSipOpt.isDefined) dsInfo.setState(DsState.PROCESSABLE)
+      if (datasetContext.sipRepo.latestSipOpt.isDefined) dsInfo.setState(PROCESSABLE)
       datasetContext.dropTree()
       active.childOpt.map(_ ! PoisonPill)
       self ! GenerateSipZip
@@ -286,7 +286,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(SipZipGenerationComplete(recordCount), active: Active) =>
       log.info(s"Generated $recordCount pockets")
-      dsInfo.setState(DsState.MAPPABLE)
+      dsInfo.setState(MAPPABLE)
       dsInfo.setRecordCount(recordCount)
       // todo: figure this out
       //        val rawFile = datasetContext.createRawFile(datasetContext.pocketFile.getName)
@@ -303,7 +303,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       if (errorOption.isDefined)
         datasetContext.dropTree()
       else
-        dsInfo.setState(DsState.ANALYZED)
+        dsInfo.setState(ANALYZED)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -312,7 +312,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Processing) {
 
     case Event(ProcessingComplete(validRecords, invalidRecords), active: Active) =>
-      dsInfo.setState(DsState.PROCESSED)
+      dsInfo.setState(PROCESSED)
       dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
@@ -322,7 +322,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Saving) {
 
     case Event(GraphSaveComplete, active: Active) =>
-      dsInfo.setState(DsState.SAVED)
+      dsInfo.setState(SAVED)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 

@@ -14,6 +14,8 @@
 //    limitations under the License.
 //===========================================================================
 
+import org.sbtidea.SbtIdeaPlugin._
+
 lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
 
 name := "narthex"
@@ -47,7 +49,7 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
   "org.apache.jena" % "jena-arq" % "2.12.1" excludeAll ExclusionRule(organization = "org.slf4j"),
-  "eu.delving" % "sip-core" % "1.0.3-SNAPSHOT"
+  "eu.delving" % "sip-core" % "1.0.5-SNAPSHOT"
 )
 
 libraryDependencies ~= {
@@ -57,6 +59,8 @@ libraryDependencies ~= {
 libraryDependencies += cache
 
 libraryDependencies += ws
+
+//resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 
@@ -85,6 +89,16 @@ publishTo := Some("Delving" at "http://artifactory.delving.org/artifactory/delvi
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
 javaOptions += "-Djava.awt.headless=true"
+
+
+ideaExcludeFolders += ".idea"
+
+ideaExcludeFolders += ".idea_modules"
+
+ideaExcludeFolders += "target"
+
+ideaExcludeFolders += "logs"
+
 
 // http://stackoverflow.com/questions/25182581/logging-in-unit-tests-for-play-2-3
 // doesn't work
