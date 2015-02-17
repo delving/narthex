@@ -144,6 +144,7 @@ object AppController extends Controller with Security {
         val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
         val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
         dsInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
+        // todo: problem, this is not telling the DatasetActor to get a fresh DsInfo
       } getOrElse {
         Future(NotFound(Json.obj("problem" -> s"dataset $spec not found")))
       }

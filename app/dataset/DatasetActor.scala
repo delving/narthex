@@ -228,15 +228,16 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             "tree removed"
 
           case "start first harvest" =>
-            val typeInfo = dsInfo.getLiteralProp(harvestType)
-            val harvestTypeOpt = typeInfo.flatMap(harvestTypeFromString)
+            val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
+            log.info(s"Start harvest, type is $harvestTypeStringOpt")
+            val harvestTypeOpt = harvestTypeStringOpt.flatMap(harvestTypeFromString)
             harvestTypeOpt.map { harvestType =>
               log.info(s"Starting first harvest with type $harvestType")
               datasetContext.createSourceRepo(SourceFacts(harvestType))
               self ! StartHarvest(None, justDate = true)
               "harvest started"
             } getOrElse {
-              val message = s"Unable to harvest $datasetContext: unknown harvest type [$typeInfo]"
+              val message = s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
               log.info(s"DSINFO:\n${dsInfo.toTurtle}")
               self ! WorkFailure(message, None)
               message
