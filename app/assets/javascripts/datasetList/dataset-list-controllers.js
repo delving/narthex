@@ -212,6 +212,12 @@ define(["angular"], function () {
 
         var ds = $scope.dataset;
 
+        var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
+        $scope.searchLink = baseUrl + "/search?qf=delving_spec:" + ds.datasetSpec;
+        $scope.apiLink = baseUrl + "/api/search/v1/?qf=delving_spec:" + ds.datasetSpec;
+        // todo: note that edm is hardcoded here:
+        $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + ds.datasetSpec;
+
         function checkProgress() {
             datasetListService.datasetProgress(ds.datasetSpec).then(
                 function (data) {

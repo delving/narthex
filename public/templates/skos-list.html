@@ -67,13 +67,10 @@
     <div data-ng-controller="SkosListEntryCtrl" class="widget">
         <div class="widget-header">
             <span class="widget-icon"><i class="fa fa-book"></i></span>
-            {{ skos.skosSpec }}
+            <span>{{ skos.skosSpec }}</span>
+            <span data-ng-show="skos.skosName">"{{ skos.skosName }}"</span>
             <span data-ng-show="skos.skosUploadTime" class="small">
-                <span>(Uploaded on </span>
-                <span>{{ skos.skosUploadTime.d }}</span>
-                <span> at </span>
-                <span>{{ skos.skosUploadTime.t }}</span>
-                <span>)</span>
+                <span>({{ skos.skosUploadTime.d }} {{ skos.skosUploadTime.t }})</span>
             </span>
             <span class="count pull-right">{{ statistics.conceptCount }} concepts</span>
         </div>
