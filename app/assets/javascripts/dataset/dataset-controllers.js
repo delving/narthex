@@ -23,6 +23,8 @@ define(["angular"], function () {
         $scope.spec = $routeParams.spec;
         $scope.categoriesEnabled = user.categoriesEnabled;
 
+        $scope.apiPrefix = user.narthexAPI;
+
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
         };
