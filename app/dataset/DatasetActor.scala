@@ -44,6 +44,7 @@ import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -210,7 +211,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       val reply = Try {
         commandName match {
           case "delete" =>
-            datasetContext.dsInfo.dropDataset
+            Await.ready(datasetContext.dsInfo.dropDataset, 30.seconds)
             deleteQuietly(datasetContext.rootDir)
             "deleted"
 
