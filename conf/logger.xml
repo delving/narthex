@@ -23,6 +23,7 @@
   <logger name="dataset.DatasetActor" level="INFO" />
   <logger name="mapping.CategoryCounter" level="INFO" />
   <logger name="mapping.Skosifier" level="INFO" />
+  <logger name="triplestore.GraphSaver" level="INFO" />
   <logger name="play" level="INFO" />
   <logger name="application" level="INFO" />
   <logger name="dataset" level="DEBUG" />

@@ -59,6 +59,7 @@ object ProgressReporter {
 
   object ProgressState {
     val STATE_IDLE = ProgressState("state-idle")
+    val PREPARING = ProgressState("state-preparing")
     val HARVESTING = ProgressState("state-harvesting")
     val COLLECTING = ProgressState("state-collecting")
     val ADOPTING = ProgressState("state-adopting")

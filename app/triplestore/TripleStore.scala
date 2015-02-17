@@ -102,7 +102,7 @@ class TripleStore(storeURL: String, logQueries: Boolean = false) {
   }
 
   private def checkResponse(response: WSResponse): Unit = if (response.status / 100 != 2) {
-    throw new TripleStoreException(response.statusText)
+    throw new TripleStoreException(s"${response.statusText}: ${response.body}")
   }
 
   def update(sparqlUpdate: String) = {
@@ -129,6 +129,15 @@ class TripleStore(storeURL: String, logQueries: Boolean = false) {
     dataRequest(graphUri).withHeaders(
       "Content-Type" -> "application/rdf+xml; charset=utf-8"
     ).put(file).map(checkResponse)
+  }
+
+  def dataPutGraph(graphUri: String, model: Model) = {
+    val sw = new StringWriter()
+    model.write(sw, "TURTLE")
+    println(s"posting: $graphUri")
+    dataRequest(graphUri).withHeaders(
+      "Content-Type" -> "text/turtle; charset=utf-8"
+    ).put(sw.toString).map(checkResponse)
   }
 
   def dataGet(graphUri: String): Future[Model] = {

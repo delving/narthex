@@ -24,6 +24,7 @@ define(["angular"], function () {
 
 
     var progressStates = {
+        'state-preparing': "Preparing",
         'state-harvesting': "Harvesting",
         'state-collecting': "Collecting",
         'state-adopting': "Adopting",
@@ -90,14 +91,6 @@ define(["angular"], function () {
                 $scope.newDataset.character = $scope.characters[0];
             }
         });
-
-        $scope.createDataset = function () {
-            datasetListService.create($scope.newDataset.spec, $scope.newDataset.character.code, $scope.newDataset.character.prefix).then(function () {
-                $scope.cancelNewFile();
-                $scope.newDataset.name = undefined;
-                $scope.fetchDatasetList();
-            });
-        };
 
         $scope.nonEmpty = function (obj) {
             return !_.isEmpty(obj)
@@ -179,6 +172,14 @@ define(["angular"], function () {
 
         $scope.fetchDatasetList();
 
+        $scope.createDataset = function () {
+            datasetListService.create($scope.newDataset.spec, $scope.newDataset.character.code, $scope.newDataset.character.prefix).then(function () {
+                $scope.cancelNewFile();
+                $scope.newDataset.spec = undefined;
+                $scope.fetchDatasetList();
+            });
+        };
+
     };
 
     DatasetListCtrl.$inject = [
@@ -210,6 +211,12 @@ define(["angular"], function () {
     var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload) {
 
         var ds = $scope.dataset;
+
+        var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
+        $scope.searchLink = baseUrl + "/search?qf=delving_spec:" + ds.datasetSpec;
+        $scope.apiLink = baseUrl + "/api/search/v1/?qf=delving_spec:" + ds.datasetSpec;
+        // todo: note that edm is hardcoded here:
+        $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + ds.datasetSpec;
 
         function checkProgress() {
             datasetListService.datasetProgress(ds.datasetSpec).then(
@@ -414,6 +421,10 @@ define(["angular"], function () {
             if (!nextState) return true;
             if (currState) return currState.dt > nextState.dt;
             return false;
+        };
+
+        $scope.goToInvalidRecords = function () {
+            alert("Not implemented yet: Viewing invalid records");
         };
 
         $scope.goToDataset = function () {

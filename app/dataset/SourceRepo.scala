@@ -156,7 +156,7 @@ class SourceRepo(home: File) {
 
   private def listZipFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".zip")).sortBy(_.getName)
 
-  private def processFile(progressReporter: ProgressReporter, provideZipFile: File => File) = {
+  private def processFile(progress: ProgressReporter, provideZipFile: File => File) = {
     def writeToFile(file: File, string: String): Unit = Some(new PrintWriter(file)).foreach { writer =>
       writer.println(string)
       writer.close()
@@ -169,9 +169,9 @@ class SourceRepo(home: File) {
     val parser = new PocketParser(sourceFacts)
     def receiveRecord(record: Pocket): Unit = idSet.add(record.id)
     val (source, readProgress) = sourceFromFile(file)
-    progressReporter.setReadProgress(readProgress)
+    progress.setReadProgress(readProgress)
     try {
-      parser.parse(source, Set.empty, receiveRecord, progressReporter)
+      parser.parse(source, Set.empty, receiveRecord, progress)
     }
     finally {
       source.close()
@@ -246,41 +246,45 @@ class SourceRepo(home: File) {
     }
   })
 
-  def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progressReporter: ProgressReporter): List[CategoryCount] = {
+  def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progress: ProgressReporter): List[CategoryCount] = {
     val parser = new CategoryParser(pathPrefix, sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.recordContainer, categoryMappings)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
-    progressReporter.setMaximum(totalActiveIds)
+    progress.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
-      var idSet = avoidSet(zipFile)
-      val (source, readProgress) = sourceFromFile(zipFile)
-      // ignore this read progress because it's one of many files
-      parser.parse(source, idSet.toSet, progressReporter)
-      source.close()
+      if (progress.keepWorking) {
+        var idSet = avoidSet(zipFile)
+        val (source, readProgress) = sourceFromFile(zipFile)
+        // ignore this read progress because it's one of many files
+        parser.parse(source, idSet.toSet, progress)
+        source.close()
+      }
     }
     parser.categoryCounts
   }
 
-  def parsePockets(output: Pocket => Unit, progressReporter: ProgressReporter): Int = {
+  def parsePockets(output: Pocket => Unit, progress: ProgressReporter): Int = {
     val parser = new PocketParser(sourceFacts)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
-    progressReporter.setMaximum(totalActiveIds)
+    progress.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
-      var idSet = avoidSet(zipFile)
-      val (source, readProgress) = sourceFromFile(zipFile)
-      // ignore this read progress because it's one of many files
-      parser.parse(source, idSet.toSet, output, progressReporter)
-      source.close()
+      if (progress.keepWorking) {
+        var idSet = avoidSet(zipFile)
+        val (source, readProgress) = sourceFromFile(zipFile)
+        // ignore this read progress because it's one of many files
+        parser.parse(source, idSet.toSet, output, progress)
+        source.close()
+      }
     }
     totalActiveIds
   }
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generatePockets(sourceOutputStream: OutputStream, progressReporter: ProgressReporter): Int = {
+  def generatePockets(sourceOutputStream: OutputStream, progress: ProgressReporter): Int = {
     var recordCount = 0
     val rawOutput = writer(sourceOutputStream)
     try {
@@ -290,7 +294,7 @@ class SourceRepo(home: File) {
       def pocketWriter(pocket: Pocket): Unit = {
         rawOutput.write(pocket.text)
       }
-      recordCount = parsePockets(pocketWriter, progressReporter)
+      recordCount = parsePockets(pocketWriter, progress)
       rawOutput.write(endList)
     } finally {
       rawOutput.close()

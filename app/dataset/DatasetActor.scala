@@ -23,7 +23,7 @@ import akka.actor._
 import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
-import dataset.DsInfo._
+import dataset.DsInfo.DsState._
 import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
@@ -44,6 +44,7 @@ import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -126,9 +127,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
+  def sendBusy() = self ! ProgressTick(PREPARING, BUSY, 100)
+
   when(Idle) {
 
     case Event(StartHarvest(modifiedAfter, justDate), Dormant) =>
+      sendBusy()
       datasetContext.dropTree()
 
       log.info(s"Start harvest event")
@@ -150,16 +154,20 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
 
     case Event(AdoptSource(file), Dormant) =>
+      sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-adopter")
       sourceProcessor ! AdoptSource(file)
       goto(Adopting) using Active(Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>
+      sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-generator")
       sourceProcessor ! GenerateSipZip
       goto(Generating) using Active(Some(sourceProcessor), GENERATING)
 
     case Event(StartAnalysis, Dormant) =>
+      sendBusy()
+      // todo: are we analyzing raw stuff or delimited stuff?
       log.info("Start analysis")
       if (datasetContext.processedRepo.nonEmpty) {
         // todo: kill all when finished so this can not lookup, just create
@@ -177,18 +185,21 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
 
     case Event(StartProcessing(incrementalOpt), Dormant) =>
+      sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-processor")
       sourceProcessor ! Process(incrementalOpt)
       goto(Processing) using Active(Some(sourceProcessor), PROCESSING)
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
+      sendBusy()
       val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo, OrgContext.ts), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(Some(graphSaver), PROCESSING)
 
     case Event(StartCategoryCounting, Dormant) =>
+      sendBusy()
       if (datasetContext.processedRepo.nonEmpty) {
-        val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetContext), "category-counter"))
+        val categoryCounter = context.actorOf(CategoryCounter.props(datasetContext), "category-counter")
         categoryCounter ! CountCategories()
         goto(Categorizing) using Active(Some(categoryCounter), CATEGORIZING)
       }
@@ -200,7 +211,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       val reply = Try {
         commandName match {
           case "delete" =>
-            datasetContext.dsInfo.dropDataset
+            Await.ready(datasetContext.dsInfo.dropDataset, 30.seconds)
             deleteQuietly(datasetContext.rootDir)
             "deleted"
 
@@ -217,32 +228,37 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             "tree removed"
 
           case "start first harvest" =>
-            val typeInfo = dsInfo.getLiteralProp(harvestType)
-            val harvestTypeOpt = typeInfo.flatMap(harvestTypeFromString)
+            val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
+            log.info(s"Start harvest, type is $harvestTypeStringOpt")
+            val harvestTypeOpt = harvestTypeStringOpt.flatMap(harvestTypeFromString)
             harvestTypeOpt.map { harvestType =>
               log.info(s"Starting first harvest with type $harvestType")
               datasetContext.createSourceRepo(SourceFacts(harvestType))
               self ! StartHarvest(None, justDate = true)
               "harvest started"
             } getOrElse {
-              val message = s"Unable to harvest $datasetContext: unknown harvest type [$typeInfo]"
+              val message = s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
               log.info(s"DSINFO:\n${dsInfo.toTurtle}")
               self ! WorkFailure(message, None)
               message
             }
 
           case "start processing" =>
-            datasetContext.startProcessing()
+            self ! StartProcessing(None)
             "processing started"
 
           case "start analysis" =>
-            datasetContext.startAnalysis()
+            datasetContext.dropTree()
+            self ! StartAnalysis
             "analysis started"
 
           case "start saving" =>
             // full save, not incremental
-            datasetContext.startSaving(None)
+            self ! StartSaving(None)
             "saving started"
+
+          // todo:
+          //def startCategoryCounts() = OrgActor.actor ! dsInfo.createMessage(StartCategoryCounting)
 
           case _ =>
             log.warning(s"$this sent unrecognized command $commandName")
@@ -259,7 +275,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(HarvestComplete(incrementalOpt), active: Active) =>
       incrementalOpt.map { incremental =>
         incremental.fileOpt.map { newFile =>
-          dsInfo.setState(DsState.SOURCED)
+          dsInfo.setState(SOURCED)
           dsInfo.setHarvestCron(dsInfo.harvestCron)
           self ! StartProcessing(Some(Incremental(incremental.modifiedAfter, newFile)))
         }
@@ -274,7 +290,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Adopting) {
 
     case Event(SourceAdoptionComplete(file), active: Active) =>
-      if (datasetContext.sipRepo.latestSipOpt.isDefined) dsInfo.setState(DsState.PROCESSABLE)
+      if (datasetContext.sipRepo.latestSipOpt.isDefined) dsInfo.setState(PROCESSABLE)
       datasetContext.dropTree()
       active.childOpt.map(_ ! PoisonPill)
       self ! GenerateSipZip
@@ -286,7 +302,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(SipZipGenerationComplete(recordCount), active: Active) =>
       log.info(s"Generated $recordCount pockets")
-      dsInfo.setState(DsState.MAPPABLE)
+      dsInfo.setState(MAPPABLE)
       dsInfo.setRecordCount(recordCount)
       // todo: figure this out
       //        val rawFile = datasetContext.createRawFile(datasetContext.pocketFile.getName)
@@ -303,7 +319,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       if (errorOption.isDefined)
         datasetContext.dropTree()
       else
-        dsInfo.setState(DsState.ANALYZED)
+        dsInfo.setState(ANALYZED)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -312,7 +328,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Processing) {
 
     case Event(ProcessingComplete(validRecords, invalidRecords), active: Active) =>
-      dsInfo.setState(DsState.PROCESSED)
+      dsInfo.setState(PROCESSED)
       dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
@@ -322,7 +338,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Saving) {
 
     case Event(GraphSaveComplete, active: Active) =>
-      dsInfo.setState(DsState.SAVED)
+      dsInfo.setState(SAVED)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 

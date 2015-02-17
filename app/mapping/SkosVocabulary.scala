@@ -141,7 +141,7 @@ case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore) {
   futureModel.onSuccess {
     case x => Logger.info(s"Loaded $graphName")
   }
-  lazy val m: Model = Await.result(futureModel, 30.seconds)
+  lazy val m: Model = Await.result(futureModel, 60.seconds)
 
   private val conceptMap = new mutable.HashMap[String, Concept]()
 

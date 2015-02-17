@@ -23,6 +23,8 @@ define(["angular"], function () {
         $scope.spec = $routeParams.spec;
         $scope.categoriesEnabled = user.categoriesEnabled;
 
+        $scope.apiPrefix = user.narthexAPI;
+
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
         };
@@ -159,7 +161,10 @@ define(["angular"], function () {
 
         $scope.selectNode = function (node, $event) {
             if ($event) $event.stopPropagation();
-            if (node.lengths.length == 0 || node.path.length == 0) return;
+            if (node.lengths.length == 0 || node.path.length == 0) {
+                node.collapsed = !node.collapsed;
+                return;
+            }
             $scope.selectedNode = node;
             setActivePath(node.path);
             datasetService.nodeStatus($scope.spec, node.path).then(function (data) {

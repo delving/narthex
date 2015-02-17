@@ -66,7 +66,7 @@ class PocketParser(facts: SourceFacts) {
   var recordCount = 0
   var namespaceMap: Map[String, String] = Map.empty
 
-  def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progressReporter: ProgressReporter): Int = {
+  def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progress: ProgressReporter): Int = {
     val events = new NarthexEventReader(source)
     var depth = 0
     var recordText = new mutable.StringBuilder()
@@ -195,7 +195,7 @@ class PocketParser(facts: SourceFacts) {
       }
     }
 
-    while (events.hasNext && progressReporter.keepReading(recordCount)) {
+    while (events.hasNext && progress.keepReading(recordCount)) {
       events.next() match {
         case EvElemStart(pre, label, attrs, scope) => push(tag(pre, label), attrs, scope)
         case EvText(text) => addFieldText(text)

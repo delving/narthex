@@ -84,11 +84,20 @@
             <!-- todo: should be a caret down to indicate expansion -->
             <span class="clickable" data-ng-click="expanded = !expanded">
                 <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
-                <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">("{{ dataset.datasetName }}")</span>
+                <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
             </span>
-            <!-- todo: no icons here, but a button to explore -->
-            <span data-ng-show="dataset.datasetRecordCount" class="btn btn-default pull-right" data-ng-click="goToDataset()">
-                <i class="fa fa-fw fa-eye" data-ng-show="dataset.stateAnalyzed"></i>
+            <span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">
+                <span data-ng-show="dataset.datasetRecordCount" class="btn btn-default" data-ng-click="goToInvalidRecords()">
+                    <i class="fa fa-fw fa-bug"></i>
+                    <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
+                </span>
+                <span data-ng-show="dataset.datasetRecordCount" class="btn btn-default" data-ng-click="goToDataset()">
+                    <i class="fa fa-fw fa-eye"></i>
+                    <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
+                </span>
+            </span>
+            <span data-ng-show="dataset.datasetRecordCount && !dataset.processedValid" class="btn btn-default pull-right" data-ng-click="goToDataset()">
+                <i class="fa fa-fw fa-code" data-ng-show="dataset.stateAnalyzed"></i>
                 <span>{{ dataset.datasetRecordCount }}</span>
             </span>
         </div>
@@ -217,14 +226,17 @@
                         <li ng-class="{'active':tabOpen === 'harvest'}">
                             <a href role="tab" data-ng-click="tabOpen ='harvest'">Harvest</a>
                         </li>
-                        <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="dataset.harvestType && dataset.stateSourced">
-                            <a href role="tab" data-ng-click="tabOpen = 'harvest-cron'">Scheduled Harvest</a>
+                        <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="dataset.harvestType">
+                            <a href role="tab" data-ng-click="tabOpen = 'harvest-cron'">Update</a>
                         </li>
                         <li ng-class="{'active':tabOpen === 'publication'}">
                             <a href role="tab" data-ng-click="tabOpen = 'publication'">Publication</a>
                         </li>
                         <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="categoriesEnabled">
                             <a href role="tab" data-ng-click="tabOpen ='categories'">Categories</a>
+                        </li>
+                        <li data-ng-class="{'active':tabOpen === 'check'}">
+                            <a href role="tab" data-ng-click="tabOpen ='check'">Links</a>
                         </li>
                         <li data-ng-class="{'active':tabOpen==='delete'}">
                             <a href role="tab" data-ng-click="tabOpen ='delete'" class="bg-danger"><i class="fa fa-trash fa-lg"></i>&nbsp;</a>
@@ -245,6 +257,7 @@
                             <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
                             <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
                             <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
+                            <div ng-switch-when="check"><div data-ng-include="'check-links.html'">check links</div></div>
                             <div ng-switch-when="delete"><div data-ng-include="'dataset-delete.html'">deletion form</div></div>
                             <!--<div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>-->
                             <!--<div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>-->
@@ -418,6 +431,29 @@
             </button>
         </fieldset>
     </form>
+</script>
+
+<script type="text/ng-template" id="downloads.html">
+</script>
+
+<script type="text/ng-template" id="check-links.html">
+    <ul class="list-unstyled">
+        <li style="padding: 20px">
+            <a class="" ng-href="{{ searchLink }}" target="_blank">
+                <i class="fa fa-search"></i> <span>Search</span>
+            </a>
+        </li>
+        <li style="padding: 20px">
+            <a class="" ng-href="{{ apiLink }}" target="_blank">
+                <i class="fa fa-binoculars"></i> <span>API</span>
+            </a>
+        </li>
+        <li style="padding: 20px">
+            <a class="" ng-href="{{ oaiPmhLink }}" target="_blank">
+                <i class="fa fa-download"></i> <span>OAI-PMH</span>
+            </a>
+        </li>
+    </ul>
 </script>
 
 <script type="text/ng-template" id="dataset-delete.html">

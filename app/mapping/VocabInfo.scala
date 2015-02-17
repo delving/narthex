@@ -80,7 +80,7 @@ object VocabInfo {
     Cache.getAs[VocabInfo](cacheName) map { vocabInfo =>
       block(vocabInfo)
     } getOrElse {
-      val vocabInfo = Await.result(check(spec, ts), 10.seconds).getOrElse{
+      val vocabInfo = Await.result(check(spec, ts), 30.seconds).getOrElse{
         throw new RuntimeException(s"No skos info for $spec")
       }
       Cache.set(cacheName, vocabInfo, 5.minutes)

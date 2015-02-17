@@ -37,6 +37,7 @@ import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
+import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -63,9 +64,10 @@ object AppController extends Controller with Security {
     DsInfo.check(spec, ts).map(info => Ok(Json.toJson(info)))
   }
 
-  def createDataset(spec: String, character: String, mapToPrefix: String) = Secure() { session => request =>
-    orgContext.createDatasetRepo(session.actor, spec, character, mapToPrefix)
-    Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
+  def createDataset(spec: String, character: String, mapToPrefix: String) = SecureAsync() { session => request =>
+    orgContext.createDatasetRepo(session.actor, spec, character, mapToPrefix).map(dsInfo =>
+      Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
+    )
   }
 
   def datasetProgress(spec: String) = SecureAsync() { session => request =>
@@ -117,6 +119,7 @@ object AppController extends Controller with Security {
         val error = datasetContext.acceptUpload(file.filename, { target =>
           file.ref.moveTo(target, replace = true)
           Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
+          OrgActor.actor ! datasetContext.dsInfo.createMessage(ProgressTick(PREPARING, BUSY, 100))
           target
         })
         error.map {
@@ -141,6 +144,7 @@ object AppController extends Controller with Security {
         val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
         val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
         dsInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
+        // todo: problem, this is not telling the DatasetActor to get a fresh DsInfo
       } getOrElse {
         Future(NotFound(Json.obj("problem" -> s"dataset $spec not found")))
       }
