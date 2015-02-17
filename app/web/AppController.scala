@@ -64,9 +64,10 @@ object AppController extends Controller with Security {
     DsInfo.check(spec, ts).map(info => Ok(Json.toJson(info)))
   }
 
-  def createDataset(spec: String, character: String, mapToPrefix: String) = Secure() { session => request =>
-    orgContext.createDatasetRepo(session.actor, spec, character, mapToPrefix)
-    Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
+  def createDataset(spec: String, character: String, mapToPrefix: String) = SecureAsync() { session => request =>
+    orgContext.createDatasetRepo(session.actor, spec, character, mapToPrefix).map(dsInfo =>
+      Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
+    )
   }
 
   def datasetProgress(spec: String) = SecureAsync() { session => request =>
