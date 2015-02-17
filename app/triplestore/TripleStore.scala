@@ -102,7 +102,7 @@ class TripleStore(storeURL: String, logQueries: Boolean = false) {
   }
 
   private def checkResponse(response: WSResponse): Unit = if (response.status / 100 != 2) {
-    throw new TripleStoreException(response.statusText)
+    throw new TripleStoreException(s"${response.statusText}: ${response.body}")
   }
 
   def update(sparqlUpdate: String) = {

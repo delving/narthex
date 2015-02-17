@@ -97,6 +97,10 @@ object DsInfo {
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
     m.add(uri, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
+    val trueLiteral = m.createLiteral("true")
+    m.add(uri, m.getProperty(publishOAIPMH.uri), trueLiteral)
+    m.add(uri, m.getProperty(publishIndex.uri), trueLiteral)
+    m.add(uri, m.getProperty(publishLOD.uri), trueLiteral)
     if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.dataPost(uri.getURI, m).map(ok => new DsInfo(spec, ts))
   }
