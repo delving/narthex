@@ -88,7 +88,8 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
       setTargetFile(createRawFile(fileName))
       dsInfo.setState(DsState.RAW)
-      startAnalysis()
+      dropTree()
+      OrgActor.actor ! dsInfo.createMessage(StartAnalysis)
       None
     }
     else if (fileName.endsWith(".sip.zip")) {
@@ -166,30 +167,15 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def startSipZipGeneration() = OrgActor.actor ! dsInfo.createMessage(GenerateSipZip)
 
-  def startProcessing() = OrgActor.actor ! dsInfo.createMessage(StartProcessing(None))
-
   def dropProcessedRepo() = {
     deleteQuietly(processedDir)
     dsInfo.removeState(DsState.PROCESSED)
-  }
-
-  def startAnalysis() = {
-    dropTree()
-    // todo: tell it what to analyze, either raw or processed
-    OrgActor.actor ! dsInfo.createMessage(StartAnalysis)
   }
 
   def dropTree() = {
     deleteQuietly(treeDir)
     dsInfo.removeState(DsState.ANALYZED)
   }
-
-  def startSaving(incrementalOpt: Option[Incremental]) = {
-    // todo: if not incremental, maybe delete all records
-    OrgActor.actor ! dsInfo.createMessage(StartSaving(incrementalOpt))
-  }
-
-  def startCategoryCounts() = OrgActor.actor ! dsInfo.createMessage(StartCategoryCounting)
 
   // ==================================================
 

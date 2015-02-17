@@ -25,8 +25,6 @@ import services.ProgressReporter.ProgressState._
 
 object GraphSaver {
 
-  case object ChunkSent
-
   case object GraphSaveComplete
 
   case class SaveGraphs(incrementalOpt: Option[Incremental])
@@ -35,55 +33,56 @@ object GraphSaver {
 
 }
 
-class GraphSaver(repo: ProcessedRepo, client: TripleStore) extends Actor with ActorLogging {
+class GraphSaver(repo: ProcessedRepo, ts: TripleStore) extends Actor with ActorLogging {
 
   import context.dispatcher
   import triplestore.GraphSaver._
 
   var reader: Option[GraphReader] = None
-  var progress: Option[ProgressReporter] = None
+  var progressOpt: Option[ProgressReporter] = None
 
-  def sendGraphChunk() = {
+  def failure(ex: Throwable) = {
+    reader.map(_.close())
+    reader = None
+    context.parent ! WorkFailure(ex.getMessage, Some(ex))
+  }
+
+  def sendGraphChunkOpt() = {
     try {
-      self ! reader.get.readChunk
+      val progress = progressOpt.get
+      // todo: should graphs be deleted in case of interruption?
+      val chunkOpt = if (progress.keepWorking) reader.get.readChunk else None
+      self ! chunkOpt
     }
     catch {
-      case ex: Throwable =>
-        reader.map(_.close())
-        reader = None
-        context.parent ! WorkFailure(ex.getMessage, Some(ex))
+      case ex: Throwable => failure(ex)
     }
   }
 
   override def receive = {
 
     case InterruptWork =>
-      progress.map(_.interruptBy(sender()))
+      progressOpt.map(_.interruptBy(sender()))
 
     case SaveGraphs(incrementalOpt) =>
       log.info("Save graphs")
       val progressReporter = ProgressReporter(SAVING, context.parent)
-      progress = Some(progressReporter)
+      progressOpt = Some(progressReporter)
       reader = Some(repo.createGraphReader(incrementalOpt.map(_.file), progressReporter))
-      sendGraphChunk()
+      sendGraphChunkOpt()
 
     case Some(chunk: GraphChunk) =>
       log.info("Save chunk")
-      val update = client.update(chunk.toSparqlUpdate)
-      update.map(ok => sendGraphChunk())
+      val update = ts.update(chunk.toSparqlUpdate)
+      update.map(ok => sendGraphChunkOpt())
       update.onFailure {
-        case ex: Throwable =>
-          reader.map(_.close())
-          context.parent ! WorkFailure(ex.getMessage, Some(ex))
+        case ex: Throwable => failure(ex)
       }
 
     case None =>
       reader.map(_.close())
       reader = None
       context.parent ! GraphSaveComplete
-
-    case ChunkSent =>
-      sendGraphChunk()
 
   }
 }

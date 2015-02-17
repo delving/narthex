@@ -61,7 +61,8 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
   def receive = {
 
     case InterruptWork =>
-      if (!progress.exists(_.interruptBy(sender()))) context.stop(self)
+      // todo: make sure the Analyzer can be interrupted
+      progress.map(_.interruptBy(sender()))
 
     case AnalyzeFile(file) =>
       log.info(s"Analyzer on ${file.getName}")

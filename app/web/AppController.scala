@@ -37,6 +37,7 @@ import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
+import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -117,6 +118,7 @@ object AppController extends Controller with Security {
         val error = datasetContext.acceptUpload(file.filename, { target =>
           file.ref.moveTo(target, replace = true)
           Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
+          OrgActor.actor ! datasetContext.dsInfo.createMessage(ProgressTick(PREPARING, BUSY, 100))
           target
         })
         error.map {

@@ -166,6 +166,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(StartAnalysis, Dormant) =>
       sendBusy()
+      // todo: are we analyzing raw stuff or delimited stuff?
       log.info("Start analysis")
       if (datasetContext.processedRepo.nonEmpty) {
         // todo: kill all when finished so this can not lookup, just create
@@ -197,7 +198,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(StartCategoryCounting, Dormant) =>
       sendBusy()
       if (datasetContext.processedRepo.nonEmpty) {
-        val categoryCounter = context.child("category-counter").getOrElse(context.actorOf(CategoryCounter.props(datasetContext), "category-counter"))
+        val categoryCounter = context.actorOf(CategoryCounter.props(datasetContext), "category-counter")
         categoryCounter ! CountCategories()
         goto(Categorizing) using Active(Some(categoryCounter), CATEGORIZING)
       }
@@ -241,17 +242,21 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             }
 
           case "start processing" =>
-            datasetContext.startProcessing()
+            self ! StartProcessing(None)
             "processing started"
 
           case "start analysis" =>
-            datasetContext.startAnalysis()
+            datasetContext.dropTree()
+            self ! StartAnalysis
             "analysis started"
 
           case "start saving" =>
             // full save, not incremental
-            datasetContext.startSaving(None)
+            self ! StartSaving(None)
             "saving started"
+
+          // todo:
+          //def startCategoryCounts() = OrgActor.actor ! dsInfo.createMessage(StartCategoryCounting)
 
           case _ =>
             log.warning(s"$this sent unrecognized command $commandName")

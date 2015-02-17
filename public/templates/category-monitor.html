@@ -57,7 +57,7 @@
             <i class="fa fa-fw fa-cube"></i>
             <span>{{ dataset.datasetSpec }}</span>
         </span>
-        <span data-ng-show="dataset.datasetRecordCount" class="pull-right">{{ dataset.datasetRecordCount }}</span>
+        <span data-ng-show="dataset.processedValid" class="pull-right">{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
     </div>
     <div class="panel-body" data-ng-if="dataset.progress" >
         <progressbar class="progress-striped active" animate="true" value="dataset.progress.count" max="100" type="success">

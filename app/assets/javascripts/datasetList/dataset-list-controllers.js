@@ -417,6 +417,10 @@ define(["angular"], function () {
             return false;
         };
 
+        $scope.goToInvalidRecords = function () {
+            alert("Not implemented yet: Viewing invalid records");
+        };
+
         $scope.goToDataset = function () {
             $location.path("/dataset/" + ds.datasetSpec);
             $location.search({});

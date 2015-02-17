@@ -269,7 +269,7 @@ define(["angular"], function (angular) {
         }
 
         $scope.gatherCategoryCounts = function () {
-            alert("Not yet implemented");
+            alert("Temporarily disabled: Category statistics");
 //            categoriesService.gatherCategoryCounts().then(function (files) {
 //                fetchDatasetList();
 //            });
