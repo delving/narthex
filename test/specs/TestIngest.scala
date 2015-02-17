@@ -54,7 +54,7 @@ class TestIngest extends FlatSpec with Matchers {
       sip.createSipMapper.map { sipMapper =>
         def pocketCatcher(pocket: Pocket): Unit = {
           //          println(pocket)
-          var mappedPocket = sipMapper.map(pocket)
+          var mappedPocket = sipMapper.executeMapping(pocket)
           mappedPockets = mappedPocket.get :: mappedPockets
         }
         sourceRepo.parsePockets(pocketCatcher, ProgressReporter())

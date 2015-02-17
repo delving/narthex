@@ -21,7 +21,7 @@ import triplestore.{Sparql, TripleStore}
 
 class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
 
-  val ts = new TripleStore("http://localhost:3030/narthex-test", true)
+  val ts = new TripleStore("http://localhost:3030/test", true)
   val dcType = "http://purl.org/dc/elements/1.1/type"
   lazy val actorPrefix = s"$NX_URI_PREFIX/actor"
 
@@ -94,7 +94,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
       var mappedPockets = List.empty[Pocket]
       sip.createSipMapper.map { sipMapper =>
         def pocketCatcher(pocket: Pocket): Unit = {
-          var mappedPocket = sipMapper.map(pocket)
+          var mappedPocket = sipMapper.executeMapping(pocket)
           mappedPocket.map(_.writeTo(sourceOutput))
           mappedPockets = mappedPocket.get :: mappedPockets
         }

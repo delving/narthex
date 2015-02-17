@@ -69,7 +69,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
     sip.createSipMapper.map { sipMapper =>
       def pocketCatcher(pocket: Pocket): Unit = {
         //        println(s"### parsed pocket:\n$pocket")
-        var mappedPocket = sipMapper.map(pocket)
+        var mappedPocket = sipMapper.executeMapping(pocket)
         mappedPocket.map(_.writeTo(targetOutput))
         mappedPockets = mappedPocket.get :: mappedPockets
       }
