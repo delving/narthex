@@ -470,8 +470,12 @@ define(["angular"], function () {
             command("start first harvest", "Erase existing data?", refreshProgress);
         };
 
-        $scope.startAnalysis = function () {
-            command("start analysis", null, refreshProgress);
+        $scope.startRawAnalysis = function () {
+            command("start raw analysis", null, refreshProgress);
+        };
+
+        $scope.startProcessedAnalysis = function () {
+            command("start processed analysis", null, refreshProgress);
         };
 
         $scope.startSaving = function () {

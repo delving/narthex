@@ -188,7 +188,7 @@ define(["angular"], function () {
             });
         };
 
-        $scope.setUniqueIdNode = function (node) {
+        $scope.proposeUniqueIdNode = function (node) {
             function selectFirstEmptyWithCount(node, count) {
                 if (!node) return undefined;
                 if (!node.lengths.length && node.count == count) {
@@ -200,20 +200,23 @@ define(["angular"], function () {
                 }
                 return undefined;
             }
-
             var recordRootNode = selectFirstEmptyWithCount($scope.tree, node.count);
+            $scope.uniqueIdChosen = !!recordRootNode;
             if (recordRootNode) {
                 $scope.recordRootNode = recordRootNode;
                 $scope.uniqueIdNode = node;
-                var body = {
-                    recordRoot: $scope.recordRootNode.path,
-                    uniqueId: $scope.uniqueIdNode.path
-                };
-                datasetService.setRecordDelimiter($scope.spec, body).then(function () {
-                    console.log("Record delimiter set, moving to dataset list page");
-                    $location.path("/dataset-list");
-                });
             }
+        };
+
+        $scope.confirmUniqueId = function() {
+            var body = {
+                recordRoot: $scope.recordRootNode.path,
+                uniqueId: $scope.uniqueIdNode.path
+            };
+            datasetService.setRecordDelimiter($scope.spec, body).then(function () {
+                console.log("Record delimiter set, moving to dataset list page");
+                $location.path("/dataset-list");
+            });
         };
 
         $scope.fetchLengths = function () {

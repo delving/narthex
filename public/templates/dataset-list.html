@@ -126,11 +126,19 @@
                         <div><strong>Raw</strong></div>
                         <div class="small">{{ dataset.stateRaw.d }}</div>
                         <div>{{ dataset.stateRaw.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-success" data-ng-click="startRawAnalysis()">
+                                <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
+                            </button>
+                        </div>
                     </div>
                     <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state">
                         <div><strong>Raw Analyzed</strong></div>
                         <div class="small">{{ dataset.stateRawAnalyzed.d }}</div>
                         <div>{{ dataset.stateRawAnalyzed.t }}</div>
+                        <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
+                            <i class="fa fa-fw fa-eye"></i> <span>Delimit</span>
+                        </button>
                     </div>
                     <div data-ng-show="dataset.stateSourced" class="ds-state">
                         <div><strong>Sourced</strong></div>
@@ -165,7 +173,7 @@
                         <div class="small">{{ dataset.stateProcessed.d }}</div>
                         <div>{{ dataset.stateProcessed.t }}</div>
                         <div>
-                            <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
+                            <button class="btn btn-sm btn-success" data-ng-click="startProcessedAnalysis()">
                                 <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
                             </button>
                         </div>

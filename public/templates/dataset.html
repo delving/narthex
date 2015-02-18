@@ -22,16 +22,19 @@
     <div class="col-sm-5">
         <div class="widget widget-schema">
             <div class="widget-header">
-                Schema
-                    <span class="dropdown pull-right">
-                        <a href class="btn btn-default btn-sm" data-toggle="dropdown">
-                            <i class="fa fa-eye"></i>&nbsp;<span class="caret"></span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-right" role="menu">
-                            <li><a data-ng-href="{{ apiPrefix }}/{{ spec }}/tree" target="_blank">Tree</a></li>
-                            <li><a data-ng-href="{{ apiPrefix }}/{{ spec }}" target="_blank">Paths</a></li>
-                        </ul>
-                    </span>
+                <span>Schema</span>
+                <span class="dropdown pull-right">
+                    <a href class="btn btn-success btn-sm" data-ng-click="confirmUniqueId()" data-ng-show="uniqueIdChosen">
+                        <i class="fa fa-check-circle"></i> <span> Confirm Unique Id</span>
+                    </a>
+                    <a href class="btn btn-default btn-sm" data-toggle="dropdown">
+                        <i class="fa fa-eye"></i>&nbsp;<span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-right" role="menu">
+                        <li><a data-ng-href="{{ apiPrefix }}/{{ spec }}/tree" target="_blank">Tree</a></li>
+                        <li><a data-ng-href="{{ apiPrefix }}/{{ spec }}" target="_blank">Paths</a></li>
+                    </ul>
+                </span>
             </div>
             <div class="vertical-scroll list-group" data-scrollable id="schema-tree" data-offset="160" data-ng-style="{ 'height': elHeight }"  data-ng-controller="TreeCtrl" data-ng-include="'node.html'">Node list</div>
         </div>
@@ -61,7 +64,7 @@
                 </ul>
                 <ul class="list-inline pull-right">
                     <li data-ng-show="rawAnalyzedState && activeView == 'histogram' && histogramUnique">
-                        <a href class="btn btn-warning btn-sm" data-ng-click="setUniqueIdNode(selectedNode)" data-ng-disabled="uniqueIdNode == selectedNode">
+                        <a href class="btn btn-warning btn-sm" data-ng-click="proposeUniqueIdNode(selectedNode)" data-ng-disabled="uniqueIdNode == selectedNode">
                             <i class="fa fa-check-circle"></i> <span> Use as Unique Element</span>
                         </a>
                     </li>
