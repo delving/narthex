@@ -158,11 +158,11 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             harvestTypeOpt.map { harvestType =>
               log.info(s"Starting first harvest with type $harvestType")
               datasetContext.createSourceRepo(SourceFacts(harvestType))
+              dsInfo.setHarvestCron() // a clean one
               self ! StartHarvest(None, justDate = true)
               "harvest started"
             } getOrElse {
               val message = s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
-              log.info(s"DSINFO:\n${dsInfo.toTurtle}")
               self ! WorkFailure(message, None)
               message
             }
@@ -202,11 +202,9 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(StartHarvest(modifiedAfter, justDate), Dormant) =>
       sendBusy()
       datasetContext.dropTree()
-
-      log.info(s"Start harvest event")
-
+      dsInfo.removeState(RAW_ANALYZED)
+      dsInfo.removeState(ANALYZED)
       def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
-
       harvestTypeFromString(prop(harvestType)).map { harvestType =>
         val (url, ds, pre, se) = (prop(harvestURL), prop(harvestDataset), prop(harvestPrefix), prop(harvestSearch))
         val kickoff = harvestType match {
@@ -279,7 +277,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       incrementalOpt.map { incremental =>
         incremental.fileOpt.map { newFile =>
           dsInfo.setState(SOURCED)
-          dsInfo.setHarvestCron(dsInfo.harvestCron)
+          dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
           self ! StartProcessing(Some(Incremental(incremental.modifiedAfter, newFile)))
         }
       } getOrElse {

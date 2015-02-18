@@ -130,8 +130,18 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       }
 
     case Process(incrementalOpt) =>
-      val sourceFacts = datasetContext.sourceRepoOpt.map(_.sourceFacts).getOrElse(throw new RuntimeException(s"No source facts for $datasetContext"))
-      val sipMapper = datasetContext.sipMapperOpt.getOrElse(throw new RuntimeException(s"No sip mapper for $datasetContext"))
+      val sourceFacts = datasetContext.sourceRepoOpt.map(_.sourceFacts).getOrElse{
+        // todo: an exception should be interpreted by the parent as a WorkFailure!
+        val message = s"No source facts for $datasetContext"
+        context.parent ! WorkFailure(message)
+        throw new RuntimeException(message)
+      }
+      val sipMapper = datasetContext.sipMapperOpt.getOrElse{
+        // todo: an exception should be interpreted by the parent as a WorkFailure!
+        val message = s"No sip mapper for $datasetContext"
+        context.parent ! WorkFailure(message)
+        throw new RuntimeException(message)
+      }
       if (incrementalOpt.isEmpty) datasetContext.processedRepo.clear()
 
       val work = future {

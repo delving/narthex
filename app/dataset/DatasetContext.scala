@@ -21,7 +21,6 @@ import java.util.Date
 
 import analysis.NodeRepo
 import com.hp.hpl.jena.rdf.model.Model
-import dataset.DatasetActor._
 import dataset.DsInfo.DsMetadata
 import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
@@ -30,13 +29,10 @@ import mapping.CategoryDb
 import org.OrgContext._
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
-import play.Logger
 import record.PocketParser
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
 import services.StringHandling.pathToDirectory
-import services.Temporal._
-import triplestore.GraphProperties.stateSource
 
 import scala.concurrent.Future
 
@@ -142,24 +138,6 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     val allZip = sourceDir.listFiles.filter(_.getName.endsWith("zip"))
     if (allZip.size > 1) throw new RuntimeException(s"Multiple zip files where one was expected: $allZip")
     allZip.headOption
-  }
-
-  def nextHarvest() = {
-    val kickoffOpt = dsInfo.getLiteralProp(stateSource).map { sourceTime =>
-      val harvestCron = dsInfo.harvestCron
-      if (harvestCron.timeToWork) {
-        val nextHarvestCron = harvestCron.next
-        // if the next is also to take place immediately, force the harvest cron to now
-        dsInfo.setHarvestCron(if (nextHarvestCron.timeToWork) harvestCron.now else nextHarvestCron)
-        val justDate = harvestCron.unit == DelayUnit.WEEKS
-        Some(StartHarvest(Some(harvestCron.previous), justDate))
-      }
-      else {
-        Logger.info(s"No re-harvest of $dsInfo with cron $harvestCron because it's not time $harvestCron")
-        None
-      }
-    }
-    kickoffOpt.map(kickoff => OrgActor.actor ! dsInfo.createMessage(kickoff))
   }
 
   def dropSourceRepo() = {

@@ -138,22 +138,6 @@ define(["angular"], function () {
             }
         };
 
-//        $scope.replaceDataset = function (dataset) {
-//            function replaceInList(list, dataset) {
-//                return _.map(list, function (ds) {
-//                    if (ds.datasetSpec == dataset.datasetSpec) {
-//                        console.log('replaced', ds);
-//                        return dataset;
-//                    }
-//                    else {
-//                        return ds;
-//                    }
-//                });
-//            }
-//            replaceInList($scope.datasets, dataset);
-//            replaceInList($scope.filteredDatasets, dataset);
-//        };
-//
         $scope.fetchDatasetList = function () {
             console.log('fetching list');
             $scope.specFilter = "";
@@ -360,7 +344,7 @@ define(["angular"], function () {
                         post = " pages";
                         break;
                 }
-                if (p.count > 15) {
+                if (p.count > 9) {
                     pre = progressStates[p.state] + " ";
                 }
             }
