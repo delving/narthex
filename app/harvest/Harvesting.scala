@@ -26,7 +26,7 @@ import services.Temporal._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.xml.{Elem, NodeSeq, XML}
+import scala.xml.{NodeSeq, XML}
 
 // todo: use the actor's execution context?
 
@@ -112,23 +112,6 @@ object Harvesting {
 
     def timeToWork = unit.after(previous, delay).isBeforeNow
   }
-
-  def harvestCron(previousString: String, delayString: String, unitString: String): HarvestCron = {
-    val previous = if (previousString.nonEmpty) stringToTime(previousString) else new DateTime()
-    val delay = if (delayString.nonEmpty) delayString.toInt else 1
-    val unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS)
-    HarvestCron(previous, delay, unit)
-  }
-
-  def harvestCron(datasetInfo: Elem): HarvestCron = {
-    val hc = datasetInfo \ "harvestCron"
-    harvestCron(
-      previousString = (hc \ "previous").text,
-      delayString = (hc \ "delay").text,
-      unitString = (hc \ "unit").text
-    )
-  }
-
 }
 
 trait Harvesting {

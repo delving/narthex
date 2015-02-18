@@ -58,7 +58,7 @@ object DsInfo {
   object DsState {
     val RAW = DsState(stateRaw)
     val RAW_ANALYZED = DsState(stateRawAnalyzed)
-    val SOURCED = DsState(stateSource)
+    val SOURCED = DsState(stateSourced)
     val MAPPABLE = DsState(stateMappable)
     val PROCESSABLE = DsState(stateProcessable)
     val PROCESSED = DsState(stateProcessed)
@@ -239,7 +239,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     harvestPrefix -> prefix
   )
 
-  def setHarvestCron(harvestCron: HarvestCron) = setSingularLiteralProps(
+  def setHarvestCron(harvestCron: HarvestCron = currentHarvestCron) = setSingularLiteralProps(
     harvestPreviousTime -> timeToString(harvestCron.previous),
     harvestDelay -> harvestCron.delay.toString,
     harvestDelayUnit -> harvestCron.unit.toString
@@ -254,7 +254,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     datasetRights -> metadata.rights
   )
 
-  def harvestCron = {
+  def currentHarvestCron = {
     (getLiteralProp(harvestPreviousTime), getLiteralProp(harvestDelay), getLiteralProp(harvestDelayUnit)) match {
       case (Some(previousString), Some(delayString), Some(unitString)) =>
         HarvestCron(

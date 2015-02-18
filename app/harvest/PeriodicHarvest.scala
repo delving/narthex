@@ -17,10 +17,14 @@
 package harvest
 
 import akka.actor.{Actor, Props}
+import dataset.DatasetActor.StartHarvest
 import dataset.DsInfo
+import dataset.DsInfo.withDsInfo
 import harvest.PeriodicHarvest.ScanForHarvests
+import org.OrgActor
 import org.OrgContext.ts
 import play.api.Logger
+import services.Temporal.DelayUnit
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
@@ -43,13 +47,25 @@ class PeriodicHarvest extends Actor {
       val futureList = DsInfo.listDsInfo(ts)
       futureList.onSuccess {
         case list: List[DsInfo] =>
-          list.map { dsInfo =>
-            val harvestCron = dsInfo.harvestCron
-            if (harvestCron.timeToWork) {
-              log.info(s"Time to work on $dsInfo")
-              Logger.warn(s"Periodic wants to harvest $dsInfo")
-              // todo: let's see it asking for a while, then test
-              //              orgContext.datasetContext(dsInfo.spec).nextHarvest()
+          list.map { listedInfo =>
+            val harvestCron = listedInfo.currentHarvestCron
+            if (harvestCron.timeToWork) withDsInfo(listedInfo.spec) { info => // the cached version
+              log.info(s"Time to work on $info")
+              val proposedNext = harvestCron.next
+              val next = if (proposedNext.timeToWork) {
+                val revised = harvestCron.now
+                log.info(s"$info next harvest $proposedNext is already due so adjusting to 'now': $revised")
+                revised
+              }
+              else {
+                log.info(s"$info next harvest : $proposedNext")
+                proposedNext
+              }
+              info.setHarvestCron(next)
+              val justDate = harvestCron.unit == DelayUnit.WEEKS
+              val startHarvest = StartHarvest(Some(harvestCron.previous), justDate)
+              log.info(s"$info incremental harvest kickoff $startHarvest")
+              OrgActor.actor ! info.createMessage(startHarvest)
             }
           }
 

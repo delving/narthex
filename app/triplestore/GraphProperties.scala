@@ -77,7 +77,7 @@ object GraphProperties {
 
   val stateRaw = NXProp("stateRaw", timeProp)
   val stateRawAnalyzed = NXProp("stateRawAnalyzed", timeProp)
-  val stateSource = NXProp("stateSource", timeProp)
+  val stateSourced = NXProp("stateSourced", timeProp)
   val stateMappable = NXProp("stateMappable", timeProp)
   val stateProcessable = NXProp("stateProcessable", timeProp)
   val stateProcessed = NXProp("stateProcessed", timeProp)
