@@ -64,8 +64,7 @@ object SipRepo {
     val dateTime = new DateTime(file.lastModified())
   }
 
-  class URIErrorsException(val uriErrors: List[String]) extends Exception {
-  }
+  class URIErrorsException(val uriErrors: List[String]) extends Exception
 
 }
 
@@ -93,6 +92,7 @@ class SipRepo(home: File, spec: String, naveDomain: String) {
 
   def latestSipOpt: Option[Sip] = listSips.headOption
 
+  override def toString = spec
 }
 
 object Sip {

@@ -19,7 +19,6 @@ package web
 import dataset.SipRepo.AvailableSip
 import org.OrgContext.orgContext
 import play.api.Logger
-import play.api.libs.json.Json
 import play.api.mvc._
 import web.MainController.{OkFile, SIP_APP_VERSION}
 
@@ -55,21 +54,16 @@ object SipAppController extends Controller with Security {
     }
   }
 
-  def downloadSipZip(datasetName: String) = Secure() { profile => implicit request =>
-    Logger.info(s"Download sip-zip $datasetName")
-    val sipFileOpt = orgContext.datasetContextOption(datasetName).flatMap { datasetContext =>
-      datasetContext.sipFiles.headOption
-    }
-    sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $datasetName"))
+  def downloadSipZip(spec: String) = Secure() { profile => implicit request =>
+    Logger.info(s"Download sip-zip $spec")
+    val sipFileOpt = orgContext.datasetContext(spec).sipFiles.headOption
+    sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $spec"))
   }
 
-  def uploadSipZip(datasetName: String, zipFileName: String) = Secure(parse.temporaryFile) { profile => implicit request =>
-    orgContext.datasetContextOption(datasetName).map { datasetContext =>
-      request.body.moveTo(datasetContext.sipRepo.createSipZipFile(zipFileName))
-      datasetContext.startSipZipGeneration()
-      Ok
-    } getOrElse {
-      NotAcceptable(Json.obj("err" -> s"Dataset $datasetName not found"))
-    }
+  def uploadSipZip(spec: String, zipFileName: String) = Secure(parse.temporaryFile) { profile => implicit request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    request.body.moveTo(datasetContext.sipRepo.createSipZipFile(zipFileName))
+    datasetContext.startSipZipGeneration()
+    Ok
   }
 }

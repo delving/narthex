@@ -21,7 +21,6 @@ import java.util.concurrent.TimeUnit
 import akka.pattern.{AskTimeoutException, ask}
 import akka.util.Timeout
 import dataset.DatasetActor._
-import dataset.DsInfo
 import dataset.DsInfo._
 import mapping.CategoryDb._
 import mapping.SkosMappingStore.SkosMapping
@@ -60,12 +59,12 @@ object AppController extends Controller with Security {
     Ok(Json.toJson(prefixes))
   }
 
-  def datasetInfo(spec: String) = SecureAsync() { session => request =>
-    DsInfo.check(spec, ts).map(info => Ok(Json.toJson(info)))
+  def datasetInfo(spec: String) = Secure() { session => request =>
+    withDsInfo(spec)(dsInfo => Ok(Json.toJson(dsInfo)))
   }
 
   def createDataset(spec: String, character: String, mapToPrefix: String) = SecureAsync() { session => request =>
-    orgContext.createDatasetRepo(session.actor, spec, character, mapToPrefix).map(dsInfo =>
+    orgContext.createDsInfo(session.actor, spec, character, mapToPrefix).map(dsInfo =>
       Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
     )
   }
@@ -114,40 +113,32 @@ object AppController extends Controller with Security {
   }
 
   def uploadDataset(spec: String) = Secure(parse.multipartFormData) { session => request =>
-    orgContext.datasetContextOption(spec).map { datasetContext =>
-      request.body.file("file").map { file =>
-        val error = datasetContext.acceptUpload(file.filename, { target =>
-          file.ref.moveTo(target, replace = true)
-          Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
-          OrgActor.actor ! datasetContext.dsInfo.createMessage(ProgressTick(PREPARING, BUSY, 100))
-          target
-        })
-        error.map {
-          message => NotAcceptable(Json.obj("problem" -> message))
-        } getOrElse {
-          Ok
-        }
+    val datasetContext = orgContext.datasetContext(spec)
+    request.body.file("file").map { file =>
+      val error = datasetContext.acceptUpload(file.filename, { target =>
+        file.ref.moveTo(target, replace = true)
+        Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
+        OrgActor.actor ! datasetContext.dsInfo.createMessage(ProgressTick(PREPARING, BUSY, 100))
+        target
+      })
+      error.map {
+        message => NotAcceptable(Json.obj("problem" -> message))
       } getOrElse {
-        NotAcceptable(Json.obj("problem" -> "Cannot find file in upload"))
+        Ok
       }
     } getOrElse {
-      NotAcceptable(Json.obj("problem" -> s"Cannot find dataset $spec"))
+      NotAcceptable(Json.obj("problem" -> "Cannot find file in upload"))
     }
   }
 
   def setDatasetProperties(spec: String) = SecureAsync(parse.json) { session => request =>
-    DsInfo.check(spec, ts).flatMap { dsInfoOpt =>
-      dsInfoOpt.map { dsInfo =>
-        val propertyList = (request.body \ "propertyList").as[List[String]]
-        Logger.info(s"setDatasetProperties $propertyList")
-        val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
-        val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
-        val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
-        dsInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
-        // todo: problem, this is not telling the DatasetActor to get a fresh DsInfo
-      } getOrElse {
-        Future(NotFound(Json.obj("problem" -> s"dataset $spec not found")))
-      }
+    withDsInfo(spec) { dsInfo =>
+      val propertyList = (request.body \ "propertyList").as[List[String]]
+      Logger.info(s"setDatasetProperties $propertyList")
+      val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
+      val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
+      val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
+      dsInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
     }
   }
 
@@ -179,59 +170,53 @@ object AppController extends Controller with Security {
   }
 
   def setRecordDelimiter(spec: String) = Secure(parse.json) { session => request =>
-    var recordRoot = (request.body \ "recordRoot").as[String]
-    var uniqueId = (request.body \ "uniqueId").as[String]
-    orgContext.datasetContextOption(spec).map { datasetContext =>
-      datasetContext.setRawDelimiters(recordRoot, uniqueId)
-      Ok
-    } getOrElse {
-      NotFound(Json.obj("problem" -> "Dataset not found"))
-    }
+    val datasetContext = orgContext.datasetContext(spec)
+    // todo: recordContainer instead perhaps
+    val recordRoot = (request.body \ "recordRoot").as[String]
+    val uniqueId = (request.body \ "uniqueId").as[String]
+    datasetContext.setRawDelimiters(recordRoot, uniqueId)
+    Ok
   }
 
   // ====== vocabularies =====
 
   def setSkosField(spec: String) = SecureAsync(parse.json) { session => request =>
-    val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
-    val skosFieldUri = (request.body \ "skosFieldUri").as[String]
-    val included = (request.body \ "included").as[Boolean]
-    DsInfo.check(spec, ts).flatMap { dsInfoOpt =>
-      dsInfoOpt.map { dsInfo =>
-        Logger.info(s"set skos field $skosFieldUri")
-        val currentSkosFields = dsInfo.getUriPropValueList(skosField)
-        val (futureOpt, action) = if (included) {
-          if (currentSkosFields.contains(skosFieldUri)) {
-            (None, "already exists")
-          }
-          else {
-            val casesOpt = for {
-              path <- histogramPathOpt
-              nodeRepo <- orgContext.datasetContext(spec).nodeRepo(path)
-              histogram <- nodeRepo.largestHistogram
-            } yield Sparql.createCases(dsInfo, histogram)
-            val futureModel = casesOpt.map { cases =>
-              val update = cases.map(_.ensureSkosEntryQ).mkString
-              ts.update(update).flatMap(ok => dsInfo.addUriProp(skosField, skosFieldUri))
-            } getOrElse {
-              dsInfo.addUriProp(skosField, skosFieldUri)
-            }
-            (Some(futureModel), "added")
-          }
+    withDsInfo(spec) { dsInfo =>
+      val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
+      val skosFieldUri = (request.body \ "skosFieldUri").as[String]
+      val included = (request.body \ "included").as[Boolean]
+      Logger.info(s"set skos field $skosFieldUri")
+      val currentSkosFields = dsInfo.getUriPropValueList(skosField)
+      val (futureOpt, action) = if (included) {
+        if (currentSkosFields.contains(skosFieldUri)) {
+          (None, "already exists")
         }
         else {
-          if (!currentSkosFields.contains(skosFieldUri)) {
-            (None, "did not exists")
+          val casesOpt = for {
+            path <- histogramPathOpt
+            nodeRepo <- orgContext.datasetContext(spec).nodeRepo(path)
+            histogram <- nodeRepo.largestHistogram
+          } yield Sparql.createCases(dsInfo, histogram)
+          val futureModel = casesOpt.map { cases =>
+            val update = cases.map(_.ensureSkosEntryQ).mkString
+            ts.update(update).flatMap(ok => dsInfo.addUriProp(skosField, skosFieldUri))
+          } getOrElse {
+            dsInfo.addUriProp(skosField, skosFieldUri)
           }
-          else {
-            // here eventual de-skosification could happen
-            (Some(dsInfo.removeUriProp(skosField, skosFieldUri)), "removed")
-          }
+          (Some(futureModel), "added")
         }
-        val future = futureOpt.getOrElse(Future(None))
-        future.map(ok => Ok(Json.obj("action" -> action)))
-      } getOrElse {
-        Future(NotFound(Json.obj("problem" -> s"Dataset $spec not found")))
       }
+      else {
+        if (!currentSkosFields.contains(skosFieldUri)) {
+          (None, "did not exists")
+        }
+        else {
+          // here eventual de-skosification could happen
+          (Some(dsInfo.removeUriProp(skosField, skosFieldUri)), "removed")
+        }
+      }
+      val future = futureOpt.getOrElse(Future(None))
+      future.map(ok => Ok(Json.obj("action" -> action)))
     }
   }
 
@@ -240,13 +225,13 @@ object AppController extends Controller with Security {
   }
 
   def createVocabulary(spec: String) = SecureAsync() { session => request =>
-    VocabInfo.create(session.actor, spec, ts).map(ok =>
+    VocabInfo.createVocabInfo(session.actor, spec, ts).map(ok =>
       Ok(Json.obj("created" -> s"Skos $spec created"))
     )
   }
 
   def deleteVocabulary(spec: String) = SecureAsync() { session => request =>
-    VocabInfo.check(spec, ts).map { vocabInfoOpt =>
+    VocabInfo.freshVocabInfo(spec, ts).map { vocabInfoOpt =>
       vocabInfoOpt.map { vocabInfo =>
         vocabInfo.dropVocabulary
         Ok(Json.obj("created" -> s"Vocabulary $spec deleted"))
@@ -314,21 +299,17 @@ object AppController extends Controller with Security {
     }
   }
 
-  def getTermVocabulary(spec: String) = SecureAsync() { session => request =>
-    DsInfo.check(spec, ts).map { dsInfoOpt =>
-      dsInfoOpt.map { dsInfo =>
-        val results = dsInfo.vocabulary.concepts.map(concept => {
-          //          val freq: Int = concept.frequency.getOrElse(0)
-          Json.obj(
-            "uri" -> concept.resource.toString,
-            "label" -> concept.getAltLabel(LANGUAGE).text,
-            "frequency" -> concept.frequency
-          )
-        })
-        Ok(Json.toJson(results))
-      } getOrElse {
-        NotFound(Json.obj("problem" -> s"No term vocabulary found for $spec"))
-      }
+  def getTermVocabulary(spec: String) = Secure() { session => request =>
+    withDsInfo(spec) { dsInfo =>
+      val results = dsInfo.vocabulary.concepts.map(concept => {
+        //          val freq: Int = concept.frequency.getOrElse(0)
+        Json.obj(
+          "uri" -> concept.resource.toString,
+          "label" -> concept.getAltLabel(LANGUAGE).text,
+          "frequency" -> concept.frequency
+        )
+      })
+      Ok(Json.toJson(results))
     }
   }
 
@@ -342,7 +323,7 @@ object AppController extends Controller with Security {
     val uriB = (request.body \ "uriB").as[String]
     val store = orgContext.termMappingStore(dsSpec)
     // todo: shouldn't await here, really
-    Await.result(VocabInfo.check(vocabSpec, ts), 20.seconds).map { vocabGraph =>
+    Await.result(VocabInfo.freshVocabInfo(vocabSpec, ts), 20.seconds).map { vocabGraph =>
       store.toggleMapping(SkosMapping(session.actor, uriA, uriB), vocabGraph).map { action =>
         Ok(Json.obj("action" -> action))
       }

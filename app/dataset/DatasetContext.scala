@@ -74,6 +74,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
+  // todo: recordContainer instead perhaps
   def setRawDelimiters(recordRoot: String, uniqueId: String) = rawFile.map { raw =>
     createSourceRepo(SourceFacts("from-raw", recordRoot, uniqueId, None))
     dropTree()

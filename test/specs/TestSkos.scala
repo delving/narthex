@@ -15,7 +15,7 @@ import triplestore.{Sparql, TripleStore}
 
 class TestSkos extends PlaySpec with OneAppPerSuite {
 
-  val ts = new TripleStore("http://localhost:3030/narthex-test", true)
+  val ts = new TripleStore("http://localhost:3030/test", true)
 
   def cleanStart() = {
     await(ts.update("DROP ALL"))
@@ -34,10 +34,10 @@ class TestSkos extends PlaySpec with OneAppPerSuite {
     // have an actor create two Skos vocabs
     val actorStore = new ActorStore(ts)
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
-    val genreInfo = await(VocabInfo.create(admin, "gtaa_genre", ts))
+    val genreInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_genre", ts))
     val genreFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
     await(ts.dataPutXMLFile(genreInfo.dataUri, genreFile))
-    val classyInfo = await(VocabInfo.create(admin, "gtaa_classy", ts))
+    val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy", ts))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
     await(ts.dataPutXMLFile(classyInfo.dataUri, classyFile))
     countGraphs must be(5)
@@ -84,7 +84,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite {
     val json = Json.parse(histogramString)
     val dsSpec = "histoskos"
     val actor = await(new ActorStore(ts).authenticate("gumby", "pokey")).get
-    val di = await(DsInfo.create(actor, dsSpec, DsInfo.CharacterMapped, "edm", ts))
+    val di = await(DsInfo.createDsInfo(actor, dsSpec, DsInfo.CharacterMapped, "edm", ts))
     val cases = Sparql.createCases(di, json)
     cases.foreach(c => await(ts.update(c.ensureSkosEntryQ)))
     val first = di.vocabulary.concepts.head

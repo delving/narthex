@@ -1,60 +1,22 @@
 package specs
 
 import java.io._
-import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import com.hp.hpl.jena.rdf.model.ModelFactory
-import dataset.{SipFactory, SipRepo, SourceRepo}
-import org.apache.commons.io.IOUtils
+import dataset.SipFactory
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
-import record.PocketParser
 import record.PocketParser.Pocket
 import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
 
 import scala.collection.JavaConversions._
 
-class TestEDM extends PlaySpec with OneAppPerSuite {
-
-  val naveDomain = "http://nave"
-  val sipsDir = new File(getClass.getResource("/edm").getFile)
-  val sipZipFile = new File(sipsDir, "test-edm.sip.zip")
-
-  def copyFile(zos: ZipOutputStream, sourceFile: File): Unit = {
-    val file = if (sourceFile.getName == "source.xml") {
-      val gzFile = new File(sourceFile.getParentFile, "source.xml.gz")
-      val gz = new GZIPOutputStream(new FileOutputStream(gzFile))
-      val is = new FileInputStream(sourceFile)
-      IOUtils.copy(is, gz)
-      gz.close()
-      gzFile
-    }
-    else {
-      sourceFile
-    }
-    println(s"including $file")
-    zos.putNextEntry(new ZipEntry(file.getName))
-    val is = new FileInputStream(file)
-    IOUtils.copy(is, zos)
-    zos.closeEntry()
-  }
-
-  def createSipRepoFromDir(dirName: String): SipRepo = {
-    val source = new File(sipsDir, dirName)
-    val zos = new ZipOutputStream(new FileOutputStream(sipZipFile))
-    source.listFiles().toList.filter(!_.getName.endsWith(".gz")).map(f => copyFile(zos, f))
-    zos.close()
-    println(s"created $sipZipFile")
-    new SipRepo(sipsDir, dirName, naveDomain)
-  }
+class TestEDM extends PlaySpec with OneAppPerSuite with PrepareEDM {
 
   "A dataset should be loaded" in {
-    val whichOne = 2
-    val dirName = List("ton-smits", "difo", "amsterdam")(whichOne)
-    val sipRepo = createSipRepoFromDir(dirName)
-    val sourceDir = FileHandling.clearDir(new File(s"/tmp/test-edm/$dirName/source"))
-    val targetDir = FileHandling.clearDir(new File(s"/tmp/test-edm/$dirName/target"))
+    val sipRepo = createSipRepoFromDir(2)
+    val targetDir = FileHandling.clearDir(new File(s"/tmp/test-edm/$sipRepo/target"))
     val targetFile = new File(targetDir, "edm.xml")
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined must be(true)
@@ -63,7 +25,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
     // fill processed repo by mapping records
     val source = sip.copySourceToTempFile
     source.isDefined must be(true)
-    val sourceRepo = SourceRepo.createClean(sourceDir, PocketParser.POCKET_SOURCE_FACTS)
+    val sourceRepo = createSourceRepo
     sourceRepo.acceptFile(source.get, ProgressReporter())
     var mappedPockets = List.empty[Pocket]
     sip.createSipMapper.map { sipMapper =>
@@ -113,4 +75,65 @@ class TestEDM extends PlaySpec with OneAppPerSuite {
     sip.copyWithSourceTo(sipFile, pocketFile, sipFactory.prefixRepo("edm"))
   }
 
+// todo: revive this in the context of EDM
+//  "A SipFactory" should "be able to create a sip from a harvest dataset, given a prefix" in {
+//
+//    val home = new File(getClass.getResource("/factory/sip_factory").getFile)
+//    val factory = new SipFactory(home)
+//
+//    val prefixRepos: Array[SipPrefixRepo] = factory.prefixRepos
+//    prefixRepos.size should be(2)
+//
+//    val prefixRepoOpt = factory.prefixRepo("icn")
+//    val icn = prefixRepoOpt.getOrElse(throw new RuntimeException)
+//
+//    icn.recordDefinition.getName should be("icn_1.0.4_record-definition.xml")
+//    icn.validation.getName should be("icn_1.0.4_validation.xsd")
+//
+//    val targetDir = FileHandling.clearDir(new File("/tmp/test-sip-factory"))
+//    val testSipZip = new File(targetDir, "test.sip.zip")
+//    val existingSipZip = new File(targetDir, "existing.sip.zip")
+//    val copiedSipZip = new File(targetDir, "copied.sip.zip")
+//
+//    val sourceDir = new File(getClass.getResource("/factory/van_abbe/source").getFile)
+//    val sourceRepo = new SourceRepo(sourceDir)
+//    val sourceXmlFile = new File(targetDir, "source.xml")
+//    val sourceOutput = new FileOutputStream(sourceXmlFile)
+//    sourceRepo.generatePockets(sourceOutput, ProgressReporter())
+//    sourceOutput.close()
+//
+//    val facts = SipGenerationFacts(<info/>)
+//
+//    icn.initiateSipZip(testSipZip, sourceXmlFile, facts)
+//
+//    val sipRepo = new SipRepo(targetDir, "test", "http://about.what/")
+//
+//    val schemaVersionOpt = sipRepo.latestSipOpt.flatMap(sip => sip.schemaVersionOpt)
+//
+//    schemaVersionOpt.get should be("icn_1.0.4")
+//
+//    deleteQuietly(testSipZip)
+//
+//    val existingSip = new File(getClass.getResource("/factory/van_abbe/sips/van-abbe-museum__2014_11_25_11_44__icn.sip.zip").getFile)
+//
+//    copyFile(existingSip, existingSipZip, false)
+//
+//    val existingSchemaVersionOpt = sipRepo.latestSipOpt.flatMap(sip => sip.schemaVersionOpt)
+//
+//    existingSchemaVersionOpt.get should be("icn_1.0.3")
+//
+//    sipRepo.latestSipOpt.map { sip =>
+//      sip.copyWithSourceTo(copiedSipZip, new File(targetDir, "should.not.appear"), prefixRepoOpt)
+//    }.getOrElse(throw new RuntimeException)
+//
+//    deleteQuietly(existingSipZip)
+//
+//    sipRepo.latestSipOpt.map { sip =>
+//      sip.createSipMapper.isDefined should be(true)
+//      sip.schemaVersionOpt.get should be("icn_1.0.4")
+//      sip.sipMappingOpt.map { sipMapping =>
+//        sipMapping.recMapping.getSchemaVersion.toString should be("icn_1.0.4")
+//      }.getOrElse(throw new RuntimeException)
+//    }.getOrElse(throw new RuntimeException)
+//  }
 }

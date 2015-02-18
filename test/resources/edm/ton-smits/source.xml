@@ -38,7 +38,8 @@
 <dimension.unit>cm</dimension.unit>
 <dimension.unit>cm</dimension.unit>
 <dimension.unit>cm</dimension.unit>
-<reproduction.reference>T:\TonSmitsHuis\Collectie\Schilderij\001.jpg</reproduction.reference>
+<reproduction.reference>http://bull.com/Schilderij/001.jpg</reproduction.reference>
+<!--<reproduction.reference>T:\TonSmitsHuis\Collectie\Schilderij\001.jpg</reproduction.reference>-->
 <creator.role>kunstschilder</creator.role>
 <current_owner>Stichting Ton Smits</current_owner>
 <institution.code>0827</institution.code>
@@ -200,7 +201,8 @@
 <dimension.unit>cm</dimension.unit>
 <dimension.unit>cm</dimension.unit>
 <dimension.unit>cm</dimension.unit>
-<reproduction.reference>T:\TonSmitsHuis\Collectie\Schilderij\002.jpg</reproduction.reference>
+    <reproduction.reference>http://bull.com/Schilderij/002.jpg</reproduction.reference>
+<!--<reproduction.reference>T:\TonSmitsHuis\Collectie\Schilderij\002.jpg</reproduction.reference>-->
 <creator.role>kunstschilder</creator.role>
 <current_owner>Stichting Ton Smits</current_owner>
 <institution.code>0827</institution.code>
@@ -383,7 +385,8 @@
 <dimension.unit>cm</dimension.unit>
 <dimension.unit>cm</dimension.unit>
 <dimension.unit>cm</dimension.unit>
-<reproduction.reference>T:\TonSmitsHuis\Collectie\Schilderij\003.jpg</reproduction.reference>
+    <reproduction.reference>http://bull.com/Schilderij/003.jpg</reproduction.reference>
+<!--<reproduction.reference>T:\TonSmitsHuis\Collectie\Schilderij\003.jpg</reproduction.reference>-->
 <creator.role>cartoonist</creator.role>
 <current_owner>Stichting Ton Smits</current_owner>
 <institution.code>0827</institution.code>

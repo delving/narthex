@@ -14,7 +14,7 @@ import triplestore.TripleStore
 
 class TestTripleStore extends PlaySpec with OneAppPerSuite {
 
-  val TEST_STORE: String = "http://localhost:3030/narthex-test"
+  val TEST_STORE: String = "http://localhost:3030/test"
   val ts = new TripleStore(TEST_STORE)
 
   def cleanStart() = {
@@ -27,7 +27,7 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
   "The processed repo should deliver sparql update chunks " in {
     cleanStart()
     val admin = await(new ActorStore(ts).authenticate("gumby", "secret gumby")).get
-    val info = await(DsInfo.create(admin, "gumby-set", CharacterMapped, "gfx", ts))
+    val info = await(DsInfo.createDsInfo(admin, "gumby-set", CharacterMapped, "gfx", ts))
     val home = new File(getClass.getResource(s"/processed").getFile)
     val repo = new ProcessedRepo(home, info)
     val reader = repo.createGraphReader(None, ProgressReporter())
@@ -41,25 +41,25 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
   "The dataset info object should be able to interact with the store" in {
     cleanStart()
     val admin = await(new ActorStore(ts).authenticate("gumby", "secret gumby")).get
-    val info = await(DsInfo.create(admin, "gumby-set", CharacterMapped, "gfx", ts))
-    info.getLiteralProp(datasetMapToPrefix) must be(Some("gfx"))
-    val model = await(info.setSingularLiteralProps(
+    val dsInfo = await(DsInfo.createDsInfo(admin, "gumby-set", CharacterMapped, "gfx", ts))
+    dsInfo.getLiteralProp(datasetMapToPrefix) must be(Some("gfx"))
+    val model = await(dsInfo.setSingularLiteralProps(
       datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
     ))
-    model.size() must be(6)
-    info.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
-    await(info.removeLiteralProp(datasetMapToPrefix))
-    info.getLiteralProp(datasetMapToPrefix) must be(None)
-    model.size() must be(5)
+    model.size() must be(9)
+    dsInfo.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
+    await(dsInfo.removeLiteralProp(datasetMapToPrefix))
+    dsInfo.getLiteralProp(datasetMapToPrefix) must be(None)
+    model.size() must be(8)
 
-    await(info.setSingularLiteralProps(datasetMapToPrefix -> "pfx2"))
+    await(dsInfo.setSingularLiteralProps(datasetMapToPrefix -> "pfx2"))
 
     // uri prop
-    info.getUriPropValueList(skosField) must be(List.empty)
-    await(info.addUriProp(skosField, "http://purl.org/dc/elements/1.1/type"))
-    info.getUriPropValueList(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
-    await(info.addUriProp(skosField, "http://purl.org/dc/elements/1.1/creator"))
+    dsInfo.getUriPropValueList(skosField) must be(List.empty)
+    await(dsInfo.addUriProp(skosField, "http://purl.org/dc/elements/1.1/type"))
+    dsInfo.getUriPropValueList(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
+    await(dsInfo.addUriProp(skosField, "http://purl.org/dc/elements/1.1/creator"))
 
     def testTwo(di: DsInfo) = {
       val two = di.getUriPropValueList(skosField)
@@ -69,17 +69,17 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     }
 
     // only tests the contained model
-    testTwo(info)
+    testTwo(dsInfo)
 
     // a fresh one that has to fetch anew
-    val fresh: DsInfo = await(DsInfo.check("gumby-set", ts)).get
+    val fresh: DsInfo = await(DsInfo.freshDsInfo("gumby-set", ts)).get
 
     fresh.getLiteralProp(datasetMapToPrefix) must be(Some("pfx2"))
     testTwo(fresh)
 
     //    println(Json.prettyPrint(dsInfoWrites.writes(fresh)))
 
-    val second = await(DsInfo.create(admin, "pokey-set", CharacterMapped, "", ts))
+    val second = await(DsInfo.createDsInfo(admin, "pokey-set", CharacterMapped, "", ts))
 
     val infoList = await(listDsInfo(ts))
 
