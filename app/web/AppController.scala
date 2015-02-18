@@ -113,7 +113,7 @@ object AppController extends Controller with Security {
   }
 
   def uploadDataset(spec: String) = Secure(parse.multipartFormData) { session => request =>
-    val datasetContext = orgContext.datasetContext(spec)
+    val datasetContext = orgContext.datasetContext(spec).mkdirs
     request.body.file("file").map { file =>
       val error = datasetContext.acceptUpload(file.filename, { target =>
         file.ref.moveTo(target, replace = true)
