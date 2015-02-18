@@ -276,10 +276,11 @@ define(["angular"], function () {
             });
         }
 
-        $scope.tabOpen = "metadata";
+        $scope.leftTabOpen = "metadata";
+        $scope.rightTabOpen = ds.harvestURL ? "harvest" : "drop";
         $scope.expanded = false;
 
-        $scope.$watch("expanded", function(expanded) {
+        $scope.$watch("expanded", function (expanded) {
             if (expanded) {
                 refreshInfo();
             }
@@ -367,7 +368,6 @@ define(["angular"], function () {
         }
 
 
-
         function unchanged(fieldNameList) {
             var unchanged = true;
             _.forEach(fieldNameList, function (fieldName) {
@@ -417,7 +417,7 @@ define(["angular"], function () {
             setProperties(harvestCronFields);
         };
 
-        $scope.isLater = function(currState, nextState) {
+        $scope.isLater = function (currState, nextState) {
             if (!nextState) return true;
             if (currState) return currState.dt > nextState.dt;
             return false;
