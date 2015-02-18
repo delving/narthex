@@ -55,42 +55,39 @@ object VocabInfo {
 
   def listVocabInfo(ts: TripleStore): Future[List[VocabInfo]] = {
     ts.query(listVocabInfoQ).map { list =>
-      list.map { entry =>
-        val spec = entry("spec").text
-        new VocabInfo(spec, ts)
-      }
+      list.map(entry => new VocabInfo(spec = entry("spec").text, ts))
     }
   }
 
-  def getInfoUri(spec: String) = s"$NX_URI_PREFIX/skos-info/${urlEncodeValue(spec)}"
+  def getVocabInfoUri(spec: String) = s"$NX_URI_PREFIX/skos-info/${urlEncodeValue(spec)}"
 
-  def getDataUri(spec: String) = s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}"
+  def getVocabDataUri(spec: String) = s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}"
 
-  def create(owner: NXActor, spec: String, ts: TripleStore): Future[VocabInfo] = {
+  def createVocabInfo(owner: NXActor, spec: String, ts: TripleStore): Future[VocabInfo] = {
     val m = ModelFactory.createDefaultModel()
-    val uri = m.getResource(getInfoUri(spec))
+    val uri = m.getResource(getVocabInfoUri(spec))
     m.add(uri, m.getProperty(rdfType), m.getResource(skosCollection))
     m.add(uri, m.getProperty(skosSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
     ts.dataPost(uri.getURI, m).map(ok => new VocabInfo(spec, ts))
   }
 
+  def freshVocabInfo(spec: String, ts: TripleStore): Future[Option[VocabInfo]] = {
+    val infoUri = getVocabInfoUri(spec)
+    ts.ask(checkVocabQ(infoUri)).map(answer => if (answer) Some(new VocabInfo(spec, ts)) else None)
+  }
+
   def withVocabInfo[T](spec: String)(block: VocabInfo => T) = {
-    val cacheName = getInfoUri(spec)
+    val cacheName = getVocabInfoUri(spec)
     Cache.getAs[VocabInfo](cacheName) map { vocabInfo =>
       block(vocabInfo)
     } getOrElse {
-      val vocabInfo = Await.result(check(spec, ts), 30.seconds).getOrElse{
+      val vocabInfo = Await.result(freshVocabInfo(spec, ts), 30.seconds).getOrElse {
         throw new RuntimeException(s"No skos info for $spec")
       }
       Cache.set(cacheName, vocabInfo, 5.minutes)
       block(vocabInfo)
     }
-  }
-
-  def check(spec: String, ts: TripleStore): Future[Option[VocabInfo]] = {
-    val infoUri = getInfoUri(spec)
-    ts.ask(checkVocabQ(infoUri)).map(answer => if (answer) Some(new VocabInfo(spec, ts)) else None)
   }
 }
 
@@ -100,11 +97,11 @@ class VocabInfo(val spec: String, ts: TripleStore) extends SkosGraph {
 
   def now: String = timeToString(new DateTime())
 
-  val uri = getInfoUri(spec)
+  val uri = getVocabInfoUri(spec)
 
   val skosified = false
-  
-  val dataUri = getDataUri(spec)
+
+  val dataUri = getVocabDataUri(spec)
 
   // could cache as well so that the get happens less
   lazy val futureModel = ts.dataGet(uri)
@@ -151,7 +148,7 @@ class VocabInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     )
   }
 
-  def dropVocabulary = ts.update(dropVocabularyQ(uri)).map(ok =>true)
+  def dropVocabulary = ts.update(dropVocabularyQ(uri)).map(ok => true)
 
   lazy val vocabulary = new SkosVocabulary(spec, dataUri, ts)
 

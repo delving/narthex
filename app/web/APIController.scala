@@ -122,9 +122,8 @@ object APIController extends Controller {
 
   def downloadSipZip(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
     Logger.info(s"Download sip-zip $spec")
-    val sipFileOpt = orgContext.datasetContextOption(spec).flatMap { datasetContext =>
-      datasetContext.sipFiles.headOption
-    }
+    val datasetContext = orgContext.datasetContext(spec)
+    val sipFileOpt = datasetContext.sipFiles.headOption
     sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $spec"))
   }
 

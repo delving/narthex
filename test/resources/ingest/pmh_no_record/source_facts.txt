@@ -1,5 +1,0 @@
-
-sourceType=pmh
-recordRoot=/OAI-PMH/ListRecords/record/metadata
-uniqueId=/OAI-PMH/ListRecords/record/header/identifier
-recordContainer=/OAI-PMH/ListRecords/record/metadata

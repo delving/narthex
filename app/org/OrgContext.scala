@@ -19,6 +19,7 @@ package org
 import java.io.File
 import java.util
 
+import dataset.DsInfo.withDsInfo
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
 import harvest.PeriodicHarvest
@@ -43,6 +44,7 @@ object OrgContext {
   val config = Play.current.configuration
 
   def configFlag(name: String): Boolean = config.getBoolean(name).getOrElse(false)
+
   def configString(name: String) = config.getString(name).getOrElse(
     throw new RuntimeException(s"Missing config string: $name")
   )
@@ -52,6 +54,7 @@ object OrgContext {
   def configInt(name: String) = config.getInt(name).getOrElse(
     throw new RuntimeException(s"Missing config int: $name")
   )
+
   def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List("secret"))
 
   val USER_HOME = System.getProperty("user.home")
@@ -108,39 +111,26 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
     // todo: categories too when they are no longer defined there
   }
 
-  def createDatasetRepo(owner: NXActor, spec: String, characterString: String, prefix: String) = {
+  def createDsInfo(owner: NXActor, spec: String, characterString: String, prefix: String) = {
     val character = DsInfo.getCharacter(characterString).get
-    DsInfo.create(owner, spec, character, prefix, ts)
+    DsInfo.createDsInfo(owner, spec, character, prefix, ts)
   }
 
-  def datasetContext(spec: String): DatasetContext = datasetContextOption(spec).getOrElse(
-    throw new RuntimeException(s"Expected $spec dataset to exist")
-  )
-
-  def datasetContextOption(spec: String): Option[DatasetContext] = {
-    val futureInfoOpt = DsInfo.check(spec, ts)
-    val infoOpt = Await.result(futureInfoOpt, 5.seconds)
-    infoOpt.map(info => new DatasetContext(this, info).mkdirs)
-  }
+  def datasetContext(spec: String): DatasetContext = withDsInfo(spec)(dsInfo => new DatasetContext(this, dsInfo))
 
   def vocabMappingStore(specA: String, specB: String): VocabMappingStore = {
     val futureStore = for {
-      infoA <- VocabInfo.check(specA, ts)
-      infoB <- VocabInfo.check(specB, ts)
+      infoA <- VocabInfo.freshVocabInfo(specA, ts)
+      infoB <- VocabInfo.freshVocabInfo(specB, ts)
     } yield (infoA, infoB) match {
-      case (Some(a), Some(b)) => new VocabMappingStore(a, b, ts)
-      case _ => throw new RuntimeException(s"No vocabulary mapping found for $specA, $specB")
-    }
+        case (Some(a), Some(b)) => new VocabMappingStore(a, b, ts)
+        case _ => throw new RuntimeException(s"No vocabulary mapping found for $specA, $specB")
+      }
     Await.result(futureStore, 15.seconds)
   }
 
-  def termMappingStore(dsSpec: String): TermMappingStore = {
-    val futureStore = DsInfo.check(dsSpec, ts).map { dsInfoOpt =>
-      dsInfoOpt.map( info =>new TermMappingStore(info, ts)).getOrElse(
-        throw new RuntimeException(s"No term mapping found for $dsSpec")
-      )
-    }
-    Await.result(futureStore, 15.seconds)
+  def termMappingStore(spec: String): TermMappingStore = {
+    withDsInfo(spec)(dsInfo => new TermMappingStore(dsInfo, ts))
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(
@@ -167,10 +157,10 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
     }
   }
 
-//  def thesaurusDb(conceptSchemeA: String, conceptSchemeB: String) =
-//    if (conceptSchemeA > conceptSchemeB)
-//      new ThesaurusDb(conceptSchemeB, conceptSchemeA)
-//    else
-//      new ThesaurusDb(conceptSchemeA, conceptSchemeB)
+  //  def thesaurusDb(conceptSchemeA: String, conceptSchemeB: String) =
+  //    if (conceptSchemeA > conceptSchemeB)
+  //      new ThesaurusDb(conceptSchemeB, conceptSchemeA)
+  //    else
+  //      new ThesaurusDb(conceptSchemeA, conceptSchemeB)
 
 }

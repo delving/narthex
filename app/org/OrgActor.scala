@@ -49,21 +49,18 @@ class OrgActor extends Actor with ActorLogging {
 
   def receive = {
 
-    case DatasetMessage(name, message, question) =>
-      val actorOpt = context.child(name).map(Some(_)).getOrElse {
-        orgContext.datasetContextOption(name).map { datasetContext =>
-          val datasetActor = context.actorOf(props(datasetContext), name)
-          log.info(s"Created dataset actor $datasetActor")
-          context.watch(datasetActor)
-          datasetActor
-        }
+    case DatasetMessage(spec, message, question) =>
+      val actor: ActorRef = context.child(spec).getOrElse {
+        val datasetContext = orgContext.datasetContext(spec)
+        val datasetActor = context.actorOf(props(datasetContext), spec)
+        log.info(s"Created dataset actor $datasetActor")
+        context.watch(datasetActor)
+        datasetActor
       }
-      actorOpt.map { actor =>
-        if (question) {
-          actor ! DatasetQuestion(sender(), message)
-        } else {
-          actor ! message
-        }
+      if (question) {
+        actor ! DatasetQuestion(sender(), message)
+      } else {
+        actor ! message
       }
 
     case DatasetsCountCategories(datasets) =>

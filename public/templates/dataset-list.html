@@ -27,7 +27,7 @@
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
     </div>
-    <div ng-repeat="dataset in filteredDatasets" class="col-lg-6">
+    <div ng-repeat="dataset in filteredDatasets" class="col-md-12">
         <div data-ng-include="'dataset-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">
@@ -126,11 +126,19 @@
                         <div><strong>Raw</strong></div>
                         <div class="small">{{ dataset.stateRaw.d }}</div>
                         <div>{{ dataset.stateRaw.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-success" data-ng-click="startRawAnalysis()">
+                                <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
+                            </button>
+                        </div>
                     </div>
                     <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state">
                         <div><strong>Raw Analyzed</strong></div>
                         <div class="small">{{ dataset.stateRawAnalyzed.d }}</div>
                         <div>{{ dataset.stateRawAnalyzed.t }}</div>
+                        <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
+                            <i class="fa fa-fw fa-eye"></i> <span>Delimit</span>
+                        </button>
                     </div>
                     <div data-ng-show="dataset.stateSourced" class="ds-state">
                         <div><strong>Sourced</strong></div>
@@ -165,7 +173,7 @@
                         <div class="small">{{ dataset.stateProcessed.d }}</div>
                         <div>{{ dataset.stateProcessed.t }}</div>
                         <div>
-                            <button class="btn btn-sm btn-success" data-ng-click="startAnalysis()">
+                            <button class="btn btn-sm btn-success" data-ng-click="startProcessedAnalysis()">
                                 <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
                             </button>
                         </div>
@@ -199,7 +207,6 @@
                     </div>
                 </div>
 
-
                 <div data-ng-if="dataset.datasetErrorMessage">
                     <div class="alert alert-danger" role="alert">
                         <button type="button" class="close" data-dismiss="alert" data-ng-click="clearError()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -214,61 +221,64 @@
                     <span data-ng-show="dataset.metadata.dataProvider">from "{{ dataset.metadata.dataProvider }}": </span>
                 </h4>
 
-                <div class="tabbable dataset-tabs">
+                <div class="row">
+                    <div class="tabbable dataset-tabs col-md-6">
 
-                    <ul class="nav nav-tabs" role="tablist">
-                        <li ng-class="{'active':tabOpen === 'metadata'}" >
-                            <a href role="tab" data-ng-click="tabOpen = 'metadata'">Metadata</a>
-                        </li>
-                        <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="dropSupported">
-                            <a href role="tab" data-ng-click="tabOpen = 'drop'">File Drop</a>
-                        </li>
-                        <li ng-class="{'active':tabOpen === 'harvest'}">
-                            <a href role="tab" data-ng-click="tabOpen ='harvest'">Harvest</a>
-                        </li>
-                        <li ng-class="{'active':tabOpen === 'harvest-cron'}" data-ng-show="dataset.harvestType">
-                            <a href role="tab" data-ng-click="tabOpen = 'harvest-cron'">Update</a>
-                        </li>
-                        <li ng-class="{'active':tabOpen === 'publication'}">
-                            <a href role="tab" data-ng-click="tabOpen = 'publication'">Publication</a>
-                        </li>
-                        <li ng-class="{'active':tabOpen === 'categories'}" data-ng-show="categoriesEnabled">
-                            <a href role="tab" data-ng-click="tabOpen ='categories'">Categories</a>
-                        </li>
-                        <li data-ng-class="{'active':tabOpen === 'check'}">
-                            <a href role="tab" data-ng-click="tabOpen ='check'">Links</a>
-                        </li>
-                        <li data-ng-class="{'active':tabOpen==='delete'}">
-                            <a href role="tab" data-ng-click="tabOpen ='delete'" class="bg-danger"><i class="fa fa-trash fa-lg"></i>&nbsp;</a>
-                        </li>
-                        <!--<li ng-class="{'active':tabOpen === 'info'}">-->
-                            <!--<a href role="tab" data-ng-click="tabOpen ='info'">Info</a>-->
-                        <!--</li>-->
-                        <!--<li ng-class="{'active':tabOpen === 'sip-zip'}" data-ng-show="dataset.sipFacts">-->
-                            <!--<a href role="tab" data-ng-click="tabOpen = 'sip-zip'">SIP Files</a>-->
-                        <!--</li>-->
-                    </ul>
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li ng-class="{'active':leftTabOpen === 'metadata'}" >
+                                <a href role="tab" data-ng-click="leftTabOpen = 'metadata'">Metadata</a>
+                            </li>
+                            <li ng-class="{'active':leftTabOpen === 'publication'}">
+                                <a href role="tab" data-ng-click="leftTabOpen = 'publication'">Publication</a>
+                            </li>
+                            <li ng-class="{'active':leftTabOpen === 'categories'}" data-ng-show="categoriesEnabled">
+                                <a href role="tab" data-ng-click="leftTabOpen ='categories'">Categories</a>
+                            </li>
+                            <li data-ng-class="{'active':leftTabOpen === 'check'}">
+                                <a href role="tab" data-ng-click="leftTabOpen ='check'">Links</a>
+                            </li>
+                        </ul>
 
-                    <div class="tab-content clearfix">
-                        <div ng-switch="tabOpen">
-                            <div ng-switch-when="metadata"><div data-ng-include="'dataset-metadata-form.html'">metadata form</div></div>
-                            <div ng-switch-when="drop"><div data-ng-include="'drop-file-dataset.html'">drop file</div></div>
-                            <div ng-switch-when="harvest"><div data-ng-include="'harvest-form.html'">harvest form</div></div>
-                            <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
-                            <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
-                            <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
-                            <div ng-switch-when="check"><div data-ng-include="'check-links.html'">check links</div></div>
-                            <div ng-switch-when="delete"><div data-ng-include="'dataset-delete.html'">deletion form</div></div>
-                            <!--<div ng-switch-when="info"><div data-ng-include="'info.html'">info</div></div>-->
-                            <!--<div ng-switch-when="sip-zip"><div data-ng-include="'sip-zip.html'">sip zip</div></div>-->
+                        <div class="tab-content clearfix">
+                            <div ng-switch="leftTabOpen">
+                                <div ng-switch-when="metadata"><div data-ng-include="'dataset-metadata-form.html'">metadata form</div></div>
+                                <div ng-switch-when="publication"><div data-ng-include="'publication-form.html'">publication form</div></div>
+                                <div ng-switch-when="categories"><div data-ng-include="'categories-form.html'">categories form</div></div>
+                                <div ng-switch-when="check"><div data-ng-include="'check-links.html'">check links</div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tabbable dataset-tabs col-md-6">
+
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li ng-class="{'active':rightTabOpen === 'drop'}" data-ng-show="dropSupported">
+                                <a href role="tab" data-ng-click="rightTabOpen = 'drop'">File Drop</a>
+                            </li>
+                            <li ng-class="{'active':rightTabOpen === 'harvest'}">
+                                <a href role="tab" data-ng-click="rightTabOpen ='harvest'">Harvest</a>
+                            </li>
+                            <li ng-class="{'active':rightTabOpen === 'harvest-cron'}" data-ng-show="dataset.harvestType">
+                                <a href role="tab" data-ng-click="rightTabOpen = 'harvest-cron'">Update</a>
+                            </li>
+                            <li data-ng-class="{'active':rightTabOpen==='delete'}">
+                                <a href role="tab" data-ng-click="rightTabOpen ='delete'" class="bg-danger"><i class="fa fa-trash fa-lg"></i>&nbsp;</a>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content clearfix">
+                            <div ng-switch="rightTabOpen">
+                                <div ng-switch-when="drop"><div data-ng-include="'drop-file-dataset.html'">drop file</div></div>
+                                <div ng-switch-when="harvest"><div data-ng-include="'harvest-form.html'">harvest form</div></div>
+                                <div ng-switch-when="harvest-cron"><div data-ng-include="'harvest-cron-form.html'">harvest cron form</div></div>
+                                <div ng-switch-when="delete"><div data-ng-include="'dataset-delete.html'">deletion form</div></div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
-
 </script>
 
 <script type="text/ng-template" id="dataset-metadata-form.html" class="">

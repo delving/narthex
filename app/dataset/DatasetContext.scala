@@ -22,7 +22,8 @@ import java.util.Date
 import analysis.NodeRepo
 import com.hp.hpl.jena.rdf.model.Model
 import dataset.DatasetActor._
-import dataset.DsInfo.{DsMetadata, DsState}
+import dataset.DsInfo.DsMetadata
+import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
 import mapping.CategoryDb
@@ -74,9 +75,11 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
+  // todo: recordContainer instead perhaps
   def setRawDelimiters(recordRoot: String, uniqueId: String) = rawFile.map { raw =>
     createSourceRepo(SourceFacts("from-raw", recordRoot, uniqueId, None))
     dropTree()
+    dsInfo.removeState(RAW_ANALYZED)
     OrgActor.actor ! dsInfo.createMessage(AdoptSource(raw))
   }
 
@@ -87,9 +90,10 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
     if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
       setTargetFile(createRawFile(fileName))
-      dsInfo.setState(DsState.RAW)
+      dsInfo.setState(RAW)
+      dsInfo.removeState(RAW_ANALYZED)
+      dsInfo.removeState(ANALYZED)
       dropTree()
-      OrgActor.actor ! dsInfo.createMessage(StartAnalysis)
       None
     }
     else if (fileName.endsWith(".sip.zip")) {
@@ -160,21 +164,21 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def dropSourceRepo() = {
     deleteQuietly(rawDir)
-    dsInfo.removeState(DsState.RAW)
+    dsInfo.removeState(RAW)
     deleteQuietly(sourceDir)
-    dsInfo.removeState(DsState.SOURCED)
+    dsInfo.removeState(SOURCED)
   }
 
   def startSipZipGeneration() = OrgActor.actor ! dsInfo.createMessage(GenerateSipZip)
 
   def dropProcessedRepo() = {
     deleteQuietly(processedDir)
-    dsInfo.removeState(DsState.PROCESSED)
+    dsInfo.removeState(PROCESSED)
   }
 
   def dropTree() = {
     deleteQuietly(treeDir)
-    dsInfo.removeState(DsState.ANALYZED)
+    dsInfo.removeState(ANALYZED)
   }
 
   // ==================================================

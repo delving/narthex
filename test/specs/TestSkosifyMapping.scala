@@ -2,39 +2,25 @@ package specs
 
 import java.io.File
 
-import dataset.SourceRepo.SourceFacts
-import dataset.{DsInfo, ProcessedRepo, SipRepo, SourceRepo}
+import dataset.{DsInfo, ProcessedRepo}
 import mapping.SkosMappingStore.SkosMapping
 import mapping.{TermMappingStore, VocabInfo}
 import org.ActorStore
 import org.ActorStore.NXActor
 import org.OrgContext._
-import org.apache.commons.io.FileUtils
 import org.scalatestplus.play._
 import play.api.test.Helpers._
 import record.PocketParser.Pocket
 import services.FileHandling._
-import services.{FileHandling, ProgressReporter}
+import services.{FileHandling, ProgressReporter, StringHandling}
 import triplestore.GraphProperties._
+import triplestore.Sparql
 import triplestore.Sparql._
-import triplestore.{Sparql, TripleStore}
 
-class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
+class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM with FakeTripleStore {
 
-  val ts = new TripleStore("http://localhost:3030/test", true)
-  val dcType = "http://purl.org/dc/elements/1.1/type"
+  val skosifiedPropertyUri = "http://purl.org/dc/elements/1.1/subject"
   lazy val actorPrefix = s"$NX_URI_PREFIX/actor"
-
-  def cleanStart() = {
-    await(ts.update("DROP ALL"))
-    countGraphs must be(0)
-  }
-
-  def countGraphs = {
-    val graphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")).map(m => m("g"))
-    println(graphs.mkString("\n"))
-    graphs.size
-  }
 
   "The first user should authenticate and become administrator" in {
     cleanStart()
@@ -62,47 +48,32 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
 
   "A dataset should be loaded" in {
     // prepare for reading and mapping
-    val home = new File(getClass.getResource("/ingest/sip_source").getFile)
-    val sipsDir = FileHandling.clearDir(new File("/tmp/test-sip-source-sips"))
-    FileUtils.copyDirectory(home, sipsDir)
-    val datasetName = "frans_hals"
-    val naveDomain = "http://nave"
-    val sipRepo = new SipRepo(sipsDir, datasetName, naveDomain)
-    val sourceDir = FileHandling.clearDir(new File("/tmp/test-sip-source-4"))
-    val sipOpt = sipRepo.latestSipOpt
-    sipOpt.isDefined must be(true)
+    val sipRepo = createSipRepoFromDir(0)
+    val latestSip = sipRepo.latestSipOpt.get
     // create processed repo
     val actorStore = new ActorStore(ts)
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
-    val info = await(DsInfo.create(admin, "frans_hals", DsInfo.CharacterMapped, "icn", ts))
+    val info = await(DsInfo.createDsInfo(admin, "ton-smits-huis", DsInfo.CharacterMapped, "edm", ts))
     val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info)
-    var sourceFile = processedRepo.createFile
-    val sourceOutput = writer(sourceFile)
+    var processedFile = processedRepo.createFile
+    val processedWriter = writer(processedFile)
     // fill processed repo by mapping records
-    sipOpt.foreach { sip =>
-      sip.spec must be(Some("frans-hals-museum"))
-      val source = sip.copySourceToTempFile
-      source.isDefined must be(true)
-      val sourceFacts = SourceFacts(
-        "delving-sip-source",
-        "/delving-sip-source/input",
-        "/delving-sip-source/input/@id",
-        Some("/delving-sip-source/input/@id")
-      )
-      val sourceRepo = SourceRepo.createClean(sourceDir, sourceFacts)
-      sourceRepo.acceptFile(source.get, ProgressReporter())
-      var mappedPockets = List.empty[Pocket]
-      sip.createSipMapper.map { sipMapper =>
-        def pocketCatcher(pocket: Pocket): Unit = {
-          var mappedPocket = sipMapper.executeMapping(pocket)
-          mappedPocket.map(_.writeTo(sourceOutput))
-          mappedPockets = mappedPocket.get :: mappedPockets
-        }
-        sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
+    latestSip.spec must be(Some("ton-smits-huis"))
+    val source = latestSip.copySourceToTempFile
+    source.isDefined must be(true)
+    val sourceRepo = createSourceRepo
+    sourceRepo.acceptFile(source.get, ProgressReporter())
+    var mappedPockets = List.empty[Pocket]
+    latestSip.createSipMapper.map { sipMapper =>
+      def pocketCatcher(pocket: Pocket): Unit = {
+        var mappedPocket = sipMapper.executeMapping(pocket)
+        mappedPocket.map(_.writeTo(processedWriter))
+        mappedPockets = mappedPocket.get :: mappedPockets
       }
-      mappedPockets.size must be(5)
+      sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
     }
-    sourceOutput.close()
+    mappedPockets.size must be(3)
+    processedWriter.close()
     // push the mapped results to the triple store
     val graphReader = processedRepo.createGraphReader(None, ProgressReporter())
     while (graphReader.isActive) {
@@ -111,28 +82,28 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
         await(ts.update(update))
       }
     }
-    countGraphs must be(7)
+    countGraphs must be(5)
   }
 
   "Skosification must work" in {
     // mark a field as skosified
-    countGraphs must be(7)
-    val info = await(DsInfo.check("frans_hals", ts)).get
-    await(info.addUriProp(skosField, dcType))
-    info.getUriPropValueList(skosField) must be(List(dcType))
-    await(info.removeUriProp(skosField, dcType))
+    countGraphs must be(5)
+    val info = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
+    await(info.addUriProp(skosField, skosifiedPropertyUri))
+    info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
+    await(info.removeUriProp(skosField, skosifiedPropertyUri))
     info.getUriPropValueList(skosField) must be(List())
-    await(info.addUriProp(skosField, dcType))
-    info.getUriPropValueList(skosField) must be(List(dcType))
+    await(info.addUriProp(skosField, skosifiedPropertyUri))
+    info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
 
     val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(Sparql.SkosifiedField(_))
 
     val skosificationCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCasesQ(sf, 2)))))
 
-    skosificationCases.map(println)
+//    skosificationCases.map(c => println(s"SKOSIFICATION CASE: $c"))
 
     skosificationCases.map { sc =>
-      val graph = DsInfo.getSkosUri(sc.sf.datasetUri)
+      val graph = DsInfo.getDsSkosUri(sc.sf.datasetUri)
       val valueUri: String = sc.mintedUri
       val checkEntry = s"ASK { GRAPH <$graph> { <$valueUri> a <http://www.w3.org/2004/02/skos/core#Concept> } }"
       val syncedTrue: String = s"ASK { GRAPH <$graph> { <$valueUri> <$synced> true } }"
@@ -162,7 +133,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
 
     skosifiedFields.map { sf =>
       val remaining = await(ts.query(listSkosificationCasesQ(sf, 100)))
-      remaining.size must be(3)
+      remaining.size must be(17)
     }
 
     await(ts.ask(skosificationCasesExist(skosifiedFields.head))) must be(true)
@@ -179,13 +150,15 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite {
   "Mapping a skosified entry to a vocab entry" in {
     val actorStore = new ActorStore(ts)
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
-    val classyInfo = await(VocabInfo.create(admin, "gtaa_classy", ts))
+    val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy", ts))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
     await(ts.dataPutXMLFile(classyInfo.dataUri, classyFile))
-    val info = await(DsInfo.check("frans_hals", ts)).get
-    info.getUriPropValueList(skosField) must be(List(dcType))
+    val info = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
+    info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
     val store = new TermMappingStore(info, ts)
-    val uriA = "http://localhost:9000/resolve/dataset/frans_hals/schilderij%3B%20portret%20%7C%20painting%3B%20portrait"
+    // todo: nothing checks whether this literal or uri string are legitimate
+    val literalString = "vogels"
+    val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${StringHandling.slugify(literalString)}"
     val uriB = "http://data.beeldengeluid.nl/gtaa/24829"
     val mapping = SkosMapping(admin, uriA, uriB)
     await(store.toggleMapping(mapping, classyInfo)) must be("added")

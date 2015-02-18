@@ -27,6 +27,8 @@ import org.OrgContext._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
+import play.api.Play.current
+import play.api.cache.Cache
 import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.urlEncodeValue
 import services.Temporal._
@@ -40,6 +42,8 @@ import scala.concurrent._
 import scala.concurrent.duration._
 
 object DsInfo {
+
+  val cacheTime = 10.minutes
 
   case class DsCharacter(name: String)
 
@@ -86,13 +90,13 @@ object DsInfo {
     }
   }
 
-  def getDsUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
+  def getDsInfoUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
 
-  def getSkosUri(datasetUri: String) = s"$datasetUri/skos"
+  def getDsSkosUri(datasetUri: String) = s"$datasetUri/skos"
 
-  def create(owner: NXActor, spec: String, character: DsCharacter, mapToPrefix: String, ts: TripleStore): Future[DsInfo] = {
+  def createDsInfo(owner: NXActor, spec: String, character: DsCharacter, mapToPrefix: String, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
-    val uri = m.getResource(getDsUri(spec))
+    val uri = m.getResource(getDsInfoUri(spec))
     m.add(uri, m.getProperty(rdfType), m.getResource(datasetEntity))
     m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
@@ -102,18 +106,33 @@ object DsInfo {
     m.add(uri, m.getProperty(publishIndex.uri), trueLiteral)
     m.add(uri, m.getProperty(publishLOD.uri), trueLiteral)
     if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
-    ts.dataPost(uri.getURI, m).map(ok => new DsInfo(spec, ts))
+    ts.dataPost(uri.getURI, m).map { ok =>
+      val cacheName = getDsInfoUri(spec)
+      val dsInfo = new DsInfo(spec, ts)
+      Cache.set(cacheName, dsInfo, cacheTime)
+      dsInfo
+    }
   }
 
-  def check(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
-    // todo: cache these
-    ts.ask(askIfDatasetExistsQ(getDsUri(spec))).map(answer =>
-      if (answer)
-        Some(new DsInfo(spec, ts))
-      else
-        None
+  def freshDsInfo(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
+    ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec))).map(answer =>
+      if (answer) Some(new DsInfo(spec, ts)) else None
     )
   }
+
+  def withDsInfo[T](spec: String)(block: DsInfo => T) = {
+    val cacheName = getDsInfoUri(spec)
+    Cache.getAs[DsInfo](cacheName) map { dsInfo =>
+      block(dsInfo)
+    } getOrElse {
+      val dsInfo = Await.result(freshDsInfo(spec, ts), 30.seconds).getOrElse {
+        throw new RuntimeException(s"No dataset info for $spec")
+      }
+      Cache.set(cacheName, dsInfo, cacheTime)
+      block(dsInfo)
+    }
+  }
+
 }
 
 class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
@@ -122,11 +141,11 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
 
   def now: String = timeToString(new DateTime())
 
-  val uri = getDsUri(spec)
+  val uri = getDsInfoUri(spec)
 
   val skosified = true
 
-  val skosUri = getSkosUri(uri)
+  val skosUri = getDsSkosUri(uri)
 
   // could cache as well so that the get happens less
   lazy val futureModel = ts.dataGet(uri)
@@ -167,7 +186,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def getUriPropValueList(prop: NXProp): List[String] = {
-    m.listObjectsOfProperty(res, m.getProperty(prop.uri)).map(node => 
+    m.listObjectsOfProperty(res, m.getProperty(prop.uri)).map(node =>
       node.asLiteral().toString
     ).toList
   }

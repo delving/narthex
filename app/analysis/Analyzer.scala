@@ -41,11 +41,11 @@ import scala.concurrent._
 
 object Analyzer {
 
-  case class AnalyzeFile(file: File)
+  case class AnalyzeFile(file: File, processed: Boolean)
 
   case class AnalysisTreeComplete(json: JsValue)
 
-  case class AnalysisComplete(error: Option[String] = None)
+  case class AnalysisComplete(error: Option[String], processed: Boolean)
 
   def props(datasetContext: DatasetContext) = Props(new Analyzer(datasetContext))
 
@@ -57,6 +57,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
   var sorters = List.empty[ActorRef]
   var collators = List.empty[ActorRef]
   var recordCount = 0
+  var processedOpt:Option[Boolean] = None
 
   def receive = {
 
@@ -64,8 +65,9 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
       // todo: make sure the Analyzer can be interrupted
       progress.map(_.interruptBy(sender()))
 
-    case AnalyzeFile(file) =>
-      log.info(s"Analyzer on ${file.getName}")
+    case AnalyzeFile(file, processed) =>
+      log.info(s"Analyzer on $file processed=$processed")
+      processedOpt = Some(processed)
       datasetContext.dropTree()
       val (source, readProgress) = sourceFromFile(file)
       import context.dispatcher
@@ -89,14 +91,14 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
             }
             self ! AnalysisTreeComplete(Json.toJson(tree))
           case None =>
-            context.parent ! AnalysisComplete(Some(s"Interrupted while splitting ${file.getName}"))
+            context.parent ! AnalysisComplete(Some(s"Interrupted while splitting $file"), processed)
         }
         source.close()
       } onFailure {
         case ex: Exception =>
           source.close()
           log.error("Problem reading the file", ex)
-          context.parent ! AnalysisComplete(Some(s"Unable to read ${file.getName}: $ex"))
+          context.parent ! AnalysisComplete(Some(s"Unable to read $file: $ex"), processed)
       }
 
     case AnalysisTreeComplete(json) =>
@@ -149,10 +151,10 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
           progress.foreach { p =>
             if (sorters.isEmpty && collators.isEmpty) {
               if (p.keepWorking) {
-                context.parent ! AnalysisComplete()
+                context.parent ! AnalysisComplete(None, processedOpt.get)
               }
               else {
-                context.parent ! AnalysisComplete(Some("Interrupted while analyzing"))
+                context.parent ! AnalysisComplete(Some("Interrupted while analyzing"), processedOpt.get)
               }
             }
             else {

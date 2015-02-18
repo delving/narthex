@@ -60,12 +60,13 @@ class TripleStore(storeURL: String, logQueries: Boolean = false) {
 
   val logFile = new File("/tmp/triple-store.log")
   val logOutput = if (logQueries) Some(new PrintWriter(logFile)) else None
+  var queryIndex = 0
 
   def logSparql(sparql: String) = logOutput.map { w =>
     val numbered = sparql.split("\n").zipWithIndex.map(tup => s"${tup._2 + 1}: ${tup._1}").mkString("\n")
+    queryIndex += 1
+    w.println("=" * 40 + s"($queryIndex)")
     w.println(numbered)
-    w.println("=" * 40)
-    w.flush()
   }
 
   def ask(sparqlQuery: String): Future[Boolean] = {
