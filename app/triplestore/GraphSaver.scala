@@ -73,7 +73,7 @@ class GraphSaver(repo: ProcessedRepo, ts: TripleStore) extends Actor with ActorL
 
     case Some(chunk: GraphChunk) =>
       log.info("Save a chunk of graphs")
-      val update = ts.update(chunk.toSparqlUpdate)
+      val update = ts.up.sparqlUpdate(chunk.toSparqlUpdate)
       update.map(ok => sendGraphChunkOpt())
       update.onFailure {
         case ex: Throwable => failure(ex)

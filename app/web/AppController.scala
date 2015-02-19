@@ -199,7 +199,7 @@ object AppController extends Controller with Security {
           } yield Sparql.createCases(dsInfo, histogram)
           val futureModel = casesOpt.map { cases =>
             val update = cases.map(_.ensureSkosEntryQ).mkString
-            ts.update(update).flatMap(ok => dsInfo.addUriProp(skosField, skosFieldUri))
+            ts.up.sparqlUpdate(update).flatMap(ok => dsInfo.addUriProp(skosField, skosFieldUri))
           } getOrElse {
             dsInfo.addUriProp(skosField, skosFieldUri)
           }
@@ -245,7 +245,7 @@ object AppController extends Controller with Security {
     withVocabInfo(spec) { vocabInfo =>
       request.body.file("file").map { bodyFile =>
         val file = bodyFile.ref.file
-        ts.dataPutXMLFile(vocabInfo.dataUri, file).map { ok =>
+        ts.up.dataPutXMLFile(vocabInfo.dataUri, file).map { ok =>
           val now: String = timeToString(new DateTime())
           vocabInfo.setSingularLiteralProps(skosUploadTime -> now)
           Ok

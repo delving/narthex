@@ -54,22 +54,77 @@ object TripleStore {
 
   class TripleStoreException(message: String) extends Exception(message)
 
+  def apply(storeUrl: String, logQueries: Boolean = false) = new Fuseki(storeUrl, logQueries)
 }
 
-class TripleStore(storeURL: String, logQueries: Boolean = false) {
+trait TripleStoreUpdate {
+
+  def sparqlUpdate(sparqlUpdate: String): Future[Unit]
+
+  def dataPost(graphUri: String, model: Model): Future[Unit]
+
+  def dataPutXMLFile(graphUri: String, file: File): Future[Unit]
+
+  def dataPutGraph(graphUri: String, model: Model): Future[Unit]
+}
+
+trait TripleStore {
+
+  def ask(sparqlQuery: String): Future[Boolean]
+
+  def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]]
+
+  def dataGet(graphUri: String): Future[Model]
+
+  val up: TripleStoreUpdate
+}
+
+class DoubleFuseki(acceptanceStoreUrl: String, productionStoreUrl: String, logQueries: Boolean) extends TripleStore {
+  val acceptance = new Fuseki(acceptanceStoreUrl, logQueries)
+  val production = new Fuseki(productionStoreUrl, false)
+
+  override def ask(sparqlQuery: String): Future[Boolean] = acceptance.ask(sparqlQuery)
+
+  override def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = acceptance.query(sparqlQuery)
+
+  override def dataGet(graphUri: String): Future[Model] = acceptance.dataGet(graphUri)
+
+  val up = new SingleUpdate
+
+  class SingleUpdate extends TripleStoreUpdate {
+
+    override def dataPutGraph(graphUri: String, model: Model): Future[Unit] = acceptance.up.dataPutGraph(graphUri, model)
+
+    override def dataPost(graphUri: String, model: Model): Future[Unit] = acceptance.up.dataPost(graphUri, model)
+
+    override def sparqlUpdate(sparqlUpdate: String): Future[Unit] = acceptance.up.sparqlUpdate(sparqlUpdate)
+
+    override def dataPutXMLFile(graphUri: String, file: File): Future[Unit] = acceptance.up.dataPutXMLFile(graphUri, file)
+
+  }
+
+}
+
+class Fuseki(storeURL: String, logQueries: Boolean) extends TripleStore {
 
   val logFile = new File("/tmp/triple-store.log")
   val logOutput = if (logQueries) Some(new PrintWriter(logFile)) else None
   var queryIndex = 0
 
-  def logSparql(sparql: String) = logOutput.map { w =>
+  private def dataRequest(graphUri: String) = WS.url(s"$storeURL/data").withQueryString("graph" -> graphUri)
+
+  private def logSparql(sparql: String) = logOutput.map { w =>
     val numbered = sparql.split("\n").zipWithIndex.map(tup => s"${tup._2 + 1}: ${tup._1}").mkString("\n")
     queryIndex += 1
     w.println("=" * 40 + s"($queryIndex)")
     w.println(numbered)
   }
 
-  def ask(sparqlQuery: String): Future[Boolean] = {
+  private def checkResponse(response: WSResponse): Unit = if (response.status / 100 != 2) {
+    throw new TripleStoreException(s"${response.statusText}: ${response.body}")
+  }
+
+  override def ask(sparqlQuery: String): Future[Boolean] = {
     logSparql(sparqlQuery)
     val request = WS.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
@@ -83,7 +138,7 @@ class TripleStore(storeURL: String, logQueries: Boolean = false) {
     }
   }
 
-  def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = {
+  override def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = {
     logSparql(sparqlQuery)
     val request = WS.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
@@ -102,46 +157,7 @@ class TripleStore(storeURL: String, logQueries: Boolean = false) {
     }
   }
 
-  private def checkResponse(response: WSResponse): Unit = if (response.status / 100 != 2) {
-    throw new TripleStoreException(s"${response.statusText}: ${response.body}")
-  }
-
-  def update(sparqlUpdate: String) = {
-    logSparql(sparqlUpdate)
-    val request = WS.url(s"$storeURL/update").withHeaders(
-      "Content-Type" -> "application/sparql-update; charset=utf-8"
-    )
-    request.post(sparqlUpdate).map(checkResponse)
-  }
-
-  private def dataRequest(graphUri: String) = WS.url(s"$storeURL/data").withQueryString("graph" -> graphUri)
-
-  def dataPost(graphUri: String, model: Model) = {
-    val sw = new StringWriter()
-    model.write(sw, "TURTLE")
-    println(s"posting: $graphUri")
-    dataRequest(graphUri).withHeaders(
-      "Content-Type" -> "text/turtle; charset=utf-8"
-    ).post(sw.toString).map(checkResponse)
-  }
-
-  def dataPutXMLFile(graphUri: String, file: File) = {
-    println(s"Posting $graphUri")
-    dataRequest(graphUri).withHeaders(
-      "Content-Type" -> "application/rdf+xml; charset=utf-8"
-    ).put(file).map(checkResponse)
-  }
-
-  def dataPutGraph(graphUri: String, model: Model) = {
-    val sw = new StringWriter()
-    model.write(sw, "TURTLE")
-    println(s"posting: $graphUri")
-    dataRequest(graphUri).withHeaders(
-      "Content-Type" -> "text/turtle; charset=utf-8"
-    ).put(sw.toString).map(checkResponse)
-  }
-
-  def dataGet(graphUri: String): Future[Model] = {
+  override def dataGet(graphUri: String): Future[Model] = {
     dataRequest(graphUri).withHeaders(
       "Accept" -> "text/turtle"
     ).get().map { response =>
@@ -151,6 +167,43 @@ class TripleStore(storeURL: String, logQueries: Boolean = false) {
       val netty = response.underlying[NettyResponse]
       val body = netty.getResponseBody("UTF-8")
       ModelFactory.createDefaultModel().read(new StringReader(body), null, "TURTLE")
+    }
+  }
+
+  val up = new FusekiUpdate
+
+  class FusekiUpdate extends TripleStoreUpdate {
+    override def sparqlUpdate(sparqlUpdate: String) = {
+      logSparql(sparqlUpdate)
+      val request = WS.url(s"$storeURL/update").withHeaders(
+        "Content-Type" -> "application/sparql-update; charset=utf-8"
+      )
+      request.post(sparqlUpdate).map(checkResponse)
+    }
+
+    override def dataPost(graphUri: String, model: Model) = {
+      val sw = new StringWriter()
+      model.write(sw, "TURTLE")
+      println(s"posting: $graphUri")
+      dataRequest(graphUri).withHeaders(
+        "Content-Type" -> "text/turtle; charset=utf-8"
+      ).post(sw.toString).map(checkResponse)
+    }
+
+    override def dataPutXMLFile(graphUri: String, file: File) = {
+      println(s"Posting $graphUri")
+      dataRequest(graphUri).withHeaders(
+        "Content-Type" -> "application/rdf+xml; charset=utf-8"
+      ).put(file).map(checkResponse)
+    }
+
+    override def dataPutGraph(graphUri: String, model: Model) = {
+      val sw = new StringWriter()
+      model.write(sw, "TURTLE")
+      println(s"posting: $graphUri")
+      dataRequest(graphUri).withHeaders(
+        "Content-Type" -> "text/turtle; charset=utf-8"
+      ).put(sw.toString).map(checkResponse)
     }
   }
 

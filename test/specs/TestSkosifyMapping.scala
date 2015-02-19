@@ -55,7 +55,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
     val info = await(DsInfo.createDsInfo(admin, "ton-smits-huis", DsInfo.CharacterMapped, "edm", ts))
     val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info)
-    var processedFile = processedRepo.createFile
+    var processedFile = processedRepo.createOutput.xmlFile
     val processedWriter = writer(processedFile)
     // fill processed repo by mapping records
     latestSip.spec must be(Some("ton-smits-huis"))
@@ -79,7 +79,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     while (graphReader.isActive) {
       graphReader.readChunk.map { chunk =>
         val update = chunk.toSparqlUpdate
-        await(ts.update(update))
+        await(ts.up.sparqlUpdate(update))
       }
     }
     countGraphs must be(5)
@@ -110,10 +110,10 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
       val syncedFalse: String = s"ASK { GRAPH <$graph> { <$valueUri> <$synced> false } }"
 
       await(ts.ask(checkEntry)) must be(false)
-      await(ts.update(sc.ensureSkosEntryQ))
+      await(ts.up.sparqlUpdate(sc.ensureSkosEntryQ))
       // synced should be false
       await(ts.ask(syncedFalse)) must be(true)
-      await(ts.update(
+      await(ts.up.sparqlUpdate(
         s"""
            |WITH <$graph>
            |DELETE { <$valueUri> <$synced> false }
@@ -124,11 +124,11 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
       // now synced is forced to true
       await(ts.ask(syncedTrue)) must be(true)
       await(ts.ask(syncedFalse)) must be(false)
-      await(ts.update(sc.ensureSkosEntryQ))
+      await(ts.up.sparqlUpdate(sc.ensureSkosEntryQ))
       // it still should be true
       await(ts.ask(syncedTrue)) must be(true)
       await(ts.ask(checkEntry)) must be(true)
-      await(ts.update(sc.literalToUriQ))
+      await(ts.up.sparqlUpdate(sc.literalToUriQ))
     }
 
     skosifiedFields.map { sf =>
@@ -140,8 +140,8 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
 
     val finalCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCasesQ(sf, 100)))))
     finalCases.map { sc =>
-      await(ts.update(sc.ensureSkosEntryQ))
-      await(ts.update(sc.literalToUriQ))
+      await(ts.up.sparqlUpdate(sc.ensureSkosEntryQ))
+      await(ts.up.sparqlUpdate(sc.literalToUriQ))
     }
 
     await(ts.ask(skosificationCasesExist(skosifiedFields.head))) must be(false)
@@ -152,7 +152,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
     val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy", ts))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
-    await(ts.dataPutXMLFile(classyInfo.dataUri, classyFile))
+    await(ts.up.dataPutXMLFile(classyInfo.dataUri, classyFile))
     val info = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
     info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
     val store = new TermMappingStore(info, ts)

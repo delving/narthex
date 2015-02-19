@@ -69,7 +69,7 @@ object VocabInfo {
     m.add(uri, m.getProperty(rdfType), m.getResource(skosCollection))
     m.add(uri, m.getProperty(skosSpec.uri), m.createLiteral(spec))
     m.add(uri, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
-    ts.dataPost(uri.getURI, m).map(ok => new VocabInfo(spec, ts))
+    ts.up.dataPost(uri.getURI, m).map(ok => new VocabInfo(spec, ts))
   }
 
   def freshVocabInfo(spec: String, ts: TripleStore): Future[Option[VocabInfo]] = {
@@ -123,7 +123,7 @@ class VocabInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   def setSingularLiteralProps(propVal: (NXProp, String)*): Future[Model] = {
     val sparqlPerProp = propVal.map(pv => updatePropertyQ(uri, pv._1, pv._2))
     val sparql = sparqlPerProp.mkString(";\n")
-    ts.update(sparql).map { ok =>
+    ts.up.sparqlUpdate(sparql).map { ok =>
       propVal.foreach { pv =>
         val prop = m.getProperty(pv._1.uri)
         m.removeAll(uriResource, prop, null)
@@ -134,7 +134,7 @@ class VocabInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def removeLiteralProp(prop: NXProp): Future[Model] = {
-    ts.update(removeLiteralPropertyQ(uri, prop)).map { ok =>
+    ts.up.sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
       m.removeAll(uriResource, m.getProperty(prop.uri), null)
     }
   }
@@ -148,7 +148,7 @@ class VocabInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     )
   }
 
-  def dropVocabulary = ts.update(dropVocabularyQ(uri)).map(ok => true)
+  def dropVocabulary = ts.up.sparqlUpdate(dropVocabularyQ(uri)).map(ok => true)
 
   lazy val vocabulary = new SkosVocabulary(spec, dataUri, ts)
 

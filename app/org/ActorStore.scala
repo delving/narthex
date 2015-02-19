@@ -106,7 +106,7 @@ class ActorStore(ts: TripleStore) {
     if (model.isEmpty) {
       val godUser = NXActor(actorName, None)
       userIntoModel(godUser, hash, None)
-      ts.dataPost(actorsGraph, model).map(ok => Some(godUser))
+      ts.up.dataPost(actorsGraph, model).map(ok => Some(godUser))
     }
     else {
       val actor: NXActor = NXActor(actorName, None)
@@ -140,7 +140,7 @@ class ActorStore(ts: TripleStore) {
     val hash = hashLiteral(password, usernameString)
     val newActor = NXActor(usernameString, Some(adminActor.uri))
     userIntoModel(newActor, hash, Some(adminActor)).map { actor: NXActor =>
-      ts.update(insertActorQ(newActor, hash.getString, adminActor)).map(ok => Some(actor))
+      ts.up.sparqlUpdate(insertActorQ(newActor, hash.getString, adminActor)).map(ok => Some(actor))
     } getOrElse {
       Future(None)
     }
@@ -148,7 +148,7 @@ class ActorStore(ts: TripleStore) {
 
   def setProfile(actor: NXActor, nxProfile: NXProfile): Future[Option[NXActor]] = {
     profileIntoModel(actor, nxProfile).map { actor =>
-      ts.update(setActorProfileQ(actor, nxProfile)).map(ok => Some(actor))
+      ts.up.sparqlUpdate(setActorProfileQ(actor, nxProfile)).map(ok => Some(actor))
     } getOrElse {
       Future(None)
     }
@@ -160,6 +160,6 @@ class ActorStore(ts: TripleStore) {
     val hash = hashLiteral(newPassword, actor.actorName)
     model.removeAll(actorResource, prop, null)
     model.add(actorResource, prop, hash)
-    ts.update(setActorPasswordQ(actor, hash.getString)).map(errorOpt => true)
+    ts.up.sparqlUpdate(setActorPasswordQ(actor, hash.getString)).map(errorOpt => true)
   }
 }
