@@ -10,19 +10,8 @@ import play.api.libs.json.Json
 import play.api.test.Helpers._
 import services.ProgressReporter
 import triplestore.GraphProperties._
-import triplestore.TripleStore
 
-class TestTripleStore extends PlaySpec with OneAppPerSuite {
-
-  val TEST_STORE: String = "http://localhost:3030/test"
-  val ts = new TripleStore(TEST_STORE)
-
-  def cleanStart() = {
-    await(ts.update("DROP ALL"))
-    countGraphs must be(0)
-  }
-
-  def countGraphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")).size
+class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore {
 
   "The processed repo should deliver sparql update chunks " in {
     cleanStart()
@@ -33,8 +22,8 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite {
     val reader = repo.createGraphReader(None, ProgressReporter())
     val chunk = reader.readChunk.get
     reader.close()
-    val sparql = chunk.toSparqlUpdate
-    await(ts.update(sparql))
+    val sparql = chunk.sparqlUpdateQ
+    await(ts.up.sparqlUpdate(sparql))
     countGraphs must be(14)
   }
 

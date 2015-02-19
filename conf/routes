@@ -70,8 +70,9 @@ GET         /narthex/sip-app                                                 web
 GET         /narthex/sip-app/:spec                                           web.SipAppController.downloadSipZip(spec)
 POST        /narthex/sip-app/:spec/:zipFileName                              web.SipAppController.uploadSipZip(spec, zipFileName)
 
-GET         /narthex/api/:apiKey                                             web.APIController.listDatasets(apiKey)
+#GET         /narthex/api/:apiKey                                             web.APIController.listDatasets(apiKey)
 GET         /narthex/api/:apiKey/:spec                                       web.APIController.pathsJSON(apiKey, spec)
+GET         /narthex/api/:apiKey/:spec/errors                                web.APIController.processingErrorsText(apiKey, spec)
 GET         /narthex/api/:apiKey/:spec/tree                                  web.APIController.indexJSON(apiKey, spec)
 GET         /narthex/api/:apiKey/:spec/uri/*path                             web.APIController.uriText(apiKey, spec, path)
 GET         /narthex/api/:apiKey/:spec/unique/*path                          web.APIController.uniqueText(apiKey, spec, path)

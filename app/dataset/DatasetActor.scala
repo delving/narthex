@@ -236,7 +236,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       log.info(s"Start analysis processed=$processed")
       if (processed) {
         val analyzer = context.actorOf(Analyzer.props(datasetContext), "analyzer-processed")
-        analyzer ! AnalyzeFile(datasetContext.processedRepo.baseFile, processed)
+        analyzer ! AnalyzeFile(datasetContext.processedRepo.baseOutput.xmlFile, processed)
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)
       }
       else {

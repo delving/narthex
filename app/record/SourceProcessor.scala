@@ -24,8 +24,8 @@ import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
 import dataset.SipRepo.URIErrorsException
 import eu.delving.groovy.DiscardRecordException
-import org.apache.commons.io.FileUtils
-import play.api.Logger
+import org.apache.commons.io.FileUtils.deleteQuietly
+import org.xml.sax.SAXException
 import record.PocketParser.Pocket
 import record.SourceProcessor._
 import services.FileHandling._
@@ -119,7 +119,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
           }
           else {
             sipFileOpt.map(_.delete())
-            FileUtils.deleteQuietly(datasetContext.pocketFile)
+            deleteQuietly(datasetContext.pocketFile)
             context.parent ! WorkFailure("Zero pockets generated")
           }
         } onFailure {
@@ -130,13 +130,13 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       }
 
     case Process(incrementalOpt) =>
-      val sourceFacts = datasetContext.sourceRepoOpt.map(_.sourceFacts).getOrElse{
+      val sourceFacts = datasetContext.sourceRepoOpt.map(_.sourceFacts).getOrElse {
         // todo: an exception should be interpreted by the parent as a WorkFailure!
         val message = s"No source facts for $datasetContext"
         context.parent ! WorkFailure(message)
         throw new RuntimeException(message)
       }
-      val sipMapper = datasetContext.sipMapperOpt.getOrElse{
+      val sipMapper = datasetContext.sipMapperOpt.getOrElse {
         // todo: an exception should be interpreted by the parent as a WorkFailure!
         val message = s"No sip mapper for $datasetContext"
         context.parent ! WorkFailure(message)
@@ -146,34 +146,42 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
 
       val work = future {
 
-        val sourceFile = datasetContext.processedRepo.createFile
-        val sourceOutput = writer(sourceFile)
+        val processedOutput = datasetContext.processedRepo.createOutput
+        val xmlOutput = writer(processedOutput.xmlFile)
+        val errorOutput = writer(processedOutput.errorFile)
         var validRecords = 0
         var invalidRecords = 0
         var time = System.currentTimeMillis()
+
+        def writeError(heading: String, error: String) = {
+          invalidRecords += 1
+          errorOutput.write(
+            s"""
+               |===== $invalidRecords: $heading =====
+               |$error
+             """.stripMargin.trim
+          )
+          errorOutput.write("\n")
+        }
 
         def catchPocket(rawPocket: Pocket): Unit = {
           val pocketTry = sipMapper.executeMapping(rawPocket)
           pocketTry match {
             case Success(pocket) =>
-              pocket.writeTo(sourceOutput)
+              pocket.writeTo(xmlOutput)
               validRecords += 1
 
             case Failure(ue: URIErrorsException) =>
-              // todo: write to errors file
-              Logger.info(s"Discard record: URI errors\n${ue.uriErrors.mkString("\n")}")
-              invalidRecords += 1
+              writeError("URI ERRORS", ue.uriErrors.mkString("\n"))
 
             case Failure(disc: DiscardRecordException) =>
-              Logger.info("Discard record: Discard record exception")
-              // todo: write to errors file
-              invalidRecords += 1
+              writeError("DISCARDED RECORD", disc.getMessage)
 
-            case Failure(unexpected) =>
-              Logger.info("Discard record: unexpected")
-              // todo: write to errors file
-              invalidRecords += 1
+            case Failure(sax: SAXException) =>
+              writeError("XSD ERROR", sax.getMessage)
 
+            case Failure(unexpected: Throwable) =>
+              writeError("UNEXPECTED ERROR", unexpected.toString)
           }
           val total = validRecords + invalidRecords
           if (total % 10000 == 0) {
@@ -205,7 +213,9 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
           }
         }
 
-        sourceOutput.close()
+        xmlOutput.close()
+        errorOutput.close()
+        if (invalidRecords == 0) deleteQuietly(processedOutput.errorFile)
         context.parent ! ProcessingComplete(validRecords, invalidRecords)
       }
 

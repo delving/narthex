@@ -21,7 +21,7 @@ import java.lang.Boolean.FALSE
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
 import org.apache.commons.io.input.CountingInputStream
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
-import services.FileHandling.ReadProgress
+import services.FileHandling.{ReadProgress, clearDir}
 import services.{FileHandling, ProgressReporter}
 import triplestore.GraphProperties._
 
@@ -33,23 +33,27 @@ import scala.collection.JavaConversions._
 
 object ProcessedRepo {
 
-  val SUFFIX = ".xml"
+  val XML_SUFFIX = ".xml"
+  val ERROR_SUFFIX = ".txt"
   val chunkSize = 1000
 
-  case class GraphChunk(dataset: Dataset) {
+  case class GraphChunk(dataset: Dataset, dsInfo: DsInfo) {
 
-    def sparqlUpdateGraph(dataset: Dataset, graphUri: String) = {
-      val model = dataset.getNamedModel(graphUri)
-      val triples = new StringWriter()
-      RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
-      s"""
+    def sparqlUpdateQ: String = {
+
+      def singleGraphUpdate(dataset: Dataset, graphUri: String) = {
+        val model = dataset.getNamedModel(graphUri)
+        val triples = new StringWriter()
+        RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
+        s"""
         |DROP SILENT GRAPH <$graphUri>;
         |INSERT DATA { GRAPH <$graphUri> {
         |$triples}};
        """.stripMargin.trim
-    }
+      }
 
-    def toSparqlUpdate: String = dataset.listNames().toList.map(g => sparqlUpdateGraph(dataset, g)).mkString("\n")
+      dataset.listNames().toList.map(g => singleGraphUpdate(dataset, g)).mkString("\n")
+    }
   }
 
   trait GraphReader {
@@ -60,6 +64,19 @@ object ProcessedRepo {
     def close(): Unit
   }
 
+  private def numberString(number: Int) = "%05d".format(number)
+
+  private def xmlFileName(number: Int) = s"${numberString(number)}$XML_SUFFIX"
+
+  private def errorFileName(number: Int) = s"${numberString(number)}$ERROR_SUFFIX"
+
+  private def getFileNumber(file: File): Int = file.getName.substring(0, file.getName.indexOf('.')).toInt
+
+  case class ProcessedOutput(home: File, number: Int) {
+    val xmlFile = new File(home, xmlFileName(number))
+    val errorFile = new File(home, errorFileName(number))
+  }
+
 }
 
 class ProcessedRepo(val home: File, dsInfo: DsInfo) {
@@ -68,32 +85,32 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   home.mkdir()
 
-  private def numberString(number: Int): String = "%05d".format(number)
-
-  private def sourceFileName(number: Int): String = s"${numberString(number)}$SUFFIX"
-
-  private def getFileNumber(file: File): Int = file.getName.substring(0, file.getName.indexOf('.')).toInt
-
-  private def xmlFile(number: Int): File = new File(home, sourceFileName(number))
-
   // ===================
 
-  val baseFile = xmlFile(0)
+  val baseOutput = ProcessedOutput(home, 0)
 
-  def nonEmpty: Boolean = baseFile.exists()
+  def nonEmpty: Boolean = baseOutput.xmlFile.exists()
 
-  def listFiles = home.listFiles().filter(f => f.getName.endsWith(SUFFIX)).sortBy(_.getName).toSeq
+  def listXmlFiles: List[File] = home.listFiles().filter(f => f.getName.endsWith(XML_SUFFIX)).sortBy(_.getName).toList
 
-  def createFile: File = {
-    val fileNumber = listFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
-    xmlFile(fileNumber)
+  def listOutputs: List[ProcessedOutput] = {
+    listXmlFiles.map(file => ProcessedOutput(home, getFileNumber(file))).toList
   }
 
-  def clear() = FileHandling.clearDir(home)
+  def createOutput: ProcessedOutput = {
+    val number = listOutputs.lastOption.map(_.number + 1).getOrElse(0)
+    ProcessedOutput(home, number)
+  }
+
+  def getLatestErrors: Option[File] = {
+    listOutputs.filter(_.errorFile.exists()).map(_.errorFile).lastOption
+  }
+
+  def clear() = clearDir(home)
 
   def createGraphReader(fileOpt: Option[File], progressReporter: ProgressReporter) = new GraphReader {
     val LineId = "<!--<([^>]*)>-->".r
-    var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listFiles)
+    var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listXmlFiles)
     val totalLength = (0L /: files.map(_.length()))(_ + _)
     var activeReader: Option[BufferedReader] = None
     var previousBytesRead = 0L
@@ -161,7 +178,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
           chunkComplete = true
         }
       }
-      if (graphCount > 0) Some(GraphChunk(dataset)) else None
+      if (graphCount > 0) Some(GraphChunk(dataset, dsInfo)) else None
     }
 
     override def close(): Unit = {

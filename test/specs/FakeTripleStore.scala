@@ -4,10 +4,10 @@ import play.api.test.Helpers._
 import triplestore.TripleStore
 
 trait FakeTripleStore {
-  val ts = new TripleStore("http://localhost:3030/test", true)
+  val ts = TripleStore.single("http://localhost:3030/test", true)
 
   def cleanStart() = {
-    await(ts.update("DROP ALL"))
+    await(ts.up.sparqlUpdate("DROP ALL"))
     if (countGraphs > 0) throw new RuntimeException
   }
 

@@ -22,6 +22,7 @@ import dataset.ProcessedRepo
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
+import triplestore.GraphProperties.acceptanceOnly
 
 object GraphSaver {
 
@@ -72,8 +73,8 @@ class GraphSaver(repo: ProcessedRepo, ts: TripleStore) extends Actor with ActorL
       sendGraphChunkOpt()
 
     case Some(chunk: GraphChunk) =>
-      log.info("Save chunk")
-      val update = ts.update(chunk.toSparqlUpdate)
+      log.info("Save a chunk of graphs")
+      val update = ts.up.acceptanceOnly(chunk.dsInfo.getBooleanProp(acceptanceOnly)).sparqlUpdate(chunk.sparqlUpdateQ)
       update.map(ok => sendGraphChunkOpt())
       update.onFailure {
         case ex: Throwable => failure(ex)
@@ -82,6 +83,7 @@ class GraphSaver(repo: ProcessedRepo, ts: TripleStore) extends Actor with ActorL
     case None =>
       reader.map(_.close())
       reader = None
+      log.info("All graphs saved")
       context.parent ! GraphSaveComplete
 
   }

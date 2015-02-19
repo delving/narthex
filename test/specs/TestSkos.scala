@@ -11,22 +11,9 @@ import org.apache.commons.io.FileUtils
 import org.scalatestplus.play._
 import play.api.libs.json.Json
 import play.api.test.Helpers._
-import triplestore.{Sparql, TripleStore}
+import triplestore.Sparql
 
-class TestSkos extends PlaySpec with OneAppPerSuite {
-
-  val ts = new TripleStore("http://localhost:3030/test", true)
-
-  def cleanStart() = {
-    await(ts.update("DROP ALL"))
-    countGraphs must be(0)
-  }
-
-  def countGraphs = {
-    val graphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")).map(m => m("g"))
-    println(graphs.mkString("\n"))
-    graphs.size
-  }
+class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
 
   "Mapping toggle should work" in {
     cleanStart()
@@ -36,10 +23,10 @@ class TestSkos extends PlaySpec with OneAppPerSuite {
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
     val genreInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_genre", ts))
     val genreFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-    await(ts.dataPutXMLFile(genreInfo.dataUri, genreFile))
+    await(ts.up.dataPutXMLFile(genreInfo.dataUri, genreFile))
     val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy", ts))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
-    await(ts.dataPutXMLFile(classyInfo.dataUri, classyFile))
+    await(ts.up.dataPutXMLFile(classyInfo.dataUri, classyFile))
     countGraphs must be(5)
 
     // check the stats
@@ -86,7 +73,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite {
     val actor = await(new ActorStore(ts).authenticate("gumby", "pokey")).get
     val di = await(DsInfo.createDsInfo(actor, dsSpec, DsInfo.CharacterMapped, "edm", ts))
     val cases = Sparql.createCases(di, json)
-    cases.foreach(c => await(ts.update(c.ensureSkosEntryQ)))
+    cases.foreach(c => await(ts.up.sparqlUpdate(c.ensureSkosEntryQ)))
     val first = di.vocabulary.concepts.head
     first.getAltLabel("").text must be("viltstift")
     first.frequency must be(Some(6))

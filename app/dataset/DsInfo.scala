@@ -106,7 +106,7 @@ object DsInfo {
     m.add(uri, m.getProperty(publishIndex.uri), trueLiteral)
     m.add(uri, m.getProperty(publishLOD.uri), trueLiteral)
     if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
-    ts.dataPost(uri.getURI, m).map { ok =>
+    ts.up.dataPost(uri.getURI, m).map { ok =>
       val cacheName = getDsInfoUri(spec)
       val dsInfo = new DsInfo(spec, ts)
       Cache.set(cacheName, dsInfo, cacheTime)
@@ -168,7 +168,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     val sparqlPerProp = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2)).toList
     val withSynced = updateSyncedFalse(uri) :: sparqlPerProp
     val sparql = withSynced.mkString(";\n")
-    ts.update(sparql).map { ok =>
+    ts.up.sparqlUpdate(sparql).map { ok =>
       propVals.foreach { pv =>
         val prop = m.getProperty(pv._1.uri)
         m.removeAll(res, prop, null)
@@ -179,7 +179,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def removeLiteralProp(prop: NXProp): Future[Model] = {
-    ts.update(removeLiteralPropertyQ(uri, prop)).map { ok =>
+    ts.up.sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
       m.removeAll(res, m.getProperty(prop.uri), null)
       m
     }
@@ -192,19 +192,19 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def addUriProp(prop: NXProp, uriValueString: String): Future[Model] = {
-    ts.update(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+    ts.up.sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
       m.add(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
   }
 
   def removeUriProp(prop: NXProp, uriValueString: String): Future[Model] = futureModel.flatMap { m =>
-    ts.update(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+    ts.up.sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
       m.remove(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
   }
 
   def dropDataset = {
-    ts.update(deleteDatasetQ(uri, skosUri)).map(ok => true)
+    ts.up.sparqlUpdate(deleteDatasetQ(uri, skosUri)).map(ok => true)
   }
 
   // from the old datasetdb

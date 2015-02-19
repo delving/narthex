@@ -34,16 +34,10 @@ import scala.concurrent.Future
 
 object APIController extends Controller {
 
-  def listDatasets(apiKey: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-//    val datasets = repo.orgDb.listDatasets.map {
-//      dataset =>
-//        val lists = DatasetDb.DATASET_PROPERTY_LISTS.flatMap(name => DatasetDb.toJsObjectEntryOption(dataset.info, name))
-//        Json.obj("name" -> dataset.spec, "info" -> JsObject(lists))
-//    }
-//    //      Ok(JsArray(datasets))
-//    // todo: this produces a list within a list.  fix it and inform Sjoerd
-//    Ok(Json.prettyPrint(Json.arr(datasets))).as(ContentTypes.JSON)
-    NotImplemented
+  def processingErrorsText(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val latestErrorFile = datasetContext.processedRepo.getLatestErrors
+    latestErrorFile.map(OkFile(_)).getOrElse(NotFound(s"No errors found for $spec"))
   }
 
   def pathsJSON(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>

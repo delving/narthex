@@ -72,11 +72,25 @@ object OrgContext {
 
   val SHOW_CATEGORIES = configFlag("categories")
 
-  val TRIPLE_STORE_URL = configString("triple-store")
-
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 
-  val ts = new TripleStore(TRIPLE_STORE_URL, configFlag("triple-store-log"))
+  val ts = config.getString("triple-store").map { tripleStoreUrl =>
+    TripleStore.single(
+      tripleStoreUrl,
+      configFlag("triple-store-log")
+    )
+  } getOrElse {
+    config.getObject("triple-stores").map { tripleStoreUrls =>
+      TripleStore.double(
+        acceptanceStoreUrl = tripleStoreUrls.get("acceptance").render(),
+        productionStoreUrl = tripleStoreUrls.get("production").render(),
+        configFlag("triple-store-log")
+      )
+    } getOrElse {
+      throw new RuntimeException("Must have either triple-store= or triple-stores { acceptance=, production= }")
+    }
+  }
+
   val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
   val harvestTicker = system.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
   val skosifier = system.actorOf(Skosifier.props(ts), "Skosifier")

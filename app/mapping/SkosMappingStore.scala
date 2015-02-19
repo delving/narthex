@@ -49,10 +49,10 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, ts: TripleStore) {
   def toggleMapping(mapping: SkosMapping): Future[String] = {
     ts.ask(mapping.doesMappingExist).flatMap { exists =>
       if (exists) {
-        ts.update(mapping.deleteMapping).map(ok => "removed")
+        ts.up.sparqlUpdate(mapping.deleteMapping).map(ok => "removed")
       }
       else {
-        ts.update(mapping.insertMapping(skosA, skosB)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertMapping(skosA, skosB)).map(ok => "added")
       }
     }
   }
@@ -71,10 +71,10 @@ class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
   def toggleMapping(mapping: SkosMapping, vocabGraph: SkosGraph): Future[String] = {
     ts.ask(mapping.doesMappingExist).flatMap { exists =>
       if (exists) {
-        ts.update(mapping.deleteMapping).map(ok => "removed")
+        ts.up.sparqlUpdate(mapping.deleteMapping).map(ok => "removed")
       }
       else {
-        ts.update(mapping.insertMapping(termGraph, vocabGraph)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertMapping(termGraph, vocabGraph)).map(ok => "added")
       }
     }
   }
