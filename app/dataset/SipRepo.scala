@@ -17,6 +17,7 @@ package dataset
 
 import java.io._
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipOutputStream}
+import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamSource
 import javax.xml.validation.Validator
 
@@ -284,10 +285,12 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
       //        println(s"### BEGIN RecordXml ${"-" * 30}\n${pocket.text}\n### END RecordXml ${"-" * 30}")
       val metadataRecord = factory.metadataRecordFrom(pocket.text)
       val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree)
+      // check uri errors
       val uriErrors = result.getUriErrors.toList
-      if (uriErrors.nonEmpty) {
-        throw new URIErrorsException(uriErrors)
-      }
+      if (uriErrors.nonEmpty) throw new URIErrorsException(uriErrors)
+      // validate using XSD
+      sipMapping.validatorOpt.map(_.validate(new DOMSource(result.root())))
+      // re-wrap in an RDF construction
       val root = result.root().asInstanceOf[Element]
       val doc = root.getOwnerDocument
       root.removeAttribute("xsi:schemaLocation")
@@ -306,26 +309,9 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
           kids.foreach(rdfElement.appendChild)
           rdfElement
       }
+      // deliver the pocket
       val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")
       Pocket(rdfAbout, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI))
-
-      // the serializer gives us <?xml..?>
-      //        val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")
-      //        val validationExceptionOpt: Option[Exception] = sipMapping.validatorOpt.flatMap { validator =>
-      //          try {
-      //            validator.validate(new DOMSource(root))
-      //            None
-      //          }
-      //          catch {
-      //            case e: Exception => Some(e)
-      //          }
-      //        }
-      //        validationExceptionOpt.map { validationException =>
-      //          Logger.info("Invalid record " + pocket.id)
-      //          None
-      //        } getOrElse {
-      //          Some(Pocket(rdfAbout, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI)))
-      //        }
     }
   }
 
