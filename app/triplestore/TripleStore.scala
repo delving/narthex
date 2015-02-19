@@ -71,6 +71,8 @@ trait TripleStoreUpdate {
   def dataPutGraph(graphUri: String, model: Model): Future[Unit]
 
   def acceptanceOnly(acceptanceOnly: Boolean): TripleStoreUpdate
+  
+  val production: TripleStoreUpdate
 
 }
 
@@ -87,40 +89,44 @@ trait TripleStore {
 }
 
 class DoubleFuseki(acceptanceStoreUrl: String, productionStoreUrl: String, logQueries: Boolean) extends TripleStore {
-  val acceptance = new Fuseki(acceptanceStoreUrl, logQueries)
-  val production = new Fuseki(productionStoreUrl, false)
+  val accFuseki = new Fuseki(acceptanceStoreUrl, logQueries)
+  val prodFuseki = new Fuseki(productionStoreUrl, false)
 
-  override def ask(sparqlQuery: String) = acceptance.ask(sparqlQuery)
+  override def ask(sparqlQuery: String) = accFuseki.ask(sparqlQuery)
 
-  override def query(sparqlQuery: String) = acceptance.query(sparqlQuery)
+  override def query(sparqlQuery: String) = accFuseki.query(sparqlQuery)
 
-  override def dataGet(graphUri: String) = acceptance.dataGet(graphUri)
+  override def dataGet(graphUri: String) = accFuseki.dataGet(graphUri)
 
   val up = new DoubleUpdate(false)
 
   class DoubleUpdate(acceptanceOnly: Boolean) extends TripleStoreUpdate {
 
     override def sparqlUpdate(sparqlUpdate: String) = {
-      if (!acceptanceOnly) production.up.sparqlUpdate(sparqlUpdate)
-      acceptance.up.sparqlUpdate(sparqlUpdate)
+      if (!acceptanceOnly) prodFuseki.up.sparqlUpdate(sparqlUpdate)
+      accFuseki.up.sparqlUpdate(sparqlUpdate)
     }
 
     override def dataPutGraph(graphUri: String, model: Model) = {
-      if (!acceptanceOnly) production.up.dataPutGraph(graphUri, model)
-      acceptance.up.dataPutGraph(graphUri, model)
+      if (!acceptanceOnly) prodFuseki.up.dataPutGraph(graphUri, model)
+      accFuseki.up.dataPutGraph(graphUri, model)
     }
 
     override def dataPost(graphUri: String, model: Model) = {
-      if (!acceptanceOnly) production.up.dataPost(graphUri, model)
-      acceptance.up.dataPost(graphUri, model)
+      if (!acceptanceOnly) prodFuseki.up.dataPost(graphUri, model)
+      accFuseki.up.dataPost(graphUri, model)
     }
 
     override def dataPutXMLFile(graphUri: String, file: File) = {
-      if (!acceptanceOnly) production.up.dataPutXMLFile(graphUri, file)
-      acceptance.up.dataPutXMLFile(graphUri, file)
+      if (!acceptanceOnly) prodFuseki.up.dataPutXMLFile(graphUri, file)
+      accFuseki.up.dataPutXMLFile(graphUri, file)
     }
 
-    override def acceptanceOnly(acceptanceOnly: Boolean): TripleStoreUpdate = new DoubleUpdate(acceptanceOnly)
+    lazy val other = new DoubleUpdate(!acceptanceOnly)
+
+    override def acceptanceOnly(wanted: Boolean) = if (acceptanceOnly == wanted) this else other
+
+    override val production = prodFuseki.up
   }
 
 }
@@ -227,6 +233,8 @@ class Fuseki(storeURL: String, logQueries: Boolean) extends TripleStore {
     }
 
     override def acceptanceOnly(acceptanceOnly: Boolean) = this
+
+    override val production: TripleStoreUpdate = this
   }
 
 }

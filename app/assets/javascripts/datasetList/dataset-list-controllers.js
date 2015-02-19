@@ -422,6 +422,13 @@ define(["angular"], function () {
             $location.search({});
         };
 
+        $scope.toggleDatasetProduction = function() {
+            datasetListService.toggleDatasetProduction().then(function(data) {
+                // todo: data.acceptanceOnly?
+                refreshInfo()
+            });
+        };
+
         function command(command, areYouSure, after) {
             if (areYouSure && !confirm(areYouSure)) return;
             datasetListService.command(ds.datasetSpec, command).then(function (reply) {

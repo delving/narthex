@@ -105,6 +105,7 @@ object DsInfo {
     m.add(uri, m.getProperty(publishOAIPMH.uri), trueLiteral)
     m.add(uri, m.getProperty(publishIndex.uri), trueLiteral)
     m.add(uri, m.getProperty(publishLOD.uri), trueLiteral)
+    m.add(uri, m.getProperty(acceptanceOnly.uri), trueLiteral)
     if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.up.dataPost(uri.getURI, m).map { ok =>
       val cacheName = getDsInfoUri(spec)
@@ -208,6 +209,25 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   // from the old datasetdb
+
+  def toggleProduction(): Future[Boolean] = {
+    val production = ts.up.production
+    if (getBooleanProp(acceptanceOnly)) {
+      for {
+        datasetModel <- ts.dataGet(uri)
+        putDataset <- production.dataPutGraph(uri, datasetModel)
+        skosModel <- ts.dataGet(skosUri)
+        putSkos <- production.dataPutGraph(skosUri, skosModel)
+        propertySet <- setSingularLiteralProps(acceptanceOnly -> "false")
+      } yield false
+    }
+    else {
+      for {
+        datasetDelete <- production.sparqlUpdate(deleteDatasetQ(uri, skosUri))
+        propertySet <- setSingularLiteralProps(acceptanceOnly -> "true")
+      } yield true
+    }
+  }
 
   def setState(state: DsState) = setSingularLiteralProps(state.prop -> now)
 

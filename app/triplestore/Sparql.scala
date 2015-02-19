@@ -156,9 +156,7 @@ object Sparql {
       |WITH <$uri>
       |INSERT { <$uri> <$deleted> true }
       |WHERE { ?s ?p ?o };
-      |WITH <$skosUri>
-      |DELETE { ?s ?p ?o }
-      |WHERE { ?s ?p ?o };
+      |DROP SILENT GRAPH <$skosUri>
       |DELETE {
       |   GRAPH ?g {
       |      ?s ?p ?o .
