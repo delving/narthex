@@ -37,20 +37,23 @@ object ProcessedRepo {
   val ERROR_SUFFIX = ".txt"
   val chunkSize = 1000
 
-  case class GraphChunk(dataset: Dataset) {
+  case class GraphChunk(dataset: Dataset, dsInfo: DsInfo) {
 
-    def sparqlUpdateGraph(dataset: Dataset, graphUri: String) = {
-      val model = dataset.getNamedModel(graphUri)
-      val triples = new StringWriter()
-      RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
-      s"""
+    def sparqlUpdateQ: String = {
+
+      def singleGraphUpdate(dataset: Dataset, graphUri: String) = {
+        val model = dataset.getNamedModel(graphUri)
+        val triples = new StringWriter()
+        RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
+        s"""
         |DROP SILENT GRAPH <$graphUri>;
         |INSERT DATA { GRAPH <$graphUri> {
         |$triples}};
        """.stripMargin.trim
-    }
+      }
 
-    def toSparqlUpdate: String = dataset.listNames().toList.map(g => sparqlUpdateGraph(dataset, g)).mkString("\n")
+      dataset.listNames().toList.map(g => singleGraphUpdate(dataset, g)).mkString("\n")
+    }
   }
 
   trait GraphReader {
@@ -175,7 +178,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
           chunkComplete = true
         }
       }
-      if (graphCount > 0) Some(GraphChunk(dataset)) else None
+      if (graphCount > 0) Some(GraphChunk(dataset, dsInfo)) else None
     }
 
     override def close(): Unit = {

@@ -22,7 +22,7 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
     val reader = repo.createGraphReader(None, ProgressReporter())
     val chunk = reader.readChunk.get
     reader.close()
-    val sparql = chunk.toSparqlUpdate
+    val sparql = chunk.sparqlUpdateQ
     await(ts.up.sparqlUpdate(sparql))
     countGraphs must be(14)
   }

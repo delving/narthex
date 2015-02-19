@@ -78,7 +78,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val graphReader = processedRepo.createGraphReader(None, ProgressReporter())
     while (graphReader.isActive) {
       graphReader.readChunk.map { chunk =>
-        val update = chunk.toSparqlUpdate
+        val update = chunk.sparqlUpdateQ
         await(ts.up.sparqlUpdate(update))
       }
     }

@@ -4,7 +4,7 @@ import play.api.test.Helpers._
 import triplestore.TripleStore
 
 trait FakeTripleStore {
-  val ts = TripleStore("http://localhost:3030/test", true)
+  val ts = TripleStore.single("http://localhost:3030/test", true)
 
   def cleanStart() = {
     await(ts.up.sparqlUpdate("DROP ALL"))

@@ -55,6 +55,7 @@ object GraphProperties {
   val belongsTo = NXProp("belongsTo")
   val synced = NXProp("synced")
   val deleted = NXProp("deleted")
+  val acceptanceOnly = NXProp("acceptanceOnly")
 
   val datasetCharacter = NXProp("datasetCharacter")
 
