@@ -99,6 +99,10 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
     ProcessedOutput(home, number)
   }
 
+  def getLatestErrors: Option[File] = {
+    listOutputs.filter(_.errorFile.exists()).map(_.errorFile).lastOption
+  }
+
   def clear() = clearDir(home)
 
   def createGraphReader(fileOpt: Option[File], progressReporter: ProgressReporter) = new GraphReader {

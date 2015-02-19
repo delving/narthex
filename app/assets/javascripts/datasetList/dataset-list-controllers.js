@@ -201,6 +201,7 @@ define(["angular"], function () {
         $scope.apiLink = baseUrl + "/api/search/v1/?qf=delving_spec:" + ds.datasetSpec;
         // todo: note that edm is hardcoded here:
         $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + ds.datasetSpec;
+        $scope.apiPathErrors = $scope.user.narthexAPI + "/" + ds.datasetSpec + "/errors";
 
         function checkProgress() {
             datasetListService.datasetProgress(ds.datasetSpec).then(
@@ -407,8 +408,8 @@ define(["angular"], function () {
             return false;
         };
 
-        $scope.goToInvalidRecords = function () {
-            alert("Not implemented yet: Viewing invalid records");
+        $scope.showInvalidRecordsPage = function () {
+            window.open($scope.apiPathErrors, "_blank")
         };
 
         $scope.goToDataset = function () {
