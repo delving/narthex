@@ -166,10 +166,10 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
 
   def setSingularLiteralProps(propVals: (NXProp, String)*): Future[Model] = {
-    val sparqlPerProp = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2)).toList
-    val withSynced = updateSyncedFalse(uri) :: sparqlPerProp
+    val sparqlPerPropQ = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2)).toList
+    val withSynced = updateSyncedFalseQ(uri) :: sparqlPerPropQ
     val sparql = withSynced.mkString(";\n")
-    ts.up.sparqlUpdate(sparql).map { ok =>
+    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(sparql).map { ok =>
       propVals.foreach { pv =>
         val prop = m.getProperty(pv._1.uri)
         m.removeAll(res, prop, null)
@@ -180,7 +180,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def removeLiteralProp(prop: NXProp): Future[Model] = {
-    ts.up.sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
+    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
       m.removeAll(res, m.getProperty(prop.uri), null)
       m
     }
@@ -193,13 +193,13 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def addUriProp(prop: NXProp, uriValueString: String): Future[Model] = {
-    ts.up.sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
       m.add(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
   }
 
   def removeUriProp(prop: NXProp, uriValueString: String): Future[Model] = futureModel.flatMap { m =>
-    ts.up.sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
       m.remove(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
   }

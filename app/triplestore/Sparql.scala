@@ -120,7 +120,7 @@ object Sparql {
       |}
      """.stripMargin.trim
 
-  def updateSyncedFalse(uri: String): String =
+  def updateSyncedFalseQ(uri: String): String =
     s"""
       |WITH <$uri>
       |DELETE { <$uri> <$synced> ?o }
