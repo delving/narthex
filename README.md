@@ -38,7 +38,13 @@ Initially, Narthex was co-funded by the [Swedish Arts Council](http://www.kultur
 
 ## More information
 
-* [Future Work](docs/future-work.md)
+* [Dataset Workflow](docs/dataset-workflow.md) - how a dataset progresses through the system
+* [Development and Deployment](docs/development-deployment.md) - how to build and distribute
+* [SIP-Creator Integration](docs/sip-creator-integration.md) - how the tool integrates
+* [Terminology Mapping](docs/terminology-mapping.md) - terminology "skosification" and mapping to thearui
+* [Vocabulary Mapping](docs/vocabulary-mapping.md) - building skos:exactMatch links between pairs of vocabularies
+* [Category Statistics](docs/vocabulary-mapping.md) - mapping terminology to categories and generating spreadsheets
+* [Future Work](docs/future-work.md) - where to go from here
 
 ---
 
