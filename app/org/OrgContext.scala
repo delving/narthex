@@ -28,7 +28,7 @@ import mapping.Skosifier.ScanForWork
 import mapping._
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
-import play.api.Play
+import play.api.{Logger, Play}
 import play.libs.Akka._
 import services.FileHandling.clearDir
 import triplestore.GraphProperties.categoriesInclude
@@ -96,6 +96,9 @@ object OrgContext {
   val skosifier = system.actorOf(Skosifier.props(ts), "Skosifier")
   val skosifierTicker = system.scheduler.schedule(5.seconds, 20.seconds, skosifier, ScanForWork)
   val orgContext = new OrgContext(USER_HOME, ORG_ID, ts)
+
+  val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
+  check.onFailure{case e: Exception => Logger.error("Failed to check schemas", e)}
 }
 
 class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
