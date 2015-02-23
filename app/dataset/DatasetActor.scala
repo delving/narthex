@@ -289,7 +289,8 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
           }
           else {
             log.info("No mapper, so generating sip zip only")
-            self ! GenerateSipZip          }
+            self ! GenerateSipZip
+          }
         } getOrElse {
           log.info("No incremental file, back to sleep")
         }
@@ -320,6 +321,14 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       log.info(s"Generated $recordCount pockets")
       dsInfo.setState(MAPPABLE)
       dsInfo.setRecordCount(recordCount)
+      if (datasetContext.sipMapperOpt.isDefined) {
+        log.info(s"There is a mapper, so setting to processable")
+        dsInfo.setState(PROCESSABLE)
+      }
+      else {
+        log.info("No mapper, not processing")
+      }
+
       // todo: figure this out
       //        val rawFile = datasetContext.createRawFile(datasetContext.pocketFile.getName)
       //        FileUtils.copyFile(datasetContext.pocketFile, rawFile)
