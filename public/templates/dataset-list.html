@@ -140,10 +140,16 @@
                             <i class="fa fa-fw fa-eye"></i> <span>Delimit</span>
                         </button>
                     </div>
-                    <div data-ng-show="dataset.stateSourced" class="ds-state">
+                    <div data-ng-show="dataset.stateSourced" class="ds-state"
+                         data-ng-class="{ 'later': isLater(dataset.stateSourced, dataset.stateMappable) }">
                         <div><strong>Sourced</strong></div>
                         <div class="small">{{ dataset.stateSourced.d }}</div>
                         <div>{{ dataset.stateSourced.t }}</div>
+                        <div>
+                            <button class="btn btn-sm btn-success" data-ng-click="startGeneratingSip()">
+                                <i class="fa fa-fw fa-cube"></i> <span>Make SIP</span>
+                            </button>
+                        </div>
                     </div>
                     <div data-ng-show="dataset.stateMappable" class="ds-state"
                          data-ng-class="{ 'later': isLater(dataset.stateMappable, dataset.stateProcessable) }">
@@ -259,7 +265,7 @@
                                 <a href role="tab" data-ng-click="rightTabOpen ='harvest'">Harvest</a>
                             </li>
                             <li ng-class="{'active':rightTabOpen === 'harvest-cron'}" data-ng-show="dataset.harvestType">
-                                <a href role="tab" data-ng-click="rightTabOpen = 'harvest-cron'">Update</a>
+                                <a href role="tab" data-ng-click="rightTabOpen = 'harvest-cron'">Periodic Update</a>
                             </li>
                             <li data-ng-class="{'active':rightTabOpen==='delete'}">
                                 <a href role="tab" data-ng-click="rightTabOpen ='delete'" class="bg-danger"><i class="fa fa-trash fa-lg"></i>&nbsp;</a>

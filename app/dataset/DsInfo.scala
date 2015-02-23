@@ -43,6 +43,11 @@ import scala.concurrent.duration._
 
 object DsInfo {
 
+  /*
+  Caused by: java.util.ConcurrentModificationException: null
+	at com.hp.hpl.jena.mem.ArrayBunch$2.hasNe
+   */
+
   val cacheTime = 10.minutes
 
   case class DsCharacter(name: String)
@@ -208,8 +213,6 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     ts.up.sparqlUpdate(deleteDatasetQ(uri, skosUri)).map(ok => true)
   }
 
-  // from the old datasetdb
-
   def toggleProduction(): Future[Boolean] = {
     val production = ts.up.production
     if (getBooleanProp(acceptanceOnly)) {
@@ -222,10 +225,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
       } yield false
     }
     else {
-      for {
-        datasetDelete <- production.sparqlUpdate(deleteDatasetQ(uri, skosUri))
-        propertySet <- setSingularLiteralProps(acceptanceOnly -> "true")
-      } yield true
+      setSingularLiteralProps(acceptanceOnly -> "true").map(ok => true)
     }
   }
 
@@ -250,6 +250,11 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   def setProcessedRecordCounts(validCount: Int, invalidCount: Int) = setSingularLiteralProps(
     processedValid -> validCount.toString,
     processedInvalid -> invalidCount.toString
+  )
+
+  def setIncrementalProcessedRecordCounts(validCount: Int, invalidCount: Int) = setSingularLiteralProps(
+    processedIncrementalInvalid -> validCount.toString,
+    processedIncrementalInvalid -> invalidCount.toString
   )
 
   def setHarvestInfo(harvestTypeEnum: HarvestType, url: String, dataset: String, prefix: String) = setSingularLiteralProps(

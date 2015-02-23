@@ -442,8 +442,8 @@ define(["angular"], function () {
             command("interrupt", "Interrupt processing?", refreshProgress);
         };
 
-        $scope.discardSource = function () {
-            command("remove source", "Discard source?", refreshInfo);
+        $scope.startGeneratingSip = function () {
+            command("start generating sip", null, refreshProgress());
         };
 
         $scope.discardProcessed = function () {

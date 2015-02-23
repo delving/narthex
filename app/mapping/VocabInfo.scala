@@ -39,6 +39,11 @@ import scala.concurrent.duration._
 
 object VocabInfo {
 
+  /*
+  Caused by: java.util.ConcurrentModificationException: null
+  at com.hp.hpl.jena.mem.ArrayBunch$2.hasNe
+ */
+
   case class DsMetadata(name: String,
                         description: String,
                         owner: String,
