@@ -65,7 +65,7 @@
 
 <script type="text/ng-template" id="skos-entry.html">
     <div data-ng-controller="SkosListEntryCtrl" class="widget">
-        <div class="widget-header">
+        <div class="widget-header" data-ng-click="expanded = !expanded">
             <span class="widget-icon"><i class="fa fa-book"></i></span>
             <span>{{ skos.skosSpec }}</span>
             <span data-ng-show="skos.skosName">"{{ skos.skosName }}"</span>
@@ -75,7 +75,7 @@
             <span class="count pull-right">{{ statistics.conceptCount }} concepts</span>
         </div>
 
-        <div class="widget-body">
+        <div class="widget-body" data-ng-show="expanded">
             <div class="tabbable dataset-tabs">
                 <ul class="nav nav-tabs" role="tablist">
                     <li ng-class="{'active':tabOpen === 'metadata'}" >

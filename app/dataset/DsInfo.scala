@@ -43,6 +43,13 @@ import scala.concurrent.duration._
 
 object DsInfo {
 
+  /*
+  Caused by: java.util.ConcurrentModificationException: null
+	at com.hp.hpl.jena.mem.ArrayBunch$2.hasNe
+   */
+
+  val patience = 10.seconds
+
   val cacheTime = 10.minutes
 
   case class DsCharacter(name: String)
@@ -165,25 +172,26 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
 
   def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
 
-  def setSingularLiteralProps(propVals: (NXProp, String)*): Future[Model] = {
+  def setSingularLiteralProps(propVals: (NXProp, String)*): Model = {
     val sparqlPerPropQ = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2)).toList
     val withSynced = updateSyncedFalseQ(uri) :: sparqlPerPropQ
     val sparql = withSynced.mkString(";\n")
-    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(sparql).map { ok =>
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(sparql).map { ok =>
       propVals.foreach { pv =>
         val prop = m.getProperty(pv._1.uri)
         m.removeAll(res, prop, null)
         m.add(res, prop, m.createLiteral(pv._2))
       }
-      m
     }
+    Await.ready(futureUpdate, patience)
+    m
   }
 
-  def removeLiteralProp(prop: NXProp): Future[Model] = {
-    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
+  def removeLiteralProp(prop: NXProp): Unit = {
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
       m.removeAll(res, m.getProperty(prop.uri), null)
-      m
     }
+    Await.ready(futureUpdate, patience)
   }
 
   def getUriPropValueList(prop: NXProp): List[String] = {
@@ -192,23 +200,25 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     ).toList
   }
 
-  def addUriProp(prop: NXProp, uriValueString: String): Future[Model] = {
-    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+  def addUriProp(prop: NXProp, uriValueString: String): Model = {
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
       m.add(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
+    Await.ready(futureUpdate, patience)
+    m
   }
 
-  def removeUriProp(prop: NXProp, uriValueString: String): Future[Model] = futureModel.flatMap { m =>
-    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+  def removeUriProp(prop: NXProp, uriValueString: String): Model = {
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
       m.remove(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
+    Await.ready(futureUpdate, patience)
+    m
   }
 
   def dropDataset = {
     ts.up.sparqlUpdate(deleteDatasetQ(uri, skosUri)).map(ok => true)
   }
-
-  // from the old datasetdb
 
   def toggleProduction(): Future[Boolean] = {
     val production = ts.up.production
@@ -218,14 +228,14 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
         putDataset <- production.dataPutGraph(uri, datasetModel)
         skosModel <- ts.dataGet(skosUri)
         putSkos <- production.dataPutGraph(skosUri, skosModel)
-        propertySet <- setSingularLiteralProps(acceptanceOnly -> "false")
-      } yield false
+      } yield {
+        setSingularLiteralProps(acceptanceOnly -> "false")
+        false
+      }
     }
     else {
-      for {
-        datasetDelete <- production.sparqlUpdate(deleteDatasetQ(uri, skosUri))
-        propertySet <- setSingularLiteralProps(acceptanceOnly -> "true")
-      } yield true
+      setSingularLiteralProps(acceptanceOnly -> "true")
+      Future(true)
     }
   }
 
@@ -250,6 +260,11 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   def setProcessedRecordCounts(validCount: Int, invalidCount: Int) = setSingularLiteralProps(
     processedValid -> validCount.toString,
     processedInvalid -> invalidCount.toString
+  )
+
+  def setIncrementalProcessedRecordCounts(validCount: Int, invalidCount: Int) = setSingularLiteralProps(
+    processedIncrementalInvalid -> validCount.toString,
+    processedIncrementalInvalid -> invalidCount.toString
   )
 
   def setHarvestInfo(harvestTypeEnum: HarvestType, url: String, dataset: String, prefix: String) = setSingularLiteralProps(

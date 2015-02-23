@@ -48,7 +48,7 @@ object SourceProcessor {
 
   case class Process(incrementalOpt: Option[Incremental])
 
-  case class ProcessingComplete(validRecords: Int, invalidRecords: Int)
+  case class ProcessingComplete(validRecords: Int, invalidRecords: Int, incrementalOpt: Option[Incremental])
 
   def props(datasetContext: DatasetContext) = Props(new SourceProcessor(datasetContext))
 
@@ -216,7 +216,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         xmlOutput.close()
         errorOutput.close()
         if (invalidRecords == 0) deleteQuietly(processedOutput.errorFile)
-        context.parent ! ProcessingComplete(validRecords, invalidRecords)
+        context.parent ! ProcessingComplete(validRecords, invalidRecords, incrementalOpt)
       }
 
       work.onFailure {

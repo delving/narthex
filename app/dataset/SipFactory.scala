@@ -20,9 +20,15 @@ import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import dataset.SipRepo.FACTS_FILE
 import org.OrgContext
-import org.apache.commons.io.IOUtils
+import org.apache.commons.io.{FileUtils, IOUtils}
+import play.api.Logger
+import play.api.Play.current
+import play.api.libs.ws.WS
 import triplestore.GraphProperties._
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.xml.NodeSeq
 
 /**
@@ -56,7 +62,7 @@ object SipFactory {
         rights = (meta \ "rights").text
       )
     }
-    
+
     def apply(dsInfo: DsInfo) = {
       def info(prop: NXProp) = dsInfo.getLiteralProp(prop).getOrElse("")
       new SipGenerationFacts(
@@ -87,6 +93,13 @@ class SipPrefixRepo(home: File) {
 
   val prefix = home.getName
 
+//  lazy val futureSchemas = {
+//    WS.url("http://schemas.delving.eu/schema-repository.xml").get().map{ response =>
+//      val schema = (response.xml \ "schema").filter(s => (s \ "@prefix").text == prefix)
+//      val version = (schema \ "version").sortBy(v => (v \ "@number").text)
+//    }
+//  }
+
   lazy val recordDefinition: File = home.listFiles().find(f => f.getName.endsWith(RECORD_DEFINITION_SUFFIX)).getOrElse(
     throw new RuntimeException(s"Missing record definition in $home")
   )
@@ -96,6 +109,32 @@ class SipPrefixRepo(home: File) {
   )
 
   lazy val schemaVersions = recordDefinition.getName.substring(0, recordDefinition.getName.length - RECORD_DEFINITION_SUFFIX.length)
+
+  private def differenceWithSchemasDelvingEu(file: File): Option[String] = {
+    val fo :Future[Option[String]] = WS.url(s"http://schemas.delving.eu/$prefix/${file.getName}").get().map { response =>
+      val fileLines = FileUtils.readFileToString(file).trim.split("\n")
+      val onlineLines = response.body.trim.split("\n")
+      if (fileLines.size != onlineLines.size) {
+        Some(s"$file has ${fileLines.size} lines, while online there are ${onlineLines.size}")
+      }
+      else {
+        val comparisons = fileLines.zip(onlineLines)
+        val diffs = comparisons.filter(c => c._1.trim != c._2.trim)
+        if (diffs.nonEmpty) {
+          Some(diffs.take(3).map(c => s"[${c._1.trim}] != [${c._2.trim}]").mkString("\n"))
+        }
+        else {
+          None
+        }
+      }
+    }
+    Await.result(fo, 30.seconds)
+  }
+
+  def compareWithSchemasDelvingEu() = {
+    differenceWithSchemasDelvingEu(recordDefinition).map(diff => Logger.warn(s"Rec Def Discrepancy: $diff"))
+    differenceWithSchemasDelvingEu(validation).map(diff => Logger.warn(s"Validation Discrepancy: $diff"))
+  }
 
   def initiateSipZip(sipFile: File, sourceXmlFile: File, facts: SipGenerationFacts) = {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))

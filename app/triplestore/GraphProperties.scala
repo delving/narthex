@@ -96,6 +96,8 @@ object GraphProperties {
 
   val processedValid = NXProp("processedValid", intProp)
   val processedInvalid = NXProp("processedInvalid", intProp)
+  val processedIncrementalValid = NXProp("processedIncrementalValid", intProp)
+  val processedIncrementalInvalid = NXProp("processedIncrementalInvalid", intProp)
 
   val publishOAIPMH = NXProp("publishOAIPMH", booleanProp)
   val publishIndex = NXProp("publishIndex", booleanProp)

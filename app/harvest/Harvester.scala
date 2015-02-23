@@ -104,6 +104,8 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
     case InterruptWork =>
       progressOpt.map(_.interruptBy(sender()))
 
+    // http://umu.adlibhosting.com/api/wwwopac.ashx?xmltype=grouped&limit=50&database=collect&search=modification%20greater%20%272014-12-01%27
+
     case HarvestAdLib(url, database, search, modifiedAfter) =>
       log.info(s"Harvesting $url $database to $datasetContext")
       val futurePage = fetchAdLibPage(url, database, search, modifiedAfter)

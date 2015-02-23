@@ -29,6 +29,8 @@ import triplestore.TripleStore.QueryValue
 object Sparql {
   // === actor store ===
 
+  private def sanitize(s: String): String = s.replaceAll("^[']*", "").replaceAll("[']*$", "")
+
   def insertActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
     s"""
       |WITH <$actorsGraph>
@@ -42,9 +44,9 @@ object Sparql {
       |INSERT {
       |   <$actor>
       |      a <$actorEntity>;
-      |      <$username> '''${actor.actorName}''' ;
+      |      <$username> '''${sanitize(actor.actorName)}''' ;
       |      <$actorOwner> <$adminActor> ;
-      |      <$passwordHash> '''$passwordHashString''' .
+      |      <$passwordHash> '''${sanitize(passwordHashString)}''' .
       |}
       |WHERE {
       |   OPTIONAL {
@@ -68,9 +70,9 @@ object Sparql {
       |}
       |INSERT {
       |   <$actor>
-      |      <$userFirstName> '''${profile.firstName}''' ;
-      |      <$userLastName> '''${profile.lastName}''' ;
-      |      <$userEMail> '''${profile.email}''' .
+      |      <$userFirstName> '''${sanitize(profile.firstName)}''' ;
+      |      <$userLastName> '''${sanitize(profile.lastName)}''' ;
+      |      <$userEMail> '''${sanitize(profile.email)}''' .
       |}
       |WHERE {
       |   <$actor>
@@ -114,7 +116,7 @@ object Sparql {
     s"""
       |WITH <$uri>
       |DELETE { <$uri> <$prop> ?o }
-      |INSERT { <$uri> <$prop> '''$value''' }
+      |INSERT { <$uri> <$prop> '''${sanitize(value)}''' }
       |WHERE {
       |   OPTIONAL { <$uri> <$prop> ?o }
       |}
@@ -140,15 +142,15 @@ object Sparql {
   def addUriPropertyQ(uri: String, prop: NXProp, uriValue: String) =
     s"""
       |INSERT DATA {
-      |   GRAPH <$uri> { <$uri> <$prop> '''$uriValue''' }
+      |   GRAPH <$uri> { <$uri> <$prop> '''${sanitize(uriValue)}''' }
       |}
      """.stripMargin.trim
 
   def deleteUriPropertyQ(uri: String, prop: NXProp, uriValue: String) =
     s"""
       |WITH <$uri>
-      |DELETE { <$uri> <$prop> '''$uriValue''' }
-      |WHERE { <$uri> <$prop> '''$uriValue''' }
+      |DELETE { <$uri> <$prop> '''${sanitize(uriValue)}''' }
+      |WHERE { <$uri> <$prop> '''{sanitize($uriValue)}''' }
      """.stripMargin
 
   def deleteDatasetQ(uri: String, skosUri: String) =
@@ -357,7 +359,7 @@ object Sparql {
         |INSERT {
         |   GRAPH <$skosGraph> {
         |      <$mintedUri> a skos:Concept .
-        |      <$mintedUri> skos:altLabel '''$value''' .
+        |      <$mintedUri> skos:altLabel '''${sanitize(value)}''' .
         |      <$mintedUri> <$belongsTo> <$datasetUri> .
         |      <$mintedUri> <$synced> false .
         |      ${ frequencyOpt.map(freq => s"<$mintedUri> <$skosFrequency> '''$freq''' .").getOrElse("")  }
@@ -376,14 +378,14 @@ object Sparql {
     val literalToUriQ =
       s"""
         |DELETE {
-        |  GRAPH ?g { ?s <$fieldProperty> '''$value''' }
+        |  GRAPH ?g { ?s <$fieldProperty> '''${sanitize(value)}''' }
         |}
         |INSERT {
         |  GRAPH ?g { ?s <$fieldProperty> <$mintedUri> }
         |}
         |WHERE {
         |  GRAPH ?g { ?record <$belongsTo> <$datasetUri> }
-        |  GRAPH ?g { ?s <$fieldProperty> '''$value''' }
+        |  GRAPH ?g { ?s <$fieldProperty> '''${sanitize(value)}''' }
         |};
        """.stripMargin
   }

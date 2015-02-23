@@ -20,7 +20,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import analysis.NodeRepo
-import com.hp.hpl.jena.rdf.model.Model
 import dataset.DsInfo.DsMetadata
 import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
@@ -33,8 +32,6 @@ import record.PocketParser
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
 import services.StringHandling.pathToDirectory
-
-import scala.concurrent.Future
 
 class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
@@ -95,7 +92,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     else if (fileName.endsWith(".sip.zip")) {
       val sipZipFile = setTargetFile(sipRepo.createSipZipFile(fileName))
       sipRepo.latestSipOpt.map { sip =>
-        val futureSet: Future[Model] = dsInfo.setMetadata(DsMetadata(
+        dsInfo.setMetadata(DsMetadata(
           name = sip.fact("name").getOrElse(""),
           description = "",
           aggregator = sip.fact("provider").getOrElse(""),

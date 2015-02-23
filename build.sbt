@@ -49,7 +49,7 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
   "org.apache.jena" % "jena-arq" % "2.12.1" excludeAll ExclusionRule(organization = "org.slf4j"),
-  "eu.delving" % "sip-core" % "1.0.5-SNAPSHOT"
+  "eu.delving" % "sip-core" % "1.0.6-SNAPSHOT"
 )
 
 libraryDependencies ~= {

@@ -45,7 +45,6 @@ import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -139,17 +138,17 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             deleteQuietly(datasetContext.rootDir)
             "deleted"
 
-          case "remove source" =>
-            datasetContext.dropSourceRepo()
-            "source removed"
-
-          case "remove processed" =>
-            datasetContext.dropProcessedRepo()
-            "processed data removed"
-
-          case "remove tree" =>
-            datasetContext.dropTree()
-            "tree removed"
+          //          case "remove source" =>
+          //            datasetContext.dropSourceRepo()
+          //            "source removed"
+          //
+          //          case "remove processed" =>
+          //            datasetContext.dropProcessedRepo()
+          //            "processed data removed"
+          //
+          //          case "remove tree" =>
+          //            datasetContext.dropTree()
+          //            "tree removed"
 
           case "start first harvest" =>
             val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
@@ -166,6 +165,10 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
               self ! WorkFailure(message, None)
               message
             }
+
+          case "start generating sip" =>
+            self ! GenerateSipZip
+            "sip generation started"
 
           case "start processing" =>
             self ! StartProcessing(None)
@@ -196,6 +199,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         }
       }
       val replyString: String = reply.getOrElse(s"oops: exception")
+      log.info(s"Command $commandName: $replyString")
       listener ! replyString
       stay()
 
@@ -278,9 +282,19 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         incremental.fileOpt.map { newFile =>
           dsInfo.setState(SOURCED)
           dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
-          self ! StartProcessing(Some(Incremental(incremental.modifiedAfter, newFile)))
+          if (datasetContext.sipMapperOpt.isDefined) {
+            log.info(s"There is a mapper, so trigger processing")
+            self ! StartProcessing(Some(Incremental(incremental.modifiedAfter, newFile)))
+          }
+          else {
+            log.info("No mapper, so generating sip zip only")
+            self ! GenerateSipZip
+          }
+        } getOrElse {
+          log.info("No incremental file, back to sleep")
         }
       } getOrElse {
+        dsInfo.setState(SOURCED)
         self ! GenerateSipZip
       }
       active.childOpt.map(_ ! PoisonPill)
@@ -291,6 +305,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Adopting) {
 
     case Event(SourceAdoptionComplete(file), active: Active) =>
+      dsInfo.setState(SOURCED)
       if (datasetContext.sipRepo.latestSipOpt.isDefined) dsInfo.setState(PROCESSABLE)
       datasetContext.dropTree()
       active.childOpt.map(_ ! PoisonPill)
@@ -305,6 +320,14 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       log.info(s"Generated $recordCount pockets")
       dsInfo.setState(MAPPABLE)
       dsInfo.setRecordCount(recordCount)
+      if (datasetContext.sipMapperOpt.isDefined) {
+        log.info(s"There is a mapper, so setting to processable")
+        dsInfo.setState(PROCESSABLE)
+      }
+      else {
+        log.info("No mapper, not processing")
+      }
+
       // todo: figure this out
       //        val rawFile = datasetContext.createRawFile(datasetContext.pocketFile.getName)
       //        FileUtils.copyFile(datasetContext.pocketFile, rawFile)
@@ -332,9 +355,15 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   when(Processing) {
 
-    case Event(ProcessingComplete(validRecords, invalidRecords), active: Active) =>
+    case Event(ProcessingComplete(validRecords, invalidRecords, incrementalOpt), active: Active) =>
       dsInfo.setState(PROCESSED)
-      dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
+      if (incrementalOpt.isDefined) {
+        dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
+        self ! SaveGraphs(incrementalOpt)
+      }
+      else {
+        dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
+      }
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -366,9 +395,8 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(DatasetQuestion(listener, Command(commandName)), InError(message)) =>
       Logger.info(s"In error. Command name: $commandName")
       if (commandName == "clear error") {
-        dsInfo.removeLiteralProp(datasetErrorMessage).map { m =>
-          listener ! "error cleared"
-        }
+        dsInfo.removeLiteralProp(datasetErrorMessage)
+        listener ! "error cleared"
         goto(Idle) using Dormant
       }
       else {
@@ -386,7 +414,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Work failure [$message] while in [$active]")
-      dsInfo.setError(message).map(ok => log.info(s"Set error to [$message]"))
+      dsInfo.setError(message)
       exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using InError(message)
@@ -405,6 +433,11 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(request, data) =>
       log.warning(s"Unhandled request $request in state $stateName/$data")
       stay()
+  }
+
+  onTransition {
+    case fromState -> toState =>
+      log.info(s"State $fromState -> $toState")
   }
 
 }

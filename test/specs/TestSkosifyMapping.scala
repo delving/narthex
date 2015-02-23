@@ -89,11 +89,11 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     // mark a field as skosified
     countGraphs must be(5)
     val info = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
-    await(info.addUriProp(skosField, skosifiedPropertyUri))
+    info.addUriProp(skosField, skosifiedPropertyUri)
     info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
-    await(info.removeUriProp(skosField, skosifiedPropertyUri))
+    info.removeUriProp(skosField, skosifiedPropertyUri)
     info.getUriPropValueList(skosField) must be(List())
-    await(info.addUriProp(skosField, skosifiedPropertyUri))
+    info.addUriProp(skosField, skosifiedPropertyUri)
     info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
 
     val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(Sparql.SkosifiedField(_))

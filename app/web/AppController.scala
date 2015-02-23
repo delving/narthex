@@ -131,14 +131,15 @@ object AppController extends Controller with Security {
     }
   }
 
-  def setDatasetProperties(spec: String) = SecureAsync(parse.json) { session => request =>
+  def setDatasetProperties(spec: String) = Secure(parse.json) { session => request =>
     withDsInfo(spec) { dsInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
       Logger.info(s"setDatasetProperties $propertyList")
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
-      dsInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
+      dsInfo.setSingularLiteralProps(propsValues: _*)
+      Ok
     }
   }
 
@@ -186,16 +187,16 @@ object AppController extends Controller with Security {
 
   // ====== vocabularies =====
 
-  def setSkosField(spec: String) = SecureAsync(parse.json) { session => request =>
+  def setSkosField(spec: String) = Secure(parse.json) { session => request =>
     withDsInfo(spec) { dsInfo =>
       val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
       val skosFieldUri = (request.body \ "skosFieldUri").as[String]
       val included = (request.body \ "included").as[Boolean]
       Logger.info(s"set skos field $skosFieldUri")
       val currentSkosFields = dsInfo.getUriPropValueList(skosField)
-      val (futureOpt, action) = if (included) {
+      val action: String = if (included) {
         if (currentSkosFields.contains(skosFieldUri)) {
-          (None, "already exists")
+          "already exists"
         }
         else {
           val casesOpt = for {
@@ -204,25 +205,26 @@ object AppController extends Controller with Security {
             histogram <- nodeRepo.largestHistogram
           } yield Sparql.createCases(dsInfo, histogram)
           val futureModel = casesOpt.map { cases =>
-            val update = cases.map(_.ensureSkosEntryQ).mkString
-            ts.up.sparqlUpdate(update).flatMap(ok => dsInfo.addUriProp(skosField, skosFieldUri))
+            val q = cases.map(_.ensureSkosEntryQ).mkString
+            val futureUpdate = ts.up.sparqlUpdate(q).map(ok => dsInfo.addUriProp(skosField, skosFieldUri))
+            Await.result(futureUpdate, 1.minute)
           } getOrElse {
             dsInfo.addUriProp(skosField, skosFieldUri)
           }
-          (Some(futureModel), "added")
+          "added"
         }
       }
       else {
         if (!currentSkosFields.contains(skosFieldUri)) {
-          (None, "did not exists")
+          "did not exists"
         }
         else {
           // here eventual de-skosification could happen
-          (Some(dsInfo.removeUriProp(skosField, skosFieldUri)), "removed")
+          dsInfo.removeUriProp(skosField, skosFieldUri)
+          "removed"
         }
       }
-      val future = futureOpt.getOrElse(Future(None))
-      future.map(ok => Ok(Json.obj("action" -> action)))
+      Ok(Json.obj("action" -> action))
     }
   }
 
