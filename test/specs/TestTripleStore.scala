@@ -32,23 +32,23 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
     val admin = await(new ActorStore(ts).authenticate("gumby", "secret gumby")).get
     val dsInfo = await(DsInfo.createDsInfo(admin, "gumby-set", CharacterMapped, "gfx", ts))
     dsInfo.getLiteralProp(datasetMapToPrefix) must be(Some("gfx"))
-    val model = await(dsInfo.setSingularLiteralProps(
+    val model = dsInfo.setSingularLiteralProps(
       datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
-    ))
-    model.size() must be(9)
+    )
+    model.size() must be(10)
     dsInfo.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
-    await(dsInfo.removeLiteralProp(datasetMapToPrefix))
+    dsInfo.removeLiteralProp(datasetMapToPrefix)
     dsInfo.getLiteralProp(datasetMapToPrefix) must be(None)
-    model.size() must be(8)
+    model.size() must be(9)
 
-    await(dsInfo.setSingularLiteralProps(datasetMapToPrefix -> "pfx2"))
+    dsInfo.setSingularLiteralProps(datasetMapToPrefix -> "pfx2")
 
     // uri prop
     dsInfo.getUriPropValueList(skosField) must be(List.empty)
-    await(dsInfo.addUriProp(skosField, "http://purl.org/dc/elements/1.1/type"))
+    dsInfo.addUriProp(skosField, "http://purl.org/dc/elements/1.1/type")
     dsInfo.getUriPropValueList(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
-    await(dsInfo.addUriProp(skosField, "http://purl.org/dc/elements/1.1/creator"))
+    dsInfo.addUriProp(skosField, "http://purl.org/dc/elements/1.1/creator")
 
     def testTwo(di: DsInfo) = {
       val two = di.getUriPropValueList(skosField)
