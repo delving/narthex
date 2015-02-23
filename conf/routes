@@ -36,6 +36,7 @@ GET         /narthex/app/dataset/:spec/command/:command                      web
 GET         /narthex/app/dataset/:spec/status/*path                          web.AppController.nodeStatus(spec, path)
 GET         /narthex/app/dataset/:spec/sample/:size/*path                    web.AppController.sample(spec, path, size:Int)
 GET         /narthex/app/dataset/:spec/histogram/:size/*path                 web.AppController.histogram(spec, path, size:Int)
+GET         /narthex/app/dataset/:spec/toggle-production                     web.AppController.toggleDatasetProduction(spec)
 
 GET         /narthex/app/dataset/:spec/term/vocab                            web.AppController.getTermVocabulary(spec)
 GET         /narthex/app/dataset/:spec/term/get-mappings                     web.AppController.getTermMappings(spec)

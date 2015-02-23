@@ -142,6 +142,12 @@ object AppController extends Controller with Security {
     }
   }
 
+  def toggleDatasetProduction(spec: String) = SecureAsync() { session => request =>
+    withDsInfo(spec) { dsInfo =>
+      dsInfo.toggleProduction().map(acceptanceOnly => Ok(Json.obj("acceptanceOnly" -> acceptanceOnly.toString)))
+    }
+  }
+
   // ====== stats files =====
 
   def index(spec: String) = Secure() { session => request =>

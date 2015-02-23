@@ -105,6 +105,7 @@ object DsInfo {
     m.add(uri, m.getProperty(publishOAIPMH.uri), trueLiteral)
     m.add(uri, m.getProperty(publishIndex.uri), trueLiteral)
     m.add(uri, m.getProperty(publishLOD.uri), trueLiteral)
+    m.add(uri, m.getProperty(acceptanceOnly.uri), trueLiteral)
     if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.up.dataPost(uri.getURI, m).map { ok =>
       val cacheName = getDsInfoUri(spec)
@@ -165,10 +166,10 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
 
   def setSingularLiteralProps(propVals: (NXProp, String)*): Future[Model] = {
-    val sparqlPerProp = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2)).toList
-    val withSynced = updateSyncedFalse(uri) :: sparqlPerProp
+    val sparqlPerPropQ = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2)).toList
+    val withSynced = updateSyncedFalseQ(uri) :: sparqlPerPropQ
     val sparql = withSynced.mkString(";\n")
-    ts.up.sparqlUpdate(sparql).map { ok =>
+    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(sparql).map { ok =>
       propVals.foreach { pv =>
         val prop = m.getProperty(pv._1.uri)
         m.removeAll(res, prop, null)
@@ -179,7 +180,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def removeLiteralProp(prop: NXProp): Future[Model] = {
-    ts.up.sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
+    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
       m.removeAll(res, m.getProperty(prop.uri), null)
       m
     }
@@ -192,13 +193,13 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def addUriProp(prop: NXProp, uriValueString: String): Future[Model] = {
-    ts.up.sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
       m.add(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
   }
 
   def removeUriProp(prop: NXProp, uriValueString: String): Future[Model] = futureModel.flatMap { m =>
-    ts.up.sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
+    ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
       m.remove(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
     }
   }
@@ -208,6 +209,25 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   // from the old datasetdb
+
+  def toggleProduction(): Future[Boolean] = {
+    val production = ts.up.production
+    if (getBooleanProp(acceptanceOnly)) {
+      for {
+        datasetModel <- ts.dataGet(uri)
+        putDataset <- production.dataPutGraph(uri, datasetModel)
+        skosModel <- ts.dataGet(skosUri)
+        putSkos <- production.dataPutGraph(skosUri, skosModel)
+        propertySet <- setSingularLiteralProps(acceptanceOnly -> "false")
+      } yield false
+    }
+    else {
+      for {
+        datasetDelete <- production.sparqlUpdate(deleteDatasetQ(uri, skosUri))
+        propertySet <- setSingularLiteralProps(acceptanceOnly -> "true")
+      } yield true
+    }
+  }
 
   def setState(state: DsState) = setSingularLiteralProps(state.prop -> now)
 
