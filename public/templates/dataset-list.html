@@ -87,11 +87,11 @@
                 <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
             </span>
             <span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">
-                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()">
+                <span class="btn btn-warning" data-ng-click="showInvalidRecordsPage()">
                     <i class="fa fa-fw fa-bug"></i>
                     <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
-                <span class="btn btn-default" data-ng-click="goToDataset()">
+                <span class="btn btn-success" data-ng-click="goToDataset()">
                     <i class="fa fa-fw fa-eye"></i>
                     <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
@@ -115,7 +115,7 @@
 
         <div class="widget-body" data-ng-if="expanded && !dataset.progress">
 
-            <div>
+            <div class="rowsdf">
 
                 <!--todo: maybe put this all inside a tab-->
                 <div class="ds-states">
