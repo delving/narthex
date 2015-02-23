@@ -317,7 +317,7 @@ a {
 }
 
 .file-drop {
-  background: @silver;
+  background: @linnen;
   border: 1px dashed @ash-gray;
   height: 120px;
   margin-top: 10px;
@@ -715,9 +715,36 @@ label.norm {
   font-weight: normal;
 }
 
+/* section animations **************************/
 
+.animated {
+  -webkit-animation-duration: 1s;
+  animation-duration: 1s;
+  -webkit-animation-fill-mode: both;
+  animation-fill-mode: both;
+}
 
-
-
-
-
+@-webkit-keyframes fadeInRightBig {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(2000px);
+  }
+  100% {
+    opacity: 1;
+    -webkit-transform: translateX(0);
+  }
+}
+@keyframes fadeInRightBig {
+  0% {
+    opacity: 0;
+    transform: translateX(2000px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.fadeInRightBig {
+  -webkit-animation-name: fadeInRightBig;
+  animation-name: fadeInRightBig;
+}

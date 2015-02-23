@@ -22,7 +22,7 @@
     <div data-ng-if="!skosList.length" class="col-md-12">
         <h4>No Vocabularies</h4>
     </div>
-    <div ng-repeat="skos in skosList" class="col-lg-6">
+    <div ng-repeat="skos in skosList" class="col-lg-12">
         <div data-ng-include="'skos-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">
@@ -32,7 +32,7 @@
 
 <script type="text/ng-template" id="new-skos.html">
     <div class="aside-backdrop am-fade" style=""></div>
-    <div class="aside right">
+    <div class="aside right animated fadeInRightBig">
         <div class="aside-dialog">
             <div class="aside-content">
                 <div class="aside-header">
@@ -65,7 +65,7 @@
 
 <script type="text/ng-template" id="skos-entry.html">
     <div data-ng-controller="SkosListEntryCtrl" class="widget">
-        <div class="widget-header" data-ng-click="expanded = !expanded">
+        <div class="widget-header clickable" data-ng-click="expanded = !expanded">
             <span class="widget-icon"><i class="fa fa-book"></i></span>
             <span>{{ skos.skosSpec }}</span>
             <span data-ng-show="skos.skosName">"{{ skos.skosName }}"</span>
