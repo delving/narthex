@@ -28,7 +28,7 @@ import mapping.VocabInfo
 import mapping.VocabInfo._
 import org.OrgActor
 import org.OrgActor.DatasetMessage
-import org.OrgContext.{orgContext, ts}
+import org.OrgContext.{PREFERRED_LANGUAGE, orgContext, ts}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
@@ -287,7 +287,7 @@ object AppController extends Controller with Security {
   def searchVocabulary(spec: String, sought: String) = Secure() { session => request =>
     withVocabInfo(spec) { vocabInfo =>
       val v = vocabInfo.vocabulary
-      val labelSearch: LabelSearch = v.search(LANGUAGE, sought, 25)
+      val labelSearch: LabelSearch = v.search(PREFERRED_LANGUAGE, sought, 25)
       Ok(Json.obj("search" -> labelSearch))
     }
   }
@@ -312,7 +312,7 @@ object AppController extends Controller with Security {
         //          val freq: Int = concept.frequency.getOrElse(0)
         Json.obj(
           "uri" -> concept.resource.toString,
-          "label" -> concept.getAltLabel(LANGUAGE).text,
+          "label" -> concept.getAltLabel(PREFERRED_LANGUAGE).text,
           "frequency" -> concept.frequency
         )
       })

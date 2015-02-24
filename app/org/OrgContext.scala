@@ -74,6 +74,8 @@ object OrgContext {
 
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 
+  val PREFERRED_LANGUAGE = config.getString("preferredLanguage").getOrElse("nl")
+
   val ts = config.getString("triple-store").map { tripleStoreUrl =>
     TripleStore.single(
       tripleStoreUrl,

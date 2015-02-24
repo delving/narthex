@@ -307,7 +307,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     val mappings = Await.result(mappingStore.getMappings, 1.minute)
     // todo: Language is a problem here
     val categoryLabelMap: Map[String, String] = categoryVocabInfo.vocabulary.concepts.map(c =>
-      c.resource.toString -> c.getPrefLabel("nl").text
+      c.resource.toString -> c.getPrefLabel(PREFERRED_LANGUAGE).text
     ).toMap
     val termUriLabels = mappings.flatMap { mapping =>
       val termUri = mapping(0)

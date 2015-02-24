@@ -20,8 +20,6 @@ import com.hp.hpl.jena.rdf.model.{Model, Property}
 
 object GraphProperties {
 
-  val LANGUAGE = "nl"
-
   val NX_NAMESPACE = "http://schemas.delving.eu/narthex/terms/"
 
   val XML = "http://www.w3.org/XML/1998/namespace"
