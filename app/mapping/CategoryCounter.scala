@@ -22,6 +22,7 @@ import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import dataset.{DsInfo, ProcessedRepo}
 import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories, Counter}
+import mapping.VocabInfo._
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import services.StringHandling._
@@ -50,7 +51,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo) extends Actor with Ac
 
   def increment(key: String): Unit = countMap.getOrElseUpdate(key, new Counter(1)).count += 1
 
-  def output(categories: List[String]) = {
+  def output(categories: Set[String]) = {
     for (
       a <- categories
     ) yield increment(a)
@@ -71,6 +72,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo) extends Actor with Ac
 
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
+  var termCatMapOpt: Option[Map[String, List[String]]] = None
 
   def failure(ex: Throwable) = {
     reader.map(_.close())
@@ -99,19 +101,24 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo) extends Actor with Ac
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
       reader = Some(repo.createGraphReader(None, progressReporter))
+      val termMap = withVocabInfo("categories")(dsInfo.termCategoryMap)
+      termCatMapOpt = Some(termMap)
       sendGraphChunkOpt()
 
     case Some(chunk: GraphChunk) =>
       log.info("Category count of graphs")
-      chunk.dataset.listNames().toList.map { g =>
-        val model = chunk.dataset.getNamedModel(g)
+      val termCat = termCatMapOpt.get
+      chunk.dataset.listNames().toList.map { record =>
+        val model = chunk.dataset.getNamedModel(record)
+        var categoryLabels = Set.empty[String]
         skosProperties.map { propertyUri =>
           val property = model.getProperty(propertyUri)
           model.listObjectsOfProperty(property).map(_.asLiteral().getString).toList.map { literalString =>
             val mintedUri = s"${dsInfo.uri}/${slugify(literalString)}"
-            // todo: output for the literal string
+            termCat.get(mintedUri).map(newLabels => categoryLabels ++= newLabels)
           }
         }
+        output(categoryLabels)
       }
 
     case None =>

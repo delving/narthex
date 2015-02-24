@@ -17,17 +17,12 @@ package mapping
 
 import java.io.{File, FileOutputStream}
 
-import com.hp.hpl.jena.rdf.model.ModelFactory
-import mapping.CategoriesRepo.Category
 import mapping.CategoriesSpreadsheet.CategoryCount
 import org.OrgContext._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{JsPath, Json, Writes}
 import services.FileHandling.writer
-import services.{FileHandling, Temporal}
-import triplestore.GraphProperties._
-
-import scala.collection.JavaConversions._
+import services.Temporal
 
 object CategoriesRepo {
 
@@ -37,6 +32,9 @@ object CategoriesRepo {
     )(unlift(Category.unapply))
 
   case class Category(code: String, details: String)
+
+  case class CategoryMapping(source: String, categories: Seq[String])
+
 
 }
 
@@ -73,25 +71,5 @@ class CategoriesRepo(root: File) {
     fos.close()
   }
 
-  lazy val categoryListOption: Option[List[Category]] = {
-    val file = new File(root, "Categories.xml")
-    if (!file.exists) None
-    else {
-      val model = ModelFactory.createDefaultModel()
-      val reader = FileHandling.reader(file)
-      model.read(reader, null)
-      reader.close()
-      val typeProperty = model.getProperty(rdfType)
-      val conceptResource = model.getResource(s"${SKOS}Concept")
-      val prefLabel = model.getProperty(SKOS, "prefLabel")
-      val definitionLabel = model.getProperty(SKOS, "definition")
-      val subjects = model.listSubjectsWithProperty(typeProperty, conceptResource).toSeq
-      val categoryList = subjects.map(subject => Category(
-        code = model.listObjectsOfProperty(subject, prefLabel).map(_.asLiteral().getString).next(),
-        details = model.listObjectsOfProperty(subject, definitionLabel).map(_.asLiteral().getString).next()
-      )).toList
-      Some(categoryList)
-    }
-  }
 }
 

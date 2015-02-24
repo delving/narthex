@@ -88,28 +88,3 @@ class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
   }
 }
 
-class CategoryMappingStore(termGraph: SkosGraph, ts: TripleStore) {
-
-  import mapping.SkosMappingStore._
-
-  def toggleMapping(mapping: SkosMapping, vocabGraph: SkosGraph): Future[String] = {
-    ts.ask(mapping.existenceQ).flatMap { exists =>
-      if (exists) {
-        ts.up.sparqlUpdate(mapping.deleteQ).map(ok => "removed")
-      }
-      else {
-        ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph)).map(ok => "added")
-      }
-    }
-  }
-
-  def getMappings: Future[List[List[String]]] = {
-    ts.query(getTermMappingsQ(termGraph)).map { resultMap =>
-      resultMap.map { ab =>
-        List(ab("termUri").text, ab("vocabUri").text, ab("vocabSpec").text)
-      }
-    }
-  }
-}
-
-

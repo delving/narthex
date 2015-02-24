@@ -360,11 +360,7 @@ object AppController extends Controller with Security {
   // todo: things under here unfinished
 
   def getCategoryList = Secure() { session => request =>
-    orgContext.categoriesRepo.categoryListOption.map { list =>
-      Ok(Json.toJson(list))
-    } getOrElse {
-      Ok(Json.obj("message" -> "No category file"))
-    }
+    NotImplemented
   }
 
   def gatherCategoryCounts = Secure() { session => request =>

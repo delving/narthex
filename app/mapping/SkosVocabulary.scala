@@ -145,12 +145,12 @@ case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore) {
 
   private val conceptMap = new mutable.HashMap[String, Concept]()
 
-  lazy val concepts: Seq[Concept] = {
+  lazy val concepts: List[Concept] = {
     val typeProperty = m.getProperty(rdfType)
     val conceptResource = m.getResource(s"${SKOS}Concept")
     val subjects = m.listSubjectsWithProperty(typeProperty, conceptResource).toSeq
     subjects.map(statement => Concept(this, statement, conceptMap, m))
-  }
+  }.toList
 
   def search(language: String, sought: String, count: Int): LabelSearch = {
     val cleanSought = IGNORE_BRACKET.replaceFirstIn(sought, "")

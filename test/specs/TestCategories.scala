@@ -2,17 +2,28 @@ package specs
 
 import java.io.File
 
-import mapping.CategoriesRepo
+import mapping.VocabInfo
+import org.ActorStore
 import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
+import play.api.test.Helpers._
 
 class TestCategories extends PlaySpec with OneAppPerSuite with FakeTripleStore {
 
   "Category list should be read" in {
-    val categoriesDir = new File(getClass.getResource("/categories").getFile)
-    val categoriesRepo = new CategoriesRepo(categoriesDir)
-    val list = categoriesRepo.categoryListOption.get
-    list.size must be(23)
-    list.map(println)
+    cleanStart()
+    val actorStore = new ActorStore(ts)
+    val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
+    val categoriesVocabInfo = await(VocabInfo.createVocabInfo(admin, "categories", ts))
+    val categoriesFile = new File(getClass.getResource("/categories/Categories.xml").getFile)
+    await(ts.up.dataPutXMLFile(categoriesVocabInfo.dataUri, categoriesFile))
+    val v = categoriesVocabInfo.vocabulary
+    val cl = v.concepts
+    println(s"Concepts: ${cl.size}")
+    cl.map { c =>
+      println("boo")
+      println(c)
+    }
+    println("done")
   }
 
 }

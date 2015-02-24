@@ -2,117 +2,117 @@
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:skos="http://www.w3.org/2004/02/skos/core#">
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/schi">
     <skos:prefLabel xml:lang="nl">SCHI</skos:prefLabel>
-    <skos:definition xml:lang="nl">Schilderijen op doek, paneel, metaal, board, karton, papier, inclusief aquarel en pastel</skos:definition>
+    <skos:altLabel xml:lang="nl">Schilderijen op doek, paneel, metaal, board, karton, papier, inclusief aquarel en pastel</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/tekn">
     <skos:prefLabel xml:lang="nl">TEKN</skos:prefLabel>
-    <skos:definition xml:lang="nl">Tekeningen als unica, hoofdzakelijk op papier</skos:definition>
+    <skos:altLabel xml:lang="nl">Tekeningen als unica, hoofdzakelijk op papier</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/grfk">
     <skos:prefLabel xml:lang="nl">GRFK</skos:prefLabel>
-    <skos:definition xml:lang="nl">Grafiek. Druktechnieken, ets, litho, lino etc. Multipel. Affiches.</skos:definition>
+    <skos:altLabel xml:lang="nl">Grafiek. Druktechnieken, ets, litho, lino etc. Multipel. Affiches.</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/bldh">
     <skos:prefLabel xml:lang="nl">BLDH</skos:prefLabel>
-    <skos:definition xml:lang="nl">Beelden, sculptuur, van hout, steen, metaal, keramiek, bouwbeeldhouwwerk, terra cotta, geen installaties</skos:definition>
+    <skos:altLabel xml:lang="nl">Beelden, sculptuur, van hout, steen, metaal, keramiek, bouwbeeldhouwwerk, terra cotta, geen installaties</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/kemk">
     <skos:prefLabel xml:lang="nl">KEMK</skos:prefLabel>
-    <skos:definition xml:lang="nl">Keramiek, glas en eet- en drinkgerei, tafelzilver. Aardewerk, porselein, steengoed, glas, geen glas-in lood, geen beelden van keramiek, bestek.</skos:definition>
+    <skos:altLabel xml:lang="nl">Keramiek, glas en eet- en drinkgerei, tafelzilver. Aardewerk, porselein, steengoed, glas, geen glas-in lood, geen beelden van keramiek, bestek.</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/arch">
     <skos:prefLabel xml:lang="nl">ARCH</skos:prefLabel>
-    <skos:definition xml:lang="nl">Archeologische vondsten, klassieke oudheid, inheems tot middeleeuwen</skos:definition>
+    <skos:altLabel xml:lang="nl">Archeologische vondsten, klassieke oudheid, inheems tot middeleeuwen</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/meub">
     <skos:prefLabel xml:lang="nl">MEUB</skos:prefLabel>
-    <skos:definition xml:lang="nl">Meubels, verwarming en verlichting</skos:definition>
+    <skos:altLabel xml:lang="nl">Meubels, verwarming en verlichting</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/gebr">
     <skos:prefLabel xml:lang="nl">GEBR</skos:prefLabel>
-    <skos:definition xml:lang="nl">Gebruiksvoorwerpen, gereedschappen, huishoudelijk, professioneel ambachtelijk. Werktuigen en instrumenten ter vervaardiging van of bewerking van objecten of gebruiksvoorwerpen in het algemeen.</skos:definition>
+    <skos:altLabel xml:lang="nl">Gebruiksvoorwerpen, gereedschappen, huishoudelijk, professioneel ambachtelijk. Werktuigen en instrumenten ter vervaardiging van of bewerking van objecten of gebruiksvoorwerpen in het algemeen.</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/wapn">
     <skos:prefLabel xml:lang="nl">WAPN</skos:prefLabel>
-    <skos:definition xml:lang="nl">Wapens. Blanke wapens, en pistolen, geweren, kanonnen</skos:definition>
+    <skos:altLabel xml:lang="nl">Wapens. Blanke wapens, en pistolen, geweren, kanonnen</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/druk">
     <skos:prefLabel xml:lang="nl">DRUK</skos:prefLabel>
-    <skos:definition xml:lang="nl">Boeken, tijdschriften en tekstueel documentair materiaal,inclusief bladmuziek</skos:definition>
+    <skos:altLabel xml:lang="nl">Boeken, tijdschriften en tekstueel documentair materiaal,inclusief bladmuziek</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/foto">
     <skos:prefLabel xml:lang="nl">FOTO</skos:prefLabel>
-    <skos:definition xml:lang="nl">Fotografie. Foto positieven èn negatieven, dia’s, toverlantaarnplaatjes, ansichtkaarten, camera’s en ontwikkelapparatuur</skos:definition>
+    <skos:altLabel xml:lang="nl">Fotografie. Foto positieven èn negatieven, dia’s, toverlantaarnplaatjes, ansichtkaarten, camera’s en ontwikkelapparatuur</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/mdia">
     <skos:prefLabel xml:lang="nl">MDIA</skos:prefLabel>
-    <skos:definition xml:lang="nl">Moderne media. Videokunst, audiovisuele installaties, digitale media. Ook wel multimedia of nieuwe media genoemd.</skos:definition>
+    <skos:altLabel xml:lang="nl">Moderne media. Videokunst, audiovisuele installaties, digitale media. Ook wel multimedia of nieuwe media genoemd.</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/vide">
     <skos:prefLabel xml:lang="nl">VIDE</skos:prefLabel>
-    <skos:definition xml:lang="nl">Video en geluid documentair. Geluids- en beelddragers met een documentair karakter, opname en afspeelapparatuur</skos:definition>
+    <skos:altLabel xml:lang="nl">Video en geluid documentair. Geluids- en beelddragers met een documentair karakter, opname en afspeelapparatuur</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/txtl">
     <skos:prefLabel xml:lang="nl">TXTL</skos:prefLabel>
-    <skos:definition xml:lang="nl">Textiel, mode en sieraden. Kostuums, uniformen, uniformonderdelen, streekdracht, vlak textiel, merklappen, schoenen, gebruikstextiel, excl. kerkelijk textiel, vaandels, hoofddeksels en sieraden, interieurtextiel</skos:definition>
+    <skos:altLabel xml:lang="nl">Textiel, mode en sieraden. Kostuums, uniformen, uniformonderdelen, streekdracht, vlak textiel, merklappen, schoenen, gebruikstextiel, excl. kerkelijk textiel, vaandels, hoofddeksels en sieraden, interieurtextiel</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/devo">
     <skos:prefLabel xml:lang="nl">DEVO</skos:prefLabel>
-    <skos:definition xml:lang="nl">Devotionalia. Kerkelijk vaatwerk, lithurgisch textiel</skos:definition>
+    <skos:altLabel xml:lang="nl">Devotionalia. Kerkelijk vaatwerk, lithurgisch textiel</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/ntrh">
     <skos:prefLabel xml:lang="nl">NTRH</skos:prefLabel>
-    <skos:definition xml:lang="nl">Natuurhistorie, inclusief fossielen</skos:definition>
+    <skos:altLabel xml:lang="nl">Natuurhistorie, inclusief fossielen</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/etno">
     <skos:prefLabel xml:lang="nl">ETNO</skos:prefLabel>
-    <skos:definition xml:lang="nl">Etnografica</skos:definition>
+    <skos:altLabel xml:lang="nl">Etnografica</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/geol">
     <skos:prefLabel xml:lang="nl">GEOL</skos:prefLabel>
-    <skos:definition xml:lang="nl">Geologie, Gesteenten</skos:definition>
+    <skos:altLabel xml:lang="nl">Geologie, Gesteenten</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/wrde">
     <skos:prefLabel xml:lang="nl">WRDE</skos:prefLabel>
-    <skos:definition xml:lang="nl">Waardepapieren, munten, penningen, en (post)zegels</skos:definition>
+    <skos:altLabel xml:lang="nl">Waardepapieren, munten, penningen, en (post)zegels</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/wtns">
     <skos:prefLabel xml:lang="nl">WTNS</skos:prefLabel>
-    <skos:definition xml:lang="nl">Medisch, farmaceutisch en wetenschappelijk instrumentarium en meetinstrumenten</skos:definition>
+    <skos:altLabel xml:lang="nl">Medisch, farmaceutisch en wetenschappelijk instrumentarium en meetinstrumenten</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/sprt">
     <skos:prefLabel xml:lang="nl">SPRT</skos:prefLabel>
-    <skos:definition xml:lang="nl">Sport en spel. Sportartikelen, speelgoed, spellen</skos:definition>
+    <skos:altLabel xml:lang="nl">Sport en spel. Sportartikelen, speelgoed, spellen</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/mobl">
     <skos:prefLabel xml:lang="nl">MOBL</skos:prefLabel>
-    <skos:definition xml:lang="nl">Mobiel erfgoed. Mobiele objecten en onderdelen daarvan.</skos:definition>
+    <skos:altLabel xml:lang="nl">Mobiel erfgoed. Mobiele objecten en onderdelen daarvan.</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
   <skos:Concept rdf:about="http://schemas.delving.eu/narthex/terms/category/muzk">
     <skos:prefLabel xml:lang="nl">MUSK</skos:prefLabel>
-    <skos:definition xml:lang="nl">Muziekinstrumenten</skos:definition>
+    <skos:altLabel xml:lang="nl">Muziekinstrumenten</skos:altLabel>
     <skos:inScheme rdf:resource="http://schemas.delving.eu/narthex/terms/Categories"/>
   </skos:Concept>
 </rdf:RDF>
