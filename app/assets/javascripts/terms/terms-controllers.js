@@ -111,7 +111,7 @@ define(["angular"], function () {
             termsService.termVocabulary($scope.spec).then(function (terms) {
                 $scope.terms = _.sortBy(terms, function (t) {
                     return -t.frequency;
-                })
+                });
                 filterHistogram();
             });
         });
@@ -121,7 +121,7 @@ define(["angular"], function () {
             $scope.scrollTo({element: '#skos-term-list', direction: 'up'});
             termsService.searchVocabulary($scope.thesaurus, value).then(function (data) {
                 $scope.conceptSearch = data.search;
-                var mapping = $scope.mappings[$scope.sourceTerm.uri];
+                var mapping = $scope.sourceTerm ? $scope.mappings[$scope.sourceTerm.uri] : null;
                 if (mapping) {
                     $scope.concepts = _.flatten(_.partition(data.search.results, function (concept) {
                         return concept.uri === mapping.uri;
