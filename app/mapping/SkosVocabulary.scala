@@ -37,7 +37,7 @@ object SkosVocabulary {
   def getLanguageLabel(labels: Seq[Label], language: String): Label = {
     // try language, default to whatever can be found
     val languageFit: Option[Label] = labels.find(_.language == language)
-    languageFit.getOrElse(labels.head)
+    languageFit.getOrElse(labels.headOption.getOrElse(Label(true, language, "Unknown!")))
   }
 
   def getLabels(resource: Resource, propertyName: String, preferred: Boolean, model: Model): Seq[Label] = {

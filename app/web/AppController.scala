@@ -22,7 +22,6 @@ import akka.pattern.{AskTimeoutException, ask}
 import akka.util.Timeout
 import dataset.DatasetActor._
 import dataset.DsInfo._
-import mapping.CategoryDb._
 import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
 import mapping.VocabInfo
@@ -374,26 +373,29 @@ object AppController extends Controller with Security {
   }
 
   def getCategorySourcePaths(spec: String) = Secure() { session => request =>
-    val datasetContext = orgContext.datasetContext(spec)
-    val sourcePaths = datasetContext.categoryDb.getSourcePaths
-    Ok(Json.obj("sourcePaths" -> sourcePaths))
+    NotImplemented
+//    val datasetContext = orgContext.datasetContext(spec)
+//    val sourcePaths = datasetContext.categoryDb.getSourcePaths
+//    Ok(Json.obj("sourcePaths" -> sourcePaths))
   }
 
   def getCategoryMappings(spec: String) = Secure() { session => request =>
-    val datasetContext = orgContext.datasetContext(spec)
-    val mappings: Seq[CategoryMapping] = datasetContext.categoryDb.getMappings
-    Ok(Json.obj("mappings" -> mappings))
+    NotImplemented
+//    val datasetContext = orgContext.datasetContext(spec)
+//    val mappings: Seq[CategoryMapping] = datasetContext.categoryDb.getMappings
+//    Ok(Json.obj("mappings" -> mappings))
   }
 
   def setCategoryMapping(spec: String) = Secure(parse.json) { session => request =>
-    val datasetContext = orgContext.datasetContext(spec)
-    val categoryMapping = CategoryMapping(
-      (request.body \ "source").as[String],
-      Seq((request.body \ "category").as[String])
-    )
-    val member = (request.body \ "member").as[Boolean]
-    datasetContext.categoryDb.setMapping(categoryMapping, member)
-    Ok("Mapping " + (if (member) "added" else "removed"))
+    NotImplemented
+//    val datasetContext = orgContext.datasetContext(spec)
+//    val categoryMapping = CategoryMapping(
+//      (request.body \ "source").as[String],
+//      Seq((request.body \ "category").as[String])
+//    )
+//    val member = (request.body \ "member").as[Boolean]
+//    datasetContext.categoryDb.setMapping(categoryMapping, member)
+//    Ok("Mapping " + (if (member) "added" else "removed"))
   }
 
   def listSheets = Secure() { session => request =>

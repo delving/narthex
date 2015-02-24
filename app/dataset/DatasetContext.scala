@@ -24,7 +24,6 @@ import dataset.DsInfo.DsMetadata
 import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
-import mapping.CategoryDb
 import org.OrgContext._
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
@@ -37,7 +36,6 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val rootDir = new File(orgContext.datasetsDir, dsInfo.spec)
-  val dbBaseName = s"narthex_${orgContext.orgId}___$dsInfo"
 
   val rawDir = new File(rootDir, "raw")
   val sipsDir = new File(rootDir, "sips")
@@ -54,7 +52,6 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   val treeRoot = new NodeRepo(this, treeDir)
 
-  lazy val categoryDb = new CategoryDb(dbBaseName)
   lazy val sipRepo = new SipRepo(sipsDir, dsInfo.spec, NAVE_DOMAIN)
 
   lazy val processedRepo = new ProcessedRepo(processedDir, dsInfo)

@@ -20,13 +20,11 @@ import java.nio.file.Files
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
 
 import harvest.Harvesting.HarvestType
-import mapping.CategoryDb.CategoryMapping
 import org.apache.commons.io.input.BOMInputStream
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
-import record.CategoryParser.CategoryCount
+import record.PocketParser
 import record.PocketParser._
-import record.{CategoryParser, PocketParser}
 import services.FileHandling.{clearDir, sourceFromFile, writer}
 import services.ProgressReporter
 
@@ -246,23 +244,23 @@ class SourceRepo(home: File) {
     }
   })
 
-  def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progress: ProgressReporter): List[CategoryCount] = {
-    val parser = new CategoryParser(pathPrefix, sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.recordContainer, categoryMappings)
-    val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
-    val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
-    val totalActiveIds = activeIdCounts.fold(0)(_ + _)
-    progress.setMaximum(totalActiveIds)
-    listZipFiles.foreach { zipFile =>
-      if (progress.keepWorking) {
-        var idSet = avoidSet(zipFile)
-        val (source, readProgress) = sourceFromFile(zipFile)
-        // ignore this read progress because it's one of many files
-        parser.parse(source, idSet.toSet, progress)
-        source.close()
-      }
-    }
-    parser.categoryCounts
-  }
+//  def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progress: ProgressReporter): List[CategoryCount] = {
+//    val parser = new CategoryParser(pathPrefix, sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.recordContainer, categoryMappings)
+//    val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
+//    val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
+//    val totalActiveIds = activeIdCounts.fold(0)(_ + _)
+//    progress.setMaximum(totalActiveIds)
+//    listZipFiles.foreach { zipFile =>
+//      if (progress.keepWorking) {
+//        var idSet = avoidSet(zipFile)
+//        val (source, readProgress) = sourceFromFile(zipFile)
+//        // ignore this read progress because it's one of many files
+//        parser.parse(source, idSet.toSet, progress)
+//        source.close()
+//      }
+//    }
+//    parser.categoryCounts
+//  }
 
   def parsePockets(output: Pocket => Unit, progress: ProgressReporter): Int = {
     val parser = new PocketParser(sourceFacts)

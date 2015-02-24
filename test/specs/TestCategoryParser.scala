@@ -2,7 +2,6 @@ package specs
 
 import java.io.{File, FileOutputStream}
 
-import mapping.CategoryDb
 import org.scalatest.{FlatSpec, Matchers}
 import record.CategoryParser
 import services.{FileHandling, ProgressReporter}
@@ -65,7 +64,7 @@ class TestCategoryParser extends FlatSpec with Matchers {
   }
 
   //  "category list" should "read in and turn to json" in {
-  //    val url = getClass.getResource("/categories/categories.md")
+  //    val url = getClass.getResource("/categories/Categories.xml")
   //    val file = new File(url.getFile)
   //    val catList = CategoryList.load(file)
   //    val json = Json.toJson(catList)

@@ -18,13 +18,12 @@ package record
 
 import java.util.Date
 
-import mapping.CategoryDb.CategoryMapping
 import org.apache.poi.hssf.util.HSSFColor
 import org.apache.poi.ss.usermodel._
 import org.apache.poi.xssf.usermodel._
 import play.Logger
 import play.api.libs.json.{Json, Writes}
-import record.CategoryParser.{CategoryCount, Counter, NULL}
+import record.CategoryParser.{CategoryCount, CategoryMapping, Counter, NULL}
 import services.StringHandling._
 import services.{NarthexEventReader, ProgressReporter}
 
@@ -36,6 +35,8 @@ import scala.xml.{MetaData, NamespaceBinding}
 object CategoryParser {
 
   val NULL = "NULL"
+
+  case class CategoryMapping(source: String, categories: Seq[String])
 
   case class Counter(var count: Int)
 
@@ -192,6 +193,7 @@ object CategoryParser {
 }
 
 class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: String, recordContainer: Option[String] = None, categoryMappings: Map[String, CategoryMapping]) {
+
   var countMap = new collection.mutable.HashMap[String, Counter]()
   var percentWas = -1
   var lastProgress = 0l
@@ -247,7 +249,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
         attrs.foreach { attr =>
           path.push((s"@${attr.prefixedKey}", new StringBuilder()))
           val uri = generateUri(attr.value.toString())
-          categoryMappings.get(uri).map(_.categories.foreach(recordCategories += _))
+//          categoryMappings.get(uri).map(_.categories.foreach(recordCategories += _))
           path.pop()
         }
       }
@@ -310,9 +312,9 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
           if (startTag && text.nonEmpty) {
             val uri = generateUri(text)
             categoryMappings.get(uri).map { mapping =>
-              mapping.categories.foreach { category =>
-                recordCategories += category
-              }
+//              mapping.categories.foreach { category =>
+//                recordCategories += category
+//              }
             }
           }
         }

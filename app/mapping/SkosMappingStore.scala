@@ -31,11 +31,11 @@ object SkosMappingStore {
 
     val uri = s"${actor.uri}/mapping/${UUID.randomUUID().toString}"
 
-    val doesMappingExist = doesMappingExistQ(uriA, uriB)
+    val existenceQ = doesMappingExistQ(uriA, uriB)
 
-    val deleteMapping = deleteMappingQ(uriA, uriB)
+    val deleteQ = deleteMappingQ(uriA, uriB)
 
-    def insertMapping(skosA: SkosGraph, skosB: SkosGraph) = insertMappingQ(actor, uri, uriA, uriB, skosA, skosB)
+    def insertQ(skosA: SkosGraph, skosB: SkosGraph) = insertMappingQ(actor, uri, uriA, uriB, skosA, skosB)
 
     override def toString = uri
   }
@@ -47,12 +47,12 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, ts: TripleStore) {
   import mapping.SkosMappingStore._
 
   def toggleMapping(mapping: SkosMapping): Future[String] = {
-    ts.ask(mapping.doesMappingExist).flatMap { exists =>
+    ts.ask(mapping.existenceQ).flatMap { exists =>
       if (exists) {
-        ts.up.sparqlUpdate(mapping.deleteMapping).map(ok => "removed")
+        ts.up.sparqlUpdate(mapping.deleteQ).map(ok => "removed")
       }
       else {
-        ts.up.sparqlUpdate(mapping.insertMapping(skosA, skosB)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertQ(skosA, skosB)).map(ok => "added")
       }
     }
   }
@@ -69,12 +69,12 @@ class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
   import mapping.SkosMappingStore._
 
   def toggleMapping(mapping: SkosMapping, vocabGraph: SkosGraph): Future[String] = {
-    ts.ask(mapping.doesMappingExist).flatMap { exists =>
+    ts.ask(mapping.existenceQ).flatMap { exists =>
       if (exists) {
-        ts.up.sparqlUpdate(mapping.deleteMapping).map(ok => "removed")
+        ts.up.sparqlUpdate(mapping.deleteQ).map(ok => "removed")
       }
       else {
-        ts.up.sparqlUpdate(mapping.insertMapping(termGraph, vocabGraph)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph)).map(ok => "added")
       }
     }
   }
@@ -89,22 +89,27 @@ class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
 }
 
 class CategoryMappingStore(termGraph: SkosGraph, ts: TripleStore) {
-  /*
-   def setCategoryMapping(mapping: CategoryMapping, member: Boolean) = {
-     if (member) {
-       // todo: add the mapping
-     }
-     else {
-       // todo: remove the mapping
-     }
-   }
 
-   def getCategoryMappings: Seq[CategoryMapping] = {
-     // todo: should have a dataset URI argument
-     // todo: another method for a user's mappings (reverse order, N most recent)
-     Seq.empty
-   }
-  */
+  import mapping.SkosMappingStore._
+
+  def toggleMapping(mapping: SkosMapping, vocabGraph: SkosGraph): Future[String] = {
+    ts.ask(mapping.existenceQ).flatMap { exists =>
+      if (exists) {
+        ts.up.sparqlUpdate(mapping.deleteQ).map(ok => "removed")
+      }
+      else {
+        ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph)).map(ok => "added")
+      }
+    }
+  }
+
+  def getMappings: Future[List[List[String]]] = {
+    ts.query(getTermMappingsQ(termGraph)).map { resultMap =>
+      resultMap.map { ab =>
+        List(ab("termUri").text, ab("vocabUri").text, ab("vocabSpec").text)
+      }
+    }
+  }
 }
 
 

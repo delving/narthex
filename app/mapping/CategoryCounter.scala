@@ -19,13 +19,10 @@ package mapping
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{InterruptWork, WorkFailure}
 import dataset.DatasetContext
-import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
+import mapping.CategoryCounter.CountCategories
 import org.OrgContext.ORG_ID
-import record.CategoryParser
 import record.CategoryParser.CategoryCount
-import record.PocketParser._
-import services.ProgressReporter.ProgressState._
-import services.{FileHandling, ProgressReporter}
+import services.ProgressReporter
 
 import scala.concurrent._
 
@@ -53,22 +50,22 @@ class CategoryCounter(val datasetContext: DatasetContext) extends Actor with Act
       log.info("Counting categories")
       val pathPrefix = s"${ORG_ID}/$datasetContext"
       future {
-        val categoryMappings = datasetContext.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap
-        val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_RECORD_CONTAINER, categoryMappings)
-        val (source, readProgress) = FileHandling.sourceFromFile(datasetContext.processedRepo.home)
-        try {
-          val progressReporter = ProgressReporter(CATEGORIZING, context.parent)
-          progress = Some(progressReporter)
-          progressReporter.setReadProgress(readProgress)
-          parser.parse(source, Set.empty[String], progressReporter)
-          context.parent ! CategoryCountComplete(datasetContext.dsInfo.spec, parser.categoryCounts)
-        }
-        catch {
-          case e: Exception => context.parent ! WorkFailure(e.getMessage, Some(e))
-        }
-        finally {
-          source.close()
-        }
+//        val categoryMappings = datasetContext.categoryDb.getMappings.map(cm => (cm.source, cm)).toMap
+//        val parser = new CategoryParser(pathPrefix, POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_RECORD_CONTAINER, categoryMappings)
+//        val (source, readProgress) = FileHandling.sourceFromFile(datasetContext.processedRepo.home)
+//        try {
+//          val progressReporter = ProgressReporter(CATEGORIZING, context.parent)
+//          progress = Some(progressReporter)
+//          progressReporter.setReadProgress(readProgress)
+//          parser.parse(source, Set.empty[String], progressReporter)
+//          context.parent ! CategoryCountComplete(datasetContext.dsInfo.spec, parser.categoryCounts)
+//        }
+//        catch {
+//          case e: Exception => context.parent ! WorkFailure(e.getMessage, Some(e))
+//        }
+//        finally {
+//          source.close()
+//        }
       } onFailure {
         case t => context.parent ! WorkFailure(t.getMessage, Some(t))
       }
