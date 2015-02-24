@@ -36,9 +36,7 @@ define(["angular"], function (angular) {
         $scope.categories = [];
         $scope.visible = {};
 
-        var recordContainer = "/pockets/pocket";
-        if ($scope.path.substring(0, recordContainer.length) != recordContainer) console.warn("Missing record container!");
-        var sourceURIPath = $scope.path.substring(recordContainer.length);
+        var sourceURIPath = "/SOURCEURIPATH";
 
         function columnDefinitionsFromCategories() {
             $scope.columnDefs = [];
@@ -73,8 +71,10 @@ define(["angular"], function (angular) {
                 return;
             }
             columnDefinitionsFromCategories();
+            $scope.showCategoryExplain(0);
             categoriesService.histogram($scope.spec, $scope.path, $scope.histogramSize).then(function (histogramData) {
                 $scope.gridData = _.map(histogramData.histogram, function (entry) {
+                    // todo: not any more:
                     var sourceURI = $rootScope.orgId + "/" + $scope.spec + sourceURIPath + "/" + encodeURIComponent(entry[1]);
 //                        console.log("sourceURI " + entry[1], sourceURI);
                     return {
@@ -135,15 +135,16 @@ define(["angular"], function (angular) {
         };
 
         $scope.setGridValue = function (entity, code) {
-            var body = {
-                source: entity.sourceURI,
-                category: code,
-                member: entity.memberOf[code]
-            };
-            entity.busyCode = code;
-            categoriesService.setCategoryMapping($scope.spec, body).then(function (data) {
-                delete entity.busyCode;
-            });
+            alert("Not quite implemented")
+//            var body = {
+//                source: entity.sourceURI,
+//                category: code,
+//                member: entity.memberOf[code]
+//            };
+//            entity.busyCode = code;
+//            categoriesService.setCategoryMapping($scope.spec, body).then(function (data) {
+//                delete entity.busyCode;
+//            });
         };
 
 //        $scope.scrollTo = function (options) {

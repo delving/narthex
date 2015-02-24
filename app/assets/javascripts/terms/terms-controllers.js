@@ -92,8 +92,11 @@ define(["angular"], function () {
 
         // preparations
         termsService.listVocabularies().then(function (data) {
-            $scope.thesaurusList = _.map(data, function (t) {
+            var thesaurusList = _.map(data, function (t) {
                 return t.skosSpec;
+            });
+            $scope.thesaurusList = _.filter(thesaurusList, function(spec) {
+                return spec != "categories";
             });
             if ($scope.thesaurusList.length == 1) {
                 $scope.selectThesaurus($scope.thesaurusList[0])

@@ -19,6 +19,7 @@ package mapping
 import com.hp.hpl.jena.rdf.model.{Model, Resource}
 import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
 import mapping.SkosVocabulary._
+import org.OrgContext.PREFERRED_LANGUAGE
 import play.api.Logger
 import play.api.libs.json.{JsObject, Json, Writes}
 import triplestore.GraphProperties._
@@ -158,6 +159,10 @@ case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore) {
     val results = judged.sortBy(-1 * _.proximity).take(count).toList
     LabelSearch(LabelQuery(language, cleanSought, count), results)
   }
+
+  lazy val uriLabelMap: Map[String, String] = concepts.map(c =>
+    c.resource.toString -> c.getPrefLabel(PREFERRED_LANGUAGE).text
+  ).toMap
 
   override def toString: String = graphName
 }

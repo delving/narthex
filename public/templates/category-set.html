@@ -19,6 +19,9 @@
 
 <div class="categories-panel">
     <div class="widget">
+        <div id="category-explanation" class="alert alert-info alert-small">
+            <strong>{{ categoryHelp.code.toUpperCase() }}:</strong> {{ categoryHelp.details }}
+        </div>
         <div class="widget-header">
             <div class="btn-group" role="group">
                 <button class="btn btn-default btn-sm" data-ng-class="{ 'btn-success': visible[category.code] == true }"
@@ -36,9 +39,4 @@
     </div>
 </div>
 
-<div id="category-explanation">
-    <div class="alert alert-info">
-        <strong>{{ categoryHelp.code.toUpperCase() }}:</strong> {{ categoryHelp.details }}
-    </div>
-</div>
 

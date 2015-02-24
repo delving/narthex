@@ -39,6 +39,8 @@ import scala.concurrent.duration._
 
 object VocabInfo {
 
+  val CATEGORIES_SPEC = "categories"
+
   /*
   Caused by: java.util.ConcurrentModificationException: null
   at com.hp.hpl.jena.mem.ArrayBunch$2.hasNe

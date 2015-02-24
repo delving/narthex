@@ -101,7 +101,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo) extends Actor with Ac
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
       reader = Some(repo.createGraphReader(None, progressReporter))
-      val termMap = withVocabInfo("categories")(dsInfo.termCategoryMap)
+      val termMap = withVocabInfo(CATEGORIES_SPEC)(dsInfo.termCategoryMap)
       termCatMapOpt = Some(termMap)
       sendGraphChunkOpt()
 

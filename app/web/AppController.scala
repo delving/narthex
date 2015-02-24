@@ -357,34 +357,48 @@ object AppController extends Controller with Security {
     }
   }
 
+  def getCategoryList = Secure() { session => request =>
+    withVocabInfo(CATEGORIES_SPEC) { catVocabInfo =>
+      val categories = catVocabInfo.vocabulary.concepts.sortBy(_.prefLabels.head.text).map { c =>
+        println(s"CONCEPT: $c")
+        val details = c.altLabels.headOption.map(_.text).getOrElse("???")
+        Json.obj(
+          "code" -> c.prefLabels.head.text,
+          "details" -> details
+        )
+      }
+      Ok(Json.obj("categories" -> categories))
+    }
+  }
+
   // todo: things under here unfinished
 
-  def getCategoryList = Secure() { session => request =>
-    NotImplemented
+  def getCategoryMappings(spec: String) = Secure() { session => request =>
+    withVocabInfo(CATEGORIES_SPEC) { catVocabInfo =>
+      Ok(Json.obj("mappings" -> List(List("one", "two", "three"))))
+    }
+    //    val datasetContext = orgContext.datasetContext(spec)
+    //    val mappings: Seq[CategoryMapping] = datasetContext.categoryDb.getMappings
+    //    Ok(Json.obj("mappings" -> mappings))
+  }
+
+  def setCategoryMapping(spec: String) = Secure(parse.json) { session => request =>
+    withVocabInfo(CATEGORIES_SPEC) { catVocabInfo =>
+      NotImplemented
+    }
+    //    val datasetContext = orgContext.datasetContext(spec)
+    //    val categoryMapping = CategoryMapping(
+    //      (request.body \ "source").as[String],
+    //      Seq((request.body \ "category").as[String])
+    //    )
+    //    val member = (request.body \ "member").as[Boolean]
+    //    datasetContext.categoryDb.setMapping(categoryMapping, member)
+    //    Ok("Mapping " + (if (member) "added" else "removed"))
   }
 
   def gatherCategoryCounts = Secure() { session => request =>
     orgContext.startCategoryCounts()
     Ok
-  }
-
-  def getCategoryMappings(spec: String) = Secure() { session => request =>
-    NotImplemented
-//    val datasetContext = orgContext.datasetContext(spec)
-//    val mappings: Seq[CategoryMapping] = datasetContext.categoryDb.getMappings
-//    Ok(Json.obj("mappings" -> mappings))
-  }
-
-  def setCategoryMapping(spec: String) = Secure(parse.json) { session => request =>
-    NotImplemented
-//    val datasetContext = orgContext.datasetContext(spec)
-//    val categoryMapping = CategoryMapping(
-//      (request.body \ "source").as[String],
-//      Seq((request.body \ "category").as[String])
-//    )
-//    val member = (request.body \ "member").as[Boolean]
-//    datasetContext.categoryDb.setMapping(categoryMapping, member)
-//    Ok("Mapping " + (if (member) "added" else "removed"))
   }
 
   def listSheets = Secure() { session => request =>
