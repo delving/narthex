@@ -17,16 +17,31 @@ package mapping
 
 import java.io.{File, FileOutputStream}
 
+import com.hp.hpl.jena.rdf.model.ModelFactory
+import mapping.CategoriesRepo.Category
+import mapping.CategoriesSpreadsheet.CategoryCount
 import org.OrgContext._
-import play.api.libs.json.Json
-import record.CategoryParser
-import record.CategoryParser._
+import play.api.libs.functional.syntax._
+import play.api.libs.json.{JsPath, Json, Writes}
 import services.FileHandling.writer
-import services.Temporal
+import services.{FileHandling, Temporal}
+import triplestore.GraphProperties._
+
+import scala.collection.JavaConversions._
+
+object CategoriesRepo {
+
+  implicit val catWrites: Writes[Category] = (
+    (JsPath \ "code").write[String] and
+      (JsPath \ "details").write[String]
+    )(unlift(Category.unapply))
+
+  case class Category(code: String, details: String)
+
+}
 
 class CategoriesRepo(root: File) {
   root.mkdirs()
-  val MARKDOWN = ".md"
   val SPREADSHEET = ".xlsx"
   val JSON = ".json"
   val sheets = new File(root, "sheets")
@@ -53,14 +68,30 @@ class CategoriesRepo(root: File) {
     val sheetName = Temporal.nowFileName(ORG_ID, SPREADSHEET)
     val sheetFile = new File(sheets, sheetName)
     val fos = new FileOutputStream(sheetFile)
-    CategoryParser.generateWorkbook(counts).write(fos)
+    val spreadsheet = new CategoriesSpreadsheet(counts)
+    spreadsheet.workbook.write(fos)
     fos.close()
   }
 
-  def categoryMarkdown(name: String) = new File(root, name.replaceAll(" ", "_") + MARKDOWN)
-
-  lazy val categoryListOption: Option[CategoryList] = {
-    val file = new File(root, "categories.md")
-    if (file.exists()) Some(CategoryList.load(file)) else None
+  lazy val categoryListOption: Option[List[Category]] = {
+    val file = new File(root, "Categories.xml")
+    if (!file.exists) None
+    else {
+      val model = ModelFactory.createDefaultModel()
+      val reader = FileHandling.reader(file)
+      model.read(reader, null)
+      reader.close()
+      val typeProperty = model.getProperty(rdfType)
+      val conceptResource = model.getResource(s"${SKOS}Concept")
+      val prefLabel = model.getProperty(SKOS, "prefLabel")
+      val definitionLabel = model.getProperty(SKOS, "definition")
+      val subjects = model.listSubjectsWithProperty(typeProperty, conceptResource).toSeq
+      val categoryList = subjects.map(subject => Category(
+        code = model.listObjectsOfProperty(subject, prefLabel).map(_.asLiteral().getString).next(),
+        details = model.listObjectsOfProperty(subject, definitionLabel).map(_.asLiteral().getString).next()
+      )).toList
+      Some(categoryList)
+    }
   }
 }
+

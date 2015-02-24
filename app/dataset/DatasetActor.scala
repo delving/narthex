@@ -265,8 +265,8 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(StartCategoryCounting, Dormant) =>
       sendBusy()
       if (datasetContext.processedRepo.nonEmpty) {
-        val categoryCounter = context.actorOf(CategoryCounter.props(datasetContext), "category-counter")
-        categoryCounter ! CountCategories()
+        val categoryCounter = context.actorOf(CategoryCounter.props(dsInfo, datasetContext.processedRepo), "category-counter")
+        categoryCounter ! CountCategories
         goto(Categorizing) using Active(Some(categoryCounter), CATEGORIZING)
       }
       else {

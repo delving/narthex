@@ -215,7 +215,6 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.toggleTermMapping,
           routes.javascript.AppController.getCategoryList,
           routes.javascript.AppController.listSheets,
-          routes.javascript.AppController.getCategorySourcePaths,
           routes.javascript.AppController.getCategoryMappings,
           routes.javascript.AppController.setCategoryMapping,
           routes.javascript.AppController.gatherCategoryCounts,

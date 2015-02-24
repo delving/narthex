@@ -56,14 +56,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                getCategorySourcePaths: function (spec) {
-                    return app.getCategorySourcePaths(spec).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
                 nodeStatus: function (spec, path) {
                     return app.nodeStatus(spec, path).get().then(
                         function (response) {

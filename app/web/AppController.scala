@@ -372,13 +372,6 @@ object AppController extends Controller with Security {
     Ok
   }
 
-  def getCategorySourcePaths(spec: String) = Secure() { session => request =>
-    NotImplemented
-//    val datasetContext = orgContext.datasetContext(spec)
-//    val sourcePaths = datasetContext.categoryDb.getSourcePaths
-//    Ok(Json.obj("sourcePaths" -> sourcePaths))
-  }
-
   def getCategoryMappings(spec: String) = Secure() { session => request =>
     NotImplemented
 //    val datasetContext = orgContext.datasetContext(spec)

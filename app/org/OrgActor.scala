@@ -18,11 +18,11 @@ package org
 
 import akka.actor._
 import dataset.DatasetActor._
+import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.CategoryCountComplete
 import org.OrgActor._
 import org.OrgContext.orgContext
 import play.libs.Akka
-import record.CategoryParser.CategoryCount
 
 import scala.language.postfixOps
 

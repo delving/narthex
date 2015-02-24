@@ -68,24 +68,6 @@ define(["angular"], function () {
                 }
                 if ($scope.recordRoot) setDelimiterNodes(tree);
 
-                // todo: now the dataset has skosFields
-//                datasetService.getTermSourcePaths($scope.spec).then(function (data) {
-//                    console.log('get term source paths', data.sourcePaths);
-//                    function recursive(node, sourcePaths) {
-//                        node.termMappings = sourcePaths.indexOf(node.sourcePath) >= 0;
-//                        for (var index = 0; index < node.kids.length; index++) recursive(node.kids[index], sourcePaths);
-//                    }
-//                    recursive(tree, data.sourcePaths);
-//                });
-
-                datasetService.getCategorySourcePaths($scope.spec).then(function (data) {
-                    function recursive(node, sourcePaths) {
-                        if (sourcePaths.indexOf(node.sourcePath) >= 0) node.categoryMappings = true;
-                        for (var index = 0; index < node.kids.length; index++) recursive(node.kids[index], sourcePaths);
-                    }
-                    recursive(tree, data.sourcePaths);
-                });
-
                 $scope.tree = tree;
 
                 function selectNode(path, node) {

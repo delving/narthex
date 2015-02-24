@@ -58,7 +58,6 @@ POST        /narthex/app/skos/:specA/:specB/toggle-mapping                   web
 GET         /narthex/app/category-list                                       web.AppController.getCategoryList
 GET         /narthex/app/sheets-list                                         web.AppController.listSheets
 GET         /narthex/app/sheet/:spec                                         web.AppController.sheet(spec)
-GET         /narthex/app/dataset/:spec/category/source-paths                 web.AppController.getCategorySourcePaths(spec)
 GET         /narthex/app/dataset/:spec/category/mappings                     web.AppController.getCategoryMappings(spec)
 POST        /narthex/app/dataset/:spec/category/set-mapping                  web.AppController.setCategoryMapping(spec)
 GET         /narthex/app/categories/gather-counts                            web.AppController.gatherCategoryCounts
