@@ -156,10 +156,10 @@ object Sparql {
 
   def deleteDatasetQ(uri: String, skosUri: String) =
     s"""
-      |WITH <$uri>
-      |INSERT { <$uri> <$deleted> true }
-      |WHERE { ?s ?p ?o };
-      |DROP SILENT GRAPH <$skosUri>
+      |INSERT DATA {
+      |   GRAPH <$uri> { <$uri> <$deleted> true }
+      |};
+      |DROP SILENT GRAPH <$skosUri>;
       |DELETE {
       |   GRAPH ?g {
       |      ?s ?p ?o .
