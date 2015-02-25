@@ -192,4 +192,14 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     await(store.getMappings(categories = true)) must be(Seq())
   }
 
+  "Delete a dataset" in {
+    DsInfo.withDsInfo("ton-smits-huis") { dsInfo =>
+      await(dsInfo.dropDataset)
+//      println("dropped")
+    }
+    val list = await(DsInfo.listDsInfo(ts))
+//    println(s"After Delete: $list")
+    list must be(List())
+  }
+
 }
