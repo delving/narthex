@@ -294,31 +294,43 @@
 </script>
 
 <script type="text/ng-template" id="dataset-metadata-form.html" class="">
-    <form name="form" class="form file-harvest">
+    <form name="form" class="form-horizontal file-harvest">
         <fieldset>
             <div class="form-group">
-                <label for="meta_name">Dataset Name</label>
-                <input id="meta_name" class="form-control input-sm" data-ng-model="dataset.edit.datasetName"/>
+                <label for="meta_name" class="col-sm-3">Dataset Name</label>
+                <div class="col-sm-9">
+                    <input id="meta_name" class="form-control" data-ng-model="dataset.edit.datasetName"/>
+                </div>
             </div>
             <div class="form-group">
-                <label for="meta_description">Description</label>
-                <input id="meta_description" class="form-control input-sm" data-ng-model="dataset.edit.datasetDescription"/>
+                <label class="col-sm-3" for="meta_description">Description</label>
+                <div class="col-sm-9">
+                    <input id="meta_description" class="form-control" data-ng-model="dataset.edit.datasetDescription"/>
+                </div>
             </div>
             <div class="form-group">
-                <label for="meta_aggr">Aggregator</label>
-                <input id="meta_aggr" class="form-control input-sm" data-ng-model="dataset.edit.datasetAggregator"/>
+                <label class="col-sm-3" for="meta_aggr">Aggregator</label>
+                <div class="col-sm-9">
+                    <input id="meta_aggr" class="form-control" data-ng-model="dataset.edit.datasetAggregator"/>
+                </div>
             </div>
             <div class="form-group">
-                <label for="meta_owner">Owner</label>
-                <input id="meta_owner" class="form-control input-sm" data-ng-model="dataset.edit.datasetOwner"/>
+                <label class="col-sm-3" for="meta_owner">Owner</label>
+                <div class="col-sm-9">
+                    <input id="meta_owner" class="form-control" data-ng-model="dataset.edit.datasetOwner"/>
+                </div>
             </div>
             <div class="form-group">
-                <label for="meta_language">Language</label>
-                <input id="meta_language" class="form-control input-sm" data-ng-model="dataset.edit.datasetLanguage"/>
+                <label class="col-sm-3" for="meta_language">Language</label>
+                <div class="col-sm-9">
+                    <input id="meta_language" class="form-control" data-ng-model="dataset.edit.datasetLanguage"/>
+                </div>
             </div>
             <div class="form-group">
-                <label for="meta_rights">Rights</label>
-                <input id="meta_rights" class="form-control input-sm" data-ng-model="dataset.edit.datasetRights"/>
+                <label class="col-sm-3" for="meta_rights">Rights</label>
+                <div class="col-sm-9">
+                    <input id="meta_rights" class="form-control" data-ng-model="dataset.edit.datasetRights"/>
+                </div>
             </div>
             <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()" data-ng-disabled="unchangedMetadata">
                 <i class="fa fa-check-circle"></i>
@@ -347,11 +359,12 @@
 </script>
 
 <script type="text/ng-template" id="harvest-form.html">
-    <form name="form" class="form file-harvest">
+    <form name="form" class="form-horizontal file-harvest">
         <fieldset>
             <div class="form-group">
-                <label for="harvest_type">Harvest Server Type</label>
-                <div id="harvest_type" class="form-control">
+                <label class="col-sm-3" for="harvest_type">Harvest Server Type</label>
+
+                <div id="harvest_type" class="col-sm-9">
                     <input type="radio" ng-model="dataset.edit.harvestType" value="pmh">
                     <span>OAI-PMH (record)</span>
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
@@ -361,22 +374,31 @@
                     <input type="radio" ng-model="dataset.edit.harvestType" value="adlib">
                     <span>AdLib API</span>
                 </div>
+
             </div>
             <div class="form-group">
-                <label for="harv_url">Server URL</label>
-                <input id="harv_url" class="form-control" data-ng-model="dataset.edit.harvestURL" placeholder="http://..." required/>
+                <label class="col-sm-3" for="harv_url">Server URL</label>
+                <div class="col-sm-9">
+                    <input id="harv_url" class="form-control" data-ng-model="dataset.edit.harvestURL" placeholder="http://..." required/>
+                </div>
             </div>
             <div class="form-group">
-                <label for="harv_set">Server Dataset</label>
-                <input id="harv_set" class="form-control" data-ng-model="dataset.edit.harvestDataset" placeholder="dataset"/>
+                <label class="col-sm-3" for="harv_set">Server Dataset</label>
+                <div class="col-sm-9">
+                    <input id="harv_set" class="form-control" data-ng-model="dataset.edit.harvestDataset" placeholder="dataset"/>
+                </div>
             </div>
             <div class="form-group" data-ng-show="dataset.edit.harvestType != 'adlib'">
-                <label for="harv_prefix">Metadata Prefix</label>
-                <input id="harv_prefix" class="form-control" data-ng-model="dataset.edit.harvestPrefix" placeholder="prefix" required/>
+                <label class="col-sm-3" for="harv_prefix">Metadata Prefix</label>
+                <div class="col-sm-9">
+                    <input id="harv_prefix" class="form-control" data-ng-model="dataset.edit.harvestPrefix" placeholder="prefix" required/>
+                </div>
             </div>
             <div class="form-group" data-ng-show="dataset.edit.harvestType == 'adlib'">
-                <label for="harv_search">Search</label>
-                <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
+                <label class="col-sm-3" for="harv_search">Search</label>
+                <div class="col-sm-9">
+                    <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
+                </div>
             </div>
             <button type="button" class="btn btn-warning pull-right" data-ng-click="startFirstHarvest()"  data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-download"></i>
