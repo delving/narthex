@@ -303,6 +303,11 @@ define(["angular"], function (angular) {
             return pre + mid + post;
         }
 
+        $scope.goToCategories = function (ds) {
+            $location.path("/categories/" + ds.datasetSpec);
+            $location.search({});
+        };
+
         $scope.gatherCategoryCounts = function () {
             alert("Temporarily disabled: Category statistics");
 //            categoriesService.gatherCategoryCounts().then(function (files) {

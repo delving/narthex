@@ -423,7 +423,6 @@ define(["angular"], function () {
         };
 
         $scope.goToCategories = function () {
-//            alert("Not quite implemented");
             $location.path("/categories/" + ds.datasetSpec);
             $location.search({});
         };

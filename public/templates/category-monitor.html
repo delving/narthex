@@ -52,10 +52,10 @@
 </div>
 
 <script type="text/ng-template" id="category-dataset-entry.html">
-    <div class="panel-heading">
+    <div class="panel-heading" data-ng-click="goToCategories(dataset)">
         <span>
             <i class="fa fa-fw fa-cube"></i>
-            <span>{{ dataset.datasetSpec }}</span>
+            <span>{{ dataset.datasetSpec }}</span>  <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
         </span>
         <span data-ng-show="dataset.processedValid" class="pull-right">{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
     </div>
