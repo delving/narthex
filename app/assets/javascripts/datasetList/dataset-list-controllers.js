@@ -423,9 +423,9 @@ define(["angular"], function () {
         };
 
         $scope.goToCategories = function () {
-            alert("Not quite implemented");
-//            $location.path("/categories/" + ds.datasetSpec);
-//            $location.search({});
+//            alert("Not quite implemented");
+            $location.path("/categories/" + ds.datasetSpec);
+            $location.search({});
         };
 
         $scope.toggleDatasetProduction = function() {
