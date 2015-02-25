@@ -322,20 +322,22 @@ object AppController extends Controller with Security {
 
   def getTermMappings(dsSpec: String) = SecureAsync() { session => request =>
     val store = orgContext.termMappingStore(dsSpec)
-    store.getMappings.map(entries => Ok(Json.toJson(entries)))
+    store.getMappings(categories = false).map(entries => Ok(Json.toJson(entries)))
+  }
+
+  def getCategoryMappings(dsSpec: String) = SecureAsync() { session => request =>
+    val store = orgContext.termMappingStore(dsSpec)
+    store.getMappings(categories = true).map(entries => Ok(Json.toJson(entries)))
   }
 
   def toggleTermMapping(dsSpec: String, vocabSpec: String) = SecureAsync(parse.json) { session => request =>
     val uriA = (request.body \ "uriA").as[String]
     val uriB = (request.body \ "uriB").as[String]
     val store = orgContext.termMappingStore(dsSpec)
-    // todo: shouldn't await here, really
-    Await.result(VocabInfo.freshVocabInfo(vocabSpec, ts), 20.seconds).map { vocabGraph =>
-      store.toggleMapping(SkosMapping(session.actor, uriA, uriB), vocabGraph).map { action =>
+    withVocabInfo(vocabSpec) { vocabInfo =>
+      store.toggleMapping(SkosMapping(session.actor, uriA, uriB), vocabInfo).map { action =>
         Ok(Json.obj("action" -> action))
       }
-    } getOrElse {
-      Future(NotFound(Json.obj("problem" -> s"No vocabulary found for $vocabSpec")))
     }
   }
 
@@ -360,40 +362,15 @@ object AppController extends Controller with Security {
   def getCategoryList = Secure() { session => request =>
     withVocabInfo(CATEGORIES_SPEC) { catVocabInfo =>
       val categories = catVocabInfo.vocabulary.concepts.sortBy(_.prefLabels.head.text).map { c =>
-        println(s"CONCEPT: $c")
         val details = c.altLabels.headOption.map(_.text).getOrElse("???")
         Json.obj(
+          "uri" -> c.resource.toString,
           "code" -> c.prefLabels.head.text,
           "details" -> details
         )
       }
       Ok(Json.obj("categories" -> categories))
     }
-  }
-
-  // todo: things under here unfinished
-
-  def getCategoryMappings(spec: String) = Secure() { session => request =>
-    withVocabInfo(CATEGORIES_SPEC) { catVocabInfo =>
-      Ok(Json.obj("mappings" -> List(List("one", "two", "three"))))
-    }
-    //    val datasetContext = orgContext.datasetContext(spec)
-    //    val mappings: Seq[CategoryMapping] = datasetContext.categoryDb.getMappings
-    //    Ok(Json.obj("mappings" -> mappings))
-  }
-
-  def setCategoryMapping(spec: String) = Secure(parse.json) { session => request =>
-    withVocabInfo(CATEGORIES_SPEC) { catVocabInfo =>
-      NotImplemented
-    }
-    //    val datasetContext = orgContext.datasetContext(spec)
-    //    val categoryMapping = CategoryMapping(
-    //      (request.body \ "source").as[String],
-    //      Seq((request.body \ "category").as[String])
-    //    )
-    //    val member = (request.body \ "member").as[Boolean]
-    //    datasetContext.categoryDb.setMapping(categoryMapping, member)
-    //    Ok("Mapping " + (if (member) "added" else "removed"))
   }
 
   def gatherCategoryCounts = Secure() { session => request =>

@@ -63,7 +63,6 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, ts: TripleStore) {
 
 }
 
-
 class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
@@ -79,8 +78,8 @@ class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
     }
   }
 
-  def getMappings: Future[List[List[String]]] = {
-    ts.query(getTermMappingsQ(termGraph)).map { resultMap =>
+  def getMappings(categories:Boolean): Future[List[List[String]]] = {
+    ts.query(getTermMappingsQ(termGraph, categories)).map { resultMap =>
       resultMap.map { ab =>
         List(ab("termUri").text, ab("vocabUri").text, ab("vocabSpec").text)
       }

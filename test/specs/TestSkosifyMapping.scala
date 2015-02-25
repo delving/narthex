@@ -12,7 +12,8 @@ import org.scalatestplus.play._
 import play.api.test.Helpers._
 import record.PocketParser.Pocket
 import services.FileHandling._
-import services.{FileHandling, ProgressReporter, StringHandling}
+import services.StringHandling.slugify
+import services.{FileHandling, ProgressReporter}
 import triplestore.GraphProperties._
 import triplestore.Sparql
 import triplestore.Sparql._
@@ -158,13 +159,37 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val store = new TermMappingStore(info, ts)
     // todo: nothing checks whether this literal or uri string are legitimate
     val literalString = "vogels"
-    val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${StringHandling.slugify(literalString)}"
+    val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${slugify(literalString)}"
     val uriB = "http://data.beeldengeluid.nl/gtaa/24829"
     val mapping = SkosMapping(admin, uriA, uriB)
     await(store.toggleMapping(mapping, classyInfo)) must be("added")
-    await(store.getMappings) must be(Seq(List(uriA, uriB, "gtaa_classy")))
+    await(store.getMappings(categories = false)) must be(Seq(List(uriA, uriB, "gtaa_classy")))
     await(store.toggleMapping(mapping, classyInfo)) must be("removed")
-    await(store.getMappings) must be(Seq())
+    await(store.getMappings(categories = false)) must be(Seq())
+  }
+
+  "Mapping a skosified entry to a category" in {
+    val actorStore = new ActorStore(ts)
+    val admin = await(actorStore.authenticate("gumby", "geheim")).get
+    val catInfo = await(VocabInfo.createVocabInfo(admin, "categories", ts))
+    val catFile = new File(getClass.getResource("/categories/Categories.xml").getFile)
+    await(ts.up.dataPutXMLFile(catInfo.dataUri, catFile))
+    val info = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
+    info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
+    val store = new TermMappingStore(info, ts)
+    val literalString = "vogels"
+    val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${slugify(literalString)}"
+    val uriB1 = "http://schemas.delving.eu/narthex/terms/category/wtns"
+    val uriB2 = "http://schemas.delving.eu/narthex/terms/category/schi"
+    val mapping1 = SkosMapping(admin, uriA, uriB1)
+    val mapping2 = SkosMapping(admin, uriA, uriB2)
+    await(store.toggleMapping(mapping1, catInfo)) must be("added")
+    await(store.getMappings(categories = true)) must be(Seq(List(uriA, uriB1, "categories")))
+    await(store.toggleMapping(mapping2, catInfo)) must be("added")
+    await(store.toggleMapping(mapping1, catInfo)) must be("removed")
+    await(store.getMappings(categories = true)) must be(Seq(List(uriA, uriB2, "categories")))
+    await(store.toggleMapping(mapping2, catInfo)) must be("removed")
+    await(store.getMappings(categories = true)) must be(Seq())
   }
 
 }

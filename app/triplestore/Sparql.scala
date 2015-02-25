@@ -18,6 +18,7 @@ package triplestore
 
 import dataset.DsInfo
 import dataset.DsInfo._
+import mapping.VocabInfo.CATEGORIES_SPEC
 import org.ActorStore.{NXActor, NXProfile}
 import org.joda.time.DateTime
 import play.api.libs.json.JsValue
@@ -83,7 +84,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def setActorPasswordQ(actor: NXActor, passwordHashString:String) =
+  def setActorPasswordQ(actor: NXActor, passwordHashString: String) =
     s"""
       |WITH <$actorsGraph>
       |DELETE { <$actor> <$passwordHash> ?oldPassword }
@@ -245,12 +246,12 @@ object Sparql {
       |}
      """.stripMargin
 
-  def insertMappingQ(actor: NXActor, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) =
+  def insertMappingQ(actor: NXActor, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
+    val connection = if (skosB.spec == CATEGORIES_SPEC) belongsToCategory.uri else exactMatch
     s"""
-      |PREFIX skos: <$SKOS>
       |INSERT DATA {
       |  GRAPH <$uri> {
-      |    <$uriA> skos:exactMatch <$uriB> .
+      |    <$uriA> <$connection> <$uriB> .
       |    <$uri>
       |       a <$mappingEntity>;
       |       <$synced> false;
@@ -263,36 +264,38 @@ object Sparql {
       |  }
       |}
      """.stripMargin
+  }
 
-  def getVocabMappingsQ(skosA: SkosGraph, skosB: SkosGraph) =
+  def getVocabMappingsQ(skosA: SkosGraph, skosB: SkosGraph) = {
     s"""
-      |PREFIX skos: <$SKOS>
       |SELECT ?a ?b
       |WHERE {
       |  GRAPH ?g {
-      |    ?a skos:exactMatch ?b .
+      |    ?a <$exactMatch> ?b .
       |    ?s <$mappingVocabulary> <${skosA.uri}> .
       |    ?s <$mappingVocabulary> <${skosB.uri}> .
       |  }
       |}
      """.stripMargin
+  }
 
-  def getTermMappingsQ(terms: SkosGraph) =
+  def getTermMappingsQ(terms: SkosGraph, categories:Boolean) = {
+    val connection = if (categories) belongsToCategory.uri else exactMatch
     s"""
-      |PREFIX skos: <$SKOS>
       |SELECT ?termUri ?vocabUri ?vocabSpec
       |WHERE {
       |  GRAPH ?vocabGraph {
       |    ?vocab <$skosSpec> ?vocabSpec
       |  }
       |  GRAPH ?mappingGraph {
-      |    ?termUri skos:exactMatch ?vocabUri .
+      |    ?termUri <$connection> ?vocabUri .
       |    ?s <$mappingVocabulary> <${terms.uri}> .
       |    ?s <$mappingVocabulary> ?vocab .
       |    FILTER (?vocab != <${terms.uri}>)
       |  }
       |}
      """.stripMargin
+  }
 
   // === skosification ===
 
@@ -312,7 +315,7 @@ object Sparql {
 
   case class SkosifiedField(datasetUri: String, fieldPropertyUri: String)
 
-  def skosificationCasesExist(sf: SkosifiedField) = 
+  def skosificationCasesExist(sf: SkosifiedField) =
     s"""
       |ASK {
       |  GRAPH ?g { ?record <$belongsTo> <${sf.datasetUri}> }
@@ -323,7 +326,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def listSkosificationCasesQ(sf: SkosifiedField, chunkSize: Int) = 
+  def listSkosificationCasesQ(sf: SkosifiedField, chunkSize: Int) =
     s"""
       |SELECT DISTINCT ?literalValue
       |WHERE {
@@ -362,7 +365,7 @@ object Sparql {
         |      <$mintedUri> skos:altLabel '''${sanitize(value)}''' .
         |      <$mintedUri> <$belongsTo> <$datasetUri> .
         |      <$mintedUri> <$synced> false .
-        |      ${ frequencyOpt.map(freq => s"<$mintedUri> <$skosFrequency> '''$freq''' .").getOrElse("")  }
+        |      ${frequencyOpt.map(freq => s"<$mintedUri> <$skosFrequency> '''$freq''' .").getOrElse("")}
         |   }
         |}
         |WHERE {
@@ -389,4 +392,5 @@ object Sparql {
         |};
        """.stripMargin
   }
+
 }

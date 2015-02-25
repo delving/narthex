@@ -72,11 +72,12 @@ define(["angular"], function (angular) {
             }
             columnDefinitionsFromCategories();
             $scope.showCategoryExplain(0);
+            // todo: this should use a skos vocab rather than the histogram!
             categoriesService.histogram($scope.spec, $scope.path, $scope.histogramSize).then(function (histogramData) {
                 $scope.gridData = _.map(histogramData.histogram, function (entry) {
-                    // todo: not any more:
+                    // todo: the minted URI will have to be reconstructed
                     var sourceURI = $rootScope.orgId + "/" + $scope.spec + sourceURIPath + "/" + encodeURIComponent(entry[1]);
-//                        console.log("sourceURI " + entry[1], sourceURI);
+                    console.log("fix: sourceURI " + entry[1], sourceURI);
                     return {
                         term: entry[1],
                         count: entry[0],
@@ -85,17 +86,33 @@ define(["angular"], function (angular) {
                     }
                 });
 
-                categoriesService.getCategoryMappings($scope.spec).then(function (mappingsData) {
-                    var mappingLookup = {};
-                    _.forEach(mappingsData.mappings, function (mapping) {
-                        mappingLookup[mapping.sourceURI] = mapping.categories;
-                    });
-                    _.forEach($scope.gridData, function (row) {
-                        var categories = mappingLookup[row.sourceURI];
-                        _.forEach(categories, function (category) {
-                            row.memberOf[category] = true;
+                categoriesService.getMappings($scope.spec).then(function (data) {
+                    var mappings = {};
+                    _.forEach(data, function (mapping) {
+                        var existing = mappings[mapping[0]];
+                        if (!existing) existing = mappings[mapping[0]] = [];
+                        var category = _.find($scope.categories, function (cat) {
+                            return cat.uri == mapping[1];
                         });
+                        if (category) {
+                            existing.push(category.code);
+                        }
+                        else {
+                            console.log("Couldn't find category: " + mapping[1]);
+                        }
+                        if (mapping[2] != "categories") console.log("Not a category mapping?: "+mapping[2]);
                     });
+                    $scope.mappings = mappings;
+//                    var mappingLookup = {};
+//                    _.forEach(mappingsData.mappings, function (mapping) {
+//                        mappingLookup[mapping.sourceURI] = mapping.categories;
+//                    });
+//                    _.forEach($scope.gridData, function (row) {
+//                        var categories = mappingLookup[row.sourceURI];
+//                        _.forEach(categories, function (category) {
+//                            row.memberOf[category] = true;
+//                        });
+//                    });
                 });
             });
         });
@@ -135,7 +152,7 @@ define(["angular"], function (angular) {
         };
 
         $scope.setGridValue = function (entity, code) {
-            alert("Not quite implemented")
+            alert("Not quite implemented");
 //            var body = {
 //                source: entity.sourceURI,
 //                category: code,
@@ -144,6 +161,25 @@ define(["angular"], function (angular) {
 //            entity.busyCode = code;
 //            categoriesService.setCategoryMapping($scope.spec, body).then(function (data) {
 //                delete entity.busyCode;
+//            });
+            // todo: use toggleMapping, like terms-controller:
+//            var payload = {
+//                uriA: $scope.sourceTerm.uri,
+//                uriB: concept.uri
+//            };
+//            termsService.toggleMapping($scope.datasetInfo.datasetSpec, 'categories', payload).then(function (data) {
+//                switch (data.action) {
+//                    case "added":
+//                        $scope.mappings[payload.uriA] = {
+//                            uri: payload.uriB,
+//                            thesaurus: $scope.thesaurus
+//                        };
+//                        break;
+//                    case "removed":
+//                        delete $scope.mappings[payload.uriA];
+//                        break;
+//                }
+//                filterHistogram();
 //            });
         };
 

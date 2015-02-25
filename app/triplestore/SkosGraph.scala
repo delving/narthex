@@ -17,6 +17,7 @@
 package triplestore
 
 trait SkosGraph {
+  val spec: String
   val uri: String
   val skosified: Boolean
 }

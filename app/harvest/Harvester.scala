@@ -25,7 +25,6 @@ import dataset.DatasetActor.{InterruptWork, WorkFailure}
 import dataset.DatasetContext
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, PMHHarvestPage}
-import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
 import services.ProgressReporter
@@ -71,7 +70,6 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
     zip.close()
     log.info(s"finished harvest modified=$modifiedAfter error=$error")
     error.map { errorString =>
-      FileUtils.deleteQuietly(tempFile)
       context.parent ! WorkFailure(errorString)
     } getOrElse {
       datasetContext.sourceRepoOpt.map { sourceRepo =>

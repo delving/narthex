@@ -96,16 +96,16 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                getCategoryMappings: function (datasetName) {
-                    return app.getCategoryMappings(datasetName).get().then(
+                getMappings: function (spec) {
+                    return app.getCategoryMappings(spec).get().then(
                         function (response) {
                             return response.data;
                         },
                         rejection
                     );
                 },
-                setCategoryMapping: function (name, body) {
-                    return app.setCategoryMapping(name).post(body).then(
+                toggleMapping: function (spec, vocabSpec, payload) {
+                    return app.toggleTermMapping(spec, vocabSpec).post(payload).then(
                         function (response) {
                             return response.data;
                         },

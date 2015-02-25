@@ -108,6 +108,7 @@ object GraphProperties {
   val skosUploadTime = NXProp("skosUploadTime", timeProp)
 
   val exactMatch = s"${SKOS}exactMatch"
+  val belongsToCategory = NXProp("belongsToCategory", uriProp)
   val mappingConcept = NXProp("mappingConcept", uriProp)
   val mappingVocabulary = NXProp("mappingVocabulary", uriProp)
   val mappingDeleted = NXProp("mappingDeleted", booleanProp)

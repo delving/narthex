@@ -35,7 +35,9 @@ object FileHandling {
     dir
   }
 
-  def reader(file: File) = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))
+  def reader(inputStream: InputStream): BufferedReader = new BufferedReader(new InputStreamReader(new BOMInputStream(inputStream), "UTF-8"))
+
+  def reader(file: File): BufferedReader = reader(new FileInputStream(file))
 
   def readerCounting(file: File): (BufferedReader, CountingInputStream) = {
     val fis: FileInputStream = new FileInputStream(file)

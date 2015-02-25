@@ -41,7 +41,7 @@ GET         /narthex/app/dataset/:spec/toggle-production                     web
 GET         /narthex/app/dataset/:spec/term/vocab                            web.AppController.getTermVocabulary(spec)
 GET         /narthex/app/dataset/:spec/term/get-mappings                     web.AppController.getTermMappings(spec)
 POST        /narthex/app/dataset/:spec/term/:vocabSpec/toggle-mapping        web.AppController.toggleTermMapping(spec, vocabSpec)
-
+GET         /narthex/app/dataset/:spec/category/get-mappings                 web.AppController.getCategoryMappings(spec)
 
 GET         /narthex/app/skos/list                                           web.AppController.listVocabularies
 GET         /narthex/app/skos/:spec/create                                   web.AppController.createVocabulary(spec)
@@ -58,8 +58,6 @@ POST        /narthex/app/skos/:specA/:specB/toggle-mapping                   web
 GET         /narthex/app/category-list                                       web.AppController.getCategoryList
 GET         /narthex/app/sheets-list                                         web.AppController.listSheets
 GET         /narthex/app/sheet/:spec                                         web.AppController.sheet(spec)
-GET         /narthex/app/dataset/:spec/category/mappings                     web.AppController.getCategoryMappings(spec)
-POST        /narthex/app/dataset/:spec/category/set-mapping                  web.AppController.setCategoryMapping(spec)
 GET         /narthex/app/categories/gather-counts                            web.AppController.gatherCategoryCounts
 
 GET         /narthex/app/dataset/:spec/sip-list                              web.AppController.listSipFiles(spec)

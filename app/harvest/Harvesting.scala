@@ -22,6 +22,7 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.ws.WS
+import services.FileHandling
 import services.Temporal._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -192,7 +193,10 @@ trait Harvesting {
         Some(HarvestError(s"HTTP Response: ${response.statusText}", modifiedAfter))
       }
       else {
-        val errorNode = response.xml \ "error"
+        val netty = response.underlying[NettyResponse]
+        val body = netty.getResponseBodyAsStream
+        val xml = XML.load(FileHandling.reader(body))
+        val errorNode = xml \ "error"
         if (errorNode.nonEmpty) {
           val errorCode = (errorNode \ "@code").text
           if ("noRecordsMatch" == errorCode) {
@@ -207,8 +211,8 @@ trait Harvesting {
       }
       error getOrElse {
         val netty = response.underlying[NettyResponse]
-        val body = netty.getResponseBody("UTF-8")
-        val xml = XML.loadString(body)
+        val body = netty.getResponseBodyAsStream
+        val xml = XML.load(FileHandling.reader(body))
         val tokenNode = xml \ "ListRecords" \ "resumptionToken"
         val newToken = if (tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
