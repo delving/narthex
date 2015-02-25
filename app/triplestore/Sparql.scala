@@ -29,8 +29,18 @@ import triplestore.TripleStore.QueryValue
 
 object Sparql {
   // === actor store ===
+  private val SPARQL_ESCAPE: Map[Char, String] = Map(
+    '\t' -> "\\t",
+    '\n' -> "\\n",
+    '\r' -> "\\r",
+    '\b' -> "\\b",
+    '\f' -> "\\f",
+    '"' -> "\\\"",
+    '\'' -> "\\'",
+    '\\' -> "\\\\"
+  )
 
-  private def sanitize(s: String): String = s.replaceAll("^[']*", "").replaceAll("[']*$", "")
+  private def sanitize(s: String): String = s.map(c => SPARQL_ESCAPE.getOrElse(c, c.toString)).mkString
 
   def insertActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
     s"""
@@ -279,7 +289,7 @@ object Sparql {
      """.stripMargin
   }
 
-  def getTermMappingsQ(terms: SkosGraph, categories:Boolean) = {
+  def getTermMappingsQ(terms: SkosGraph, categories: Boolean) = {
     val connection = if (categories) belongsToCategory.uri else exactMatch
     s"""
       |SELECT ?termUri ?vocabUri ?vocabSpec

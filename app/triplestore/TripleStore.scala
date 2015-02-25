@@ -144,6 +144,7 @@ class Fuseki(storeURL: String, logQueries: Boolean) extends TripleStore {
     queryIndex += 1
     w.println("=" * 40 + s"($queryIndex)")
     w.println(numbered)
+    w.flush()
   }
 
   private def checkResponse(response: WSResponse): Unit = if (response.status / 100 != 2) {

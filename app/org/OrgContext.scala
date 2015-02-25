@@ -28,7 +28,7 @@ import mapping.Skosifier.ScanForWork
 import mapping._
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
-import play.api.{Logger, Play}
+import play.api.{Logger, Mode, Play}
 import play.libs.Akka._
 import services.FileHandling.clearDir
 import triplestore.GraphProperties.categoriesInclude
@@ -76,17 +76,18 @@ object OrgContext {
 
   val PREFERRED_LANGUAGE = config.getString("preferredLanguage").getOrElse("nl")
 
+  val TRIPLE_STORE_LOG = if (play.api.Play.current.mode == Mode.Dev) true else configFlag("triple-store-log")
+
+  Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")
+
   val ts = config.getString("triple-store").map { tripleStoreUrl =>
-    TripleStore.single(
-      tripleStoreUrl,
-      configFlag("triple-store-log")
-    )
+    TripleStore.single(tripleStoreUrl, TRIPLE_STORE_LOG)
   } getOrElse {
     config.getObject("triple-stores").map { tripleStoreUrls =>
       TripleStore.double(
         acceptanceStoreUrl = tripleStoreUrls.get("acceptance").render(),
         productionStoreUrl = tripleStoreUrls.get("production").render(),
-        configFlag("triple-store-log")
+        TRIPLE_STORE_LOG
       )
     } getOrElse {
       throw new RuntimeException("Must have either triple-store= or triple-stores { acceptance=, production= }")
@@ -100,7 +101,7 @@ object OrgContext {
   val orgContext = new OrgContext(USER_HOME, ORG_ID, ts)
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
-  check.onFailure{case e: Exception => Logger.error("Failed to check schemas", e)}
+  check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e)}
 }
 
 class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {

@@ -50,7 +50,7 @@ class PeriodicHarvest extends Actor {
           list.map { listedInfo =>
             val harvestCron = listedInfo.currentHarvestCron
             if (harvestCron.timeToWork) withDsInfo(listedInfo.spec) { info => // the cached version
-              log.info(s"Time to work on $info")
+              log.info(s"Time to work on $info: $harvestCron")
               val proposedNext = harvestCron.next
               val next = if (proposedNext.timeToWork) {
                 val revised = harvestCron.now
@@ -61,6 +61,7 @@ class PeriodicHarvest extends Actor {
                 log.info(s"$info next harvest : $proposedNext")
                 proposedNext
               }
+              log.info(s"Set harvest cron: $next")
               info.setHarvestCron(next)
               val justDate = harvestCron.unit == DelayUnit.WEEKS
               val startHarvest = StartHarvest(Some(harvestCron.previous), justDate)
