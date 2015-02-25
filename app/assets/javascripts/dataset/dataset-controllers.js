@@ -61,6 +61,7 @@ define(["angular"], function () {
                         var recordContainerLength = $scope.recordRoot.lastIndexOf('/');
                         var sourcePathExtension = node.path.substring(recordContainerLength);
                         node.sourcePath = SOURCE_URI_PREFIX + sourcePathExtension;
+//                      node.uri = checkSkosField(node.uri);
                     }
                     for (var index = 0; index < node.kids.length; index++) {
                         setDelimiterNodes(node.kids[index]);

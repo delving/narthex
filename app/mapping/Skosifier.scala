@@ -34,38 +34,51 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging {
 
   import mapping.Skosifier._
 
-  val chunkSize = 25
+  val chunkSize = 100
+  var busy = false
 
   case class SkosificationJob(sf: SkosifiedField, scResult: List[Map[String, QueryValue]]) {
     val cases = Sparql.createCases(sf, scResult)
     val ensureSkosEntries = cases.map(_.ensureSkosEntryQ).mkString
     val changeLiteralsToUris = cases.map(_.literalToUriQ).mkString
-    override def toString = sf.toString
+
+    override def toString = s"$sf: $scResult"
   }
 
   def receive = {
 
     case ScanForWork =>
-      ts.query(Sparql.listSkosifiedFieldsQ).map { sfResult =>
-        sfResult.map(SkosifiedField(_)).map { sf =>
-          val casesExist = Sparql.skosificationCasesExist(sf)
-          ts.ask(casesExist).map(exists => if (exists) {
-            log.info(s"Job for $sf")
-            ts.query(Sparql.listSkosificationCasesQ(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
-          })
+      if (busy) {
+        log.info("Busy, avoiding scan")
+      }
+      else {
+        ts.query(Sparql.listSkosifiedFieldsQ).map { sfResult =>
+          sfResult.map(SkosifiedField(_)).map { sf =>
+            val casesExist = Sparql.skosificationCasesExist(sf)
+            ts.ask(casesExist).map(exists => if (exists) {
+              log.info(s"Job for $sf")
+              ts.query(Sparql.listSkosificationCasesQ(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
+            })
+          }
         }
       }
 
     case job: SkosificationJob =>
       log.info(s"Doing $job")
+      busy = true
       ts.up.sparqlUpdate(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
         if (job.cases.size == chunkSize) {
           ts.query(Sparql.listSkosificationCasesQ(job.sf, chunkSize)).map { scResult =>
             if (scResult.nonEmpty) {
-              log.info(s"Another job for $job")
               self ! SkosificationJob(job.sf, scResult)
             }
+            else {
+              busy = false
+            }
           }
+        }
+        else {
+          busy = false
         }
       }
 

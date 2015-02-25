@@ -12,7 +12,5 @@ object Global extends GlobalSettings {
     harvestTicker.cancel()
     skosifierTicker.cancel()
     Logger.info("Narthex shutdown...")
-//    periodicHarvest ! PoisonPill
-//    skosifier ! PoisonPill
   }
 }

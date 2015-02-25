@@ -96,7 +96,7 @@ object OrgContext {
   val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
   val harvestTicker = system.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
   val skosifier = system.actorOf(Skosifier.props(ts), "Skosifier")
-  val skosifierTicker = system.scheduler.schedule(5.seconds, 20.seconds, skosifier, ScanForWork)
+  val skosifierTicker = system.scheduler.schedule(1.minute, 30.seconds, skosifier, ScanForWork)
   val orgContext = new OrgContext(USER_HOME, ORG_ID, ts)
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))

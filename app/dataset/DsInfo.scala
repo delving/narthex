@@ -48,7 +48,7 @@ object DsInfo {
 	at com.hp.hpl.jena.mem.ArrayBunch$2.hasNe
    */
 
-  val patience = 10.seconds
+  val patience = 1.minute
 
   val cacheTime = 10.minutes
 

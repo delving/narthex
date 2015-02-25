@@ -422,6 +422,12 @@ define(["angular"], function () {
             $location.search({});
         };
 
+        $scope.goToCategories = function () {
+            alert("Not quite implemented");
+//            $location.path("/categories/" + ds.datasetSpec);
+//            $location.search({});
+        };
+
         $scope.toggleDatasetProduction = function() {
             datasetListService.toggleDatasetProduction().then(function(data) {
                 // todo: data.acceptanceOnly?

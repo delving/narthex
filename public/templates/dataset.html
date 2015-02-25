@@ -68,17 +68,10 @@
                             <i class="fa fa-check-circle"></i> <span> Use as Unique Element</span>
                         </a>
                     </li>
-                    <li data-ng-show="analyzedState && histogramVocabulary && activeView == 'histogram'">
-
-                        <a href data-ng-click="goToPage('terms')" data-ng-show="histogramSkosField" class="btn btn-default btn-sm">
-                            <i class="fa fa-arrows-h"></i>
-                            Map terms
-                        </a>
-
-                        <a href data-ng-click="goToPage('categories')" data-ng-show="histogramSkosField && categoriesEnabled"  class="btn btn-default btn-sm">
-                            <i class="fa fa-sitemap"></i>
-                            Categorize
-                        </a>
+                    <li data-ng-show="analyzedState && histogramSkosField && activeView == 'histogram'">
+                        <div class="label label-large label-warning">
+                            Skosified
+                        </div>
                     </li>
                     <li>
                         <a href class="btn btn-default btn-sm" data-toggle="dropdown">
@@ -107,7 +100,7 @@
                 </ul>
             </div>
 
-            <div class="vertical-scroll" data-scrollable id="historgram-list" data-offset="200" data-ng-style="{ 'height': elHeight }" ng-show="histogram">
+            <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="200" data-ng-style="{ 'height': elHeight }" ng-show="histogram">
 
                 <ul class="list-group">
                     <li  data-ng-show="!histogramSkosField" class="list-group-item">
@@ -129,16 +122,16 @@
                     <span data-ng-if="histogram">
                         <span class="btn count-btn">( {{histogram.entries}} / {{histogram.uniqueCount}} )</span>
                         <button class="btn btn-default" data-ng-class="{ disabled: !isMoreHistogram() }"
-                            data-ng-click="moreHistogram();scrollTo({element: '#historgram-list', direction: 'down'})">
+                            data-ng-click="moreHistogram();scrollTo({element: '#histogram-list', direction: 'down'})">
                             More histogram entries
                         </button>
                         <span data-ng-if="histogram.uniqueCount > 30">
                             <button class="btn btn-default"
-                                data-ng-click="scrollTo({element: '#historgram-list', direction: 'up'})">
+                                data-ng-click="scrollTo({element: '#histogram-list', direction: 'up'})">
                                 <i class="fa fa-hand-o-up"></i>&#160;
                             </button>
                             <button class="btn btn-default"
-                                data-ng-click="scrollTo({element: '#historgram-list', direction: 'down'})">
+                                data-ng-click="scrollTo({element: '#histogram-list', direction: 'down'})">
                                 <i class="fa fa-hand-o-down"></i>&nbsp;
                             </button>
                         </span>
@@ -169,13 +162,12 @@
                 <span data-ng-if="node == uniqueIdNode" class="badge badge-unique">
                     Unique Id
                 </span>
-                <!--<span data-ng-if="node.termMappings" class="badge badge-mapped" data-ng-click="goToPage(node, 'terms')">-->
-                    <!--Terminology-->
+
+                <!--todo: find a way to show which fields are skosified-->
+                <!--<span data-ng-show="analyzedState">-->
+                    <!--<div class="badge badge-warning">{{ node.tag }}</div>-->
                 <!--</span>-->
-                <!--<span data-ng-if="node.categoryMappings" class="badge badge-mapped"-->
-                      <!--data-ng-click="goToPage(node, 'categories')">-->
-                    <!--Categories-->
-                <!--</span>-->
+
                 <span class="badge badge-info">
                     {{ node.count }}
                 </span>
