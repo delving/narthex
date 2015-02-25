@@ -46,8 +46,10 @@ define(["angular"], function (angular) {
             for (var walk = 0; walk < $scope.categories.length; walk++) {
                 var code = $scope.categories[walk].code;
                 if (!$scope.visible[code]) continue;
+                var targetUri = $scope.categories[walk].uri;
                 numberVisible++;
                 var codeQuoted = "'" + code + "'";
+                var targetUriQuoted = "'" + targetUri + "'";
                 var busyClassQuoted = "'category-cell-busy'";
                 $scope.columnDefs.push({
                     field: 'category' + walk,
@@ -57,7 +59,7 @@ define(["angular"], function (angular) {
                         '</div>',
                     cellTemplate: '<div class="category-cell" data-ng-class="{ ' + busyClassQuoted + ': (row.entity.busyCode == ' + codeQuoted + ') }">' +
                         '  <input type="checkbox" class="category-checkbox" data-ng-model="row.entity.memberOf[' + codeQuoted + ']" ' +
-                        '         data-ng-click="setGridValue(row.entity, ' + codeQuoted + ')"/>' +
+                        '         data-ng-click="setGridValue(row.entity, ' + targetUriQuoted + ', ' + codeQuoted + ')"/>' +
                         '</div>'
                 })
             }
@@ -72,20 +74,19 @@ define(["angular"], function (angular) {
             }
             columnDefinitionsFromCategories();
             $scope.showCategoryExplain(0);
-            // todo: this should use a skos vocab rather than the histogram!
-            categoriesService.histogram($scope.spec, $scope.path, $scope.histogramSize).then(function (histogramData) {
-                $scope.gridData = _.map(histogramData.histogram, function (entry) {
-                    // todo: the minted URI will have to be reconstructed
-                    var sourceURI = $rootScope.orgId + "/" + $scope.spec + sourceURIPath + "/" + encodeURIComponent(entry[1]);
-                    console.log("fix: sourceURI " + entry[1], sourceURI);
+
+            categoriesService.termVocabulary($scope.spec).then(function (terms) {
+                $scope.terms = _.sortBy(terms, function (t) {
+                    return -t.frequency;
+                });
+                $scope.gridData = _.map($scope.terms, function (entry) {
                     return {
-                        term: entry[1],
-                        count: entry[0],
-                        sourceURI: sourceURI,
+                        term: entry.label,
+                        count: entry.frequency,
+                        sourceURI: entry.uri,
                         memberOf: {}
                     }
                 });
-
                 categoriesService.getMappings($scope.spec).then(function (data) {
                     var mappings = {};
                     _.forEach(data, function (mapping) {
@@ -100,19 +101,15 @@ define(["angular"], function (angular) {
                         else {
                             console.log("Couldn't find category: " + mapping[1]);
                         }
-                        if (mapping[2] != "categories") console.log("Not a category mapping?: "+mapping[2]);
+                        if (mapping[2] != "categories") console.log("Not a category mapping?: " + mapping[2]);
                     });
                     $scope.mappings = mappings;
-//                    var mappingLookup = {};
-//                    _.forEach(mappingsData.mappings, function (mapping) {
-//                        mappingLookup[mapping.sourceURI] = mapping.categories;
-//                    });
-//                    _.forEach($scope.gridData, function (row) {
-//                        var categories = mappingLookup[row.sourceURI];
-//                        _.forEach(categories, function (category) {
-//                            row.memberOf[category] = true;
-//                        });
-//                    });
+                    _.forEach($scope.gridData, function (row) {
+                        var categories = $scope.mappings[row.sourceURI];
+                        _.forEach(categories, function (category) {
+                            row.memberOf[category] = true;
+                        });
+                    });
                 });
             });
         });
@@ -151,36 +148,37 @@ define(["angular"], function (angular) {
             angular.element(document.querySelector('#category-explanation')).removeClass('visible');
         };
 
-        $scope.setGridValue = function (entity, code) {
-            alert("Not quite implemented");
-//            var body = {
-//                source: entity.sourceURI,
-//                category: code,
-//                member: entity.memberOf[code]
-//            };
-//            entity.busyCode = code;
-//            categoriesService.setCategoryMapping($scope.spec, body).then(function (data) {
-//                delete entity.busyCode;
-//            });
-            // todo: use toggleMapping, like terms-controller:
-//            var payload = {
-//                uriA: $scope.sourceTerm.uri,
-//                uriB: concept.uri
-//            };
-//            termsService.toggleMapping($scope.datasetInfo.datasetSpec, 'categories', payload).then(function (data) {
-//                switch (data.action) {
-//                    case "added":
-//                        $scope.mappings[payload.uriA] = {
-//                            uri: payload.uriB,
-//                            thesaurus: $scope.thesaurus
-//                        };
-//                        break;
-//                    case "removed":
-//                        delete $scope.mappings[payload.uriA];
-//                        break;
-//                }
-//                filterHistogram();
-//            });
+        $scope.setGridValue = function (entity, targetUri, code) {
+            var payload = {
+                uriA: entity.sourceURI,
+                uriB: targetUri
+            };
+            entity.busyCode = code;
+            categoriesService.toggleMapping($scope.spec, 'categories', payload).then(function (data) {
+                var mappings = $scope.mappings;
+                var mapping = mappings[payload.uriA];
+                switch (data.action) {
+                    case "added":
+                        if (mapping) {
+                            mapping.push(code);
+                        }
+                        else {
+                            mappings[payload.uriA] = [code];
+                        }
+                        break;
+                    case "removed":
+                        if (mapping) {
+                            mappings[payload.uriA] = _.filter(mapping, function(c) {
+                                return c != code;
+                            });
+                        }
+                        else {
+                            console.log("cannot remove", payload);
+                        }
+                        break;
+                }
+                delete entity.busyCode;
+            });
         };
 
 //        $scope.scrollTo = function (options) {

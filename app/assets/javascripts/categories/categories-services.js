@@ -88,8 +88,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                histogram: function (datasetName, path, size) {
-                    return app.histogram(datasetName, path, size).get().then(
+                termVocabulary: function (spec) {
+                    return app.getTermVocabulary(spec).get().then(
                         function (response) {
                             return response.data;
                         },
