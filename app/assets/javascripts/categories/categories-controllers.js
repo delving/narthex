@@ -238,7 +238,9 @@ define(["angular"], function (angular) {
                         count: parseInt(data.count)
                     };
                     createProgressMessage(dataset.progress);
-                    dataset.progressCheckerTimeout = $timeout(checkProgress, 900 + Math.floor(Math.random() * 200));
+                    dataset.progressCheckerTimeout = $timeout(function () {
+                        checkProgress(dataset);
+                    }, 900 + Math.floor(Math.random() * 200));
                 }
             }, function (problem) {
                 if (problem.status == 404) {
@@ -309,10 +311,11 @@ define(["angular"], function (angular) {
         };
 
         $scope.gatherCategoryCounts = function () {
-            alert("Temporarily disabled: Category statistics");
-//            categoriesService.gatherCategoryCounts().then(function (files) {
-//                fetchDatasetList();
-//            });
+            alert("Category statistics are still empty for some reason");
+            categoriesService.gatherCategoryCounts().then(function (files) {
+                // todo: fetching so early??
+                fetchDatasetList();
+            });
         };
 
         $scope.sheetUrl = function (name) {

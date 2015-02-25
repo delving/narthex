@@ -45,7 +45,7 @@ object OrgActor {
 
 class OrgActor extends Actor with ActorLogging {
 
-  var countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
+  var results = Map.empty[String, Option[List[CategoryCount]]]
 
   def receive = {
 
@@ -64,16 +64,16 @@ class OrgActor extends Actor with ActorLogging {
       }
 
     case DatasetsCountCategories(datasets) =>
-      countsInProgress = datasets.map(name => (name, None)).toMap
+      results = datasets.map(name => (name, None)).toMap
       datasets.foreach(name => self ! DatasetMessage(name, StartCategoryCounting))
 
     case CategoryCountComplete(dataset, categoryCounts) =>
-      countsInProgress += dataset -> Some(categoryCounts)
-      log.info(s"Category counting complete, counts: $countsInProgress")
-      val countLists = countsInProgress.values.flatten
-      if (countLists.size == countsInProgress.size) {
-        OrgContext.orgContext.categoriesRepo.createSheet(countLists.flatten.toList)
-        countsInProgress = Map.empty[String, Option[List[CategoryCount]]]
+      results += dataset -> Some(categoryCounts)
+      log.info(s"Category counting complete, counts: $results")
+      val finishedCountLists = results.values.flatten.toList
+      if (finishedCountLists.size == results.size) {
+        OrgContext.orgContext.categoriesRepo.createSheet(finishedCountLists.flatten)
+        results = Map.empty[String, Option[List[CategoryCount]]]
       }
 
     case Terminated(name) =>

@@ -108,8 +108,8 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo) extends Actor with Ac
     case Some(chunk: GraphChunk) =>
       log.info("Category count of graphs")
       val termCat = termCatMapOpt.get
-      chunk.dataset.listNames().toList.map { record =>
-        val model = chunk.dataset.getNamedModel(record)
+      chunk.dataset.listNames().toList.map { recordGraph =>
+        val model = chunk.dataset.getNamedModel(recordGraph)
         var categoryLabels = Set.empty[String]
         skosProperties.map { propertyUri =>
           val property = model.getProperty(propertyUri)
@@ -120,6 +120,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo) extends Actor with Ac
         }
         output(categoryLabels)
       }
+      sendGraphChunkOpt()
 
     case None =>
       reader.map(_.close())

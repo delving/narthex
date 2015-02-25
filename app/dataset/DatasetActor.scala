@@ -34,7 +34,6 @@ import org.OrgActor.DatasetQuestion
 import org.OrgContext
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
-import play.api.Logger
 import record.SourceProcessor
 import record.SourceProcessor._
 import services.ProgressReporter.ProgressState._
@@ -380,8 +379,9 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   when(Categorizing) {
 
-    case Event(CategoryCountComplete(dataset, categoryCounts), active: Active) =>
-      context.parent ! CategoryCountComplete(datasetContext.dsInfo.spec, categoryCounts)
+    case Event(CategoryCountComplete(spec, categoryCounts), active: Active) =>
+      log.info(s"Category counting complete: $spec")
+      context.parent ! CategoryCountComplete(spec, categoryCounts)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -393,7 +393,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       stay() using active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)
 
     case Event(DatasetQuestion(listener, Command(commandName)), InError(message)) =>
-      Logger.info(s"In error. Command name: $commandName")
+      log.info(s"In error. Command name: $commandName")
       if (commandName == "clear error") {
         dsInfo.removeLiteralProp(datasetErrorMessage)
         listener ! "error cleared"

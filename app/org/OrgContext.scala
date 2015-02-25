@@ -167,20 +167,10 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
   }
 
   def startCategoryCounts() = {
-    val categoryDatasets = DsInfo.listDsInfo(ts).map { list =>
-      list.flatMap { dsi =>
-        if (dsi.getBooleanProp(categoriesInclude)) Some(dsi) else None
-      }
-    }
-    categoryDatasets.map { dsList =>
+    val catDatasets = DsInfo.listDsInfo(ts).map(_.filter(_.getBooleanProp(categoriesInclude)))
+    catDatasets.map { dsList =>
       OrgActor.actor ! DatasetsCountCategories(dsList.map(_.spec))
     }
   }
-
-  //  def thesaurusDb(conceptSchemeA: String, conceptSchemeB: String) =
-  //    if (conceptSchemeA > conceptSchemeB)
-  //      new ThesaurusDb(conceptSchemeB, conceptSchemeA)
-  //    else
-  //      new ThesaurusDb(conceptSchemeA, conceptSchemeB)
 
 }
