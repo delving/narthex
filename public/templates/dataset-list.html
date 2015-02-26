@@ -440,30 +440,36 @@
 </script>
 
 <script type="text/ng-template" id="harvest-cron-form.html">
-    <form name="form" class="form">
+    <form name="form" class="form-horizontal">
         <fieldset>
             <div class="form-group">
-                <label for="hc_prev">Previous</label>
+                <label class="col-sm-3" for="hc_prev">Previous</label>
+                <div class="col-sm-9">
                 <input id="hc_prev" class="form-control" data-ng-model="dataset.edit.harvestPreviousTime"/>
+                </div>
             </div>
             <div class="form-group">
-                <label for="hc_delay">Delay</label>
+                <label class="col-sm-3" for="hc_delay">Delay</label>
+                <div class="col-sm-9">
                 <input id="hc_delay" class="form-control" data-ng-model="dataset.edit.harvestDelay"/>
+                </div>
             </div>
             <div class="form-group">
-                <label for="hc_unit">Unit</label>
-                <div id="hc_unit">
-                    <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="weeks">
-                    <span>Week(s)</span>
-                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="days">
-                    <span>Day(s)</span>
-                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="hours">
-                    <span>Hour(s)</span>
-                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="minutes">
-                    <span>Minute(s)</span>
+                <label class="col-sm-3" for="hc_unit">Unit</label>
+                <div class="col-sm-9">
+                    <div id="hc_unit">
+                        <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="weeks">
+                        <span>Week(s)</span>
+                        <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="days">
+                        <span>Day(s)</span>
+                        <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="hours">
+                        <span>Hour(s)</span>
+                        <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="minutes">
+                        <span>Minute(s)</span>
+                    </div>
                 </div>
             </div>
             <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()" data-ng-disabled="unchangedHarvestCron">
