@@ -30,9 +30,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     countGraphs must be(5)
 
     // check the stats
-    val stats = await(genreInfo.conceptCount)
-    val count = stats("conceptCount")
-    count must be(117)
+    await(genreInfo.conceptCount) must be(117)
 
     // try a search
     val vocab = genreInfo.vocabulary
@@ -74,9 +72,9 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     val di = await(DsInfo.createDsInfo(actor, dsSpec, DsInfo.CharacterMapped, "edm", ts))
     val cases = Sparql.createCases(di, json)
     cases.foreach(c => await(ts.up.sparqlUpdate(c.ensureSkosEntryQ)))
-    val first = di.vocabulary.concepts.head
-    first.getAltLabel("").text must be("viltstift")
-    first.frequency must be(Some(6))
+    val first = di.vocabulary.concepts.sortBy(_.resource.toString).head
+    first.getAltLabel("nl").text must be("doek")
+    first.frequency must be(Some(111))
 
 //    val histoStrings = di.vocabulary.concepts.map{ c =>
 //      s"${c.getAltLabel("nl").text} ${c.frequency}"
