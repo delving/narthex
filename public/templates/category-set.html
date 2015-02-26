@@ -41,11 +41,11 @@
                     </button>
                 </div>
             </div>
-            <div class="widget-body no-padding">
-                <div id="category-explanation">
+            <div class="widget-body">
+                <div id="category-explanation" class="alert alert-info">
                     <strong>{{ categoryHelp.code.toUpperCase() }}:</strong> {{ categoryHelp.details }}
                 </div>
-                <div class="vertical-scroll" data-scrollable id="term-grid" data-offset="160" data-ng-style="{ 'height': elHeight }">
+                <div class="vertical-scroll" data-scrollable id="term-grid" data-offset="250" data-ng-style="{ 'height': elHeight }">
                     <div class="category-grid" ng-grid="categoryGrid"></div>
                 </div>
             </div>
