@@ -379,7 +379,7 @@ object AppController extends Controller with Security {
           Ok(Json.obj("noCategories" -> s"Concept count not within range (5 - 30): $count"))
         }
       } getOrElse {
-        Ok(Json.obj("noCategories" -> s"No dataset named '$CATEGORIES_SPEC'"))
+        Ok(Json.obj("noCategories" -> s"No SKOS vocabulary named '$CATEGORIES_SPEC'"))
       }
     }
   }
