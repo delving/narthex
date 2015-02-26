@@ -174,9 +174,9 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val catInfo = await(VocabInfo.createVocabInfo(admin, "categories", ts))
     val catFile = new File(getClass.getResource("/categories/Categories.xml").getFile)
     await(ts.up.dataPutXMLFile(catInfo.dataUri, catFile))
-    val info = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
-    info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
-    val store = new TermMappingStore(info, ts)
+    val dsInfo = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
+    dsInfo.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
+    val store = new TermMappingStore(dsInfo, ts)
     val literalString = "vogels"
     val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${slugify(literalString)}"
     val uriB1 = "http://schemas.delving.eu/narthex/terms/category/wtns"
@@ -186,6 +186,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     await(store.toggleMapping(mapping1, catInfo)) must be("added")
     await(store.getMappings(categories = true)) must be(Seq(List(uriA, uriB1, "categories")))
     await(store.toggleMapping(mapping2, catInfo)) must be("added")
+    dsInfo.termCategoryMap(catInfo) must be(Map("http://localhost:9000/resolve/dataset/ton-smits-huis/vogels" -> List("WTNS", "SCHI")))
     await(store.toggleMapping(mapping1, catInfo)) must be("removed")
     await(store.getMappings(categories = true)) must be(Seq(List(uriA, uriB2, "categories")))
     await(store.toggleMapping(mapping2, catInfo)) must be("removed")

@@ -302,10 +302,10 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     }
   }
 
-  def termCategoryMap(categoryVocabInfo: VocabInfo): Map[String, List[String]] = {
-    val mappingStore = new TermMappingStore(categoryVocabInfo, ts)
+  def termCategoryMap(categoryVocabularyInfo: VocabInfo): Map[String, List[String]] = {
+    val mappingStore = new TermMappingStore(this, ts)
     val mappings = Await.result(mappingStore.getMappings(categories = true), 1.minute)
-    val uriLabelMap = vocabulary.uriLabelMap
+    val uriLabelMap = categoryVocabularyInfo.vocabulary.uriLabelMap
     val termUriLabels = mappings.flatMap { mapping =>
       val termUri = mapping(0)
       val categoryUri = mapping(1)

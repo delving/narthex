@@ -29,8 +29,9 @@
             <div class="widget-body">
                 <ul class="list-unstyled">
                     <li ng-repeat="sheet in sheets">
-                        <a ng-href="{{ sheetUrl(sheet) }}" target="_blank">
+                        <a ng-href="{{ sheetUrl(sheet) }}" target="_blank"">
                             <i class="fa fa-download"></i> {{ sheet }}
+                            <hr ng-if="$index == 0"/>
                         </a>
                     </li>
                 </ul>

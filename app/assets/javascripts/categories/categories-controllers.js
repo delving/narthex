@@ -204,7 +204,7 @@ define(["angular"], function (angular) {
 
     var CategoryMonitorCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, user) {
 
-        $scope.datasetBusy = false;
+        $scope.lastProgress = null;
 
         function fetchSheetList() {
             categoriesService.listSheets().then(function (list) {
@@ -232,6 +232,7 @@ define(["angular"], function (angular) {
                 }
                 else {
                     console.log(dataset.datasetSpec + " is in progress");
+                    $scope.lastProgress = new Date().getTime();
                     dataset.progress = {
                         state: data.progressState,
                         type: data.progressType,
@@ -310,11 +311,22 @@ define(["angular"], function (angular) {
             $location.search({});
         };
 
+        function checkProgressFinished() {
+            var now = new Date().getTime();
+            if (now - $scope.lastProgress > 2000) {
+                fetchSheetList();
+            }
+            else {
+                $timeout(checkProgressFinished, 1000 + Math.floor(Math.random() * 1000));
+            }
+        }
+
         $scope.gatherCategoryCounts = function () {
             alert("Category statistics are still empty for some reason");
             categoriesService.gatherCategoryCounts().then(function (files) {
-                // todo: fetching so early??
-                fetchDatasetList();
+                $scope.lastProgress = new Date().getTime();
+                fetchDatasetList(); // start progress checkers
+                $timeout(checkProgressFinished, 1000 + Math.floor(Math.random() * 1000));
             });
         };
 
