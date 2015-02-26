@@ -34,7 +34,7 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging {
 
   import mapping.Skosifier._
 
-  val chunkSize = 100
+  val chunkSize = 10
   var busy = false
 
   case class SkosificationJob(sf: SkosifiedField, scResult: List[Map[String, QueryValue]]) {

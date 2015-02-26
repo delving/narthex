@@ -452,7 +452,19 @@
             </div>
             <div class="form-group">
                 <label for="hc_unit">Unit</label>
-                <input id="hc_unit" class="form-control" data-ng-model="dataset.edit.harvestDelayUnit"/>
+                <div id="hc_unit">
+                    <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="weeks">
+                    <span>Week(s)</span>
+                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="days">
+                    <span>Day(s)</span>
+                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="hours">
+                    <span>Hour(s)</span>
+                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    <input type="radio" ng-model="dataset.edit.harvestDelayUnit" value="minutes">
+                    <span>Minute(s)</span>
+                </div>
             </div>
             <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()" data-ng-disabled="unchangedHarvestCron">
                 <i class="fa fa-check-circle"></i>
