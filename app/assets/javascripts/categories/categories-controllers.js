@@ -322,7 +322,6 @@ define(["angular"], function (angular) {
         }
 
         $scope.gatherCategoryCounts = function () {
-            alert("Category statistics are still empty for some reason");
             categoriesService.gatherCategoryCounts().then(function (files) {
                 $scope.lastProgress = new Date().getTime();
                 fetchDatasetList(); // start progress checkers
