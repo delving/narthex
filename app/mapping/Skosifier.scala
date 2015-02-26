@@ -16,6 +16,7 @@
 package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
+import services.StringHandling.slugify
 import triplestore.Sparql.SkosifiedField
 import triplestore.TripleStore.QueryValue
 import triplestore.{Sparql, TripleStore}
@@ -56,7 +57,7 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging {
           sfResult.map(SkosifiedField(_)).map { sf =>
             val casesExist = Sparql.skosificationCasesExist(sf)
             ts.ask(casesExist).map(exists => if (exists) {
-              log.info(s"Job for $sf")
+              log.info(s"Work for $sf")
               ts.query(Sparql.listSkosificationCasesQ(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
             })
           }
@@ -64,7 +65,7 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging {
       }
 
     case job: SkosificationJob =>
-      log.info(s"Doing $job")
+      log.info(s"Cases: ${job.cases.map(c => slugify(c.literalValueText))}")
       busy = true
       ts.up.sparqlUpdate(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
         if (job.cases.size == chunkSize) {
@@ -73,11 +74,13 @@ class Skosifier(ts: TripleStore) extends Actor with ActorLogging {
               self ! SkosificationJob(job.sf, scResult)
             }
             else {
+              log.info("No more work: query")
               busy = false
             }
           }
         }
         else {
+          log.info("No more work: last not full")
           busy = false
         }
       }
