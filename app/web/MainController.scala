@@ -43,7 +43,7 @@ object MainController extends Controller with Security {
   }
 
   def index = Action { request =>
-    Ok(views.html.index(ORG_ID, SIP_APP_URL, SHOW_CATEGORIES))
+    Ok(views.html.index(ORG_ID, SIP_APP_URL))
   }
 
   def login = Action(parse.json) { implicit request =>
@@ -67,8 +67,7 @@ object MainController extends Controller with Security {
               ))),
               apiKey = API_ACCESS_KEYS(0),
               narthexDomain = NARTHEX_DOMAIN,
-              naveDomain = NAVE_DOMAIN,
-              categoriesEnabled = SHOW_CATEGORIES
+              naveDomain = NAVE_DOMAIN
             )
             Ok(Json.toJson(session)).withSession(session)
           }
@@ -83,8 +82,7 @@ object MainController extends Controller with Security {
             nxActor,
             apiKey = API_ACCESS_KEYS(0),
             narthexDomain = NARTHEX_DOMAIN,
-            naveDomain = NAVE_DOMAIN,
-            categoriesEnabled = SHOW_CATEGORIES
+            naveDomain = NAVE_DOMAIN
           )
           Ok(Json.toJson(session)).withSession(session)
         } getOrElse Unauthorized("Username/password not found")

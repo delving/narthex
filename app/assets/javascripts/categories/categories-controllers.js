@@ -66,12 +66,13 @@ define(["angular"], function (angular) {
             if (!numberVisible) $scope.columnDefs.push({ field: 'boo', displayName: '', width: 1 });
         }
 
-        categoriesService.getCategoryList().then(function (categoryList) {
-            $scope.categories = categoryList.categories;
-            if (!$scope.categories) {
-                alert("No categories!");
+        categoriesService.getCategoryList().then(function (data) {
+            if (data.noCategories) {
+                $scope.noCategories = data.noCategories;
+                $scope.categories = [];
                 return;
             }
+            $scope.categories = data.categories;
             columnDefinitionsFromCategories();
             $scope.showCategoryExplain(0);
 
@@ -141,11 +142,6 @@ define(["angular"], function (angular) {
 
         $scope.showCategoryExplain = function (index) {
             $scope.categoryHelp = $scope.categories[index];
-            angular.element(document.querySelector('#category-explanation')).addClass('visible');
-        };
-
-        $scope.hideCategoryExplain = function (index) {
-            angular.element(document.querySelector('#category-explanation')).removeClass('visible');
         };
 
         $scope.setGridValue = function (entity, targetUri, code) {
@@ -168,7 +164,7 @@ define(["angular"], function (angular) {
                         break;
                     case "removed":
                         if (mapping) {
-                            mappings[payload.uriA] = _.filter(mapping, function(c) {
+                            mappings[payload.uriA] = _.filter(mapping, function (c) {
                                 return c != code;
                             });
                         }
@@ -205,6 +201,16 @@ define(["angular"], function (angular) {
     var CategoryMonitorCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, user) {
 
         $scope.lastProgress = null;
+
+        categoriesService.getCategoryList().then(function (data) {
+            if (data.noCategories) $scope.noCategories = data.noCategories;
+            $scope.categories = data.categories;
+            $scope.showCategoryExplain(0);
+        });
+
+        $scope.showCategoryExplain = function (index) {
+            $scope.categoryHelp = $scope.categories[index];
+        };
 
         function fetchSheetList() {
             categoriesService.listSheets().then(function (list) {
@@ -314,6 +320,7 @@ define(["angular"], function (angular) {
         function checkProgressFinished() {
             var now = new Date().getTime();
             if (now - $scope.lastProgress > 2000) {
+                $scope.lastProgress = null;
                 fetchSheetList();
             }
             else {

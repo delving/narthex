@@ -249,7 +249,7 @@
                         <li ng-class="{'active':leftTabOpen === 'publication'}">
                             <a href role="tab" data-ng-click="leftTabOpen = 'publication'">Publication</a>
                         </li>
-                        <li ng-class="{'active':leftTabOpen === 'categories'}" data-ng-show="categoriesEnabled">
+                        <li ng-class="{'active':leftTabOpen === 'categories'}">
                             <a href role="tab" data-ng-click="leftTabOpen ='categories'">Categories</a>
                         </li>
                         <li data-ng-class="{'active':leftTabOpen === 'check'}">
@@ -375,8 +375,6 @@
                     <i class="busy3 fa fa-gear fa-spin-left fa-5x"></i>
                 </div>
             </div>
-
-
 
             <div data-ng-if="dataset.uploadPercent">
                 <progressbar class="progress-striped active" animate="true" value="dataset.uploadPercent" max="100" type="success">

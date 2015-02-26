@@ -146,13 +146,11 @@ class VocabInfo(val spec: String, ts: TripleStore) extends SkosGraph {
     }
   }
 
-  def getStatistics = {
+  def conceptCount = {
     for (
       cqList <- ts.query(getVocabStatisticsQ(dataUri));
       c = cqList.head("count")
-    ) yield Map(
-      "conceptCount" -> c.text.toInt
-    )
+    ) yield  c.text.toInt
   }
 
   def dropVocabulary = ts.up.sparqlUpdate(dropVocabularyQ(uri)).map(ok => true)

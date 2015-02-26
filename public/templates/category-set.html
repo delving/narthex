@@ -1,42 +1,54 @@
-<div class="page-header">
-    <!-- page location, org -->
-    <div class="meta">
-        <div class="page">
-            Category mapping
-        </div>
-        <div class="organization">
-            <span class="fa fa-institution"></span>
-            <span>{{ orgId }}</span>
-        </div>
-    </div>
-    <!-- page specifiction actions/tools -->
-    <div class="actions">
-        <div class="file-path-info breadcrumb">
-            <span class="file-name">{{datasetName}}</span><span class="file-path">{{path}}</span>
-        </div>
-    </div>
-</div>
 
-<div class="categories-panel">
-    <div class="widget">
-        <div id="category-explanation" class="alert alert-info alert-small">
-            <strong>{{ categoryHelp.code.toUpperCase() }}:</strong> {{ categoryHelp.details }}
-        </div>
-        <div class="widget-header">
-            <div class="btn-group" role="group">
-                <button class="btn btn-default btn-sm" data-ng-class="{ 'btn-success': visible[category.code] == true }"
-                        data-ng-repeat="category in categories" data-ng-click="setCategory(category.code)"
-                        data-ng-mouseover="showCategoryExplain($index)" data-ng-mouseleave="hideCategoryExplain();">
-                    <b>{{ category.code }}</b>
-                </button>
+<div>
+    <div class="page-header">
+        <!-- page location, org -->
+        <div class="meta">
+            <div class="page">
+                Category mapping
+            </div>
+            <div class="organization">
+                <span class="fa fa-institution"></span>
+                <span>{{ orgId }}</span>
             </div>
         </div>
-        <div class="widget-body no-padding">
-            <div class="vertical-scroll" data-scrollable id="term-grid" data-offset="160" data-ng-style="{ 'height': elHeight }">
-                <div class="category-grid" ng-grid="categoryGrid"></div>
+        <!-- page specifiction actions/tools -->
+        <div class="actions">
+            <div class="file-path-info breadcrumb">
+                <span class="file-name">{{datasetName}}</span><span class="file-path">{{path}}</span>
             </div>
         </div>
     </div>
+
+    <div data-ng-show="noCategories">
+        <h2>No Categories</h2>
+        <hr/>
+            <strong>{{ noCategories }}</strong>
+        <hr/>
+        <p>
+            Categories will be enabled when a SKOS Vocabulary by the name "categories" is introduced, constructed like this:
+            <a href="https://github.com/delving/narthex/blob/master/test/resources/categories/Categories.xml" target="_blank">Categories.xml</a>
+        </p>
+    </div>
+
+    <div class="categories-panel" data-ng-show="!noCategories">
+        <div class="widget">
+            <div class="widget-header">
+                <div class="btn-group" role="group">
+                    <button class="btn btn-default btn-xs" style="margin-right: 3px" data-ng-class="{ 'btn-success': visible[category.code] == true }"
+                            data-ng-repeat="category in categories" data-ng-click="setCategory(category.code)"
+                            data-ng-mouseover="showCategoryExplain($index)">
+                        <b>{{ category.code }}</b>
+                    </button>
+                </div>
+            </div>
+            <div class="widget-body no-padding">
+                <div id="category-explanation">
+                    <strong>{{ categoryHelp.code.toUpperCase() }}:</strong> {{ categoryHelp.details }}
+                </div>
+                <div class="vertical-scroll" data-scrollable id="term-grid" data-offset="160" data-ng-style="{ 'height': elHeight }">
+                    <div class="category-grid" ng-grid="categoryGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-

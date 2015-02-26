@@ -19,9 +19,7 @@ define(["angular"], function () {
 
     var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll, user) {
         var MAX_FOR_VOCABULARY = 12500;
-        // todo: rename to spec
         $scope.spec = $routeParams.spec;
-        $scope.categoriesEnabled = user.categoriesEnabled;
 
         $scope.apiPrefix = user.narthexAPI;
 

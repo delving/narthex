@@ -269,7 +269,7 @@ object AppController extends Controller with Security {
 
   def vocabularyStatistics(spec: String) = SecureAsync() { session => request =>
     withVocabInfo(spec) { vocabInfo =>
-      vocabInfo.getStatistics.map(stats => Ok(Json.toJson(stats)))
+      vocabInfo.conceptCount.map(stats => Ok(Json.toJson(stats)))
     }
   }
 
@@ -359,17 +359,28 @@ object AppController extends Controller with Security {
     }
   }
 
-  def getCategoryList = Secure() { session => request =>
-    withVocabInfo(CATEGORIES_SPEC) { catVocabInfo =>
-      val categories = catVocabInfo.vocabulary.concepts.sortBy(_.prefLabels.head.text).map { c =>
-        val details = c.altLabels.headOption.map(_.text).getOrElse("???")
-        Json.obj(
-          "uri" -> c.resource.toString,
-          "code" -> c.prefLabels.head.text,
-          "details" -> details
-        )
+  def getCategoryList = SecureAsync() { session => request =>
+    val map: Future[Option[VocabInfo]] = listVocabInfo(ts).map(list => list.find(_.spec == CATEGORIES_SPEC))
+    map.map { catVocabInfoOpt =>
+      catVocabInfoOpt.map { catVocabInfo =>
+        val count = Await.result(catVocabInfo.conceptCount, 30.seconds)
+        if (count > 5 && count < 30) {
+          val categories = catVocabInfo.vocabulary.concepts.sortBy(_.prefLabels.head.text).map { c =>
+            val details = c.altLabels.headOption.map(_.text).getOrElse("???")
+            Json.obj(
+              "uri" -> c.resource.toString,
+              "code" -> c.prefLabels.head.text,
+              "details" -> details
+            )
+          }
+          Ok(Json.obj("categories" -> categories))
+        }
+        else {
+          Ok(Json.obj("noCategories" -> s"Concept count not within range (5 - 30): $count"))
+        }
+      } getOrElse {
+        Ok(Json.obj("noCategories" -> s"No dataset named '$CATEGORIES_SPEC'"))
       }
-      Ok(Json.obj("categories" -> categories))
     }
   }
 

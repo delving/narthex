@@ -70,8 +70,6 @@ object OrgContext {
   val NARTHEX_DOMAIN = configStringNoSlash("domains.narthex")
   val NAVE_DOMAIN = configStringNoSlash("domains.nave")
 
-  val SHOW_CATEGORIES = configFlag("categories")
-
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 
   val PREFERRED_LANGUAGE = config.getString("preferredLanguage").getOrElse("nl")

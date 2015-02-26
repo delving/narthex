@@ -51,7 +51,6 @@ define(["angular"], function () {
         $scope.newFileOpen = false;
         $scope.newDataset = {};
         $scope.specFilter = "";
-        $scope.categoriesEnabled = user.categoriesEnabled;
 
         function checkNewEnabled() {
             if ($scope.newDataset.specTyped)

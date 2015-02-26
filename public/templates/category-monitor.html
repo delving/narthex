@@ -15,13 +15,37 @@
     </div>
 </div>
 
+<div data-ng-show="noCategories">
+    <h2>No Categories</h2>
+    <hr/>
+        <strong>{{ noCategories }}</strong>
+    <hr/>
+    <p>
+        Categories will be enabled when a SKOS Vocabulary by the name "categories" is introduced, constructed like this:
+        <a href="https://github.com/delving/narthex/blob/master/test/resources/categories/Categories.xml" target="_blank">Categories.xml</a>
+    </p>
+</div>
 
-<div class="row">
+<div class="row" data-ng-show="!noCategories">
+    <div class="widget">
+        <div class="widget-header">
+            <div class="btn-group" role="group">
+                <button class="btn btn-default  btn-xs" style="margin-right: 3px" data-ng-repeat="category in categories"
+                        data-ng-mouseover="showCategoryExplain($index)" data-ng-mouseleave="hideCategoryExplain();">
+                    <b>{{ category.code }}</b>
+                </button>
+            </div>
+        </div>
+        <div id="category-explanation" class="widget-body">
+            <strong>{{ categoryHelp.code.toUpperCase() }}:</strong> {{ categoryHelp.details }}
+        </div>
+    </div>
+    <hr/>
     <div class="col-sm-4">
         <div class="widget">
             <div class="widget-header">
                 Spreadsheets
-                <button type="button" class="btn btn-default btn-sm pull-right"  data-ng-click="gatherCategoryCounts()" data-ng-disabled="datasetBusy">
+                <button type="button" class="btn btn-default btn-sm pull-right"  data-ng-click="gatherCategoryCounts()" data-ng-disabled="lastProgress">
                     <i class="fa fa-leaf"></i>
                     <span><b>Generate new spreadsheet</b></span>
                 </button>
@@ -66,3 +90,4 @@
         </progressbar>
     </div>
 </script>
+

@@ -30,7 +30,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     countGraphs must be(5)
 
     // check the stats
-    val stats = await(genreInfo.getStatistics)
+    val stats = await(genreInfo.conceptCount)
     val count = stats("conceptCount")
     count must be(117)
 
