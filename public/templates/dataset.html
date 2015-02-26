@@ -68,11 +68,7 @@
                             <i class="fa fa-check-circle"></i> <span> Use as Unique Element</span>
                         </a>
                     </li>
-                    <li data-ng-show="analyzedState && histogramSkosField && activeView == 'histogram'">
-                        <div class="label label-large label-warning">
-                            Skosified
-                        </div>
-                    </li>
+
                     <li>
                         <a href class="btn btn-default btn-sm" data-toggle="dropdown">
                             <i class="fa fa-eye"></i>&nbsp;<span class="caret"></span>
@@ -108,6 +104,11 @@
                         <a href data-ng-click="setSkosField(histogram.uri, true)" class="btn btn-success btn-block btn-xs">
                             Skosify ({{ histogram.uri }})
                         </a>
+                    </li>
+                    <li data-ng-show="analyzedState && histogramSkosField && activeView == 'histogram'" class="list-group-item">
+                        <div class="btn btn-success btn-block btn-xs disabled">
+                            Skosified ({{ histogram.uri }})
+                        </div>
                     </li>
                     <li data-ng-repeat="count in histogram.histogram | filter:filterText"
                         class="list-group-item clearfix">
