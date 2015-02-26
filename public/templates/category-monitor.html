@@ -53,7 +53,7 @@
             <div class="widget-body">
                 <ul class="list-unstyled">
                     <li ng-repeat="sheet in sheets">
-                        <a ng-href="{{ sheetUrl(sheet) }}" target="_blank"">
+                        <a ng-href="{{ sheetUrl(sheet) }}" target="_blank">
                             <i class="fa fa-download"></i> {{ sheet }}
                             <hr ng-if="$index == 0"/>
                         </a>
@@ -68,7 +68,7 @@
             <div class="widget-body">
                 <div class="row">
                     <div class="col-md-6" ng-repeat="dataset in datasets" >
-                        <div class="panel panel-primary" data-ng-include="'category-dataset-entry.html'">entry</div>
+                        <div class="panel panel-default" data-ng-include="'category-dataset-entry.html'">entry</div>
                     </div>
                 </div>
             </div>
@@ -77,7 +77,7 @@
 </div>
 
 <script type="text/ng-template" id="category-dataset-entry.html">
-    <div class="panel-heading" data-ng-click="goToCategories(dataset)">
+    <div class="panel-heading pointer" data-ng-click="goToCategories(dataset)" >
         <span>
             <i class="fa fa-fw fa-bar-chart"></i>
             <span>{{ dataset.datasetSpec }}</span>  <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
