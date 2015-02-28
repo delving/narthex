@@ -471,6 +471,18 @@
                     </div>
                 </div>
             </div>
+            <div class="form-group">
+                <label class="col-sm-3" for="hc_inc">Incremental</label>
+                <div class="col-sm-9">
+                    <div id="hc_inc">
+                        <input type="radio" ng-model="dataset.edit.harvestIncremental" value="false">
+                        <span>Full harvest</span>
+                        <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <input type="radio" ng-model="dataset.edit.harvestIncremental" value="true">
+                        <span>Incremental harvest</span>
+                    </div>
+                </div>
+            </div>
             <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()" data-ng-disabled="unchangedHarvestCron">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>

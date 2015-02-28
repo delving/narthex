@@ -290,15 +290,16 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   )
 
   def currentHarvestCron = {
-    (getLiteralProp(harvestPreviousTime), getLiteralProp(harvestDelay), getLiteralProp(harvestDelayUnit)) match {
-      case (Some(previousString), Some(delayString), Some(unitString)) =>
+    (getLiteralProp(harvestPreviousTime), getLiteralProp(harvestDelay), getLiteralProp(harvestDelayUnit), getLiteralProp(harvestIncremental)) match {
+      case (Some(previousString), Some(delayString), Some(unitString), Some(incrementalString)) =>
         HarvestCron(
           previous = stringToTime(previousString),
           delay = delayString.toInt,
-          unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS)
+          unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS),
+          incremental = incrementalString.toBoolean
         )
       case _ =>
-        HarvestCron(new DateTime(), 1, DelayUnit.WEEKS)
+        HarvestCron(new DateTime(), 1, DelayUnit.WEEKS, incremental = false)
     }
   }
 

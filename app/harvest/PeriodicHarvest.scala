@@ -64,7 +64,8 @@ class PeriodicHarvest extends Actor {
               log.info(s"Set harvest cron: $next")
               info.setHarvestCron(next)
               val justDate = harvestCron.unit == DelayUnit.WEEKS
-              val startHarvest = StartHarvest(Some(harvestCron.previous), justDate)
+              val previousOpt = if (harvestCron.incremental) Some(harvestCron.previous) else None
+              val startHarvest = StartHarvest(previousOpt, justDate)
               log.info(s"$info incremental harvest kickoff $startHarvest")
               OrgActor.actor ! info.createMessage(startHarvest)
             }

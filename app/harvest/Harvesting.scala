@@ -105,11 +105,11 @@ object Harvesting {
     modifiedAfter: Option[DateTime],
     diagnostic: AdLibDiagnostic)
 
-  case class HarvestCron(previous: DateTime, delay: Int, unit: DelayUnit) {
+  case class HarvestCron(previous: DateTime, delay: Int, unit: DelayUnit, incremental: Boolean) {
 
-    def now = HarvestCron(new DateTime(), delay, unit)
+    def now = HarvestCron(new DateTime(), delay, unit, incremental)
 
-    def next = HarvestCron(unit.after(previous, delay), delay, unit)
+    def next = HarvestCron(unit.after(previous, delay), delay, unit, incremental)
 
     def timeToWork = unit.after(previous, delay).isBeforeNow
   }

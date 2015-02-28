@@ -181,7 +181,7 @@ define(["angular"], function () {
     ];
 
     var harvestCronFields = [
-        "harvestPreviousTime", "harvestDelay", "harvestDelayUnit"
+        "harvestPreviousTime", "harvestDelay", "harvestDelayUnit", "harvestIncremental"
     ];
 
     var publishFields = [
