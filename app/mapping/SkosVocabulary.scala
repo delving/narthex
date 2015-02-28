@@ -19,7 +19,6 @@ package mapping
 import com.hp.hpl.jena.rdf.model.{Model, Resource}
 import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
 import mapping.SkosVocabulary._
-import org.OrgContext.PREFERRED_LANGUAGE
 import play.api.Logger
 import play.api.libs.json.{JsObject, Json, Writes}
 import triplestore.GraphProperties._
@@ -35,17 +34,16 @@ object SkosVocabulary {
 
   val IGNORE_BRACKET = """ *[(].*[)]$""".r
 
-  def getLanguageLabel(labels: Seq[Label], language: String): Label = {
-    // try language, default to whatever can be found
-    val languageFit: Option[Label] = labels.find(_.language == language)
-    languageFit.getOrElse(labels.headOption.getOrElse(Label(true, language, "Unknown!")))
+  def getLanguageLabel(labels: List[Label], languageOpt: Option[String]): Option[Label] = {
+    val find: Option[Label] = languageOpt.flatMap(lang => labels.find(_.language == lang))
+    if (find.isDefined) find else labels.headOption
   }
 
-  def getLabels(resource: Resource, propertyName: String, preferred: Boolean, model: Model): Seq[Label] = {
+  def getLabels(resource: Resource, propertyName: String, preferred: Boolean, model: Model): List[Label] = {
     val property = model.getProperty(GraphProperties.SKOS, propertyName)
     model.listStatements(resource, property, null).map(_.getObject.asLiteral()).map(
       literal => Label(preferred = preferred, literal.getLanguage, literal.getString)
-    ).toSeq
+    ).toList
   }
 
   def getPrefLabels(resource: Resource, model: Model) = getLabels(resource, "prefLabel", preferred = true, model)
@@ -54,22 +52,25 @@ object SkosVocabulary {
 
   implicit val writesLabelSearch = new Writes[LabelSearch] {
 
-    def writeQuery(query: LabelQuery) = Json.obj(
-      "language" -> query.language,
-      "sought" -> query.sought,
-      "count" -> query.count
-    )
+    def writeQuery(query: LabelQuery) = {
+      val language: String = query.languageOpt.getOrElse("")
+      Json.obj(
+        "language" -> language,
+        "sought" -> query.sought,
+        "count" -> query.count
+      )
+    }
 
-    def writeProximityResult(result: ProximityResult, language: String): JsObject = {
-      val narrowerLabels: Seq[Label] = result.concept.narrower.map(_.getPrefLabel(result.label.language))
-      val broaderLabels: Seq[Label] = result.concept.broader.map(_.getPrefLabel(result.label.language))
+    def writeProximityResult(result: ProximityResult, languageOpt: Option[String]): JsObject = {
+      val narrowerLabels: Seq[Label] = result.concept.narrower.flatMap(_.getPrefLabel(Some(result.label.language)))
+      val broaderLabels: Seq[Label] = result.concept.broader.flatMap(_.getPrefLabel(Some(result.label.language)))
       Json.obj(
         "proximity" -> result.proximity,
         "preferred" -> result.label.preferred,
         "label" -> result.label.text,
         "prefLabel" -> result.prefLabel.text,
         "uri" -> result.concept.resource.toString,
-//        "conceptScheme" -> result.concept.vocabulary.name,
+        //        "conceptScheme" -> result.concept.vocabulary.name,
         "attributionName" -> result.concept.vocabulary.spec,
         "narrower" -> narrowerLabels.map(_.text),
         "broader" -> broaderLabels.map(_.text)
@@ -78,13 +79,13 @@ object SkosVocabulary {
 
     def writes(search: LabelSearch) = Json.obj(
       "query" -> writeQuery(search.query),
-      "results" -> search.results.map(writeProximityResult(_, search.query.language))
+      "results" -> search.results.map(writeProximityResult(_, search.query.languageOpt))
     )
   }
 
   case class LabelSearch(query: LabelQuery, results: List[ProximityResult])
 
-  case class LabelQuery(language: String, sought: String, count: Int)
+  case class LabelQuery(sought: String, languageOpt: Option[String], count: Int)
 
   case class Label(preferred: Boolean, language: String, var text: String = "") {
     override def toString: String = s"""${if (preferred) "Pref" else "Alt"}Label[$language]("$text")"""
@@ -109,16 +110,17 @@ object SkosVocabulary {
       frequencyValue.map(_.asLiteral().getInt)
     }
 
-    def getPrefLabel(language: String) = getLanguageLabel(prefLabels, language)
+    def getPrefLabel(languageOpt: Option[String]) = getLanguageLabel(prefLabels, languageOpt)
 
-    def getAltLabel(language: String) = getLanguageLabel(altLabels, language)
+    def getAltLabel(languageOpt: Option[String]) = getLanguageLabel(altLabels, languageOpt)
 
-    def search(language: String, sought: String): Option[ProximityResult] = {
-      val judged = labels.filter(_.language == language).map { label =>
+    def search(sought: String, languageOpt: Option[String]): Option[ProximityResult] = {
+      val toSearch: List[Label] = languageOpt.map(lang => labels.filter(_.language == lang)).getOrElse(labels)
+      val judged = toSearch.map { label =>
         val text = IGNORE_BRACKET.replaceFirstIn(label.text.toLowerCase, "")
         (RatcliffObershelpMetric.compare(sought, text), label)
       }
-      val prefLabel = getPrefLabel(language)
+      val prefLabel = getPrefLabel(languageOpt).getOrElse(Label(preferred = true, "??", "No prefLabel!"))
       val searchResults = judged.filter(_._1.isDefined).map(p => ProximityResult(p._2, prefLabel, p._1.get, this))
       searchResults.sortBy(-1 * _.proximity).headOption
     }
@@ -153,16 +155,18 @@ case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore) {
     subjects.map(statement => Concept(this, statement, conceptMap, m))
   }.toList
 
-  def search(language: String, sought: String, count: Int): LabelSearch = {
+  def search(sought: String, count: Int, languageOpt: Option[String]): LabelSearch = {
     val cleanSought = IGNORE_BRACKET.replaceFirstIn(sought, "")
-    val judged = concepts.flatMap(_.search(language, sought.toLowerCase))
+    val judged = concepts.flatMap(_.search(sought.toLowerCase, languageOpt))
     val results = judged.sortBy(-1 * _.proximity).take(count).toList
-    LabelSearch(LabelQuery(language, cleanSought, count), results)
+    LabelSearch(LabelQuery(cleanSought, languageOpt, count), results)
   }
 
   lazy val uriLabelMap: Map[String, String] = concepts.map(c =>
-    c.resource.toString -> c.getPrefLabel(PREFERRED_LANGUAGE).text
+    c.resource.toString -> c.getPrefLabel(None).map(_.text).getOrElse("No pref label!")
   ).toMap
+
+  lazy val languages: List[String] = concepts.map(c => c.labels.map(_.language)).flatten.sorted.distinct.toList
 
   override def toString: String = graphName
 }

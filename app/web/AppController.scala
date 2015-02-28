@@ -28,7 +28,7 @@ import mapping.VocabInfo
 import mapping.VocabInfo._
 import org.OrgActor
 import org.OrgActor.DatasetMessage
-import org.OrgContext.{PREFERRED_LANGUAGE, orgContext, ts}
+import org.OrgContext.{orgContext, ts}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import play.api.Logger
@@ -284,10 +284,17 @@ object AppController extends Controller with Security {
     }
   }
 
-  def searchVocabulary(spec: String, sought: String) = Secure() { session => request =>
+  def getVocabularyLanguages(spec: String) = Secure() { session => request =>
     withVocabInfo(spec) { vocabInfo =>
-      val v = vocabInfo.vocabulary
-      val labelSearch: LabelSearch = v.search(PREFERRED_LANGUAGE, sought, 25)
+      Ok(Json.obj("languages" -> vocabInfo.vocabulary.languages))
+    }
+  }
+
+  def searchVocabulary(spec: String, sought: String, language: String) = Secure() { session => request =>
+    val languageOpt = Option(language).find(lang => lang.trim.nonEmpty && lang != "-")
+    Logger.info(s"Search $spec/$language: $sought")
+    withVocabInfo(spec) { vocabInfo =>
+      val labelSearch: LabelSearch = vocabInfo.vocabulary.search(sought, 25, languageOpt)
       Ok(Json.obj("search" -> labelSearch))
     }
   }
@@ -310,9 +317,10 @@ object AppController extends Controller with Security {
     withDsInfo(spec) { dsInfo =>
       val results = dsInfo.vocabulary.concepts.map(concept => {
         //          val freq: Int = concept.frequency.getOrElse(0)
+        val label = concept.getAltLabel(None).map(_.text).getOrElse("Label missing")
         Json.obj(
           "uri" -> concept.resource.toString,
-          "label" -> concept.getAltLabel(PREFERRED_LANGUAGE).text,
+          "label" -> label,
           "frequency" -> concept.frequency
         )
       })

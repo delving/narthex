@@ -95,7 +95,7 @@ define(["angular"], function () {
             var thesaurusList = _.map(data, function (t) {
                 return t.skosSpec;
             });
-            $scope.thesaurusList = _.filter(thesaurusList, function(spec) {
+            $scope.thesaurusList = _.filter(thesaurusList, function (spec) {
                 return spec != "categories";
             });
             if ($scope.thesaurusList.length == 1) {
@@ -122,7 +122,8 @@ define(["angular"], function () {
         function searchThesaurus(value) {
             if (!value || !$scope.thesaurus) return;
             $scope.scrollTo({element: '#skos-term-list', direction: 'up'});
-            termsService.searchVocabulary($scope.thesaurus, value).then(function (data) {
+            console.log("Searching " + $scope.thesaurus + "/" + $scope.sought.language);
+            termsService.searchVocabulary($scope.thesaurus, value, $scope.sought.language).then(function (data) {
                 $scope.conceptSearch = data.search;
                 var mapping = $scope.sourceTerm ? $scope.mappings[$scope.sourceTerm.uri] : null;
                 if (mapping) {
@@ -173,7 +174,12 @@ define(["angular"], function () {
         $scope.selectThesaurus = function (spec) {
             $scope.thesaurus = spec;
             $scope.skosTab();
-            searchThesaurus($scope.sought.label);
+            termsService.getVocabularyLanguages(spec).then(function (data) {
+                console.log("Languages", data.languages);
+                $scope.languages = data.languages;
+                $scope.sought.language = $scope.languages[0];
+                searchThesaurus($scope.sought.label);
+            });
         };
 
         $scope.selectSought = function (value) {

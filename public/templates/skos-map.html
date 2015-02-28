@@ -36,6 +36,19 @@
             <span class="input-group-addon"><i class="fa fa-search"></i></span>
         </div>
     </div>
+    <div class="col-sm-3">
+        <div ng-show="languages.length == 1" style="padding-bottom: 15px">
+            <span><i class="fa fa-language"></i> Language: {{ languages[0] }}</span>
+        </div>
+        <div ng-show="languages.length > 1" style="padding-bottom: 15px">
+            <span><i class="fa fa-language"></i> Languages </span>
+            <span>&nbsp;&nbsp;&nbsp;</span>
+            <span data-ng-repeat="lang in languages">
+                <input type="radio" ng-model="sought.language" data-ng-value="lang">
+                <span>{{lang}}</span>
+            </span>
+        </div>
+    </div>
 </div>
 
 <div class="row">

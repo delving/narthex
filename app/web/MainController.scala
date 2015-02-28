@@ -225,7 +225,8 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.vocabularyStatistics,
           routes.javascript.AppController.getSkosMappings,
           routes.javascript.AppController.toggleSkosMapping,
-          routes.javascript.AppController.searchVocabulary
+          routes.javascript.AppController.searchVocabulary,
+          routes.javascript.AppController.getVocabularyLanguages
         )
       ).as(JAVASCRIPT)
   }

@@ -128,6 +128,10 @@
     <dcterms:modified>2010-10-19T16:09:04</dcterms:modified>
     <skos:notation>30200</skos:notation>
     <skos:prefLabel xml:lang="nl">kerkdienst</skos:prefLabel>
+
+      <!--for testing the presence of another language-->
+        <skos:prefLabel xml:lang="en">church service</skos:prefLabel>
+
     <skos:scopeNote xml:lang="nl">Registratie van een religieuze dienst in de kerk.</skos:scopeNote>
     <skos:historyNote xml:lang="nl">Recordnummer: 255&#13;Datum invoer: 13-12-1998&#13;Gebruiker invoer: DEFAULT&#13;Datum gewijzigd: 29-8-2001&#13;Gebruiker gewijzigd: kschouten</skos:historyNote>
     <skos:historyNote xml:lang="nl">Gewijzigd door: Alma Wolthuis</skos:historyNote>

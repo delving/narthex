@@ -194,7 +194,6 @@ define(["angular"], function (angular) {
         if (user == null) $location.path("/");
         $scope.show = "all";
 
-//        $scope.downloadUrl = user.narthexAPI + '/skos/' + $routeParams.specA + '/' + $routeParams.specB + '/mappings';
         $scope.mappingsAB = {};
         $scope.mappingsBA = {};
 
@@ -205,8 +204,20 @@ define(["angular"], function (angular) {
         $scope.conceptsA = [];
         $scope.conceptsB = [];
 
-        $scope.conceptSchemeA = $routeParams.specA;
-        $scope.conceptSchemeB = $routeParams.specB;
+        $scope.vocabA = $routeParams.specA;
+        $scope.vocabB = $routeParams.specB;
+
+        skosService.getVocabularyLanguages($scope.vocabA).then(function(dataA) {
+            var langsA = dataA.languages;
+            console.log("Languages A", langsA);
+            skosService.getVocabularyLanguages($scope.vocabB).then(function(dataB) {
+                var langsB = dataB.languages;
+                console.log("Languages B", langsB);
+                $scope.languages = _.intersection(langsA, langsB);
+                console.log("Languages", $scope.languages);
+                $scope.sought.language = $scope.languages[0];
+            });
+        });
 
         function filterConceptsNow() {
             switch ($scope.show) {
@@ -281,7 +292,7 @@ define(["angular"], function (angular) {
 
         function searchANow(value) {
             $scope.scrollTo({element: '#skos-term-list-a', direction: 'up'});
-            skosService.searchVocabulary($routeParams.specA, value).then(function (data) {
+            skosService.searchVocabulary($routeParams.specA, value, $scope.sought.language).then(function (data) {
                 fetchedConceptsA = data.search.results;
                 $scope.conceptA = null;
                 filterConceptsNow();
@@ -299,7 +310,7 @@ define(["angular"], function (angular) {
 
         function searchBNow(value) {
             $scope.scrollTo({element: '#skos-term-list-b', direction: 'up'});
-            skosService.searchVocabulary($routeParams.specB, value).then(function (data) {
+            skosService.searchVocabulary($routeParams.specB, value, $scope.sought.language).then(function (data) {
                 fetchedConceptsB = data.search.results;
                 $scope.conceptB = null;
                 filterConceptsNow();

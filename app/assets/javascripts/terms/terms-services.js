@@ -64,8 +64,17 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                searchVocabulary: function (spec, sought) {
-                    return app.searchVocabulary(spec, sought).get().then(
+                getVocabularyLanguages: function (spec) {
+                    return app.getVocabularyLanguages(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                searchVocabulary: function (spec, sought, language) {
+                    if (!language || !language.length) language = '-';
+                    return app.searchVocabulary(spec, sought, language).get().then(
                         function (response) {
                             return response.data;
                         },

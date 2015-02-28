@@ -85,6 +85,14 @@
                     <label class="input-group-addon"><i class="fa fa-search"></i> {{ thesaurus }}</label>
                     <input class="form-control" type="text" data-ng-model="sought.label"/>
                 </div>
+                <div ng-show="languages.length > 1" style="padding-bottom: 15px">
+                    <span><i class="fa fa-language"></i> Languages </span>
+                    <span>&nbsp;&nbsp;&nbsp;</span>
+                    <span data-ng-repeat="lang in languages">
+                        <input type="radio" ng-model="sought.language" data-ng-value="lang">
+                        <span>{{lang}}</span>
+                    </span>
+                </div>
                 <!-- lEGEND -->
                 <div data-ng-show="activeView == 'skos'" class="well well-sm">
                     <span class="label term-preferred"><i class="fa fa-star"></i> preferred term</span>

@@ -72,8 +72,6 @@ object OrgContext {
 
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 
-  val PREFERRED_LANGUAGE = config.getString("preferredLanguage").getOrElse("nl")
-
   val TRIPLE_STORE_LOG = if (play.api.Play.current.mode == Mode.Dev) true else configFlag("triple-store-log")
 
   Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")

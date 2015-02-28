@@ -50,7 +50,8 @@ POST        /narthex/app/skos/:spec/upload                                   web
 POST        /narthex/app/skos/:spec/set-properties                           web.AppController.setVocabularyProperties(spec)
 GET         /narthex/app/skos/:spec/info                                     web.AppController.vocabularyInfo(spec)
 GET         /narthex/app/skos/:spec/statistics                               web.AppController.vocabularyStatistics(spec)
-GET         /narthex/app/skos/:spec/:sought                                  web.AppController.searchVocabulary(spec, sought)
+GET         /narthex/app/skos/:spec/languages                                web.AppController.getVocabularyLanguages(spec)
+GET         /narthex/app/skos/:spec/search/:sought/:language                 web.AppController.searchVocabulary(spec, sought, language)
 GET         /narthex/app/skos/:specA/:specB/get-mappings                     web.AppController.getSkosMappings(specA, specB)
 POST        /narthex/app/skos/:specA/:specB/toggle-mapping                   web.AppController.toggleSkosMapping(specA, specB)
 
