@@ -28,8 +28,9 @@ import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType._
-import mapping.CategoryCounter
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
+import mapping.Skosifier.SkosificationComplete
+import mapping.{CategoryCounter, Skosifier}
 import org.OrgActor.DatasetQuestion
 import org.OrgContext
 import org.apache.commons.io.FileUtils._
@@ -42,6 +43,7 @@ import services.ProgressReporter.{ProgressState, ProgressType}
 import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
+import triplestore.Sparql.SkosifiedField
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -72,6 +74,8 @@ object DatasetActor {
 
   case object Saving extends DatasetActorState
 
+  case object Skosifying extends DatasetActorState
+
   case object Categorizing extends DatasetActorState
 
   trait DatasetActorData
@@ -96,6 +100,8 @@ object DatasetActor {
   case class StartProcessing(incrementalOpt: Option[Incremental])
 
   case class StartSaving(incrementalOpt: Option[Incremental])
+
+  case class StartSkosification(skosifiedField: SkosifiedField)
 
   case object StartCategoryCounting
 
@@ -189,6 +195,10 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             self ! StartSaving(None)
             "saving started"
 
+          case "start skosification" =>
+            self ! StartSkosification
+            "skosification started"
+
           // todo:
           //def startCategoryCounts() = OrgActor.actor ! dsInfo.createMessage(StartCategoryCounting)
 
@@ -260,6 +270,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo, OrgContext.ts), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(Some(graphSaver), PROCESSING)
+
+    case Event(StartSkosification(skosifiedField), Dormant) =>
+      sendBusy()
+      val skosifier = context.actorOf(Skosifier.props(dsInfo, OrgContext.ts), "skosifier")
+      skosifier ! skosifiedField
+      goto(Skosifying) using Active(Some(skosifier), SKOSIFYING)
 
     case Event(StartCategoryCounting, Dormant) =>
       sendBusy()
@@ -377,6 +393,15 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   }
 
+  when(Skosifying) {
+
+    case Event(SkosificationComplete(skosifiedField), active: Active) =>
+      log.info(s"Skosification complete: $skosifiedField")
+      active.childOpt.map(_ ! PoisonPill)
+      goto(Idle) using Dormant
+
+  }
+
   when(Categorizing) {
 
     case Event(CategoryCountComplete(spec, categoryCounts), active: Active) =>
@@ -388,6 +413,11 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   }
 
   whenUnhandled {
+
+    // this is because PeriodicSkosifyCheck may send multiple for us.  he'll be back
+    case Event(StartSkosification(skosifiedField), active: Active) =>
+      log.info(s"Ignoring next skosification field for now: $skosifiedField")
+      stay()
 
     case Event(tick: ProgressTick, active: Active) =>
       stay() using active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)

@@ -171,7 +171,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
       path.pop()
     }
 
-    while (events.hasNext && progressReporter.keepReading(recordCount)) {
+    while (events.hasNext && progressReporter.keepGoingAt(recordCount)) {
       events.next() match {
         case EvElemStart(pre, label, attrs, scope) => push(tag(pre, label), attrs, scope)
         case EvText(text) => addFieldText(text)

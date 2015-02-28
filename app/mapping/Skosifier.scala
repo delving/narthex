@@ -16,8 +16,12 @@
 package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
+import dataset.DatasetActor.{InterruptWork, WorkFailure}
+import dataset.DsInfo
+import services.ProgressReporter
+import services.ProgressReporter.ProgressState
 import services.StringHandling.slugify
-import triplestore.Sparql.SkosifiedField
+import triplestore.Sparql._
 import triplestore.TripleStore.QueryValue
 import triplestore.{Sparql, TripleStore}
 
@@ -25,63 +29,66 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object Skosifier {
 
-  case object ScanForWork
-
-  def props(ts: TripleStore) = Props(new Skosifier(ts))
-
-}
-
-class Skosifier(ts: TripleStore) extends Actor with ActorLogging {
-
-  import mapping.Skosifier._
-
   val chunkSize = 10
-  var busy = false
 
-  case class SkosificationJob(sf: SkosifiedField, scResult: List[Map[String, QueryValue]]) {
-    val cases = Sparql.createCases(sf, scResult)
+  case class SkosificationComplete(skosifiedField: SkosifiedField)
+
+  def props(dsInfo: DsInfo, ts: TripleStore) = Props(new Skosifier(dsInfo, ts))
+
+  case class SkosificationJob(skosifiedField: SkosifiedField, scResult: List[Map[String, QueryValue]]) {
+    val cases = Sparql.createCases(skosifiedField, scResult)
     val ensureSkosEntries = cases.map(_.ensureSkosEntryQ).mkString
     val changeLiteralsToUris = cases.map(_.literalToUriQ).mkString
 
-    override def toString = s"$sf: $scResult"
+    override def toString = s"$skosifiedField: $scResult"
   }
+
+}
+
+class Skosifier(dsInfo: DsInfo, ts: TripleStore) extends Actor with ActorLogging {
+
+  import mapping.Skosifier._
+
+  var progressOpt: Option[ProgressReporter] = None
+  var progressCount = 0
 
   def receive = {
 
-    case ScanForWork =>
-      if (busy) {
-        log.info("Busy, avoiding scan")
-      }
-      else {
-        ts.query(Sparql.listSkosifiedFieldsQ).map { sfResult =>
-          sfResult.map(SkosifiedField(_)).map { sf =>
-            val casesExist = Sparql.skosificationCasesExist(sf)
-            ts.ask(casesExist).map(exists => if (exists) {
-              log.info(s"Work for $sf")
-              ts.query(Sparql.listSkosificationCasesQ(sf, chunkSize)).map(self ! SkosificationJob(sf, _))
-            })
-          }
+    case InterruptWork =>
+      progressOpt.map(_.interruptBy(sender()))
+
+    case skosifiedField: SkosifiedField =>
+      val progressReporter = ProgressReporter(ProgressState.SKOSIFYING, context.parent)
+      ts.query(countSkosificationCasesQ(skosifiedField)).map(countFromResult).map { count =>
+        progressReporter.setMaximum(count)
+        log.info(s"Set progress maximum to $count")
+        progressOpt = Some(progressReporter)
+        ts.query(listSkosificationCasesQ(skosifiedField, Skosifier.chunkSize)).map { scResult =>
+          self ! SkosificationJob(skosifiedField, scResult)
         }
       }
 
-    case job: SkosificationJob =>
-      log.info(s"Cases: ${job.cases.map(c => slugify(c.literalValueText))}")
-      busy = true
-      ts.up.sparqlUpdate(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
-        if (job.cases.size == chunkSize) {
-          ts.query(Sparql.listSkosificationCasesQ(job.sf, chunkSize)).map { scResult =>
-            if (scResult.nonEmpty) {
-              self ! SkosificationJob(job.sf, scResult)
+    case skosificationJob: SkosificationJob =>
+      log.info(s"Cases: ${skosificationJob.cases.map(c => slugify(c.literalValueText))}")
+      ts.up.sparqlUpdate(skosificationJob.ensureSkosEntries + skosificationJob.changeLiteralsToUris).map { ok =>
+        progressCount += skosificationJob.cases.size
+        if (progressOpt.get.keepGoingAt(progressCount)) {
+          if (skosificationJob.cases.size == chunkSize) {
+            ts.query(Sparql.listSkosificationCasesQ(skosificationJob.skosifiedField, chunkSize)).map { scResult =>
+              if (scResult.nonEmpty) {
+                self ! SkosificationJob(skosificationJob.skosifiedField, scResult)
+              }
+              else {
+                context.parent ! SkosificationComplete(skosificationJob.skosifiedField)
+              }
             }
-            else {
-              log.info("No more work: query")
-              busy = false
-            }
+          }
+          else {
+            context.parent ! SkosificationComplete(skosificationJob.skosifiedField)
           }
         }
         else {
-          log.info("No more work: last not full")
-          busy = false
+          context.parent ! WorkFailure("Interrupted")
         }
       }
 

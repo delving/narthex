@@ -69,9 +69,10 @@ object ProgressReporter {
     val CATEGORIZING = ProgressState("state-categorizing")
     val PROCESSING = ProgressState("state-processing")
     val SAVING = ProgressState("state-saving")
+    val SKOSIFYING = ProgressState("state-skosifying")
     val ERROR = ProgressState("state-error")
 
-    val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, PROCESSING, ERROR)
+    val ALL_STATES = List(STATE_IDLE, PREPARING, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, PROCESSING, SAVING, SKOSIFYING, ERROR)
 
     def progressStateFromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
 
@@ -87,7 +88,7 @@ trait ProgressReporter {
 
   def interruptBy(actor: ActorRef): Boolean
 
-  def keepReading(value: Int = -1): Boolean
+  def keepGoingAt(value: Int = -1): Boolean
 
   def keepWorking: Boolean
 
@@ -107,7 +108,7 @@ class FakeProgressReporter extends ProgressReporter {
 
   override def interruptBy(actor: ActorRef) = true
 
-  override def keepReading(value: Int): Boolean = true
+  override def keepGoingAt(value: Int): Boolean = true
 
   override def keepWorking: Boolean = true
 
@@ -151,7 +152,7 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetActor: Actor
 
   def sendWorkers(workerCount: Int) = mindTheBomb(datasetActor ! ProgressTick(progressState, WORKERS, workerCount))
 
-  def keepReading(value: Int): Boolean = {
+  def keepGoingAt(value: Int): Boolean = {
     readProgressOption.map { readProgress =>
       val percentZero = readProgress.getPercentRead
       val percent = if (percentZero == 0) 1 else percentZero

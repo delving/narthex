@@ -311,21 +311,24 @@ object Sparql {
 
   val listSkosifiedFieldsQ =
     s"""
-      |SELECT ?datasetUri ?fieldProperty
+      |SELECT ?spec ?datasetUri ?fieldPropertyUri
       |WHERE {
-      |  GRAPH ?g { ?datasetUri <$skosField> ?fieldProperty }
+      |  GRAPH ?g {
+      |    ?datasetUri <$datasetSpec> ?spec .
+      |    ?datasetUri <$skosField> ?fieldPropertyUri .
+      |  }
       |}
      """.stripMargin
 
-  object SkosifiedField {
-    def apply(resultMap: Map[String, QueryValue]): SkosifiedField = {
-      SkosifiedField(resultMap("datasetUri").text, resultMap("fieldProperty").text)
-    }
-  }
+  case class SkosifiedField(spec: String, datasetUri: String, fieldPropertyUri: String)
 
-  case class SkosifiedField(datasetUri: String, fieldPropertyUri: String)
+  def skosifiedFieldFromResult(resultMap: Map[String, QueryValue]) = SkosifiedField(
+    resultMap("spec").text,
+    resultMap("datasetUri").text,
+    resultMap("fieldPropertyUri").text
+  )
 
-  def skosificationCasesExist(sf: SkosifiedField) =
+  def skosificationCasesExistQ(sf: SkosifiedField) =
     s"""
       |ASK {
       |  GRAPH ?g { ?record <$belongsTo> <${sf.datasetUri}> }
@@ -335,6 +338,20 @@ object Sparql {
       |  }
       |}
      """.stripMargin
+
+  def countSkosificationCasesQ(sf: SkosifiedField) =
+    s"""
+      |SELECT (COUNT(DISTINCT ?literalValue) as ?count)
+      |WHERE {
+      |  GRAPH ?g { ?record <$belongsTo> <${sf.datasetUri}> }
+      |  GRAPH ?g {
+      |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
+      |    FILTER isLiteral(?literalValue)
+      |  }
+      |}
+     """.stripMargin
+
+  def countFromResult(resultMap: List[Map[String, QueryValue]]):Int = resultMap.head.get("count").get.text.toInt
 
   def listSkosificationCasesQ(sf: SkosifiedField, chunkSize: Int) =
     s"""
@@ -355,7 +372,7 @@ object Sparql {
   def createCases(dsInfo: DsInfo, json: JsValue): List[SkosificationCase] = {
     val fieldPropertyUri = (json \ "uri").as[String]
     val histogram = (json \ "histogram").as[List[List[String]]]
-    val sf = SkosifiedField(dsInfo.uri, fieldPropertyUri)
+    val sf = SkosifiedField(dsInfo.spec, dsInfo.uri, fieldPropertyUri)
     histogram.map(count => SkosificationCase(sf, count(1), Some(count(0).toInt)))
   }
 

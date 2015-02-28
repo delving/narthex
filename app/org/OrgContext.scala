@@ -24,7 +24,7 @@ import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
 import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
-import mapping.Skosifier.ScanForWork
+import mapping.PeriodicSkosifyCheck.ScanForWork
 import mapping._
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
@@ -92,8 +92,8 @@ object OrgContext {
 
   val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
   val harvestTicker = system.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
-  val skosifier = system.actorOf(Skosifier.props(ts), "Skosifier")
-  val skosifierTicker = system.scheduler.schedule(1.minute, 30.seconds, skosifier, ScanForWork)
+  val periodicSkosifyCheck = system.actorOf(PeriodicSkosifyCheck.props(), "PeriodicSkosifyCheck")
+  val skosifyTicker = system.scheduler.schedule(30.seconds, 30.seconds, periodicSkosifyCheck, ScanForWork)
   val orgContext = new OrgContext(USER_HOME, ORG_ID, ts)
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))

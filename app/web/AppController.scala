@@ -40,6 +40,7 @@ import services.ProgressReporter.ProgressType._
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.Sparql
+import triplestore.Sparql.SkosifiedField
 import web.MainController.OkFile
 
 import scala.concurrent.duration._
@@ -186,7 +187,7 @@ object AppController extends Controller with Security {
 
   // ====== vocabularies =====
 
-  def setSkosField(spec: String) = Secure(parse.json) { session => request =>
+  def setSkosifiedField(spec: String) = Secure(parse.json) { session => request =>
     withDsInfo(spec) { dsInfo =>
       val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
       val skosFieldUri = (request.body \ "skosFieldUri").as[String]
@@ -209,6 +210,8 @@ object AppController extends Controller with Security {
             Await.result(futureUpdate, 1.minute)
           } getOrElse {
             dsInfo.addUriProp(skosField, skosFieldUri)
+            val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldUri)
+            OrgActor.actor ! dsInfo.createMessage(StartSkosification(skosifiedField))
           }
           "added"
         }

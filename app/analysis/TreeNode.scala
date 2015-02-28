@@ -41,7 +41,7 @@ object TreeNode {
     val events = new NarthexEventReader(source)
 
     try {
-      while (events.hasNext && progressReporter.keepReading()) {
+      while (events.hasNext && progressReporter.keepGoingAt()) {
 
         events.next() match {
 

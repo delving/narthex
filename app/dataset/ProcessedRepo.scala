@@ -148,7 +148,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
       val recordText = new StringBuilder
       var graphCount = 0
       var chunkComplete = false
-      while (!chunkComplete && progressReporter.keepReading(-1)) {
+      while (!chunkComplete && progressReporter.keepGoingAt(-1)) {
         readerOpt.map { reader =>
           Option(reader.readLine()).map {
             case LineId(graphName) =>

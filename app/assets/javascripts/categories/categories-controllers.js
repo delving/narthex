@@ -195,6 +195,7 @@ define(["angular"], function (angular) {
         'state-categorizing': "Categorizing",
         'state-processing': "Processing",
         'state-saving': "Saving",
+        'state-skosifying': "Skosifying",
         'state-error': "Error"
     };
 

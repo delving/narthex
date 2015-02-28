@@ -10,7 +10,7 @@ object Global extends GlobalSettings {
   override def onStop(app: Application) {
     Logger.info("Shutting down tickers")
     harvestTicker.cancel()
-    skosifierTicker.cancel()
+    skosifyTicker.cancel()
     Logger.info("Narthex shutdown...")
   }
 }

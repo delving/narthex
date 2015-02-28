@@ -15,9 +15,7 @@ import services.FileHandling._
 import services.StringHandling.slugify
 import services.{FileHandling, ProgressReporter}
 import triplestore.GraphProperties._
-import triplestore.Sparql
 import triplestore.Sparql._
-
 class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM with FakeTripleStore {
 
   val skosifiedPropertyUri = "http://purl.org/dc/elements/1.1/subject"
@@ -97,9 +95,12 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     info.addUriProp(skosField, skosifiedPropertyUri)
     info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
 
-    val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(Sparql.SkosifiedField(_))
+    val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(skosifiedFieldFromResult)
 
     val skosificationCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCasesQ(sf, 2)))))
+
+    val countResult = await(ts.query(countSkosificationCasesQ(skosifiedFields.head)))
+    countFromResult(countResult) must be(19)
 
 //    skosificationCases.map(c => println(s"SKOSIFICATION CASE: $c"))
 
@@ -137,7 +138,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
       remaining.size must be(17)
     }
 
-    await(ts.ask(skosificationCasesExist(skosifiedFields.head))) must be(true)
+    await(ts.ask(skosificationCasesExistQ(skosifiedFields.head))) must be(true)
 
     val finalCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCasesQ(sf, 100)))))
     finalCases.map { sc =>
@@ -145,7 +146,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
       await(ts.up.sparqlUpdate(sc.literalToUriQ))
     }
 
-    await(ts.ask(skosificationCasesExist(skosifiedFields.head))) must be(false)
+    await(ts.ask(skosificationCasesExistQ(skosifiedFields.head))) must be(false)
   }
 
   "Mapping a skosified entry to a vocab entry" in {
