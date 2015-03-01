@@ -29,6 +29,7 @@ import org.xml.sax.SAXException
 import record.PocketParser.Pocket
 import record.SourceProcessor._
 import services.FileHandling._
+import services.MissingLibs.HashType
 import services.ProgressReporter.ProgressState._
 import services.{FileHandling, ProgressReporter}
 
@@ -176,7 +177,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
           val progressReporter = ProgressReporter(PROCESSING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
-          val parser = new PocketParser(sourceFacts)
+          val parser = new PocketParser(sourceFacts, Some(HashType.SHA256))
           parser.parse(source, Set.empty[String], catchPocket, progressReporter)
         }
         finally {

@@ -21,6 +21,7 @@ import java.io.{ByteArrayInputStream, Writer}
 import dataset.SourceRepo.SourceFacts
 import eu.delving.metadata.StringUtil
 import play.Logger
+import services.MissingLibs.HashType.HashType
 import services.StringHandling._
 import services._
 
@@ -54,7 +55,7 @@ object PocketParser {
 
 }
 
-class PocketParser(facts: SourceFacts) {
+class PocketParser(facts: SourceFacts, hashTypeOpt: Option[HashType]) {
 
   import record.PocketParser._
 
@@ -151,7 +152,7 @@ class PocketParser(facts: SourceFacts) {
           recordText.append(s"</${if (introduceRecord) SIP_RECORD_TAG else tag}>\n")
           val record = uniqueId.map { idUnclean =>
             if (idUnclean.isEmpty) throw new RuntimeException("Empty unique id!")
-            val id = StringUtil.sanitizeId(idUnclean)
+            val id = hashTypeOpt.map(hashType => MissingLibs.hashBase32(idUnclean, hashType)).getOrElse(StringUtil.sanitizeId(idUnclean))
             if (avoidIds.contains(id)) None
             else {
               val recordContent = recordText.toString()

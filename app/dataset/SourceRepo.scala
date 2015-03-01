@@ -26,6 +26,7 @@ import org.joda.time.DateTime
 import record.PocketParser
 import record.PocketParser._
 import services.FileHandling.{clearDir, sourceFromFile, writer}
+import services.MissingLibs.HashType
 import services.ProgressReporter
 
 import scala.collection.mutable
@@ -164,8 +165,8 @@ class SourceRepo(home: File) {
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = provideZipFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
-    val parser = new PocketParser(sourceFacts)
-    def receiveRecord(record: Pocket): Unit = idSet.add(record.id)
+    val parser = new PocketParser(sourceFacts, Some(HashType.SHA256))
+    def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.id)
     val (source, readProgress) = sourceFromFile(file)
     progress.setReadProgress(readProgress)
     try {
@@ -263,7 +264,7 @@ class SourceRepo(home: File) {
 //  }
 
   def parsePockets(output: Pocket => Unit, progress: ProgressReporter): Int = {
-    val parser = new PocketParser(sourceFacts)
+    val parser = new PocketParser(sourceFacts, Some(HashType.SHA256))
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)

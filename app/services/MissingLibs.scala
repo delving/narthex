@@ -5,7 +5,7 @@ import java.security.{MessageDigest, NoSuchAlgorithmException}
 import java.text.SimpleDateFormat
 import java.util.{Locale, Properties, TimeZone}
 
-import org.apache.commons.codec.binary.{Base64, Hex}
+import org.apache.commons.codec.binary.{Base32, Base64, Hex}
 import org.apache.commons.io.IOUtils
 import play.api.UnexpectedException
 
@@ -53,11 +53,23 @@ object MissingLibs {
 
   def UUID: String = java.util.UUID.randomUUID().toString
 
-  def encodeBASE64(value: java.io.File): String = new String(Base64.encodeBase64((Source.fromFile(value).map(_.toByte).toArray)))
+  def encodeBASE64(value: java.io.File): String = new String(Base64.encodeBase64(Source.fromFile(value).map(_.toByte).toArray))
 
   def encodeBASE64(value: String) = {
     try {
       new String(Base64.encodeBase64(value.getBytes("utf-8")))
+    } catch {
+      case e: Throwable => throw UnexpectedException(unexpected = Some(e))
+    }
+  }
+
+  val base32 = new Base32()
+  val padding = "===="
+
+  def encodeBASE32(value: Array[Byte]) = {
+    try {
+      val padded = base32.encodeToString(value)
+      padded.substring(0, padded.length - padding.length)
     } catch {
       case e: Throwable => throw UnexpectedException(unexpected = Some(e))
     }
@@ -85,19 +97,29 @@ object MissingLibs {
    */
   def byteToHexString(bytes: Array[Byte]) = String.valueOf(Hex.encodeHex(bytes))
 
-
   // ~~~ play.libs.Crypto
 
   object HashType extends Enumeration {
     type HashType = Value
     val SHA512 = Value("SHA-512")
+    val SHA256 = Value("SHA-256")
   }
 
-  def passwordHash(input: String, hashType: HashType.Value) = {
+  def hashBase64(input: String, hashType: HashType.Value) = {
     try {
       val m = MessageDigest.getInstance(hashType.toString)
       val out = m.digest(input.getBytes)
       new String(Base64.encodeBase64(out))
+    } catch {
+      case e: NoSuchAlgorithmException => throw new RuntimeException(e)
+    }
+  }
+
+  def hashBase32(input: String, hashType: HashType.Value) = {
+    try {
+      val m = MessageDigest.getInstance(hashType.toString)
+      val out = m.digest(input.getBytes)
+      encodeBASE32(out)
     } catch {
       case e: NoSuchAlgorithmException => throw new RuntimeException(e)
     }
