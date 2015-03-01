@@ -154,7 +154,7 @@ class VocabInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore
 
   def dropVocabulary = ts.up.sparqlUpdate(dropVocabularyQ(uri)).map(ok => true)
 
-  lazy val vocabulary = new SkosVocabulary(spec, dataUri, ts)
+  lazy val vocabulary = new SkosVocabulary(spec, dataUri)
 
   override def toString = uri
 }

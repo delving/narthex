@@ -324,7 +324,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     sw.toString
   }
 
-  lazy val vocabulary = new SkosVocabulary(spec, skosUri, ts)
+  lazy val vocabulary = new SkosVocabulary(spec, skosUri)
 
   override def toString = spec
 }

@@ -134,7 +134,7 @@ object SkosVocabulary {
 
 }
 
-case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore)(implicit ec: ExecutionContext) {
+case class SkosVocabulary(spec: String, graphName: String)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   lazy val futureModel = ts.dataGet(graphName)
   futureModel.onFailure {
