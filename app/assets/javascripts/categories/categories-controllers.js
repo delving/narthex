@@ -315,7 +315,6 @@ define(["angular"], function (angular) {
 
         $scope.goToCategories = function (ds) {
             $location.path("/categories/" + ds.datasetSpec);
-            $location.search({});
         };
 
         function checkProgressFinished() {

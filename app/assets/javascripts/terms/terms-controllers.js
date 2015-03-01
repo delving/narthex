@@ -26,10 +26,8 @@ define(["angular"], function () {
         }
 
         function updateSearchParams() {
-            $location.search({
-                view: $scope.activeView,
-                thesaurus: $scope.thesaurus
-            });
+            $location.search("view", $scope.activeView);
+            $location.search("thesaurus",$scope.thesaurus);
         }
 
         getSearchParams();

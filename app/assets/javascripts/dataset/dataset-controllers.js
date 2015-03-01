@@ -117,27 +117,16 @@ define(["angular"], function () {
 
         $scope.goToPage = function (page) {
             $location.path("/" + page + "/" + $scope.spec);
-            $location.search({
-                path: $routeParams.path,
-                // todo: probably URI should be used
-                size: $scope.status.histograms[$scope.status.histograms.length - 1]
-            });
         };
 
         function setActiveView(activeView) {
             $scope.activeView = activeView;
-            $location.search({
-                path: $routeParams.path,
-                view: activeView
-            });
+            $location.search("view", activeView);
         }
 
         function setActivePath(activePath) {
             $scope.activePath = activePath;
-            $location.search({
-                path: activePath,
-                view: $routeParams.view
-            });
+            $location.search("path", activePath);
         }
 
         $scope.selectNode = function (node, $event) {

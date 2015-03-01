@@ -131,7 +131,6 @@ define(["angular"], function (angular) {
                 default:
                     $location.path('/');
             }
-            $location.search({});
             $('#nav-' + page).addClass('active');
         };
 

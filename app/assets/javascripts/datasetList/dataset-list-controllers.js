@@ -268,7 +268,7 @@ define(["angular"], function () {
 
         $scope.$watch("expanded", function (expanded) {
             if (expanded) {
-                $location.search({dataset: ds.datasetSpec});
+                $location.search("dataset", ds.datasetSpec);
                 refreshInfo();
             }
             else {
@@ -416,17 +416,14 @@ define(["angular"], function () {
 
         $scope.goToDataset = function () {
             $location.path("/dataset/" + ds.datasetSpec);
-            $location.search({});
         };
 
         $scope.goToTerms = function () {
             $location.path("/terms/" + ds.datasetSpec);
-            $location.search({});
         };
 
         $scope.goToCategories = function () {
             $location.path("/categories/" + ds.datasetSpec);
-            $location.search({});
         };
 
         $scope.toggleDatasetProduction = function() {
