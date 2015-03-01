@@ -25,9 +25,8 @@ import triplestore.Sparql._
 import triplestore.TripleStore
 
 import scala.collection.JavaConversions._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 object ActorStore {
 
@@ -44,15 +43,15 @@ object ActorStore {
 
 }
 
-class ActorStore(ts: TripleStore) {
+class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import org.ActorStore._
 
   val digest = MessageDigest.getInstance("SHA-256")
 
-  val futureModel = ts.dataGet(actorsGraph).fallbackTo(Future(ModelFactory.createDefaultModel()))
+  lazy val futureModel = ts.dataGet(actorsGraph).fallbackTo(Future(ModelFactory.createDefaultModel()))
 
-  val model = Await.result(futureModel, 20.seconds)
+  lazy val model = Await.result(futureModel, 20.seconds)
 
   private def propUri(prop: NXProp) = model.getProperty(prop.uri)
 

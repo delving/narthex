@@ -22,8 +22,7 @@ import org.ActorStore.NXActor
 import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 object SkosMappingStore {
 
@@ -42,7 +41,7 @@ object SkosMappingStore {
 
 }
 
-class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, ts: TripleStore) {
+class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
 
@@ -63,7 +62,7 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, ts: TripleStore) {
 
 }
 
-class TermMappingStore(termGraph: SkosGraph, ts: TripleStore) {
+class TermMappingStore(termGraph: SkosGraph)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
 

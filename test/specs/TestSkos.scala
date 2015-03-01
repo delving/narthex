@@ -19,12 +19,12 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     cleanStart()
 
     // have an actor create two Skos vocabs
-    val actorStore = new ActorStore(ts)
+    val actorStore = new ActorStore
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
-    val genreInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_genre", ts))
+    val genreInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_genre"))
     val genreFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
     await(ts.up.dataPutXMLFile(genreInfo.dataUri, genreFile))
-    val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy", ts))
+    val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy"))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
     await(ts.up.dataPutXMLFile(classyInfo.dataUri, classyFile))
     countGraphs must be(5)
@@ -44,7 +44,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
 
     searches.foreach(labelSearch => println(Json.prettyPrint(Json.toJson(labelSearch))))
 
-    val skosMappings = new VocabMappingStore(genreInfo, classyInfo, ts)
+    val skosMappings = new VocabMappingStore(genreInfo, classyInfo)
 
     val genreA = "http://data.beeldengeluid.nl/gtaa/30103"
     val classyA = "http://data.beeldengeluid.nl/gtaa/24896"
@@ -71,8 +71,8 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     val histogramString = FileUtils.readFileToString(histogramFile, "UTF-8")
     val json = Json.parse(histogramString)
     val dsSpec = "histoskos"
-    val actor = await(new ActorStore(ts).authenticate("gumby", "pokey")).get
-    val di = await(DsInfo.createDsInfo(actor, dsSpec, DsInfo.CharacterMapped, "edm", ts))
+    val actor = await(new ActorStore().authenticate("gumby", "pokey")).get
+    val di = await(DsInfo.createDsInfo(actor, dsSpec, DsInfo.CharacterMapped, "edm"))
     val cases = Sparql.createCases(di, json)
     cases.foreach(c => await(ts.up.sparqlUpdate(c.ensureSkosEntryQ)))
     val first = di.vocabulary.concepts.sortBy(_.resource.toString).head

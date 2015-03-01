@@ -26,9 +26,8 @@ import triplestore.{GraphProperties, TripleStore}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 
 object SkosVocabulary {
 
@@ -135,7 +134,7 @@ object SkosVocabulary {
 
 }
 
-case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore) {
+case class SkosVocabulary(spec: String, graphName: String, ts: TripleStore)(implicit ec: ExecutionContext) {
 
   lazy val futureModel = ts.dataGet(graphName)
   futureModel.onFailure {

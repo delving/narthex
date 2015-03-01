@@ -26,11 +26,11 @@ import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
 import mapping.VocabInfo
 import mapping.VocabInfo._
-import org.OrgActor
 import org.OrgActor.DatasetMessage
-import org.OrgContext.{orgContext, ts}
+import org.OrgContext.orgContext
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
+import org.{OrgActor, OrgContext}
 import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
@@ -49,9 +49,10 @@ import scala.concurrent.{Await, Future}
 object AppController extends Controller with Security {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
+  implicit val ts = OrgContext.TS
 
   def listDatasets = SecureAsync() { session => request =>
-    listDsInfo(ts).map(list => Ok(Json.toJson(list)))
+    listDsInfo.map(list => Ok(Json.toJson(list)))
   }
 
   def listPrefixes = Secure() { session => request =>
@@ -231,17 +232,17 @@ object AppController extends Controller with Security {
   }
 
   def listVocabularies = SecureAsync() { session => request =>
-    listVocabInfo(ts).map(list => Ok(Json.toJson(list)))
+    listVocabInfo.map(list => Ok(Json.toJson(list)))
   }
 
   def createVocabulary(spec: String) = SecureAsync() { session => request =>
-    VocabInfo.createVocabInfo(session.actor, spec, ts).map(ok =>
+    VocabInfo.createVocabInfo(session.actor, spec).map(ok =>
       Ok(Json.obj("created" -> s"Skos $spec created"))
     )
   }
 
   def deleteVocabulary(spec: String) = SecureAsync() { session => request =>
-    VocabInfo.freshVocabInfo(spec, ts).map { vocabInfoOpt =>
+    VocabInfo.freshVocabInfo(spec).map { vocabInfoOpt =>
       vocabInfoOpt.map { vocabInfo =>
         vocabInfo.dropVocabulary
         Ok(Json.obj("created" -> s"Vocabulary $spec deleted"))
@@ -371,7 +372,7 @@ object AppController extends Controller with Security {
   }
 
   def getCategoryList = SecureAsync() { session => request =>
-    val map: Future[Option[VocabInfo]] = listVocabInfo(ts).map(list => list.find(_.spec == CATEGORIES_SPEC))
+    val map: Future[Option[VocabInfo]] = listVocabInfo.map(list => list.find(_.spec == CATEGORIES_SPEC))
     map.map { catVocabInfoOpt =>
       catVocabInfoOpt.map { catVocabInfo =>
         val count = Await.result(catVocabInfo.conceptCount, 30.seconds)

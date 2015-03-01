@@ -21,12 +21,10 @@ import dataset.DatasetActor.StartHarvest
 import dataset.DsInfo
 import dataset.DsInfo.withDsInfo
 import harvest.PeriodicHarvest.ScanForHarvests
-import org.OrgActor
-import org.OrgContext.ts
+import org.{OrgActor, OrgContext}
 import play.api.Logger
 import services.Temporal.DelayUnit
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 
 object PeriodicHarvest {
@@ -40,11 +38,13 @@ object PeriodicHarvest {
 class PeriodicHarvest extends Actor {
 
   val log = Logger.logger
+  import context.dispatcher
+  implicit val ts = OrgContext.TS
 
   def receive = {
 
     case ScanForHarvests =>
-      val futureList = DsInfo.listDsInfo(ts)
+      val futureList = DsInfo.listDsInfo
       futureList.onSuccess {
         case list: List[DsInfo] =>
           list.map { listedInfo =>

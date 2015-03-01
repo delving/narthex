@@ -18,6 +18,9 @@
   <logger name="akka" level="INFO" />
   <logger name="org.OrgActor" level="INFO" />
   <logger name="analysis.Analyzer" level="INFO" />
+  <logger name="analysis.Collator" level="INFO" />
+  <logger name="analysis.Sorter" level="INFO" />
+  <logger name="analysis.Merger" level="INFO" />
   <logger name="harvest.Harvester" level="INFO" />
   <logger name="record.SourceProcessor" level="INFO" />
   <logger name="dataset.DatasetActor" level="INFO" />

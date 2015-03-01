@@ -4,8 +4,7 @@ import akka.actor.{Actor, Props}
 import dataset.DatasetActor.StartSkosification
 import dataset.DsInfo
 import mapping.PeriodicSkosifyCheck.ScanForWork
-import org.OrgActor
-import org.OrgContext._
+import org.{OrgActor, OrgContext}
 import play.api.Logger
 import triplestore.Sparql._
 
@@ -20,6 +19,8 @@ object PeriodicSkosifyCheck {
 class PeriodicSkosifyCheck extends Actor {
 
   import context.dispatcher
+
+  implicit val ts = OrgContext.TS
 
   val log = Logger.logger
 

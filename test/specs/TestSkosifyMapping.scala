@@ -16,6 +16,7 @@ import services.StringHandling.slugify
 import services.{FileHandling, ProgressReporter}
 import triplestore.GraphProperties._
 import triplestore.Sparql._
+
 class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM with FakeTripleStore {
 
   val skosifiedPropertyUri = "http://purl.org/dc/elements/1.1/subject"
@@ -25,7 +26,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     cleanStart()
 
     // start fresh
-    val actorStore = new ActorStore(ts)
+    val actorStore = new ActorStore
     val admin = await(actorStore.authenticate("gumby", "secret gumby"))
     admin must be(Some(NXActor("gumby", None)))
     await(actorStore.createActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey", Some(s"$actorPrefix/gumby"))))
@@ -37,7 +38,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     await(actorStore.setPassword(admin.get, "geheim"))
 
     // this will have to get its data from the triple store again
-    val store2 = new ActorStore(ts)
+    val store2 = new ActorStore
     await(store2.authenticate("gumby", "secret gumby")) must be(None)
     await(store2.authenticate("gumby", "geheim")) must be(Some(NXActor("gumby", None)))
     await(store2.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some(s"$actorPrefix/gumby"))))
@@ -50,9 +51,9 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val sipRepo = createSipRepoFromDir(0)
     val latestSip = sipRepo.latestSipOpt.get
     // create processed repo
-    val actorStore = new ActorStore(ts)
+    val actorStore = new ActorStore
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
-    val info = await(DsInfo.createDsInfo(admin, "ton-smits-huis", DsInfo.CharacterMapped, "edm", ts))
+    val info = await(DsInfo.createDsInfo(admin, "ton-smits-huis", DsInfo.CharacterMapped, "edm"))
     val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info)
     var processedFile = processedRepo.createOutput.xmlFile
     val processedWriter = writer(processedFile)
@@ -87,7 +88,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
   "Skosification must work" in {
     // mark a field as skosified
     countGraphs must be(5)
-    val info = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
+    val info = await(DsInfo.freshDsInfo("ton-smits-huis")).get
     info.addUriProp(skosField, skosifiedPropertyUri)
     info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
     info.removeUriProp(skosField, skosifiedPropertyUri)
@@ -150,14 +151,14 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
   }
 
   "Mapping a skosified entry to a vocab entry" in {
-    val actorStore = new ActorStore(ts)
+    val actorStore = new ActorStore
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
-    val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy", ts))
+    val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy"))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
     await(ts.up.dataPutXMLFile(classyInfo.dataUri, classyFile))
-    val info = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
+    val info = await(DsInfo.freshDsInfo("ton-smits-huis")).get
     info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
-    val store = new TermMappingStore(info, ts)
+    val store = new TermMappingStore(info)
     // todo: nothing checks whether this literal or uri string are legitimate
     val literalString = "vogels"
     val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${slugify(literalString)}"
@@ -170,14 +171,14 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
   }
 
   "Mapping a skosified entry to a category" in {
-    val actorStore = new ActorStore(ts)
+    val actorStore = new ActorStore
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
-    val catInfo = await(VocabInfo.createVocabInfo(admin, "categories", ts))
+    val catInfo = await(VocabInfo.createVocabInfo(admin, "categories"))
     val catFile = new File(getClass.getResource("/categories/Categories.xml").getFile)
     await(ts.up.dataPutXMLFile(catInfo.dataUri, catFile))
-    val dsInfo = await(DsInfo.freshDsInfo("ton-smits-huis", ts)).get
+    val dsInfo = await(DsInfo.freshDsInfo("ton-smits-huis")).get
     dsInfo.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
-    val store = new TermMappingStore(dsInfo, ts)
+    val store = new TermMappingStore(dsInfo)
     val literalString = "vogels"
     val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${slugify(literalString)}"
     val uriB1 = "http://schemas.delving.eu/narthex/terms/category/wtns"
@@ -199,7 +200,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
       await(dsInfo.dropDataset)
 //      println("dropped")
     }
-    val list = await(DsInfo.listDsInfo(ts))
+    val list = await(DsInfo.listDsInfo)
 //    println(s"After Delete: $list")
     list must be(List())
   }

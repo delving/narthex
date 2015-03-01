@@ -37,7 +37,7 @@ import triplestore.TripleStore
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.language.postfixOps
 
 object OrgContext {
@@ -72,17 +72,22 @@ object OrgContext {
 
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 
+  val TRIPLE_STORE_URL: Option[String] = config.getString("triple-store")
+  val TRIPLE_STORE_URLS: Option[(String, String)] = config.getObject("triple-stores").map {
+    tripleStoreUrls => (tripleStoreUrls.get("acceptance").render(), tripleStoreUrls.get("production").render())
+  }
   val TRIPLE_STORE_LOG = if (play.api.Play.current.mode == Mode.Dev) true else configFlag("triple-store-log")
 
   Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")
 
-  val ts = config.getString("triple-store").map { tripleStoreUrl =>
+  // tests are using this
+  private def tripleStore(implicit executionContext: ExecutionContext) = TRIPLE_STORE_URL.map { tripleStoreUrl =>
     TripleStore.single(tripleStoreUrl, TRIPLE_STORE_LOG)
   } getOrElse {
-    config.getObject("triple-stores").map { tripleStoreUrls =>
+    TRIPLE_STORE_URLS.map { tripleStoreUrls =>
       TripleStore.double(
-        acceptanceStoreUrl = tripleStoreUrls.get("acceptance").render(),
-        productionStoreUrl = tripleStoreUrls.get("production").render(),
+        acceptanceStoreUrl = tripleStoreUrls._1,
+        productionStoreUrl = tripleStoreUrls._2,
         TRIPLE_STORE_LOG
       )
     } getOrElse {
@@ -90,17 +95,33 @@ object OrgContext {
     }
   }
 
+  implicit val TS: TripleStore = tripleStore
+
+  //  val ts = config.getString("triple-store").map { tripleStoreUrl =>
+  //    TripleStore.single(tripleStoreUrl, TRIPLE_STORE_LOG)
+  //  } getOrElse {
+  //    config.getObject("triple-stores").map { tripleStoreUrls =>
+  //      TripleStore.double(
+  //        acceptanceStoreUrl = tripleStoreUrls.get("acceptance").render(),
+  //        productionStoreUrl = tripleStoreUrls.get("production").render(),
+  //        TRIPLE_STORE_LOG
+  //      )
+  //    } getOrElse {
+  //      throw new RuntimeException("Must have either triple-store= or triple-stores { acceptance=, production= }")
+  //    }
+  //  }
+  //
   val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
   val harvestTicker = system.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
   val periodicSkosifyCheck = system.actorOf(PeriodicSkosifyCheck.props(), "PeriodicSkosifyCheck")
   val skosifyTicker = system.scheduler.schedule(30.seconds, 30.seconds, periodicSkosifyCheck, ScanForWork)
-  val orgContext = new OrgContext(USER_HOME, ORG_ID, ts)
+  val orgContext = new OrgContext(USER_HOME, ORG_ID)(global, tripleStore)
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
   check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e)}
 }
 
-class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
+class OrgContext(userHome: String, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
@@ -112,7 +133,7 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
 
   val categoriesRepo = new CategoriesRepo(categoriesDir)
   val sipFactory = new SipFactory(factoryDir)
-  val us = new ActorStore(ts)
+  val us = new ActorStore
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
@@ -129,24 +150,24 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
 
   def createDsInfo(owner: NXActor, spec: String, characterString: String, prefix: String) = {
     val character = DsInfo.getCharacter(characterString).get
-    DsInfo.createDsInfo(owner, spec, character, prefix, ts)
+    DsInfo.createDsInfo(owner, spec, character, prefix)
   }
 
   def datasetContext(spec: String): DatasetContext = withDsInfo(spec)(dsInfo => new DatasetContext(this, dsInfo))
 
   def vocabMappingStore(specA: String, specB: String): VocabMappingStore = {
     val futureStore = for {
-      infoA <- VocabInfo.freshVocabInfo(specA, ts)
-      infoB <- VocabInfo.freshVocabInfo(specB, ts)
+      infoA <- VocabInfo.freshVocabInfo(specA)
+      infoB <- VocabInfo.freshVocabInfo(specB)
     } yield (infoA, infoB) match {
-        case (Some(a), Some(b)) => new VocabMappingStore(a, b, ts)
+        case (Some(a), Some(b)) => new VocabMappingStore(a, b)
         case _ => throw new RuntimeException(s"No vocabulary mapping found for $specA, $specB")
       }
     Await.result(futureStore, 15.seconds)
   }
 
   def termMappingStore(spec: String): TermMappingStore = {
-    withDsInfo(spec)(dsInfo => new TermMappingStore(dsInfo, ts))
+    withDsInfo(spec)(dsInfo => new TermMappingStore(dsInfo))
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(
@@ -154,7 +175,7 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
   ).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
 
   def uploadedSips: Future[Seq[Sip]] = {
-    DsInfo.listDsInfo(ts).map { list =>
+    DsInfo.listDsInfo.map { list =>
       list.flatMap { dsi =>
         val datasetContext = new DatasetContext(this, dsi)
         datasetContext.sipRepo.latestSipOpt
@@ -163,7 +184,7 @@ class OrgContext(userHome: String, val orgId: String, ts: TripleStore) {
   }
 
   def startCategoryCounts() = {
-    val catDatasets = DsInfo.listDsInfo(ts).map(_.filter(_.getBooleanProp(categoriesInclude)))
+    val catDatasets = DsInfo.listDsInfo.map(_.filter(_.getBooleanProp(categoriesInclude)))
     catDatasets.map { dsList =>
       OrgActor.actor ! DatasetsCountCategories(dsList.map(_.spec))
     }

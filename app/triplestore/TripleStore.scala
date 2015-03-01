@@ -25,11 +25,7 @@ import play.api.libs.json.JsObject
 import play.api.libs.ws.{WS, WSResponse}
 import triplestore.TripleStore.{QueryValue, TripleStoreException}
 
-import scala.concurrent.Future
-
-// todo: use an actor's exec context?
-
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 object TripleStore {
 
@@ -54,9 +50,11 @@ object TripleStore {
 
   class TripleStoreException(message: String) extends Exception(message)
 
-  def single(storeUrl: String, logQueries: Boolean = false) = new Fuseki(storeUrl, logQueries)
+  def single(storeUrl: String, logQueries: Boolean = false)(implicit ec: ExecutionContext) = {
+    new Fuseki(storeUrl, logQueries)
+  }
 
-  def double(acceptanceStoreUrl: String, productionStoreUrl: String, logQueries: Boolean = false) =
+  def double(acceptanceStoreUrl: String, productionStoreUrl: String, logQueries: Boolean = false)(implicit ec: ExecutionContext) =
     new DoubleFuseki(acceptanceStoreUrl, productionStoreUrl, logQueries)
 }
 
@@ -88,7 +86,8 @@ trait TripleStore {
 
 }
 
-class DoubleFuseki(acceptanceStoreUrl: String, productionStoreUrl: String, logQueries: Boolean) extends TripleStore {
+class DoubleFuseki(acceptanceStoreUrl: String, productionStoreUrl: String, logQueries: Boolean)(implicit val executionContext: ExecutionContext) extends TripleStore {
+
   val accFuseki = new Fuseki(acceptanceStoreUrl, logQueries)
   val prodFuseki = new Fuseki(productionStoreUrl, false)
 
@@ -131,7 +130,7 @@ class DoubleFuseki(acceptanceStoreUrl: String, productionStoreUrl: String, logQu
 
 }
 
-class Fuseki(storeURL: String, logQueries: Boolean) extends TripleStore {
+class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContext: ExecutionContext) extends TripleStore {
 
   val logFile = new File("/tmp/triple-store.log")
   val logOutput = if (logQueries) Some(new PrintWriter(logFile)) else None

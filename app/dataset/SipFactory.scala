@@ -26,9 +26,8 @@ import play.api.Play.current
 import play.api.libs.ws.WS
 import triplestore.GraphProperties._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.xml.NodeSeq
 
 /**
@@ -79,7 +78,7 @@ object SipFactory {
 
 }
 
-class SipFactory(home: File) {
+class SipFactory(home: File)(implicit ec: ExecutionContext) {
 
   lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map(new SipPrefixRepo(_))
 
@@ -87,7 +86,7 @@ class SipFactory(home: File) {
 
 }
 
-class SipPrefixRepo(home: File) {
+class SipPrefixRepo(home: File)(implicit ec: ExecutionContext) {
 
   import dataset.SipFactory._
 

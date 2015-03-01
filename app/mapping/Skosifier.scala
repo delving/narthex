@@ -18,14 +18,13 @@ package mapping
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{InterruptWork, WorkFailure}
 import dataset.DsInfo
+import org.OrgContext
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState
 import services.StringHandling.slugify
+import triplestore.Sparql
 import triplestore.Sparql._
 import triplestore.TripleStore.QueryValue
-import triplestore.{Sparql, TripleStore}
-
-import scala.concurrent.ExecutionContext.Implicits.global
 
 object Skosifier {
 
@@ -33,7 +32,7 @@ object Skosifier {
 
   case class SkosificationComplete(skosifiedField: SkosifiedField)
 
-  def props(dsInfo: DsInfo, ts: TripleStore) = Props(new Skosifier(dsInfo, ts))
+  def props(dsInfo: DsInfo) = Props(new Skosifier(dsInfo))
 
   case class SkosificationJob(skosifiedField: SkosifiedField, scResult: List[Map[String, QueryValue]]) {
     val cases = Sparql.createCases(skosifiedField, scResult)
@@ -45,9 +44,11 @@ object Skosifier {
 
 }
 
-class Skosifier(dsInfo: DsInfo, ts: TripleStore) extends Actor with ActorLogging {
+class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
 
+  import context.dispatcher
   import mapping.Skosifier._
+  implicit val ts = OrgContext.TS
 
   var progressOpt: Option[ProgressReporter] = None
   var progressCount = 0
@@ -81,6 +82,9 @@ class Skosifier(dsInfo: DsInfo, ts: TripleStore) extends Actor with ActorLogging
               else {
                 context.parent ! SkosificationComplete(skosificationJob.skosifiedField)
               }
+            } onFailure {
+              case e: Exception =>
+                context.parent ! WorkFailure(e.toString, Some(e))
             }
           }
           else {
@@ -90,6 +94,9 @@ class Skosifier(dsInfo: DsInfo, ts: TripleStore) extends Actor with ActorLogging
         else {
           context.parent ! WorkFailure("Interrupted")
         }
+      } onFailure {
+        case e: Exception =>
+          context.parent ! WorkFailure(e.toString, Some(e))
       }
 
   }

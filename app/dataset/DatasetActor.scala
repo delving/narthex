@@ -121,8 +121,14 @@ object DatasetActor {
 
 class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
 
-  override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
-    case _: Exception => Stop
+  import context.dispatcher
+
+  implicit val ts = OrgContext.TS
+
+  override val supervisorStrategy = OneForOneStrategy() {
+    case throwable: Throwable =>
+      self ! WorkFailure(s"Child failure: $throwable", Some(throwable))
+      Stop
   }
 
   val dsInfo = datasetContext.dsInfo
@@ -267,13 +273,13 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
       sendBusy()
-      val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo, OrgContext.ts), "graph-saver")
+      val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(Some(graphSaver), PROCESSING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
       sendBusy()
-      val skosifier = context.actorOf(Skosifier.props(dsInfo, OrgContext.ts), "skosifier")
+      val skosifier = context.actorOf(Skosifier.props(dsInfo), "skosifier")
       skosifier ! skosifiedField
       goto(Skosifying) using Active(Some(skosifier), SKOSIFYING)
 
@@ -444,7 +450,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Work failure [$message] while in [$active]")
-      dsInfo.setError(message)
+      dsInfo.setError(s"While $stateName, failure: $message")
       exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using InError(message)
@@ -452,7 +458,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(WorkFailure(message, exceptionOpt), _) =>
       log.warning(s"Work failure $message while dormant")
       exceptionOpt.map(log.warning(message, _))
-      dsInfo.setError(message)
+      dsInfo.setError(s"While not active, failure: $message")
       exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
       goto(Idle) using InError(message)
 

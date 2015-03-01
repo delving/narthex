@@ -23,7 +23,7 @@ import harvest.Harvesting.{HarvestCron, HarvestType}
 import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
-import org.OrgContext._
+import org.OrgContext.NX_URI_PREFIX
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -37,7 +37,6 @@ import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
 
 import scala.collection.JavaConversions._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 
@@ -88,11 +87,11 @@ object DsInfo {
     }
   }
 
-  def listDsInfo(ts: TripleStore): Future[List[DsInfo]] = {
+  def listDsInfo(implicit ec: ExecutionContext, ts: TripleStore): Future[List[DsInfo]] = {
     ts.query(selectDatasetSpecsQ).map { list =>
       list.map { entry =>
         val spec = entry("spec").text
-        new DsInfo(spec, ts)
+        new DsInfo(spec)
       }
     }
   }
@@ -101,7 +100,7 @@ object DsInfo {
 
   def getDsSkosUri(datasetUri: String) = s"$datasetUri/skos"
 
-  def createDsInfo(owner: NXActor, spec: String, character: DsCharacter, mapToPrefix: String, ts: TripleStore): Future[DsInfo] = {
+  def createDsInfo(owner: NXActor, spec: String, character: DsCharacter, mapToPrefix: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val uri = m.getResource(getDsInfoUri(spec))
     m.add(uri, m.getProperty(rdfType), m.getResource(datasetEntity))
@@ -116,24 +115,24 @@ object DsInfo {
     if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.up.dataPost(uri.getURI, m).map { ok =>
       val cacheName = getDsInfoUri(spec)
-      val dsInfo = new DsInfo(spec, ts)
+      val dsInfo = new DsInfo(spec)
       Cache.set(cacheName, dsInfo, cacheTime)
       dsInfo
     }
   }
 
-  def freshDsInfo(spec: String, ts: TripleStore): Future[Option[DsInfo]] = {
+  def freshDsInfo(spec: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[Option[DsInfo]] = {
     ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec))).map(answer =>
-      if (answer) Some(new DsInfo(spec, ts)) else None
+      if (answer) Some(new DsInfo(spec)) else None
     )
   }
 
-  def withDsInfo[T](spec: String)(block: DsInfo => T) = {
+  def withDsInfo[T](spec: String)(block: DsInfo => T)(implicit ec: ExecutionContext, ts: TripleStore) = {
     val cacheName = getDsInfoUri(spec)
     Cache.getAs[DsInfo](cacheName) map { dsInfo =>
       block(dsInfo)
     } getOrElse {
-      val dsInfo = Await.result(freshDsInfo(spec, ts), 30.seconds).getOrElse {
+      val dsInfo = Await.result(freshDsInfo(spec), 30.seconds).getOrElse {
         throw new RuntimeException(s"No dataset info for $spec")
       }
       Cache.set(cacheName, dsInfo, cacheTime)
@@ -143,7 +142,7 @@ object DsInfo {
 
 }
 
-class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
+class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) extends SkosGraph {
 
   import dataset.DsInfo._
 
@@ -304,7 +303,7 @@ class DsInfo(val spec: String, ts: TripleStore) extends SkosGraph {
   }
 
   def termCategoryMap(categoryVocabularyInfo: VocabInfo): Map[String, List[String]] = {
-    val mappingStore = new TermMappingStore(this, ts)
+    val mappingStore = new TermMappingStore(this)
     val mappings = Await.result(mappingStore.getMappings(categories = true), 1.minute)
     val uriLabelMap = categoryVocabularyInfo.vocabulary.uriLabelMap
     val termUriLabels = mappings.flatMap { mapping =>

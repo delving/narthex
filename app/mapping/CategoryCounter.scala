@@ -27,8 +27,10 @@ import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import services.StringHandling._
 import triplestore.GraphProperties._
+import triplestore.TripleStore
 
 import scala.collection.JavaConversions._
+import scala.concurrent.ExecutionContext
 
 object CategoryCounter {
 
@@ -38,10 +40,10 @@ object CategoryCounter {
 
   case class Counter(var count: Int)
 
-  def props(dsInfo: DsInfo, repo: ProcessedRepo) = Props(new CategoryCounter(dsInfo, repo))
+  def props(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: ExecutionContext, ts: TripleStore) = Props(new CategoryCounter(dsInfo, repo))
 }
 
-class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo) extends Actor with ActorLogging {
+class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: ExecutionContext, ts: TripleStore) extends Actor with ActorLogging {
 
   val spec = dsInfo.getLiteralProp(datasetSpec).get
   val skosProperties = dsInfo.getUriPropValueList(skosField)

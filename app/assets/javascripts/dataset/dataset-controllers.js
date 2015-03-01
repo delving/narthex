@@ -103,13 +103,13 @@ define(["angular"], function () {
 
         fetchInfo(fetchTree);
 
-        $scope.setSkosField = function(uri, included) {
+        $scope.setSkosifiedField = function(uri, included) {
             var payload = {
                 "histogramPath": $routeParams.path,
                 "skosFieldUri": uri,
                 "included": included
             };
-            datasetService.setSkosField($scope.spec, payload).then(function(reply) {
+            datasetService.setSkosifiedField($scope.spec, payload).then(function(reply) {
                 fetchInfo($scope.fetchHistogram);
                 console.log("toggle reply: "+ reply);
             });

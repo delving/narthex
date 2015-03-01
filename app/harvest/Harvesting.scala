@@ -25,8 +25,7 @@ import play.api.libs.ws.WS
 import services.FileHandling
 import services.Temporal._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.xml.{NodeSeq, XML}
 
 // todo: use the actor's execution context?
@@ -129,7 +128,7 @@ trait Harvesting {
   }
 
   def fetchAdLibPage(url: String, database: String, search: String, modifiedAfter: Option[DateTime],
-                     diagnosticOption: Option[AdLibDiagnostic] = None): Future[AnyRef] = {
+                     diagnosticOption: Option[AdLibDiagnostic] = None)(implicit ec: ExecutionContext): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(HARVEST_TIMEOUT)
     // UMU 2014-10-16T15:00
@@ -170,7 +169,7 @@ trait Harvesting {
   }
 
   def fetchPMHPage(url: String, set: String, metadataPrefix: String, modifiedAfter: Option[DateTime], justDate: Boolean,
-                   resumption: Option[PMHResumptionToken] = None): Future[AnyRef] = {
+                   resumption: Option[PMHResumptionToken] = None)(implicit ec: ExecutionContext): Future[AnyRef] = {
 
     // Teylers 2014-09-15
     val listRecords = WS.url(url)

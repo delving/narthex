@@ -11,9 +11,9 @@ class TestCategories extends PlaySpec with OneAppPerSuite with FakeTripleStore {
 
   "Category list should be read" in {
     cleanStart()
-    val actorStore = new ActorStore(ts)
+    val actorStore = new ActorStore
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
-    val categoriesVocabInfo = await(VocabInfo.createVocabInfo(admin, VocabInfo.CATEGORIES_SPEC, ts))
+    val categoriesVocabInfo = await(VocabInfo.createVocabInfo(admin, VocabInfo.CATEGORIES_SPEC))
     val categoriesFile = new File(getClass.getResource("/categories/Categories.xml").getFile)
     await(ts.up.dataPutXMLFile(categoriesVocabInfo.dataUri, categoriesFile))
     val v = categoriesVocabInfo.vocabulary

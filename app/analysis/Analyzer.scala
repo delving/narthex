@@ -18,7 +18,8 @@ package analysis
 
 import java.io._
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.SupervisorStrategy.Escalate
+import akka.actor._
 import analysis.Analyzer._
 import analysis.Collator._
 import analysis.Merger._
@@ -58,6 +59,12 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
   var collators = List.empty[ActorRef]
   var recordCount = 0
   var processedOpt:Option[Boolean] = None
+
+  override val supervisorStrategy = OneForOneStrategy() {
+    case throwable: Throwable =>
+      log.info(s"Escalating $throwable")
+      Escalate
+  }
 
   def receive = {
 
@@ -174,7 +181,13 @@ object Collator {
   def props(nodeRepo: NodeRepo) = Props(new Collator(nodeRepo))
 }
 
-class Collator(val nodeRepo: NodeRepo) extends Actor {
+class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
+
+  override val supervisorStrategy = OneForOneStrategy() {
+    case throwable: Throwable =>
+      log.info(s"Escalating $throwable")
+      Escalate
+  }
 
   def receive = {
 
@@ -245,10 +258,16 @@ object Sorter {
   def props(nodeRepo: NodeRepo) = Props(new Sorter(nodeRepo))
 }
 
-class Sorter(val nodeRepo: NodeRepo) extends Actor {
+class Sorter(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
   val linesToSort = 10000
   var sortFiles = List.empty[File]
   var merges = List.empty[Merge]
+
+  override val supervisorStrategy = OneForOneStrategy() {
+    case throwable: Throwable =>
+      log.info(s"Escalating $throwable")
+      Escalate
+  }
 
   def initiateMerges(outFile: File, sortType: SortType): Unit = {
     while (sortFiles.size > 1) {
@@ -334,7 +353,7 @@ object Merger {
   def props(nodeRepo: NodeRepo) = Props(new Merger(nodeRepo))
 }
 
-class Merger(val nodeRepo: NodeRepo) extends Actor {
+class Merger(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
 
   def receive = {
 

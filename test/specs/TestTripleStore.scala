@@ -15,8 +15,9 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
 
   "The processed repo should deliver sparql update chunks " in {
     cleanStart()
-    val admin = await(new ActorStore(ts).authenticate("gumby", "secret gumby")).get
-    val info = await(DsInfo.createDsInfo(admin, "gumby-set", CharacterMapped, "gfx", ts))
+    val store: ActorStore = new ActorStore()
+    val admin = await(store.authenticate("gumby", "secret gumby")).get
+    val info = await(DsInfo.createDsInfo(admin, "gumby-set", CharacterMapped, "gfx"))
     val home = new File(getClass.getResource(s"/processed").getFile)
     val repo = new ProcessedRepo(home, info)
     val reader = repo.createGraphReader(None, ProgressReporter())
@@ -29,8 +30,9 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
 
   "The dataset info object should be able to interact with the store" in {
     cleanStart()
-    val admin = await(new ActorStore(ts).authenticate("gumby", "secret gumby")).get
-    val dsInfo = await(DsInfo.createDsInfo(admin, "gumby-set", CharacterMapped, "gfx", ts))
+    val store: ActorStore = new ActorStore()
+    val admin = await(store.authenticate("gumby", "secret gumby")).get
+    val dsInfo = await(DsInfo.createDsInfo(admin, "gumby-set", CharacterMapped, "gfx"))
     dsInfo.getLiteralProp(datasetMapToPrefix) must be(Some("gfx"))
     val model = dsInfo.setSingularLiteralProps(
       datasetMapToPrefix -> "pfx",
@@ -61,16 +63,16 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
     testTwo(dsInfo)
 
     // a fresh one that has to fetch anew
-    val fresh: DsInfo = await(DsInfo.freshDsInfo("gumby-set", ts)).get
+    val fresh: DsInfo = await(DsInfo.freshDsInfo("gumby-set")).get
 
     fresh.getLiteralProp(datasetMapToPrefix) must be(Some("pfx2"))
     testTwo(fresh)
 
     //    println(Json.prettyPrint(dsInfoWrites.writes(fresh)))
 
-    val second = await(DsInfo.createDsInfo(admin, "pokey-set", CharacterMapped, "", ts))
+    val second = await(DsInfo.createDsInfo(admin, "pokey-set", CharacterMapped, ""))
 
-    val infoList = await(listDsInfo(ts))
+    val infoList = await(listDsInfo)
 
     infoList.foreach { info =>
       println(Json.prettyPrint(dsInfoWrites.writes(info)))

@@ -20,6 +20,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Incremental, InterruptWork, WorkFailure}
 import dataset.ProcessedRepo
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
+import org.OrgContext
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import triplestore.GraphProperties.acceptanceOnly
@@ -30,14 +31,15 @@ object GraphSaver {
 
   case class SaveGraphs(incrementalOpt: Option[Incremental])
 
-  def props(repo: ProcessedRepo, ts: TripleStore) = Props(new GraphSaver(repo, ts))
+  def props(repo: ProcessedRepo) = Props(new GraphSaver(repo))
 
 }
 
-class GraphSaver(repo: ProcessedRepo, ts: TripleStore) extends Actor with ActorLogging {
+class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
 
   import context.dispatcher
   import triplestore.GraphSaver._
+  implicit val ts = OrgContext.TS
 
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
@@ -74,6 +76,7 @@ class GraphSaver(repo: ProcessedRepo, ts: TripleStore) extends Actor with ActorL
 
     case Some(chunk: GraphChunk) =>
       log.info("Save a chunk of graphs")
+      // todo: may not need to handle onFailure
       val update = ts.up.acceptanceOnly(chunk.dsInfo.getBooleanProp(acceptanceOnly)).sparqlUpdate(chunk.sparqlUpdateQ)
       update.map(ok => sendGraphChunkOpt())
       update.onFailure {
