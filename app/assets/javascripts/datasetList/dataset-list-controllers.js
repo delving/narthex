@@ -192,9 +192,11 @@ define(["angular"], function () {
         "categoriesInclude"
     ];
 
-    var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload) {
+    var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload, $routeParams) {
 
         var ds = $scope.dataset;
+
+        $scope.expanded = $routeParams.dataset == ds.datasetSpec;
 
         var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
         $scope.searchLink = baseUrl + "/search?qf=delving_spec:" + ds.datasetSpec;
@@ -263,10 +265,10 @@ define(["angular"], function () {
 
         $scope.leftTabOpen = "metadata";
         $scope.rightTabOpen = ds.harvestURL ? "harvest" : "drop";
-        $scope.expanded = false;
 
         $scope.$watch("expanded", function (expanded) {
             if (expanded) {
+                $location.search({dataset: ds.datasetSpec});
                 refreshInfo();
             }
             else {
@@ -502,7 +504,7 @@ define(["angular"], function () {
         };
     };
 
-    DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload"];
+    DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams"];
 
     return {
         DatasetListCtrl: DatasetListCtrl,
