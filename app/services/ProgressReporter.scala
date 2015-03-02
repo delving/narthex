@@ -82,21 +82,23 @@ object ProgressReporter {
   def apply(progressState: ProgressState, datasetActor: ActorRef) = new UpdatingProgressReporter(progressState, datasetActor)
 
   def apply(): ProgressReporter = new FakeProgressReporter
+
+  class InterruptedException() extends Exception("Manually Interrupted")
 }
 
 trait ProgressReporter {
 
-  def interruptBy(actor: ActorRef): Boolean
+  def interrupt(): Unit
 
-  def keepGoingAt(value: Int = -1): Boolean
+  def checkInterrupt(): Unit
 
-  def keepWorking: Boolean
+  def sendValue(value: Option[Int] = None): Unit
 
-  def sendPercent(percent: Int): Boolean
+  def sendPercent(percent: Int): Unit
 
-  def sendWorkers(workerCount: Int): Boolean
+  def sendWorkers(workerCount: Int): Unit
 
-  def sendPage(page: Int): Boolean
+  def sendPage(page: Int): Unit
 
   def setMaximum(max: Int): Unit
 
@@ -106,17 +108,17 @@ trait ProgressReporter {
 
 class FakeProgressReporter extends ProgressReporter {
 
-  override def interruptBy(actor: ActorRef) = true
+  override def interrupt() = {}
 
-  override def keepGoingAt(value: Int): Boolean = true
+  override def checkInterrupt() = {}
 
-  override def keepWorking: Boolean = true
+  override def sendValue(value: Option[Int]): Unit = {}
 
-  override def sendPercent(percent: Int): Boolean = true
+  override def sendPercent(percent: Int): Unit = {}
 
-  override def sendWorkers(workerCount: Int): Boolean = true
+  override def sendWorkers(workerCount: Int): Unit = {}
 
-  override def sendPage(page: Int): Boolean = true
+  override def sendPage(page: Int): Unit = {}
 
   override def setMaximum(max: Int): Unit = {}
 
@@ -125,34 +127,49 @@ class FakeProgressReporter extends ProgressReporter {
 
 class UpdatingProgressReporter(progressState: ProgressState, datasetActor: ActorRef) extends ProgressReporter {
   val PATIENCE_MILLIS = 333
-  var bomb: Option[ActorRef] = None
+  var interrupted = false
   var readProgressOption: Option[ReadProgress] = None
   var maximumOption: Option[Int] = None
   var percentWas = -1
   var lastProgress = 0l
 
-  override def interruptBy(actor: ActorRef): Boolean = {
-    if (bomb.isDefined) {
-      false
-    }
-    else {
-      bomb = Some(actor)
-      true
+  override def interrupt() = interrupted = true
+
+  override def checkInterrupt() = if (interrupted) throw new InterruptedException
+
+  override def sendPercent(percent: Int) = {
+    checkInterrupt()
+    datasetActor ! ProgressTick(Option(this), progressState, PERCENT, percent)
+  }
+
+  override def sendPage(pageNumber: Int) = {
+    checkInterrupt()
+    val percentZero = pageNumber
+    val percent = if (percentZero == 0) 1 else percentZero
+    if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > PATIENCE_MILLIS) {
+      def sendPageNumber(pageNumber: Int) = {
+        checkInterrupt()
+        datasetActor ! ProgressTick(Option(this), progressState, PAGES, pageNumber)
+      }
+      sendPageNumber(percent)
+      percentWas = percent
+      lastProgress = System.currentTimeMillis()
     }
   }
 
-  private def mindTheBomb(setProgress: => Unit): Boolean = {
-    if (keepWorking) setProgress
-    keepWorking
+  override def setMaximum(max: Int): Unit = maximumOption = Some(max)
+
+  override def setReadProgress(readProgress: ReadProgress): Unit = {
+    checkInterrupt()
+    readProgressOption = Some(readProgress)
   }
 
-  def sendPercent(percent: Int) = mindTheBomb(datasetActor ! ProgressTick(progressState, PERCENT, percent))
+  override def sendWorkers(workerCount: Int) = {
+    checkInterrupt()
+    datasetActor ! ProgressTick(Option(this), progressState, WORKERS, workerCount)
+  }
 
-  def sendPageNumber(pageNumber: Int) = mindTheBomb(datasetActor ! ProgressTick(progressState, PAGES, pageNumber))
-
-  def sendWorkers(workerCount: Int) = mindTheBomb(datasetActor ! ProgressTick(progressState, WORKERS, workerCount))
-
-  def keepGoingAt(value: Int): Boolean = {
+  override def sendValue(value: Option[Int]): Unit = {
     readProgressOption.map { readProgress =>
       val percentZero = readProgress.getPercentRead
       val percent = if (percentZero == 0) 1 else percentZero
@@ -162,12 +179,9 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetActor: Actor
         lastProgress = System.currentTimeMillis()
         running
       }
-      else {
-        keepWorking
-      }
     } getOrElse {
       maximumOption.map { maximum =>
-        val percentZero = (100 * value) / maximum
+        val percentZero = (100 * value.get) / maximum
         val percent = if (percentZero == 0) 1 else percentZero
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > PATIENCE_MILLIS) {
           val running = sendPercent(percent)
@@ -175,36 +189,10 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetActor: Actor
           lastProgress = System.currentTimeMillis()
           running
         }
-        else {
-          keepWorking
-        }
       } getOrElse {
         Logger.warn("Expecting readProgress or maximum")
         false
       }
     }
-  }
-
-  def keepWorking: Boolean = !bomb.isDefined
-
-  override def sendPage(pageNumber: Int): Boolean = {
-    val percentZero = pageNumber
-    val percent = if (percentZero == 0) 1 else percentZero
-    if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > PATIENCE_MILLIS) {
-      val running = sendPageNumber(percent)
-      percentWas = percent
-      lastProgress = System.currentTimeMillis()
-      running
-    }
-    else {
-      keepWorking
-    }
-  }
-
-  override def setMaximum(max: Int): Unit = maximumOption = Some(max)
-
-  override def setReadProgress(readProgress: ReadProgress): Unit = {
-    readProgressOption = Some(readProgress)
-
   }
 }

@@ -19,11 +19,12 @@ package record
 import java.io.{File, FileOutputStream}
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{Incremental, InterruptWork, WorkFailure}
+import dataset.DatasetActor.{Incremental, WorkFailure}
 import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
 import dataset.SipRepo.URIErrorsException
 import eu.delving.groovy.DiscardRecordException
+import org.OrgContext.actorWork
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.xml.sax.SAXException
 import record.PocketParser.Pocket
@@ -61,10 +62,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
 
   def receive = {
 
-    case InterruptWork =>
-      progress.map(_.interruptBy(sender()))
-
-    case AdoptSource(file) =>
+    case AdoptSource(file) => actorWork(context) {
       log.info(s"Adopt source ${file.getAbsolutePath}")
       datasetContext.sourceRepoOpt.map { sourceRepo =>
         val progressReporter = ProgressReporter(ADOPTING, context.parent)
@@ -77,8 +75,9 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       } getOrElse {
         context.parent ! WorkFailure("Missing source repository!")
       }
+    }
 
-    case GenerateSipZip =>
+    case GenerateSipZip => actorWork(context) {
       log.info("Generate SipZip")
       datasetContext.sourceRepoOpt.map { sourceRepo =>
         val progressReporter = ProgressReporter(GENERATING, context.parent)
@@ -118,8 +117,9 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       } getOrElse {
         context.parent ! WorkFailure("No data for generating SipZip")
       }
+    }
 
-    case Process(incrementalOpt) =>
+    case Process(incrementalOpt) => actorWork(context) {
       val sourceFacts = datasetContext.sourceRepoOpt.map(_.sourceFacts).getOrElse(throw new RuntimeException(s"No source facts for $datasetContext"))
       val sipMapper = datasetContext.sipMapperOpt.getOrElse(throw new RuntimeException(s"No sip mapper for $datasetContext"))
 
@@ -144,6 +144,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       }
 
       def catchPocket(rawPocket: Pocket): Unit = {
+        progress.get.checkInterrupt()
         val pocketTry = sipMapper.executeMapping(rawPocket)
         pocketTry match {
           case Success(pocket) =>
@@ -196,6 +197,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       errorOutput.close()
       if (invalidRecords == 0) deleteQuietly(processedOutput.errorFile)
       context.parent ! ProcessingComplete(validRecords, invalidRecords, incrementalOpt)
+    }
   }
 
 }

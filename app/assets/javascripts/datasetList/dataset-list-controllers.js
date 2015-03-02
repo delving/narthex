@@ -443,7 +443,7 @@ define(["angular"], function () {
         }
 
         $scope.interruptProcessing = function () {
-            command("interrupt", "Interrupt processing?", refreshProgress);
+            command("interrupt", "Interrupt processing?");
         };
 
         $scope.startGeneratingSip = function () {

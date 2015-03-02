@@ -19,6 +19,8 @@ package org
 import java.io.File
 import java.util
 
+import akka.actor.ActorContext
+import dataset.DatasetActor.WorkFailure
 import dataset.DsInfo.withDsInfo
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
@@ -97,20 +99,6 @@ object OrgContext {
 
   implicit val TS: TripleStore = tripleStore
 
-  //  val ts = config.getString("triple-store").map { tripleStoreUrl =>
-  //    TripleStore.single(tripleStoreUrl, TRIPLE_STORE_LOG)
-  //  } getOrElse {
-  //    config.getObject("triple-stores").map { tripleStoreUrls =>
-  //      TripleStore.double(
-  //        acceptanceStoreUrl = tripleStoreUrls.get("acceptance").render(),
-  //        productionStoreUrl = tripleStoreUrls.get("production").render(),
-  //        TRIPLE_STORE_LOG
-  //      )
-  //    } getOrElse {
-  //      throw new RuntimeException("Must have either triple-store= or triple-stores { acceptance=, production= }")
-  //    }
-  //  }
-  //
   val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
   val harvestTicker = system.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
   val periodicSkosifyCheck = system.actorOf(PeriodicSkosifyCheck.props(), "PeriodicSkosifyCheck")
@@ -119,6 +107,16 @@ object OrgContext {
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
   check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e)}
+
+  def actorWork(actorContext: ActorContext)(block: => Unit) = {
+    try {
+      block
+    }
+    catch {
+      case e: Throwable =>
+        actorContext.parent ! WorkFailure(e.getMessage, Some(e))
+    }
+  }
 }
 
 class OrgContext(userHome: String, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {

@@ -245,24 +245,6 @@ class SourceRepo(home: File) {
     }
   })
 
-//  def parseCategories(pathPrefix: String, categoryMappings: Map[String, CategoryMapping], progress: ProgressReporter): List[CategoryCount] = {
-//    val parser = new CategoryParser(pathPrefix, sourceFacts.recordRoot, sourceFacts.uniqueId, sourceFacts.recordContainer, categoryMappings)
-//    val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
-//    val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
-//    val totalActiveIds = activeIdCounts.fold(0)(_ + _)
-//    progress.setMaximum(totalActiveIds)
-//    listZipFiles.foreach { zipFile =>
-//      if (progress.keepWorking) {
-//        var idSet = avoidSet(zipFile)
-//        val (source, readProgress) = sourceFromFile(zipFile)
-//        // ignore this read progress because it's one of many files
-//        parser.parse(source, idSet.toSet, progress)
-//        source.close()
-//      }
-//    }
-//    parser.categoryCounts
-//  }
-
   def parsePockets(output: Pocket => Unit, progress: ProgressReporter): Int = {
     val parser = new PocketParser(sourceFacts, Some(HashType.SHA256))
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
@@ -270,11 +252,14 @@ class SourceRepo(home: File) {
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
     progress.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
-      if (progress.keepWorking) {
-        var idSet = avoidSet(zipFile)
-        val (source, readProgress) = sourceFromFile(zipFile)
-        // ignore this read progress because it's one of many files
+      progress.checkInterrupt()
+      var idSet = avoidSet(zipFile)
+      val (source, readProgress) = sourceFromFile(zipFile)
+      // ignore this read progress because it's one of many files
+      try {
         parser.parse(source, idSet.toSet, output, progress)
+      }
+      finally {
         source.close()
       }
     }

@@ -21,7 +21,7 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
     val home = new File(getClass.getResource(s"/processed").getFile)
     val repo = new ProcessedRepo(home, info)
     val reader = repo.createGraphReader(None, ProgressReporter())
-    val chunk = reader.readChunk.get
+    val chunk = reader.readChunkOpt.get
     reader.close()
     val sparql = chunk.sparqlUpdateQ
     await(ts.up.sparqlUpdate(sparql))

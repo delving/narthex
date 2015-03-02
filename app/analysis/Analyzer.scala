@@ -26,9 +26,10 @@ import analysis.Merger._
 import analysis.NodeRepo._
 import analysis.Sorter._
 import analysis.TreeNode.RandomSample
-import dataset.DatasetActor.InterruptWork
+import dataset.DatasetActor.WorkFailure
 import dataset.DatasetContext
-import org.apache.commons.io.FileUtils
+import org.OrgContext.actorWork
+import org.apache.commons.io.FileUtils.deleteQuietly
 import play.api.libs.json._
 import services.FileHandling.{reader, sourceFromFile, writer}
 import services.ProgressReporter.ProgressState._
@@ -53,12 +54,15 @@ object Analyzer {
 }
 
 class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLogging {
+
+  import context.dispatcher
+
   val LINE = """^ *(\d*) (.*)$""".r
   var progress: Option[ProgressReporter] = None
   var sorters = List.empty[ActorRef]
   var collators = List.empty[ActorRef]
   var recordCount = 0
-  var processedOpt:Option[Boolean] = None
+  var processedOpt: Option[Boolean] = None
 
   override val supervisorStrategy = OneForOneStrategy() {
     case throwable: Throwable =>
@@ -68,78 +72,70 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
 
   def receive = {
 
-    case InterruptWork =>
-      // todo: make sure the Analyzer can be interrupted
-      progress.map(_.interruptBy(sender()))
-
-    case AnalyzeFile(file, processed) =>
+    case AnalyzeFile(file, processed) => actorWork(context) {
       log.info(s"Analyzer on $file processed=$processed")
       processedOpt = Some(processed)
       datasetContext.dropTree()
-      val (source, readProgress) = sourceFromFile(file)
-      import context.dispatcher
       future {
-        val progressReporter = ProgressReporter(SPLITTING, context.parent)
-        progressReporter.setReadProgress(readProgress)
-        progress = Some(progressReporter)
-        // todo: create a sequence of futures and compose them with Future.sequence()
-        TreeNode(source, file.length, datasetContext, progressReporter) match {
-          case Some(tree) =>
-            tree.launchSorters { node =>
-              if (node.lengths.isEmpty) {
-                node.nodeRepo.setStatus(Json.obj("uniqueCount" -> 0))
-              }
-              else {
-                node.nodeRepo.setStatus(Json.obj("sorting" -> true))
-                val sorter = context.actorOf(Sorter.props(node.nodeRepo))
-                sorters = sorter :: sorters
-                sorter ! Sort(SortType.VALUE_SORT)
-              }
+        val (source, readProgress) = sourceFromFile(file)
+        try {
+          val progressReporter = ProgressReporter(SPLITTING, context.parent)
+          progressReporter.setReadProgress(readProgress)
+          progress = Some(progressReporter)
+          val tree = TreeNode(source, file.length, datasetContext, progressReporter)
+          progress.get.checkInterrupt()
+          tree.launchSorters { node =>
+            if (node.lengths.isEmpty) {
+              node.nodeRepo.setStatus(Json.obj("uniqueCount" -> 0))
             }
-            self ! AnalysisTreeComplete(Json.toJson(tree))
-          case None =>
-            context.parent ! AnalysisComplete(Some(s"Interrupted while splitting $file"), processed)
+            else {
+              node.nodeRepo.setStatus(Json.obj("sorting" -> true))
+              val sorter = context.actorOf(Sorter.props(node.nodeRepo))
+              sorters = sorter :: sorters
+              sorter ! Sort(SortType.VALUE_SORT)
+            }
+          }
+          self ! AnalysisTreeComplete(Json.toJson(tree))
         }
-        source.close()
-      } onFailure {
-        case ex: Exception =>
+        finally {
           source.close()
-          log.error("Problem reading the file", ex)
-          context.parent ! AnalysisComplete(Some(s"Unable to read $file: $ex"), processed)
+        }
+      } onFailure {
+        case e: Throwable =>
+          context.parent ! WorkFailure(e.getMessage, Some(e))
       }
+    }
 
-    case AnalysisTreeComplete(json) =>
+    case AnalysisTreeComplete(json) => actorWork(context) {
       val progressReporter = ProgressReporter(COLLATING, context.parent)
       progress = Some(progressReporter)
       progressReporter.sendWorkers(sorters.size + collators.size)
       log.info(s"Tree complete")
+    }
 
-    case Counted(nodeRepo, uniqueCount, sampleSizes) =>
+    case Counted(nodeRepo, uniqueCount, sampleSizes) => actorWork(context) {
+      progress.get.checkInterrupt()
       collators = collators.filter(collator => collator != sender)
-      FileUtils.deleteQuietly(nodeRepo.sorted)
+      deleteQuietly(nodeRepo.sorted)
       nodeRepo.setStatus(Json.obj(
         "uniqueCount" -> uniqueCount,
         "samples" -> sampleSizes
       ))
-      progress.foreach { p =>
-        if (p.keepWorking) {
-          val sorter = context.actorOf(Sorter.props(nodeRepo))
-          sorters = sorter :: sorters
-          sorter ! Sort(SortType.HISTOGRAM_SORT)
-        }
-      }
+      val sorter = context.actorOf(Sorter.props(nodeRepo))
+      sorters = sorter :: sorters
+      sorter ! Sort(SortType.HISTOGRAM_SORT)
+    }
 
-    case Sorted(nodeRepo, sortedFile, sortType) =>
+    case Sorted(nodeRepo, sortedFile, sortType) => actorWork(context) {
+      progress.get.checkInterrupt()
       sorters = sorters.filter(sorter => sender != sorter)
       sortType match {
         case SortType.VALUE_SORT =>
-          FileUtils.deleteQuietly(nodeRepo.values)
-          progress.foreach { p =>
-            if (p.keepWorking) {
-              val collator = context.actorOf(Collator.props(nodeRepo))
-              collators = collator :: collators
-              collator ! Count()
-            }
+          deleteQuietly(nodeRepo.values)
+          progress.map { p =>
+            val collator = context.actorOf(Collator.props(nodeRepo))
+            collators = collator :: collators
+            collator ! Count()
           }
 
         case SortType.HISTOGRAM_SORT =>
@@ -154,21 +150,17 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
                 "histograms" -> histogramSizes
               )
           }
-          FileUtils.deleteQuietly(nodeRepo.counted)
+          deleteQuietly(nodeRepo.counted)
           progress.foreach { p =>
             if (sorters.isEmpty && collators.isEmpty) {
-              if (p.keepWorking) {
-                context.parent ! AnalysisComplete(None, processedOpt.get)
-              }
-              else {
-                context.parent ! AnalysisComplete(Some("Interrupted while analyzing"), processedOpt.get)
-              }
+              context.parent ! AnalysisComplete(None, processedOpt.get)
             }
             else {
               p.sendWorkers(sorters.size + collators.size)
             }
           }
       }
+    }
   }
 }
 
@@ -400,8 +392,8 @@ class Merger(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       output.close()
       inputA.close()
       inputB.close()
-      FileUtils.deleteQuietly(inFileA)
-      FileUtils.deleteQuietly(inFileB)
+      deleteQuietly(inFileA)
+      deleteQuietly(inFileB)
       sender ! Merged(Merge(inFileA, inFileB, mergeResultFile, sortType), outputFile, sortType)
   }
 }

@@ -59,7 +59,7 @@ object ProcessedRepo {
   trait GraphReader {
     def isActive: Boolean
 
-    def readChunk: Option[GraphChunk]
+    def readChunkOpt: Option[GraphChunk]
 
     def close(): Unit
   }
@@ -143,12 +143,13 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
     override def isActive = readerOpt.isDefined
 
-    override def readChunk: Option[GraphChunk] = {
+    override def readChunkOpt: Option[GraphChunk] = {
       val dataset = DatasetFactory.createMem()
       val recordText = new StringBuilder
       var graphCount = 0
       var chunkComplete = false
-      while (!chunkComplete && progressReporter.keepGoingAt(-1)) {
+      while (!chunkComplete) {
+        progressReporter.checkInterrupt()
         readerOpt.map { reader =>
           Option(reader.readLine()).map {
             case LineId(graphName) =>

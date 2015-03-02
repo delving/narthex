@@ -21,10 +21,11 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import akka.actor.{Actor, Props}
 import akka.pattern.pipe
-import dataset.DatasetActor.{InterruptWork, WorkFailure}
+import dataset.DatasetActor.WorkFailure
 import dataset.DatasetContext
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, PMHHarvestPage}
+import org.OrgContext.actorWork
 import org.joda.time.DateTime
 import play.api.Logger
 import services.ProgressReporter
@@ -98,70 +99,61 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
 
   def receive = {
 
-    case InterruptWork =>
-      progressOpt.map(_.interruptBy(sender()))
-
     // http://umu.adlibhosting.com/api/wwwopac.ashx?xmltype=grouped&limit=50&database=collect&search=modification%20greater%20%272014-12-01%27
 
-    case HarvestAdLib(url, database, search, modifiedAfter) =>
+    case HarvestAdLib(url, database, search, modifiedAfter) => actorWork(context) {
       log.info(s"Harvesting $url $database to $datasetContext")
       val futurePage = fetchAdLibPage(url, database, search, modifiedAfter)
       handleFailure(futurePage, modifiedAfter, "adlib harvest")
       progressOpt = Some(ProgressReporter(HARVESTING, context.parent))
       futurePage pipeTo self
+    }
 
-    case AdLibHarvestPage(records, url, database, search, modifiedAfter, diagnostic) =>
+    case AdLibHarvestPage(records, url, database, search, modifiedAfter, diagnostic) => actorWork(context) {
       val progress = progressOpt.get
       val pageNumber = addPage(records)
-      val keepGoing = if (modifiedAfter.isDefined)
+      if (modifiedAfter.isDefined)
         progress.sendPage(pageNumber) // This compensates for AdLib's failure to report number of hits
       else
         progress.sendPercent(diagnostic.percentComplete)
-      if (keepGoing) {
-        log.info(s"Harvest Page: $pageNumber - $url $database to $datasetContext: $diagnostic")
-        if (diagnostic.isLast) {
-          finish(modifiedAfter, None)
-        }
-        else {
-          val futurePage = fetchAdLibPage(url, database, search, modifiedAfter, Some(diagnostic))
-          handleFailure(futurePage, modifiedAfter, "adlib harvest page")
-          futurePage pipeTo self
-        }
+      log.info(s"Harvest Page: $pageNumber - $url $database to $datasetContext: $diagnostic")
+      if (diagnostic.isLast) {
+        finish(modifiedAfter, None)
       }
       else {
-        finish(modifiedAfter, Some(s"Interrupted while processing $datasetContext"))
+        val futurePage = fetchAdLibPage(url, database, search, modifiedAfter, Some(diagnostic))
+        handleFailure(futurePage, modifiedAfter, "adlib harvest page")
+        futurePage pipeTo self
       }
+    }
 
-    case HarvestPMH(url, set, prefix, modifiedAfter, justDate) =>
+    case HarvestPMH(url, set, prefix, modifiedAfter, justDate) => actorWork(context) {
       log.info(s"Harvesting $url $set $prefix to $datasetContext")
       progressOpt = Some(ProgressReporter(HARVESTING, context.parent))
       val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate)
       handleFailure(futurePage, modifiedAfter, "pmh harvest")
       // todo: if none comes back there's something wrong
       futurePage pipeTo self
+    }
 
-    case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, justDate, resumptionToken) =>
+    case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, justDate, resumptionToken) => actorWork(context) {
       val progress = progressOpt.get
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
       resumptionToken.map { token =>
-        val keepHarvesting = if (token.hasPercentComplete) {
+        if (token.hasPercentComplete) {
           progress.sendPercent(token.percentComplete)
         }
         else {
           progress.sendPage(pageCount)
         }
-        if (keepHarvesting) {
-          val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate, resumptionToken)
-          handleFailure(futurePage, modifiedAfter, "pmh harvest page")
-          futurePage pipeTo self
-        }
-        else {
-          finish(modifiedAfter, Some("Interrupted while harvesting"))
-        }
+        val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate, resumptionToken)
+        handleFailure(futurePage, modifiedAfter, "pmh harvest page")
+        futurePage pipeTo self
       } getOrElse {
         finish(modifiedAfter, None)
       }
+    }
 
     case HarvestError(error, modifiedAfter) =>
       finish(modifiedAfter, Some(error))

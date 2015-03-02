@@ -37,6 +37,7 @@ import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import record.SourceProcessor
 import record.SourceProcessor._
+import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
@@ -82,7 +83,9 @@ object DatasetActor {
 
   case object Dormant extends DatasetActorData
 
-  case class Active(childOpt: Option[ActorRef], progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0) extends DatasetActorData
+  case class Active(childOpt: Option[ActorRef],
+                    progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0,
+                    interrupt: Boolean = false) extends DatasetActorData
 
   case class InError(error: String) extends DatasetActorData
 
@@ -105,13 +108,11 @@ object DatasetActor {
 
   case object StartCategoryCounting
 
-  case object InterruptWork
-
   case class WorkFailure(message: String, exceptionOpt: Option[Throwable] = None)
 
   case object CheckState
 
-  case class ProgressTick(progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0)
+  case class ProgressTick(reporterOpt: Option[ProgressReporter], progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0)
 
   // create one
 
@@ -137,7 +138,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
-  def sendBusy() = self ! ProgressTick(PREPARING, BUSY, 100)
+  def sendBusy() = self ! ProgressTick(None, PREPARING, BUSY, 100)
 
   when(Idle) {
 
@@ -205,8 +206,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             self ! StartSkosification
             "skosification started"
 
-          // todo:
-          //def startCategoryCounts() = OrgActor.actor ! dsInfo.createMessage(StartCategoryCounting)
+            // todo: category counting?
 
           case _ =>
             log.warning(s"$this sent unrecognized command $commandName")
@@ -426,7 +426,13 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       stay()
 
     case Event(tick: ProgressTick, active: Active) =>
-      stay() using active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)
+      if (active.interrupt) {
+        tick.reporterOpt.map(_.interrupt())
+        stay() using active
+      }
+      else {
+        stay() using active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)
+      }
 
     case Event(DatasetQuestion(listener, Command(commandName)), InError(message)) =>
       log.info(s"In error. Command name: $commandName")
@@ -440,13 +446,15 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         stay()
       }
 
-    case Event(InterruptWork, active: Active) =>
-      log.info(s"Sending interrupt while in $stateName/$active)")
-      active.childOpt.map { child =>
-        log.info(s"Interrupting $child")
-        child ! InterruptWork
+    case Event(DatasetQuestion(listener, Command(commandName)), active: Active) =>
+      log.info(s"Active. Command name: $commandName")
+      if (commandName == "interrupt") {
+        listener ! "interrupt sent to child"
+        stay() using active.copy(interrupt = true)
       }
-      stay()
+      else {
+        stay()
+      }
 
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Work failure [$message] while in [$active]")

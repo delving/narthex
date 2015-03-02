@@ -77,11 +77,12 @@ object AppController extends Controller with Security {
         Ok(Json.obj(
           "progressType" -> TYPE_IDLE.name
         ))
-      case Active(_, progressState, progressType, count) =>
+      case Active(_, progressState, progressType, count, interrupt) =>
         Ok(Json.obj(
           "progressState" -> progressState.name,
           "progressType" -> progressType.name,
-          "count" -> count
+          "count" -> count,
+          "interrupt" -> interrupt
         ))
       case InError(message) =>
         Ok(Json.obj(
@@ -98,18 +99,12 @@ object AppController extends Controller with Security {
   }
 
   def command(spec: String, command: String) = SecureAsync() { session => request =>
-    if (command == "interrupt") {
-      OrgActor.actor ! DatasetMessage(spec, InterruptWork)
-      Future(Ok("interrupt sent"))
-    }
-    else {
-      val replyString = (OrgActor.actor ? DatasetMessage(spec, Command(command), question = true)).mapTo[String]
-      replyString.map { reply =>
-        Ok(Json.obj("reply" -> reply))
-      } recover {
-        case t: AskTimeoutException =>
-          Ok(Json.obj("reply" -> "there was no reply"))
-      }
+    val replyString = (OrgActor.actor ? DatasetMessage(spec, Command(command), question = true)).mapTo[String]
+    replyString.map { reply =>
+      Ok(Json.obj("reply" -> reply))
+    } recover {
+      case t: AskTimeoutException =>
+        Ok(Json.obj("reply" -> "there was no reply"))
     }
   }
 
@@ -119,7 +114,7 @@ object AppController extends Controller with Security {
       val error = datasetContext.acceptUpload(file.filename, { target =>
         file.ref.moveTo(target, replace = true)
         Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
-        OrgActor.actor ! datasetContext.dsInfo.createMessage(ProgressTick(PREPARING, BUSY, 100))
+        OrgActor.actor ! datasetContext.dsInfo.createMessage(ProgressTick(None, PREPARING, BUSY, 100))
         target
       })
       error.map {

@@ -17,12 +17,13 @@
 package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{InterruptWork, WorkFailure}
+import dataset.DatasetActor.WorkFailure
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import dataset.{DsInfo, ProcessedRepo}
 import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories, Counter}
 import mapping.VocabInfo._
+import org.OrgContext.actorWork
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import services.StringHandling._
@@ -84,9 +85,8 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
 
   def sendGraphChunkOpt() = {
     try {
-      val progress = progressOpt.get
-      val chunkOpt = if (progress.keepWorking) reader.get.readChunk else None
-      self ! chunkOpt
+      progressOpt.get.checkInterrupt()
+      self ! reader.get.readChunkOpt
     }
     catch {
       case ex: Throwable => failure(ex)
@@ -95,10 +95,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
 
   def receive = {
 
-    case InterruptWork =>
-      progressOpt.map(_.interruptBy(sender()))
-
-    case CountCategories =>
+    case CountCategories => actorWork(context) {
       log.info("Counting categories")
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
@@ -106,8 +103,9 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
       val termMap = withVocabInfo(CATEGORIES_SPEC)(dsInfo.termCategoryMap)
       termCatMapOpt = Some(termMap)
       sendGraphChunkOpt()
+    }
 
-    case Some(chunk: GraphChunk) =>
+    case Some(chunk: GraphChunk) => actorWork(context) {
       log.info("Category count of graphs")
       val termCat = termCatMapOpt.get
       chunk.dataset.listNames().toList.map { recordGraph =>
@@ -123,13 +121,14 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
         output(categoryLabels)
       }
       sendGraphChunkOpt()
+    }
 
-    case None =>
+    case None => actorWork(context) {
       reader.map(_.close())
       reader = None
       log.info(s"All categories counted for $spec")
       val categoryCounts = countMap.map(count => CategoryCount(count._1, count._2.count, spec)).toList
       context.parent ! CategoryCountComplete(spec, categoryCounts)
-
+    }
   }
 }

@@ -17,10 +17,11 @@
 package triplestore
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{Incremental, InterruptWork, WorkFailure}
+import dataset.DatasetActor.{Incremental, WorkFailure}
 import dataset.ProcessedRepo
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import org.OrgContext
+import org.OrgContext._
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import triplestore.GraphProperties.acceptanceOnly
@@ -39,6 +40,7 @@ class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
 
   import context.dispatcher
   import triplestore.GraphSaver._
+
   implicit val ts = OrgContext.TS
 
   var reader: Option[GraphReader] = None
@@ -52,10 +54,8 @@ class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
 
   def sendGraphChunkOpt() = {
     try {
-      val progress = progressOpt.get
-      // todo: should graphs be deleted in case of interruption?
-      val chunkOpt = if (progress.keepWorking) reader.get.readChunk else None
-      self ! chunkOpt
+      progressOpt.get.sendValue()
+      self ! reader.get.readChunkOpt
     }
     catch {
       case ex: Throwable => failure(ex)
@@ -64,17 +64,15 @@ class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
 
   override def receive = {
 
-    case InterruptWork =>
-      progressOpt.map(_.interruptBy(sender()))
-
-    case SaveGraphs(incrementalOpt) =>
+    case SaveGraphs(incrementalOpt) => actorWork(context) {
       log.info("Save graphs")
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
       reader = Some(repo.createGraphReader(incrementalOpt.map(_.file), progressReporter))
       sendGraphChunkOpt()
+    }
 
-    case Some(chunk: GraphChunk) =>
+    case Some(chunk: GraphChunk) => actorWork(context) {
       log.info("Save a chunk of graphs")
       // todo: may not need to handle onFailure
       val update = ts.up.acceptanceOnly(chunk.dsInfo.getBooleanProp(acceptanceOnly)).sparqlUpdate(chunk.sparqlUpdateQ)
@@ -82,12 +80,13 @@ class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
       update.onFailure {
         case ex: Throwable => failure(ex)
       }
+    }
 
-    case None =>
+    case None => actorWork(context) {
       reader.map(_.close())
       reader = None
       log.info("All graphs saved")
       context.parent ! GraphSaveComplete
-
+    }
   }
 }

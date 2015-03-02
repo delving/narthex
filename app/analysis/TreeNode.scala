@@ -20,7 +20,6 @@ import analysis.TreeNode.LengthHistogram
 import dataset.DatasetContext
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils.writeStringToFile
-import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
@@ -35,18 +34,20 @@ import scala.xml.pull._
 
 object TreeNode {
 
-  def apply(source: Source, length: Long, datasetContext: DatasetContext, progressReporter: ProgressReporter): Option[TreeNode] = {
+  def apply(source: Source, length: Long, datasetContext: DatasetContext, progressReporter: ProgressReporter): TreeNode = {
     val base = new TreeNode(datasetContext.treeRoot, null, null, null)
     var node = base
     val events = new NarthexEventReader(source)
 
     try {
-      while (events.hasNext && progressReporter.keepGoingAt()) {
+      while (events.hasNext) {
+
+        progressReporter.sendValue()
 
         events.next() match {
 
           case EvElemStart(pre, label, attrs, scope) =>
-            node = node.kid(tag(pre, label), scope.getURI(pre)+label).start()
+            node = node.kid(tag(pre, label), scope.getURI(pre) + label).start()
             attrs.foreach { attr =>
               val kid = if (attr.isPrefixed) {
                 val uri = scope.getURI(attr.stringPrefix)
@@ -82,17 +83,12 @@ object TreeNode {
     finally {
       events.stop()
     }
-    if (progressReporter.keepWorking) {
-      val root = base.kids.values.head
-      base.finish()
-      val pretty = Json.prettyPrint(Json.toJson(root))
-      FileUtils.writeStringToFile(datasetContext.index, pretty, "UTF-8")
-      Some(root)
-    }
-    else {
-      Logger.info(s"Interrupted TreeNode $datasetContext")
-      None
-    }
+    progressReporter.checkInterrupt()
+    val root = base.kids.values.head
+    base.finish()
+    val pretty = Json.prettyPrint(Json.toJson(root))
+    FileUtils.writeStringToFile(datasetContext.index, pretty, "UTF-8")
+    root
   }
 
 

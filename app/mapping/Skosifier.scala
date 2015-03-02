@@ -16,9 +16,10 @@
 package mapping
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{InterruptWork, WorkFailure}
+import dataset.DatasetActor.WorkFailure
 import dataset.DsInfo
 import org.OrgContext
+import org.OrgContext._
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState
 import services.StringHandling.slugify
@@ -48,6 +49,7 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
 
   import context.dispatcher
   import mapping.Skosifier._
+
   implicit val ts = OrgContext.TS
 
   var progressOpt: Option[ProgressReporter] = None
@@ -55,10 +57,7 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
 
   def receive = {
 
-    case InterruptWork =>
-      progressOpt.map(_.interruptBy(sender()))
-
-    case skosifiedField: SkosifiedField =>
+    case skosifiedField: SkosifiedField => actorWork(context) {
       val progressReporter = ProgressReporter(ProgressState.SKOSIFYING, context.parent)
       ts.query(countSkosificationCasesQ(skosifiedField)).map(countFromResult).map { count =>
         progressReporter.setMaximum(count)
@@ -68,36 +67,33 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
           self ! SkosificationJob(skosifiedField, scResult)
         }
       }
+    }
 
-    case skosificationJob: SkosificationJob =>
+    case skosificationJob: SkosificationJob => actorWork(context) {
       log.info(s"Cases: ${skosificationJob.cases.map(c => slugify(c.literalValueText))}")
       ts.up.sparqlUpdate(skosificationJob.ensureSkosEntries + skosificationJob.changeLiteralsToUris).map { ok =>
         progressCount += skosificationJob.cases.size
-        if (progressOpt.get.keepGoingAt(progressCount)) {
-          if (skosificationJob.cases.size == chunkSize) {
-            ts.query(Sparql.listSkosificationCasesQ(skosificationJob.skosifiedField, chunkSize)).map { scResult =>
-              if (scResult.nonEmpty) {
-                self ! SkosificationJob(skosificationJob.skosifiedField, scResult)
-              }
-              else {
-                context.parent ! SkosificationComplete(skosificationJob.skosifiedField)
-              }
-            } onFailure {
-              case e: Exception =>
-                context.parent ! WorkFailure(e.toString, Some(e))
+        progressOpt.get.sendValue(Some(progressCount))
+        if (skosificationJob.cases.size == chunkSize) {
+          ts.query(Sparql.listSkosificationCasesQ(skosificationJob.skosifiedField, chunkSize)).map { scResult =>
+            if (scResult.nonEmpty) {
+              self ! SkosificationJob(skosificationJob.skosifiedField, scResult)
             }
-          }
-          else {
-            context.parent ! SkosificationComplete(skosificationJob.skosifiedField)
+            else {
+              context.parent ! SkosificationComplete(skosificationJob.skosifiedField)
+            }
+          } onFailure {
+            case e: Exception =>
+              context.parent ! WorkFailure(e.toString, Some(e))
           }
         }
         else {
-          context.parent ! WorkFailure("Interrupted")
+          context.parent ! SkosificationComplete(skosificationJob.skosifiedField)
         }
       } onFailure {
         case e: Exception =>
           context.parent ! WorkFailure(e.toString, Some(e))
       }
-
+    }
   }
 }

@@ -196,7 +196,8 @@ class PocketParser(facts: SourceFacts, hashTypeOpt: Option[HashType]) {
       }
     }
 
-    while (events.hasNext && progress.keepGoingAt(recordCount)) {
+    while (events.hasNext) {
+      progress.sendValue(Some(recordCount))
       events.next() match {
         case EvElemStart(pre, label, attrs, scope) => push(tag(pre, label), attrs, scope)
         case EvText(text) => addFieldText(text)

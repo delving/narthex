@@ -67,7 +67,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
     recordCount += 1
   }
 
-  def parse(source: Source, avoidIds: Set[String], progressReporter: ProgressReporter) = {
+  def parse(source: Source, avoidIds: Set[String], progressReporter: ProgressReporter): Unit = {
     val path = new mutable.Stack[(String, StringBuilder)]
     val events = new NarthexEventReader(source)
     var depth = 0
@@ -171,7 +171,8 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
       path.pop()
     }
 
-    while (events.hasNext && progressReporter.keepGoingAt(recordCount)) {
+    while (events.hasNext) {
+      progressReporter.sendValue(Some(recordCount))
       events.next() match {
         case EvElemStart(pre, label, attrs, scope) => push(tag(pre, label), attrs, scope)
         case EvText(text) => addFieldText(text)
@@ -183,7 +184,6 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
           Logger.error("EVENT? " + x)
       }
     }
-    progressReporter.keepWorking
   }
 
   def categoryCounts: List[CategoryCount] = countMap.map(
