@@ -110,12 +110,11 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
     }
 
     case AdLibHarvestPage(records, url, database, search, modifiedAfter, diagnostic) => actorWork(context) {
-      val progress = progressOpt.get
       val pageNumber = addPage(records)
       if (modifiedAfter.isDefined)
-        progress.sendPage(pageNumber) // This compensates for AdLib's failure to report number of hits
+        progressOpt.get.sendPage(pageNumber) // This compensates for AdLib's failure to report number of hits
       else
-        progress.sendPercent(diagnostic.percentComplete)
+        progressOpt.get.sendPercent(diagnostic.percentComplete)
       log.info(s"Harvest Page: $pageNumber - $url $database to $datasetContext: $diagnostic")
       if (diagnostic.isLast) {
         finish(modifiedAfter, None)
@@ -137,15 +136,14 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
     }
 
     case PMHHarvestPage(records, url, set, prefix, total, modifiedAfter, justDate, resumptionToken) => actorWork(context) {
-      val progress = progressOpt.get
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
       resumptionToken.map { token =>
         if (token.hasPercentComplete) {
-          progress.sendPercent(token.percentComplete)
+          progressOpt.get.sendPercent(token.percentComplete)
         }
         else {
-          progress.sendPage(pageCount)
+          progressOpt.get.sendPage(pageCount)
         }
         val futurePage = fetchPMHPage(url, set, prefix, modifiedAfter, justDate, resumptionToken)
         handleFailure(futurePage, modifiedAfter, "pmh harvest page")
