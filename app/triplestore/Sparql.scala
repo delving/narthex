@@ -161,7 +161,7 @@ object Sparql {
     s"""
       |WITH <$uri>
       |DELETE { <$uri> <$prop> '''${sanitize(uriValue)}''' }
-      |WHERE { <$uri> <$prop> '''{sanitize($uriValue)}''' }
+      |WHERE { <$uri> <$prop> '''${sanitize(uriValue)}''' }
      """.stripMargin
 
   def deleteDatasetQ(uri: String, skosUri: String) =

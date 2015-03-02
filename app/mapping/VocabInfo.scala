@@ -53,7 +53,7 @@ object VocabInfo {
   implicit val vocabInfoWrites = new Writes[VocabInfo] {
     def writes(dsInfo: VocabInfo): JsValue = {
       val out = new StringWriter()
-      RDFDataMgr.write(out, dsInfo.m, RDFFormat.JSONLD_FLAT)
+      RDFDataMgr.write(out, dsInfo.model, RDFFormat.JSONLD_FLAT)
       Json.parse(out.toString)
     }
   }
@@ -109,15 +109,17 @@ class VocabInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore
   val dataUri = getVocabDataUri(spec)
 
   // could cache as well so that the get happens less
-  lazy val futureModel = ts.dataGet(uri)
+  def futureModel = ts.dataGet(uri)
   futureModel.onFailure {
     case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
   }
-  lazy val m: Model = Await.result(futureModel, 20.seconds)
-  lazy val uriResource = m.getResource(uri)
+
+  def model = Await.result(futureModel, patience)
 
   def getLiteralProp(prop: NXProp): Option[String] = {
-    val objects = m.listObjectsOfProperty(uriResource, m.getProperty(prop.uri))
+    val m = model
+    val res = m.getResource(uri)
+    val objects = m.listObjectsOfProperty(res, m.getProperty(prop.uri))
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
   }
 
@@ -125,26 +127,16 @@ class VocabInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore
 
   def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
 
-  def setSingularLiteralProps(propVal: (NXProp, String)*): Model = {
+  def setSingularLiteralProps(propVal: (NXProp, String)*): Unit = {
     val sparqlPerProp = propVal.map(pv => updatePropertyQ(uri, pv._1, pv._2))
     val sparql = sparqlPerProp.mkString(";\n")
-    val futureUpdate = ts.up.sparqlUpdate(sparql).map { ok =>
-      propVal.foreach { pv =>
-        val prop = m.getProperty(pv._1.uri)
-        m.removeAll(uriResource, prop, null)
-        m.add(uriResource, prop, m.createLiteral(pv._2))
-      }
-    }
+    val futureUpdate = ts.up.sparqlUpdate(sparql)
     Await.ready(futureUpdate, patience)
-    m
   }
 
-  def removeLiteralProp(prop: NXProp): Model = {
-    val futureUpdate = ts.up.sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
-      m.removeAll(uriResource, m.getProperty(prop.uri), null)
-    }
+  def removeLiteralProp(prop: NXProp): Unit = {
+    val futureUpdate = ts.up.sparqlUpdate(removeLiteralPropertyQ(uri, prop))
     Await.ready(futureUpdate, patience)
-    m
   }
 
   def conceptCount = {

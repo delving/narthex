@@ -77,7 +77,7 @@ object DsInfo {
   implicit val dsInfoWrites = new Writes[DsInfo] {
     def writes(dsInfo: DsInfo): JsValue = {
       val out = new StringWriter()
-      RDFDataMgr.write(out, dsInfo.m, RDFFormat.JSONLD_FLAT)
+      RDFDataMgr.write(out, dsInfo.model, RDFFormat.JSONLD_FLAT)
       Json.parse(out.toString)
     }
   }
@@ -150,14 +150,16 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   val skosUri = getDsSkosUri(uri)
 
   // could cache as well so that the get happens less
-  lazy val futureModel = ts.dataGet(uri)
+  def futureModel = ts.dataGet(uri)
   futureModel.onFailure {
     case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
   }
-  lazy val m: Model = Await.result(futureModel, 20.seconds)
-  lazy val res = m.getResource(uri)
+
+  def model = Await.result(futureModel, patience)
 
   def getLiteralProp(prop: NXProp): Option[String] = {
+    val m = model
+    val res = m.getResource(uri)
     val objects = m.listObjectsOfProperty(res, m.getProperty(prop.uri))
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
   }
@@ -166,48 +168,35 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
 
-  def setSingularLiteralProps(propVals: (NXProp, String)*): Model = {
+  def setSingularLiteralProps(propVals: (NXProp, String)*): Unit = {
     val sparqlPerPropQ = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2)).toList
     val withSynced = updateSyncedFalseQ(uri) :: sparqlPerPropQ
     val sparql = withSynced.mkString(";\n")
-    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(sparql).map { ok =>
-      propVals.foreach { pv =>
-        val prop = m.getProperty(pv._1.uri)
-        m.removeAll(res, prop, null)
-        m.add(res, prop, m.createLiteral(pv._2))
-      }
-    }
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(sparql)
     Await.ready(futureUpdate, patience)
-    m
   }
 
   def removeLiteralProp(prop: NXProp): Unit = {
-    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
-      m.removeAll(res, m.getProperty(prop.uri), null)
-    }
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(removeLiteralPropertyQ(uri, prop))
     Await.ready(futureUpdate, patience)
   }
 
   def getUriPropValueList(prop: NXProp): List[String] = {
+    val m = model
+    val res = m.getResource(uri)
     m.listObjectsOfProperty(res, m.getProperty(prop.uri)).map(node =>
       node.asLiteral().toString
     ).toList
   }
 
-  def addUriProp(prop: NXProp, uriValueString: String): Model = {
-    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString)).map { ok =>
-      m.add(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
-    }
+  def addUriProp(prop: NXProp, uriValueString: String): Unit = {
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
-    m
   }
 
-  def removeUriProp(prop: NXProp, uriValueString: String): Model = {
-    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString)).map { ok =>
-      m.remove(res, m.getProperty(prop.uri), m.createLiteral(uriValueString))
-    }
+  def removeUriProp(prop: NXProp, uriValueString: String): Unit = {
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
-    m
   }
 
   def dropDataset = {
@@ -315,7 +304,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   def toTurtle = {
     val sw = new StringWriter()
-    m.write(sw, "TURTLE")
+    model.write(sw, "TURTLE")
     sw.toString
   }
 

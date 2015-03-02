@@ -34,15 +34,15 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
     val admin = await(store.authenticate("gumby", "secret gumby")).get
     val dsInfo = await(DsInfo.createDsInfo(admin, "gumby-set", CharacterMapped, "gfx"))
     dsInfo.getLiteralProp(datasetMapToPrefix) must be(Some("gfx"))
-    val model = dsInfo.setSingularLiteralProps(
+    dsInfo.setSingularLiteralProps(
       datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
     )
-    model.size() must be(10)
+    dsInfo.model.size() must be(11)
     dsInfo.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
     dsInfo.removeLiteralProp(datasetMapToPrefix)
     dsInfo.getLiteralProp(datasetMapToPrefix) must be(None)
-    model.size() must be(9)
+    dsInfo.model.size() must be(10)
 
     dsInfo.setSingularLiteralProps(datasetMapToPrefix -> "pfx2")
 

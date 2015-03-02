@@ -84,7 +84,7 @@
                     <li ng-class="{'active':tabOpen === 'drop'}" data-ng-show="dropSupported">
                         <a href role="tab" data-ng-click="tabOpen = 'drop'">File Drop</a>
                     </li>
-                    <li ng-class="{'active':tabOpen === 'align'}" data-ng-show="dropSupported">
+                    <li ng-class="{'active':tabOpen === 'align'}" data-ng-show="dropSupported && skos.skosSpec != 'categories'">
                         <a href role="tab" data-ng-click="tabOpen = 'align'">Alignment</a>
                     </li>
                     <li ng-class="{'active':tabOpen === 'delete'}">
@@ -149,7 +149,7 @@
     <p>Choose a vocabulary alignment:</p>
     <ul class="nav nav-pills">
         <li ng-repeat="otherSkos in skosListExcept(skos)">
-            <button class="btn btn-default" data-ng-click="goToMapping(skos, otherSkos)">
+            <button class="btn btn-default" data-ng-click="goToMapping(skos, otherSkos)" data-ng-show="otherSkos.skosSpec != 'categories'">
                 <span>{{ skos.skosSpec }}</span>
                 <i class="fa fa-fw fa-book"></i>
                 <i class="fa fa-fw fa-arrows-h"></i>
