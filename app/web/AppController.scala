@@ -323,10 +323,12 @@ object AppController extends Controller with Security {
       val results = dsInfo.vocabulary.concepts.map(concept => {
         //          val freq: Int = concept.frequency.getOrElse(0)
         val label = concept.getAltLabel(None).map(_.text).getOrElse("Label missing")
+        val fieldProperty = concept.fieldProperty.getOrElse("")
         Json.obj(
           "uri" -> concept.resource.toString,
           "label" -> label,
-          "frequency" -> concept.frequency
+          "frequency" -> concept.frequency,
+          "fieldProperty" -> fieldProperty
         )
       })
       Ok(Json.toJson(results))
