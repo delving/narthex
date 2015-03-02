@@ -277,14 +277,15 @@ object AppController extends Controller with Security {
     }
   }
 
-  def setVocabularyProperties(spec: String) = SecureAsync(parse.json) { session => request =>
+  def setVocabularyProperties(spec: String) = Secure(parse.json) { session => request =>
     withVocabInfo(spec) { vocabInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
       Logger.info(s"setVocabularyProperties $propertyList")
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
-      vocabInfo.setSingularLiteralProps(propsValues: _*).map(model => Ok)
+      vocabInfo.setSingularLiteralProps(propsValues: _*)
+      Ok
     }
   }
 

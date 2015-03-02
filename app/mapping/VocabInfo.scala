@@ -40,10 +40,9 @@ object VocabInfo {
 
   val CATEGORIES_SPEC = "categories"
 
-  /*
-  Caused by: java.util.ConcurrentModificationException: null
-  at com.hp.hpl.jena.mem.ArrayBunch$2.hasNe
- */
+  val patience = 1.minute
+
+  val cacheTime = 10.minutes
 
   case class DsMetadata(name: String,
                         description: String,
@@ -88,10 +87,10 @@ object VocabInfo {
     Cache.getAs[VocabInfo](cacheName) map { vocabInfo =>
       block(vocabInfo)
     } getOrElse {
-      val vocabInfo = Await.result(freshVocabInfo(spec), 30.seconds).getOrElse {
+      val vocabInfo = Await.result(freshVocabInfo(spec), patience).getOrElse {
         throw new RuntimeException(s"No skos info for $spec")
       }
-      Cache.set(cacheName, vocabInfo, 5.minutes)
+      Cache.set(cacheName, vocabInfo, cacheTime)
       block(vocabInfo)
     }
   }
@@ -126,23 +125,26 @@ class VocabInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore
 
   def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
 
-  def setSingularLiteralProps(propVal: (NXProp, String)*): Future[Model] = {
+  def setSingularLiteralProps(propVal: (NXProp, String)*): Model = {
     val sparqlPerProp = propVal.map(pv => updatePropertyQ(uri, pv._1, pv._2))
     val sparql = sparqlPerProp.mkString(";\n")
-    ts.up.sparqlUpdate(sparql).map { ok =>
+    val futureUpdate = ts.up.sparqlUpdate(sparql).map { ok =>
       propVal.foreach { pv =>
         val prop = m.getProperty(pv._1.uri)
         m.removeAll(uriResource, prop, null)
         m.add(uriResource, prop, m.createLiteral(pv._2))
       }
-      m
     }
+    Await.ready(futureUpdate, patience)
+    m
   }
 
-  def removeLiteralProp(prop: NXProp): Future[Model] = {
-    ts.up.sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
+  def removeLiteralProp(prop: NXProp): Model = {
+    val futureUpdate = ts.up.sparqlUpdate(removeLiteralPropertyQ(uri, prop)).map { ok =>
       m.removeAll(uriResource, m.getProperty(prop.uri), null)
     }
+    Await.ready(futureUpdate, patience)
+    m
   }
 
   def conceptCount = {

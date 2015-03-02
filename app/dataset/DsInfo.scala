@@ -42,11 +42,6 @@ import scala.concurrent.duration._
 
 object DsInfo {
 
-  /*
-  Caused by: java.util.ConcurrentModificationException: null
-	at com.hp.hpl.jena.mem.ArrayBunch$2.hasNe
-   */
-
   val patience = 1.minute
 
   val cacheTime = 10.minutes
