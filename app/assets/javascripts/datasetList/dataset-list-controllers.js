@@ -249,7 +249,7 @@ define(["angular"], function () {
             datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
                 if (ds.progressCheckerTimeout) $timeout.cancel(ds.progressCheckerTimeout);
                 $scope.decorateDataset(dataset);
-                $scope.dataset = dataset;
+                ds = $scope.dataset = dataset;
                 dataset.refreshAfter = true;
                 dataset.progressCheckerTimeout = $timeout(checkProgress, 1000);
             });
@@ -259,7 +259,7 @@ define(["angular"], function () {
             console.log('refresh info');
             datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
                 $scope.decorateDataset(dataset);
-                $scope.dataset = dataset;
+                ds = $scope.dataset = dataset;
             });
         }
 
