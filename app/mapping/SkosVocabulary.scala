@@ -108,6 +108,10 @@ object SkosVocabulary {
       val frequencyValue = model.listObjectsOfProperty(resource, model.getProperty(skosFrequency)).toList.headOption
       frequencyValue.map(_.asLiteral().getInt)
     }
+    lazy val fieldProperty: Option[String] = {
+      val fieldPropertyValue = model.listObjectsOfProperty(resource, model.getProperty(skosField.uri)).toList.headOption
+      fieldPropertyValue.map(_.asResource().toString)
+    }
 
     def getPrefLabel(languageOpt: Option[String]) = getLanguageLabel(prefLabels, languageOpt)
 

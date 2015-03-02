@@ -391,6 +391,7 @@ object Sparql {
         |      <$mintedUri> a skos:Concept .
         |      <$mintedUri> skos:altLabel '''${sanitize(value)}''' .
         |      <$mintedUri> <$belongsTo> <$datasetUri> .
+        |      <$mintedUri> <$skosField> <$fieldProperty> .
         |      <$mintedUri> <$synced> false .
         |      ${frequencyOpt.map(freq => s"<$mintedUri> <$skosFrequency> '''$freq''' .").getOrElse("")}
         |   }

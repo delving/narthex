@@ -78,6 +78,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     val first = di.vocabulary.concepts.sortBy(_.resource.toString).head
     first.getAltLabel(Some("nl")).map(_.text) must be(Some("doek"))
     first.frequency must be(Some(111))
+    first.fieldProperty must be(Some("http://schemas.delving.eu/brac/material"))
 
 //    val histoStrings = di.vocabulary.concepts.map{ c =>
 //      s"${c.getAltLabel("nl").text} ${c.frequency}"
