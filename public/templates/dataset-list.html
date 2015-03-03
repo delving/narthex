@@ -284,7 +284,10 @@
                             <a href role="tab" data-ng-click="rightTabOpen ='harvest'">Harvest</a>
                         </li>
                         <li ng-class="{'active':rightTabOpen === 'harvest-cron'}" data-ng-show="dataset.harvestType">
-                            <a href role="tab" data-ng-click="rightTabOpen = 'harvest-cron'">Periodic Update</a>
+                            <a href role="tab" data-ng-click="rightTabOpen = 'harvest-cron'">Periodic</a>
+                        </li>
+                        <li ng-class="{'active':rightTabOpen === 'id-filter'}">
+                            <a href role="tab" data-ng-click="rightTabOpen = 'id-filter'">ID Filter</a>
                         </li>
                         <li data-ng-class="{'active':rightTabOpen==='delete'}">
                             <a href role="tab" data-ng-click="rightTabOpen ='delete'" class="bg-danger">
@@ -302,6 +305,9 @@
                             </div>
                             <div ng-switch-when="harvest-cron">
                                 <div data-ng-include="'harvest-cron-form.html'">harvest cron form</div>
+                            </div>
+                            <div ng-switch-when="id-filter">
+                                <div data-ng-include="'id-filter-form.html'">id filter form</div>
                             </div>
                             <div ng-switch-when="delete">
                                 <div data-ng-include="'dataset-delete.html'">deletion form</div>
@@ -484,6 +490,38 @@
                 </div>
             </div>
             <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()" data-ng-disabled="unchangedHarvestCron">
+                <i class="fa fa-check-circle"></i>
+                <span>Save</span>
+            </button>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="id-filter-form.html">
+    <form name="form" class="form-horizontal">
+        <fieldset>
+            <div class="form-group">
+                <label class="col-sm-3" for="id_filter_1">Filter Type</label>
+                <div class="col-sm-9">
+                    <div id="id_filter_1">
+                        <input type="radio" ng-model="dataset.edit.idFilterType" value="verbatim">
+                        <span>Verbatim</span>
+                        <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <input type="radio" ng-model="dataset.edit.idFilterType" value="sha256-hash">
+                        <span>Hash (SHA256/Base32)</span>
+                        <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <input type="radio" ng-model="dataset.edit.idFilterType" value="replacement">
+                        <span>Replacement</span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" data-ng-show="dataset.edit.idFilterType == 'replacement'">
+                <label class="col-sm-3" for="id_filter_2">Filter Expression</label>
+                <div class="col-sm-9">
+                <input id="id_filter_2" class="form-control" data-ng-model="dataset.edit.idFilterExpression"/>
+                </div>
+            </div>
+            <button type="button" class="btn btn-success" data-ng-click="setIdFilter()" data-ng-disabled="unchangedIdFilter">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>

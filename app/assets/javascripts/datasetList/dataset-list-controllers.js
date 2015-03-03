@@ -184,6 +184,10 @@ define(["angular"], function () {
         "harvestPreviousTime", "harvestDelay", "harvestDelayUnit", "harvestIncremental"
     ];
 
+    var idFilterFields = [
+        "idFilterType", "idFilterExpression"
+    ];
+
     var publishFields = [
         "publishOAIPMH", "publishIndex", "publishLOD"
     ];
@@ -371,6 +375,7 @@ define(["angular"], function () {
             $scope.unchangedPublish = unchanged(publishFields);
             $scope.unchangedHarvest = unchanged(harvestFields);
             $scope.unchangedHarvestCron = unchanged(harvestCronFields);
+            $scope.unchangedIdFilter = unchanged(idFilterFields);
             $scope.unchangedCategories = unchanged(categoriesFields);
         }
 
@@ -402,6 +407,10 @@ define(["angular"], function () {
 
         $scope.setHarvestCron = function () {
             setProperties(harvestCronFields);
+        };
+
+        $scope.setIdFilter = function() {
+            setProperties(idFilterFields);
         };
 
         $scope.isLater = function (currState, nextState) {

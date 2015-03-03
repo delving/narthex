@@ -17,16 +17,19 @@ package dataset
 
 import java.io._
 import java.nio.file.Files
+import java.security.MessageDigest
+import java.util.regex.Pattern
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
 
+import eu.delving.metadata.StringUtil
 import harvest.Harvesting.HarvestType
+import org.apache.commons.codec.binary.Base32
 import org.apache.commons.io.input.BOMInputStream
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import record.PocketParser
 import record.PocketParser._
 import services.FileHandling.{clearDir, sourceFromFile, writer}
-import services.MissingLibs.HashType
 import services.ProgressReporter
 
 import scala.collection.mutable
@@ -58,6 +61,44 @@ object SourceRepo {
       harvestType.recordContainer
     )
   }
+
+
+  // ~~~ play.libs.Crypto
+
+  case class IdFilter(filterType: String, filterExpression: Option[String]) {
+    val filter: String => String = filterType match {
+
+      case "verbatim" => input =>
+        StringUtil.sanitizeId(input)
+
+      case "sha256-hash" => input =>
+        try {
+          val m = MessageDigest.getInstance("SHA-256")
+          val out = m.digest(input.getBytes)
+          val base32 = new Base32()
+          val padding = "===="
+          val padded = base32.encodeToString(out)
+          padded.substring(0, padded.length - padding.length)
+        } catch {
+          case e: Exception => throw new RuntimeException(e)
+        }
+
+      case "replacement" => input =>
+        val expression = filterExpression.get
+        val delimiter = ":::"
+        val divider = expression.indexOf(delimiter)
+        if (divider < 0) throw new RuntimeException(s"Expected three-colon delimiter in [$expression]")
+        val pattern = Pattern.compile(expression.substring(0, divider))
+        val replacement = expression.substring(divider + delimiter.length)
+        // val trimmed : String = unique.trim.replaceAll(":", "-")
+        pattern.matcher(input).replaceAll(replacement)
+
+      case _ =>
+        throw new RuntimeException(s"Cannot create ID Filter of type $filterType with expression $filterExpression")
+    }
+  }
+
+  val DEFAULT_ID_FILTER = IdFilter("sha256-hash", None)
 
   case class SourceFacts(sourceType: String, recordRoot: String, uniqueId: String, recordContainer: Option[String])
 
@@ -165,7 +206,7 @@ class SourceRepo(home: File) {
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = provideZipFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
-    val parser = new PocketParser(sourceFacts, Some(HashType.SHA256))
+    val parser = new PocketParser(sourceFacts, DEFAULT_ID_FILTER)
     def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.id)
     val (source, readProgress) = sourceFromFile(file)
     progress.setReadProgress(readProgress)
@@ -246,7 +287,7 @@ class SourceRepo(home: File) {
   })
 
   def parsePockets(output: Pocket => Unit, progress: ProgressReporter): Int = {
-    val parser = new PocketParser(sourceFacts, Some(HashType.SHA256))
+    val parser = new PocketParser(sourceFacts, DEFAULT_ID_FILTER)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)

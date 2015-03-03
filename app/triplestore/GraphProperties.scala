@@ -93,6 +93,9 @@ object GraphProperties {
   val harvestDelayUnit = NXProp("harvestDelayUnit")
   val harvestIncremental = NXProp("harvestIncremental")
 
+  val idFilterType = NXProp("idFilterType")
+  val idFilterExpression = NXProp("idFilterExpression")
+
   val processedValid = NXProp("processedValid", intProp)
   val processedInvalid = NXProp("processedInvalid", intProp)
   val processedIncrementalValid = NXProp("processedIncrementalValid", intProp)

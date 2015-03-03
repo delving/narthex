@@ -20,9 +20,9 @@ import java.io.{File, FileOutputStream}
 
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Incremental, WorkFailure}
-import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
 import dataset.SipRepo.URIErrorsException
+import dataset.{DatasetContext, SourceRepo}
 import eu.delving.groovy.DiscardRecordException
 import org.OrgContext.actorWork
 import org.apache.commons.io.FileUtils.deleteQuietly
@@ -30,7 +30,6 @@ import org.xml.sax.SAXException
 import record.PocketParser.Pocket
 import record.SourceProcessor._
 import services.FileHandling._
-import services.MissingLibs.HashType
 import services.ProgressReporter.ProgressState._
 import services.{FileHandling, ProgressReporter}
 
@@ -178,7 +177,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
           val progressReporter = ProgressReporter(PROCESSING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
-          val parser = new PocketParser(sourceFacts, Some(HashType.SHA256))
+          val parser = new PocketParser(sourceFacts, SourceRepo.DEFAULT_ID_FILTER)
           parser.parse(source, Set.empty[String], catchPocket, progressReporter)
         }
         finally {
