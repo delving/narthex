@@ -19,6 +19,7 @@ package dataset
 import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
+import dataset.SourceRepo.{IdFilter, VERBATIM_FILTER}
 import harvest.Harvesting.{HarvestCron, HarvestType}
 import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
 import org.ActorStore.NXActor
@@ -201,6 +202,15 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   def dropDataset = {
     ts.up.sparqlUpdate(deleteDatasetQ(uri, skosUri)).map(ok => true)
+  }
+
+  def getIdFilter:IdFilter = {
+    getLiteralProp(idFilterType).map { filterType =>
+      val expressionOpt = getLiteralProp(idFilterExpression).flatMap(ex => if (ex.trim.isEmpty) None else Some(ex))
+      IdFilter(filterType, expressionOpt)
+    } getOrElse {
+      VERBATIM_FILTER
+    }
   }
 
   def toggleProduction(): Future[Boolean] = {

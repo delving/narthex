@@ -20,9 +20,9 @@ import java.io.{File, FileOutputStream}
 
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Incremental, WorkFailure}
+import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
 import dataset.SipRepo.URIErrorsException
-import dataset.{DatasetContext, SourceRepo}
 import eu.delving.groovy.DiscardRecordException
 import org.OrgContext.actorWork
 import org.apache.commons.io.FileUtils.deleteQuietly
@@ -82,7 +82,8 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         val progressReporter = ProgressReporter(GENERATING, context.parent)
         progress = Some(progressReporter)
         val pocketOutput = new FileOutputStream(datasetContext.pocketFile)
-        val pocketCount = sourceRepo.generatePockets(pocketOutput, progressReporter)
+        val idFilter = dsInfo.getIdFilter
+        val pocketCount = sourceRepo.generatePockets(pocketOutput, idFilter, progressReporter)
         val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt.map { latestSip =>
           val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping => datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix))
           datasetContext.sipFiles.foreach(_.delete())
@@ -170,6 +171,8 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         }
       }
 
+      val idFilter = dsInfo.getIdFilter
+
       incrementalOpt.map { incremental =>
         log.info(s"Processing incremental $sourceFacts")
         val (source, readProgress) = FileHandling.sourceFromFile(incremental.file)
@@ -177,7 +180,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
           val progressReporter = ProgressReporter(PROCESSING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
-          val parser = new PocketParser(sourceFacts, SourceRepo.DEFAULT_ID_FILTER)
+          val parser = new PocketParser(sourceFacts, idFilter)
           parser.parse(source, Set.empty[String], catchPocket, progressReporter)
         }
         finally {
@@ -188,7 +191,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         datasetContext.sourceRepoOpt.map { sourceRepo =>
           val progressReporter = ProgressReporter(PROCESSING, context.parent)
           progress = Some(progressReporter)
-          sourceRepo.parsePockets(catchPocket, progressReporter)
+          sourceRepo.parsePockets(catchPocket, idFilter, progressReporter)
         }
       }
 

@@ -98,7 +98,7 @@ object SourceRepo {
     }
   }
 
-  val DEFAULT_ID_FILTER = IdFilter("sha256-hash", None)
+  val VERBATIM_FILTER = IdFilter("verbatim", None)
 
   case class SourceFacts(sourceType: String, recordRoot: String, uniqueId: String, recordContainer: Option[String])
 
@@ -196,7 +196,7 @@ class SourceRepo(home: File) {
 
   private def listZipFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".zip")).sortBy(_.getName)
 
-  private def processFile(progress: ProgressReporter, provideZipFile: File => File) = {
+  private def processFile(idFilter: IdFilter, progress: ProgressReporter, provideZipFile: File => File) = {
     def writeToFile(file: File, string: String): Unit = Some(new PrintWriter(file)).foreach { writer =>
       writer.println(string)
       writer.close()
@@ -206,7 +206,7 @@ class SourceRepo(home: File) {
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = provideZipFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
-    val parser = new PocketParser(sourceFacts, DEFAULT_ID_FILTER)
+    val parser = new PocketParser(sourceFacts, idFilter)
     def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.id)
     val (source, readProgress) = sourceFromFile(file)
     progress.setReadProgress(readProgress)
@@ -254,7 +254,7 @@ class SourceRepo(home: File) {
 
   def countFiles = fileList.size
 
-  def acceptFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(progressReporter, { targetFile =>
+  def acceptFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(VERBATIM_FILTER, progressReporter, { targetFile =>
     val name = file.getName
     if (name.endsWith(".zip")) {
       FileUtils.moveFile(file, targetFile)
@@ -286,8 +286,8 @@ class SourceRepo(home: File) {
     }
   })
 
-  def parsePockets(output: Pocket => Unit, progress: ProgressReporter): Int = {
-    val parser = new PocketParser(sourceFacts, DEFAULT_ID_FILTER)
+  def parsePockets(output: Pocket => Unit, idFilter: IdFilter, progress: ProgressReporter): Int = {
+    val parser = new PocketParser(sourceFacts, idFilter)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.fold(0)(_ + _)
@@ -309,7 +309,7 @@ class SourceRepo(home: File) {
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
-  def generatePockets(sourceOutputStream: OutputStream, progress: ProgressReporter): Int = {
+  def generatePockets(sourceOutputStream: OutputStream, idFilter: IdFilter, progress: ProgressReporter): Int = {
     var recordCount = 0
     val rawOutput = writer(sourceOutputStream)
     try {
@@ -319,7 +319,7 @@ class SourceRepo(home: File) {
       def pocketWriter(pocket: Pocket): Unit = {
         rawOutput.write(pocket.text)
       }
-      recordCount = parsePockets(pocketWriter, progress)
+      recordCount = parsePockets(pocketWriter, idFilter, progress)
       rawOutput.write(endList)
     } finally {
       rawOutput.close()

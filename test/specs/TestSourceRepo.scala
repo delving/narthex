@@ -41,7 +41,7 @@ class TestSourceRepo extends FlatSpec with Matchers {
       "and what about a very long value where nobody really knows when it will end, but we can just guess"
     ).map(hashFilter.filter)
 
-    hashed.map(h => println(s""" "$h", """))
+//    hashed.map(h => println(s""" "$h", """))
 
     val exprectedHashed = List(
       "O2JMHLJVIC5YAPACBM5O4ZWNRCDREMRU5IGG44KDYCW5OP7UGHWQ",
@@ -107,7 +107,7 @@ class TestSourceRepo extends FlatSpec with Matchers {
       content should be("final")
     }
 
-    sourceRepo.parsePockets(receiveRecord, ProgressReporter())
+    sourceRepo.parsePockets(receiveRecord, VERBATIM_FILTER, ProgressReporter())
 
     recordCount should be(4)
 
@@ -117,7 +117,7 @@ class TestSourceRepo extends FlatSpec with Matchers {
 
     FileHandling.ensureGitRepo(gitDir) should be(true)
 
-    sourceRepo.generatePockets(pocketOut, ProgressReporter())
+    sourceRepo.generatePockets(pocketOut, VERBATIM_FILTER, ProgressReporter())
 
     FileHandling.gitCommit(pocketFile, "Several words of message") should be(true)
   }
@@ -154,7 +154,7 @@ class TestSourceRepo extends FlatSpec with Matchers {
       content should be("final")
     }
 
-    sourceRepo.parsePockets(receiveRecord, ProgressReporter())
+    sourceRepo.parsePockets(receiveRecord, VERBATIM_FILTER, ProgressReporter())
 
     recordCount should be(4)
   }

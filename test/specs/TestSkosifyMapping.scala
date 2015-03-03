@@ -2,6 +2,7 @@ package specs
 
 import java.io.File
 
+import dataset.SourceRepo.VERBATIM_FILTER
 import dataset.{DsInfo, ProcessedRepo}
 import mapping.SkosMappingStore.SkosMapping
 import mapping.{TermMappingStore, VocabInfo}
@@ -70,7 +71,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
         mappedPocket.map(_.writeTo(processedWriter))
         mappedPockets = mappedPocket.get :: mappedPockets
       }
-      sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
+      sourceRepo.parsePockets(pocketCatcher, VERBATIM_FILTER, ProgressReporter())
     }
     mappedPockets.size must be(3)
     processedWriter.close()

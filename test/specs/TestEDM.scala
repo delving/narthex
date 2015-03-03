@@ -4,6 +4,7 @@ import java.io._
 
 import com.hp.hpl.jena.rdf.model.ModelFactory
 import dataset.SipFactory
+import dataset.SourceRepo.VERBATIM_FILTER
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
 import record.PocketParser.Pocket
@@ -39,7 +40,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite with PrepareEDM {
         mappedPocket.map(_.writeTo(targetOutput))
         mappedPockets = mappedPocket.get :: mappedPockets
       }
-      sourceRepo.parsePockets(pocketCatcher, ProgressReporter())
+      sourceRepo.parsePockets(pocketCatcher, VERBATIM_FILTER, ProgressReporter())
     }
     mappedPockets.size must be(3)
     targetOutput.close()
@@ -70,7 +71,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite with PrepareEDM {
 
     val pocketFile = new File(targetDir, "pockets.xml")
     val pocketOutput = new FileOutputStream(pocketFile)
-    val genPock = sourceRepo.generatePockets(pocketOutput, ProgressReporter())
+    val genPock = sourceRepo.generatePockets(pocketOutput, VERBATIM_FILTER, ProgressReporter())
     pocketOutput.close()
 
     val sipFactoryDir = new File(sipsDir, "factory")
