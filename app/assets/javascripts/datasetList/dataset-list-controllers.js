@@ -202,6 +202,8 @@ define(["angular"], function () {
 
         $scope.expanded = $routeParams.dataset == ds.datasetSpec;
 
+        $scope.idFilter = {};
+
         var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
         $scope.searchLink = baseUrl + "/search?qf=delving_spec:" + ds.datasetSpec;
         $scope.apiLink = baseUrl + "/api/search/v1/?qf=delving_spec:" + ds.datasetSpec;
@@ -508,6 +510,27 @@ define(["angular"], function () {
                 fetchSipFileList();
             });
         };
+
+        function executeIdFilter() {
+            var expression = ds.edit.idFilterExpression;
+            var delimiter = ":::";
+            var divider = expression.indexOf(delimiter);
+            if (divider < 0) {
+                $scope.idFilter.output = "";
+                $scope.idFilter.error = "No divider";
+                $scope.idFilter.output = "";
+            }
+            else {
+                $scope.idFilter.error = "";
+                var regExp = new RegExp(expression.substring(0, divider));
+                var replacement = expression.substring(divider + delimiter.length);
+                $scope.idFilter.output = $scope.idFilter.input.replace(regExp, replacement);
+            }
+        }
+
+        $scope.$watch("idFilter.input", executeIdFilter);
+        $scope.$watch("dataset.edit.idFilterExpression", executeIdFilter);
+
     };
 
     DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams"];

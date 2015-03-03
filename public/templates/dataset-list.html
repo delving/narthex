@@ -501,9 +501,9 @@
     <form name="form" class="form-horizontal">
         <fieldset>
             <div class="form-group">
-                <label class="col-sm-3" for="id_filter_1">Filter Type</label>
+                <label class="col-sm-3" for="id_filter_type">Filter Type</label>
                 <div class="col-sm-9">
-                    <div id="id_filter_1">
+                    <div id="id_filter_type">
                         <input type="radio" ng-model="dataset.edit.idFilterType" value="verbatim">
                         <span>Verbatim</span>
                         <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
@@ -515,10 +515,24 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group" data-ng-show="dataset.edit.idFilterType == 'replacement'">
-                <label class="col-sm-3" for="id_filter_2">Filter Expression</label>
-                <div class="col-sm-9">
-                <input id="id_filter_2" class="form-control" data-ng-model="dataset.edit.idFilterExpression"/>
+            <div data-ng-show="dataset.edit.idFilterType == 'replacement'">
+                <div class="form-group">
+                    <label class="col-sm-3" for="id_filter_input">Test input</label>
+                    <div class="col-sm-9">
+                        <input id="id_filter_input" class="form-control" data-ng-model="idFilter.input" placeholder="identifier"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="id_filter_expression">Filter Expression</label>
+                    <div class="col-sm-9">
+                        <input id="id_filter_expression" class="form-control" data-ng-model="dataset.edit.idFilterExpression" placeholder="REGEX:::REPLACEMENT"/>
+                    </div>
+                </div>
+                <div class="form-group" data-ng-class="{ 'error': idFilter.error }">
+                    <label class="col-sm-3" for="id_filter_output">Test output</label>
+                    <div class="col-sm-9">
+                        <input id="id_filter_output" class="form-control" data-ng-model="idFilter.output" placeholder="transformed identifier"/>
+                    </div>
                 </div>
             </div>
             <button type="button" class="btn btn-success" data-ng-click="setIdFilter()" data-ng-disabled="unchangedIdFilter">
