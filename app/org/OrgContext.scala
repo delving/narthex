@@ -75,8 +75,8 @@ object OrgContext {
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 
   val TRIPLE_STORE_URL: Option[String] = config.getString("triple-store")
-  val TRIPLE_STORE_URLS: Option[(String, String)] = config.getObject("triple-stores").map {
-    tripleStoreUrls => (tripleStoreUrls.get("acceptance").render(), tripleStoreUrls.get("production").render())
+  val TRIPLE_STORE_URLS: Option[(String, String)] = config.getObject("triple-stores").map(_.toConfig).map { tripleStores =>
+    (tripleStores.getString("acceptance"), tripleStores.getString("production"))
   }
   val TRIPLE_STORE_LOG = if (play.api.Play.current.mode == Mode.Dev) true else configFlag("triple-store-log")
 
