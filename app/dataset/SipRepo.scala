@@ -319,6 +319,22 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
   def copyWithSourceTo(sipFile: File, sourceXmlFile: File, sipPrefixRepoOpt: Option[SipPrefixRepo]) = {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
+    var sourceFound = false
+
+    def copyFileIn(sourceFile: File, fileName: String, gzip: Boolean) = {
+      zos.putNextEntry(new ZipEntry(fileName))
+      val in = new FileInputStream(sourceFile)
+      if (gzip) {
+        val out = new GZIPOutputStream(zos)
+        IOUtils.copy(in, out)
+        out.finish()
+      }
+      else {
+        IOUtils.copy(in, zos)
+      }
+      in.close()
+      zos.closeEntry()
+    }
 
     zipFile.entries.foreach { entry =>
 
@@ -326,21 +342,6 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
         zos.putNextEntry(new ZipEntry(entry.getName))
         val is = zipFile.getInputStream(entry)
         IOUtils.copy(is, zos)
-        zos.closeEntry()
-      }
-
-      def copyFileIn(sourceFile: File, fileName: String, gzip: Boolean) = {
-        zos.putNextEntry(new ZipEntry(fileName))
-        val in = new FileInputStream(sourceFile)
-        if (gzip) {
-          val out = new GZIPOutputStream(zos)
-          IOUtils.copy(in, out)
-          out.finish()
-        }
-        else {
-          IOUtils.copy(in, zos)
-        }
-        in.close()
         zos.closeEntry()
       }
 
@@ -366,6 +367,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
         case SourcePattern() =>
           Logger.info(s"Source: ${entry.getName}")
+          sourceFound = true
           copyFileIn(sourceXmlFile, entry.getName, gzip = true)
 
         case FACTS_FILE =>
@@ -386,6 +388,11 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
           Logger.info(s"Verbatim: ${entry.getName}")
           copyEntry()
       }
+    }
+
+    if (!sourceFound) {
+      Logger.info(s"Source added afterwards")
+      copyFileIn(sourceXmlFile, SOURCE_FILE, gzip = true)
     }
 
     zos.close()
