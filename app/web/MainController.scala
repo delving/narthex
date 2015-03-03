@@ -67,7 +67,8 @@ object MainController extends Controller with Security {
               ))),
               apiKey = API_ACCESS_KEYS(0),
               narthexDomain = NARTHEX_DOMAIN,
-              naveDomain = NAVE_DOMAIN
+              naveDomain = NAVE_DOMAIN,
+              singleTripleStore = SINGLE_TRIPLE_STORE
             )
             Ok(Json.toJson(session)).withSession(session)
           }
@@ -82,7 +83,8 @@ object MainController extends Controller with Security {
             nxActor,
             apiKey = API_ACCESS_KEYS(0),
             narthexDomain = NARTHEX_DOMAIN,
-            naveDomain = NAVE_DOMAIN
+            naveDomain = NAVE_DOMAIN,
+            singleTripleStore = SINGLE_TRIPLE_STORE
           )
           Ok(Json.toJson(session)).withSession(session)
         } getOrElse Unauthorized("Username/password not found")
@@ -201,7 +203,7 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.setSkosifiedField,
           routes.javascript.AppController.datasetInfo,
           routes.javascript.AppController.command,
-          routes.javascript.AppController.toggleSkosMapping,
+          routes.javascript.AppController.toggleDatasetProduction,
           routes.javascript.AppController.datasetProgress,
           routes.javascript.AppController.nodeStatus,
           routes.javascript.AppController.index,

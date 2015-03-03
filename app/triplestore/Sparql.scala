@@ -42,6 +42,14 @@ object Sparql {
 
   private def sanitize(s: String): String = s.map(c => SPARQL_ESCAPE.getOrElse(c, c.toString)).mkString
 
+  def graphExistsQ(graphName: String) =
+    s"""
+      |ASK {
+      |   GRAPH <$graphName> { ?s ?p ?o }
+      |}
+     """.stripMargin
+
+
   def insertActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
     s"""
       |WITH <$actorsGraph>

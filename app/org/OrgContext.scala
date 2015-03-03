@@ -82,6 +82,8 @@ object OrgContext {
 
   Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")
 
+  val SINGLE_TRIPLE_STORE = TRIPLE_STORE_URL.isDefined
+
   // tests are using this
   private def tripleStore(implicit executionContext: ExecutionContext) = TRIPLE_STORE_URL.map { tripleStoreUrl =>
     TripleStore.single(tripleStoreUrl, TRIPLE_STORE_LOG)

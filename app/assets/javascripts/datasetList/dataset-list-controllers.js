@@ -438,8 +438,8 @@ define(["angular"], function () {
         };
 
         $scope.toggleDatasetProduction = function() {
-            datasetListService.toggleDatasetProduction().then(function(data) {
-                // todo: data.acceptanceOnly?
+            datasetListService.toggleDatasetProduction(ds.datasetSpec).then(function(data) {
+                console.log("toggleDatasetProduction", data);
                 refreshInfo()
             });
         };
@@ -512,7 +512,7 @@ define(["angular"], function () {
         };
 
         function executeIdFilter() {
-            var expression = ds.edit.idFilterExpression;
+            var expression = ds.edit.idFilterExpression || '';
             var delimiter = ":::";
             var divider = expression.indexOf(delimiter);
             if (divider < 0) {

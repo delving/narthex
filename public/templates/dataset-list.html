@@ -88,6 +88,15 @@
             </span>
             <span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">
 
+                <span data-ng-show="!user.singleTripleStore">
+                    <span class="btn btn-default" data-ng-click="toggleDatasetProduction()">
+                        <i class="fa fa-fw bg-danger"
+                           data-ng-class="{ 'fa-star-half-empty': dataset.acceptanceOnly == 'true', 'fa-star': dataset.acceptanceOnly == 'false' }"></i>
+                        <span data-ng-show="dataset.acceptanceOnly == 'true'">Acceptance</span>
+                        <span data-ng-show="dataset.acceptanceOnly == 'false'">Production</span>
+                    </span>
+                </span>
+
                 <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()">
                     <i class="fa fa-fw fa-bug bg-danger"></i>
                     <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>

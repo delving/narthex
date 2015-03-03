@@ -216,14 +216,25 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   def toggleProduction(): Future[Boolean] = {
     val production = ts.up.production
     if (getBooleanProp(acceptanceOnly)) {
-      for {
+      val doSkosTransfer = for {
         datasetModel <- ts.dataGet(uri)
         putDataset <- production.dataPutGraph(uri, datasetModel)
-        skosModel <- ts.dataGet(skosUri)
-        putSkos <- production.dataPutGraph(skosUri, skosModel)
-      } yield {
-        setSingularLiteralProps(acceptanceOnly -> "false")
-        false
+        skosExists <- ts.ask(graphExistsQ(skosUri))
+      } yield skosExists
+      doSkosTransfer.flatMap{ skosExists =>
+        if (skosExists) {
+          for {
+            skosModel <- ts.dataGet(skosUri)
+            putSkos <- production.dataPutGraph(skosUri, skosModel)
+          } yield {
+            setSingularLiteralProps(acceptanceOnly -> "false")
+            false
+          }
+        }
+        else {
+          setSingularLiteralProps(acceptanceOnly -> "false")
+          Future(false)
+        }
       }
     }
     else {
