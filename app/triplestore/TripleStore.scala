@@ -20,6 +20,7 @@ import java.io.{File, PrintWriter, StringReader, StringWriter}
 
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import com.ning.http.client.providers.netty.NettyResponse
+import play.api.Logger
 import play.api.Play.current
 import play.api.libs.json.JsObject
 import play.api.libs.ws.{WS, WSResponse}
@@ -69,7 +70,7 @@ trait TripleStoreUpdate {
   def dataPutGraph(graphUri: String, model: Model): Future[Unit]
 
   def acceptanceOnly(acceptanceOnly: Boolean): TripleStoreUpdate
-  
+
   val production: TripleStoreUpdate
 
 }
@@ -101,23 +102,28 @@ class DoubleFuseki(acceptanceStoreUrl: String, productionStoreUrl: String, logQu
 
   class DoubleUpdate(acceptanceOnly: Boolean) extends TripleStoreUpdate {
 
+    private def reportOnFailure(futureUpdate: Future[Unit]) = futureUpdate.onFailure {
+      case e: Throwable =>
+        Logger.error(s"Unable to update production", e)
+    }
+
     override def sparqlUpdate(sparqlUpdate: String) = {
-      if (!acceptanceOnly) prodFuseki.up.sparqlUpdate(sparqlUpdate)
+      if (!acceptanceOnly) reportOnFailure(prodFuseki.up.sparqlUpdate(sparqlUpdate))
       accFuseki.up.sparqlUpdate(sparqlUpdate)
     }
 
     override def dataPutGraph(graphUri: String, model: Model) = {
-      if (!acceptanceOnly) prodFuseki.up.dataPutGraph(graphUri, model)
+      if (!acceptanceOnly) reportOnFailure(prodFuseki.up.dataPutGraph(graphUri, model))
       accFuseki.up.dataPutGraph(graphUri, model)
     }
 
     override def dataPost(graphUri: String, model: Model) = {
-      if (!acceptanceOnly) prodFuseki.up.dataPost(graphUri, model)
+      if (!acceptanceOnly) reportOnFailure(prodFuseki.up.dataPost(graphUri, model))
       accFuseki.up.dataPost(graphUri, model)
     }
 
     override def dataPutXMLFile(graphUri: String, file: File) = {
-      if (!acceptanceOnly) prodFuseki.up.dataPutXMLFile(graphUri, file)
+      if (!acceptanceOnly) reportOnFailure(prodFuseki.up.dataPutXMLFile(graphUri, file))
       accFuseki.up.dataPutXMLFile(graphUri, file)
     }
 
