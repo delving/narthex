@@ -161,33 +161,41 @@ object Sparql {
   def addUriPropertyQ(uri: String, prop: NXProp, uriValue: String) =
     s"""
       |INSERT DATA {
-      |   GRAPH <$uri> { <$uri> <$prop> '''${sanitize(uriValue)}''' }
+      |  GRAPH <$uri> { <$uri> <$prop> '''${sanitize(uriValue)}''' }
       |}
      """.stripMargin.trim
 
   def deleteUriPropertyQ(uri: String, prop: NXProp, uriValue: String) =
     s"""
       |WITH <$uri>
-      |DELETE { <$uri> <$prop> '''${sanitize(uriValue)}''' }
-      |WHERE { <$uri> <$prop> '''${sanitize(uriValue)}''' }
+      |DELETE {
+      |  <$uri> <$prop> '''${sanitize(uriValue)}''' .
+      |}
+      |WHERE {
+      |  <$uri> <$prop> '''${sanitize(uriValue)}''' .
+      |}
      """.stripMargin
 
   def deleteDatasetQ(uri: String, skosUri: String) =
     s"""
       |INSERT DATA {
-      |   GRAPH <$uri> { <$uri> <$deleted> true }
+      |   GRAPH <$uri> {
+      |     <$uri> <$deleted> true .
+      |   }
       |};
       |DROP SILENT GRAPH <$skosUri>;
       |DELETE {
       |   GRAPH ?g {
+      |      ?record a <$recordEntity> .
       |      ?s ?p ?o .
-      |      ?record <$belongsTo> <$uri>
+      |      ?record <$belongsTo> <$uri> .
       |   }
       |}
       |WHERE {
       |   GRAPH ?g {
+      |      ?record a <$recordEntity> .
       |      ?s ?p ?o .
-      |      ?record <$belongsTo> <$uri>
+      |      ?record <$belongsTo> <$uri> .
       |   }
       |};
      """.stripMargin
@@ -198,7 +206,9 @@ object Sparql {
     s"""
       |SELECT ?spec
       |WHERE {
-      |  GRAPH ?g { ?s <$skosSpec> ?spec }
+      |  GRAPH ?g {
+      |    ?s <$skosSpec> ?spec .
+      |  }
       |}
       |ORDER BY ?spec
      """.stripMargin
@@ -206,7 +216,9 @@ object Sparql {
   def checkVocabQ(skosUri: String) =
     s"""
       |ASK {
-      |   GRAPH ?g { <$skosUri> <$skosSpec> ?spec }
+      |   GRAPH ?g {
+      |     <$skosUri> <$skosSpec> ?spec .
+      |   }
       |}
      """.stripMargin
 
@@ -252,7 +264,9 @@ object Sparql {
       |  }
       |}
       |INSERT {
-      |  GRAPH ?g { ?mapping <$mappingDeleted> true }
+      |  GRAPH ?g {
+      |    ?mapping <$mappingDeleted> true
+      |  }
       |}
       |WHERE {
       |  GRAPH ?g {
@@ -322,8 +336,10 @@ object Sparql {
       |SELECT ?spec ?datasetUri ?fieldPropertyUri
       |WHERE {
       |  GRAPH ?g {
-      |    ?datasetUri <$datasetSpec> ?spec .
-      |    ?datasetUri <$skosField> ?fieldPropertyUri .
+      |    ?datasetUri
+      |      a <$datasetEntity> ;
+      |      <$datasetSpec> ?spec ;
+      |      <$skosField> ?fieldPropertyUri .
       |  }
       |}
      """.stripMargin
@@ -340,6 +356,7 @@ object Sparql {
     s"""
       |ASK {
       |  GRAPH ?g {
+      |    ?record a <$recordEntity> .
       |    ?record <$belongsTo> <${sf.datasetUri}> .
       |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
       |    FILTER isLiteral(?literalValue)
@@ -352,6 +369,7 @@ object Sparql {
       |SELECT (COUNT(DISTINCT ?literalValue) as ?count)
       |WHERE {
       |  GRAPH ?g {
+      |    ?record a <$recordEntity> .
       |    ?record <$belongsTo> <${sf.datasetUri}> .
       |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
       |    FILTER isLiteral(?literalValue)
@@ -366,6 +384,7 @@ object Sparql {
       |SELECT DISTINCT ?literalValue
       |WHERE {
       |  GRAPH ?g {
+      |    ?record a <$recordEntity> .
       |    ?record <$belongsTo> <${sf.datasetUri}> .
       |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
       |    FILTER isLiteral(?literalValue)
@@ -417,16 +436,21 @@ object Sparql {
     val literalToUriQ =
       s"""
         |DELETE {
-        |  GRAPH ?g { ?s <$fieldProperty> '''${sanitize(value)}''' }
+        |  GRAPH ?g {
+        |    ?s <$fieldProperty> '''${sanitize(value)}''' .
+        |  }
         |}
         |INSERT {
-        |  GRAPH ?g { ?s <$fieldProperty> <$mintedUri> }
+        |  GRAPH ?g {
+        |    ?s <$fieldProperty> <$mintedUri> .
+        |  }
         |}
         |WHERE {
         |  GRAPH ?g {
+        |    ?record a <$recordEntity> .
         |    ?record <$belongsTo> <$datasetUri> .
         |    ?s <$fieldProperty> '''${sanitize(value)}''' .
-        |   }
+        |  }
         |};
        """.stripMargin
   }

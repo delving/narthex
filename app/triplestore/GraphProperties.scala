@@ -122,6 +122,7 @@ object GraphProperties {
 
   val rdfType = s"${RDF}type"
   val datasetEntity = s"${NX_NAMESPACE}Dataset"
+  val recordEntity = s"${NX_NAMESPACE}Record"
   val mappingEntity = s"${NX_NAMESPACE}Mapping"
   val actorEntity = s"${NX_NAMESPACE}Actor"
   val skosCollection = s"${SKOS}Collection"

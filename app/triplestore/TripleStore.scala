@@ -145,11 +145,13 @@ class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContex
   private def dataRequest(graphUri: String) = WS.url(s"$storeURL/data").withQueryString("graph" -> graphUri)
 
   private def logSparql(sparql: String) = logOutput.map { w =>
-    val numbered = sparql.split("\n").zipWithIndex.map(tup => s"${tup._2 + 1}: ${tup._1}").mkString("\n")
+    //    val numbered = sparql.split("\n").zipWithIndex.map(tup => s"${tup._2 + 1}: ${tup._1}").mkString("\n")
     queryIndex += 1
-    w.println("=" * 40 + s"($queryIndex)")
-    w.println(numbered)
-    w.flush()
+    w.synchronized {
+      w.println("=" * 40 + s"($queryIndex)")
+      w.println(sparql)
+      w.flush()
+    }
   }
 
   private def checkResponse(response: WSResponse): Unit = if (response.status / 100 != 2) {

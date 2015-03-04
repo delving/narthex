@@ -162,8 +162,10 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
                   println(recordText.toString())
                   throw e
               }
-              m.add(m.getResource(graphName), m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
-              m.add(m.getResource(graphName), m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
+              val subject = m.getResource(graphName)
+              m.add(subject, m.getProperty(rdfType), m.getResource(recordEntity))
+              m.add(subject, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
+              m.add(subject, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
               graphCount += 1
               recordText.clear()
               if (graphCount >= chunkSize) chunkComplete = true

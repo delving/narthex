@@ -22,10 +22,8 @@ import org.OrgContext
 import org.OrgContext._
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState
-import services.StringHandling.slugify
 import triplestore.Sparql
 import triplestore.Sparql._
-import triplestore.TripleStore.QueryValue
 
 object Skosifier {
 
@@ -35,12 +33,11 @@ object Skosifier {
 
   def props(dsInfo: DsInfo) = Props(new Skosifier(dsInfo))
 
-  case class SkosificationJob(skosifiedField: SkosifiedField, scResult: List[Map[String, QueryValue]]) {
-    val cases = Sparql.createCases(skosifiedField, scResult)
+  case class SkosificationJob(skosifiedField: SkosifiedField, cases: List[SkosificationCase]) {
     val ensureSkosEntries = cases.map(_.ensureSkosEntryQ).mkString
     val changeLiteralsToUris = cases.map(_.literalToUriQ).mkString
 
-    override def toString = s"$skosifiedField: $scResult"
+    override def toString = s"$skosifiedField: $cases"
   }
 
 }
@@ -55,8 +52,6 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
   var progressOpt: Option[ProgressReporter] = None
   var progressCount = 0
 
-  var caseDone: Option[SkosificationCase] = None
-
   def receive = {
 
     case skosifiedField: SkosifiedField => actorWork(context) {
@@ -66,7 +61,7 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
         log.info(s"Set progress maximum to $count")
         progressOpt = Some(progressReporter)
         ts.query(listSkosificationCasesQ(skosifiedField, Skosifier.chunkSize)).map { scResult =>
-          self ! SkosificationJob(skosifiedField, scResult)
+          self ! SkosificationJob(skosifiedField, Sparql.createCases(skosifiedField, scResult))
         } onFailure {
           case e: Throwable => context.parent ! WorkFailure("Problem listing cases", Some(e))
         }
@@ -76,31 +71,32 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
     }
 
     case job: SkosificationJob => actorWork(context) {
-      log.info(s"Cases: ${job.cases.map(c => slugify(c.literalValueText))}")
-      caseDone.map(c => if (c == job.cases.head) throw new RuntimeException(s"Done $c already"))
+      log.info(s"Cases: ${job.cases.map(c => c.literalValueText)}")
       ts.up.sparqlUpdate(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
-        caseDone = job.cases.headOption
         progressCount += job.cases.size
         progressOpt.get.sendValue(Some(progressCount))
         if (job.cases.size == chunkSize) {
           ts.query(Sparql.listSkosificationCasesQ(job.skosifiedField, chunkSize)).map { scResult =>
             if (scResult.nonEmpty) {
-              self ! SkosificationJob(job.skosifiedField, scResult)
+              val skosCases: List[SkosificationCase] = Sparql.createCases(job.skosifiedField, scResult)
+//              log.info(s"Next cases: ${skosCases.map(c => c.literalValueText)}")
+              if (skosCases.headOption == job.cases.headOption) {
+                throw new RuntimeException(s"Done ${skosCases.headOption} already!")
+              }
+              self ! SkosificationJob(job.skosifiedField, skosCases)
             }
             else {
               context.parent ! SkosificationComplete(job.skosifiedField)
             }
           } onFailure {
-            case e: Exception =>
-              context.parent ! WorkFailure(e.toString, Some(e))
+            case e: Exception => context.parent ! WorkFailure("Problem listing cases again", Some(e))
           }
         }
         else {
           context.parent ! SkosificationComplete(job.skosifiedField)
         }
       } onFailure {
-        case e: Exception =>
-          context.parent ! WorkFailure(e.toString, Some(e))
+        case e: Exception => context.parent ! WorkFailure("Problem with skosify update", Some(e))
       }
     }
   }
