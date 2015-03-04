@@ -146,7 +146,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       val reply = Try {
         commandName match {
           case "delete" =>
-            Await.ready(datasetContext.dsInfo.dropDataset, 30.seconds)
+            Await.ready(datasetContext.dsInfo.dropDataset, 2.minutes)
             deleteQuietly(datasetContext.rootDir)
             "deleted"
 
@@ -445,6 +445,10 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         listener ! message
         stay()
       }
+
+    case Event(whatever, InError(_)) =>
+      log.info(s"Not interested in: $whatever")
+      stay()
 
     case Event(DatasetQuestion(listener, Command(commandName)), active: Active) =>
       log.info(s"Active. Command name: $commandName")

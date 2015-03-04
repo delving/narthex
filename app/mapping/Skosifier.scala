@@ -55,6 +55,8 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
   var progressOpt: Option[ProgressReporter] = None
   var progressCount = 0
 
+  var caseDone: Option[SkosificationCase] = None
+
   def receive = {
 
     case skosifiedField: SkosifiedField => actorWork(context) {
@@ -65,22 +67,28 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
         progressOpt = Some(progressReporter)
         ts.query(listSkosificationCasesQ(skosifiedField, Skosifier.chunkSize)).map { scResult =>
           self ! SkosificationJob(skosifiedField, scResult)
+        } onFailure {
+          case e: Throwable => context.parent ! WorkFailure("Problem listing cases", Some(e))
         }
+      } onFailure {
+        case e: Throwable => context.parent ! WorkFailure("Problem counting cases", Some(e))
       }
     }
 
-    case skosificationJob: SkosificationJob => actorWork(context) {
-      log.info(s"Cases: ${skosificationJob.cases.map(c => slugify(c.literalValueText))}")
-      ts.up.sparqlUpdate(skosificationJob.ensureSkosEntries + skosificationJob.changeLiteralsToUris).map { ok =>
-        progressCount += skosificationJob.cases.size
+    case job: SkosificationJob => actorWork(context) {
+      log.info(s"Cases: ${job.cases.map(c => slugify(c.literalValueText))}")
+      caseDone.map(c => if (c == job.cases.head) throw new RuntimeException(s"Done $c already"))
+      ts.up.sparqlUpdate(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
+        caseDone = job.cases.headOption
+        progressCount += job.cases.size
         progressOpt.get.sendValue(Some(progressCount))
-        if (skosificationJob.cases.size == chunkSize) {
-          ts.query(Sparql.listSkosificationCasesQ(skosificationJob.skosifiedField, chunkSize)).map { scResult =>
+        if (job.cases.size == chunkSize) {
+          ts.query(Sparql.listSkosificationCasesQ(job.skosifiedField, chunkSize)).map { scResult =>
             if (scResult.nonEmpty) {
-              self ! SkosificationJob(skosificationJob.skosifiedField, scResult)
+              self ! SkosificationJob(job.skosifiedField, scResult)
             }
             else {
-              context.parent ! SkosificationComplete(skosificationJob.skosifiedField)
+              context.parent ! SkosificationComplete(job.skosifiedField)
             }
           } onFailure {
             case e: Exception =>
@@ -88,7 +96,7 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
           }
         }
         else {
-          context.parent ! SkosificationComplete(skosificationJob.skosifiedField)
+          context.parent ! SkosificationComplete(job.skosifiedField)
         }
       } onFailure {
         case e: Exception =>

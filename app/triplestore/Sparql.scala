@@ -339,8 +339,8 @@ object Sparql {
   def skosificationCasesExistQ(sf: SkosifiedField) =
     s"""
       |ASK {
-      |  GRAPH ?g { ?record <$belongsTo> <${sf.datasetUri}> }
       |  GRAPH ?g {
+      |    ?record <$belongsTo> <${sf.datasetUri}> .
       |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
       |    FILTER isLiteral(?literalValue)
       |  }
@@ -351,8 +351,8 @@ object Sparql {
     s"""
       |SELECT (COUNT(DISTINCT ?literalValue) as ?count)
       |WHERE {
-      |  GRAPH ?g { ?record <$belongsTo> <${sf.datasetUri}> }
       |  GRAPH ?g {
+      |    ?record <$belongsTo> <${sf.datasetUri}> .
       |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
       |    FILTER isLiteral(?literalValue)
       |  }
@@ -365,8 +365,8 @@ object Sparql {
     s"""
       |SELECT DISTINCT ?literalValue
       |WHERE {
-      |  GRAPH ?g { ?record <$belongsTo> <${sf.datasetUri}> }
       |  GRAPH ?g {
+      |    ?record <$belongsTo> <${sf.datasetUri}> .
       |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
       |    FILTER isLiteral(?literalValue)
       |  }
@@ -423,8 +423,10 @@ object Sparql {
         |  GRAPH ?g { ?s <$fieldProperty> <$mintedUri> }
         |}
         |WHERE {
-        |  GRAPH ?g { ?record <$belongsTo> <$datasetUri> }
-        |  GRAPH ?g { ?s <$fieldProperty> '''${sanitize(value)}''' }
+        |  GRAPH ?g {
+        |    ?record <$belongsTo> <$datasetUri> .
+        |    ?s <$fieldProperty> '''${sanitize(value)}''' .
+        |   }
         |};
        """.stripMargin
   }
