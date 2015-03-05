@@ -152,7 +152,7 @@ define(["angular"], function (angular) {
         $scope.logout = function () {
             userService.logout().then(function () {
                 $scope.user = undefined;
-                $scope.homePage();
+                $scope.sidebarNav("homepage");
             }, function (why) {
                 console.log("unable to logout", why);
             });
