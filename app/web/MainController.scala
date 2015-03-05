@@ -115,19 +115,20 @@ object MainController extends Controller with Security {
   }
 
   def setProfile() = SecureAsync(parse.json) { session => implicit request =>
-    val profile = NXProfile(
+    val nxProfile = NXProfile(
       firstName = (request.body \ "firstName").as[String],
       lastName = (request.body \ "lastName").as[String],
       email = (request.body \ "email").as[String]
     )
-    orgContext.us.setProfile(session.actor, profile).map { actorOpt =>
-      actorOpt.map { actor =>
-        val newSession = session.copy(actor = actor)
-        Ok(Json.toJson(newSession)).withSession(newSession)
-      } getOrElse {
-        NotFound(Json.obj("err" -> "could not add"))
-      }
+    val setOp = orgContext.us.setProfile(session.actor, nxProfile).map { ok =>
+      val newSession = session.copy(actor = session.actor.copy(profileOpt = Some(nxProfile)))
+      Ok(Json.toJson(newSession)).withSession(newSession)
     }
+    setOp.onFailure {
+      case e: Throwable =>
+        Logger.error("Problem setting profile", e)
+    }
+    setOp
   }
 
   def listActors = Secure() { session => implicit request =>

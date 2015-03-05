@@ -20,6 +20,7 @@ import java.security.MessageDigest
 
 import com.hp.hpl.jena.rdf.model._
 import org.OrgContext._
+import play.api.Logger
 import triplestore.GraphProperties._
 import triplestore.Sparql._
 import triplestore.TripleStore
@@ -29,6 +30,8 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 object ActorStore {
+
+  val patience = 1.minute
 
   case class NXProfile(firstName: String, lastName: String, email: String) {
     val nonEmpty = if (firstName.isEmpty && lastName.isEmpty && email.isEmpty) None else Some(this)
@@ -49,13 +52,13 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
 
   val digest = MessageDigest.getInstance("SHA-256")
 
-  lazy val futureModel = ts.dataGet(actorsGraph).fallbackTo(Future(ModelFactory.createDefaultModel()))
+  def futureModel = ts.dataGet(actorsGraph).fallbackTo(Future(ModelFactory.createDefaultModel()))
 
-  lazy val model = Await.result(futureModel, 20.seconds)
+  def getModel = Await.result(futureModel, patience)
 
-  private def propUri(prop: NXProp) = model.getProperty(prop.uri)
+  private def propUri(prop: NXProp, m: Model) = m.getProperty(prop.uri)
 
-  private def hashLiteral(password: String, salt: String): Literal = {
+  private def hashLiteral(password: String, salt: String, model: Model): Literal = {
     digest.reset()
     val salted = password + salt
     val ba = digest.digest(salted.getBytes("UTF-8"))
@@ -63,59 +66,63 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     model.createLiteral(hash)
   }
 
-  private def userIntoModel(actor: NXActor, hashLiteral: Literal, makerOpt: Option[NXActor]): Option[NXActor] = {
+  private def userIntoModel(actor: NXActor, hashLiteral: Literal, makerOpt: Option[NXActor], model: Model): Option[Model] = {
     val actorResource: Resource = model.getResource(actor.uri)
-    val exists = model.listStatements(actorResource, propUri(passwordHash), null).hasNext
-    if (!exists) {
+    val exists = model.listStatements(actorResource, propUri(passwordHash, model), null).hasNext
+    if (!exists || !makerOpt.isDefined) {
       model.add(actorResource, model.getProperty(rdfType), model.getResource(actorEntity))
-      model.add(actorResource, propUri(passwordHash), hashLiteral)
-      makerOpt.map(maker => model.add(actorResource, propUri(actorOwner), model.getResource(maker.uri)))
-      model.add(actorResource, propUri(username), actor.actorName)
-      Some(actor)
+      model.add(actorResource, propUri(passwordHash, model), hashLiteral)
+      makerOpt.map(maker => model.add(actorResource, propUri(actorOwner, model), model.getResource(maker.uri)))
+      model.add(actorResource, propUri(username, model), actor.actorName)
+      Some(model)
     } else {
       None
     }
   }
 
-  private def profileIntoModel(nxActor: NXActor, nxProfile: NXProfile): Option[NXActor] = {
-    val actorResource: Resource = model.getResource(nxActor.uri)
-    val exists = model.listStatements(actorResource, propUri(passwordHash), null).hasNext
-    if (exists) {
-      model.add(actorResource, propUri(userFirstName), nxProfile.firstName)
-      model.add(actorResource, propUri(userLastName), nxProfile.lastName)
-      model.add(actorResource, propUri(userEMail), nxProfile.email)
-      Some(nxActor.copy(profileOpt = nxProfile.nonEmpty))
-    } else None
-  }
-
-  private def getLiteral(nxActor: NXActor, prop: NXProp) = {
+  private def getLiteral(nxActor: NXActor, prop: NXProp, model: Model) = {
     val resource: Resource = model.getResource(nxActor.uri)
-    val list = model.listObjectsOfProperty(resource, propUri(prop))
+    val list = model.listObjectsOfProperty(resource, propUri(prop, model))
     list.map(node => node.asLiteral().getString).toList.headOption.getOrElse("")
   }
 
-  private def profileFromModel(actor: NXActor) = NXProfile(
-    firstName = getLiteral(actor, userFirstName),
-    lastName = getLiteral(actor, userLastName),
-    email = getLiteral(actor, userEMail)
-  )
+  private def profileFromModel(actor: NXActor, model: Model) = {
+    NXProfile(
+      firstName = getLiteral(actor, userFirstName, model),
+      lastName = getLiteral(actor, userLastName, model),
+      email = getLiteral(actor, userEMail, model)
+    )
+  }
+
+  def emailFromUri(actorUri: String): Option[String] = {
+    val model = getModel
+    val resource = model.getResource(actorUri)
+    val email = propUri(userEMail, model)
+    model.listObjectsOfProperty(resource, email).toList.headOption.map(obj => obj.asLiteral().getString)
+  }
 
   def authenticate(actorName: String, password: String): Future[Option[NXActor]] = {
-    val hash = hashLiteral(password, actorName)
+    val model = getModel
+    val hash = hashLiteral(password, actorName, model)
     if (model.isEmpty) {
       val godUser = NXActor(actorName, None)
-      userIntoModel(godUser, hash, None)
-      ts.up.dataPost(actorsGraph, model).map(ok => Some(godUser))
+      userIntoModel(godUser, hash, None, model).map { modelWithGod =>
+        val dataPost = ts.up.dataPost(actorsGraph, modelWithGod)
+        checkFail(dataPost)
+        dataPost.map(ok => Some(godUser)).map(ok => Some(godUser))
+      } getOrElse {
+        Future(None)
+      }
     }
     else {
       val actor: NXActor = NXActor(actorName, None)
       val actorResource: Resource = model.getResource(actor.uri)
       val exists = model.listStatements(actorResource, model.getProperty(passwordHash.uri), hash).hasNext
       val userOpt = if (exists) {
-        val makerList = model.listObjectsOfProperty(actorResource, propUri(actorOwner)).toList
+        val makerList = model.listObjectsOfProperty(actorResource, propUri(actorOwner, model)).toList
         Some(actor.copy(
           makerOpt = makerList.map(node => node.asResource().getURI).toList.headOption,
-          profileOpt = profileFromModel(actor).nonEmpty
+          profileOpt = profileFromModel(actor, model).nonEmpty
         ))
       }
       else {
@@ -126,9 +133,10 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   }
 
   def listActors(nxActor: NXActor): List[String] = {
+    val model = getModel
     val resource = model.getResource(nxActor.uri)
-    val maker = propUri(actorOwner)
-    val usernameResource = propUri(username)
+    val maker = propUri(actorOwner, model)
+    val usernameResource = propUri(username, model)
     val list = model.listSubjectsWithProperty(maker, resource).toList.flatMap { madeActorResource =>
       model.listObjectsOfProperty(madeActorResource, usernameResource).toList.headOption.map(_.asLiteral().getString)
     }
@@ -136,29 +144,38 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   }
 
   def createActor(adminActor: NXActor, usernameString: String, password: String): Future[Option[NXActor]] = {
-    val hash = hashLiteral(password, usernameString)
+    val model = getModel
+    val hash = hashLiteral(password, usernameString, model)
     val newActor = NXActor(usernameString, Some(adminActor.uri))
-    userIntoModel(newActor, hash, Some(adminActor)).map { actor: NXActor =>
-      ts.up.sparqlUpdate(insertActorQ(newActor, hash.getString, adminActor)).map(ok => Some(actor))
+    userIntoModel(newActor, hash, Some(adminActor), model).map { modelWithActorAdded =>
+      val dataPost = ts.up.dataPost(actorsGraph, modelWithActorAdded)
+      checkFail(dataPost)
+      dataPost.map(ok => Some(newActor))
     } getOrElse {
       Future(None)
     }
   }
 
-  def setProfile(actor: NXActor, nxProfile: NXProfile): Future[Option[NXActor]] = {
-    profileIntoModel(actor, nxProfile).map { actor =>
-      ts.up.sparqlUpdate(setActorProfileQ(actor, nxProfile)).map(ok => Some(actor))
-    } getOrElse {
-      Future(None)
-    }
+  def setProfile(actor: NXActor, nxProfile: NXProfile): Future[Unit] = {
+
+    Logger.info(s"SET PROFILE $nxProfile)")
+    val q = setActorProfileQ(actor, nxProfile)
+    Logger.info(s"This should appear in the triple store log: \n$q")
+
+    val update = ts.up.sparqlUpdate(q)
+    checkFail(update)
+    update
   }
 
-  def setPassword(actor: NXActor, newPassword: String) = {
-    val actorResource: Resource = model.getResource(actor.uri)
-    val prop = model.getProperty(passwordHash.uri)
-    val hash = hashLiteral(newPassword, actor.actorName)
-    model.removeAll(actorResource, prop, null)
-    model.add(actorResource, prop, hash)
-    ts.up.sparqlUpdate(setActorPasswordQ(actor, hash.getString)).map(errorOpt => true)
+  def setPassword(actor: NXActor, newPassword: String): Future[Boolean] = {
+    val hash = hashLiteral(newPassword, actor.actorName, getModel)
+    val update = ts.up.sparqlUpdate(setActorPasswordQ(actor, hash.getString))
+    checkFail(update)
+    update.map(ok => true)
+  }
+
+  private def checkFail(futureUnit: Future[Unit]) = futureUnit.onFailure {
+    case e: Throwable =>
+      Logger.error("Problem setting profile", e)
   }
 }

@@ -189,7 +189,7 @@ object AppController extends Controller with Security {
       val skosFieldUri = (request.body \ "skosFieldUri").as[String]
       val included = (request.body \ "included").as[Boolean]
       Logger.info(s"set skos field $skosFieldUri")
-      val currentSkosFields = dsInfo.getUriPropValueList(skosField)
+      val currentSkosFields = dsInfo.getLiteralPropList(skosField)
       val action: String = if (included) {
         if (currentSkosFields.contains(skosFieldUri)) {
           "already exists"
@@ -202,10 +202,10 @@ object AppController extends Controller with Security {
           } yield Sparql.createCasesFromHistogram(dsInfo, histogram)
           val futureModel = casesOpt.map { cases =>
             val q = cases.map(_.ensureSkosEntryQ).mkString
-            val futureUpdate = ts.up.sparqlUpdate(q).map(ok => dsInfo.addUriProp(skosField, skosFieldUri))
+            val futureUpdate = ts.up.sparqlUpdate(q).map(ok => dsInfo.addLiteralProp(skosField, skosFieldUri))
             Await.result(futureUpdate, 1.minute)
           } getOrElse {
-            dsInfo.addUriProp(skosField, skosFieldUri)
+            dsInfo.addLiteralProp(skosField, skosFieldUri)
             val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldUri)
             OrgActor.actor ! dsInfo.createMessage(StartSkosification(skosifiedField))
           }
@@ -218,7 +218,7 @@ object AppController extends Controller with Security {
         }
         else {
           // here eventual de-skosification could happen
-          dsInfo.removeUriProp(skosField, skosFieldUri)
+          dsInfo.removeLiteralProp(skosField, skosFieldUri)
           "removed"
         }
       }

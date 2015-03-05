@@ -90,12 +90,12 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     // mark a field as skosified
     countGraphs must be(5)
     val info = await(DsInfo.freshDsInfo("ton-smits-huis")).get
-    info.addUriProp(skosField, skosifiedPropertyUri)
-    info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
-    info.removeUriProp(skosField, skosifiedPropertyUri)
-    info.getUriPropValueList(skosField) must be(List())
-    info.addUriProp(skosField, skosifiedPropertyUri)
-    info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
+    info.addLiteralProp(skosField, skosifiedPropertyUri)
+    info.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
+    info.removeLiteralProp(skosField, skosifiedPropertyUri)
+    info.getLiteralPropList(skosField) must be(List())
+    info.addLiteralProp(skosField, skosifiedPropertyUri)
+    info.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
 
     val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(skosifiedFieldFromResult)
 
@@ -158,7 +158,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
     await(ts.up.dataPutXMLFile(classyInfo.dataUri, classyFile))
     val info = await(DsInfo.freshDsInfo("ton-smits-huis")).get
-    info.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
+    info.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
     val store = new TermMappingStore(info)
     // todo: nothing checks whether this literal or uri string are legitimate
     val literalString = "vogels"
@@ -178,7 +178,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val catFile = new File(getClass.getResource("/categories/Categories.xml").getFile)
     await(ts.up.dataPutXMLFile(catInfo.dataUri, catFile))
     val dsInfo = await(DsInfo.freshDsInfo("ton-smits-huis")).get
-    dsInfo.getUriPropValueList(skosField) must be(List(skosifiedPropertyUri))
+    dsInfo.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
     val store = new TermMappingStore(dsInfo)
     val literalString = "vogels"
     val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${slugify(literalString)}"

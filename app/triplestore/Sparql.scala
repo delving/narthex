@@ -101,7 +101,7 @@ object Sparql {
       |}
       |WHERE {
       |   <$actor>
-      |      a <$actorEntity>;
+      |      a <$actorEntity> ;
       |      <$userFirstName> ?firstName ;
       |      <$userLastName> ?lastName ;
       |      <$userEMail> ?email .

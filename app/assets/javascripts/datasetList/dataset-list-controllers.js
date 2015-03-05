@@ -339,7 +339,7 @@ define(["angular"], function () {
                 switch (p.type) {
                     case "progress-busy":
                         p.count = 100;
-                        mid = "Busy..";
+                        mid = "...";
                         break;
                     case "progress-percent":
                         post = " %";

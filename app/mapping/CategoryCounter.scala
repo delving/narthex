@@ -47,7 +47,7 @@ object CategoryCounter {
 class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: ExecutionContext, ts: TripleStore) extends Actor with ActorLogging {
 
   val spec = dsInfo.getLiteralProp(datasetSpec).get
-  val skosProperties = dsInfo.getUriPropValueList(skosField)
+  val skosProperties = dsInfo.getLiteralPropList(skosField)
 
   var recordCount = 0
   val countMap = new collection.mutable.HashMap[String, Counter]()

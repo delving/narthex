@@ -38,22 +38,22 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
       datasetMapToPrefix -> "pfx",
       datasetLanguage -> "nl"
     )
-    dsInfo.model.size() must be(11)
+    dsInfo.getModel.size() must be(11)
     dsInfo.getLiteralProp(datasetMapToPrefix) must be(Some("pfx"))
     dsInfo.removeLiteralProp(datasetMapToPrefix)
     dsInfo.getLiteralProp(datasetMapToPrefix) must be(None)
-    dsInfo.model.size() must be(10)
+    dsInfo.getModel.size() must be(10)
 
     dsInfo.setSingularLiteralProps(datasetMapToPrefix -> "pfx2")
 
     // uri prop
-    dsInfo.getUriPropValueList(skosField) must be(List.empty)
-    dsInfo.addUriProp(skosField, "http://purl.org/dc/elements/1.1/type")
-    dsInfo.getUriPropValueList(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
-    dsInfo.addUriProp(skosField, "http://purl.org/dc/elements/1.1/creator")
+    dsInfo.getLiteralPropList(skosField) must be(List.empty)
+    dsInfo.addLiteralProp(skosField, "http://purl.org/dc/elements/1.1/type")
+    dsInfo.getLiteralPropList(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
+    dsInfo.addLiteralProp(skosField, "http://purl.org/dc/elements/1.1/creator")
 
     def testTwo(di: DsInfo) = {
-      val two = di.getUriPropValueList(skosField)
+      val two = di.getLiteralPropList(skosField)
       two.size must be(2)
       two.contains("http://purl.org/dc/elements/1.1/type") must be(true)
       two.contains("http://purl.org/dc/elements/1.1/creator") must be(true)

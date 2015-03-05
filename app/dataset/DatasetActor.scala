@@ -37,10 +37,10 @@ import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import record.SourceProcessor
 import record.SourceProcessor._
-import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
+import services.{EMail, ProgressReporter}
 import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
@@ -386,6 +386,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       else {
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
       }
+      EMail.sendProcessingComplete(dsInfo)
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 

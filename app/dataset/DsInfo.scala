@@ -24,7 +24,7 @@ import harvest.Harvesting.{HarvestCron, HarvestType}
 import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
-import org.OrgContext.NX_URI_PREFIX
+import org.OrgContext.{NX_URI_PREFIX, orgContext}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -78,7 +78,7 @@ object DsInfo {
   implicit val dsInfoWrites = new Writes[DsInfo] {
     def writes(dsInfo: DsInfo): JsValue = {
       val out = new StringWriter()
-      RDFDataMgr.write(out, dsInfo.model, RDFFormat.JSONLD_FLAT)
+      RDFDataMgr.write(out, dsInfo.getModel, RDFFormat.JSONLD_FLAT)
       Json.parse(out.toString)
     }
   }
@@ -152,14 +152,15 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   // could cache as well so that the get happens less
   def futureModel = ts.dataGet(uri)
+
   futureModel.onFailure {
     case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
   }
 
-  def model = Await.result(futureModel, patience)
+  def getModel = Await.result(futureModel, patience)
 
   def getLiteralProp(prop: NXProp): Option[String] = {
-    val m = model
+    val m = getModel
     val res = m.getResource(uri)
     val objects = m.listObjectsOfProperty(res, m.getProperty(prop.uri))
     if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
@@ -182,29 +183,31 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     Await.ready(futureUpdate, patience)
   }
 
-  def getUriPropValueList(prop: NXProp): List[String] = {
-    val m = model
-    val res = m.getResource(uri)
-    m.listObjectsOfProperty(res, m.getProperty(prop.uri)).map(node =>
-      node.asLiteral().toString
-    ).toList
+  def getLiteralPropList(prop: NXProp): List[String] = {
+    val m = getModel
+    m.listObjectsOfProperty(m.getResource(uri), m.getProperty(prop.uri)).map(_.asLiteral().toString).toList
   }
 
-  def addUriProp(prop: NXProp, uriValueString: String): Unit = {
+  def addLiteralProp(prop: NXProp, uriValueString: String): Unit = {
     val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
   }
 
-  def removeUriProp(prop: NXProp, uriValueString: String): Unit = {
+  def removeLiteralProp(prop: NXProp, uriValueString: String): Unit = {
     val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
+  }
+
+  def getUriProp(prop: NXProp): Option[String] = {
+    val m = getModel
+    m.listObjectsOfProperty(m.getResource(uri), m.getProperty(prop.uri)).toList.headOption.map(_.asResource().toString)
   }
 
   def dropDataset = {
     ts.up.sparqlUpdate(deleteDatasetQ(uri, skosUri)).map(ok => true)
   }
 
-  def getIdFilter:IdFilter = {
+  def getIdFilter: IdFilter = {
     getLiteralProp(idFilterType).map { filterType =>
       val expressionOpt = getLiteralProp(idFilterExpression).flatMap(ex => if (ex.trim.isEmpty) None else Some(ex))
       IdFilter(filterType, expressionOpt)
@@ -221,7 +224,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
         putDataset <- production.dataPutGraph(uri, datasetModel)
         skosExists <- ts.ask(graphExistsQ(skosUri))
       } yield skosExists
-      doSkosTransfer.flatMap{ skosExists =>
+      doSkosTransfer.flatMap { skosExists =>
         if (skosExists) {
           for {
             skosModel <- ts.dataGet(skosUri)
@@ -325,11 +328,19 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   def toTurtle = {
     val sw = new StringWriter()
-    model.write(sw, "TURTLE")
+    getModel.write(sw, "TURTLE")
     sw.toString
   }
 
   lazy val vocabulary = new SkosVocabulary(spec, skosUri)
+
+  def ownerEmailOpt = getUriProp(actorOwner).flatMap(ownerUri => orgContext.us.emailFromUri(ownerUri))
+
+  def orUnknown(nxProp: NXProp) = getLiteralProp(nxProp).getOrElse("Unknown")
+
+  def processedValidVal = orUnknown(processedValid)
+
+  def processedInvalidVal = orUnknown(processedInvalid)
 
   override def toString = spec
 }
