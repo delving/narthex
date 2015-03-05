@@ -22,7 +22,7 @@ import org.OrgContext
 import org.OrgContext._
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState
-import triplestore.Sparql
+import services.StringHandling.slugify
 import triplestore.Sparql._
 
 object Skosifier {
@@ -60,8 +60,8 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
         progressReporter.setMaximum(count)
         log.info(s"Set progress maximum to $count")
         progressOpt = Some(progressReporter)
-        ts.query(listSkosificationCasesQ(skosifiedField, Skosifier.chunkSize)).map { scResult =>
-          self ! SkosificationJob(skosifiedField, Sparql.createCases(skosifiedField, scResult))
+        ts.query(listSkosificationCasesQ(skosifiedField, Skosifier.chunkSize)).map { listCasesResult =>
+          self ! SkosificationJob(skosifiedField, createCasesFromQueryValues(skosifiedField, listCasesResult))
         } onFailure {
           case e: Throwable => context.parent ! WorkFailure("Problem listing cases", Some(e))
         }
@@ -71,14 +71,14 @@ class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
     }
 
     case job: SkosificationJob => actorWork(context) {
-      log.info(s"Cases: ${job.cases.map(c => c.literalValueText)}")
+      log.info(s"Cases: ${job.cases.map(c => slugify(c.literalValueText))}")
       ts.up.sparqlUpdate(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
         progressCount += job.cases.size
         progressOpt.get.sendValue(Some(progressCount))
         if (job.cases.size == chunkSize) {
-          ts.query(Sparql.listSkosificationCasesQ(job.skosifiedField, chunkSize)).map { scResult =>
-            if (scResult.nonEmpty) {
-              val skosCases: List[SkosificationCase] = Sparql.createCases(job.skosifiedField, scResult)
+          ts.query(listSkosificationCasesQ(job.skosifiedField, chunkSize)).map { listCasesResult =>
+            if (listCasesResult.nonEmpty) {
+              val skosCases: List[SkosificationCase] = createCasesFromQueryValues(job.skosifiedField, listCasesResult)
 //              log.info(s"Next cases: ${skosCases.map(c => c.literalValueText)}")
               if (skosCases.headOption == job.cases.headOption) {
                 throw new RuntimeException(s"Done ${skosCases.headOption} already!")

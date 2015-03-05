@@ -73,7 +73,7 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     val dsSpec = "histoskos"
     val actor = await(new ActorStore().authenticate("gumby", "pokey")).get
     val di = await(DsInfo.createDsInfo(actor, dsSpec, DsInfo.CharacterMapped, "edm"))
-    val cases = Sparql.createCases(di, json)
+    val cases = Sparql.createCasesFromHistogram(di, json)
     cases.foreach(c => await(ts.up.sparqlUpdate(c.ensureSkosEntryQ)))
     val first = di.vocabulary.concepts.sortBy(_.resource.toString).head
     first.getAltLabel(Some("nl")).map(_.text) must be(Some("doek"))

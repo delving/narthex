@@ -26,7 +26,7 @@ import play.api.libs.json.JsObject
 import play.api.libs.ws.{WS, WSResponse}
 import triplestore.TripleStore.{QueryValue, TripleStoreException}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent._
 
 object TripleStore {
 
@@ -38,7 +38,8 @@ object TripleStore {
 
   case class QueryValue(valueObject: JsObject) {
     val text = (valueObject \ "value").as[String]
-    val qvt = (valueObject \ "type").as[String] match {
+    val language = (valueObject \ "xml:lang").asOpt[String]
+    val valueType = (valueObject \ "type").as[String] match {
       case "typed-literal" => QV_LITERAL // todo: worry about the type
       case "literal" => QV_LITERAL
       case "uri" => QV_URI
@@ -137,7 +138,6 @@ class DoubleFuseki(acceptanceStoreUrl: String, productionStoreUrl: String, logQu
 }
 
 class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContext: ExecutionContext) extends TripleStore {
-
   val logFile = new File("/tmp/triple-store.log")
   val logOutput = if (logQueries) Some(new PrintWriter(logFile)) else None
   var queryIndex = 0
@@ -146,8 +146,8 @@ class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContex
 
   private def logSparql(sparql: String) = logOutput.map { w =>
     //    val numbered = sparql.split("\n").zipWithIndex.map(tup => s"${tup._2 + 1}: ${tup._1}").mkString("\n")
-    queryIndex += 1
-    w.synchronized {
+    logOutput.synchronized {
+      queryIndex += 1
       w.println("=" * 40 + s"($queryIndex)")
       w.println(sparql)
       w.flush()

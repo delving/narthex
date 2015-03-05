@@ -99,7 +99,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
 
     val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(skosifiedFieldFromResult)
 
-    val skosificationCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCasesQ(sf, 2)))))
+    val skosificationCases = skosifiedFields.flatMap(sf => createCasesFromQueryValues(sf, await(ts.query(listSkosificationCasesQ(sf, 2)))))
 
     val countResult = await(ts.query(countSkosificationCasesQ(skosifiedFields.head)))
     countFromResult(countResult) must be(19)
@@ -142,7 +142,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
 
     await(ts.ask(skosificationCasesExistQ(skosifiedFields.head))) must be(true)
 
-    val finalCases = skosifiedFields.flatMap(sf => createCases(sf, await(ts.query(listSkosificationCasesQ(sf, 100)))))
+    val finalCases = skosifiedFields.flatMap(sf => createCasesFromQueryValues(sf, await(ts.query(listSkosificationCasesQ(sf, 100)))))
     finalCases.map { sc =>
       await(ts.up.sparqlUpdate(sc.ensureSkosEntryQ))
       await(ts.up.sparqlUpdate(sc.literalToUriQ))

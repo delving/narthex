@@ -40,7 +40,13 @@ object Sparql {
     '\\' -> "\\\\"
   )
 
-  private def sanitize(s: String): String = s.map(c => SPARQL_ESCAPE.getOrElse(c, c.toString)).mkString
+  private def escape(value: String): String = value.map(c => SPARQL_ESCAPE.getOrElse(c, c.toString)).mkString
+
+  private def literalExpression(value: String, languageOpt: Option[String]) = languageOpt.map { language =>
+    s"'${escape(value)}'@$language"
+  } getOrElse {
+    s"'${escape(value)}'"
+  }
 
   def graphExistsQ(graphName: String) =
     s"""
@@ -63,9 +69,9 @@ object Sparql {
       |INSERT {
       |   <$actor>
       |      a <$actorEntity>;
-      |      <$username> '''${sanitize(actor.actorName)}''' ;
+      |      <$username> ${literalExpression(actor.actorName, None)} ;
       |      <$actorOwner> <$adminActor> ;
-      |      <$passwordHash> '''${sanitize(passwordHashString)}''' .
+      |      <$passwordHash> '$passwordHashString' .
       |}
       |WHERE {
       |   OPTIONAL {
@@ -89,9 +95,9 @@ object Sparql {
       |}
       |INSERT {
       |   <$actor>
-      |      <$userFirstName> '''${sanitize(profile.firstName)}''' ;
-      |      <$userLastName> '''${sanitize(profile.lastName)}''' ;
-      |      <$userEMail> '''${sanitize(profile.email)}''' .
+      |      <$userFirstName> ${literalExpression(profile.firstName, None)} ;
+      |      <$userLastName> ${literalExpression(profile.lastName, None)} ;
+      |      <$userEMail> ${literalExpression(profile.email, None)} .
       |}
       |WHERE {
       |   <$actor>
@@ -106,7 +112,7 @@ object Sparql {
     s"""
       |WITH <$actorsGraph>
       |DELETE { <$actor> <$passwordHash> ?oldPassword }
-      |INSERT { <$actor> <$passwordHash> "$passwordHashString" }
+      |INSERT { <$actor> <$passwordHash> '$passwordHashString' }
       |WHERE { <$actor> <$passwordHash> ?oldPassword }
      """.stripMargin
 
@@ -135,7 +141,7 @@ object Sparql {
     s"""
       |WITH <$uri>
       |DELETE { <$uri> <$prop> ?o }
-      |INSERT { <$uri> <$prop> '''${sanitize(value)}''' }
+      |INSERT { <$uri> <$prop> ${literalExpression(value, None)} }
       |WHERE {
       |   OPTIONAL { <$uri> <$prop> ?o }
       |}
@@ -161,7 +167,7 @@ object Sparql {
   def addUriPropertyQ(uri: String, prop: NXProp, uriValue: String) =
     s"""
       |INSERT DATA {
-      |  GRAPH <$uri> { <$uri> <$prop> '''${sanitize(uriValue)}''' }
+      |  GRAPH <$uri> { <$uri> <$prop> ${literalExpression(uriValue, None)} . }
       |}
      """.stripMargin.trim
 
@@ -169,10 +175,10 @@ object Sparql {
     s"""
       |WITH <$uri>
       |DELETE {
-      |  <$uri> <$prop> '''${sanitize(uriValue)}''' .
+      |  <$uri> <$prop> ${literalExpression(uriValue, None)} .
       |}
       |WHERE {
-      |  <$uri> <$prop> '''${sanitize(uriValue)}''' .
+      |  <$uri> <$prop> ${literalExpression(uriValue, None)} .
       |}
      """.stripMargin
 
@@ -377,7 +383,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def countFromResult(resultMap: List[Map[String, QueryValue]]):Int = resultMap.head.get("count").get.text.toInt
+  def countFromResult(resultMap: List[Map[String, QueryValue]]): Int = resultMap.head.get("count").get.text.toInt
 
   def listSkosificationCasesQ(sf: SkosifiedField, chunkSize: Int) =
     s"""
@@ -393,17 +399,18 @@ object Sparql {
       |LIMIT $chunkSize
      """.stripMargin
 
-  def createCases(sf: SkosifiedField, resultList: List[Map[String, QueryValue]]): List[SkosificationCase] =
-    resultList.map(_("literalValue")).map(v => SkosificationCase(sf, v.text))
+  def createCasesFromQueryValues(sf: SkosifiedField, resultList: List[Map[String, QueryValue]]): List[SkosificationCase] =
+    resultList.map(_("literalValue")).map(v => SkosificationCase(sf, v.text, v.language))
 
-  def createCases(dsInfo: DsInfo, json: JsValue): List[SkosificationCase] = {
+  def createCasesFromHistogram(dsInfo: DsInfo, json: JsValue): List[SkosificationCase] = {
     val fieldPropertyUri = (json \ "uri").as[String]
     val histogram = (json \ "histogram").as[List[List[String]]]
     val sf = SkosifiedField(dsInfo.spec, dsInfo.uri, fieldPropertyUri)
-    histogram.map(count => SkosificationCase(sf, count(1), Some(count(0).toInt)))
+    // todo: no language
+    histogram.map(count => SkosificationCase(sf, count(1), None, Some(count(0).toInt)))
   }
 
-  case class SkosificationCase(sf: SkosifiedField, literalValueText: String, frequencyOpt: Option[Int] = None) {
+  case class SkosificationCase(sf: SkosifiedField, literalValueText: String, languageOpt: Option[String], frequencyOpt: Option[Int] = None) {
     val mintedUri = s"${sf.datasetUri}/${slugify(literalValueText)}"
     val fieldProperty = sf.fieldPropertyUri
     val skosGraph = getDsSkosUri(sf.datasetUri)
@@ -416,7 +423,7 @@ object Sparql {
         |INSERT {
         |   GRAPH <$skosGraph> {
         |      <$mintedUri> a skos:Concept .
-        |      <$mintedUri> skos:altLabel '''${sanitize(value)}''' .
+        |      <$mintedUri> skos:altLabel ${literalExpression(value, languageOpt)} .
         |      <$mintedUri> <$belongsTo> <$datasetUri> .
         |      <$mintedUri> <$skosField> <$fieldProperty> .
         |      <$mintedUri> <$synced> false .
@@ -437,7 +444,7 @@ object Sparql {
       s"""
         |DELETE {
         |  GRAPH ?g {
-        |    ?s <$fieldProperty> '''${sanitize(value)}''' .
+        |    ?s <$fieldProperty> ${literalExpression(value, languageOpt)} .
         |  }
         |}
         |INSERT {
@@ -449,7 +456,7 @@ object Sparql {
         |  GRAPH ?g {
         |    ?record a <$recordEntity> .
         |    ?record <$belongsTo> <$datasetUri> .
-        |    ?s <$fieldProperty> '''${sanitize(value)}''' .
+        |    ?s <$fieldProperty> ${literalExpression(value, languageOpt)} .
         |  }
         |};
        """.stripMargin

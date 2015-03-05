@@ -199,7 +199,7 @@ object AppController extends Controller with Security {
             path <- histogramPathOpt
             nodeRepo <- orgContext.datasetContext(spec).nodeRepo(path)
             histogram <- nodeRepo.largestHistogram
-          } yield Sparql.createCases(dsInfo, histogram)
+          } yield Sparql.createCasesFromHistogram(dsInfo, histogram)
           val futureModel = casesOpt.map { cases =>
             val q = cases.map(_.ensureSkosEntryQ).mkString
             val futureUpdate = ts.up.sparqlUpdate(q).map(ok => dsInfo.addUriProp(skosField, skosFieldUri))

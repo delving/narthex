@@ -422,7 +422,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     // this is because PeriodicSkosifyCheck may send multiple for us.  he'll be back
     case Event(StartSkosification(skosifiedField), active: Active) =>
-      log.info(s"Ignoring next skosification field for now: $skosifiedField")
+      log.info(s"Ignoring skosification work for now: $skosifiedField")
       stay()
 
     case Event(tick: ProgressTick, active: Active) =>
