@@ -192,15 +192,12 @@ object Sparql {
       |DROP SILENT GRAPH <$skosUri>;
       |DELETE {
       |   GRAPH ?g {
-      |      ?record a <$recordEntity> .
       |      ?s ?p ?o .
-      |      ?record <$belongsTo> <$uri> .
       |   }
       |}
       |WHERE {
       |   GRAPH ?g {
       |      ?record a <$recordEntity> .
-      |      ?s ?p ?o .
       |      ?record <$belongsTo> <$uri> .
       |   }
       |};

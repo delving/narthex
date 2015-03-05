@@ -148,6 +148,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
           case "delete" =>
             Await.ready(datasetContext.dsInfo.dropDataset, 2.minutes)
             deleteQuietly(datasetContext.rootDir)
+            self ! PoisonPill
             "deleted"
 
           //          case "remove source" =>
