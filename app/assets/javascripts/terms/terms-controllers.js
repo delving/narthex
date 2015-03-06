@@ -99,6 +99,9 @@ define(["angular"], function () {
             if ($scope.thesaurusList.length == 1) {
                 $scope.selectThesaurus($scope.thesaurusList[0])
             }
+            else if ($scope.activeView != 'thesauri') {
+                $scope.thesauriTab()
+            }
         });
 
         termsService.getMappings($scope.spec).then(function (data) {
