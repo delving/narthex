@@ -1,23 +1,51 @@
 @(mail: services.MailService.MailProcessingComplete)
 <html>
+    <head>
+        <style type="text/css">
+            body {
+                color: #333;
+                font-family: Arial, "Helvetica Neue", Helvetica, Arial, sans-serif;
+                font-size: 14px;
+                margin: 10px;
+            }
+            .narthex-heading {
+                font-size: 18px;
+                color: #666;
+                font-weight: normal;
+                border-bottom: 1px solid #ddd;
+                padding: 4px 0px;
+                margin: 0px 0px 10px 0px;
+            }
+            .narthex-spec {
+                font-style: italic;
+                font-weight: bold;
+            }
+            .narthex-signature {
+                font-size: 12px;
+            }
+            ul {
+                margin: 10px 0px;
+            }
+            hr {
+                border: none;
+                border-top: 1px solid #ddd;
+            }
+        </style>
+    </head>
     <body>
-        <h4>Processing of dataset "@{mail.spec}" completed.</h4>
-        <div>
-            <ul>
-                <li>
-                    <strong>Valid records: </strong> <span>@{mail.validString}</span>
-                </li>
-                <li>
-                    <strong>Invalid records: </strong> <span>@(mail.invalidString)</span>
-                </li>
-            </ul>
-        </div>
+        <h1 class="narthex-heading">Processing of dataset <span class="narthex-spec">@{mail.spec}</span> completed.</h1>
+        <ul class="narthex-list">
+            <li>
+                Valid records: <span class="narthex-count">@{mail.validString}</span>
+            </li>
+            <li>
+                Invalid records: <span class="narthex-count">@(mail.invalidString)</span>
+            </li>
+        </ul>
         <hr/>
-        <div>
-            <small>Cheers,</small>
-        </div>
-        <div>
-            <small>Narthex</small>
+        <div class="narthex-signature">
+            Cheers,<br/>
+            Narthex
         </div>
     </body>
 </html>

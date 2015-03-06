@@ -1,19 +1,53 @@
 @(mail: services.MailService.MailDatasetError)
 <html>
+    <head>
+        <style type="text/css">
+        body {
+            color: #333;
+            font-family: Arial, "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            margin: 10px;
+        }
+        .narthex-heading {
+            font-size: 21px;
+            color: #666;
+            font-weight: normal;
+            border-bottom: 1px solid #ddd;
+            padding: 4px 0px;
+            margin: 0px 0px 10px 0px;
+        }
+        .narthex-subheading {
+            font-size: 16px;
+            color: #666;
+            font-weight: normal;
+            margin: 0px 0px 10px 0px;
+        }
+        .narthex-spec {
+            font-style: italic;
+            font-weight: bold;
+        }
+        .narthex-signature {
+            font-size: 12px;
+        }
+        ul {
+            margin: 10px 0px;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #ddd;
+        }
+        </style>
+    </head>
     <body>
-        <h4>Failure in dataset "@{mail.spec}"</h4>
-        <div>
-            <h5>@(mail.message)</h5>
-<pre>
-@(mail.exceptionString)
-</pre>
-        </div>
+        <h1 class="narthex-heading">Failure in dataset <span class="narthex-spec">@{mail.spec}</span></h1>
+        <h2 class="narthex-subheading">@(mail.message)</h2>
+        <pre>
+        @(mail.exceptionString)
+        </pre>
         <hr/>
-        <div>
-            <small>Cheers,</small>
-        </div>
-        <div>
-            <small>Narthex</small>
+        <div class="narthex-signature">
+            Cheers,<br/>
+            Narthex
         </div>
     </body>
 </html>
