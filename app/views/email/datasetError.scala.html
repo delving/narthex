@@ -29,6 +29,10 @@
         .narthex-signature {
             font-size: 12px;
         }
+        .narthex-stack-trace {
+            font-family: monospace;
+            white-space: pre-line;
+        }
         ul {
             margin: 10px 0px;
         }
@@ -41,7 +45,7 @@
     <body>
         <h1 class="narthex-heading">Failure in dataset <span class="narthex-spec">@{mail.spec}</span></h1>
         <h2 class="narthex-subheading">@(mail.message)</h2>
-        <pre>
+        <pre class="narthex-stack-trace">
         @(mail.exceptionString)
         </pre>
         <hr/>
