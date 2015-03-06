@@ -37,10 +37,11 @@ import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import record.SourceProcessor
 import record.SourceProcessor._
+import services.MailService.{MailDatasetError, MailProcessingComplete}
+import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
-import services.{EMail, ProgressReporter}
 import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
@@ -207,7 +208,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             self ! StartSkosification
             "skosification started"
 
-            // todo: category counting?
+          // todo: category counting?
 
           case _ =>
             log.warning(s"$this sent unrecognized command $commandName")
@@ -386,7 +387,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       else {
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
       }
-      EMail.sendProcessingComplete(dsInfo)
+      MailProcessingComplete(
+        spec = dsInfo.spec,
+        ownerEmailOpt = dsInfo.ownerEmailOpt,
+        validString = dsInfo.processedValidVal,
+        invalidString = dsInfo.processedInvalidVal
+      ).send()
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -466,6 +472,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       log.warning(s"Work failure [$message] while in [$active]")
       dsInfo.setError(s"While $stateName, failure: $message")
       exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
+      MailDatasetError(dsInfo.spec, dsInfo.ownerEmailOpt, message, exceptionOpt).send()
       active.childOpt.map(_ ! PoisonPill)
       goto(Idle) using InError(message)
 

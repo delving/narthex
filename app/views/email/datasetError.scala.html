@@ -1,0 +1,19 @@
+@(mail: services.MailService.MailDatasetError)
+<html>
+    <body>
+        <h4>Failure in dataset "@{mail.spec}"</h4>
+        <div>
+            <h5>@(mail.message)</h5>
+<pre>
+@(mail.exceptionString)
+</pre>
+        </div>
+        <hr/>
+        <div>
+            <small>Cheers,</small>
+        </div>
+        <div>
+            <small>Narthex</small>
+        </div>
+    </body>
+</html>

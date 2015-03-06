@@ -1,0 +1,23 @@
+@(mail: services.MailService.MailProcessingComplete)
+<html>
+    <body>
+        <h4>Processing of dataset "@{mail.spec}" completed.</h4>
+        <div>
+            <ul>
+                <li>
+                    <strong>Valid records: </strong> <span>@{mail.validString}</span>
+                </li>
+                <li>
+                    <strong>Invalid records: </strong> <span>@(mail.invalidString)</span>
+                </li>
+            </ul>
+        </div>
+        <hr/>
+        <div>
+            <small>Cheers,</small>
+        </div>
+        <div>
+            <small>Narthex</small>
+        </div>
+    </body>
+</html>

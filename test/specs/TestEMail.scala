@@ -1,8 +1,7 @@
 package specs
 
-import org.joda.time.DateTime
 import org.scalatestplus.play._
-import play.api.libs.mailer.{Email, MailerPlugin}
+import services.MailService.MailProcessingComplete
 
 class TestEMail extends PlaySpec with OneAppPerSuite with FakeTripleStore {
 
@@ -24,14 +23,21 @@ class TestEMail extends PlaySpec with OneAppPerSuite with FakeTripleStore {
 
   "An email should be sent" in {
 
-    MailerPlugin.send(Email(
-      subject = "specs.TestEMail",
-      from = "Narthex <narthex@delving.eu>",
-      to = Seq("Gerald <gerald@delving.eu>"),
-      attachments = Seq.empty,
-      bodyHtml = Some(s"<html><body>The time is now ${new DateTime()}</body></html>")
-    ))
+    MailProcessingComplete(
+      spec = "SPEC",
+      ownerEmailOpt = Some("gerald@delving.eu"),
+      validString = "#VALID",
+      invalidString = "#INVALID"
+    ).send()
 
+//    MailerPlugin.send(Email(
+//      subject = "specs.TestEMail",
+//      from = "Narthex <narthex@delving.eu>",
+//      to = Seq("Gerald <gerald@delving.eu>"),
+//      attachments = Seq.empty,
+//      bodyHtml = Some(s"<html><body>The time is now ${new DateTime()}</body></html>")
+//    ))
+//
   }
 
 }

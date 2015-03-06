@@ -26,6 +26,7 @@ import play.api.cache.Cache
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
 import play.api.mvc._
+import services.MailService.{MailDatasetError, MailProcessingComplete}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Await
@@ -44,6 +45,40 @@ object MainController extends Controller with Security {
 
   def index = Action { request =>
     Ok(views.html.index(ORG_ID, SIP_APP_URL))
+  }
+
+  def testEmail(messageType: String) = Action { request =>
+    messageType match {
+      case "processing-complete" =>
+        Ok(views.html.email.processingComplete(MailProcessingComplete(
+          spec = "spec",
+          ownerEmailOpt = Some("servers@delving.eu"),
+          validString = "666",
+          invalidString = "77"
+        )))
+
+      case "dataset-error" =>
+        var throwable: Throwable = null
+        try {
+          throw new Exception("This is the exception's message")
+        }
+        catch {
+          case e: Throwable =>
+            throwable = e
+        }
+        Ok(views.html.email.datasetError(MailDatasetError(
+          spec = "spec",
+          ownerEmailOpt = Some("servers@delving.eu"),
+          throwable.getMessage,
+          Some(throwable)
+        )))
+
+      case badEmailType =>
+        Ok(views.html.email.emailNotFound(badEmailType, Seq(
+          "processing-complete",
+          "dataset-error"
+        )))
+    }
   }
 
   def login = Action(parse.json) { implicit request =>

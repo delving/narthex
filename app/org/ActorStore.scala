@@ -157,11 +157,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   }
 
   def setProfile(actor: NXActor, nxProfile: NXProfile): Future[Unit] = {
-
-    Logger.info(s"SET PROFILE $nxProfile)")
     val q = setActorProfileQ(actor, nxProfile)
-    Logger.info(s"This should appear in the triple store log: \n$q")
-
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update

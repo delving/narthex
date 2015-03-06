@@ -20,6 +20,7 @@ POST        /narthex/set-profile                                             web
 GET         /narthex/list-actors                                             web.MainController.listActors
 POST        /narthex/create-actor                                            web.MainController.createActor
 POST        /narthex/set-password                                            web.MainController.setPassword
+GET         /narthex/test-email/:emailType                                   web.MainController.testEmail(emailType)
 
 # File Handling
 GET         /narthex/app/dataset-list                                        web.AppController.listDatasets
