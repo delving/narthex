@@ -26,3 +26,6 @@ Combined with another element of the CultureBrokers project called the [X3ML Eng
 
 The Narthex user interface or something like it will also probably be the best starting point for building an interactive multi-user tool for building X3ML files.  The choices of Domain, Path, and Range should take place in something like the tree that Narthex displays.  While building an X3ML mapping from XML to RDF, it would be possible to have a running visualization of all of the triples that have changed (disappeared:red or appeared:green) as a result of a change made to the mapping.
 
+---
+
+Contact: Gerald de Jong &lt;gerald@delving.eu&gt;

@@ -53,8 +53,8 @@ object MainController extends Controller with Security {
         Ok(views.html.email.processingComplete(MailProcessingComplete(
           spec = "spec",
           ownerEmailOpt = Some("servers@delving.eu"),
-          validString = "666",
-          invalidString = "77"
+          validString = "1000000000",
+          invalidString = "0"
         )))
 
       case "dataset-error" =>
