@@ -1,5 +1,7 @@
 ## Future
 
+![Future](images/future-work.jpg)
+
 The functionality of Narthex suggests and leads the way to some interesting potential future developments.  This program represents the first phase of a workflow which can facilitate online publishing of metadata, but in the future it could be used for more mapping, cleaning, enriching, and transforming tasks.  It is to become a kind of metadata repository where data owners keep the published version of their data available.
 
 ### Link Checking

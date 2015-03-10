@@ -9,7 +9,7 @@
 
 | video
 |:-----:|
-|![](docs/NarthexTour-2015-03.png)
+|![](docs/images/narthex-tour.jpg)
 |Watch: [http://youtu.be/uu4lNtXtgCA](http://youtu.be/uu4lNtXtgCA)
 
 Narthex is an ingestion tool for cultural heritage metadata which has features for transforming the incoming data into target formats expressed in RDF/XML, as well as mapping terminology to given [SKOS](http://www.w3.org/2004/02/skos/) vocabularies. Vocabularies can also be mapped together and there is a system for categorizing records and generating spreadsheets with the category counts. Narthex stores the results in a triple store, and uses the file system for persisting the remainder of the information.
@@ -43,7 +43,7 @@ Initially, Narthex was funded by the [Swedish Arts Council](http://www.kulturrad
 
 ## Delving deeper
 
-* [Actor Hierarchy](docs/actor-heirarchy.md) - users
+* [Actor Hierarchy](docs/actor-hierarchy.md) - users
 * [Dataset Workflow](docs/dataset-workflow.md) - how a dataset progresses through the system
 * [SIP-Creator Integration](docs/sip-creator-integration.md) - how the tool integrates
 * [Terminology Mapping](docs/terminology-mapping.md) - terminology "skosification" and mapping to SKOS

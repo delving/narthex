@@ -1,5 +1,7 @@
 # SIP-Creator Integration
 
+![SIP-App](images/sip-creator-integration.jpg)
+
 The [SIP-Creator](https://github.com/delving/sip-creator) is a metadata mapping tool which was originally built to solve the ingestion problem encountered at the [Europeana](http://www.europeana.eu/) project in 2010. It is a standalone Java tool which allows users to re-structure incoming data so that it corresponds with a desired format, specified in an XML file called a **Record Definition**.  It also validates the results using an associated **XSD** schema, as well as specific checking for valid URIs.  Beyond restructuring, the SIP-Creator uses the Groovy programming language to allow for various syntax normalizations while transforming.
 
 For Narthex integration it was adapted and simplified, because its role has been reduced to its core functinality of building the mapping. (Previously, it was also responsible for harvesting and importing data, but this is now done by Narthex online).  It is now referred to as the SIP-App.

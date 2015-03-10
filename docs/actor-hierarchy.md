@@ -1,5 +1,7 @@
 # Actor Hierarchy
 
+![Hierarchy](images/actor-hierarchy.jpg)
+
 Narthex provides for manipulating and mapping data on the way through to the triple store, and this kind of work can be considered meaningless if it is not recorded together with **provenance**, so it is clear where the information came from.  This is why Narthex users are referred to as "Actors", and their information is connected to the things they do. Actors are structured in a hierarchy that you are free to design as you wish.
 
 ## Top Actor

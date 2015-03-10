@@ -1,5 +1,7 @@
 # Category Statistics
 
+![Categories](images/category-statistics.jpg)
+
 Aggregators of data from various sources may want to gather an understanding and continuously monitor the number of cultural heritage items that belong to a given set of categories.
 
 To make this possible, Narthex requires that administrators build a small SKOS file, similar to [Categories.xml](https://github.com/delving/narthex/blob/master/test/resources/categories/Categories.xml) to define the categories they wish to use.  This file can then be introduced as a SKOS vocabulary via the normal mechanism, but under a very specific name **"categories" which causes it to be treated differently.

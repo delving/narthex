@@ -1,5 +1,7 @@
 # Terminology Mapping
 
+![Terminology Mapping](images/terminology-mapping.jpg)
+
 Most cultural heritage data managed in collection registration packages includes various fields containing terminology, but the terms used typically have a local origin, and are recorded in the local language.  Narthex then reveals these fields in the form of histograms with all values visible along with occurrence frequencies.
 
 A terminology field should contain a modest number of different elements - in the order of tens, hundreds, or perhaps a few thousand, but **not** tens of thousands of values (if a field contains that many values, it is probably not really a terminology field).  Examples might be fields for "technique" or "material" or "genre".

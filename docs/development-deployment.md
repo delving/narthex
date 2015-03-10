@@ -1,5 +1,7 @@
 # Development and Deployment
 
+![Package](images/development-deployment.jpg)
+
 Narthex is built on the basis of the [Scala Build Tool](http://www.scala-sbt.org/) (version 0.13.5), so for development, a project in an Integrated Development Environment (IDE) like [IntelliJ]() can be built using a single command like [gen-idea](https://github.com/mpeltonen/sbt-idea). The [build file](https://github.com/delving/narthex/blob/master/build.sbt) defines the project.
 
 With the **sbt** installed, and the below configuration completed, it should also be possible to run Narthex in **development mode** using the **run** command and then opening a browser to [http://localhost:9000/](http://localhost:9000/), the default location of the server.

@@ -1,5 +1,7 @@
 # Dataset Workflow
 
+![Workflow](images/dataset-workflow.jpg)
+
 An empty dataset is created by just giving it a short name, and whenever it progresses through a subsequent state, the time is recorded in the triple store and shows in the browser with a button to initiate the next step.
 
 ### RAW

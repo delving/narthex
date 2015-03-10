@@ -1,5 +1,7 @@
 # Vocabulary Mapping
 
+![Vocabulary Mapping](images/vocabulary-mapping.jpg)
+
 When terminology values from datasets are mapped to entries of SKOS vocabularies, the connection can lead to making links which were otherwise not known to be related.  Two datasets with their terminology mapped to one SKOS vocabulary can be queried together as one.  But if mappings have been made to **two different** vocabularies, the connection may be there but it is not yet explicit.
 
 One SKOS vocabulary can be mapped to another with Narthex.  This means that datasets mapped to one vocabulary can be brought into contact with dataset mapped to another.  When a SKOS-SKOS mapping is created in Narthex (of course attributed to the actor who made it) the connection is recorded in the triple store as **skos: exactMatch**, and the links can then be followed to reveal new connections.
