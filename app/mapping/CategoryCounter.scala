@@ -113,8 +113,9 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
         var categoryLabels = Set.empty[String]
         skosProperties.map { propertyUri =>
           val property = model.getProperty(propertyUri)
-          model.listObjectsOfProperty(property).map(_.asLiteral().getString).toList.map { literalString =>
-            val mintedUri = s"${dsInfo.uri}/${slugify(literalString)}"
+          model.listObjectsOfProperty(property).map(_.asLiteral().getString).toList.map { literalValueText =>
+            val ExtractLocalName(localName) = propertyUri
+            val mintedUri = s"${dsInfo.uri}/$localName/${slugify(literalValueText)}"
             termCat.get(mintedUri).map(newLabels => categoryLabels ++= newLabels)
           }
         }

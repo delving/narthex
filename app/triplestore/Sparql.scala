@@ -408,8 +408,9 @@ object Sparql {
   }
 
   case class SkosificationCase(sf: SkosifiedField, literalValueText: String, languageOpt: Option[String], frequencyOpt: Option[Int] = None) {
-    val mintedUri = s"${sf.datasetUri}/${slugify(literalValueText)}"
     val fieldProperty = sf.fieldPropertyUri
+    val ExtractLocalName(localName) = fieldProperty
+    val mintedUri = s"${sf.datasetUri}/$localName/${slugify(literalValueText)}"
     val skosGraph = getDsSkosUri(sf.datasetUri)
     val datasetUri = sf.datasetUri
     val value = literalValueText
