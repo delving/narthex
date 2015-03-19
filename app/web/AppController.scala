@@ -251,7 +251,7 @@ object AppController extends Controller with Security {
     withVocabInfo(spec) { vocabInfo =>
       request.body.file("file").map { bodyFile =>
         val file = bodyFile.ref.file
-        val putFile = ts.up.dataPutXMLFile(vocabInfo.dataUri, file)
+        val putFile = ts.up.dataPutXMLFile(vocabInfo.skosGraphName, file)
         putFile.onFailure { case e: Throwable => Logger.error(s"Problem uploading vocabulary $spec", e) }
         putFile.map { ok =>
           val now: String = timeToString(new DateTime())

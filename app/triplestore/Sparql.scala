@@ -133,13 +133,13 @@ object Sparql {
   def askIfDatasetExistsQ(uri: String) =
     s"""
       |ASK {
-      |   GRAPH <$uri> { <$uri> <$datasetSpec> ?spec }
+      |   GRAPH ?g { <$uri> <$datasetSpec> ?spec }
       |}
      """.stripMargin
 
-  def updatePropertyQ(uri: String, prop: NXProp, value: String): String =
+  def updatePropertyQ(graphName: String, uri: String, prop: NXProp, value: String): String =
     s"""
-      |WITH <$uri>
+      |WITH <$graphName>
       |DELETE { <$uri> <$prop> ?o }
       |INSERT { <$uri> <$prop> ${literalExpression(value, None)} }
       |WHERE {
@@ -147,9 +147,9 @@ object Sparql {
       |}
      """.stripMargin.trim
 
-  def updateSyncedFalseQ(uri: String): String =
+  def updateSyncedFalseQ(graphName: String, uri: String): String =
     s"""
-      |WITH <$uri>
+      |WITH <$graphName>
       |DELETE { <$uri> <$synced> ?o }
       |INSERT { <$uri> <$synced> false }
       |WHERE {
@@ -157,23 +157,25 @@ object Sparql {
       |}
      """.stripMargin.trim
 
-  def removeLiteralPropertyQ(uri: String, prop: NXProp) =
+  def removeLiteralPropertyQ(graphName: String, uri: String, prop: NXProp) =
     s"""
-      |WITH <$uri>
+      |WITH <$graphName>
       |DELETE { <$uri> <$prop> ?o }
       |WHERE { <$uri> <$prop> ?o }
      """.stripMargin
 
-  def addUriPropertyQ(uri: String, prop: NXProp, uriValue: String) =
+  def addUriPropertyQ(graphName: String, uri: String, prop: NXProp, uriValue: String) =
     s"""
       |INSERT DATA {
-      |  GRAPH <$uri> { <$uri> <$prop> ${literalExpression(uriValue, None)} . }
+      |  GRAPH <$graphName> { 
+      |    <$uri> <$prop> ${literalExpression(uriValue, None)} . 
+      |  }
       |}
      """.stripMargin.trim
 
-  def deleteUriPropertyQ(uri: String, prop: NXProp, uriValue: String) =
+  def deleteUriPropertyQ(graphName: String, uri: String, prop: NXProp, uriValue: String) =
     s"""
-      |WITH <$uri>
+      |WITH <$graphName>
       |DELETE {
       |  <$uri> <$prop> ${literalExpression(uriValue, None)} .
       |}
@@ -182,14 +184,14 @@ object Sparql {
       |}
      """.stripMargin
 
-  def deleteDatasetQ(uri: String, skosUri: String) =
+  def deleteDatasetQ(datasetGraphName: String, uri: String, skosGraphName: String) =
     s"""
       |INSERT DATA {
-      |   GRAPH <$uri> {
+      |   GRAPH <$datasetGraphName> {
       |     <$uri> <$deleted> true .
       |   }
       |};
-      |DROP SILENT GRAPH <$skosUri>;
+      |DROP SILENT GRAPH <$skosGraphName>;
       |DELETE {
       |   GRAPH ?g {
       |      ?s ?p ?o .
@@ -225,19 +227,19 @@ object Sparql {
       |}
      """.stripMargin
 
-  def getVocabStatisticsQ(uri: String) =
+  def getVocabStatisticsQ(skosGraphName: String) =
     s"""
       |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
       |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
       |SELECT (count(?s) as ?count)
       |WHERE {
-      |  GRAPH <$uri> { ?s rdf:type skos:Concept }
+      |  GRAPH <$skosGraphName> { ?s rdf:type skos:Concept }
       |}
      """.stripMargin
 
-  def dropVocabularyQ(uri: String) =
+  def dropVocabularyQ(graphName: String) =
     s"""
-      |WITH <$uri>
+      |WITH <$graphName>
       |DELETE { ?s ?p ?o }
       |WHERE { ?s ?p ?o }
      """.stripMargin
@@ -281,11 +283,11 @@ object Sparql {
       |}
      """.stripMargin
 
-  def insertMappingQ(actor: NXActor, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
+  def insertMappingQ(graphName:String, actor: NXActor, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
     val connection = if (skosB.spec == CATEGORIES_SPEC) belongsToCategory.uri else exactMatch
     s"""
       |INSERT DATA {
-      |  GRAPH <$uri> {
+      |  GRAPH <$graphName> {
       |    <$uriA> <$connection> <$uriB> .
       |    <$uri>
       |       a <$mappingEntity>;
@@ -359,8 +361,9 @@ object Sparql {
     s"""
       |ASK {
       |  GRAPH ?g {
+      |    ?foafDoc <$foafPrimaryTopic> ?record .
+      |    ?foafDoc <$belongsTo> <${sf.datasetUri}> .
       |    ?record a <$recordEntity> .
-      |    ?record <$belongsTo> <${sf.datasetUri}> .
       |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
       |    FILTER isLiteral(?literalValue)
       |  }
@@ -372,8 +375,9 @@ object Sparql {
       |SELECT (COUNT(DISTINCT ?literalValue) as ?count)
       |WHERE {
       |  GRAPH ?g {
+      |    ?foafDoc <$foafPrimaryTopic> ?record .
+      |    ?foafDoc <$belongsTo> <${sf.datasetUri}> .
       |    ?record a <$recordEntity> .
-      |    ?record <$belongsTo> <${sf.datasetUri}> .
       |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
       |    FILTER isLiteral(?literalValue)
       |  }
@@ -387,8 +391,9 @@ object Sparql {
       |SELECT DISTINCT ?literalValue
       |WHERE {
       |  GRAPH ?g {
+      |    ?foafDoc <$foafPrimaryTopic> ?record .
+      |    ?foafDoc <$belongsTo> <${sf.datasetUri}> .
       |    ?record a <$recordEntity> .
-      |    ?record <$belongsTo> <${sf.datasetUri}> .
       |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
       |    FILTER isLiteral(?literalValue)
       |  }
@@ -411,7 +416,7 @@ object Sparql {
     val fieldProperty = sf.fieldPropertyUri
     val ExtractLocalName(localName) = fieldProperty
     val mintedUri = s"${sf.datasetUri}/$localName/${slugify(literalValueText)}"
-    val skosGraph = getDsSkosUri(sf.datasetUri)
+    val skosGraph = getSkosGraphName(sf.datasetUri)
     val datasetUri = sf.datasetUri
     val value = literalValueText
 
@@ -452,8 +457,9 @@ object Sparql {
         |}
         |WHERE {
         |  GRAPH ?g {
+        |    ?foafDoc <$foafPrimaryTopic> ?record .
+        |    ?foafDoc <$belongsTo> <${sf.datasetUri}> .
         |    ?record a <$recordEntity> .
-        |    ?record <$belongsTo> <$datasetUri> .
         |    ?s <$fieldProperty> ${literalExpression(value, languageOpt)} .
         |  }
         |};

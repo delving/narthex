@@ -75,4 +75,11 @@ object StringHandling {
 
   val ExtractLocalName = ".*[^\\w](\\w+)".r
 
+  def createGraphName(subject:String) = s"$subject#graph"
+
+  def createFOAFAbout(subject:String) = s"$subject#about"
+
+  val SubjectOfGraph = "(.*)#graph".r
+
+
 }

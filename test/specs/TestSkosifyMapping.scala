@@ -83,12 +83,11 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
         await(ts.up.sparqlUpdate(update))
       }
     }
-    countGraphs must be(5)
+    countGraphs must be(3)
   }
 
   "Skosification must work" in {
     // mark a field as skosified
-    countGraphs must be(5)
     val info = await(DsInfo.freshDsInfo("ton-smits-huis")).get
     info.addLiteralProp(skosField, skosifiedPropertyUri)
     info.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
@@ -99,15 +98,20 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
 
     val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(skosifiedFieldFromResult)
 
-    val skosificationCases = skosifiedFields.flatMap(sf => createCasesFromQueryValues(sf, await(ts.query(listSkosificationCasesQ(sf, 2)))))
+    val skosificationCases = skosifiedFields.flatMap{ sf =>
+        val listQ = listSkosificationCasesQ(sf, 2)
+        println(listQ)
+        createCasesFromQueryValues(sf, await(ts.query(listQ)))
+    }
 
-    val countResult = await(ts.query(countSkosificationCasesQ(skosifiedFields.head)))
+    val q = countSkosificationCasesQ(skosifiedFields.head)
+    val countResult = await(ts.query(q))
     countFromResult(countResult) must be(19)
 
 //    skosificationCases.map(c => println(s"SKOSIFICATION CASE: $c"))
 
     skosificationCases.map { sc =>
-      val graph = DsInfo.getDsSkosUri(sc.sf.datasetUri)
+      val graph = DsInfo.getSkosGraphName(sc.sf.datasetUri)
       val valueUri: String = sc.mintedUri
       val checkEntry = s"ASK { GRAPH <$graph> { <$valueUri> a <http://www.w3.org/2004/02/skos/core#Concept> } }"
       val syncedTrue: String = s"ASK { GRAPH <$graph> { <$valueUri> <$synced> true } }"
@@ -148,7 +152,8 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
       await(ts.up.sparqlUpdate(sc.literalToUriQ))
     }
 
-    await(ts.ask(skosificationCasesExistQ(skosifiedFields.head))) must be(false)
+    val q1 = skosificationCasesExistQ(skosifiedFields.head)
+    await(ts.ask(q1)) must be(false)
   }
 
   "Mapping a skosified entry to a vocab entry" in {
@@ -156,7 +161,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
     val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy"))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
-    await(ts.up.dataPutXMLFile(classyInfo.dataUri, classyFile))
+    await(ts.up.dataPutXMLFile(classyInfo.skosGraphName, classyFile))
     val info = await(DsInfo.freshDsInfo("ton-smits-huis")).get
     info.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
     val store = new TermMappingStore(info)
@@ -176,7 +181,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
     val catInfo = await(VocabInfo.createVocabInfo(admin, "categories"))
     val catFile = new File(getClass.getResource("/categories/Categories.xml").getFile)
-    await(ts.up.dataPutXMLFile(catInfo.dataUri, catFile))
+    await(ts.up.dataPutXMLFile(catInfo.skosGraphName, catFile))
     val dsInfo = await(DsInfo.freshDsInfo("ton-smits-huis")).get
     dsInfo.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
     val store = new TermMappingStore(dsInfo)

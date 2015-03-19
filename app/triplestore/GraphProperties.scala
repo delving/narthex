@@ -26,6 +26,8 @@ object GraphProperties {
   val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
   val DC = "http://purl.org/dc/elements/1.1/"
   val SKOS = "http://www.w3.org/2004/02/skos/core#"
+  val FOAF = "http://xmlns.com/foaf/0.1/"
+  val CC = "http://creativecommons.org/ns#"
 
   case class PropType(uriOpt: Option[String])
 
@@ -121,12 +123,15 @@ object GraphProperties {
   val skosFrequency = s"${NX_NAMESPACE}skosFrequency"
 
   val rdfType = s"${RDF}type"
+  val foafDocument = s"${FOAF}Document"
+  val foafPrimaryTopic = s"${FOAF}primaryTopic"
+  val ccAttributionName = s"${CC}attributionName"
   val datasetEntity = s"${NX_NAMESPACE}Dataset"
   val recordEntity = s"${NX_NAMESPACE}Record"
   val mappingEntity = s"${NX_NAMESPACE}Mapping"
   val actorEntity = s"${NX_NAMESPACE}Actor"
   val skosCollection = s"${SKOS}Collection"
-  val actorsGraph = s"${NX_NAMESPACE}Actors"
+  val actorsGraph = s"${NX_NAMESPACE}Actors#graph"
 
 
   def nxProp(m: Model, localName: String): Property = {

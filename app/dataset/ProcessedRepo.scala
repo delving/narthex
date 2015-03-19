@@ -22,7 +22,8 @@ import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
 import org.apache.commons.io.input.CountingInputStream
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import services.FileHandling.{ReadProgress, clearDir}
-import services.{FileHandling, ProgressReporter}
+import services.StringHandling.createFOAFAbout
+import services.{FileHandling, ProgressReporter, StringHandling}
 import triplestore.GraphProperties._
 
 import scala.collection.JavaConversions._
@@ -162,10 +163,15 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
                   println(recordText.toString())
                   throw e
               }
-              val subject = m.getResource(graphName)
-              m.add(subject, m.getProperty(rdfType), m.getResource(recordEntity))
-              m.add(subject, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
-              m.add(subject, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
+              val StringHandling.SubjectOfGraph(subject) = graphName
+              val subjectResource = m.getResource(subject)
+              m.add(subjectResource, m.getProperty(rdfType), m.getResource(recordEntity))
+              val foafAbout = m.getResource(createFOAFAbout(subject))
+              m.add(foafAbout, m.getProperty(rdfType), m.getResource(foafDocument))
+              m.add(foafAbout, m.getProperty(ccAttributionName), m.createLiteral(dsInfo.spec))
+              m.add(foafAbout, m.getProperty(foafPrimaryTopic), subjectResource)
+              m.add(foafAbout, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
+              m.add(foafAbout, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
               graphCount += 1
               recordText.clear()
               if (graphCount >= chunkSize) chunkComplete = true

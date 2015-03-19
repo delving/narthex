@@ -22,7 +22,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/mf%20G%202000-5%20b>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/mf%20G%202000-5%20b#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-279">
     <icn:technique>olieverf op karton | oil on cardboard</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -43,7 +43,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-279>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-279#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-280">
     <icn:technique>olieverf op doek | oil on canvas</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -64,7 +64,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-280>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-280#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201191">
     <icn:technique>olieverf op doek | oil on canvas</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -88,7 +88,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201191>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201191#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201192">
     <icn:technique>olieverf op doek | oil on canvas</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -110,7 +110,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201192>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201192#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201193">
     <icn:technique>olieverf op doek | oil on canvas</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -134,7 +134,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201193>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201193#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-312">
     <icn:technique>olieverf op hardboard | oil on hardboard</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -156,7 +156,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-312>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-312#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201194">
     <icn:technique>olieverf op doek | oil on canvas</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -180,7 +180,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201194>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%201194#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-315">
     <icn:technique>olieverf op meubelplaat | oil on blockboard</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -201,7 +201,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-315>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-315#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-324">
     <icn:technique>olieverf op doek | oil on canvas</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -222,7 +222,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-324>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-324#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/msch%2080-329">
     <icn:technique>olieverf op hardboard | oil on hardboard</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -243,7 +243,7 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-329>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/msch%2080-329#graph>-->
 <rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:europeana="http://www.europeana.eu/schemas/ese/" xmlns:icn="http://www.icn.nl/schemas/icn/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="http://acc.lodd2.delving.org/resource/document/frans/ikvsch%20307">
     <icn:technique>olieverf op doek | oil on canvas</icn:technique>
     <icn:province>Noord-Holland</icn:province>
@@ -267,4 +267,4 @@
     <europeana:collectionName>frans-hals-museum</europeana:collectionName>
     <europeana:collectionTitle>Frans Hals Museum</europeana:collectionTitle>
 </rdf:Description>
-<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%20307>-->
+<!--<http://acc.lodd2.delving.org/resource/document/frans/ikvsch%20307#graph>-->

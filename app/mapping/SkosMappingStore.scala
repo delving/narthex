@@ -19,6 +19,7 @@ package mapping
 import java.util.UUID
 
 import org.ActorStore.NXActor
+import services.StringHandling.createGraphName
 import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
 
@@ -30,11 +31,13 @@ object SkosMappingStore {
 
     val uri = s"${actor.uri}/mapping/${UUID.randomUUID().toString}"
 
+    val graphName = createGraphName(uri)
+
     val existenceQ = doesMappingExistQ(uriA, uriB)
 
     val deleteQ = deleteMappingQ(uriA, uriB)
 
-    def insertQ(skosA: SkosGraph, skosB: SkosGraph) = insertMappingQ(actor, uri, uriA, uriB, skosA, skosB)
+    def insertQ(skosA: SkosGraph, skosB: SkosGraph) = insertMappingQ(graphName, actor, uri, uriA, uriB, skosA, skosB)
 
     override def toString = uri
   }
