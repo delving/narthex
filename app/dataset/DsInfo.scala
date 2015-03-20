@@ -96,7 +96,7 @@ object DsInfo {
 
   def getGraphName(spec: String) = createGraphName(getDsInfoUri(spec))
 
-  def getSkosGraphName(datasetUri: String) = s"$datasetUri/skos#graph"
+  def getSkosGraphName(datasetUri: String) = createGraphName(s"$datasetUri/skos")
 
   def createDsInfo(owner: NXActor, spec: String, character: DsCharacter, mapToPrefix: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()

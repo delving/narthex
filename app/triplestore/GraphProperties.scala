@@ -17,6 +17,7 @@
 package triplestore
 
 import com.hp.hpl.jena.rdf.model.{Model, Property}
+import services.StringHandling.createGraphName
 
 object GraphProperties {
 
@@ -131,7 +132,7 @@ object GraphProperties {
   val mappingEntity = s"${NX_NAMESPACE}Mapping"
   val actorEntity = s"${NX_NAMESPACE}Actor"
   val skosCollection = s"${SKOS}Collection"
-  val actorsGraph = s"${NX_NAMESPACE}Actors#graph"
+  val actorsGraph = createGraphName(s"${NX_NAMESPACE}Actors")
 
 
   def nxProp(m: Model, localName: String): Property = {
