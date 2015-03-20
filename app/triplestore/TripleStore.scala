@@ -82,7 +82,7 @@ trait TripleStore {
 
   def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]]
 
-  def dataGet(graphUri: String): Future[Model]
+  def dataGet(graphName: String): Future[Model]
 
   val up: TripleStoreUpdate
 
@@ -97,7 +97,7 @@ class DoubleFuseki(acceptanceStoreUrl: String, productionStoreUrl: String, logQu
 
   override def query(sparqlQuery: String) = accFuseki.query(sparqlQuery)
 
-  override def dataGet(graphUri: String) = accFuseki.dataGet(graphUri)
+  override def dataGet(graphName: String) = accFuseki.dataGet(graphName)
 
   val up = new DoubleUpdate(false)
 
@@ -191,8 +191,8 @@ class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContex
     }
   }
 
-  override def dataGet(graphUri: String): Future[Model] = {
-    dataRequest(graphUri).withHeaders(
+  override def dataGet(graphName: String): Future[Model] = {
+    dataRequest(graphName).withHeaders(
       "Accept" -> "text/turtle"
     ).get().map { response =>
       if (response.status / 100 != 2) {

@@ -15,7 +15,7 @@ class TestCategories extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
     val categoriesVocabInfo = await(VocabInfo.createVocabInfo(admin, VocabInfo.CATEGORIES_SPEC))
     val categoriesFile = new File(getClass.getResource("/categories/Categories.xml").getFile)
-    await(ts.up.dataPutXMLFile(categoriesVocabInfo.dataUri, categoriesFile))
+    await(ts.up.dataPutXMLFile(categoriesVocabInfo.skosGraphName, categoriesFile))
     val v = categoriesVocabInfo.vocabulary
     val cl = v.concepts
     println(s"Concepts: ${cl.size}")

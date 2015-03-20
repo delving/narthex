@@ -31,7 +31,7 @@ import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json.{JsValue, Json, Writes}
-import services.StringHandling.urlEncodeValue
+import services.StringHandling.{createGraphName, urlEncodeValue}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.Sparql._
@@ -94,22 +94,24 @@ object DsInfo {
 
   def getDsInfoUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
 
-  def getDsSkosUri(datasetUri: String) = s"$datasetUri/skos"
+  def getGraphName(spec: String) = createGraphName(getDsInfoUri(spec))
+
+  def getSkosGraphName(datasetUri: String) = createGraphName(s"$datasetUri/skos")
 
   def createDsInfo(owner: NXActor, spec: String, character: DsCharacter, mapToPrefix: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
-    val uri = m.getResource(getDsInfoUri(spec))
-    m.add(uri, m.getProperty(rdfType), m.getResource(datasetEntity))
-    m.add(uri, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
-    m.add(uri, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
-    m.add(uri, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
+    val subject = m.getResource(getDsInfoUri(spec))
+    m.add(subject, m.getProperty(rdfType), m.getResource(datasetEntity))
+    m.add(subject, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
+    m.add(subject, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
+    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
     val trueLiteral = m.createLiteral("true")
-    m.add(uri, m.getProperty(publishOAIPMH.uri), trueLiteral)
-    m.add(uri, m.getProperty(publishIndex.uri), trueLiteral)
-    m.add(uri, m.getProperty(publishLOD.uri), trueLiteral)
-    m.add(uri, m.getProperty(acceptanceOnly.uri), trueLiteral)
-    if (mapToPrefix != "-") m.add(uri, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
-    ts.up.dataPost(uri.getURI, m).map { ok =>
+    m.add(subject, m.getProperty(publishOAIPMH.uri), trueLiteral)
+    m.add(subject, m.getProperty(publishIndex.uri), trueLiteral)
+    m.add(subject, m.getProperty(publishLOD.uri), trueLiteral)
+    m.add(subject, m.getProperty(acceptanceOnly.uri), trueLiteral)
+    if (mapToPrefix != "-") m.add(subject, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
+    ts.up.dataPost(getGraphName(spec), m).map { ok =>
       val cacheName = getDsInfoUri(spec)
       val dsInfo = new DsInfo(spec)
       Cache.set(cacheName, dsInfo, cacheTime)
@@ -146,12 +148,14 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   val uri = getDsInfoUri(spec)
 
+  val graphName = getGraphName(spec)
+
   val skosified = true
 
-  val skosUri = getDsSkosUri(uri)
+  val skosGraphName = getSkosGraphName(uri)
 
   // could cache as well so that the get happens less
-  def futureModel = ts.dataGet(uri)
+  def futureModel = ts.dataGet(graphName)
 
   futureModel.onFailure {
     case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
@@ -171,15 +175,15 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
 
   def setSingularLiteralProps(propVals: (NXProp, String)*): Unit = {
-    val sparqlPerPropQ = propVals.map(pv => updatePropertyQ(uri, pv._1, pv._2)).toList
-    val withSynced = updateSyncedFalseQ(uri) :: sparqlPerPropQ
+    val sparqlPerPropQ = propVals.map(pv => updatePropertyQ(graphName, uri, pv._1, pv._2)).toList
+    val withSynced = updateSyncedFalseQ(graphName, uri) :: sparqlPerPropQ
     val sparql = withSynced.mkString(";\n")
     val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(sparql)
     Await.ready(futureUpdate, patience)
   }
 
   def removeLiteralProp(prop: NXProp): Unit = {
-    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(removeLiteralPropertyQ(uri, prop))
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(removeLiteralPropertyQ(graphName, uri, prop))
     Await.ready(futureUpdate, patience)
   }
 
@@ -189,12 +193,12 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def addLiteralProp(prop: NXProp, uriValueString: String): Unit = {
-    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(uri, prop, uriValueString))
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
   }
 
   def removeLiteralProp(prop: NXProp, uriValueString: String): Unit = {
-    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(uri, prop, uriValueString))
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
   }
 
@@ -204,7 +208,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def dropDataset = {
-    ts.up.sparqlUpdate(deleteDatasetQ(uri, skosUri)).map(ok => true)
+    ts.up.sparqlUpdate(deleteDatasetQ(graphName, uri, skosGraphName)).map(ok => true)
   }
 
   def getIdFilter: IdFilter = {
@@ -220,15 +224,15 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     val production = ts.up.production
     if (getBooleanProp(acceptanceOnly)) {
       val doSkosTransfer = for {
-        datasetModel <- ts.dataGet(uri)
+        datasetModel <- ts.dataGet(graphName)
         putDataset <- production.dataPutGraph(uri, datasetModel)
-        skosExists <- ts.ask(graphExistsQ(skosUri))
+        skosExists <- ts.ask(graphExistsQ(skosGraphName))
       } yield skosExists
       doSkosTransfer.flatMap { skosExists =>
         if (skosExists) {
           for {
-            skosModel <- ts.dataGet(skosUri)
-            putSkos <- production.dataPutGraph(skosUri, skosModel)
+            skosModel <- ts.dataGet(skosGraphName)
+            putSkos <- production.dataPutGraph(skosGraphName, skosModel)
           } yield {
             setSingularLiteralProps(acceptanceOnly -> "false")
             false
@@ -332,7 +336,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     sw.toString
   }
 
-  lazy val vocabulary = new SkosVocabulary(spec, skosUri)
+  lazy val vocabulary = new SkosVocabulary(spec, skosGraphName)
 
   def ownerEmailOpt = getUriProp(actorOwner).flatMap(ownerUri => orgContext.us.emailFromUri(ownerUri))
 

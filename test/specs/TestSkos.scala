@@ -23,10 +23,10 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     val admin = await(actorStore.authenticate("gumby", "secret gumby")).get
     val genreInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_genre"))
     val genreFile = new File(getClass.getResource("/skos/Genre.xml").getFile)
-    await(ts.up.dataPutXMLFile(genreInfo.dataUri, genreFile))
+    await(ts.up.dataPutXMLFile(genreInfo.skosGraphName, genreFile))
     val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy"))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
-    await(ts.up.dataPutXMLFile(classyInfo.dataUri, classyFile))
+    await(ts.up.dataPutXMLFile(classyInfo.skosGraphName, classyFile))
     countGraphs must be(5)
 
     genreInfo.vocabulary.languages must be(List("en", "nl"))

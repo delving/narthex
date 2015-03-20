@@ -72,4 +72,13 @@ object StringHandling {
       .replaceAll("\\s+", "-")      // Replace whitespace (including newlines and repetitions) with single dashes
       .toLowerCase                  // Lowercase the final results
   }
+
+  val ExtractLocalName = ".*[^\\w](\\w+)".r
+
+  def createFOAFAbout(subject:String) = s"$subject/about"
+
+  def createGraphName(subject:String) = s"$subject/graph"
+
+  val SubjectOfGraph = "(.*)/graph".r
+
 }
