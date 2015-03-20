@@ -225,7 +225,7 @@ class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContex
     }
 
     override def dataPutXMLFile(graphUri: String, file: File) = {
-      println(s"Posting $graphUri")
+      println(s"Putting $graphUri")
       dataRequest(graphUri).withHeaders(
         "Content-Type" -> "application/rdf+xml; charset=utf-8"
       ).put(file).map(checkResponse)

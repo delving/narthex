@@ -110,7 +110,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
   def clear() = clearDir(home)
 
   def createGraphReader(fileOpt: Option[File], progressReporter: ProgressReporter) = new GraphReader {
-    val LineId = "<!--<([^>]*)>-->".r
+    val LineId = "<!--<([^>]+)>-->".r
     var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listXmlFiles)
     val totalLength = (0L /: files.map(_.length()))(_ + _)
     var activeReader: Option[BufferedReader] = None

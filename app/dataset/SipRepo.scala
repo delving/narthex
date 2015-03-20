@@ -16,13 +16,10 @@
 package dataset
 
 import java.io._
-import java.util
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipOutputStream}
-import javax.xml.namespace.NamespaceContext
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamSource
 import javax.xml.validation.Validator
-import javax.xml.xpath.{XPathConstants, XPathFactory}
 
 import eu.delving.XMLToolFactory
 import eu.delving.groovy._
@@ -30,7 +27,7 @@ import eu.delving.metadata._
 import eu.delving.schema.SchemaVersion
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
-import org.w3c.dom.{Document, Element, NodeList}
+import org.w3c.dom.Element
 import play.api.Logger
 import record.PocketParser._
 import services.StringHandling
@@ -285,27 +282,6 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
     override val prefix: String = sipMapping.prefix
 
-    val xPath = XPathFactory.newInstance().newXPath()
-
-    class NC extends NamespaceContext {
-      override def getNamespaceURI(prefix: String): String = {
-        prefix match {
-          case RDF_PREFIX => RDF_URI
-          case "ore" => "http://www.openarchives.org/ore/terms/"
-          case _ => null
-        }
-      }
-      override def getPrefixes(uri: String): util.Iterator[_] = null
-      override def getPrefix(p1: String): String = null
-    }
-    xPath.setNamespaceContext(new NC)
-
-    def evaluateXpath(xpathQuery:String, document: Document): Option[String] = {
-      val nodes = xPath.evaluate(xpathQuery, document.getDocumentElement, XPathConstants.NODESET).asInstanceOf[NodeList]
-      val nodeSeq = for (nodeNumber <- 0 until nodes.getLength) yield nodes.item(nodeNumber)
-      nodeSeq.headOption.map(n => n.getTextContent)
-    }
-
     override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
       //        println(s"### BEGIN RecordXml ${"-" * 30}\n${pocket.text}\n### END RecordXml ${"-" * 30}")
       val metadataRecord = factory.metadataRecordFrom(pocket.text)
@@ -325,10 +301,10 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
         case "edm" =>
           val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
           kids.foreach(rdfWrapper.appendChild)
-          val edm = rdfWrapper
-          val xpathQuery = "/rdf:RDF/ore:Aggregation/@rdf:about"
-          val aggregationUri = evaluateXpath(xpathQuery, doc).getOrElse("?")
-          (edm, StringHandling.createGraphName(aggregationUri))
+          val aggregation = kids.find(node => node.getLocalName == "Aggregation").getOrElse(throw new RuntimeException(s"No aggregation found!"))
+          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
+          val aggregationUri = about.getTextContent
+          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
 
         case _ =>
           val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")

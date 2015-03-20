@@ -83,7 +83,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
         await(ts.up.sparqlUpdate(update))
       }
     }
-    countGraphs must be(3)
+    countGraphs must be(5)
   }
 
   "Skosification must work" in {
