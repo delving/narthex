@@ -29,17 +29,22 @@ object SkosMappingStore {
 
   case class SkosMapping(actor: NXActor, uriA: String, uriB: String) {
 
-    val uri = s"${actor.uri}/mapping/${UUID.randomUUID().toString}"
-
-    val graphName = createGraphName(uri)
-
     val existenceQ = doesMappingExistQ(uriA, uriB)
 
     val deleteQ = deleteMappingQ(uriA, uriB)
 
-    def insertQ(skosA: SkosGraph, skosB: SkosGraph) = insertMappingQ(graphName, actor, uri, uriA, uriB, skosA, skosB)
+    def insertQ(skosA: SkosGraph, skosB: SkosGraph) = {
 
-    override def toString = uri
+      val uuid = UUID.randomUUID().toString
+
+      val uri = s"${actor.uri}/mapping/$uuid"
+
+      val graphName = createGraphName(uri)
+
+      insertMappingQ(graphName, actor, uri, uriA, uriB, skosA, skosB)
+    }
+
+    override def toString = s"SkosMapping($uriA, $uriB)"
   }
 
 }

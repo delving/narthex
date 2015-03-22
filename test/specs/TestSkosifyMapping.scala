@@ -157,6 +157,9 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
   }
 
   "Mapping a skosified entry to a vocab entry" in {
+
+    def exactMatch = await(ts.query(s"select ?o where { graph ?g { ?s <http://www.w3.org/2004/02/skos/core#exactMatch> ?o. } }")).headOption
+
     val actorStore = new ActorStore
     val admin = await(actorStore.authenticate("gumby", "geheim")).get
     val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy"))
@@ -164,6 +167,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     await(ts.up.dataPutXMLFile(classyInfo.skosGraphName, classyFile))
     val info = await(DsInfo.freshDsInfo("ton-smits-huis")).get
     info.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
+    exactMatch must be(None)
     val store = new TermMappingStore(info)
     // todo: nothing checks whether this literal or uri string are legitimate
     val literalString = "vogels"
@@ -172,8 +176,11 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val mapping = SkosMapping(admin, uriA, uriB)
     await(store.toggleMapping(mapping, classyInfo)) must be("added")
     await(store.getMappings(categories = false)) must be(Seq(List(uriA, uriB, "gtaa_classy")))
+    println(s"exactMatch: $exactMatch")
+    exactMatch.isDefined must be(true)
     await(store.toggleMapping(mapping, classyInfo)) must be("removed")
     await(store.getMappings(categories = false)) must be(Seq())
+    exactMatch must be(None)
   }
 
   "Mapping a skosified entry to a category" in {
