@@ -75,9 +75,11 @@ object StringHandling {
 
   val ExtractLocalName = ".*[^\\w](\\w+)".r
 
-  def createFOAFAbout(subject:String) = s"$subject/about"
+  def stripSlash(subject: String) = if (subject.endsWith("/")) subject.substring(0, subject.length-1) else subject
 
-  def createGraphName(subject:String) = s"$subject/graph"
+  def createFOAFAbout(subject:String) = s"${stripSlash(subject)}/about"
+
+  def createGraphName(subject:String) = s"${stripSlash(subject)}/graph"
 
   val SubjectOfGraph = "(.*)/graph".r
 
