@@ -35,7 +35,7 @@ import scala.concurrent.duration._
 
 object MainController extends Controller with Security {
 
-  val SIP_APP_VERSION = "1.0.6"
+  val SIP_APP_VERSION = "1.0.7"
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
 
