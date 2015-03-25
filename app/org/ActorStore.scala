@@ -172,6 +172,6 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
 
   private def checkFail(futureUnit: Future[Unit]) = futureUnit.onFailure {
     case e: Throwable =>
-      Logger.error("Problem setting profile", e)
+      Logger.error("Problem with ActorStore", e)
   }
 }

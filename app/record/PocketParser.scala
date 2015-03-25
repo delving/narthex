@@ -184,7 +184,9 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
             startElement = None
             recordText.append(s"$start$text")
           }
-          else if (!text.isEmpty) throw new RuntimeException(s"expected no text for $tag")
+          else if (!text.isEmpty) {
+            Logger.warn(s"Mixed content text of <$tag> ignored: [$text]")
+          }
           recordText.append(s"</$tag>\n")
         }
       }
