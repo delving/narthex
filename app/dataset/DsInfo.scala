@@ -225,7 +225,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     if (getBooleanProp(acceptanceOnly)) {
       val doSkosTransfer = for {
         datasetModel <- ts.dataGet(graphName)
-        putDataset <- production.dataPutGraph(uri, datasetModel)
+        putDataset <- production.dataPutGraph(graphName, datasetModel)
         skosExists <- ts.ask(graphExistsQ(skosGraphName))
       } yield skosExists
       doSkosTransfer.flatMap { skosExists =>
