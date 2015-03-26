@@ -120,7 +120,7 @@ object Sparql {
 
   val selectDatasetSpecsQ =
     s"""
-      |SELECT ?spec
+      |SELECT DISTINCT ?spec
       |WHERE {
       |  GRAPH ?g {
       |    ?s <$datasetSpec> ?spec .
