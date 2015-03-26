@@ -68,7 +68,7 @@ object VocabInfo {
 
   def getGraphName(spec: String) = createGraphName(getVocabInfoUri(spec))
 
-  def getVocabGraphName(spec: String) = s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}"
+  def getVocabGraphName(spec: String) = createGraphName(s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}")
 
   def createVocabInfo(owner: NXActor, spec: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[VocabInfo] = {
     val m = ModelFactory.createDefaultModel()
