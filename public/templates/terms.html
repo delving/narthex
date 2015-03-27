@@ -37,7 +37,7 @@
             </div>
             <ul class="list-group actionable vertical-scroll" data-scrollable id="histogram-list" data-offset="160"
                 data-ng-style="{ 'height': elHeight }">
-                <li data-ng-repeat="term in terms"
+                <li data-ng-repeat="term in termsVisible"
                     class="list-group-item clearfix"
                     data-ng-class="{ 'list-item-selected': term.uri == sourceTerm.uri, 'list-item-mapped' : mappings[term.uri] }"
                     data-ng-click="scrollTo({element: '#skos-term-list', direction: 'up'});selectTerm(term);">
