@@ -473,10 +473,10 @@ object Sparql {
         |}
         |WHERE {
         |  GRAPH ?g {
+        |    ?s <$fieldProperty> ${literalExpression(value, languageOpt)} .
+        |    ?record a <$recordEntity> .
         |    ?foafDoc <$foafPrimaryTopic> ?record .
         |    ?foafDoc <$belongsTo> <${sf.datasetUri}> .
-        |    ?record a <$recordEntity> .
-        |    ?s <$fieldProperty> ${literalExpression(value, languageOpt)} .
         |  }
         |};
        """.stripMargin

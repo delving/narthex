@@ -27,7 +27,7 @@ import triplestore.Sparql._
 
 object Skosifier {
 
-  val chunkSize = 3
+  val chunkSize = 12
 
   case class SkosificationComplete(skosifiedField: SkosifiedField)
 
