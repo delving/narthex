@@ -199,8 +199,8 @@ object Sparql {
       |}
       |WHERE {
       |   GRAPH ?g {
-      |      ?record a <$recordEntity> .
       |      ?record <$belongsTo> <$uri> .
+      |      ?record a <$recordEntity> .
       |   }
       |};
      """.stripMargin
@@ -272,11 +272,11 @@ object Sparql {
       |}
       |WHERE {
       |  GRAPH ?g {
-      |    ?s ?p ?o
-      |  }
-      |  GRAPH ?g {
       |    ?mapping <$mappingConcept> <$uriA> .
       |    ?mapping <$mappingConcept> <$uriB> .
+      |  }
+      |  GRAPH ?g {
+      |    ?s ?p ?o
       |  }
       |}
      """.stripMargin
@@ -358,9 +358,9 @@ object Sparql {
       |WHERE {
       |  GRAPH ?g {
       |    ?datasetUri
+      |      <$skosField> ?fieldPropertyUri ;
       |      a <$datasetEntity> ;
-      |      <$datasetSpec> ?spec ;
-      |      <$skosField> ?fieldPropertyUri .
+      |      <$datasetSpec> ?spec.
       |  }
       |}
      """.stripMargin
@@ -377,11 +377,11 @@ object Sparql {
     s"""
       |ASK {
       |  GRAPH ?g {
+      |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
+      |    FILTER isLiteral(?literalValue)
       |    ?foafDoc <$foafPrimaryTopic> ?record .
       |    ?foafDoc <$belongsTo> <${sf.datasetUri}> .
       |    ?record a <$recordEntity> .
-      |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
-      |    FILTER isLiteral(?literalValue)
       |  }
       |}
      """.stripMargin
@@ -391,11 +391,11 @@ object Sparql {
       |SELECT (COUNT(DISTINCT ?literalValue) as ?count)
       |WHERE {
       |  GRAPH ?g {
+      |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
+      |    FILTER isLiteral(?literalValue)
       |    ?foafDoc <$foafPrimaryTopic> ?record .
       |    ?foafDoc <$belongsTo> <${sf.datasetUri}> .
       |    ?record a <$recordEntity> .
-      |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
-      |    FILTER isLiteral(?literalValue)
       |  }
       |}
      """.stripMargin
@@ -407,11 +407,11 @@ object Sparql {
       |SELECT DISTINCT ?literalValue
       |WHERE {
       |  GRAPH ?g {
+      |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
+      |    FILTER isLiteral(?literalValue)
       |    ?foafDoc <$foafPrimaryTopic> ?record .
       |    ?foafDoc <$belongsTo> <${sf.datasetUri}> .
       |    ?record a <$recordEntity> .
-      |    ?anything <${sf.fieldPropertyUri}> ?literalValue .
-      |    FILTER isLiteral(?literalValue)
       |  }
       |}
       |LIMIT $chunkSize
