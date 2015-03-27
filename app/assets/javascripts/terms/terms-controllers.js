@@ -180,6 +180,13 @@ define(["angular"], function () {
                 $scope.languages = data.languages;
                 $scope.sought.language = $scope.languages[0];
                 searchThesaurus($scope.sought.label);
+
+                // little extra data for the frontend. used for the terms srollable div.
+                // if language radios, then add more offset to align the bottom of the div with the viewport.
+                $scope.termlistOffset = 295;
+                if($scope.languages.length > 1 ) {
+                    $scope.termlistOffset = 330;
+                }
             });
         };
 
