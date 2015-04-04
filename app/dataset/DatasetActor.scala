@@ -261,7 +261,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)
       }
       else {
-        val rawFile = datasetContext.rawFile.getOrElse(throw new Exception(s"Unable to find 'raw' file to analyze"))
+        val rawFile = datasetContext.rawXmlFile.getOrElse(throw new Exception(s"Unable to find 'raw' file to analyze"))
         val analyzer = context.actorOf(Analyzer.props(datasetContext), "analyzer-raw")
         analyzer ! AnalyzeFile(rawFile, processed = false)
         goto(Analyzing) using Active(Some(analyzer), SPLITTING)

@@ -24,7 +24,7 @@ import dataset.DatasetContext
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils._
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
-import services.FileHandling.reader
+import services.FileHandling.createReader
 import services.StringHandling.pathToDirectory
 
 import scala.collection.mutable
@@ -93,7 +93,7 @@ class NodeRepo(val parent: DatasetContext, val dir: File) {
   def writeHistograms(uniqueCount: Int) = {
 
     val LINE = """^ *(\d*) (.*)$""".r
-    val input = reader(histogramText)
+    val input = createReader(histogramText)
 
     def lineOption = {
       val string = input.readLine()

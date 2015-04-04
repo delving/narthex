@@ -35,9 +35,9 @@ object FileHandling {
     dir
   }
 
-  def reader(inputStream: InputStream): BufferedReader = new BufferedReader(new InputStreamReader(new BOMInputStream(inputStream), "UTF-8"))
+  def createReader(inputStream: InputStream): BufferedReader = new BufferedReader(new InputStreamReader(new BOMInputStream(inputStream), "UTF-8"))
 
-  def reader(file: File): BufferedReader = reader(new FileInputStream(file))
+  def createReader(file: File): BufferedReader = createReader(new FileInputStream(file))
 
   def readerCounting(file: File): (BufferedReader, CountingInputStream) = {
     val fis: FileInputStream = new FileInputStream(file)
@@ -47,11 +47,11 @@ object FileHandling {
     (br, cis)
   }
 
-  def writer(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))
+  def createWriter(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))
 
   def appender(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, true), "UTF-8"))
 
-  def writer(outputStream: OutputStream) = new BufferedWriter(new OutputStreamWriter(outputStream, "UTF-8"))
+  def createWriter(outputStream: OutputStream) = new BufferedWriter(new OutputStreamWriter(outputStream, "UTF-8"))
 
   abstract class ReadProgress {
     def getPercentRead: Int

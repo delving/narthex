@@ -16,8 +16,13 @@
 
 package services
 
+import java.io._
 import java.net.URLEncoder
 
+import org.apache.commons.csv.CSVFormat
+
+import scala.collection.JavaConversions._
+import scala.language.postfixOps
 import scala.xml.NodeSeq
 
 object StringHandling {
@@ -53,7 +58,7 @@ object StringHandling {
 
   def oaipmhPublishFromInfo(info: NodeSeq): Boolean = (info \ "publication" \ "oaipmh").text.trim == "true"
 
-  def sanitizeXml(xml:String) = xml
+  def sanitizeXml(xml: String) = xml
     .replaceAll("[<]", "&lt;")
     .replaceAll("[&]", "&amp;")
     .replaceAll("[>]", "&gt;")
@@ -67,20 +72,46 @@ object StringHandling {
     import java.text.Normalizer
     Normalizer.normalize(input, Normalizer.Form.NFD)
       .replaceAll("[^\\w\\s-]", "") // Remove all non-word, non-space or non-dash characters
-      .replace('-', ' ')            // Replace dashes with spaces
-      .trim                         // Trim leading/trailing whitespace (including what used to be leading/trailing dashes)
-      .replaceAll("\\s+", "-")      // Replace whitespace (including newlines and repetitions) with single dashes
-      .toLowerCase                  // Lowercase the final results
+      .replace('-', ' ') // Replace dashes with spaces
+      .trim // Trim leading/trailing whitespace (including what used to be leading/trailing dashes)
+      .replaceAll("\\s+", "-") // Replace whitespace (including newlines and repetitions) with single dashes
+      .toLowerCase // Lowercase the final results
   }
 
   val ExtractLocalName = ".*[^\\w](\\w+)".r
 
-  def stripSlash(subject: String) = if (subject.endsWith("/")) subject.substring(0, subject.length-1) else subject
+  def stripSlash(subject: String) = if (subject.endsWith("/")) subject.substring(0, subject.length - 1) else subject
 
-  def createFOAFAbout(subject:String) = s"${stripSlash(subject)}/about"
+  def createFOAFAbout(subject: String) = s"${stripSlash(subject)}/about"
 
-  def createGraphName(subject:String) = s"${stripSlash(subject)}/graph"
+  def createGraphName(subject: String) = s"${stripSlash(subject)}/graph"
 
   val SubjectOfGraph = "(.*)/graph".r
+
+  def csvToXML(reader: Reader, writer: Writer): Unit = {
+    var fieldNamesOpt: Option[List[String]] = None
+    writer.write("<csv-records>\n")
+    CSVFormat.RFC4180.parse(reader).toSeq.foreach { record =>
+      if (fieldNamesOpt.isEmpty) {
+        fieldNamesOpt = Some(record.toList)
+      }
+      else {
+        val tagValue = fieldNamesOpt.get.zip(record.toList).flatMap { n =>
+          val tag = slugify(n._1)
+          if (tag.isEmpty) None else {
+            val value = sanitizeXml(n._2.trim)
+            Option(value).filterNot(_.isEmpty).map(v => s"    <$tag>$value</$tag>\n")
+          }
+        }
+        if (tagValue.nonEmpty) {
+          writer.write("  <csv-record>\n")
+          tagValue.foreach(writer.write)
+          writer.write("  </csv-record>\n")
+        }
+      }
+    }
+    writer.write("</csv-records>\n")
+    writer.flush()
+  }
 
 }

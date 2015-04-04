@@ -31,7 +31,7 @@ import dataset.DatasetContext
 import org.OrgContext.actorWork
 import org.apache.commons.io.FileUtils.deleteQuietly
 import play.api.libs.json._
-import services.FileHandling.{reader, sourceFromFile, writer}
+import services.FileHandling.{createReader, sourceFromFile, createWriter}
 import services.ProgressReporter.ProgressState._
 import services._
 
@@ -184,7 +184,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
   def receive = {
 
     case Count() =>
-      val sorted = reader(nodeRepo.sorted)
+      val sorted = createReader(nodeRepo.sorted)
 
       val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
 
@@ -197,8 +197,8 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
         if (string != null) Some(string) else None
       }
 
-      val counted = writer(nodeRepo.counted)
-      val unique = writer(nodeRepo.uniqueText)
+      val counted = createWriter(nodeRepo.counted)
+      val unique = createWriter(nodeRepo.uniqueText)
       var occurrences = 0
       var uniqueCount = 0
 
@@ -290,12 +290,12 @@ class Sorter(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
         case SortType.VALUE_SORT => (nodeRepo.values, nodeRepo.sorted)
         case SortType.HISTOGRAM_SORT => (nodeRepo.counted, nodeRepo.histogramText)
       }
-      val input = reader(inputFile)
+      val input = createReader(inputFile)
 
       var lines = List.empty[String]
       def dumpSortedToFile() = {
         val outputFile = nodeRepo.tempSort
-        val output = writer(outputFile)
+        val output = createWriter(outputFile)
         lines.sorted(sortType.ordering).foreach {
           line =>
             output.write(line)
@@ -350,8 +350,8 @@ class Merger(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
   def receive = {
 
     case Merge(inFileA, inFileB, mergeResultFile, sortType) =>
-      val inputA = reader(inFileA)
-      val inputB = reader(inFileB)
+      val inputA = createReader(inFileA)
+      val inputB = createReader(inFileB)
 
       def lineOption(reader: BufferedReader) = {
         val string = reader.readLine()
@@ -359,7 +359,7 @@ class Merger(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       }
 
       val outputFile = nodeRepo.tempSort
-      val output = writer(outputFile)
+      val output = createWriter(outputFile)
 
       def write(line: Option[String]) = {
         output.write(line.get)

@@ -78,7 +78,7 @@ object OrgContext {
   val TRIPLE_STORE_URLS: Option[(String, String)] = config.getObject("triple-stores").map(_.toConfig).map { tripleStores =>
     (tripleStores.getString("acceptance"), tripleStores.getString("production"))
   }
-  val TRIPLE_STORE_LOG = if (play.api.Play.current.mode == Mode.Dev) true else configFlag("triple-store-log")
+  val TRIPLE_STORE_LOG = configFlag("triple-store-log")
 
   Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")
 

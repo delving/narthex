@@ -57,7 +57,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val info = await(DsInfo.createDsInfo(admin, "ton-smits-huis", DsInfo.CharacterMapped, "edm"))
     val processedRepo = new ProcessedRepo(FileHandling.clearDir(new File("/tmp/test-processed-repo")), info)
     var processedFile = processedRepo.createOutput.xmlFile
-    val processedWriter = writer(processedFile)
+    val processedWriter = createWriter(processedFile)
     // fill processed repo by mapping records
     latestSip.spec must be(Some("ton-smits-huis"))
     val source = latestSip.copySourceToTempFile

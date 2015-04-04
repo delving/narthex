@@ -29,7 +29,7 @@ import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import record.PocketParser
 import record.PocketParser._
-import services.FileHandling.{clearDir, sourceFromFile, writer}
+import services.FileHandling.{clearDir, sourceFromFile, createWriter}
 import services.ProgressReporter
 
 import scala.collection.mutable
@@ -222,7 +222,7 @@ class SourceRepo(home: File) {
     }
     else {
       val newIdsFile = createIdsFile(fileNumber)
-      val idWriter = writer(newIdsFile)
+      val idWriter = createWriter(newIdsFile)
       idSet.foreach { id =>
         idWriter.write(id)
         idWriter.write('\n')
@@ -311,7 +311,7 @@ class SourceRepo(home: File) {
 
   def generatePockets(sourceOutputStream: OutputStream, idFilter: IdFilter, progress: ProgressReporter): Int = {
     var recordCount = 0
-    val rawOutput = writer(sourceOutputStream)
+    val rawOutput = createWriter(sourceOutputStream)
     try {
       val startList = s"""<$POCKET_LIST>\n"""
       val endList = s"""</$POCKET_LIST>\n"""

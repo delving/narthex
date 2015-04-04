@@ -26,7 +26,7 @@ class TestEDM extends PlaySpec with OneAppPerSuite with PrepareEDM {
     val sipOpt = sipRepo.latestSipOpt
     sipOpt.isDefined must be(true)
     val sip = sipOpt.get
-    val targetOutput = writer(targetFile)
+    val targetOutput = createWriter(targetFile)
     // fill processed repo by mapping records
     val source = sip.copySourceToTempFile
     source.isDefined must be(true)

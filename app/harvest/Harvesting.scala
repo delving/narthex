@@ -194,7 +194,7 @@ trait Harvesting {
       else {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBodyAsStream
-        val xml = XML.load(FileHandling.reader(body))
+        val xml = XML.load(FileHandling.createReader(body))
         val errorNode = xml \ "error"
         if (errorNode.nonEmpty) {
           val errorCode = (errorNode \ "@code").text
@@ -211,7 +211,7 @@ trait Harvesting {
       error getOrElse {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBodyAsStream
-        val xml = XML.load(FileHandling.reader(body))
+        val xml = XML.load(FileHandling.createReader(body))
         val tokenNode = xml \ "ListRecords" \ "resumptionToken"
         val newToken = if (tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")

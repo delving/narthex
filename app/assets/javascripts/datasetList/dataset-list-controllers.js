@@ -295,8 +295,8 @@ define(["angular"], function () {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
             if (!($files.length && !ds.uploading)) return;
             var onlyFile = $files[0];
-            if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml') || onlyFile.name.endsWith('.sip.zip'))) {
-                alert("Sorry, the file must end with '.xml.gz' or '.xml' or '.sip.zip'");
+            if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml') || onlyFile.name.endsWith('.csv') || onlyFile.name.endsWith('.sip.zip'))) {
+                alert("Sorry, the file must end with '.xml.gz', '.xml', '.csv' or '.sip.zip'");
                 return;
             }
             ds.uploading = true;

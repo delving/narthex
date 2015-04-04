@@ -49,6 +49,7 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
   "org.apache.jena" % "jena-arq" % "2.12.1" excludeAll ExclusionRule(organization = "org.slf4j"),
+  "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "2.4.0",
   "eu.delving" % "sip-core" % "1.0.6-SNAPSHOT"
 )

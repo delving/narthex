@@ -21,7 +21,7 @@ import mapping.CategoriesSpreadsheet.CategoryCount
 import org.OrgContext._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{JsPath, Json, Writes}
-import services.FileHandling.writer
+import services.FileHandling.createWriter
 import services.Temporal
 
 object CategoriesRepo {
@@ -60,7 +60,7 @@ class CategoriesRepo(root: File) {
     val jsonName = Temporal.nowFileName(ORG_ID, JSON)
     val jsonFile = new File(data, jsonName)
     val jsonList = Json.arr(counts)
-    val fw = writer(jsonFile)
+    val fw = createWriter(jsonFile)
     fw.write(Json.prettyPrint(jsonList))
     fw.close()
     val sheetName = Temporal.nowFileName(ORG_ID, SPREADSHEET)

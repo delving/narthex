@@ -126,8 +126,8 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       if (incrementalOpt.isEmpty) datasetContext.processedRepo.clear()
 
       val processedOutput = datasetContext.processedRepo.createOutput
-      val xmlOutput = writer(processedOutput.xmlFile)
-      val errorOutput = writer(processedOutput.errorFile)
+      val xmlOutput = createWriter(processedOutput.xmlFile)
+      val errorOutput = createWriter(processedOutput.errorFile)
       var validRecords = 0
       var invalidRecords = 0
       var time = System.currentTimeMillis()

@@ -20,7 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import analysis.NodeRepo
-import dataset.DsInfo.DsMetadata
+import dataset.DsInfo.{DsState, DsMetadata}
 import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
@@ -29,8 +29,11 @@ import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
 import record.PocketParser
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
+import services.{StringHandling, FileHandling}
 import services.FileHandling.clearDir
 import services.StringHandling.pathToDirectory
+
+import scala.util.{Failure, Success, Try}
 
 class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
@@ -66,7 +69,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
   // todo: recordContainer instead perhaps
-  def setRawDelimiters(recordRoot: String, uniqueId: String) = rawFile.map { raw =>
+  def setRawDelimiters(recordRoot: String, uniqueId: String):Unit = rawXmlFile.foreach { raw =>
     createSourceRepo(SourceFacts("from-raw", recordRoot, uniqueId, None))
     dropTree()
     dsInfo.removeState(RAW_ANALYZED)
@@ -78,7 +81,25 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def sourceRepoOpt: Option[SourceRepo] = if (sourceDir.exists()) Some(new SourceRepo(sourceDir)) else None
 
   def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
-    if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
+    if (fileName.endsWith(".csv")) {
+      val csvFile = setTargetFile(createRawFile(fileName))
+      val reader = FileHandling.createReader(csvFile)
+      val baseName = fileName.substring(0, fileName.lastIndexOf("."))
+      val xmlFile = new File(csvFile.getParentFile, s"$baseName.xml")
+      val writer = FileHandling.createWriter(xmlFile)
+      val tryConvert = Try(StringHandling.csvToXML(reader, writer))
+      reader.close()
+      writer.close()
+      tryConvert match {
+        case Success(_) => dsInfo.setState(RAW)
+        case Failure(e) => dsInfo.removeState(RAW)
+      }
+      dsInfo.removeState(RAW_ANALYZED)
+      dsInfo.removeState(ANALYZED)
+      dropTree()
+      None
+    }
+    else if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
       setTargetFile(createRawFile(fileName))
       dsInfo.setState(RAW)
       dsInfo.removeState(RAW_ANALYZED)
@@ -126,11 +147,11 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     }
   }
 
-  def rawFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.headOption else None
+  def rawXmlFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.find(_.getName.endsWith(".xml")) else None
 
   def singleHarvestZip: Option[File] = {
     val allZip = sourceDir.listFiles.filter(_.getName.endsWith("zip"))
-    if (allZip.size > 1) throw new RuntimeException(s"Multiple zip files where one was expected: $allZip")
+    if (allZip.length > 1) throw new RuntimeException(s"Multiple zip files where one was expected: $allZip")
     allZip.headOption
   }
 
