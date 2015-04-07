@@ -44,7 +44,7 @@ object MainController extends Controller with Security {
   }
 
   def index = Action { request =>
-    Ok(views.html.index(ORG_ID, SIP_APP_URL))
+    Ok(views.html.index(ORG_ID, SIP_APP_URL, OAUTH_URL))
   }
 
   def testEmail(messageType: String) = Action { request =>

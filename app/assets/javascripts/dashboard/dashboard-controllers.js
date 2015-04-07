@@ -102,10 +102,11 @@ define(["angular"], function (angular) {
     /** Controls the header */
     var IndexCtrl = function ($rootScope, $scope, userService, $location) {
 
-        $scope.initialize = function (orgId, sipCreatorLink) {
+        $scope.initialize = function (orgId, sipCreatorLink, oauthUrl) {
             console.log("Initializing index");
             $rootScope.orgId = orgId;
             $rootScope.sipCreatorLink = sipCreatorLink;
+            $rootScope.oauthUrl = oauthUrl;
             $scope.toggleBar = true;
         };
 

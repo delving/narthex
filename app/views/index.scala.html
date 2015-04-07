@@ -1,4 +1,4 @@
-@(orgId: String, sipCreatorLink: String)
+@(orgId: String, sipCreatorLink: String, oauthUrl: String)
 <html>
     <head>
         <title>Narthex-@orgId</title>
@@ -14,7 +14,7 @@
     </head>
     <body>
 
-        <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="IndexCtrl" data-ng-init="initialize('@orgId', '@sipCreatorLink')">
+        <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="IndexCtrl" data-ng-init="initialize('@orgId', '@sipCreatorLink', '@oauthUrl')">
             <!-- Sidebar -->
 
             <div id="sidebar-wrapper">

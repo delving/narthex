@@ -18,6 +18,7 @@ package org
 
 import java.io.File
 import java.util
+import java.util.UUID
 
 import akka.actor.ActorContext
 import dataset.DatasetActor.WorkFailure
@@ -33,6 +34,7 @@ import org.OrgActor.DatasetsCountCategories
 import play.api.{Logger, Mode, Play}
 import play.libs.Akka._
 import services.FileHandling.clearDir
+import services.OAuth2
 import triplestore.GraphProperties.categoriesInclude
 import triplestore.TripleStore
 
@@ -72,6 +74,15 @@ object OrgContext {
   val NARTHEX_DOMAIN = configStringNoSlash("domains.narthex")
   val NAVE_DOMAIN = configStringNoSlash("domains.nave")
 
+  val OAUTH_URL = if (config.getString("oauth2.id").isDefined) {
+    val oauth2 = new OAuth2(Play.current)
+    val callbackBaseUrl = configString("oauth2.callbackBaseUrl")
+    val state = UUID.randomUUID().toString // random confirmation string
+    val callbackUrl = s"$callbackBaseUrl/narthex/_"
+    oauth2.getAuthorizationUrl(callbackUrl, state)
+  }
+  else ""
+
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 
   val TRIPLE_STORE_URL: Option[String] = config.getString("triple-store")
@@ -110,7 +121,7 @@ object OrgContext {
   val orgContext = new OrgContext(USER_HOME, ORG_ID)(global, tripleStore)
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
-  check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e)}
+  check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e) }
 
   def actorWork(actorContext: ActorContext)(block: => Unit) = {
     try {
