@@ -42,6 +42,18 @@ object Sparql {
 
   private def escape(value: String): String = value.map(c => SPARQL_ESCAPE.getOrElse(c, c.toString)).mkString
 
+  // todo: the following is a way to make the string interpolation type-aware
+  implicit class QueryStringContext(stringContext: StringContext) {
+    def Q(args: Any*) = stringContext.s(args.map {
+      case nxProp: NXProp => "<" + nxProp.uri + ">"
+      case string: String => "'" + escape(string) + "'"
+        // todo: other cases
+    })
+  }
+  val x = "4"
+  val y = Q"gumby $x"
+  // todo: ---------------------------------------
+
   private def literalExpression(value: String, languageOpt: Option[String]) = languageOpt.map { language =>
     s"'${escape(value)}'@$language"
   } getOrElse {
@@ -111,9 +123,15 @@ object Sparql {
   def setActorPasswordQ(actor: NXActor, passwordHashString: String) =
     s"""
       |WITH <$actorsGraph>
-      |DELETE { <$actor> <$passwordHash> ?oldPassword }
-      |INSERT { <$actor> <$passwordHash> '$passwordHashString' }
-      |WHERE { <$actor> <$passwordHash> ?oldPassword }
+      |DELETE {
+      |   <$actor> <$passwordHash> ?oldPassword
+      |}
+      |INSERT {
+      |   <$actor> <$passwordHash> '$passwordHashString'
+      |}
+      |WHERE {
+      |   <$actor> <$passwordHash> ?oldPassword
+      |}
      """.stripMargin
 
   // === dataset info ===
@@ -140,8 +158,12 @@ object Sparql {
   def updatePropertyQ(graphName: String, uri: String, prop: NXProp, value: String): String =
     s"""
       |WITH <$graphName>
-      |DELETE { <$uri> <$prop> ?o }
-      |INSERT { <$uri> <$prop> ${literalExpression(value, None)} }
+      |DELETE {
+      |   <$uri> <$prop> ?o
+      |}
+      |INSERT {
+      |   <$uri> <$prop> ${literalExpression(value, None)}
+      |}
       |WHERE {
       |   OPTIONAL { <$uri> <$prop> ?o }
       |}
@@ -150,8 +172,12 @@ object Sparql {
   def updateSyncedFalseQ(graphName: String, uri: String): String =
     s"""
       |WITH <$graphName>
-      |DELETE { <$uri> <$synced> ?o }
-      |INSERT { <$uri> <$synced> false }
+      |DELETE {
+      |   <$uri> <$synced> ?o
+      |}
+      |INSERT {
+      |   <$uri> <$synced> false
+      |}
       |WHERE {
       |   OPTIONAL { <$uri> <$synced> ?o }
       |}
@@ -160,15 +186,19 @@ object Sparql {
   def removeLiteralPropertyQ(graphName: String, uri: String, prop: NXProp) =
     s"""
       |WITH <$graphName>
-      |DELETE { <$uri> <$prop> ?o }
-      |WHERE { <$uri> <$prop> ?o }
+      |DELETE {
+      |   <$uri> <$prop> ?o
+      |}
+      |WHERE {
+      |   <$uri> <$prop> ?o
+      |}
      """.stripMargin
 
   def addUriPropertyQ(graphName: String, uri: String, prop: NXProp, uriValue: String) =
     s"""
       |INSERT DATA {
-      |  GRAPH <$graphName> { 
-      |    <$uri> <$prop> ${literalExpression(uriValue, None)} . 
+      |  GRAPH <$graphName> {
+      |    <$uri> <$prop> ${literalExpression(uriValue, None)} .
       |  }
       |}
      """.stripMargin.trim
@@ -233,15 +263,21 @@ object Sparql {
       |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
       |SELECT (count(?s) as ?count)
       |WHERE {
-      |  GRAPH <$skosGraphName> { ?s rdf:type skos:Concept }
+      |  GRAPH <$skosGraphName> {
+      |     ?s rdf:type skos:Concept
+      |  }
       |}
      """.stripMargin
 
   def dropVocabularyQ(graphName: String) =
     s"""
       |WITH <$graphName>
-      |DELETE { ?s ?p ?o }
-      |WHERE { ?s ?p ?o }
+      |DELETE {
+      |   ?s ?p ?o
+      |}
+      |WHERE {
+      |   ?s ?p ?o
+      |}
      """.stripMargin
 
   // === mapping store ===
