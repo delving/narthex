@@ -30,9 +30,9 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     val actorStore = new ActorStore
     val admin = await(actorStore.authenticate("gumby", "secret gumby"))
     admin must be(Some(NXActor("gumby", None)))
-    await(actorStore.createActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey", Some(s"$actorPrefix/gumby"))))
+    await(actorStore.createSubActor(admin.get, "pokey", "secret pokey")) must be(Some(NXActor("pokey", Some(s"$actorPrefix/gumby"))))
     //    await(us1.createActor(admin.get, "pokey", "secret pokey")) must be(None)
-    actorStore.listActors(admin.get) must be(List("pokey"))
+    actorStore.listSubActors(admin.get) must be(List("pokey"))
     await(actorStore.authenticate("pokey", "secret pokey")) must be(Some(NXActor("pokey", Some(s"$actorPrefix/gumby"))))
 
     // change a password

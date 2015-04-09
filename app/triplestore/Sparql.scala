@@ -66,17 +66,83 @@ object Sparql {
       |   GRAPH <$graphName> { ?s ?p ?o }
       |}
      """.stripMargin
+  
+  def getActor(actorName: String, passwordHashString: String) =
+    s"""
+       |SELECT ?username ?firstName ?lastName ?email ?maker
+       |WHERE {
+       |   GRAPH <$actorsGraph> {
+       |      ?actor
+       |          a <$actorEntity> ;
+       |          <$username> ${literalExpression(actorName, None)} ;
+       |          <$username> ?username ;
+       |          <$passwordHash> '$passwordHashString' .
+       |   }
+       |   OPTIONAL {
+       |      GRAPH <$actorsGraph> {
+       |         ?actor <$actorOwner> ?maker .
+       |      }
+       |   }
+       |   OPTIONAL {
+       |      GRAPH <$actorsGraph> {
+       |         ?actor
+       |            <$userFirstName> ?firstName ;
+       |            <$userLastName> ?lastName ;
+       |            <$userEMail> ?email .
+       |      }
+       |   }
+       |}
+     """.stripMargin
 
+  def actorFromResult(mapList: List[Map[String, QueryValue]]): Option[NXActor] = {
+    mapList.headOption.map { resultMap =>
+      val username = resultMap.get("username").map(_.text).get
+      def text(fieldName: String) = resultMap.get(fieldName).map(_.text).getOrElse("")
+      val makerOpt = resultMap.get("maker").map(_.text)
+      val firstName = text("firstName")
+      val lastName = text("lastName")
+      val email = text("email")
+      val profileOpt = if (firstName.nonEmpty || lastName.nonEmpty || email.nonEmpty)
+          Some(NXProfile(firstName, lastName, email))
+      else
+          None
+      NXActor(username, makerOpt, profileOpt)
+    }
+  }
 
-  def insertActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
+  def getEMailOfActor(actorUri: String) =
+    s"""
+      |SELECT ?email
+      |WHERE {
+      |   GRAPH <$actorsGraph> {
+      |      <$actorUri>
+      |         a <$actorEntity>
+      |         <$userEMail> ?email
+      |   }
+      |}
+     """.stripMargin
+
+  def emailFromResult(mapList: List[Map[String, QueryValue]]): Option[String] = {
+    mapList.headOption.flatMap(resultMap => resultMap.get("email").map(_.text))
+  }
+
+  def insertTopActorQ(actor: NXActor, passwordHashString: String) =
+    s"""
+      |INSERT DATA {
+      |   GRAPH <$actorsGraph> {
+      |      <$actor>
+      |         a <$actorEntity> ;
+      |         <$username> ${literalExpression(actor.actorName, None)} ;
+      |         <$passwordHash> '$passwordHashString' .
+      |   }
+      |}
+     """.stripMargin
+
+  def insertSubActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
     s"""
       |WITH <$actorsGraph>
       |DELETE {
-      |   <$actor>
-      |      a <$actorEntity>;
-      |      <$username> ?userName ;
-      |      <$actorOwner> ?userMaker ;
-      |      <$passwordHash> ?passwordHash .
+      |   <$actor> ?p ?o .
       |}
       |INSERT {
       |   <$actor>
@@ -87,14 +153,23 @@ object Sparql {
       |}
       |WHERE {
       |   OPTIONAL {
-      |      <$actor>
-      |         a <$actorEntity>;
-      |         <$username> ?username ;
-      |         <$actorOwner> ?userMaker ;
-      |         <$passwordHash> ?passwordHash .
+      |      <$actor> ?p ?o .
       |   }
       |}
      """.stripMargin
+
+  def getSubActorList(actor: NXActor) =
+    s"""
+       |SELECT ?username
+       |WHERE {
+       | GRAPH <$actorsGraph> {
+       |   ?actor
+       |     a <$actorEntity> ;
+       |     <$actorOwner> <$actor> ;
+       |     <$username> ?username .
+       | }
+       |}
+      """.stripMargin
 
   def setActorProfileQ(actor: NXActor, profile: NXProfile) =
     s"""
@@ -436,7 +511,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def countFromResult(resultMap: List[Map[String, QueryValue]]): Int = resultMap.head.get("count").get.text.toInt
+  def countFromResult(mapList: List[Map[String, QueryValue]]): Int = mapList.head.get("count").get.text.toInt
 
   def listSkosificationCasesQ(sf: SkosifiedField, chunkSize: Int) =
     s"""

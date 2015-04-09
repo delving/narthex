@@ -187,14 +187,14 @@ object MainController extends Controller with Security {
   }
 
   def listActors = Secure() { session => implicit request =>
-    Ok(Json.obj("actorList" -> orgContext.us.listActors(session.actor)))
+    Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
   }
 
   def createActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
-    orgContext.us.createActor(session.actor, username, password).map { actorOpt =>
-      Ok(Json.obj("actorList" -> orgContext.us.listActors(session.actor)))
+    orgContext.us.createSubActor(session.actor, username, password).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
     }
   }
 
