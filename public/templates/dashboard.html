@@ -37,6 +37,10 @@
                     <span class="badge badge-warning">{{ errorMessage }}</span>
                 </div>
             </form>
+
+            <div data-ng-if="oauthUrl">
+                <a href="{{ oauthUrl }}">Login using OAuth</a>
+            </div>
         </div>
     </div>
 

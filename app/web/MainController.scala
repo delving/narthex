@@ -17,21 +17,24 @@
 package web
 
 import java.io.{File, FileInputStream, FileNotFoundException}
+import java.util.UUID
 
 import org.ActorStore.{NXActor, NXProfile}
 import org.OrgContext._
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
+import play.api.http.{HeaderNames, MimeTypes}
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
+import play.api.libs.ws.WS
 import play.api.mvc._
 import services.MailService.{MailDatasetError, MailProcessingComplete}
 
 import scala.collection.JavaConversions._
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 object MainController extends Controller with Security {
 
@@ -44,40 +47,57 @@ object MainController extends Controller with Security {
   }
 
   def index = Action { request =>
-    Ok(views.html.index(ORG_ID, SIP_APP_URL, OAUTH_URL))
+    val state = UUID.randomUUID().toString
+    createOAuthUrl(state).map { oauthUrl =>
+      Ok(views.html.index(ORG_ID, SIP_APP_URL, oauthUrl)).withSession("oauth-state" -> state)
+    } getOrElse {
+      Ok(views.html.index(ORG_ID, SIP_APP_URL, ""))
+    }
   }
 
-  def testEmail(messageType: String) = Action { request =>
-    messageType match {
-      case "processing-complete" =>
-        Ok(views.html.email.processingComplete(MailProcessingComplete(
-          spec = "spec",
-          ownerEmailOpt = Some("servers@delving.eu"),
-          validString = "1000000000",
-          invalidString = "0"
-        )))
-
-      case "dataset-error" =>
-        var throwable: Throwable = null
-        try {
-          throw new Exception("This is the exception's message")
+  def oauthCallback(codeOpt: Option[String] = None, stateOpt: Option[String] = None) = Action.async { implicit request =>
+    def getToken(code: String): Future[String] = {
+      WS.url(OAUTH_TOKEN_URL)
+        .withQueryString(
+          "client_id" -> OAUTH_ID.get,
+          "client_secret" -> OAUTH_SECRET.get,
+          "code" -> code
+        )
+        .withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).post(Results.EmptyContent()).flatMap { response =>
+        val tokenOpt = (response.json \ "access_token").asOpt[String]
+        tokenOpt.map(token => Future.successful(token)).getOrElse(Future.failed(new IllegalStateException("No access!")))
+      }
+    }
+    val resultFutureOpt: Option[Future[Result]] = for {
+      code <- codeOpt
+      state <- stateOpt
+      oauthState <- request.session.get("oauth-state")
+    } yield {
+        if (state == oauthState) {
+          getToken(code).map { token =>
+            Logger.info(s"We got us a token $token")
+            Redirect("/narthex/_oauth-success").withSession("oauth-token" -> token)
+          }.recover {
+            case ex: IllegalStateException => Unauthorized(ex.getMessage)
+          }
         }
-        catch {
-          case e: Throwable =>
-            throwable = e
+        else {
+          Future.successful(BadRequest("Invalid oauth login"))
         }
-        Ok(views.html.email.datasetError(MailDatasetError(
-          spec = "spec",
-          ownerEmailOpt = Some("servers@delving.eu"),
-          throwable.getMessage,
-          Some(throwable)
-        )))
+      }
+    resultFutureOpt.getOrElse(Future.successful(BadRequest("No parameters supplied")))
+  }
 
-      case badEmailType =>
-        Ok(views.html.email.emailNotFound(badEmailType, Seq(
-          "processing-complete",
-          "dataset-error"
-        )))
+  def oauthSuccess() = Action.async { request =>
+    val fetchDataUrl = "https://api.github.com/user"
+    request.session.get("oauth-token").map { token =>
+      WS.url(fetchDataUrl).withHeaders(HeaderNames.AUTHORIZATION -> s"token $token").get().map { response =>
+        val login = (response.json \ "login").as[String]
+        Logger.info(s"OAuth success $login")
+        Ok(login)
+      }
+    } getOrElse {
+      Future.successful(Unauthorized("No oauth token"))
     }
   }
 
@@ -268,4 +288,39 @@ object MainController extends Controller with Security {
         )
       ).as(JAVASCRIPT)
   }
+
+  def testEmail(messageType: String) = Action { request =>
+    messageType match {
+      case "processing-complete" =>
+        Ok(views.html.email.processingComplete(MailProcessingComplete(
+          spec = "spec",
+          ownerEmailOpt = Some("servers@delving.eu"),
+          validString = "1000000000",
+          invalidString = "0"
+        )))
+
+      case "dataset-error" =>
+        var throwable: Throwable = null
+        try {
+          throw new Exception("This is the exception's message")
+        }
+        catch {
+          case e: Throwable =>
+            throwable = e
+        }
+        Ok(views.html.email.datasetError(MailDatasetError(
+          spec = "spec",
+          ownerEmailOpt = Some("servers@delving.eu"),
+          throwable.getMessage,
+          Some(throwable)
+        )))
+
+      case badEmailType =>
+        Ok(views.html.email.emailNotFound(badEmailType, Seq(
+          "processing-complete",
+          "dataset-error"
+        )))
+    }
+  }
+
 }

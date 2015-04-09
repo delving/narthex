@@ -18,7 +18,6 @@ package org
 
 import java.io.File
 import java.util
-import java.util.UUID
 
 import akka.actor.ActorContext
 import dataset.DatasetActor.WorkFailure
@@ -31,10 +30,10 @@ import mapping.PeriodicSkosifyCheck.ScanForWork
 import mapping._
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
-import play.api.{Logger, Mode, Play}
+import play.api.{Logger, Play}
 import play.libs.Akka._
 import services.FileHandling.clearDir
-import services.OAuth2
+import services.StringHandling.urlEncodeValue
 import triplestore.GraphProperties.categoriesInclude
 import triplestore.TripleStore
 
@@ -74,14 +73,17 @@ object OrgContext {
   val NARTHEX_DOMAIN = configStringNoSlash("domains.narthex")
   val NAVE_DOMAIN = configStringNoSlash("domains.nave")
 
-  val OAUTH_URL = if (config.getString("oauth2.id").isDefined) {
-    val oauth2 = new OAuth2(Play.current)
+  val OAUTH_ID = config.getString("oauth2.id")
+  val OAUTH_SECRET = config.getString("oauth2.secret")
+
+  def createOAuthUrl(state: String) = OAUTH_ID.map { id =>
+    val server = configString("oauth2.server")
     val callbackBaseUrl = configString("oauth2.callbackBaseUrl")
-    val state = UUID.randomUUID().toString // random confirmation string
-    val callbackUrl = s"$callbackBaseUrl/narthex/_"
-    oauth2.getAuthorizationUrl(callbackUrl, state)
+    val callbackUrl = s"$callbackBaseUrl/narthex/_oauth-callback" // see conf/routes
+    s"$server/authorize?client_id=$id&state=$state&redirect_uri=${urlEncodeValue(callbackUrl)}"
   }
-  else ""
+
+  lazy val OAUTH_TOKEN_URL = config.getString("oauth2.server").map(server => s"$server/access_token").getOrElse(throw new RuntimeException(s"No token URL"))
 
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 

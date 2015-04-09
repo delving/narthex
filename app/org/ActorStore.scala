@@ -66,12 +66,12 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     model.createLiteral(hash)
   }
 
-  private def userIntoModel(actor: NXActor, hashLiteral: Literal, makerOpt: Option[NXActor], model: Model): Option[Model] = {
+  private def userIntoModel(actor: NXActor, hashLiteralOpt: Option[Literal], makerOpt: Option[NXActor], model: Model): Option[Model] = {
     val actorResource: Resource = model.getResource(actor.uri)
     val exists = model.listStatements(actorResource, propUri(passwordHash, model), null).hasNext
     if (!exists || !makerOpt.isDefined) {
       model.add(actorResource, model.getProperty(rdfType), model.getResource(actorEntity))
-      model.add(actorResource, propUri(passwordHash, model), hashLiteral)
+      hashLiteralOpt.map(hashLiteral => model.add(actorResource, propUri(passwordHash, model), hashLiteral))
       makerOpt.map(maker => model.add(actorResource, propUri(actorOwner, model), model.getResource(maker.uri)))
       model.add(actorResource, propUri(username, model), actor.actorName)
       Some(model)
@@ -101,12 +101,51 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     model.listObjectsOfProperty(resource, email).toList.headOption.map(obj => obj.asLiteral().getString)
   }
 
+//  def oauthAuthenticated(actorName: String): Future[Option[NXActor]] = {
+//    val model = getModel
+//    if (model.isEmpty) {
+//      val godUser = NXActor(actorName, None)
+//      userIntoModel(godUser, None, None, model).map { modelWithGod =>
+//        val dataPost = ts.up.dataPost(actorsGraph, modelWithGod)
+//        checkFail(dataPost)
+//        dataPost.map(ok => Some(godUser)).map(ok => Some(godUser))
+//      } getOrElse {
+//        Future(None)
+//      }
+//    }
+//    else {
+//      val actor: NXActor = NXActor(actorName, None)
+//      val actorResource: Resource = model.getResource(actor.uri)
+//      val usernameResource = model.createLiteral(actorName)
+//      val exists = model.listStatements(actorResource, model.getProperty(username.uri), usernameResource).hasNext
+//      val userOpt = if (exists) {
+//        val makerList = model.listObjectsOfProperty(actorResource, propUri(actorOwner, model)).toList
+//        Some(actor.copy(
+//          makerOpt = makerList.map(node => node.asResource().getURI).toList.headOption,
+//          profileOpt = profileFromModel(actor, model).nonEmpty
+//        ))
+//      }
+//      else {
+//        val authenticatedUser = NXActor(actorName, None)
+//        // todo: this is god then.  problem!
+//        userIntoModel(authenticatedUser, None, None, model).map { modelWithGod =>
+//          val dataPost = ts.up.dataPost(actorsGraph, modelWithGod)
+//          checkFail(dataPost)
+//          dataPost.map(ok => Some(authenticatedUser)).map(ok => Some(authenticatedUser))
+//        } getOrElse {
+//          Future(None)
+//        }
+//      }
+//      Future(userOpt)
+//    }
+//  }
+//
   def authenticate(actorName: String, password: String): Future[Option[NXActor]] = {
     val model = getModel
     val hash = hashLiteral(password, actorName, model)
     if (model.isEmpty) {
       val godUser = NXActor(actorName, None)
-      userIntoModel(godUser, hash, None, model).map { modelWithGod =>
+      userIntoModel(godUser, Some(hash), None, model).map { modelWithGod =>
         val dataPost = ts.up.dataPost(actorsGraph, modelWithGod)
         checkFail(dataPost)
         dataPost.map(ok => Some(godUser)).map(ok => Some(godUser))
@@ -147,7 +186,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     val model = getModel
     val hash = hashLiteral(password, usernameString, model)
     val newActor = NXActor(usernameString, Some(adminActor.uri))
-    userIntoModel(newActor, hash, Some(adminActor), model).map { modelWithActorAdded =>
+    userIntoModel(newActor, Some(hash), Some(adminActor), model).map { modelWithActorAdded =>
       val dataPost = ts.up.dataPost(actorsGraph, modelWithActorAdded)
       checkFail(dataPost)
       dataPost.map(ok => Some(newActor))
