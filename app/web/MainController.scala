@@ -96,6 +96,7 @@ object MainController extends Controller with Security {
   }
 
   def oauthSuccess() = Action.async { request =>
+    // todo: different providers may have this URL and its interpretation different
     val fetchDataUrl = "https://api.github.com/user"
     request.session.get("oauth-token").map { token =>
       WS.url(fetchDataUrl).withHeaders(HeaderNames.AUTHORIZATION -> s"token $token").get().flatMap { response =>
