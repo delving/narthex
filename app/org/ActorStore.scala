@@ -54,14 +54,23 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   }
 
   def emailFromUri(actorUri: String): Option[String] = {
-    // todo: maybe make this async
     val query = ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
+    // todo: maybe make this async
     Await.result(query, 5.seconds)
+  }
+
+  def oAuthenticated(actorName: String): Future[NXActor] = {
+    ts.query(getActor(actorName)).map(actorFromResult).flatMap { actorOpt =>
+      actorOpt.map(Future.successful).getOrElse {
+        val newActor = NXActor(actorName, None)
+        ts.up.sparqlUpdate(insertOAuthActorQ(newActor)).map(ok => newActor)
+      }
+    }
   }
 
   def authenticate(actorName: String, password: String): Future[Option[NXActor]] = {
     val passwordHashString = hashPassword(password, actorName)
-    ts.query(getActor(actorName, passwordHashString)).map(actorFromResult).flatMap { actorOpt =>
+    ts.query(getActorWithPassword(actorName, passwordHashString)).map(actorFromResult).flatMap { actorOpt =>
       if (actorOpt.isEmpty) {
         ts.ask(graphExistsQ(actorsGraph)).flatMap { exists =>
           if (exists) {

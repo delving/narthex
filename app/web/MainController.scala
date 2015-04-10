@@ -33,14 +33,21 @@ import services.MailService.{MailDatasetError, MailProcessingComplete}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 
 object MainController extends Controller with Security {
 
   val SIP_APP_VERSION = "1.0.7"
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
+
+  def actorSession(actor: NXActor) = ActorSession(
+    actor,
+    apiKey = API_ACCESS_KEYS(0),
+    narthexDomain = NARTHEX_DOMAIN,
+    naveDomain = NAVE_DOMAIN,
+    singleTripleStore = SINGLE_TRIPLE_STORE
+  )
 
   def root = Action { request =>
     Redirect("/narthex/")
@@ -91,60 +98,30 @@ object MainController extends Controller with Security {
   def oauthSuccess() = Action.async { request =>
     val fetchDataUrl = "https://api.github.com/user"
     request.session.get("oauth-token").map { token =>
-      WS.url(fetchDataUrl).withHeaders(HeaderNames.AUTHORIZATION -> s"token $token").get().map { response =>
+      WS.url(fetchDataUrl).withHeaders(HeaderNames.AUTHORIZATION -> s"token $token").get().flatMap { response =>
         val login = (response.json \ "login").as[String]
         Logger.info(s"OAuth success $login")
-        Ok(login)
+        orgContext.us.oAuthenticated(login).map { actor =>
+          val session = actorSession(actor)
+          Redirect("/narthex/").withSession(session)
+        }
       }
     } getOrElse {
       Future.successful(Unauthorized("No oauth token"))
     }
   }
 
-  def login = Action(parse.json) { implicit request =>
-
+  def login = Action.async(parse.json) { implicit request =>
     var username = (request.body \ "username").as[String]
     var password = (request.body \ "password").as[String]
     Logger.info(s"Login $username")
-
-    Play.current.configuration.getObjectList("users").map { userList =>
-      userList.map(_.toConfig).find(u => username == u.getString("user")) match {
-        case Some(user) =>
-          if (password != user.getString("password")) {
-            Unauthorized("Username/password not found")
-          }
-          else {
-            val session = ActorSession(
-              NXActor(username, None, Some(NXProfile(
-                user.getString("firstName"),
-                user.getString("lastName"),
-                user.getString("email")
-              ))),
-              apiKey = API_ACCESS_KEYS(0),
-              narthexDomain = NARTHEX_DOMAIN,
-              naveDomain = NAVE_DOMAIN,
-              singleTripleStore = SINGLE_TRIPLE_STORE
-            )
-            Ok(Json.toJson(session)).withSession(session)
-          }
-
-        case None =>
-          Unauthorized("Username/password not found")
+    orgContext.us.authenticate(username, password).map { actorOpt =>
+      actorOpt.map { actor =>
+        val session = actorSession(actor)
+        Ok(Json.toJson(session)).withSession(session)
+      } getOrElse {
+        Unauthorized("Username/password not found")
       }
-    } getOrElse {
-      val resultFuture = orgContext.us.authenticate(username, password).map { nxActorOpt: Option[NXActor] =>
-        nxActorOpt.map { nxActor =>
-          val session = ActorSession(
-            nxActor,
-            apiKey = API_ACCESS_KEYS(0),
-            narthexDomain = NARTHEX_DOMAIN,
-            naveDomain = NAVE_DOMAIN,
-            singleTripleStore = SINGLE_TRIPLE_STORE
-          )
-          Ok(Json.toJson(session)).withSession(session)
-        } getOrElse Unauthorized("Username/password not found")
-      }
-      Await.result(resultFuture, 10.seconds)
     }
   }
 

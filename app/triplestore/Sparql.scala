@@ -67,7 +67,33 @@ object Sparql {
       |}
      """.stripMargin
   
-  def getActor(actorName: String, passwordHashString: String) =
+  def getActor(actorName: String) =
+    s"""
+       |SELECT ?username ?firstName ?lastName ?email ?maker
+       |WHERE {
+       |   GRAPH <$actorsGraph> {
+       |      ?actor
+       |          a <$actorEntity> ;
+       |          <$username> ${literalExpression(actorName, None)} ;
+       |          <$username> ?username .
+       |   }
+       |   OPTIONAL {
+       |      GRAPH <$actorsGraph> {
+       |         ?actor <$actorOwner> ?maker .
+       |      }
+       |   }
+       |   OPTIONAL {
+       |      GRAPH <$actorsGraph> {
+       |         ?actor
+       |            <$userFirstName> ?firstName ;
+       |            <$userLastName> ?lastName ;
+       |            <$userEMail> ?email .
+       |      }
+       |   }
+       |}
+     """.stripMargin
+
+  def getActorWithPassword(actorName: String, passwordHashString: String) =
     s"""
        |SELECT ?username ?firstName ?lastName ?email ?maker
        |WHERE {
@@ -134,6 +160,17 @@ object Sparql {
       |         a <$actorEntity> ;
       |         <$username> ${literalExpression(actor.actorName, None)} ;
       |         <$passwordHash> '$passwordHashString' .
+      |   }
+      |}
+     """.stripMargin
+
+  def insertOAuthActorQ(actor: NXActor) =
+    s"""
+      |INSERT DATA {
+      |   GRAPH <$actorsGraph> {
+      |      <$actor>
+      |         a <$actorEntity> ;
+      |         <$username> ${literalExpression(actor.actorName, None)} .
       |   }
       |}
      """.stripMargin
