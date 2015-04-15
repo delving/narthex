@@ -76,14 +76,19 @@ object OrgContext {
   val OAUTH_ID = config.getString("oauth2.id")
   val OAUTH_SECRET = config.getString("oauth2.secret")
 
-  def createOAuthUrl(state: String) = OAUTH_ID.map { id =>
-    val server = configString("oauth2.server")
+  lazy val OAUTH_CALLBACK = {
     val callbackBaseUrl = configString("oauth2.callbackBaseUrl")
-    val callbackUrl = s"$callbackBaseUrl/narthex/_oauth-callback" // see conf/routes
-    s"$server/authorize?client_id=$id&state=$state&redirect_uri=${urlEncodeValue(callbackUrl)}"
+    s"$callbackBaseUrl/narthex/_oauth-callback"
   }
 
-  lazy val OAUTH_TOKEN_URL = config.getString("oauth2.server").map(server => s"$server/access_token").getOrElse(throw new RuntimeException(s"No token URL"))
+  def createOAuthUrl(state: String) = OAUTH_ID.map { id =>
+    val server = configString("oauth2.server")
+    s"$server/authorize/?client_id=$id&state=$state&response_type=code&redirect_uri=${urlEncodeValue(OAUTH_CALLBACK)}"
+  }
+
+  lazy val OAUTH_TOKEN_URL = config.getString("oauth2.server").map(server => s"$server/token/").getOrElse(throw new RuntimeException(s"No token URL"))
+
+  lazy val OAUTH_USER_URL = configString("oauth2.userUrl")
 
   val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
 

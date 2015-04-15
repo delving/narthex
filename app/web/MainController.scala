@@ -56,56 +56,85 @@ object MainController extends Controller with Security {
   def index = Action { request =>
     val state = UUID.randomUUID().toString
     createOAuthUrl(state).map { oauthUrl =>
+      Logger.info(s"Create state $state")
       Ok(views.html.index(ORG_ID, SIP_APP_URL, oauthUrl)).withSession("oauth-state" -> state)
     } getOrElse {
       Ok(views.html.index(ORG_ID, SIP_APP_URL, ""))
     }
   }
 
-  def oauthCallback(codeOpt: Option[String] = None, stateOpt: Option[String] = None) = Action.async { implicit request =>
+  def oauthCallback(code: Option[String] = None, state: Option[String] = None) = Action.async { implicit request =>
     def getToken(code: String): Future[String] = {
+      val form = Map(
+        "grant_type" -> Seq("authorization_code"),
+        "client_id" -> Seq(OAUTH_ID.get),
+        "client_secret" -> Seq(OAUTH_SECRET.get),
+        "code" -> Seq(code),
+        "redirect_uri" -> Seq(OAUTH_CALLBACK)
+      )
+//      println( s""" #### POST [$OAUTH_TOKEN_URL]:\nform\n${form.mkString("\n")}\ncookies\n${request.cookies.mkString("\n")}\n""")
       WS.url(OAUTH_TOKEN_URL)
-        .withQueryString(
-          "client_id" -> OAUTH_ID.get,
-          "client_secret" -> OAUTH_SECRET.get,
-          "code" -> code
-        )
-        .withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).post(Results.EmptyContent()).flatMap { response =>
+        .withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON)
+        .post(form)
+        .flatMap { response =>
+
+        if (response.status / 100 != 2) {
+          throw new RuntimeException(s"$OAUTH_TOKEN_URL response not 2XX, but ${response.status}: ${response.statusText}")
+        }
         val tokenOpt = (response.json \ "access_token").asOpt[String]
         tokenOpt.map(token => Future.successful(token)).getOrElse(Future.failed(new IllegalStateException("No access!")))
       }
     }
     val resultFutureOpt: Option[Future[Result]] = for {
-      code <- codeOpt
-      state <- stateOpt
+      code <- code
+      state <- state
       oauthState <- request.session.get("oauth-state")
     } yield {
         if (state == oauthState) {
           getToken(code).map { token =>
-            Logger.info(s"We got us a token $token")
+            Logger.info(s"We got us a dang token $token")
             Redirect("/narthex/_oauth-success").withSession("oauth-token" -> token)
           }.recover {
-            case ex: IllegalStateException => Unauthorized(ex.getMessage)
+            case ex: Exception =>
+              Logger.warn(s"No token!", ex)
+              Unauthorized(ex.getMessage)
           }
         }
         else {
           Future.successful(BadRequest("Invalid oauth login"))
         }
       }
-    resultFutureOpt.getOrElse(Future.successful(BadRequest("No parameters supplied")))
+    resultFutureOpt.getOrElse {
+      Logger.warn( s"""### no result code=$code state=$state session.oauth-state=${request.session.get("oauth-state")}""")
+      Future.successful(BadRequest(s"Unable to get OAuth token"))
+    }
   }
 
   def oauthSuccess() = Action.async { request =>
-    // todo: different providers may have this URL and its interpretation different
-    val fetchDataUrl = "https://api.github.com/user"
     request.session.get("oauth-token").map { token =>
-      WS.url(fetchDataUrl).withHeaders(HeaderNames.AUTHORIZATION -> s"token $token").get().flatMap { response =>
+      WS.url(OAUTH_USER_URL).withHeaders(
+        HeaderNames.ACCEPT -> MimeTypes.JSON,
+        HeaderNames.AUTHORIZATION -> s"Bearer $token"
+      ).get().flatMap { response =>
+        val username = (response.json \ "username").as[String]
+        val isStaff = (response.json \ "is_staff").as[Boolean]
+        if (isStaff) {
+          orgContext.us.oAuthenticated(username).map { actor =>
+            val session = actorSession(actor)
+            Redirect("/narthex/").withSession(session)
+          }
+        }
+        else {
+          Future.successful(Unauthorized("User is not a member of staff"))
+        }
+
+        /* this worked for github oauth
         val login = (response.json \ "login").as[String]
         Logger.info(s"OAuth success $login")
         orgContext.us.oAuthenticated(login).map { actor =>
           val session = actorSession(actor)
           Redirect("/narthex/").withSession(session)
-        }
+        } */
       }
     } getOrElse {
       Future.successful(Unauthorized("No oauth token"))
