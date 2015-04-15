@@ -142,8 +142,8 @@ object Sparql {
       |WHERE {
       |   GRAPH <$actorsGraph> {
       |      <$actorUri>
-      |         a <$actorEntity>
-      |         <$userEMail> ?email
+      |         a <$actorEntity> ;
+      |         <$userEMail> ?email .
       |   }
       |}
      """.stripMargin
