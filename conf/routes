@@ -12,10 +12,16 @@ GET         /narthex/jsroutes.js                                             web
 # Routes used by Angular
 # ~~~~
 
-# Users
+# Authentication
 POST        /narthex/login                                                   web.MainController.login
 GET         /narthex/checkLogin                                              web.MainController.checkLogin
 GET         /narthex/logout                                                  web.MainController.logout
+
+# OAuth2 Stuff
+GET         /narthex/_oauth-callback                                         web.MainController.oauthCallback(code: Option[String], state: Option[String])
+GET         /narthex/_oauth-success                                          web.MainController.oauthSuccess
+
+# Users
 POST        /narthex/set-profile                                             web.MainController.setProfile
 GET         /narthex/list-actors                                             web.MainController.listActors
 POST        /narthex/create-actor                                            web.MainController.createActor
@@ -81,3 +87,4 @@ GET         /narthex/api/:apiKey/:spec/histogram/*path                       web
 # Static
 GET         /narthex/webjars/*file                                           controllers.WebJarAssets.at(file)
 GET         /narthex/assets/*file                                            controllers.Assets.at(path="/public", file)
+

@@ -42,6 +42,18 @@ object Sparql {
 
   private def escape(value: String): String = value.map(c => SPARQL_ESCAPE.getOrElse(c, c.toString)).mkString
 
+  // todo: the following is a way to make the string interpolation type-aware
+  implicit class QueryStringContext(stringContext: StringContext) {
+    def Q(args: Any*) = stringContext.s(args.map {
+      case nxProp: NXProp => "<" + nxProp.uri + ">"
+      case string: String => "'" + escape(string) + "'"
+        // todo: other cases
+    })
+  }
+  val x = "4"
+  val y = Q"gumby $x"
+  // todo: ---------------------------------------
+
   private def literalExpression(value: String, languageOpt: Option[String]) = languageOpt.map { language =>
     s"'${escape(value)}'@$language"
   } getOrElse {
@@ -54,17 +66,120 @@ object Sparql {
       |   GRAPH <$graphName> { ?s ?p ?o }
       |}
      """.stripMargin
+  
+  def getActor(actorName: String) =
+    s"""
+       |SELECT ?username ?firstName ?lastName ?email ?maker
+       |WHERE {
+       |   GRAPH <$actorsGraph> {
+       |      ?actor
+       |          a <$actorEntity> ;
+       |          <$username> ${literalExpression(actorName, None)} ;
+       |          <$username> ?username .
+       |   }
+       |   OPTIONAL {
+       |      GRAPH <$actorsGraph> {
+       |         ?actor <$actorOwner> ?maker .
+       |      }
+       |   }
+       |   OPTIONAL {
+       |      GRAPH <$actorsGraph> {
+       |         ?actor
+       |            <$userFirstName> ?firstName ;
+       |            <$userLastName> ?lastName ;
+       |            <$userEMail> ?email .
+       |      }
+       |   }
+       |}
+     """.stripMargin
 
+  def getActorWithPassword(actorName: String, passwordHashString: String) =
+    s"""
+       |SELECT ?username ?firstName ?lastName ?email ?maker
+       |WHERE {
+       |   GRAPH <$actorsGraph> {
+       |      ?actor
+       |          a <$actorEntity> ;
+       |          <$username> ${literalExpression(actorName, None)} ;
+       |          <$username> ?username ;
+       |          <$passwordHash> '$passwordHashString' .
+       |   }
+       |   OPTIONAL {
+       |      GRAPH <$actorsGraph> {
+       |         ?actor <$actorOwner> ?maker .
+       |      }
+       |   }
+       |   OPTIONAL {
+       |      GRAPH <$actorsGraph> {
+       |         ?actor
+       |            <$userFirstName> ?firstName ;
+       |            <$userLastName> ?lastName ;
+       |            <$userEMail> ?email .
+       |      }
+       |   }
+       |}
+     """.stripMargin
 
-  def insertActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
+  def actorFromResult(mapList: List[Map[String, QueryValue]]): Option[NXActor] = {
+    mapList.headOption.map { resultMap =>
+      val username = resultMap.get("username").map(_.text).get
+      def text(fieldName: String) = resultMap.get(fieldName).map(_.text).getOrElse("")
+      val makerOpt = resultMap.get("maker").map(_.text)
+      val firstName = text("firstName")
+      val lastName = text("lastName")
+      val email = text("email")
+      val profileOpt = if (firstName.nonEmpty || lastName.nonEmpty || email.nonEmpty)
+          Some(NXProfile(firstName, lastName, email))
+      else
+          None
+      NXActor(username, makerOpt, profileOpt)
+    }
+  }
+
+  def getEMailOfActor(actorUri: String) =
+    s"""
+      |SELECT ?email
+      |WHERE {
+      |   GRAPH <$actorsGraph> {
+      |      <$actorUri>
+      |         a <$actorEntity>
+      |         <$userEMail> ?email
+      |   }
+      |}
+     """.stripMargin
+
+  def emailFromResult(mapList: List[Map[String, QueryValue]]): Option[String] = {
+    mapList.headOption.flatMap(resultMap => resultMap.get("email").map(_.text))
+  }
+
+  def insertTopActorQ(actor: NXActor, passwordHashString: String) =
+    s"""
+      |INSERT DATA {
+      |   GRAPH <$actorsGraph> {
+      |      <$actor>
+      |         a <$actorEntity> ;
+      |         <$username> ${literalExpression(actor.actorName, None)} ;
+      |         <$passwordHash> '$passwordHashString' .
+      |   }
+      |}
+     """.stripMargin
+
+  def insertOAuthActorQ(actor: NXActor) =
+    s"""
+      |INSERT DATA {
+      |   GRAPH <$actorsGraph> {
+      |      <$actor>
+      |         a <$actorEntity> ;
+      |         <$username> ${literalExpression(actor.actorName, None)} .
+      |   }
+      |}
+     """.stripMargin
+
+  def insertSubActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
     s"""
       |WITH <$actorsGraph>
       |DELETE {
-      |   <$actor>
-      |      a <$actorEntity>;
-      |      <$username> ?userName ;
-      |      <$actorOwner> ?userMaker ;
-      |      <$passwordHash> ?passwordHash .
+      |   <$actor> ?p ?o .
       |}
       |INSERT {
       |   <$actor>
@@ -75,14 +190,23 @@ object Sparql {
       |}
       |WHERE {
       |   OPTIONAL {
-      |      <$actor>
-      |         a <$actorEntity>;
-      |         <$username> ?username ;
-      |         <$actorOwner> ?userMaker ;
-      |         <$passwordHash> ?passwordHash .
+      |      <$actor> ?p ?o .
       |   }
       |}
      """.stripMargin
+
+  def getSubActorList(actor: NXActor) =
+    s"""
+       |SELECT ?username
+       |WHERE {
+       | GRAPH <$actorsGraph> {
+       |   ?actor
+       |     a <$actorEntity> ;
+       |     <$actorOwner> <$actor> ;
+       |     <$username> ?username .
+       | }
+       |}
+      """.stripMargin
 
   def setActorProfileQ(actor: NXActor, profile: NXProfile) =
     s"""
@@ -111,9 +235,15 @@ object Sparql {
   def setActorPasswordQ(actor: NXActor, passwordHashString: String) =
     s"""
       |WITH <$actorsGraph>
-      |DELETE { <$actor> <$passwordHash> ?oldPassword }
-      |INSERT { <$actor> <$passwordHash> '$passwordHashString' }
-      |WHERE { <$actor> <$passwordHash> ?oldPassword }
+      |DELETE {
+      |   <$actor> <$passwordHash> ?oldPassword
+      |}
+      |INSERT {
+      |   <$actor> <$passwordHash> '$passwordHashString'
+      |}
+      |WHERE {
+      |   <$actor> <$passwordHash> ?oldPassword
+      |}
      """.stripMargin
 
   // === dataset info ===
@@ -140,8 +270,12 @@ object Sparql {
   def updatePropertyQ(graphName: String, uri: String, prop: NXProp, value: String): String =
     s"""
       |WITH <$graphName>
-      |DELETE { <$uri> <$prop> ?o }
-      |INSERT { <$uri> <$prop> ${literalExpression(value, None)} }
+      |DELETE {
+      |   <$uri> <$prop> ?o
+      |}
+      |INSERT {
+      |   <$uri> <$prop> ${literalExpression(value, None)}
+      |}
       |WHERE {
       |   OPTIONAL { <$uri> <$prop> ?o }
       |}
@@ -150,8 +284,12 @@ object Sparql {
   def updateSyncedFalseQ(graphName: String, uri: String): String =
     s"""
       |WITH <$graphName>
-      |DELETE { <$uri> <$synced> ?o }
-      |INSERT { <$uri> <$synced> false }
+      |DELETE {
+      |   <$uri> <$synced> ?o
+      |}
+      |INSERT {
+      |   <$uri> <$synced> false
+      |}
       |WHERE {
       |   OPTIONAL { <$uri> <$synced> ?o }
       |}
@@ -160,15 +298,19 @@ object Sparql {
   def removeLiteralPropertyQ(graphName: String, uri: String, prop: NXProp) =
     s"""
       |WITH <$graphName>
-      |DELETE { <$uri> <$prop> ?o }
-      |WHERE { <$uri> <$prop> ?o }
+      |DELETE {
+      |   <$uri> <$prop> ?o
+      |}
+      |WHERE {
+      |   <$uri> <$prop> ?o
+      |}
      """.stripMargin
 
   def addUriPropertyQ(graphName: String, uri: String, prop: NXProp, uriValue: String) =
     s"""
       |INSERT DATA {
-      |  GRAPH <$graphName> { 
-      |    <$uri> <$prop> ${literalExpression(uriValue, None)} . 
+      |  GRAPH <$graphName> {
+      |    <$uri> <$prop> ${literalExpression(uriValue, None)} .
       |  }
       |}
      """.stripMargin.trim
@@ -233,15 +375,21 @@ object Sparql {
       |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
       |SELECT (count(?s) as ?count)
       |WHERE {
-      |  GRAPH <$skosGraphName> { ?s rdf:type skos:Concept }
+      |  GRAPH <$skosGraphName> {
+      |     ?s rdf:type skos:Concept
+      |  }
       |}
      """.stripMargin
 
   def dropVocabularyQ(graphName: String) =
     s"""
       |WITH <$graphName>
-      |DELETE { ?s ?p ?o }
-      |WHERE { ?s ?p ?o }
+      |DELETE {
+      |   ?s ?p ?o
+      |}
+      |WHERE {
+      |   ?s ?p ?o
+      |}
      """.stripMargin
 
   // === mapping store ===
@@ -400,7 +548,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def countFromResult(resultMap: List[Map[String, QueryValue]]): Int = resultMap.head.get("count").get.text.toInt
+  def countFromResult(mapList: List[Map[String, QueryValue]]): Int = mapList.head.get("count").get.text.toInt
 
   def listSkosificationCasesQ(sf: SkosifiedField, chunkSize: Int) =
     s"""

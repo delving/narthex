@@ -17,21 +17,23 @@
 package web
 
 import java.io.{File, FileInputStream, FileNotFoundException}
+import java.util.UUID
 
 import org.ActorStore.{NXActor, NXProfile}
 import org.OrgContext._
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
+import play.api.http.{HeaderNames, MimeTypes}
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
+import play.api.libs.ws.WS
 import play.api.mvc._
 import services.MailService.{MailDatasetError, MailProcessingComplete}
 
 import scala.collection.JavaConversions._
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
+import scala.concurrent.Future
 
 object MainController extends Controller with Security {
 
@@ -39,92 +41,117 @@ object MainController extends Controller with Security {
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
 
+  def actorSession(actor: NXActor) = ActorSession(
+    actor,
+    apiKey = API_ACCESS_KEYS(0),
+    narthexDomain = NARTHEX_DOMAIN,
+    naveDomain = NAVE_DOMAIN,
+    singleTripleStore = SINGLE_TRIPLE_STORE
+  )
+
   def root = Action { request =>
     Redirect("/narthex/")
   }
 
   def index = Action { request =>
-    Ok(views.html.index(ORG_ID, SIP_APP_URL))
-  }
-
-  def testEmail(messageType: String) = Action { request =>
-    messageType match {
-      case "processing-complete" =>
-        Ok(views.html.email.processingComplete(MailProcessingComplete(
-          spec = "spec",
-          ownerEmailOpt = Some("servers@delving.eu"),
-          validString = "1000000000",
-          invalidString = "0"
-        )))
-
-      case "dataset-error" =>
-        var throwable: Throwable = null
-        try {
-          throw new Exception("This is the exception's message")
-        }
-        catch {
-          case e: Throwable =>
-            throwable = e
-        }
-        Ok(views.html.email.datasetError(MailDatasetError(
-          spec = "spec",
-          ownerEmailOpt = Some("servers@delving.eu"),
-          throwable.getMessage,
-          Some(throwable)
-        )))
-
-      case badEmailType =>
-        Ok(views.html.email.emailNotFound(badEmailType, Seq(
-          "processing-complete",
-          "dataset-error"
-        )))
+    val state = UUID.randomUUID().toString
+    createOAuthUrl(state).map { oauthUrl =>
+      Logger.info(s"Create state $state")
+      Ok(views.html.index(ORG_ID, SIP_APP_URL, oauthUrl)).withSession("oauth-state" -> state)
+    } getOrElse {
+      Ok(views.html.index(ORG_ID, SIP_APP_URL, ""))
     }
   }
 
-  def login = Action(parse.json) { implicit request =>
+  def oauthCallback(code: Option[String] = None, state: Option[String] = None) = Action.async { implicit request =>
+    def getToken(code: String): Future[String] = {
+      val form = Map(
+        "grant_type" -> Seq("authorization_code"),
+        "client_id" -> Seq(OAUTH_ID.get),
+        "client_secret" -> Seq(OAUTH_SECRET.get),
+        "code" -> Seq(code),
+        "redirect_uri" -> Seq(OAUTH_CALLBACK)
+      )
+//      println( s""" #### POST [$OAUTH_TOKEN_URL]:\nform\n${form.mkString("\n")}\ncookies\n${request.cookies.mkString("\n")}\n""")
+      WS.url(OAUTH_TOKEN_URL)
+        .withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON)
+        .post(form)
+        .flatMap { response =>
 
+        if (response.status / 100 != 2) {
+          throw new RuntimeException(s"$OAUTH_TOKEN_URL response not 2XX, but ${response.status}: ${response.statusText}")
+        }
+        val tokenOpt = (response.json \ "access_token").asOpt[String]
+        tokenOpt.map(token => Future.successful(token)).getOrElse(Future.failed(new IllegalStateException("No access!")))
+      }
+    }
+    val resultFutureOpt: Option[Future[Result]] = for {
+      code <- code
+      state <- state
+      oauthState <- request.session.get("oauth-state")
+    } yield {
+        if (state == oauthState) {
+          getToken(code).map { token =>
+            Logger.info(s"We got us a dang token $token")
+            Redirect("/narthex/_oauth-success").withSession("oauth-token" -> token)
+          }.recover {
+            case ex: Exception =>
+              Logger.warn(s"No token!", ex)
+              Unauthorized(ex.getMessage)
+          }
+        }
+        else {
+          Future.successful(BadRequest("Invalid oauth login"))
+        }
+      }
+    resultFutureOpt.getOrElse {
+      Logger.warn( s"""### no result code=$code state=$state session.oauth-state=${request.session.get("oauth-state")}""")
+      Future.successful(BadRequest(s"Unable to get OAuth token"))
+    }
+  }
+
+  def oauthSuccess() = Action.async { request =>
+    request.session.get("oauth-token").map { token =>
+      WS.url(OAUTH_USER_URL).withHeaders(
+        HeaderNames.ACCEPT -> MimeTypes.JSON,
+        HeaderNames.AUTHORIZATION -> s"Bearer $token"
+      ).get().flatMap { response =>
+        val username = (response.json \ "username").as[String]
+        val isStaff = (response.json \ "is_staff").as[Boolean]
+        if (isStaff) {
+          orgContext.us.oAuthenticated(username).map { actor =>
+            val session = actorSession(actor)
+            Redirect("/narthex/").withSession(session)
+          }
+        }
+        else {
+          Future.successful(Unauthorized("User is not a member of staff"))
+        }
+
+        /* this worked for github oauth
+        val login = (response.json \ "login").as[String]
+        Logger.info(s"OAuth success $login")
+        orgContext.us.oAuthenticated(login).map { actor =>
+          val session = actorSession(actor)
+          Redirect("/narthex/").withSession(session)
+        } */
+      }
+    } getOrElse {
+      Future.successful(Unauthorized("No oauth token"))
+    }
+  }
+
+  def login = Action.async(parse.json) { implicit request =>
     var username = (request.body \ "username").as[String]
     var password = (request.body \ "password").as[String]
     Logger.info(s"Login $username")
-
-    Play.current.configuration.getObjectList("users").map { userList =>
-      userList.map(_.toConfig).find(u => username == u.getString("user")) match {
-        case Some(user) =>
-          if (password != user.getString("password")) {
-            Unauthorized("Username/password not found")
-          }
-          else {
-            val session = ActorSession(
-              NXActor(username, None, Some(NXProfile(
-                user.getString("firstName"),
-                user.getString("lastName"),
-                user.getString("email")
-              ))),
-              apiKey = API_ACCESS_KEYS(0),
-              narthexDomain = NARTHEX_DOMAIN,
-              naveDomain = NAVE_DOMAIN,
-              singleTripleStore = SINGLE_TRIPLE_STORE
-            )
-            Ok(Json.toJson(session)).withSession(session)
-          }
-
-        case None =>
-          Unauthorized("Username/password not found")
+    orgContext.us.authenticate(username, password).map { actorOpt =>
+      actorOpt.map { actor =>
+        val session = actorSession(actor)
+        Ok(Json.toJson(session)).withSession(session)
+      } getOrElse {
+        Unauthorized("Username/password not found")
       }
-    } getOrElse {
-      val resultFuture = orgContext.us.authenticate(username, password).map { nxActorOpt: Option[NXActor] =>
-        nxActorOpt.map { nxActor =>
-          val session = ActorSession(
-            nxActor,
-            apiKey = API_ACCESS_KEYS(0),
-            narthexDomain = NARTHEX_DOMAIN,
-            naveDomain = NAVE_DOMAIN,
-            singleTripleStore = SINGLE_TRIPLE_STORE
-          )
-          Ok(Json.toJson(session)).withSession(session)
-        } getOrElse Unauthorized("Username/password not found")
-      }
-      Await.result(resultFuture, 10.seconds)
     }
   }
 
@@ -167,14 +194,14 @@ object MainController extends Controller with Security {
   }
 
   def listActors = Secure() { session => implicit request =>
-    Ok(Json.obj("actorList" -> orgContext.us.listActors(session.actor)))
+    Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
   }
 
   def createActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
-    orgContext.us.createActor(session.actor, username, password).map { actorOpt =>
-      Ok(Json.obj("actorList" -> orgContext.us.listActors(session.actor)))
+    orgContext.us.createSubActor(session.actor, username, password).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
     }
   }
 
@@ -268,4 +295,39 @@ object MainController extends Controller with Security {
         )
       ).as(JAVASCRIPT)
   }
+
+  def testEmail(messageType: String) = Action { request =>
+    messageType match {
+      case "processing-complete" =>
+        Ok(views.html.email.processingComplete(MailProcessingComplete(
+          spec = "spec",
+          ownerEmailOpt = Some("servers@delving.eu"),
+          validString = "1000000000",
+          invalidString = "0"
+        )))
+
+      case "dataset-error" =>
+        var throwable: Throwable = null
+        try {
+          throw new Exception("This is the exception's message")
+        }
+        catch {
+          case e: Throwable =>
+            throwable = e
+        }
+        Ok(views.html.email.datasetError(MailDatasetError(
+          spec = "spec",
+          ownerEmailOpt = Some("servers@delving.eu"),
+          throwable.getMessage,
+          Some(throwable)
+        )))
+
+      case badEmailType =>
+        Ok(views.html.email.emailNotFound(badEmailType, Seq(
+          "processing-complete",
+          "dataset-error"
+        )))
+    }
+  }
+
 }

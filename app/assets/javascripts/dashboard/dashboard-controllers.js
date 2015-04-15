@@ -18,11 +18,18 @@ define(["angular"], function (angular) {
     "use strict";
 
     var USERNAME_COOKIE = "NARTHEX-User";
+    var OAUTH_COOKIE = "NARTHEX-OAuth";
 
     /** Controls the index page */
-    var DashboardCtrl = function ($scope, $rootScope, $cookies, $location, userService, $timeout) {
+    var DashboardCtrl = function ($scope, $rootScope, $cookies, $window, userService, $timeout) {
 
-        $scope.credentials = {username: $cookies[USERNAME_COOKIE]};
+        $scope.credentials = { };
+        if ($cookies[OAUTH_COOKIE]) {
+            $scope.credentials.oauth = true;
+        }
+        else {
+            $scope.credentials.username = $cookies[USERNAME_COOKIE];
+        }
         $scope.newActor = {};
         $scope.change = {};
         $scope.changeDisabled = true;
@@ -45,22 +52,33 @@ define(["angular"], function (angular) {
 
         listActors();
 
-        $scope.login = function (credentials) {
-//            console.log("Login", $scope.credentials);
+        $scope.toggleOAuth = function() {
+            $cookies[OAUTH_COOKIE] = $scope.credentials.oauth = !$scope.credentials.oauth;
+            if (!$scope.credentials.oauth) {
+                $scope.credentials.username = $cookies[USERNAME_COOKIE];
+            }
+        };
+
+        $scope.login = function () {
             $scope.errorMessage = undefined;
-            userService.loginUser(credentials).then(
-                function (response) {
-                    if (response.profile) {
-                        checkLogin();
-                        listActors();
-                        $cookies[USERNAME_COOKIE] = credentials.username;
+            if ($scope.credentials.oauth) {
+                $window.location.href = $scope.oauthUrl;
+            }
+            else {
+                userService.loginUser($scope.credentials).then(
+                    function (response) {
+                        if (response.profile) {
+                            checkLogin();
+                            listActors();
+                            $cookies[USERNAME_COOKIE] = $scope.credentials.username;
+                        }
+                        else {
+                            $scope.credentials.password = "";
+                            $scope.errorMessage = response.problem;
+                        }
                     }
-                    else {
-                        $scope.credentials.password = "";
-                        $scope.errorMessage = response.problem;
-                    }
-                }
-            );
+                );
+            }
         };
 
         function compareUserToEdited() {
@@ -97,15 +115,16 @@ define(["angular"], function (angular) {
             });
         };
     };
-    DashboardCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$location", "userService", "$timeout"];
+    DashboardCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$window", "userService", "$timeout"];
 
     /** Controls the header */
     var IndexCtrl = function ($rootScope, $scope, userService, $location) {
 
-        $scope.initialize = function (orgId, sipCreatorLink) {
+        $scope.initialize = function (orgId, sipCreatorLink, oauthUrl) {
             console.log("Initializing index");
             $rootScope.orgId = orgId;
             $rootScope.sipCreatorLink = sipCreatorLink;
+            $rootScope.oauthUrl = oauthUrl;
             $scope.toggleBar = true;
         };
 

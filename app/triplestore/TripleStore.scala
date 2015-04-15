@@ -142,14 +142,14 @@ class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContex
 
   private def dataRequest(graphUri: String) = WS.url(s"$storeURL/data").withQueryString("graph" -> graphUri)
 
-  private def toLog(sparql: String):String = {
+  private def toLog(sparql: String): String = {
     queryIndex += 1
     val numbered = sparql.split("\n").zipWithIndex.map(tup => s"${tup._2 + 1}: ${tup._1}").mkString("\n")
     val divider = "=" * 40 + s"($queryIndex)\n"
     divider + numbered
   }
 
-  private def logSparql(sparql:String): Unit = if (logQueries) Logger.info(toLog(sparql))
+  private def logSparql(sparql: String): Unit = if (logQueries) Logger.info(toLog(sparql))
 
   override def ask(sparqlQuery: String): Future[Boolean] = {
     logSparql(sparqlQuery)
@@ -178,8 +178,13 @@ class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContex
       val json = response.json
       val vars = (json \ "head" \ "vars").as[List[String]]
       val bindings = (json \ "results" \ "bindings").as[List[JsObject]]
-      bindings.map { binding =>
-        vars.map(v => v -> QueryValue((binding \ v).as[JsObject])).toMap
+      bindings.flatMap { binding =>
+        if (binding.keys.isEmpty)
+          None
+        else {
+          val valueMap = vars.flatMap(v => (binding \ v).asOpt[JsObject].map(value => v -> QueryValue(value))).toMap
+          Some(valueMap)
+        }
       }
     }
   }
