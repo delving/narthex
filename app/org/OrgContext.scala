@@ -104,6 +104,8 @@ object OrgContext {
 
   val MAIL_CONFIGURED = config.getString("smtp.host").isDefined
 
+  val XSD_VALIDATION = configFlag("xsd-validation")
+
   // tests are using this
   private def tripleStore(implicit executionContext: ExecutionContext) = TRIPLE_STORE_URL.map { tripleStoreUrl =>
     TripleStore.single(tripleStoreUrl, TRIPLE_STORE_LOG)

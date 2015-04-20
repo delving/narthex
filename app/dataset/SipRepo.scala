@@ -16,6 +16,7 @@
 package dataset
 
 import java.io._
+import java.net.URL
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipOutputStream}
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamSource
@@ -25,6 +26,7 @@ import eu.delving.XMLToolFactory
 import eu.delving.groovy._
 import eu.delving.metadata._
 import eu.delving.schema.SchemaVersion
+import org.OrgContext
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import org.w3c.dom.Element
@@ -218,12 +220,20 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
   private class ResolverContext extends CachedResourceResolver.Context {
 
-    override def get(url: String): String = {
-      throw new RuntimeException
+    override def get(urlString: String): String = {
+      try {
+        val url = new URL(urlString)
+        IOUtils.toString(url.openStream(), "UTF-8");
+      }
+      catch {
+        case e: Exception =>
+          throw new RuntimeException("Problem fetching", e);
+      }
     }
 
     override def file(systemId: String): File = {
-      throw new RuntimeException
+      val cache = new File("/tmp")
+      new File(cache, systemId.replaceAll("[/:]", "_"))
     }
   }
 
@@ -250,8 +260,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
       version = version,
       recDefTree = tree,
       recMapping = mapping,
-      //      validatorOpt = validator(s"${schemaVersion}_validation.xsd", prefix),
-      validatorOpt = None
+      validatorOpt = if (OrgContext.XSD_VALIDATION) validator(s"${schemaVersion}_validation.xsd", prefix) else None
     )
   }
 
@@ -276,7 +285,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
     val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
 
     //    println(s"input paths:\n${sipMapping.recMapping.getNodeMappings.toList.map(nm => s"${nm.inputPath} -> ${nm.outputPath}").mkString("\n")}")
-//    println(runner.getCode)
+    //    println(runner.getCode)
 
     override val datasetName = sipMapping.spec
 
