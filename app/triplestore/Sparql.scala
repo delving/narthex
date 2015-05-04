@@ -341,8 +341,12 @@ object Sparql {
       |}
       |WHERE {
       |   GRAPH ?g {
-      |      ?record <$belongsTo> <$uri> .
+      |      ?foafDoc <$foafPrimaryTopic> ?record .
+      |      ?foafDoc <$belongsTo> <$uri> .
       |      ?record a <$recordEntity> .
+      |   }
+      |   GRAPH ?g {
+      |      ?s ?p ?o .
       |   }
       |};
      """.stripMargin
@@ -383,13 +387,7 @@ object Sparql {
 
   def dropVocabularyQ(graphName: String) =
     s"""
-      |WITH <$graphName>
-      |DELETE {
-      |   ?s ?p ?o
-      |}
-      |WHERE {
-      |   ?s ?p ?o
-      |}
+      |CLEAR GRAPH <$graphName>
      """.stripMargin
 
   // === mapping store ===

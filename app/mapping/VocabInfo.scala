@@ -150,7 +150,14 @@ class VocabInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore
     ) yield  c.text.toInt
   }
 
-  def dropVocabulary = ts.up.sparqlUpdate(dropVocabularyQ(graphName)).map(ok => true)
+  def dropVocabulary = {
+    for {
+      graphOk <- ts.up.sparqlUpdate(dropVocabularyQ(graphName))
+      skosGraphOk <- ts.up.sparqlUpdate(dropVocabularyQ(skosGraphName))
+    } yield {
+      true
+    }
+  }
 
   lazy val vocabulary = new SkosVocabulary(spec, skosGraphName)
 

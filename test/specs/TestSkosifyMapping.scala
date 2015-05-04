@@ -181,6 +181,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     await(store.toggleMapping(mapping, classyInfo)) must be("removed")
     await(store.getMappings(categories = false)) must be(Seq())
     exactMatch must be(None)
+    await(classyInfo.dropVocabulary) must be(true)
   }
 
   "Mapping a skosified entry to a category" in {
@@ -206,6 +207,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     await(store.getMappings(categories = true)) must be(Seq(List(uriA, uriB2, "categories")))
     await(store.toggleMapping(mapping2, catInfo)) must be("removed")
     await(store.getMappings(categories = true)) must be(Seq())
+    await(catInfo.dropVocabulary) must be(true)
   }
 
   "Delete a dataset" in {
