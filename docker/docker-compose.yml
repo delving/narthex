@@ -1,0 +1,16 @@
+# fuseki container
+fuseki:
+  image: stain/jena-fuseki
+  ports:
+    - "3030:3030"
+
+# Narthex container
+narthex:
+#  build: ..
+  image: narthex
+  volumes:
+    - /Users/geralddejong/delving/narthex/docker/NarthexFiles:/NarthexFiles  # mount current directory inside container
+  ports:
+    - "9000:9000"
+  links:
+    - fuseki:fuseki
