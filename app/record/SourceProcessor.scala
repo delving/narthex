@@ -81,7 +81,9 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       datasetContext.sourceRepoOpt.map { sourceRepo =>
         val progressReporter = ProgressReporter(GENERATING, context.parent)
         progress = Some(progressReporter)
-        val pocketOutput = new FileOutputStream(datasetContext.pocketFile)
+        val pocketFile = datasetContext.pocketFile
+        pocketFile.getParentFile.mkdirs()
+        val pocketOutput = new FileOutputStream(pocketFile)
         val idFilter = dsInfo.getIdFilter
         val pocketCount = sourceRepo.generatePockets(pocketOutput, idFilter, progressReporter)
         val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt.map { latestSip =>
@@ -89,7 +91,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
           datasetContext.sipFiles.foreach(_.delete())
           val sipFile = datasetContext.createSipFile
           pocketOutput.close()
-          latestSip.copyWithSourceTo(sipFile, datasetContext.pocketFile, prefixRepoOpt)
+          latestSip.copyWithSourceTo(sipFile, pocketFile, prefixRepoOpt)
           Some(sipFile)
         } getOrElse {
           val facts = SipGenerationFacts(dsInfo)
@@ -98,7 +100,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
             datasetContext.sipFiles.foreach(_.delete())
             val sipFile = datasetContext.createSipFile
             pocketOutput.close()
-            prefixRepo.initiateSipZip(sipFile, datasetContext.pocketFile, facts)
+            prefixRepo.initiateSipZip(sipFile, pocketFile, facts)
             Some(sipFile)
           } getOrElse {
             pocketOutput.close()
