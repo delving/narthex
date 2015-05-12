@@ -20,7 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import analysis.NodeRepo
-import dataset.DsInfo.{DsState, DsMetadata}
+import dataset.DsInfo.DsMetadata
 import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
@@ -29,9 +29,9 @@ import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
 import record.PocketParser
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
-import services.{StringHandling, FileHandling}
 import services.FileHandling.clearDir
 import services.StringHandling.pathToDirectory
+import services.{FileHandling, StringHandling}
 
 import scala.util.{Failure, Success, Try}
 
@@ -147,7 +147,9 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     }
   }
 
-  def rawXmlFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.find(_.getName.endsWith(".xml")) else None
+  def rawXmlFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.find{ file =>
+    file.getName.endsWith(".xml") || file.getName.endsWith(".xml.gz")
+  } else None
 
   def singleHarvestZip: Option[File] = {
     val allZip = sourceDir.listFiles.filter(_.getName.endsWith("zip"))
