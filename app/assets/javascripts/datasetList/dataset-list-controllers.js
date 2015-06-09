@@ -159,7 +159,7 @@ define(["angular"], function () {
         $scope.createDataset = function () {
             datasetListService.create($scope.newDataset.spec, $scope.newDataset.character.code, $scope.newDataset.character.prefix).then(function () {
                 $scope.cancelNewFile();
-                $scope.newDataset.spec = undefined;
+                $scope.newDataset.specTyped = $scope.newDataset.spec = undefined;
                 $scope.fetchDatasetList();
             });
         };
