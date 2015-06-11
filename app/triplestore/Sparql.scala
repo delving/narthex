@@ -397,7 +397,7 @@ object Sparql {
       |ASK {
       |  GRAPH ?g {
       |    ?mapping
-      |       a <$mappingEntity>;
+      |       a <$terminologyMapping>;
       |       <$mappingConcept> <$uriA>;
       |       <$mappingConcept> <$uriB> .
       |  }
@@ -434,7 +434,7 @@ object Sparql {
       |  GRAPH <$graphName> {
       |    <$uriA> <$connection> <$uriB> .
       |    <$uri>
-      |       a <$mappingEntity>;
+      |       a <$terminologyMapping>;
       |       <$synced> false;
       |       <$belongsTo> <$actor> ;
       |       <$mappingTime> '''${Temporal.timeToString(new DateTime)}''' ;
