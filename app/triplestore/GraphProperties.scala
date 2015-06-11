@@ -131,6 +131,7 @@ object GraphProperties {
   val recordEntity = s"${NX_NAMESPACE}Record"
   val mappingEntity = s"${NX_NAMESPACE}Mapping"
   val actorEntity = s"${NX_NAMESPACE}Actor"
+  val proxyResource = s"${NX_NAMESPACE}ProxyResource"
   val skosCollection = s"${SKOS}Collection"
   val actorsGraph = createGraphName(s"${NX_NAMESPACE}Actors")
 

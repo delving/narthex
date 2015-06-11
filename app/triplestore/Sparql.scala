@@ -447,24 +447,6 @@ object Sparql {
      """.stripMargin
   }
 
-//  def deleteMappingQ(graphName: String, uriA: String, uriB: String) =
-//    s"""
-//      |DELETE {
-//      |  GRAPH <$graphName> { ?s ?p ?o }
-//      |}
-//      |INSERT {
-//      |  GRAPH <$graphName> {
-//      |    ?mapping <$mappingDeleted> true
-//      |  }
-//      |}
-//      |WHERE {
-//      |  GRAPH <$graphName> {
-//      |    ?mapping <$mappingConcept> <$uriA> .
-//      |    ?mapping <$mappingConcept> <$uriB> .
-//      |  }
-//      |}
-//     """.stripMargin
-
   def getVocabMappingsQ(skosA: SkosGraph, skosB: SkosGraph) = {
     s"""
       |SELECT ?a ?b
@@ -588,6 +570,7 @@ object Sparql {
         |INSERT {
         |   GRAPH <$skosGraph> {
         |      <$mintedUri> a skos:Concept .
+        |      <$mintedUri> a <$proxyResource> .
         |      <$mintedUri> skos:altLabel ${literalExpression(value, languageOpt)} .
         |      <$mintedUri> <$belongsTo> <$datasetUri> .
         |      <$mintedUri> <$skosField> <$fieldProperty> .
