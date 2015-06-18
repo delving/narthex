@@ -98,15 +98,15 @@
 
             <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="210" data-ng-style="{ 'height': elHeight }" ng-show="histogram">
                 <ul class="list-group">
-                    <li  data-ng-show="!histogramSkosField" class="list-group-item">
+                    <li data-ng-show="!histogramSkosField" class="list-group-item">
                         <!-- Skosify button -->
-                        <a href data-ng-click="setSkosifiedField(histogram.uri, true)" class="btn btn-success btn-block btn-xs">
-                            Skosify ({{ histogram.uri }})
+                        <a href data-ng-click="setSkosifiedField(histogram.uri, histogram.tag, true)" class="btn btn-success btn-block btn-xs">
+                            Skosify ({{ histogram.tag }})
                         </a>
                     </li>
                     <li data-ng-show="analyzedState && histogramSkosField && activeView == 'histogram'" class="list-group-item">
                         <div class="btn btn-success btn-block btn-xs disabled">
-                            Skosified ({{ histogram.uri }})
+                            Skosified ({{ histogram.tag }})
                         </div>
                     </li>
                     <li data-ng-repeat="count in histogram.histogram | filter:filterText"

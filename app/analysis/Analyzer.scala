@@ -31,7 +31,7 @@ import dataset.DatasetContext
 import org.OrgContext.actorWork
 import org.apache.commons.io.FileUtils.deleteQuietly
 import play.api.libs.json._
-import services.FileHandling.{createReader, sourceFromFile, createWriter}
+import services.FileHandling.{createReader, createWriter, sourceFromFile}
 import services.ProgressReporter.ProgressState._
 import services._
 
@@ -132,7 +132,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
       sortType match {
         case SortType.VALUE_SORT =>
           deleteQuietly(nodeRepo.values)
-          progress.map { p =>
+          progress.foreach { p =>
             val collator = context.actorOf(Collator.props(nodeRepo))
             collators = collator :: collators
             collator ! Count()
@@ -192,10 +192,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
         createJson(sampleFile, Json.obj("sample" -> randomSample.values))
       }
 
-      def lineOption = {
-        val string = sorted.readLine()
-        if (string != null) Some(string) else None
-      }
+      def lineOption = Option(sorted.readLine())
 
       val counted = createWriter(nodeRepo.counted)
       val unique = createWriter(nodeRepo.uniqueText)
@@ -353,10 +350,7 @@ class Merger(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       val inputA = createReader(inFileA)
       val inputB = createReader(inFileB)
 
-      def lineOption(reader: BufferedReader) = {
-        val string = reader.readLine()
-        if (string != null) Some(string) else None
-      }
+      def lineOption(reader: BufferedReader) = Option(reader.readLine())
 
       val outputFile = nodeRepo.tempSort
       val output = createWriter(outputFile)

@@ -103,9 +103,10 @@ define(["angular"], function () {
 
         fetchInfo(fetchTree);
 
-        $scope.setSkosifiedField = function(uri, included) {
+        $scope.setSkosifiedField = function(uri, tag, included) {
             var payload = {
                 "histogramPath": $routeParams.path,
+                "skosFieldTag": tag,
                 "skosFieldUri": uri,
                 "included": included
             };
@@ -223,7 +224,7 @@ define(["angular"], function () {
                 $scope.sample = undefined;
                 $scope.histogramUnique = data.histogram[0] && data.histogram[0][0] == 1;
                 $scope.histogramVocabulary = (!$scope.histogramUnique) && ($scope.status.uniqueCount < MAX_FOR_VOCABULARY);
-                $scope.histogramSkosField = checkSkosField($scope.histogram.uri);
+                $scope.histogramSkosField = checkSkosField($scope.histogram.tag + "=" +$scope.histogram.uri);
             });
             setActiveView("histogram");
         };
@@ -280,7 +281,7 @@ define(["angular"], function () {
 
             var colorLookup = {};
             for (var walk = 0; walk < noOfColors; ++walk) {
-                var r = Math.floor(Math.sin(frequency * walk + 0) * (127) + 128);
+                var r = Math.floor(Math.sin(frequency * walk) * (127) + 128);
                 var g = Math.floor(Math.sin(frequency * walk + 1) * (127) + 128);
                 var b = Math.floor(Math.sin(frequency * walk + 3) * (127) + 128);
                 colorLookup[lengthName[walk]] = rgbToHex(r, g, b);

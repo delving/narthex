@@ -186,12 +186,14 @@ object AppController extends Controller with Security {
   def setSkosifiedField(spec: String) = Secure(parse.json) { session => request =>
     withDsInfo(spec) { dsInfo =>
       val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
+      val skosFieldTag = (request.body \ "skosFieldTag").as[String]
       val skosFieldUri = (request.body \ "skosFieldUri").as[String]
+      val skosFieldValue = s"$skosFieldTag=$skosFieldUri"
       val included = (request.body \ "included").as[Boolean]
-      Logger.info(s"set skos field $skosFieldUri")
+      Logger.info(s"set skos field $skosFieldValue")
       val currentSkosFields = dsInfo.getLiteralPropList(skosField)
       val action: String = if (included) {
-        if (currentSkosFields.contains(skosFieldUri)) {
+        if (currentSkosFields.contains(skosFieldValue)) {
           "already exists"
         }
         else {
@@ -202,23 +204,23 @@ object AppController extends Controller with Security {
           } yield Sparql.createCasesFromHistogram(dsInfo, histogram)
           val futureModel = casesOpt.map { cases =>
             val q = cases.map(_.ensureSkosEntryQ).mkString
-            val futureUpdate = ts.up.sparqlUpdate(q).map(ok => dsInfo.addLiteralProp(skosField, skosFieldUri))
+            val futureUpdate = ts.up.sparqlUpdate(q).map(ok => dsInfo.addLiteralPropToList(skosField, skosFieldValue))
             Await.result(futureUpdate, 1.minute)
           } getOrElse {
-            dsInfo.addLiteralProp(skosField, skosFieldUri)
-            val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldUri)
+            dsInfo.addLiteralPropToList(skosField, skosFieldValue)
+            val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldValue)
             OrgActor.actor ! dsInfo.createMessage(StartSkosification(skosifiedField))
           }
           "added"
         }
       }
       else {
-        if (!currentSkosFields.contains(skosFieldUri)) {
+        if (!currentSkosFields.contains(skosFieldValue)) {
           "did not exists"
         }
         else {
           // here eventual de-skosification could happen
-          dsInfo.removeLiteralProp(skosField, skosFieldUri)
+          dsInfo.removeLiteralPropFromList(skosField, skosFieldValue)
           "removed"
         }
       }

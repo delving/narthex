@@ -192,13 +192,13 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     m.listObjectsOfProperty(m.getResource(uri), m.getProperty(prop.uri)).map(_.asLiteral().toString).toList
   }
 
-  def addLiteralProp(prop: NXProp, uriValueString: String): Unit = {
-    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addUriPropertyQ(graphName, uri, prop, uriValueString))
+  def addLiteralPropToList(prop: NXProp, uriValueString: String): Unit = {
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(addLiteralPropertyToListQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
   }
 
-  def removeLiteralProp(prop: NXProp, uriValueString: String): Unit = {
-    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteUriPropertyQ(graphName, uri, prop, uriValueString))
+  def removeLiteralPropFromList(prop: NXProp, uriValueString: String): Unit = {
+    val futureUpdate = ts.up.acceptanceOnly(getBooleanProp(acceptanceOnly)).sparqlUpdate(deleteLiteralPropertyFromListQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
   }
 
@@ -319,7 +319,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     val mappings = Await.result(mappingStore.getMappings(categories = true), 1.minute)
     val uriLabelMap = categoryVocabularyInfo.vocabulary.uriLabelMap
     val termUriLabels = mappings.flatMap { mapping =>
-      val termUri = mapping(0)
+      val termUri = mapping.head
       val categoryUri = mapping(1)
       uriLabelMap.get(categoryUri).map(label => (termUri, label))
     }

@@ -20,7 +20,7 @@ import triplestore.Sparql._
 
 class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM with FakeTripleStore {
 
-  val skosifiedPropertyUri = "http://purl.org/dc/elements/1.1/subject"
+  val skosifiedPropertyUri = "dc_subject=http://purl.org/dc/elements/1.1/subject"
   lazy val actorPrefix = s"$NX_URI_PREFIX/actor"
 
   "The first user should authenticate and become administrator" in {
@@ -89,11 +89,11 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
   "Skosification must work" in {
     // mark a field as skosified
     val info = await(DsInfo.freshDsInfo("ton-smits-huis")).get
-    info.addLiteralProp(skosField, skosifiedPropertyUri)
+    info.addLiteralPropToList(skosField, skosifiedPropertyUri)
     info.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
-    info.removeLiteralProp(skosField, skosifiedPropertyUri)
+    info.removeLiteralPropFromList(skosField, skosifiedPropertyUri)
     info.getLiteralPropList(skosField) must be(List())
-    info.addLiteralProp(skosField, skosifiedPropertyUri)
+    info.addLiteralPropToList(skosField, skosifiedPropertyUri)
     info.getLiteralPropList(skosField) must be(List(skosifiedPropertyUri))
 
     val skosifiedFields = await(ts.query(listSkosifiedFieldsQ)).map(skosifiedFieldFromResult)
@@ -110,7 +110,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
 
 //    skosificationCases.map(c => println(s"SKOSIFICATION CASE: $c"))
 
-    skosificationCases.map { sc =>
+    skosificationCases.foreach { sc =>
       val graph = DsInfo.getSkosGraphName(sc.sf.datasetUri)
       val valueUri: String = sc.mintedUri
       val checkEntry = s"ASK { GRAPH <$graph> { <$valueUri> a <http://www.w3.org/2004/02/skos/core#Concept> } }"
@@ -139,7 +139,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
       await(ts.up.sparqlUpdate(sc.literalToUriQ))
     }
 
-    skosifiedFields.map { sf =>
+    skosifiedFields.foreach { sf =>
       val remaining = await(ts.query(listSkosificationCasesQ(sf, 100)))
       remaining.size must be(17)
     }
@@ -147,7 +147,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     await(ts.ask(skosificationCasesExistQ(skosifiedFields.head))) must be(true)
 
     val finalCases = skosifiedFields.flatMap(sf => createCasesFromQueryValues(sf, await(ts.query(listSkosificationCasesQ(sf, 100)))))
-    finalCases.map { sc =>
+    finalCases.foreach { sc =>
       await(ts.up.sparqlUpdate(sc.ensureSkosEntryQ))
       await(ts.up.sparqlUpdate(sc.literalToUriQ))
     }

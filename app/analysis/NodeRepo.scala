@@ -95,14 +95,12 @@ class NodeRepo(val parent: DatasetContext, val dir: File) {
     val LINE = """^ *(\d*) (.*)$""".r
     val input = createReader(histogramText)
 
-    def lineOption = {
-      val string = input.readLine()
-      if (string != null) Some(string) else None
-    }
+    def lineOption = Option(input.readLine())
 
     def createFile(maximum: Int, entries: mutable.ArrayBuffer[JsArray], histogramFile: File) = {
       val uri = readFileToString(uriText)
       createJson(histogramFile, Json.obj(
+        "tag" -> dir.getName,
         "uri" -> uri,
         "uniqueCount" -> uniqueCount,
         "entries" -> entries.size,

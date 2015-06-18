@@ -130,7 +130,7 @@ object TreeNode {
       }
     }
 
-    def isEmpty = counters.filter(_.count > 0).isEmpty
+    def isEmpty = !counters.exists(_.count > 0)
   }
 
   class RandomSample(val size: Int, random: Random = new Random()) {
@@ -180,7 +180,7 @@ object TreeNode {
 
   def gatherPaths(node: ReadTreeNode, requestUrl: String): List[PathNode] = {
     val list = node.kids.flatMap(n => gatherPaths(n, requestUrl)).toList
-    if (node.lengths.length > 0 && node.count > 1) {
+    if (node.lengths.nonEmpty && node.count > 1) {
       val path = pathToDirectory(node.path)
       PathNode(s"$requestUrl/histogram$path", node.count) :: list
     }

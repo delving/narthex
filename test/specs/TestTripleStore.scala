@@ -48,9 +48,9 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
 
     // uri prop
     dsInfo.getLiteralPropList(skosField) must be(List.empty)
-    dsInfo.addLiteralProp(skosField, "http://purl.org/dc/elements/1.1/type")
+    dsInfo.addLiteralPropToList(skosField, "http://purl.org/dc/elements/1.1/type")
     dsInfo.getLiteralPropList(skosField) must be(List("http://purl.org/dc/elements/1.1/type"))
-    dsInfo.addLiteralProp(skosField, "http://purl.org/dc/elements/1.1/creator")
+    dsInfo.addLiteralPropToList(skosField, "http://purl.org/dc/elements/1.1/creator")
 
     def testTwo(di: DsInfo) = {
       val two = di.getLiteralPropList(skosField)

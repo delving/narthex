@@ -78,8 +78,6 @@ object StringHandling {
       .toLowerCase // Lowercase the final results
   }
 
-  val ExtractLocalName = ".*[^\\w](\\w+)".r
-
   def stripSlash(subject: String) = if (subject.endsWith("/")) subject.substring(0, subject.length - 1) else subject
 
   def createFOAFAbout(subject: String) = s"${stripSlash(subject)}/about"

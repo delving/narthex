@@ -306,23 +306,23 @@ object Sparql {
       |}
      """.stripMargin
 
-  def addUriPropertyQ(graphName: String, uri: String, prop: NXProp, uriValue: String) =
+  def addLiteralPropertyToListQ(graphName: String, uri: String, prop: NXProp, value: String) =
     s"""
       |INSERT DATA {
       |  GRAPH <$graphName> {
-      |    <$uri> <$prop> ${literalExpression(uriValue, None)} .
+      |    <$uri> <$prop> ${literalExpression(value, None)} .
       |  }
       |}
      """.stripMargin.trim
 
-  def deleteUriPropertyQ(graphName: String, uri: String, prop: NXProp, uriValue: String) =
+  def deleteLiteralPropertyFromListQ(graphName: String, uri: String, prop: NXProp, value: String) =
     s"""
       |WITH <$graphName>
       |DELETE {
-      |  <$uri> <$prop> ${literalExpression(uriValue, None)} .
+      |  <$uri> <$prop> ${literalExpression(value, None)} .
       |}
       |WHERE {
-      |  <$uri> <$prop> ${literalExpression(uriValue, None)} .
+      |  <$uri> <$prop> ${literalExpression(value, None)} .
       |}
      """.stripMargin
 
@@ -493,7 +493,11 @@ object Sparql {
       |}
      """.stripMargin
 
-  case class SkosifiedField(spec: String, datasetUri: String, fieldPropertyUri: String)
+  case class SkosifiedField(spec: String, datasetUri: String, fieldPropertyValue: String) {
+    val parts = fieldPropertyValue.split("=")
+    val fieldPropertyTag = parts(0)
+    val fieldPropertyUri = parts(1)
+  }
 
   def skosifiedFieldFromResult(resultMap: Map[String, QueryValue]) = SkosifiedField(
     resultMap("spec").text,
@@ -549,17 +553,18 @@ object Sparql {
     resultList.map(_("literalValue")).map(v => SkosificationCase(sf, v.text, v.language))
 
   def createCasesFromHistogram(dsInfo: DsInfo, json: JsValue): List[SkosificationCase] = {
+    val fieldPropertyTag = (json \ "tag").as[String]
     val fieldPropertyUri = (json \ "uri").as[String]
+    val fieldPropertyValue = s"$fieldPropertyTag=$fieldPropertyUri"
     val histogram = (json \ "histogram").as[List[List[String]]]
-    val sf = SkosifiedField(dsInfo.spec, dsInfo.uri, fieldPropertyUri)
+    val sf = SkosifiedField(dsInfo.spec, dsInfo.uri, fieldPropertyValue)
     // todo: no language
-    histogram.map(count => SkosificationCase(sf, count(1), None, Some(count(0).toInt)))
+    histogram.map(count => SkosificationCase(sf, count(1), None, Some(count.head.toInt)))
   }
 
   case class SkosificationCase(sf: SkosifiedField, literalValueText: String, languageOpt: Option[String], frequencyOpt: Option[Int] = None) {
     val fieldProperty = sf.fieldPropertyUri
-    val ExtractLocalName(localName) = fieldProperty
-    val mintedUri = s"${sf.datasetUri}/$localName/${slugify(literalValueText)}"
+    val mintedUri = s"${sf.datasetUri}/${sf.fieldPropertyTag}/${slugify(literalValueText)}"
     val skosGraph = getSkosGraphName(sf.datasetUri)
     val datasetUri = sf.datasetUri
     val value = literalValueText

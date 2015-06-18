@@ -47,7 +47,7 @@ object CategoryCounter {
 class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: ExecutionContext, ts: TripleStore) extends Actor with ActorLogging {
 
   val spec = dsInfo.getLiteralProp(datasetSpec).get
-  val skosProperties = dsInfo.getLiteralPropList(skosField)
+  val skosFieldValues = dsInfo.getLiteralPropList(skosField)
 
   var recordCount = 0
   val countMap = new collection.mutable.HashMap[String, Counter]()
@@ -78,7 +78,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
   var termCatMapOpt: Option[Map[String, List[String]]] = None
 
   def failure(ex: Throwable) = {
-    reader.map(_.close())
+    reader.foreach(_.close())
     reader = None
     context.parent ! WorkFailure(ex.getMessage, Some(ex))
   }
@@ -108,15 +108,17 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
     case Some(chunk: GraphChunk) => actorWork(context) {
       log.info("Category count of graphs")
       val termCat = termCatMapOpt.get
-      chunk.dataset.listNames().toList.map { recordGraph =>
+      chunk.dataset.listNames().toList.foreach { recordGraph =>
         val model = chunk.dataset.getNamedModel(recordGraph)
         var categoryLabels = Set.empty[String]
-        skosProperties.map { propertyUri =>
+        skosFieldValues.foreach { skosFieldValue =>
+          val parts = skosFieldValue.split("=")
+          val propertyTag = parts(0)
+          val propertyUri = parts(1)
           val property = model.getProperty(propertyUri)
-          model.listObjectsOfProperty(property).map(_.asLiteral().getString).toList.map { literalValueText =>
-            val ExtractLocalName(localName) = propertyUri
-            val mintedUri = s"${dsInfo.uri}/$localName/${slugify(literalValueText)}"
-            termCat.get(mintedUri).map(newLabels => categoryLabels ++= newLabels)
+          model.listObjectsOfProperty(property).map(_.asLiteral().getString).toList.foreach { literalValueText =>
+            val mintedUri = s"${dsInfo.uri}/$propertyTag/${slugify(literalValueText)}"
+            termCat.get(mintedUri).foreach(newLabels => categoryLabels ++= newLabels)
           }
         }
         output(categoryLabels)
@@ -125,7 +127,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
     }
 
     case None => actorWork(context) {
-      reader.map(_.close())
+      reader.foreach(_.close())
       reader = None
       log.info(s"All categories counted for $spec")
       val categoryCounts = countMap.map(count => CategoryCount(count._1, count._2.count, spec)).toList

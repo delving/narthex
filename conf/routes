@@ -80,7 +80,6 @@ POST        /narthex/sip-app/:spec/:zipFileName                              web
 GET         /narthex/api/:apiKey/:spec                                       web.APIController.pathsJSON(apiKey, spec)
 GET         /narthex/api/:apiKey/:spec/errors                                web.APIController.processingErrorsText(apiKey, spec)
 GET         /narthex/api/:apiKey/:spec/tree                                  web.APIController.indexJSON(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/uri/*path                             web.APIController.uriText(apiKey, spec, path)
 GET         /narthex/api/:apiKey/:spec/unique/*path                          web.APIController.uniqueText(apiKey, spec, path)
 GET         /narthex/api/:apiKey/:spec/histogram/*path                       web.APIController.histogramText(apiKey, spec, path)
 
