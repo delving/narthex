@@ -76,6 +76,8 @@ object GraphProperties {
   val datasetErrorMessage = NXProp("datasetErrorMessage")
 
   val skosField = NXProp("skosField")
+  val proxyLiteralValue = NXProp("proxyLiteralValue")
+  val proxyLiteralField = NXProp("proxyLiteralField")
 
   val stateRaw = NXProp("stateRaw", timeProp)
   val stateRawAnalyzed = NXProp("stateRawAnalyzed", timeProp)

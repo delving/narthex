@@ -620,8 +620,10 @@ object Sparql {
         |      <$mintedUri> a skos:Concept .
         |      <$mintedUri> a <$proxyResource> .
         |      <$mintedUri> skos:altLabel ${literalExpression(value, languageOpt)} .
+        |      <$mintedUri> <$proxyLiteralValue> ${literalExpression(value, languageOpt)} .
         |      <$mintedUri> <$belongsTo> <$datasetUri> .
         |      <$mintedUri> <$skosField> <$fieldProperty> .
+        |      <$mintedUri> <$proxyLiteralField> <$fieldProperty> .
         |      <$mintedUri> <$synced> false .
         |      ${frequencyOpt.map(freq => s"<$mintedUri> <$skosFrequency> '''$freq''' .").getOrElse("")}
         |   }
