@@ -349,6 +349,21 @@ object Sparql {
       |      ?s ?p ?o .
       |   }
       |};
+      |DELETE {
+      |   GRAPH ?g {
+      |      ?s ?p ?o .
+      |   }
+      |}
+      |WHERE {
+      |   GRAPH ?g {
+      |      ?subject
+      |         <$mappingVocabulary> <$uri> ;
+      |         a <$terminologyMapping> .
+      |   }
+      |   GRAPH ?g {
+      |      ?s ?p ?o .
+      |   }
+      |};
      """.stripMargin
 
   // === vocab info ===
@@ -385,9 +400,26 @@ object Sparql {
       |}
      """.stripMargin
 
-  def dropVocabularyQ(graphName: String) =
+  def dropVocabularyQ(graphName: String, skosGraphName: String, uri: String) =
     s"""
-      |CLEAR GRAPH <$graphName>
+      |CLEAR GRAPH <$graphName>;
+      |CLEAR GRAPH <$skosGraphName>;
+      |DELETE {
+      |   GRAPH ?g {
+      |      ?s ?p ?o .
+      |   }
+      |}
+      |WHERE {
+      |   GRAPH ?g {
+      |      ?subject
+      |         <$mappingVocabulary> <$uri> ;
+      |         a <$terminologyMapping> .
+      |   }
+      |   GRAPH ?g {
+      |      ?s ?p ?o .
+      |   }
+      |};
+
      """.stripMargin
 
   // === mapping store ===
@@ -473,6 +505,17 @@ object Sparql {
       |    ?s <$mappingVocabulary> <${terms.uri}> .
       |    ?s <$mappingVocabulary> ?vocab .
       |    FILTER (?vocab != <${terms.uri}>)
+      |  }
+      |}
+     """.stripMargin
+  }
+
+  def askTermMappingQ(termUri: String, vocabUri: String, categories: Boolean) = {
+    val connection = if (categories) belongsToCategory.uri else exactMatch
+    s"""
+      |ASK {
+      |  GRAPH ?g {
+      |    ?termUri <$connection> ?vocabUri .
       |  }
       |}
      """.stripMargin

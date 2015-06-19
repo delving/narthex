@@ -156,6 +156,10 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     await(ts.ask(q1)) must be(false)
   }
 
+  val literalString = "vogels"
+  val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${slugify(literalString)}"
+  val uriB = "http://data.beeldengeluid.nl/gtaa/24829"
+
   "Mapping a skosified entry to a vocab entry" in {
 
     def exactMatch = await(ts.query(s"select ?o where { graph ?g { ?s <http://www.w3.org/2004/02/skos/core#exactMatch> ?o. } }")).headOption
@@ -170,18 +174,22 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     exactMatch must be(None)
     val store = new TermMappingStore(info)
     // todo: nothing checks whether this literal or uri string are legitimate
-    val literalString = "vogels"
-    val uriA = s"http://localhost:9000/resolve/dataset/ton-smits-huis/${slugify(literalString)}"
-    val uriB = "http://data.beeldengeluid.nl/gtaa/24829"
     val mapping = SkosMapping(admin, uriA, uriB)
     await(store.toggleMapping(mapping, classyInfo)) must be("added")
     await(store.getMappings(categories = false)) must be(Seq(List(uriA, uriB, "gtaa_classy")))
     println(s"exactMatch: $exactMatch")
     exactMatch.isDefined must be(true)
+    await(ts.ask(askTermMappingQ(uriA, uriB, categories = false))) must be(true)
     await(store.toggleMapping(mapping, classyInfo)) must be("removed")
     await(store.getMappings(categories = false)) must be(Seq())
     exactMatch must be(None)
+    await(ts.ask(askTermMappingQ(uriA, uriB, categories = false))) must be(false)
+
+    // add again and check that dropVocabulary removes it
+    await(store.toggleMapping(mapping, classyInfo)) must be("added")
+    await(ts.ask(askTermMappingQ(uriA, uriB, categories = false))) must be(true)
     await(classyInfo.dropVocabulary) must be(true)
+    await(ts.ask(askTermMappingQ(uriA, uriB, categories = false))) must be(false)
   }
 
   "Mapping a skosified entry to a category" in {
@@ -213,11 +221,9 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
   "Delete a dataset" in {
     DsInfo.withDsInfo("ton-smits-huis") { dsInfo =>
       await(dsInfo.dropDataset)
-//      println("dropped")
+      // todo: test that dropDataset also removes term mapping (it does, but dropVocabulary already does it above so testing here would be misleading)
     }
-    val list = await(DsInfo.listDsInfo)
-//    println(s"After Delete: $list")
-    list must be(List())
+    await(DsInfo.listDsInfo) must be(List())
   }
 
 }
