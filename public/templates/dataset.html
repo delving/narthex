@@ -63,7 +63,7 @@
                     </li>
                 </ul>
                 <ul class="list-inline pull-right">
-                    <li data-ng-show="rawAnalyzedState && activeView == 'histogram' && histogramUnique">
+                    <li data-ng-show="rawAnalyzedState && activeView == 'histogram' && histogramUniqueEnough">
                         <a href class="btn btn-warning btn-sm" data-ng-click="proposeUniqueIdNode(selectedNode)" data-ng-disabled="uniqueIdNode == selectedNode">
                             <i class="fa fa-check-circle"></i> <span> Use as Unique Element</span>
                         </a>

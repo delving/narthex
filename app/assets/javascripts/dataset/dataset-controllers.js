@@ -162,7 +162,7 @@ define(["angular"], function () {
         $scope.proposeUniqueIdNode = function (node) {
             function selectFirstEmptyWithCount(node, count) {
                 if (!node) return undefined;
-                if (!node.lengths.length && node.count == count) {
+                if (!node.lengths.length && node.count >= count) {
                     return node;
                 }
                 else for (var index = 0; index < node.kids.length; index++) {
@@ -214,6 +214,15 @@ define(["angular"], function () {
             }
         }
 
+        function isHistogramUniqueEnough(histogram, uniqueCount) {
+            if (!histogram[0]) return false;
+            var firstChunk = uniqueCount / 20; // 5%
+            for (var i=0; i < firstChunk && i < histogram.length; i++) {
+                if (histogram[i][0] == 1) return true;
+            }
+            return false;
+        }
+
         $scope.fetchHistogram = function () {
             datasetService.histogram($scope.spec, $routeParams.path, $scope.histogramSize).then(function (data) {
                 _.forEach(data.histogram, function (entry) {
@@ -222,7 +231,7 @@ define(["angular"], function () {
                 });
                 $scope.histogram = data;
                 $scope.sample = undefined;
-                $scope.histogramUnique = data.histogram[0] && data.histogram[0][0] == 1;
+                $scope.histogramUniqueEnough = isHistogramUniqueEnough(data.histogram, $scope.status.uniqueCount);
                 $scope.histogramVocabulary = (!$scope.histogramUnique) && ($scope.status.uniqueCount < MAX_FOR_VOCABULARY);
                 $scope.histogramSkosField = checkSkosField($scope.histogram.tag + "=" +$scope.histogram.uri);
             });
