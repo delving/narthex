@@ -105,6 +105,7 @@ object OrgContext {
   val MAIL_CONFIGURED = config.getString("smtp.host").isDefined
 
   val XSD_VALIDATION = configFlag("xsd-validation")
+  System.setProperty("XSD_VALIDATION", XSD_VALIDATION.toString)
 
   // tests are using this
   private def tripleStore(implicit executionContext: ExecutionContext) = TRIPLE_STORE_URL.map { tripleStoreUrl =>
@@ -153,8 +154,8 @@ class OrgContext(userHome: String, val orgId: String)(implicit ec: ExecutionCont
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
 
-  val categoriesRepo = new CategoriesRepo(categoriesDir)
-  val sipFactory = new SipFactory(factoryDir)
+  lazy val categoriesRepo = new CategoriesRepo(categoriesDir)
+  lazy val sipFactory = new SipFactory(factoryDir)
   val us = new ActorStore
 
   orgRoot.mkdirs()

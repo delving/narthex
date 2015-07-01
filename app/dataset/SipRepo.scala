@@ -26,7 +26,6 @@ import eu.delving.XMLToolFactory
 import eu.delving.groovy._
 import eu.delving.metadata._
 import eu.delving.schema.SchemaVersion
-import org.OrgContext
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import org.w3c.dom.Element
@@ -100,6 +99,11 @@ class SipRepo(home: File, spec: String, naveDomain: String) {
 }
 
 object Sip {
+
+  // Note: this is set in the OrgContext but we don't want a dependency from there (requires app for testing)
+  val XSD_VALIDATION = System.getProperty("XSD_VALIDATION", "true") == "true"
+
+  println(s"XSD_VALIDATION=$XSD_VALIDATION")
 
   case class SipMapping(spec: String, prefix: String, version: String,
                         recDefTree: RecDefTree, validatorOpt: Option[Validator],
@@ -260,7 +264,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
       version = version,
       recDefTree = tree,
       recMapping = mapping,
-      validatorOpt = if (OrgContext.XSD_VALIDATION) validator(s"${schemaVersion}_validation.xsd", prefix) else None
+      validatorOpt = if (XSD_VALIDATION) validator(s"${schemaVersion}_validation.xsd", prefix) else None
     )
   }
 
@@ -282,7 +286,11 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
     val serializer = new XmlSerializer
     val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
     val factory = new MetadataRecordFactory(namespaces)
+
+//    println(s"### CODE: \n${new CodeGenerator(sipMapping.recMapping).toRecordMappingCode}")
+
     val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
+
 
     //    println(s"input paths:\n${sipMapping.recMapping.getNodeMappings.toList.map(nm => s"${nm.inputPath} -> ${nm.outputPath}").mkString("\n")}")
     //    println(runner.getCode)

@@ -63,7 +63,7 @@
                 <element ref="ore:Aggregation"/>
                 <element ref="nave:DelvingResource"/>
                 <element ref="nave:BrabantCloudResource"/>
-                <element ref="nave:DimconResource"/>
+                <element ref="nave:DcnResource"/>
                 <element ref="nave:Museometrie"/>
                 <element ref="nave:NorvegianaResource"/>
                 <element ref="nave:RijksCollection"/>

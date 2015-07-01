@@ -1,26 +1,25 @@
 package specs
 
 import java.io._
+import java.util.concurrent.Executors
 
 import com.hp.hpl.jena.rdf.model.ModelFactory
 import dataset.SipFactory
 import dataset.SourceRepo.VERBATIM_FILTER
-import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
-import org.scalatestplus.play.{OneAppPerSuite, PlaySpec}
+import org.scalatestplus.play.PlaySpec
 import record.PocketParser.Pocket
 import services.FileHandling._
 import services.{FileHandling, ProgressReporter}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits._
 
-class TestEDM extends PlaySpec with OneAppPerSuite with PrepareEDM {
+class TestEDM extends PlaySpec with PrepareEDM {
 
-  implicit val ec: ExecutionContext = global
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
   "A dataset should be loaded" in {
-    val sipRepo = createSipRepoFromDir(2)
+    val sipRepo = createSipRepoFromDir(0)
     val targetDir = FileHandling.clearDir(new File(s"/tmp/test-edm/$sipRepo/target"))
     val targetFile = new File(targetDir, "edm.xml")
     val sipOpt = sipRepo.latestSipOpt
@@ -45,28 +44,28 @@ class TestEDM extends PlaySpec with OneAppPerSuite with PrepareEDM {
     mappedPockets.size must be(3)
     targetOutput.close()
 
-    mappedPockets.take(1).map { pocket =>
+    mappedPockets.take(1).foreach { pocket =>
       var recordString = pocket.text
-      println(s"### mapped pocket:\n$pocket")
+//      println(s"### mapped pocket:\n$pocket")
       val model = ModelFactory.createDefaultModel()
       model.read(new StringReader(recordString), null, "RDF/XML")
 
       val isShownBy = "http://www.europeana.eu/schemas/edm/isShownBy"
       val shownList = model.listObjectsOfProperty(model.getProperty(isShownBy)).toList
       shownList.size() must be(1)
-      shownList.map { obj =>
+      shownList.foreach { obj =>
         println(s"isShownBy: $obj")
       }
       val dcSubject = "http://purl.org/dc/elements/1.1/subject"
       val dcSubjectList = model.listObjectsOfProperty(model.getProperty(dcSubject)).toList
       //      (dcSubjectList.size() > 2) must be(true)
-      dcSubjectList.map { obj =>
+      dcSubjectList.foreach { obj =>
         println(s"dcSubject: $obj")
       }
 
-      val turtle = new StringWriter()
-      RDFDataMgr.write(turtle, model, RDFFormat.TURTLE)
-      println(turtle)
+//      val turtle = new StringWriter()
+//      RDFDataMgr.write(turtle, model, RDFFormat.TURTLE)
+//      println(turtle)
     }
 
     val pocketFile = new File(targetDir, "pockets.xml")

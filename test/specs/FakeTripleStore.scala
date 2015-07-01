@@ -13,7 +13,8 @@ trait FakeTripleStore {
 
   implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
-  implicit val ts = TripleStore.single("http://localhost:3030/test", true)
+  // logQueries = true if you want to see them
+  implicit val ts = TripleStore.single("http://localhost:3030/test", logQueries = false)
 
   def cleanStart() = {
     await(ts.up.sparqlUpdate("DROP ALL"))

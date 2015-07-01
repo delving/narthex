@@ -60,10 +60,6 @@
   </functions>
   <dyn-opts/>
   <node-mappings>
-
-      <!--adding an initial mapping from root to root-->
-      <node-mapping inputPath="/input/whateverroot" outputPath="/edm:RDF"/>
-
     <node-mapping inputPath="/constant" outputPath="/edm:RDF/nave:BrabantCloudResource/nave:citName">
       <groovy-code>
         <string>'ccBrabant_TSH'</string>
@@ -127,8 +123,10 @@
     <node-mapping inputPath="/input/whateverroot/reproduction.reference" outputPath="/edm:RDF/ore:Aggregation/edm:isShownAt/@rdf:resource">
       <groovy-code>
           <!--todo: note that this loop should be generated in the snippet-->
+          <string>_input.whateverroot * { _whateverroot -&gt;</string>
           <string>_whateverroot.reproductionreference * { _reproductionreference -&gt;</string>
           <string>"${largeThumbnail(_reproductionreference).sanitizeURI()}"</string>
+          <string>}</string>
           <string>}</string>
       </groovy-code>
     </node-mapping>
