@@ -157,24 +157,33 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     allZip.headOption
   }
 
-  def dropSourceRepo() = {
+  def dropRaw() = {
+    dropSourceRepo()
     deleteQuietly(rawDir)
     dsInfo.removeState(RAW)
-    deleteQuietly(sourceDir)
-    dsInfo.removeState(SOURCED)
   }
 
-  def startSipZipGeneration() = OrgActor.actor ! dsInfo.createMessage(GenerateSipZip)
+  def dropSourceRepo() = {
+    dropProcessedRepo()
+    deleteQuietly(sourceDir)
+    dsInfo.removeState(SOURCED)
+    sipFiles.foreach(deleteQuietly)
+    dsInfo.removeState(MAPPABLE)
+  }
 
   def dropProcessedRepo() = {
+    dropTree()
     deleteQuietly(processedDir)
     dsInfo.removeState(PROCESSED)
   }
 
   def dropTree() = {
     deleteQuietly(treeDir)
+    dsInfo.removeState(RAW_ANALYZED)
     dsInfo.removeState(ANALYZED)
   }
+
+  def startSipZipGeneration() = OrgActor.actor ! dsInfo.createMessage(GenerateSipZip)
 
   // ==================================================
 

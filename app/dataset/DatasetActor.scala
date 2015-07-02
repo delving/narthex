@@ -26,7 +26,7 @@ import dataset.DatasetActor._
 import dataset.DsInfo.DsState._
 import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import mapping.Skosifier.SkosificationComplete
@@ -153,6 +153,24 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(DatasetQuestion(listener, Command(commandName)), Dormant) =>
       val reply = Try {
+
+        def startHarvest(strategy: HarvestStrategy) = {
+          val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
+          log.info(s"Start harvest $strategy, type is $harvestTypeStringOpt")
+          val harvestTypeOpt = harvestTypeStringOpt.flatMap(harvestTypeFromString)
+          harvestTypeOpt.map { harvestType =>
+            log.info(s"Starting harvest $strategy with type $harvestType")
+            datasetContext.createSourceRepo(SourceFacts(harvestType))
+            dsInfo.setHarvestCron() // a clean one
+            self ! StartHarvest(strategy)
+            "harvest started"
+          } getOrElse {
+            val message = s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
+            self ! WorkFailure(message, None)
+            message
+          }
+        }
+
         commandName match {
           case "delete" =>
             Await.ready(datasetContext.dsInfo.dropDataset, 2.minutes)
@@ -160,33 +178,25 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             self ! PoisonPill
             "deleted"
 
-          //          case "remove source" =>
-          //            datasetContext.dropSourceRepo()
-          //            "source removed"
-          //
-          //          case "remove processed" =>
-          //            datasetContext.dropProcessedRepo()
-          //            "processed data removed"
-          //
-          //          case "remove tree" =>
-          //            datasetContext.dropTree()
-          //            "tree removed"
+          case "remove raw" =>
+            datasetContext.dropRaw()
+            "source removed"
 
-          case "start first harvest" =>
-            val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
-            log.info(s"Start harvest, type is $harvestTypeStringOpt")
-            val harvestTypeOpt = harvestTypeStringOpt.flatMap(harvestTypeFromString)
-            harvestTypeOpt.map { harvestType =>
-              log.info(s"Starting first harvest with type $harvestType")
-              datasetContext.createSourceRepo(SourceFacts(harvestType))
-              dsInfo.setHarvestCron() // a clean one
-              self ! StartHarvest(FromScratch)
-              "harvest started"
-            } getOrElse {
-              val message = s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
-              self ! WorkFailure(message, None)
-              message
-            }
+          case "remove source" =>
+            datasetContext.dropSourceRepo()
+            "source removed"
+
+          case "remove processed" =>
+            datasetContext.dropProcessedRepo()
+            "processed data removed"
+
+          case "remove tree" =>
+            datasetContext.dropTree()
+            "tree removed"
+
+          case "start sample harvest" => startHarvest(Sample)
+
+          case "start first harvest" => startHarvest(FromScratch)
 
           case "start generating sip" =>
             self ! GenerateSipZip
@@ -307,40 +317,31 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   when(Harvesting) {
 
-    case Event(HarvestComplete(incrementalHarvestOpt), active: Active) =>
-
-      incrementalHarvestOpt match {
-        case Some(IncrementalHarvest(ModifiedAfter(mod, _), Some(file))) =>
+    case Event(HarvestComplete(strategy, fileOpt), active: Active) =>
+      strategy match {
+        case Sample =>
+          dsInfo.setState(RAW)
+        case FromScratch =>
+          dsInfo.setState(SOURCED)
+        case ModifiedAfter(mod, _) =>
           dsInfo.setState(SOURCED)
           dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
-          if (datasetContext.sipMapperOpt.isDefined) {
-            log.info(s"There is a mapper, so trigger processing")
-            self ! StartProcessing(Some(Incremental(mod, file)))
+          fileOpt match {
+            case Some(file) =>
+              if (datasetContext.sipMapperOpt.isDefined) {
+                log.info(s"There is a mapper, so trigger processing")
+                self ! StartProcessing(Some(Incremental(mod, file)))
+              }
+              else {
+                log.info("No mapper, so generating sip zip only")
+                self ! GenerateSipZip
+              }
+            case None =>
+              log.info("No incremental file, back to sleep")
           }
-          else {
-            log.info("No mapper, so generating sip zip only")
-            self ! GenerateSipZip
-          }
-        case Some(IncrementalHarvest(_, Some(file))) =>
-          dsInfo.setState(SOURCED)
-          dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
-          if (datasetContext.sipMapperOpt.isDefined) {
-            log.info(s"There is a mapper, so trigger processing")
-            self ! StartProcessing(None)
-          }
-          else {
-            log.info("No mapper, so generating sip zip only")
-            self ! GenerateSipZip
-          }
-        case Some(IncrementalHarvest(_, None)) =>
-          log.info("No incremental file, back to sleep")
-        case None =>
-          dsInfo.setState(SOURCED)
-          self ! GenerateSipZip
       }
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
-
   }
 
   when(Adopting) {

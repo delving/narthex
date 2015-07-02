@@ -23,7 +23,7 @@ import akka.actor.{Actor, Props}
 import akka.pattern.pipe
 import dataset.DatasetActor._
 import dataset.DatasetContext
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, IncrementalHarvest}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, PMHHarvestPage}
 import org.OrgContext.actorWork
 import org.apache.commons.io.FileUtils
@@ -40,9 +40,7 @@ object Harvester {
 
   case class HarvestPMH(strategy: HarvestStrategy, url: String, set: String, prefix: String)
 
-  case class IncrementalHarvest(strategy: HarvestStrategy, fileOpt: Option[File])
-
-  case class HarvestComplete(incrementalOpt: Option[IncrementalHarvest])
+  case class HarvestComplete(strategy: HarvestStrategy, fileOpt: Option[File])
 
   def props(datasetContext: DatasetContext) = Props(new Harvester(datasetContext))
 }
@@ -52,45 +50,48 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
   import context.dispatcher
 
   val log = Logger
-  var tempFile = File.createTempFile("narthex-harvest", ".zip")
-  val zip = new ZipOutputStream(new FileOutputStream(tempFile))
+  var tempFileOpt: Option[File] = None
+  var zipOutputOpt: Option[ZipOutputStream] = None
   var pageCount = 0
   var progressOpt: Option[ProgressReporter] = None
 
   def addPage(page: String): Int = {
+    // lazily create the temp zip file output
+    val zipOutput = zipOutputOpt.getOrElse {
+      val newTempFile = File.createTempFile("narthex-harvest", ".zip")
+      tempFileOpt = Some(newTempFile)
+      val newZipOutput = new ZipOutputStream(new FileOutputStream(newTempFile))
+      zipOutputOpt = Some(newZipOutput)
+      newZipOutput
+    }
     val harvestPageName = s"harvest_$pageCount.xml"
-    zip.putNextEntry(new ZipEntry(harvestPageName))
-    zip.write(page.getBytes("UTF-8"))
-    zip.closeEntry()
+    zipOutput.putNextEntry(new ZipEntry(harvestPageName))
+    zipOutput.write(page.getBytes("UTF-8"))
+    zipOutput.closeEntry()
     pageCount += 1
     pageCount
   }
 
   def finish(strategy: HarvestStrategy, errorOpt: Option[String]) = {
-    zip.close()
-    log.info(s"finished harvest strategy=$strategy error=$errorOpt")
+    zipOutputOpt.foreach(_.close())
+    log.info(s"Finished $strategy harvest error=$errorOpt")
     errorOpt match {
       case Some(message) =>
         context.parent ! WorkFailure(message)
       case None =>
-        strategy match {
-          case ModifiedAfter(_, _) =>
-            datasetContext.sourceRepoOpt match {
-              case Some(sourceRepo) =>
-                future {
-                  val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
-                  val fileOption = sourceRepo.acceptFile(tempFile, acceptZipReporter)
-                  log.info(s"Zip file accepted: $fileOption")
-                  context.parent ! HarvestComplete(Some(IncrementalHarvest(strategy, fileOption)))
-                } onFailure {
-                  case e: Exception =>
-                    context.parent ! WorkFailure(e.getMessage)
-                }
-              case None =>
-                context.parent ! WorkFailure(s"No source repo for $datasetContext")
+        datasetContext.sourceRepoOpt match {
+          case Some(sourceRepo) =>
+            future {
+              val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
+              val fileOption = sourceRepo.acceptFile(tempFileOpt.get, acceptZipReporter)
+              log.info(s"Zip file accepted: $fileOption")
+              context.parent ! HarvestComplete(strategy, fileOption)
+            } onFailure {
+              case e: Exception =>
+                context.parent ! WorkFailure(e.getMessage)
             }
-          case _ =>
-            context.parent ! HarvestComplete(None)
+          case None =>
+            context.parent ! WorkFailure(s"No source repo for $datasetContext")
         }
     }
   }
@@ -113,7 +114,8 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
       handleFailure(futurePage, strategy, "adlib harvest")
       strategy match {
         case Sample =>
-          val rawXml = datasetContext.createRawFile(StringHandling.slugify(url))
+          val slug = StringHandling.slugify(url)
+          val rawXml = datasetContext.createRawFile(s"$slug.xml")
           futurePage.map {
             case page: AdLibHarvestPage =>
               FileUtils.writeStringToFile(rawXml, page.records, "UTF-8")
@@ -146,12 +148,13 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
     }
 
     case HarvestPMH(strategy: HarvestStrategy, url, set, prefix) => actorWork(context) {
-      log.info(s"Harvesting $url $set $prefix to $datasetContext")
+      log.info(s"Harvesting $strategy: $url $set $prefix to $datasetContext")
       val futurePage = fetchPMHPage(strategy, url, set, prefix)
       handleFailure(futurePage, strategy, "pmh harvest")
       strategy match {
         case Sample =>
-          val rawXml = datasetContext.createRawFile(StringHandling.slugify(url))
+          val slug = StringHandling.slugify(url)
+          val rawXml = datasetContext.createRawFile(s"$slug.xml")
           futurePage.map {
             case page: PMHHarvestPage =>
               FileUtils.writeStringToFile(rawXml, page.records, "UTF-8")

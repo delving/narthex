@@ -134,7 +134,7 @@
                     <div class="small">{{ dataset.stateRaw.d }}</div>
                     <div>{{ dataset.stateRaw.t }}</div>
                     <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startRawAnalysis()">
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start raw analysis')">
                             <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
                         </button>
                     </div>
@@ -153,7 +153,7 @@
                     <div class="small">{{ dataset.stateSourced.d }}</div>
                     <div>{{ dataset.stateSourced.t }}</div>
                     <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startGeneratingSip()">
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start generating sip')">
                             <i class="fa fa-fw fa-cube"></i> <span>Make SIP</span>
                         </button>
                     </div>
@@ -175,7 +175,7 @@
                     <div class="small">{{ dataset.stateProcessable.d }}</div>
                     <div>{{ dataset.stateProcessable.t }}</div>
                     <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start processing')">
                             <i class="fa fa-fw fa-cogs"></i> <span>Process</span>
                         </button>
                     </div>
@@ -186,7 +186,7 @@
                     <div class="small">{{ dataset.stateProcessed.d }}</div>
                     <div>{{ dataset.stateProcessed.t }}</div>
                     <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startProcessedAnalysis()">
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start processed analysis')">
                             <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
                         </button>
                     </div>
@@ -197,7 +197,7 @@
                     <div class="small">{{ dataset.stateAnalyzed.d }}</div>
                     <div>{{ dataset.stateAnalyzed.t }}</div>
                     <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="startSaving()">
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start saving')">
                             <i class="fa fa-fw fa-database"></i> <span>Save</span>
                         </button>
                     </div>
@@ -437,9 +437,13 @@
                     <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
                 </div>
             </div>
-            <button type="button" class="btn btn-default pull-right" data-ng-click="startFirstHarvest()"  data-ng-disabled="!unchangedHarvest">
+            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start first harvest', 'Erase existing data?')"  data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-download"></i>
                 <span>Harvest</span>
+            </button>
+            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start sample harvest', 'Erase existing data?')"  data-ng-disabled="!unchangedHarvest">
+                <i class="fa fa-binoculars"></i>
+                <span>Sample</span>
             </button>
             <button type="button" class="btn btn-success" data-ng-click="setHarvest()" data-ng-disabled="unchangedHarvest">
                 <i class="fa fa-check-circle"></i>
@@ -614,13 +618,36 @@
 </script>
 
 <script type="text/ng-template" id="dataset-delete.html">
+    <div data-ng-show="dataset.stateRaw || dataset.stateSourced || dataset.stateAnalyzed || dataset.stateProcessed">
+        <div class="alert alert-danger">
+            Removing the results of a workflow phase returns the dataset to a previous state, at which point
+            the subsequent processes can be repeated.
+        </div>
+        <div>
+            <button class="btn btn-danger" data-ng-show="dataset.stateRaw" data-ng-click="remove('remove raw', 'Remove raw file?')">
+                <i class="fa fa-trash"></i> Raw
+            </button>
+            <button class="btn btn-danger" data-ng-show="dataset.stateSourced" data-ng-click="remove('remove source', 'Remove source records?')">
+                <i class="fa fa-trash"></i> Source
+            </button>
+            <button class="btn btn-danger" data-ng-show="dataset.stateAnalyzed" data-ng-click="remove('remove tree', 'Remove Analysis?')">
+                <i class="fa fa-trash"></i> Analysis
+            </button>
+            <button class="btn btn-danger" data-ng-show="dataset.stateProcessed" data-ng-click="remove('remove processed', 'Remove processsed records?')">
+                <i class="fa fa-trash"></i> Processed
+            </button>
+        </div>
+        <hr/>
+    </div>
     <div class="alert alert-danger">
         By clicking the 'Delete' button below you will remove the entire dataset and all its accompanying information.
         This process is <em>not</em> reversible so proceed with caution!
     </div>
     <form name="form" class="form">
         <fieldset>
-            <button class="btn btn-danger" data-ng-click="deleteDataset(dataset)"><i class="fa fa-trash"></i> Delete Dataset</button>
+            <button class="btn btn-danger" data-ng-click="deleteDataset(dataset)">
+                <i class="fa fa-trash"></i> Delete Dataset
+            </button>
         </fieldset>
     </form>
 </script>

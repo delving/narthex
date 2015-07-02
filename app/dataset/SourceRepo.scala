@@ -29,7 +29,7 @@ import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import record.PocketParser
 import record.PocketParser._
-import services.FileHandling.{clearDir, sourceFromFile, createWriter}
+import services.FileHandling.{clearDir, createWriter, sourceFromFile}
 import services.ProgressReporter
 
 import scala.collection.mutable
@@ -290,7 +290,7 @@ class SourceRepo(home: File) {
     val parser = new PocketParser(sourceFacts, idFilter)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
-    val totalActiveIds = activeIdCounts.fold(0)(_ + _)
+    val totalActiveIds = activeIdCounts.sum
     progress.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
       progress.checkInterrupt()

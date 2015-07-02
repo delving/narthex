@@ -270,6 +270,10 @@ define(["angular"], function () {
             });
         }
 
+        function refreshInfoSoon() {
+            $timeout(refreshInfo, 2000);
+        }
+
         $scope.leftTabOpen = "metadata";
         $scope.rightTabOpen = ds.harvestURL ? "harvest" : "drop";
 
@@ -458,44 +462,20 @@ define(["angular"], function () {
             command("interrupt", "Interrupt processing?");
         };
 
-        $scope.startGeneratingSip = function () {
-            command("start generating sip", null, refreshProgress());
-        };
-
-        $scope.discardProcessed = function () {
-            command("remove processed", "Discard processed data?", refreshInfo);
-        };
-
-        $scope.discardTree = function () {
-            command("remove tree", "Discard analysis?", refreshInfo);
-        };
-
-        $scope.startProcessing = function () {
-            command("start processing", null, refreshProgress);
-        };
-
-        $scope.startFirstHarvest = function () {
-            command("start first harvest", "Erase existing data?", refreshProgress);
-        };
-
-        $scope.startRawAnalysis = function () {
-            command("start raw analysis", null, refreshProgress);
-        };
-
-        $scope.startProcessedAnalysis = function () {
-            command("start processed analysis", null, refreshProgress);
-        };
-
-        $scope.startSaving = function () {
-            command("start saving", null, refreshProgress);
-        };
-
         $scope.clearError = function () {
             command("clear error", null, refreshInfo());
         };
 
         $scope.deleteDataset = function () {
             command("delete", "Delete dataset?", $scope.fetchDatasetList);
+        };
+
+        $scope.start = function(commandMessage, question) {
+            command(commandMessage, question, refreshProgress());
+        };
+
+        $scope.remove = function(commandMessage, question) {
+            command(commandMessage, question, refreshInfoSoon());
         };
 
         function fetchSipFileList() {
