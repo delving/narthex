@@ -17,6 +17,7 @@
 package harvest
 
 import com.ning.http.client.providers.netty.NettyResponse
+import dataset.DatasetActor._
 import org.OrgContext._
 import org.joda.time.DateTime
 import play.api.Logger
@@ -43,13 +44,7 @@ object Harvesting {
       name = "pmh",
       recordRoot = "/OAI-PMH/ListRecords/record",
       uniqueId = "/OAI-PMH/ListRecords/record/header/identifier",
-      recordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
-    )
-    val PMH_REC = HarvestType(
-      name = "pmh-rec",
-      recordRoot = "/OAI-PMH/ListRecords/record/metadata",
-      uniqueId = "/OAI-PMH/ListRecords/record/header/identifier",
-      recordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
+      recordContainer = None
     )
     val ADLIB = HarvestType(
       name = "adlib",
@@ -58,7 +53,7 @@ object Harvesting {
       recordContainer = None
     )
 
-    val ALL_TYPES = List(PMH, PMH_REC, ADLIB)
+    val ALL_TYPES = List(PMH, ADLIB)
 
     def harvestTypeFromString(string: String): Option[HarvestType] = ALL_TYPES.find(s => s.matches(string))
   }
@@ -82,7 +77,7 @@ object Harvesting {
     }
   }
 
-  case class HarvestError(error: String, modifiedAfter: Option[DateTime])
+  case class HarvestError(error: String, strategy: HarvestStrategy)
 
   case class PMHHarvestPage
   (
@@ -91,8 +86,7 @@ object Harvesting {
     set: String,
     metadataPrefix: String,
     totalRecords: Int,
-    modifiedAfter: Option[DateTime],
-    justDate: Boolean,
+    strategy: HarvestStrategy,
     resumptionToken: Option[PMHResumptionToken])
 
   case class AdLibHarvestPage
@@ -101,7 +95,7 @@ object Harvesting {
     url: String,
     database: String,
     search: String,
-    modifiedAfter: Option[DateTime],
+    strategy: HarvestStrategy,
     diagnostic: AdLibDiagnostic)
 
   case class HarvestCron(previous: DateTime, delay: Int, unit: DelayUnit, incremental: Boolean) {
@@ -112,6 +106,7 @@ object Harvesting {
 
     def timeToWork = unit.after(previous, delay).isBeforeNow
   }
+
 }
 
 trait Harvesting {
@@ -127,14 +122,17 @@ trait Harvesting {
       default
   }
 
-  def fetchAdLibPage(url: String, database: String, search: String, modifiedAfter: Option[DateTime],
+  def fetchAdLibPage(strategy: HarvestStrategy, url: String, database: String, search: String,
                      diagnosticOption: Option[AdLibDiagnostic] = None)(implicit ec: ExecutionContext): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(HARVEST_TIMEOUT)
     // UMU 2014-10-16T15:00
-    val searchModified = modifiedAfter.map(after =>
-      s"modification greater '${timeToLocalString(after)}'"
-    ).getOrElse(if (search.isEmpty) "all" else search)
+    val searchModified = strategy match {
+      case ModifiedAfter(mod, _) =>
+        s"modification greater '${timeToLocalString(mod)}'"
+      case _ =>
+        if (search.isEmpty) "all" else search
+    }
     val request = requestUrl.withQueryString(
       "database" -> database,
       "search" -> searchModified,
@@ -149,7 +147,7 @@ trait Harvesting {
       else {
         val errorInfo = (errorNode \ "info").text
         val errorMessage = (errorNode \ "message").text
-        Some(HarvestError(s"Error: $errorInfo, '$errorMessage'", modifiedAfter))
+        Some(HarvestError(s"Error: $errorInfo, '$errorMessage'", strategy))
       }
       error getOrElse {
         AdLibHarvestPage(
@@ -157,7 +155,7 @@ trait Harvesting {
           url,
           database,
           search,
-          modifiedAfter,
+          strategy,
           AdLibDiagnostic(
             totalItems = tagToInt(diagnostic, "hits"),
             current = tagToInt(diagnostic, "first_item"),
@@ -168,7 +166,7 @@ trait Harvesting {
     }
   }
 
-  def fetchPMHPage(url: String, set: String, metadataPrefix: String, modifiedAfter: Option[DateTime], justDate: Boolean,
+  def fetchPMHPage(strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
                    resumption: Option[PMHResumptionToken] = None)(implicit ec: ExecutionContext): Future[AnyRef] = {
 
     // Teylers 2014-09-15
@@ -179,17 +177,21 @@ trait Harvesting {
       case None =>
         val withPrefix = listRecords.withQueryString("metadataPrefix" -> metadataPrefix)
         val withSet = if (set.isEmpty) withPrefix else withPrefix.withQueryString("set" -> set)
-        modifiedAfter.map(modified => withSet.withQueryString("from" -> {
-          val dateTime = timeToUTCString(modified)
-          if (justDate) dateTime.substring(0, dateTime.indexOf('T')) else dateTime
-        })).getOrElse(withSet)
+        strategy match {
+          case ModifiedAfter(mod, justDate) =>
+            withSet.withQueryString("from" -> {
+              val dateTime = timeToUTCString(mod)
+              if (justDate) dateTime.substring(0, dateTime.indexOf('T')) else dateTime
+            })
+          case _ => withSet
+        }
       case Some(token) =>
         listRecords.withQueryString("resumptionToken" -> token.value)
     }
     request.get().map { response =>
       val error: Option[HarvestError] = if (response.status != 200) {
         Logger.info(s"response: ${response.body}")
-        Some(HarvestError(s"HTTP Response: ${response.statusText}", modifiedAfter))
+        Some(HarvestError(s"HTTP Response: ${response.statusText}", strategy))
       }
       else {
         val netty = response.underlying[NettyResponse]
@@ -203,7 +205,7 @@ trait Harvesting {
             None
           }
           else {
-            Some(HarvestError(errorNode.text, modifiedAfter))
+            Some(HarvestError(errorNode.text, strategy))
           }
         }
         else None
@@ -236,8 +238,7 @@ trait Harvesting {
           set = set,
           metadataPrefix = metadataPrefix,
           totalRecords = total,
-          modifiedAfter = modifiedAfter,
-          justDate = justDate,
+          strategy,
           resumptionToken = newToken
         )
       }

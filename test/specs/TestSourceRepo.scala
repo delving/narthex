@@ -150,7 +150,7 @@ class TestSourceRepo extends FlatSpec with Matchers {
       recordCount += 1
       seenIds.add(record.id)
       val narthex = XML.loadString(record.text)
-      val content = (narthex \ "thing" \ "box").text
+      val content = (narthex \ "record" \ "metadata" \ "thing" \ "box").text
       content should be("final")
     }
 
