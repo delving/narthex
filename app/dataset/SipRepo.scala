@@ -82,7 +82,7 @@ class SipRepo(home: File, spec: String, naveDomain: String) {
     if (home.exists()) {
       val filesLastToFirst = home.listFiles().filter(_.getName.endsWith(".sip.zip")).sortBy(_.lastModified())
       val filesLimited =
-        if (filesLastToFirst.size <= SipRepo.MAX_ZIP_COUNT)
+        if (filesLastToFirst.length <= SipRepo.MAX_ZIP_COUNT)
           filesLastToFirst
         else {
           filesLastToFirst.head.delete()
@@ -188,6 +188,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
   private def hint(name: String): Option[String] = hints.get(name)
 
+  lazy val harvestType = hint("harvestType")
   lazy val harvestUrl = hint("harvestUrl")
   lazy val harvestSpec = hint("harvestSpec")
   lazy val harvestPrefix = hint("harvestPrefix")
@@ -196,7 +197,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
   lazy val uniqueElementPath = hint("uniqueElementPath")
   lazy val pocketsHint = hint("pockets")
 
-  if (!pocketsHint.isDefined) Logger.warn(s"Narthex hints did not define pockets")
+  if (pocketsHint.isEmpty) Logger.warn(s"Narthex hints did not define pockets")
 
   lazy val schemaVersionOpt: Option[String] = schemaVersions.flatMap(commas => commas.split(" *,").headOption)
 
@@ -307,7 +308,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
       val uriErrors = result.getUriErrors.toList
       if (uriErrors.nonEmpty) throw new URIErrorsException(uriErrors)
       // validate using XSD
-      sipMapping.validatorOpt.map(_.validate(new DOMSource(result.root())))
+      sipMapping.validatorOpt.foreach(_.validate(new DOMSource(result.root())))
       // re-wrap in an RDF construction
       val root = result.root().asInstanceOf[Element]
       val doc = root.getOwnerDocument
@@ -371,7 +372,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
         case MappingPattern() =>
           Logger.info(s"Mapping: ${entry.getName}")
-          sipMappingOpt.map { sipMapping =>
+          sipMappingOpt.foreach { sipMapping =>
             zos.putNextEntry(new ZipEntry(sipMapping.fileName))
             // if there is a new schema version, set it
             sipPrefixRepoOpt.foreach(sipPrefix => sipMapping.recMapping.setSchemaVersion(new SchemaVersion(sipPrefix.schemaVersions)))

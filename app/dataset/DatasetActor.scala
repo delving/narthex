@@ -161,9 +161,14 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
           harvestTypeOpt.map { harvestType =>
             log.info(s"Starting harvest $strategy with type $harvestType")
             strategy match {
-              case FromScratch if datasetContext.sourceRepoOpt.isEmpty =>
-                // no source repo, use the default for the harvest type
-                datasetContext.createSourceRepo(SourceFacts(harvestType))
+              case FromScratch =>
+                datasetContext.sourceRepoOpt match {
+                  case Some(sourceRepo) =>
+                    sourceRepo.clearData()
+                  case None =>
+                    // no source repo, use the default for the harvest type
+                    datasetContext.createSourceRepo(SourceFacts(harvestType))
+                }
               case _ =>
             }
             self ! StartHarvest(strategy)

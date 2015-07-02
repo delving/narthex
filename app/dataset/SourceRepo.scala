@@ -254,6 +254,8 @@ class SourceRepo(home: File) {
 
   def countFiles = fileList.size
 
+  def clearData() = fileList.foreach(FileUtils.deleteQuietly)
+
   def acceptFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(VERBATIM_FILTER, progressReporter, { targetFile =>
     val name = file.getName
     if (name.endsWith(".zip")) {
