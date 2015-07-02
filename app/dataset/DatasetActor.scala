@@ -152,7 +152,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Idle) {
 
     case Event(DatasetQuestion(listener, Command(commandName)), Dormant) =>
-      val reply = Try {
+      val replyTry = Try {
 
         def startHarvest(strategy: HarvestStrategy) = {
           val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
@@ -160,8 +160,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
           val harvestTypeOpt = harvestTypeStringOpt.flatMap(harvestTypeFromString)
           harvestTypeOpt.map { harvestType =>
             log.info(s"Starting harvest $strategy with type $harvestType")
-            datasetContext.createSourceRepo(SourceFacts(harvestType))
-            dsInfo.setHarvestCron() // a clean one
+            strategy match {
+              case FromScratch if datasetContext.sourceRepoOpt.isEmpty =>
+                // no source repo, use the default for the harvest type
+                datasetContext.createSourceRepo(SourceFacts(harvestType))
+              case _ =>
+            }
             self ! StartHarvest(strategy)
             "harvest started"
           } getOrElse {
@@ -207,7 +211,6 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             "processing started"
 
           case "start raw analysis" =>
-            dsInfo.removeState(ANALYZED)
             datasetContext.dropTree()
             self ! StartAnalysis(processed = false)
             "analysis started"
@@ -232,8 +235,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             log.warning(s"$this sent unrecognized command $commandName")
             "unrecognized"
         }
+      } recover {
+        case e: Exception =>
+          log.error(e, "Command exception")
+          s"exception: $e"
       }
-      val replyString: String = reply.getOrElse(s"oops: exception")
+      val replyString: String = replyTry.getOrElse(s"unrecovered exception")
       log.info(s"Command $commandName: $replyString")
       listener ! replyString
       stay()
@@ -241,8 +248,6 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(StartHarvest(strategy), Dormant) =>
       sendBusy()
       datasetContext.dropTree()
-      dsInfo.removeState(RAW_ANALYZED)
-      dsInfo.removeState(ANALYZED)
       def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
       harvestTypeFromString(prop(harvestType)).map { harvestType =>
         val (url, ds, pre, se) = (prop(harvestURL), prop(harvestDataset), prop(harvestPrefix), prop(harvestSearch))

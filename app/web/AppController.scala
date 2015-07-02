@@ -22,6 +22,7 @@ import akka.pattern.{AskTimeoutException, ask}
 import akka.util.Timeout
 import dataset.DatasetActor._
 import dataset.DsInfo._
+import harvest.Harvesting.HarvestType.harvestTypeFromString
 import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
 import mapping.VocabInfo
@@ -177,7 +178,8 @@ object AppController extends Controller with Security {
     // todo: recordContainer instead perhaps
     val recordRoot = (request.body \ "recordRoot").as[String]
     val uniqueId = (request.body \ "uniqueId").as[String]
-    datasetContext.setRawDelimiters(recordRoot, uniqueId)
+    val harvestTypeOpt = datasetContext.dsInfo.getLiteralProp(harvestType).flatMap(harvestTypeFromString)
+    datasetContext.setDelimiters(harvestTypeOpt, recordRoot, uniqueId)
     Ok
   }
 

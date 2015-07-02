@@ -79,19 +79,24 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
       case Some(message) =>
         context.parent ! WorkFailure(message)
       case None =>
-        datasetContext.sourceRepoOpt match {
-          case Some(sourceRepo) =>
-            future {
-              val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
-              val fileOption = sourceRepo.acceptFile(tempFileOpt.get, acceptZipReporter)
-              log.info(s"Zip file accepted: $fileOption")
-              context.parent ! HarvestComplete(strategy, fileOption)
-            } onFailure {
-              case e: Exception =>
-                context.parent ! WorkFailure(e.getMessage)
+        strategy match {
+          case Sample =>
+            context.parent ! HarvestComplete(strategy, None)
+          case _ =>
+            datasetContext.sourceRepoOpt match {
+              case Some(sourceRepo) =>
+                future {
+                  val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
+                  val fileOption = sourceRepo.acceptFile(tempFileOpt.get, acceptZipReporter)
+                  log.info(s"Zip file accepted: $fileOption")
+                  context.parent ! HarvestComplete(strategy, fileOption)
+                } onFailure {
+                  case e: Exception =>
+                    context.parent ! WorkFailure(e.getMessage)
+                }
+              case None =>
+                context.parent ! WorkFailure(s"No source repo for $datasetContext")
             }
-          case None =>
-            context.parent ! WorkFailure(s"No source repo for $datasetContext")
         }
     }
   }

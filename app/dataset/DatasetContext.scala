@@ -24,6 +24,7 @@ import dataset.DsInfo.DsMetadata
 import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
+import harvest.Harvesting.HarvestType
 import org.OrgContext._
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
@@ -69,11 +70,16 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
   // todo: recordContainer instead perhaps
-  def setRawDelimiters(recordRoot: String, uniqueId: String):Unit = rawXmlFile.foreach { raw =>
-    createSourceRepo(SourceFacts("from-raw", recordRoot, uniqueId, None))
-    dropTree()
-    dsInfo.removeState(RAW_ANALYZED)
-    OrgActor.actor ! dsInfo.createMessage(AdoptSource(raw))
+  def setDelimiters(harvestTypeOpt: Option[HarvestType], recordRoot: String, uniqueId: String): Unit = rawXmlFile.foreach { raw =>
+    harvestTypeOpt match {
+      case Some(harvestType) =>
+        dropRaw()
+        createSourceRepo(SourceFacts(harvestType.toString, recordRoot, uniqueId, None))
+      case None =>
+        dropTree()
+        createSourceRepo(SourceFacts("raw", recordRoot, uniqueId, None))
+        OrgActor.actor ! dsInfo.createMessage(AdoptSource(raw))
+    }
   }
 
   def createSourceRepo(sourceFacts: SourceFacts): SourceRepo = SourceRepo.createClean(sourceDir, sourceFacts)
@@ -147,7 +153,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     }
   }
 
-  def rawXmlFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.find{ file =>
+  def rawXmlFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.find { file =>
     file.getName.endsWith(".xml") || file.getName.endsWith(".xml.gz")
   } else None
 
