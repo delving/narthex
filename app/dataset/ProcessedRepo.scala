@@ -21,9 +21,10 @@ import java.lang.Boolean.FALSE
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
 import org.apache.commons.io.input.CountingInputStream
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
+import org.joda.time.DateTime
 import services.FileHandling.{ReadProgress, clearDir}
 import services.StringHandling.createFOAFAbout
-import services.{FileHandling, ProgressReporter, StringHandling}
+import services.{FileHandling, ProgressReporter, StringHandling, Temporal}
 import triplestore.GraphProperties._
 
 import scala.collection.JavaConversions._
@@ -109,13 +110,14 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   def clear() = clearDir(home)
 
-  def createGraphReader(fileOpt: Option[File], progressReporter: ProgressReporter) = new GraphReader {
+  def createGraphReader(fileOpt: Option[File], timeStamp: DateTime, progressReporter: ProgressReporter) = new GraphReader {
     val LineId = "<!--<([^>]+)>-->".r
     var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listXmlFiles)
     val totalLength = (0L /: files.map(_.length()))(_ + _)
     var activeReader: Option[BufferedReader] = None
     var previousBytesRead = 0L
     var activeCounter: Option[CountingInputStream] = None
+    val timeString = Temporal.timeToUTCString(timeStamp)
 
     def activeCount = activeCounter.map(_.getByteCount).getOrElse(0L)
 
@@ -172,6 +174,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               m.add(foafAbout, m.getProperty(foafPrimaryTopic), subjectResource)
               m.add(foafAbout, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
               m.add(foafAbout, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
+              m.add(foafAbout, m.getProperty(saveTime.uri), m.createLiteral(timeString))
               graphCount += 1
               recordText.clear()
               if (graphCount >= chunkSize) chunkComplete = true

@@ -32,14 +32,12 @@ class TestSourceRepo extends FlatSpec with Matchers {
 
   "id filters" should "work well for urls" in {
 
-    val hashFilter = IdFilter("sha256-hash", None)
-
     val hashed = List(
       "one",
       "two",
       "3.1415926535etc",
       "and what about a very long value where nobody really knows when it will end, but we can just guess"
-    ).map(hashFilter.filter)
+    ).map(SHA256_FILTER.filter)
 
 //    hashed.map(h => println(s""" "$h", """))
 
@@ -82,7 +80,6 @@ class TestSourceRepo extends FlatSpec with Matchers {
     val sourceDir = fresh("/tmp/test-source-repo-regular")
 
     val sourceRepo = SourceRepo.createClean(sourceDir, SourceFacts("gumby", recordRoot, uniqueId, None))
-
 
     sourceRepo.countFiles should be(0)
     sourceRepo.acceptFile(incomingZip("a"), ProgressReporter())

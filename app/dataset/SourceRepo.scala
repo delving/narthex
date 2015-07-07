@@ -99,6 +99,7 @@ object SourceRepo {
   }
 
   val VERBATIM_FILTER = IdFilter("verbatim", None)
+  val SHA256_FILTER = IdFilter("sha256-hash", None)
 
   case class SourceFacts(sourceType: String, recordRoot: String, uniqueId: String, recordContainer: Option[String])
 

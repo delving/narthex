@@ -22,6 +22,7 @@ import dataset.ProcessedRepo
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import org.OrgContext
 import org.OrgContext._
+import org.joda.time.DateTime
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import triplestore.GraphProperties.acceptanceOnly
@@ -43,6 +44,7 @@ class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
 
   implicit val ts = OrgContext.TS
 
+  val saveTime = new DateTime()
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
 
@@ -68,7 +70,7 @@ class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
       log.info("Save graphs")
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
-      reader = Some(repo.createGraphReader(incrementalOpt.map(_.file), progressReporter))
+      reader = Some(repo.createGraphReader(incrementalOpt.map(_.file), saveTime, progressReporter))
       sendGraphChunkOpt()
     }
 

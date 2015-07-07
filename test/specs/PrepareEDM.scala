@@ -10,7 +10,7 @@ import services.FileHandling
 
 trait PrepareEDM {
 
-  val edmDirNames = List("ton-smits", "difo", "amsterdam")
+  val edmDirNames = List("ton-smits", "difo")
 
   val naveDomain = "http://nave"
   val sipsDir = new File(getClass.getResource("/edm").getFile)
@@ -39,7 +39,7 @@ trait PrepareEDM {
     val dirName = edmDirNames(dirNameIndex)
     val source = new File(sipsDir, dirName)
     val zos = new ZipOutputStream(new FileOutputStream(sipZipFile))
-    source.listFiles().toList.filter(!_.getName.endsWith(".gz")).map(f => copyFile(zos, f))
+    source.listFiles().toList.filter(!_.getName.endsWith(".gz")).foreach(f => copyFile(zos, f))
     zos.close()
     println(s"created $sipZipFile")
     new SipRepo(sipsDir, dirName, naveDomain)

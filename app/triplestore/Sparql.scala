@@ -366,6 +366,28 @@ object Sparql {
       |};
      """.stripMargin
 
+  def deleteOlderGraphs(fromSaveTime: DateTime, uri:String) =
+    s"""
+      |DELETE {
+      |   GRAPH ?g {
+      |      ?s ?p ?o .
+      |   }
+      |}
+      |WHERE {
+      |   GRAPH ?g {
+      |      ?foafDoc <$saveTime> ?saveTime
+      |      FILTER (?saveTime < "${Temporal.timeToUTCString(fromSaveTime)}")
+      |      ?foafDoc <$foafPrimaryTopic> ?record .
+      |      ?foafDoc <$belongsTo> <$uri> .
+      |      ?record a <$recordEntity> .
+      |   }
+      |   GRAPH ?g {
+      |      ?s ?p ?o .
+      |   }
+      |};
+     """.stripMargin
+
+
   // === vocab info ===
 
   val listVocabInfoQ =

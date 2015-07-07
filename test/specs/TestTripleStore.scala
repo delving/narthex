@@ -5,6 +5,7 @@ import java.io.File
 import dataset.DsInfo._
 import dataset.{DsInfo, ProcessedRepo}
 import org.ActorStore
+import org.joda.time.DateTime
 import org.scalatestplus.play._
 import play.api.libs.json.Json
 import play.api.test.Helpers._
@@ -20,7 +21,8 @@ class TestTripleStore extends PlaySpec with OneAppPerSuite with FakeTripleStore 
     val info = await(DsInfo.createDsInfo(admin, "gumby-set", CharacterMapped, "gfx"))
     val home = new File(getClass.getResource(s"/processed").getFile)
     val repo = new ProcessedRepo(home, info)
-    val reader = repo.createGraphReader(None, ProgressReporter())
+    val saveTime = new DateTime()
+    val reader = repo.createGraphReader(None, saveTime, ProgressReporter())
     val chunk = reader.readChunkOpt.get
     reader.close()
     val sparql = chunk.sparqlUpdateQ

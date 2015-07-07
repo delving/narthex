@@ -9,6 +9,7 @@ import mapping.{TermMappingStore, VocabInfo}
 import org.ActorStore
 import org.ActorStore.NXActor
 import org.OrgContext._
+import org.joda.time.DateTime
 import org.scalatestplus.play._
 import play.api.test.Helpers._
 import record.PocketParser.Pocket
@@ -75,10 +76,11 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     }
     mappedPockets.size must be(3)
     processedWriter.close()
+    val saveTime = new DateTime()
     // push the mapped results to the triple store
-    val graphReader = processedRepo.createGraphReader(None, ProgressReporter())
+    val graphReader = processedRepo.createGraphReader(None, saveTime, ProgressReporter())
     while (graphReader.isActive) {
-      graphReader.readChunkOpt.map { chunk =>
+      graphReader.readChunkOpt.foreach { chunk =>
         val update = chunk.sparqlUpdateQ
         await(ts.up.sparqlUpdate(update))
       }
