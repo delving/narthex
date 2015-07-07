@@ -302,7 +302,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
       sendBusy()
-      val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo), "graph-saver")
+      val graphSaver = context.actorOf(GraphSaver.props(datasetContext), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(Some(graphSaver), PROCESSING)
 
