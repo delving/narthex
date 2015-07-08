@@ -66,8 +66,10 @@ class TestOrphanDelete extends PlaySpec with OneAppPerSuite with PrepareEDM with
     countGraphs must be(8)
 
     // now delete old ones
-    await(ts.up.sparqlUpdate(deleteOlderGraphs(stampB, info.uri)))
-    countGraphs must be(5)
+    await(ts.up.sparqlUpdate(markOlderRecordsDeletedQ(stampB, info.uri)))
+    // present but marked as deleted
+    countGraphs must be(8)
+    countDeletedGraphs must be(3)
   }
 
   "Delete a dataset" in {

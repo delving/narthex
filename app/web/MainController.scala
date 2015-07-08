@@ -263,7 +263,7 @@ object MainController extends Controller with Security {
           routes.javascript.AppController.listPrefixes,
           routes.javascript.AppController.createDataset,
           routes.javascript.AppController.setDatasetProperties,
-          routes.javascript.AppController.setSkosifiedField,
+          routes.javascript.AppController.toggleSkosifiedField,
           routes.javascript.AppController.datasetInfo,
           routes.javascript.AppController.command,
           routes.javascript.AppController.toggleDatasetProduction,

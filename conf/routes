@@ -34,7 +34,7 @@ GET         /narthex/app/prefixes                                            web
 GET         /narthex/app/dataset/:spec/create/:character/:prefix             web.AppController.createDataset(spec, character, prefix)
 POST        /narthex/app/dataset/:spec/upload                                web.AppController.uploadDataset(spec)
 POST        /narthex/app/dataset/:spec/set-properties                        web.AppController.setDatasetProperties(spec)
-POST        /narthex/app/dataset/:spec/toggle-skos                           web.AppController.setSkosifiedField(spec)
+POST        /narthex/app/dataset/:spec/toggle-skos                           web.AppController.toggleSkosifiedField(spec)
 POST        /narthex/app/dataset/:spec/set-delimiter                         web.AppController.setRecordDelimiter(spec)
 GET         /narthex/app/dataset/:spec/index                                 web.AppController.index(spec)
 GET         /narthex/app/dataset/:spec/info                                  web.AppController.datasetInfo(spec)

@@ -3,6 +3,7 @@ package specs
 import java.util.concurrent.Executors
 
 import play.api.test.Helpers._
+import triplestore.GraphProperties.deleted
 import triplestore.TripleStore
 
 import scala.concurrent.ExecutionContext
@@ -23,12 +24,17 @@ trait FakeTripleStore {
 
   def countGraphs = {
     val graphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")).map(m => m("g"))
-    println(graphs.mkString("\n"))
+//    println(graphs.mkString("\n"))
     graphs.foreach { qv =>
       if (qv.text.contains(WRONG_URI)) throw new RuntimeException(s"Wrong URI! ${qv.text}")
     }
     graphs.size
   }
 
+  def countDeletedGraphs = {
+    val graphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s <$deleted> ?o } }")).map(m => m("g"))
+//    println(graphs.mkString("\n"))
+    graphs.size
+  }
 
 }

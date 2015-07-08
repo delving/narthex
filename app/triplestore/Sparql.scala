@@ -366,11 +366,19 @@ object Sparql {
       |};
      """.stripMargin
 
-  def deleteOlderGraphs(fromSaveTime: DateTime, uri:String) =
+  def markOlderRecordsDeletedQ(fromSaveTime: DateTime, uri:String) =
     s"""
       |DELETE {
       |   GRAPH ?g {
       |      ?s ?p ?o .
+      |   }
+      |}
+      |INSERT {
+      |   GRAPH ?g {
+      |      ?foafDoc <$deleted> true .
+      |      ?foafDoc <$foafPrimaryTopic> ?record .
+      |      ?foafDoc <$belongsTo> <$uri> .
+      |      ?record a <$recordEntity> .
       |   }
       |}
       |WHERE {

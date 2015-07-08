@@ -185,7 +185,7 @@ object AppController extends Controller with Security {
 
   // ====== vocabularies =====
 
-  def setSkosifiedField(spec: String) = Secure(parse.json) { session => request =>
+  def toggleSkosifiedField(spec: String) = Secure(parse.json) { session => request =>
     withDsInfo(spec) { dsInfo =>
       val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
       val skosFieldTag = (request.body \ "skosFieldTag").as[String]
