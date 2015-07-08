@@ -66,7 +66,7 @@ object Sparql {
       |   GRAPH <$graphName> { ?s ?p ?o }
       |}
      """.stripMargin
-  
+
   def getActor(actorName: String) =
     s"""
        |SELECT ?username ?firstName ?lastName ?email ?maker
@@ -562,6 +562,62 @@ object Sparql {
     val parts = fieldPropertyValue.split("=")
     val fieldPropertyTag = parts(0)
     val fieldPropertyUri = parts(1)
+    val skosGraph = getSkosGraphName(datasetUri)
+
+    val removeSkosEntriesQ =
+      s"""
+        |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        |DELETE {
+        |   GRAPH <$skosGraph> {
+        |      ?mintedUri ?p ?o .
+        |   }
+        |}
+        |WHERE {
+        |   GRAPH <$skosGraph> {
+        |      ?mintedUri
+        |         a skos:Concept ;
+        |         <$belongsTo> <$datasetUri> ;
+        |         <$skosField> <$fieldPropertyUri> .
+        |   }
+        |   GRAPH <$skosGraph> {
+        |      ?mintedUri ?p ?o .
+        |   }
+        |};
+       """.stripMargin
+
+// an attempt to also remove the associated mapping graphs
+//    val removeSkosEntries =
+//      s"""
+//        |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+//        |DELETE {
+//        |   GRAPH <$skosGraph> {
+//        |      ?mintedUri ?p ?o .
+//        |   }
+//        |   GRAPH <?mappingGraph> {
+//        |      ?ms ?mp ?mo .
+//        |   }
+//        |}
+//        |WHERE {
+//        |   GRAPH <$skosGraph> {
+//        |      ?mintedUri
+//        |         a skos:Concept ;
+//        |         <$belongsTo> <$datasetUri> ;
+//        |         <$skosField> <$fieldPropertyUri> .
+//        |   }
+//        |   GRAPH <$skosGraph> {
+//        |      ?mintedUri ?p ?o .
+//        |   }
+//        |   OPTIONAL {
+//        |      GRAPH <?mappingGraph> {
+//        |         ?mintedUri ?connection ?targetUri .
+//        |         ?mappingUri a <$terminologyMapping> .
+//        |      }
+//        |      GRAPH <?mappingGraph> {
+//        |         ?ms ?mp ?mo .
+//        |      }
+//        |   }
+//        |};
+//       """.stripMargin
   }
 
   def skosifiedFieldFromResult(resultMap: Map[String, QueryValue]) = SkosifiedField(
@@ -628,9 +684,7 @@ object Sparql {
   }
 
   case class SkosificationCase(sf: SkosifiedField, literalValueText: String, languageOpt: Option[String], frequencyOpt: Option[Int] = None) {
-    val fieldProperty = sf.fieldPropertyUri
     val mintedUri = s"${sf.datasetUri}/${sf.fieldPropertyTag}/${slugify(literalValueText)}"
-    val skosGraph = getSkosGraphName(sf.datasetUri)
     val datasetUri = sf.datasetUri
     val value = literalValueText
 
@@ -638,21 +692,22 @@ object Sparql {
       s"""
         |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
         |INSERT {
-        |   GRAPH <$skosGraph> {
-        |      <$mintedUri> a skos:Concept .
-        |      <$mintedUri> a <$proxyResource> .
-        |      <$mintedUri> skos:altLabel ${literalExpression(value, languageOpt)} .
-        |      <$mintedUri> <$proxyLiteralValue> ${literalExpression(value, languageOpt)} .
-        |      <$mintedUri> <$belongsTo> <$datasetUri> .
-        |      <$mintedUri> <$skosField> <$fieldProperty> .
-        |      <$mintedUri> <$proxyLiteralField> <$fieldProperty> .
-        |      <$mintedUri> <$synced> false .
+        |   GRAPH <${sf.skosGraph}> {
+        |      <$mintedUri>
+        |         a skos:Concept ;
+        |         a <$proxyResource> ;
+        |         skos:altLabel ${literalExpression(value, languageOpt)} ;
+        |         <$proxyLiteralValue> ${literalExpression(value, languageOpt)} ;
+        |         <$belongsTo> <$datasetUri> ;
+        |         <$skosField> <${sf.fieldPropertyUri}> ;
+        |         <$proxyLiteralField> <${sf.fieldPropertyUri}> ;
+        |         <$synced> false .
         |      ${frequencyOpt.map(freq => s"<$mintedUri> <$skosFrequency> '''$freq''' .").getOrElse("")}
         |   }
         |}
         |WHERE {
         |   FILTER NOT EXISTS {
-        |      GRAPH <$skosGraph> {
+        |      GRAPH <${sf.skosGraph}> {
         |         ?existing a skos:Concept
         |         FILTER( ?existing = <$mintedUri> )
         |      }
@@ -664,17 +719,17 @@ object Sparql {
       s"""
         |DELETE {
         |  GRAPH ?g {
-        |    ?s <$fieldProperty> ${literalExpression(value, languageOpt)} .
+        |    ?s <${sf.fieldPropertyUri}> ${literalExpression(value, languageOpt)} .
         |  }
         |}
         |INSERT {
         |  GRAPH ?g {
-        |    ?s <$fieldProperty> <$mintedUri> .
+        |    ?s <${sf.fieldPropertyUri}> <$mintedUri> .
         |  }
         |}
         |WHERE {
         |  GRAPH ?g {
-        |    ?s <$fieldProperty> ${literalExpression(value, languageOpt)} .
+        |    ?s <${sf.fieldPropertyUri}> ${literalExpression(value, languageOpt)} .
         |    ?record a <$recordEntity> .
         |    ?foafDoc <$foafPrimaryTopic> ?record .
         |    ?foafDoc <$belongsTo> <${sf.datasetUri}> .

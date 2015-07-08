@@ -199,21 +199,22 @@ object AppController extends Controller with Security {
           "already exists"
         }
         else {
-          val casesOpt = for {
+          val caseListOpt = for {
             path <- histogramPathOpt
             nodeRepo <- orgContext.datasetContext(spec).nodeRepo(path)
             histogram <- nodeRepo.largestHistogram
           } yield Sparql.createCasesFromHistogram(dsInfo, histogram)
-          val futureModel = casesOpt.map { cases =>
-            val q = cases.map(_.ensureSkosEntryQ).mkString
-            val futureUpdate = ts.up.sparqlUpdate(q).map(ok => dsInfo.addLiteralPropToList(skosField, skosFieldValue))
-            Await.result(futureUpdate, 1.minute)
-          } getOrElse {
-            dsInfo.addLiteralPropToList(skosField, skosFieldValue)
-            val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldValue)
-            OrgActor.actor ! dsInfo.createMessage(StartSkosification(skosifiedField))
+          caseListOpt match {
+            case Some(caseList) =>
+              val addSkosEntriesQ = caseList.map(_.ensureSkosEntryQ).mkString
+              val futureUpdate = ts.up.sparqlUpdate(addSkosEntriesQ).map { ok =>
+                dsInfo.addLiteralPropToList(skosField, skosFieldValue)
+              }
+              Await.result(futureUpdate, 1.minute)
+              "added"
+            case None =>
+              "no skos entries"
           }
-          "added"
         }
       }
       else {
@@ -221,8 +222,11 @@ object AppController extends Controller with Security {
           "did not exists"
         }
         else {
-          // here eventual de-skosification could happen
-          dsInfo.removeLiteralPropFromList(skosField, skosFieldValue)
+          val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldValue)
+          val futureUpdate = ts.up.sparqlUpdate(skosifiedField.removeSkosEntriesQ).map { ok =>
+            dsInfo.removeLiteralPropFromList(skosField, skosFieldValue)
+          }
+          Await.result(futureUpdate, 1.minute)
           "removed"
         }
       }
