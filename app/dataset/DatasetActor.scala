@@ -95,7 +95,15 @@ object DatasetActor {
 
   case class Command(name: String)
 
-  case class StartHarvest(modifiedAfter: Option[DateTime], justDate: Boolean)
+  trait HarvestStrategy
+
+  case class ModifiedAfter(mod: DateTime, justDate: Boolean) extends HarvestStrategy
+
+  case object Sample extends HarvestStrategy
+
+  case object FromScratch extends HarvestStrategy
+
+  case class StartHarvest(strategy: HarvestStrategy)
 
   case class StartAnalysis(processed: Boolean)
 
@@ -144,7 +152,34 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Idle) {
 
     case Event(DatasetQuestion(listener, Command(commandName)), Dormant) =>
-      val reply = Try {
+      val replyTry = Try {
+
+        def startHarvest(strategy: HarvestStrategy) = {
+          val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
+          log.info(s"Start harvest $strategy, type is $harvestTypeStringOpt")
+          val harvestTypeOpt = harvestTypeStringOpt.flatMap(harvestTypeFromString)
+          harvestTypeOpt.map { harvestType =>
+            log.info(s"Starting harvest $strategy with type $harvestType")
+            strategy match {
+              case FromScratch =>
+                datasetContext.sourceRepoOpt match {
+                  case Some(sourceRepo) =>
+                    sourceRepo.clearData()
+                  case None =>
+                    // no source repo, use the default for the harvest type
+                    datasetContext.createSourceRepo(SourceFacts(harvestType))
+                }
+              case _ =>
+            }
+            self ! StartHarvest(strategy)
+            "harvest started"
+          } getOrElse {
+            val message = s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
+            self ! WorkFailure(message, None)
+            message
+          }
+        }
+
         commandName match {
           case "delete" =>
             Await.ready(datasetContext.dsInfo.dropDataset, 2.minutes)
@@ -152,33 +187,25 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             self ! PoisonPill
             "deleted"
 
-          //          case "remove source" =>
-          //            datasetContext.dropSourceRepo()
-          //            "source removed"
-          //
-          //          case "remove processed" =>
-          //            datasetContext.dropProcessedRepo()
-          //            "processed data removed"
-          //
-          //          case "remove tree" =>
-          //            datasetContext.dropTree()
-          //            "tree removed"
+          case "remove raw" =>
+            datasetContext.dropRaw()
+            "source removed"
 
-          case "start first harvest" =>
-            val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
-            log.info(s"Start harvest, type is $harvestTypeStringOpt")
-            val harvestTypeOpt = harvestTypeStringOpt.flatMap(harvestTypeFromString)
-            harvestTypeOpt.map { harvestType =>
-              log.info(s"Starting first harvest with type $harvestType")
-              datasetContext.createSourceRepo(SourceFacts(harvestType))
-              dsInfo.setHarvestCron() // a clean one
-              self ! StartHarvest(None, justDate = true)
-              "harvest started"
-            } getOrElse {
-              val message = s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
-              self ! WorkFailure(message, None)
-              message
-            }
+          case "remove source" =>
+            datasetContext.dropSourceRepo()
+            "source removed"
+
+          case "remove processed" =>
+            datasetContext.dropProcessedRepo()
+            "processed data removed"
+
+          case "remove tree" =>
+            datasetContext.dropTree()
+            "tree removed"
+
+          case "start sample harvest" => startHarvest(Sample)
+
+          case "start first harvest" => startHarvest(FromScratch)
 
           case "start generating sip" =>
             self ! GenerateSipZip
@@ -189,7 +216,6 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             "processing started"
 
           case "start raw analysis" =>
-            dsInfo.removeState(ANALYZED)
             datasetContext.dropTree()
             self ! StartAnalysis(processed = false)
             "analysis started"
@@ -214,24 +240,25 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             log.warning(s"$this sent unrecognized command $commandName")
             "unrecognized"
         }
+      } recover {
+        case e: Exception =>
+          log.error(e, "Command exception")
+          s"exception: $e"
       }
-      val replyString: String = reply.getOrElse(s"oops: exception")
+      val replyString: String = replyTry.getOrElse(s"unrecovered exception")
       log.info(s"Command $commandName: $replyString")
       listener ! replyString
       stay()
 
-    case Event(StartHarvest(modifiedAfter, justDate), Dormant) =>
+    case Event(StartHarvest(strategy), Dormant) =>
       sendBusy()
       datasetContext.dropTree()
-      dsInfo.removeState(RAW_ANALYZED)
-      dsInfo.removeState(ANALYZED)
       def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
       harvestTypeFromString(prop(harvestType)).map { harvestType =>
         val (url, ds, pre, se) = (prop(harvestURL), prop(harvestDataset), prop(harvestPrefix), prop(harvestSearch))
         val kickoff = harvestType match {
-          case PMH => HarvestPMH(url, ds, pre, modifiedAfter, justDate)
-          case PMH_REC => HarvestPMH(url, ds, pre, modifiedAfter, justDate)
-          case ADLIB => HarvestAdLib(url, ds, se, modifiedAfter)
+          case PMH => HarvestPMH(strategy, url, ds, pre)
+          case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
         val harvester = context.actorOf(Harvester.props(datasetContext), "harvester")
         harvester ! kickoff
@@ -275,7 +302,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
       sendBusy()
-      val graphSaver = context.actorOf(GraphSaver.props(datasetContext.processedRepo), "graph-saver")
+      val graphSaver = context.actorOf(GraphSaver.props(datasetContext), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(Some(graphSaver), PROCESSING)
 
@@ -300,29 +327,31 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   when(Harvesting) {
 
-    case Event(HarvestComplete(incrementalOpt), active: Active) =>
-      incrementalOpt.map { incremental =>
-        incremental.fileOpt.map { newFile =>
+    case Event(HarvestComplete(strategy, fileOpt), active: Active) =>
+      strategy match {
+        case Sample =>
+          dsInfo.setState(RAW)
+        case FromScratch =>
+          dsInfo.setState(SOURCED)
+        case ModifiedAfter(mod, _) =>
           dsInfo.setState(SOURCED)
           dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
-          if (datasetContext.sipMapperOpt.isDefined) {
-            log.info(s"There is a mapper, so trigger processing")
-            self ! StartProcessing(Some(Incremental(incremental.modifiedAfter, newFile)))
+          fileOpt match {
+            case Some(file) =>
+              if (datasetContext.sipMapperOpt.isDefined) {
+                log.info(s"There is a mapper, so trigger processing")
+                self ! StartProcessing(Some(Incremental(mod, file)))
+              }
+              else {
+                log.info("No mapper, so generating sip zip only")
+                self ! GenerateSipZip
+              }
+            case None =>
+              log.info("No incremental file, back to sleep")
           }
-          else {
-            log.info("No mapper, so generating sip zip only")
-            self ! GenerateSipZip
-          }
-        } getOrElse {
-          log.info("No incremental file, back to sleep")
-        }
-      } getOrElse {
-        dsInfo.setState(SOURCED)
-        self ! GenerateSipZip
       }
-      active.childOpt.map(_ ! PoisonPill)
+      active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
-
   }
 
   when(Adopting) {
@@ -331,7 +360,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       dsInfo.setState(SOURCED)
       if (datasetContext.sipRepo.latestSipOpt.isDefined) dsInfo.setState(PROCESSABLE)
       datasetContext.dropTree()
-      active.childOpt.map(_ ! PoisonPill)
+      active.childOpt.foreach(_ ! PoisonPill)
       self ! GenerateSipZip
       goto(Idle) using Dormant
 
@@ -355,7 +384,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       //        val rawFile = datasetContext.createRawFile(datasetContext.pocketFile.getName)
       //        FileUtils.copyFile(datasetContext.pocketFile, rawFile)
       //        db.setStatus(RAW_POCKETS)
-      active.childOpt.map(_ ! PoisonPill)
+      active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
@@ -371,7 +400,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       else {
         dsInfo.setState(dsState)
       }
-      active.childOpt.map(_ ! PoisonPill)
+      active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
@@ -393,7 +422,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         validString = dsInfo.processedValidVal,
         invalidString = dsInfo.processedInvalidVal
       ).send()
-      active.childOpt.map(_ ! PoisonPill)
+      active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
@@ -402,7 +431,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(GraphSaveComplete, active: Active) =>
       dsInfo.setState(SAVED)
-      active.childOpt.map(_ ! PoisonPill)
+      active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
@@ -411,7 +440,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(SkosificationComplete(skosifiedField), active: Active) =>
       log.info(s"Skosification complete: $skosifiedField")
-      active.childOpt.map(_ ! PoisonPill)
+      active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
@@ -421,7 +450,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(CategoryCountComplete(spec, categoryCounts), active: Active) =>
       log.info(s"Category counting complete: $spec")
       context.parent ! CategoryCountComplete(spec, categoryCounts)
-      active.childOpt.map(_ ! PoisonPill)
+      active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
 
   }
@@ -435,7 +464,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(tick: ProgressTick, active: Active) =>
       if (active.interrupt) {
-        tick.reporterOpt.map(_.interrupt())
+        tick.reporterOpt.foreach(_.interrupt())
         stay() using active
       }
       else {
@@ -471,16 +500,21 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Work failure [$message] while in [$active]")
       dsInfo.setError(s"While $stateName, failure: $message")
-      exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
+      exceptionOpt match {
+        case Some(exception) => log.error(exception, message)
+        case None => log.error(message)
+      }
       MailDatasetError(dsInfo.spec, dsInfo.ownerEmailOpt, message, exceptionOpt).send()
-      active.childOpt.map(_ ! PoisonPill)
+      active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using InError(message)
 
     case Event(WorkFailure(message, exceptionOpt), _) =>
       log.warning(s"Work failure $message while dormant")
-      exceptionOpt.map(log.warning(message, _))
+      exceptionOpt match {
+        case Some(exception) => log.error(exception, message)
+        case None => log.error(message)
+      }
       dsInfo.setError(s"While not active, failure: $message")
-      exceptionOpt.map(ex => log.error(ex, message)).getOrElse(log.error(message))
       goto(Idle) using InError(message)
 
     case Event(DatasetQuestion(listener, CheckState), data) =>

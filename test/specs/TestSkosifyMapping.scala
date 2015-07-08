@@ -9,6 +9,7 @@ import mapping.{TermMappingStore, VocabInfo}
 import org.ActorStore
 import org.ActorStore.NXActor
 import org.OrgContext._
+import org.joda.time.DateTime
 import org.scalatestplus.play._
 import play.api.test.Helpers._
 import record.PocketParser.Pocket
@@ -75,10 +76,11 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     }
     mappedPockets.size must be(3)
     processedWriter.close()
+    val saveTime = new DateTime()
     // push the mapped results to the triple store
-    val graphReader = processedRepo.createGraphReader(None, ProgressReporter())
+    val graphReader = processedRepo.createGraphReader(None, saveTime, ProgressReporter())
     while (graphReader.isActive) {
-      graphReader.readChunkOpt.map { chunk =>
+      graphReader.readChunkOpt.foreach { chunk =>
         val update = chunk.sparqlUpdateQ
         await(ts.up.sparqlUpdate(update))
       }
@@ -165,8 +167,8 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     def exactMatch = await(ts.query(s"select ?o where { graph ?g { ?s <http://www.w3.org/2004/02/skos/core#exactMatch> ?o. } }")).headOption
 
     val actorStore = new ActorStore
-    val admin = await(actorStore.authenticate("gumby", "geheim")).get
-    val classyInfo = await(VocabInfo.createVocabInfo(admin, "gtaa_classy"))
+    val actor = await(actorStore.authenticate("gumby", "geheim")).get
+    val classyInfo = await(VocabInfo.createVocabInfo(actor, "gtaa_classy"))
     val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
     await(ts.up.dataPutXMLFile(classyInfo.skosGraphName, classyFile))
     val info = await(DsInfo.freshDsInfo("ton-smits-huis")).get
@@ -174,7 +176,7 @@ class TestSkosifyMapping extends PlaySpec with OneAppPerSuite with PrepareEDM wi
     exactMatch must be(None)
     val store = new TermMappingStore(info)
     // todo: nothing checks whether this literal or uri string are legitimate
-    val mapping = SkosMapping(admin, uriA, uriB)
+    val mapping = SkosMapping(actor, uriA, uriB)
     await(store.toggleMapping(mapping, classyInfo)) must be("added")
     await(store.getMappings(categories = false)) must be(Seq(List(uriA, uriB, "gtaa_classy")))
     println(s"exactMatch: $exactMatch")

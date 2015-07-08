@@ -63,16 +63,18 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
 
     case AdoptSource(file) => actorWork(context) {
       log.info(s"Adopt source ${file.getAbsolutePath}")
-      datasetContext.sourceRepoOpt.map { sourceRepo =>
-        val progressReporter = ProgressReporter(ADOPTING, context.parent)
-        progress = Some(progressReporter)
-        sourceRepo.acceptFile(file, progressReporter).map { adoptedFile =>
-          context.parent ! SourceAdoptionComplete(adoptedFile)
-        } getOrElse {
-          context.parent ! WorkFailure(s"File not accepted: ${file.getAbsolutePath}")
-        }
-      } getOrElse {
-        context.parent ! WorkFailure("Missing source repository!")
+      datasetContext.sourceRepoOpt match {
+        case Some(sourceRepo) =>
+          val progressReporter = ProgressReporter(ADOPTING, context.parent)
+          progress = Some(progressReporter)
+          sourceRepo.acceptFile(file, progressReporter) match {
+            case Some(adoptedFile) =>
+              context.parent ! SourceAdoptionComplete(adoptedFile)
+            case None =>
+              context.parent ! WorkFailure(s"File not accepted: ${file.getAbsolutePath}")
+          }
+        case None =>
+          context.parent ! WorkFailure("Missing source repository!")
       }
     }
 
@@ -138,8 +140,8 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         invalidRecords += 1
         errorOutput.write(
           s"""
-               |===== $invalidRecords: $heading =====
-               |$error
+            |===== $invalidRecords: $heading =====
+                                             |$error
              """.stripMargin.trim
         )
         errorOutput.write("\n")

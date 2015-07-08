@@ -17,7 +17,7 @@
 package harvest
 
 import akka.actor.{Actor, Props}
-import dataset.DatasetActor.StartHarvest
+import dataset.DatasetActor.{FromScratch, ModifiedAfter, StartHarvest}
 import dataset.DsInfo
 import dataset.DsInfo.withDsInfo
 import harvest.PeriodicHarvest.ScanForHarvests
@@ -47,7 +47,7 @@ class PeriodicHarvest extends Actor {
       val futureList = DsInfo.listDsInfo
       futureList.onSuccess {
         case list: List[DsInfo] =>
-          list.map { listedInfo =>
+          list.foreach { listedInfo =>
             val harvestCron = listedInfo.currentHarvestCron
             if (harvestCron.timeToWork) withDsInfo(listedInfo.spec) { info => // the cached version
               log.info(s"Time to work on $info: $harvestCron")
@@ -64,8 +64,8 @@ class PeriodicHarvest extends Actor {
               log.info(s"Set harvest cron: $next")
               info.setHarvestCron(next)
               val justDate = harvestCron.unit == DelayUnit.WEEKS
-              val previousOpt = if (harvestCron.incremental) Some(harvestCron.previous) else None
-              val startHarvest = StartHarvest(previousOpt, justDate)
+              val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, justDate) else FromScratch
+              val startHarvest = StartHarvest(strategy)
               log.info(s"$info incremental harvest kickoff $startHarvest")
               OrgActor.actor ! info.createMessage(startHarvest)
             }

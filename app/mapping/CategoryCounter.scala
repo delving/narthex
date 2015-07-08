@@ -24,6 +24,7 @@ import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories, Counter}
 import mapping.VocabInfo._
 import org.OrgContext.actorWork
+import org.joda.time.DateTime
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import services.StringHandling._
@@ -51,6 +52,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
 
   var recordCount = 0
   val countMap = new collection.mutable.HashMap[String, Counter]()
+  val saveTime = new DateTime()
 
   def increment(key: String): Unit = countMap.getOrElseUpdate(key, new Counter(1)).count += 1
 
@@ -99,7 +101,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
       log.info("Counting categories")
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
-      reader = Some(repo.createGraphReader(None, progressReporter))
+      reader = Some(repo.createGraphReader(None, saveTime, progressReporter))
       val termMap = withVocabInfo(CATEGORIES_SPEC)(dsInfo.termCategoryMap)
       termCatMapOpt = Some(termMap)
       sendGraphChunkOpt()

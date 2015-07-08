@@ -24,6 +24,7 @@ import dataset.DsInfo.DsMetadata
 import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
+import harvest.Harvesting.HarvestType
 import org.OrgContext._
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
@@ -69,11 +70,16 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
   // todo: recordContainer instead perhaps
-  def setRawDelimiters(recordRoot: String, uniqueId: String):Unit = rawXmlFile.foreach { raw =>
-    createSourceRepo(SourceFacts("from-raw", recordRoot, uniqueId, None))
-    dropTree()
-    dsInfo.removeState(RAW_ANALYZED)
-    OrgActor.actor ! dsInfo.createMessage(AdoptSource(raw))
+  def setDelimiters(harvestTypeOpt: Option[HarvestType], recordRoot: String, uniqueId: String): Unit = rawXmlFile.foreach { raw =>
+    harvestTypeOpt match {
+      case Some(harvestType) =>
+        dropRaw()
+        createSourceRepo(SourceFacts(harvestType.toString, recordRoot, uniqueId, None))
+      case None =>
+        dropTree()
+        createSourceRepo(SourceFacts("raw", recordRoot, uniqueId, None))
+        OrgActor.actor ! dsInfo.createMessage(AdoptSource(raw))
+    }
   }
 
   def createSourceRepo(sourceFacts: SourceFacts): SourceRepo = SourceRepo.createClean(sourceDir, sourceFacts)
@@ -111,13 +117,19 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       val sipZipFile = setTargetFile(sipRepo.createSipZipFile(fileName))
       sipRepo.latestSipOpt.map { sip =>
         dsInfo.setMetadata(DsMetadata(
-          name = sip.fact("name").getOrElse(""),
+          name = sip.name.getOrElse(""),
           description = "",
-          aggregator = sip.fact("provider").getOrElse(""),
-          owner = sip.fact("dataProvider").getOrElse(""),
-          language = sip.fact("language").getOrElse(""),
-          rights = sip.fact("rights").getOrElse("")
+          aggregator = sip.provider.getOrElse(""),
+          owner = sip.dataProvider.getOrElse(""),
+          language = sip.language.getOrElse(""),
+          rights = sip.rights.getOrElse("")
         ))
+        dsInfo.setHarvestInfo(
+          harvestTypeEnum = sip.harvestType.flatMap(HarvestType.harvestTypeFromString).getOrElse(HarvestType.PMH),
+          url = sip.harvestUrl.getOrElse(""),
+          dataset = sip.harvestSpec.getOrElse(""),
+          prefix = sip.harvestPrefix.getOrElse("")
+        )
         // todo: should probably wait for the above future
         sip.sipMappingOpt.map { sipMapping =>
           if (sip.containsSource) {
@@ -147,7 +159,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     }
   }
 
-  def rawXmlFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.find{ file =>
+  def rawXmlFile: Option[File] = if (rawDir.exists()) rawDir.listFiles.find { file =>
     file.getName.endsWith(".xml") || file.getName.endsWith(".xml.gz")
   } else None
 
@@ -157,24 +169,35 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     allZip.headOption
   }
 
-  def dropSourceRepo() = {
+  def dropRaw() = {
+    dropSourceRepo()
     deleteQuietly(rawDir)
     dsInfo.removeState(RAW)
-    deleteQuietly(sourceDir)
-    dsInfo.removeState(SOURCED)
   }
 
-  def startSipZipGeneration() = OrgActor.actor ! dsInfo.createMessage(GenerateSipZip)
+  def dropSourceRepo() = {
+    dropProcessedRepo()
+    // todo: note that we lose the delimiters this way:
+    deleteQuietly(sourceDir)
+    dsInfo.removeState(SOURCED)
+    sipFiles.foreach(deleteQuietly)
+    dsInfo.removeState(MAPPABLE)
+    dsInfo.removeState(PROCESSABLE)
+  }
 
   def dropProcessedRepo() = {
+    dropTree()
     deleteQuietly(processedDir)
     dsInfo.removeState(PROCESSED)
   }
 
   def dropTree() = {
     deleteQuietly(treeDir)
+    dsInfo.removeState(RAW_ANALYZED)
     dsInfo.removeState(ANALYZED)
   }
+
+  def startSipZipGeneration() = OrgActor.actor ! dsInfo.createMessage(GenerateSipZip)
 
   // ==================================================
 

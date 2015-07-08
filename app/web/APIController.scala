@@ -23,7 +23,6 @@ import analysis.TreeNode.ReadTreeNode
 import dataset.SipRepo.AvailableSip
 import org.OrgContext.{apiKeyFits, orgContext}
 import org.apache.commons.io.IOUtils
-import play.api.Logger
 import play.api.http.ContentTypes
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -103,13 +102,6 @@ object APIController extends Controller {
       </sip-zips>
       Ok(xml)
     }
-  }
-
-  def downloadSipZip(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
-    Logger.info(s"Download sip-zip $spec")
-    val datasetContext = orgContext.datasetContext(spec)
-    val sipFileOpt = datasetContext.sipFiles.headOption
-    sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $spec"))
   }
 
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>

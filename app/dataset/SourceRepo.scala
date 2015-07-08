@@ -29,7 +29,7 @@ import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import record.PocketParser
 import record.PocketParser._
-import services.FileHandling.{clearDir, sourceFromFile, createWriter}
+import services.FileHandling.{clearDir, createWriter, sourceFromFile}
 import services.ProgressReporter
 
 import scala.collection.mutable
@@ -99,6 +99,7 @@ object SourceRepo {
   }
 
   val VERBATIM_FILTER = IdFilter("verbatim", None)
+  val SHA256_FILTER = IdFilter("sha256-hash", None)
 
   case class SourceFacts(sourceType: String, recordRoot: String, uniqueId: String, recordContainer: Option[String])
 
@@ -254,6 +255,8 @@ class SourceRepo(home: File) {
 
   def countFiles = fileList.size
 
+  def clearData() = fileList.foreach(FileUtils.deleteQuietly)
+
   def acceptFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(VERBATIM_FILTER, progressReporter, { targetFile =>
     val name = file.getName
     if (name.endsWith(".zip")) {
@@ -290,7 +293,7 @@ class SourceRepo(home: File) {
     val parser = new PocketParser(sourceFacts, idFilter)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
-    val totalActiveIds = activeIdCounts.fold(0)(_ + _)
+    val totalActiveIds = activeIdCounts.sum
     progress.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
       progress.checkInterrupt()

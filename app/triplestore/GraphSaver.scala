@@ -18,10 +18,11 @@ package triplestore
 
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Incremental, WorkFailure}
-import dataset.ProcessedRepo
+import dataset.DatasetContext
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import org.OrgContext
 import org.OrgContext._
+import org.joda.time.DateTime
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import triplestore.GraphProperties.acceptanceOnly
@@ -32,17 +33,18 @@ object GraphSaver {
 
   case class SaveGraphs(incrementalOpt: Option[Incremental])
 
-  def props(repo: ProcessedRepo) = Props(new GraphSaver(repo))
+  def props(datasetContext: DatasetContext) = Props(new GraphSaver(datasetContext))
 
 }
 
-class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
+class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging {
 
   import context.dispatcher
   import triplestore.GraphSaver._
 
   implicit val ts = OrgContext.TS
 
+  val saveTime = new DateTime()
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
 
@@ -68,13 +70,12 @@ class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
       log.info("Save graphs")
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
-      reader = Some(repo.createGraphReader(incrementalOpt.map(_.file), progressReporter))
+      reader = Some(datasetContext.processedRepo.createGraphReader(incrementalOpt.map(_.file), saveTime, progressReporter))
       sendGraphChunkOpt()
     }
 
     case Some(chunk: GraphChunk) => actorWork(context) {
       log.info("Save a chunk of graphs")
-      // todo: may not need to handle onFailure
       val update = ts.up.acceptanceOnly(chunk.dsInfo.getBooleanProp(acceptanceOnly)).sparqlUpdate(chunk.sparqlUpdateQ)
       update.map(ok => sendGraphChunkOpt())
       update.onFailure {
@@ -86,7 +87,17 @@ class GraphSaver(repo: ProcessedRepo) extends Actor with ActorLogging {
       reader.map(_.close())
       reader = None
       log.info("All graphs saved")
-      context.parent ! GraphSaveComplete
+      // todo: Make sure that this doesn't delete everything upon an incremental update
+      val info = datasetContext.dsInfo
+      val update = ts.up.acceptanceOnly(info.getBooleanProp(acceptanceOnly)).sparqlUpdate(Sparql.markOlderRecordsDeletedQ(saveTime, info.uri))
+      update.onFailure {
+        case ex: Throwable => failure(ex)
+      }
+      update.onSuccess {
+        case _ =>
+          log.info("Old graphs removed")
+          context.parent ! GraphSaveComplete
+      }
     }
   }
 }

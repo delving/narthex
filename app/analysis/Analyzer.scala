@@ -82,7 +82,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
           val progressReporter = ProgressReporter(SPLITTING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
-          val tree = TreeNode(source, file.length, datasetContext, progressReporter)
+          val tree = TreeNode(source, processed, datasetContext, progressReporter)
           progress.get.checkInterrupt()
           tree.launchSorters { node =>
             if (node.lengths.isEmpty) {

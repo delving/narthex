@@ -80,6 +80,33 @@ class TestSkos extends PlaySpec with OneAppPerSuite with FakeTripleStore {
     first.frequency must be(Some(111))
     first.fieldProperty must be(Some("http://schemas.delving.eu/brac/material"))
 
+    // todo: when the remove query for the skosified field also removes mappings, this should test
+//    val classyInfo = await(VocabInfo.createVocabInfo(actor, "gtaa_classy"))
+//    val classyFile = new File(getClass.getResource("/skos/Classificatie.xml").getFile)
+//    await(ts.up.dataPutXMLFile(classyInfo.skosGraphName, classyFile))
+//    val uriA = cases.head.mintedUri
+//    val uriB = "http://data.beeldengeluid.nl/gtaa/24829"
+//    val mapping = SkosMapping(actor, uriA, uriB)
+//    val store = new TermMappingStore(di)
+//    await(store.toggleMapping(mapping, classyInfo)) must be("added")
+//    await(store.getMappings(categories = false)) must be(Seq(List(uriA, uriB, "gtaa_classy")))
+
+    def countSkosEntries = {
+      val countQ =
+        s"""
+          |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+          |SELECT (COUNT(DISTINCT(?mintedUri)) as ?count)
+          |WHERE { GRAPH <${di.skosGraphName}> { ?mintedUri a skos:Concept. } }
+         """.stripMargin
+      await(ts.query(countQ)).head.get("count").get.text.toInt
+    }
+    countSkosEntries must be(12)
+    val skosifiedField = cases.head.sf
+    await(ts.up.sparqlUpdate(skosifiedField.removeSkosEntriesQ))
+    countSkosEntries must be(0)
+
+//    await(store.getMappings(categories = false)) must be(Seq.empty)
+
 //    val histoStrings = di.vocabulary.concepts.map{ c =>
 //      s"${c.getAltLabel("nl").text} ${c.frequency}"
 //    }

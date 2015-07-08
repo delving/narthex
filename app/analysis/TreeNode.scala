@@ -34,7 +34,7 @@ import scala.xml.pull._
 
 object TreeNode {
 
-  def apply(source: Source, length: Long, datasetContext: DatasetContext, progressReporter: ProgressReporter): TreeNode = {
+  def apply(source: Source, processed: Boolean, datasetContext: DatasetContext, progressReporter: ProgressReporter): TreeNode = {
     val base = new TreeNode(datasetContext.treeRoot, null, null, null)
     var node = base
     val events = new NarthexEventReader(source)

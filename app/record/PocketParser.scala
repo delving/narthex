@@ -90,6 +90,8 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
       }
     }
 
+    def setUniqueId(id: String) = uniqueId = Some(idFilter.filter(id))
+
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
       def recordNamespace(binding: NamespaceBinding): Unit = {
         if (binding eq TopScope) return
@@ -100,7 +102,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
       def findUniqueId(attrs: List[MetaData]) = attrs.foreach { attr =>
         path.push((s"@${attr.prefixedKey}", new StringBuilder()))
         val ps = pathString
-        if (ps == facts.uniqueId) uniqueId = Some(attr.value.toString())
+        if (ps == facts.uniqueId) setUniqueId(attr.value.toString())
         path.pop()
       }
       path.push((tag, new StringBuilder()))
@@ -108,20 +110,20 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
       if (depth > 0) {
         flushStartElement()
         depth += 1
-        startElement = Some(startElementString(tag, attrs))
+        startElement = Some(startElementString(tag, attrs, replaceId = false))
         findUniqueId(attrs.toList)
       }
       else if (string == facts.recordRoot) {
         if (facts.recordContainer.isEmpty || facts.recordContainer.get.equals(facts.recordRoot)) {
           depth = 1
-          startElement = Some(startElementString(if (introduceRecord) SIP_RECORD_TAG else tag, attrs))
+          startElement = Some(startElementString(if (introduceRecord) SIP_RECORD_TAG else tag, attrs, replaceId = true))
         }
         findUniqueId(attrs.toList)
       }
       else if (!introduceRecord) facts.recordContainer.foreach { container =>
         if (pathContainer(string) == container) {
           depth = 1
-          startElement = Some(startElementString(tag, attrs))
+          startElement = Some(startElementString(tag, attrs, replaceId = true))
         }
       }
     }
@@ -148,9 +150,8 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
           flushStartElement()
           indent()
           recordText.append(s"</${if (introduceRecord) SIP_RECORD_TAG else tag}>\n")
-          val record = uniqueId.map { idUnfiltered =>
-            if (idUnfiltered.trim.isEmpty) throw new RuntimeException("Empty unique id!")
-            val id = idFilter.filter(idUnfiltered)
+          val record = uniqueId.map { id =>
+            if (id.trim.isEmpty) throw new RuntimeException("Empty unique id!")
             if (avoidIds.contains(id)) None
             else {
               val recordContent = recordText.toString()
@@ -176,7 +177,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
           depth = 0
         }
         else {
-          if (string == facts.uniqueId) uniqueId = Some(text)
+          if (string == facts.uniqueId) setUniqueId(text)
           indent()
           depth -= 1
           if (startElement.isDefined) {
@@ -192,7 +193,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
       }
       else if (facts.recordContainer.isDefined && string == facts.uniqueId) {
         // if there is a deep record, we find the unique idea outside of it
-        uniqueId = Some(text)
+        setUniqueId(text)
       }
     }
 
@@ -217,10 +218,11 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
 
   def showPath() = Logger.info(pathString)
 
-  def startElementString(tag: String, attrs: MetaData) = {
+  def startElementString(tag: String, attrs: MetaData, replaceId: Boolean) = {
     val attrString = new mutable.StringBuilder()
     attrs.foreach { attr =>
-      val value = "\"" + attr.value.toString() + "\""
+      val valueString = if (replaceId && attr.key == "id") idFilter.filter(attr.value.toString()) else attr.value.toString()
+      val value = "\"" + valueString + "\""
       attrString.append(s" ${attr.prefixedKey}=$value")
     }
     s"<$tag$attrString>"
