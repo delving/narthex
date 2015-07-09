@@ -192,7 +192,7 @@ object AppController extends Controller with Security {
       val skosFieldUri = (request.body \ "skosFieldUri").as[String]
       val skosFieldValue = s"$skosFieldTag=$skosFieldUri"
       val included = (request.body \ "included").as[Boolean]
-      Logger.info(s"set skos field $skosFieldValue")
+      Logger.info(s"set skos field $skosFieldValue: $included")
       val currentSkosFields = dsInfo.getLiteralPropList(skosField)
       val action: String = if (included) {
         if (currentSkosFields.contains(skosFieldValue)) {
@@ -328,12 +328,12 @@ object AppController extends Controller with Security {
       val results = dsInfo.vocabulary.concepts.map(concept => {
         //          val freq: Int = concept.frequency.getOrElse(0)
         val label = concept.getAltLabel(None).map(_.text).getOrElse("Label missing")
-        val fieldProperty = concept.fieldProperty.getOrElse("")
+        val fieldPropertyTag = concept.fieldPropertyTag.getOrElse("")
         Json.obj(
           "uri" -> concept.resource.toString,
           "label" -> label,
           "frequency" -> concept.frequency,
-          "fieldProperty" -> fieldProperty
+          "fieldProperty" -> fieldPropertyTag
         )
       })
       Ok(Json.toJson(results))

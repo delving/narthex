@@ -72,8 +72,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                setSkosifiedField: function (spec, payload) {
-                    return app.setSkosifiedField(spec).post(payload).then(
+                toggleSkosifiedField: function (spec, payload) {
+                    return app.toggleSkosifiedField(spec).post(payload).then(
                         function (response) {
                             return response.data.action;
                         },

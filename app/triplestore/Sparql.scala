@@ -708,6 +708,7 @@ object Sparql {
         |         <$proxyLiteralValue> ${literalExpression(value, languageOpt)} ;
         |         <$belongsTo> <$datasetUri> ;
         |         <$skosField> <${sf.fieldPropertyUri}> ;
+        |         <$skosFieldTag> ${literalExpression(sf.fieldPropertyTag, None)} ;
         |         <$proxyLiteralField> <${sf.fieldPropertyUri}> ;
         |         <$synced> false .
         |      ${frequencyOpt.map(freq => s"<$mintedUri> <$skosFrequency> '''$freq''' .").getOrElse("")}
