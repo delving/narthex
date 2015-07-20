@@ -18,6 +18,7 @@ package web
 
 import java.util.concurrent.TimeUnit
 
+import akka.actor._
 import akka.pattern.{AskTimeoutException, ask}
 import akka.util.Timeout
 import dataset.DatasetActor._
@@ -33,6 +34,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.{OrgActor, OrgContext}
 import play.api.Logger
+import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
@@ -51,6 +53,21 @@ object AppController extends Controller with Security {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
   implicit val ts = OrgContext.TS
+
+  object DatasetSocketActor {
+    def props(out: ActorRef) = Props(new DatasetSocketActor(out))
+  }
+
+  class DatasetSocketActor(out: ActorRef) extends Actor {
+    def receive = {
+      case politeMessage: String =>
+        Logger.info(s"WebSocket: $politeMessage")
+    }
+  }
+
+  def datasetSocket = WebSocket.acceptWithActor[String, String] { request => out =>
+    DatasetSocketActor.props(out)
+  }
 
   def listDatasets = SecureAsync() { session => request =>
     listDsInfo.map(list => Ok(Json.toJson(list)))
@@ -78,7 +95,7 @@ object AppController extends Controller with Security {
         Ok(Json.obj(
           "progressType" -> TYPE_IDLE.name
         ))
-      case Active(_, progressState, progressType, count, interrupt) =>
+      case Active(spec, _, progressState, progressType, count, interrupt) =>
         Ok(Json.obj(
           "progressState" -> progressState.name,
           "progressType" -> progressType.name,

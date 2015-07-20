@@ -29,6 +29,7 @@ POST        /narthex/set-password                                            web
 GET         /narthex/test-email/:emailType                                   web.MainController.testEmail(emailType)
 
 # File Handling
+GET         /narthex/app/dataset-socket                                      web.AppController.datasetSocket
 GET         /narthex/app/dataset-list                                        web.AppController.listDatasets
 GET         /narthex/app/prefixes                                            web.AppController.listPrefixes
 GET         /narthex/app/dataset/:spec/create/:character/:prefix             web.AppController.createDataset(spec, character, prefix)

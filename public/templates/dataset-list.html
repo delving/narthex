@@ -27,7 +27,7 @@
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
     </div>
-    <div ng-repeat="dataset in filteredDatasets" class="col-md-12">
+    <div ng-repeat="dataset in datasets | filter: datasetVisibleFilter" class="col-md-12">
         <div data-ng-include="'dataset-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">

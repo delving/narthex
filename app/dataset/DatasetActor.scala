@@ -24,6 +24,7 @@ import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DsInfo.DsState._
+import dataset.DsInfo._
 import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
@@ -35,6 +36,7 @@ import org.OrgActor.DatasetQuestion
 import org.OrgContext
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
+import play.api.libs.json.{Json, Writes}
 import record.SourceProcessor
 import record.SourceProcessor._
 import services.MailService.{MailDatasetError, MailProcessingComplete}
@@ -84,9 +86,18 @@ object DatasetActor {
 
   case object Dormant extends DatasetActorData
 
-  case class Active(childOpt: Option[ActorRef],
+  case class Active(spec: String, childOpt: Option[ActorRef], 
                     progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0,
                     interrupt: Boolean = false) extends DatasetActorData
+
+  implicit val activeWrites = new Writes[Active] {
+    def writes(active: Active) = Json.obj(
+      "datasetSpec" -> active.spec,
+      "progressState" -> active.progressState.toString,
+      "progressType" -> active.progressType.toString,
+      "count" -> active.count
+    )
+  }
 
   case class InError(error: String) extends DatasetActorData
 
@@ -144,6 +155,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   val dsInfo = datasetContext.dsInfo
 
   val errorMessage = dsInfo.getLiteralProp(datasetErrorMessage).getOrElse("")
+
+  def broadcastRaw(message: String) = context.system.actorSelection("/system/websockets/*") ! message
+
+  def broadcastIdleState() = broadcastRaw(Json.stringify(Json.toJson(datasetContext.dsInfo)))
+
+  def broadcastProgress(active: Active) = broadcastRaw(Json.stringify(Json.toJson(active)))
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
@@ -262,7 +279,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         }
         val harvester = context.actorOf(Harvester.props(datasetContext), "harvester")
         harvester ! kickoff
-        goto(Harvesting) using Active(Some(harvester), HARVESTING)
+        goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
         stay() using InError("Unable to determine harvest type")
       }
@@ -271,13 +288,13 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-adopter")
       sourceProcessor ! AdoptSource(file)
-      goto(Adopting) using Active(Some(sourceProcessor), ADOPTING)
+      goto(Adopting) using Active(dsInfo.spec, Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>
       sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-generator")
       sourceProcessor ! GenerateSipZip
-      goto(Generating) using Active(Some(sourceProcessor), GENERATING)
+      goto(Generating) using Active(dsInfo.spec, Some(sourceProcessor), GENERATING)
 
     case Event(StartAnalysis(processed), Dormant) =>
       sendBusy()
@@ -285,39 +302,39 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       if (processed) {
         val analyzer = context.actorOf(Analyzer.props(datasetContext), "analyzer-processed")
         analyzer ! AnalyzeFile(datasetContext.processedRepo.baseOutput.xmlFile, processed)
-        goto(Analyzing) using Active(Some(analyzer), SPLITTING)
+        goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       }
       else {
         val rawFile = datasetContext.rawXmlFile.getOrElse(throw new Exception(s"Unable to find 'raw' file to analyze"))
         val analyzer = context.actorOf(Analyzer.props(datasetContext), "analyzer-raw")
         analyzer ! AnalyzeFile(rawFile, processed = false)
-        goto(Analyzing) using Active(Some(analyzer), SPLITTING)
+        goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       }
 
     case Event(StartProcessing(incrementalOpt), Dormant) =>
       sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-processor")
       sourceProcessor ! Process(incrementalOpt)
-      goto(Processing) using Active(Some(sourceProcessor), PROCESSING)
+      goto(Processing) using Active(dsInfo.spec, Some(sourceProcessor), PROCESSING)
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
       sendBusy()
       val graphSaver = context.actorOf(GraphSaver.props(datasetContext), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
-      goto(Saving) using Active(Some(graphSaver), PROCESSING)
+      goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
       sendBusy()
       val skosifier = context.actorOf(Skosifier.props(dsInfo), "skosifier")
       skosifier ! skosifiedField
-      goto(Skosifying) using Active(Some(skosifier), SKOSIFYING)
+      goto(Skosifying) using Active(dsInfo.spec, Some(skosifier), SKOSIFYING)
 
     case Event(StartCategoryCounting, Dormant) =>
       sendBusy()
       if (datasetContext.processedRepo.nonEmpty) {
         val categoryCounter = context.actorOf(CategoryCounter.props(dsInfo, datasetContext.processedRepo), "category-counter")
         categoryCounter ! CountCategories
-        goto(Categorizing) using Active(Some(categoryCounter), CATEGORIZING)
+        goto(Categorizing) using Active(dsInfo.spec, Some(categoryCounter), CATEGORIZING)
       }
       else {
         stay() using InError(s"No source file for categorizing $datasetContext")
@@ -468,7 +485,9 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         stay() using active
       }
       else {
-        stay() using active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)
+        val nextActive = active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)
+        broadcastProgress(nextActive)
+        stay() using nextActive
       }
 
     case Event(DatasetQuestion(listener, Command(commandName)), InError(message)) =>
@@ -527,8 +546,9 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   }
 
   onTransition {
-    case fromState -> toState =>
-      log.info(s"State $fromState -> $toState")
+    case fromState -> Idle =>
+      log.info(s"State to Idle from $fromState")
+      broadcastIdleState()
   }
 
 }

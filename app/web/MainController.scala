@@ -259,6 +259,7 @@ object MainController extends Controller with Security {
           routes.javascript.MainController.listActors,
           routes.javascript.MainController.createActor,
           routes.javascript.MainController.setPassword,
+          routes.javascript.AppController.datasetSocket,
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
           routes.javascript.AppController.createDataset,
