@@ -67,22 +67,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                datasetInfo: function (spec) {
-                    return app.datasetInfo(spec).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                datasetProgress: function (spec) {
-                    return app.datasetProgress(spec).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
                 listDatasets: function () {
                     return app.listDatasets().get().then(
                         function (response) {

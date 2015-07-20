@@ -49,7 +49,7 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
   var progressOpt: Option[ProgressReporter] = None
 
   def failure(ex: Throwable) = {
-    reader.map(_.close())
+    reader.foreach(_.close())
     reader = None
     context.parent ! WorkFailure(ex.getMessage, Some(ex))
   }
@@ -84,7 +84,7 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
     }
 
     case None => actorWork(context) {
-      reader.map(_.close())
+      reader.foreach(_.close())
       reader = None
       log.info("All graphs saved")
       // todo: Make sure that this doesn't delete everything upon an incremental update

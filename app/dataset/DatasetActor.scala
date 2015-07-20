@@ -164,8 +164,6 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
-  def sendBusy() = self ! ProgressTick(None, PREPARING, BUSY, 100)
-
   when(Idle) {
 
     case Event(DatasetQuestion(listener, Command(commandName)), Dormant) =>
@@ -206,23 +204,29 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
           case "remove raw" =>
             datasetContext.dropRaw()
-            "source removed"
+            broadcastIdleState()
+            "raw removed"
 
           case "remove source" =>
             datasetContext.dropSourceRepo()
+            broadcastIdleState()
             "source removed"
 
           case "remove processed" =>
             datasetContext.dropProcessedRepo()
+            broadcastIdleState()
             "processed data removed"
 
           case "remove tree" =>
             datasetContext.dropTree()
+            broadcastIdleState()
             "tree removed"
 
-          case "start sample harvest" => startHarvest(Sample)
+          case "start sample harvest" =>
+            startHarvest(Sample)
 
-          case "start first harvest" => startHarvest(FromScratch)
+          case "start first harvest" =>
+            startHarvest(FromScratch)
 
           case "start generating sip" =>
             self ! GenerateSipZip
@@ -268,7 +272,6 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       stay()
 
     case Event(StartHarvest(strategy), Dormant) =>
-      sendBusy()
       datasetContext.dropTree()
       def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
       harvestTypeFromString(prop(harvestType)).map { harvestType =>
@@ -285,19 +288,16 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
 
     case Event(AdoptSource(file), Dormant) =>
-      sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-adopter")
       sourceProcessor ! AdoptSource(file)
       goto(Adopting) using Active(dsInfo.spec, Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>
-      sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-generator")
       sourceProcessor ! GenerateSipZip
       goto(Generating) using Active(dsInfo.spec, Some(sourceProcessor), GENERATING)
 
     case Event(StartAnalysis(processed), Dormant) =>
-      sendBusy()
       log.info(s"Start analysis processed=$processed")
       if (processed) {
         val analyzer = context.actorOf(Analyzer.props(datasetContext), "analyzer-processed")
@@ -312,25 +312,21 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
 
     case Event(StartProcessing(incrementalOpt), Dormant) =>
-      sendBusy()
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-processor")
       sourceProcessor ! Process(incrementalOpt)
       goto(Processing) using Active(dsInfo.spec, Some(sourceProcessor), PROCESSING)
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
-      sendBusy()
       val graphSaver = context.actorOf(GraphSaver.props(datasetContext), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
-      sendBusy()
       val skosifier = context.actorOf(Skosifier.props(dsInfo), "skosifier")
       skosifier ! skosifiedField
       goto(Skosifying) using Active(dsInfo.spec, Some(skosifier), SKOSIFYING)
 
     case Event(StartCategoryCounting, Dormant) =>
-      sendBusy()
       if (datasetContext.processedRepo.nonEmpty) {
         val categoryCounter = context.actorOf(CategoryCounter.props(dsInfo, datasetContext.processedRepo), "category-counter")
         categoryCounter ! CountCategories

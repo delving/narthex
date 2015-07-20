@@ -38,8 +38,6 @@ import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
-import services.ProgressReporter.ProgressState._
-import services.ProgressReporter.ProgressType._
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.Sparql
@@ -88,34 +86,6 @@ object AppController extends Controller with Security {
     )
   }
 
-  def datasetProgress(spec: String) = SecureAsync() { session => request =>
-    val replyData = (OrgActor.actor ? DatasetMessage(spec, CheckState, question = true)).mapTo[DatasetActorData]
-    replyData.map {
-      case Dormant =>
-        Ok(Json.obj(
-          "progressType" -> TYPE_IDLE.name
-        ))
-      case Active(spec, _, progressState, progressType, count, interrupt) =>
-        Ok(Json.obj(
-          "progressState" -> progressState.name,
-          "progressType" -> progressType.name,
-          "count" -> count,
-          "interrupt" -> interrupt
-        ))
-      case InError(message) =>
-        Ok(Json.obj(
-          "progressType" -> TYPE_IDLE.name,
-          "errorMessage" -> message
-        ))
-    } recover {
-      case t: AskTimeoutException =>
-        Ok(Json.obj(
-          "progressType" -> TYPE_IDLE.name,
-          "errorMessage" -> "actor didn't answer"
-        ))
-    }
-  }
-
   def command(spec: String, command: String) = SecureAsync() { session => request =>
     val replyString = (OrgActor.actor ? DatasetMessage(spec, Command(command), question = true)).mapTo[String]
     replyString.map { reply =>
@@ -132,7 +102,7 @@ object AppController extends Controller with Security {
       val error = datasetContext.acceptUpload(file.filename, { target =>
         file.ref.moveTo(target, replace = true)
         Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
-        OrgActor.actor ! datasetContext.dsInfo.createMessage(ProgressTick(None, PREPARING, BUSY, 100))
+        // todo: find a way to push the new dataset out
         target
       })
       error.map {
@@ -153,6 +123,7 @@ object AppController extends Controller with Security {
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
       Logger.info(s"setDatasetProperties $propsValues")
       dsInfo.setSingularLiteralProps(propsValues: _*)
+      // todo: find a way to push the new dataset out
       Ok
     }
   }
@@ -160,6 +131,7 @@ object AppController extends Controller with Security {
   def toggleDatasetProduction(spec: String) = SecureAsync() { session => request =>
     withDsInfo(spec) { dsInfo =>
       dsInfo.toggleProduction().map(acceptanceOnly => Ok(Json.obj("acceptanceOnly" -> acceptanceOnly.toString)))
+      // todo find a way to push the new dataset out
     }
   }
 
