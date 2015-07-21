@@ -328,7 +328,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   // for actors
 
-  def createMessage(payload: AnyRef, question: Boolean = false) = DatasetMessage(spec, payload, question)
+  def createMessage(payload: AnyRef) = DatasetMessage(spec, payload)
 
   def toTurtle = {
     val sw = new StringWriter()

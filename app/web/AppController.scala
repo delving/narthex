@@ -19,7 +19,7 @@ package web
 import java.util.concurrent.TimeUnit
 
 import akka.actor._
-import akka.pattern.{AskTimeoutException, ask}
+import akka.pattern.ask
 import akka.util.Timeout
 import dataset.DatasetActor._
 import dataset.DsInfo._
@@ -63,6 +63,8 @@ object AppController extends Controller with Security {
     }
   }
 
+  def sendRefresh(spec: String) = OrgActor.actor ? DatasetMessage(spec, Command("refresh"))
+
   def datasetSocket = WebSocket.acceptWithActor[String, String] { request => out =>
     DatasetSocketActor.props(out)
   }
@@ -86,14 +88,9 @@ object AppController extends Controller with Security {
     )
   }
 
-  def command(spec: String, command: String) = SecureAsync() { session => request =>
-    val replyString = (OrgActor.actor ? DatasetMessage(spec, Command(command), question = true)).mapTo[String]
-    replyString.map { reply =>
-      Ok(Json.obj("reply" -> reply))
-    } recover {
-      case t: AskTimeoutException =>
-        Ok(Json.obj("reply" -> "there was no reply"))
-    }
+  def command(spec: String, command: String) = Secure() { session => request =>
+    OrgActor.actor ! DatasetMessage(spec, Command(command))
+    Ok
   }
 
   def uploadDataset(spec: String) = Secure(parse.multipartFormData) { session => request =>
@@ -102,7 +99,7 @@ object AppController extends Controller with Security {
       val error = datasetContext.acceptUpload(file.filename, { target =>
         file.ref.moveTo(target, replace = true)
         Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
-        // todo: find a way to push the new dataset out
+        sendRefresh(spec)
         target
       })
       error.map {
@@ -123,15 +120,17 @@ object AppController extends Controller with Security {
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
       Logger.info(s"setDatasetProperties $propsValues")
       dsInfo.setSingularLiteralProps(propsValues: _*)
-      // todo: find a way to push the new dataset out
+      sendRefresh(spec)
       Ok
     }
   }
 
   def toggleDatasetProduction(spec: String) = SecureAsync() { session => request =>
     withDsInfo(spec) { dsInfo =>
-      dsInfo.toggleProduction().map(acceptanceOnly => Ok(Json.obj("acceptanceOnly" -> acceptanceOnly.toString)))
-      // todo find a way to push the new dataset out
+      dsInfo.toggleProduction().map { acceptanceOnly =>
+        sendRefresh(spec)
+        Ok(Json.obj("acceptanceOnly" -> acceptanceOnly.toString))
+      }
     }
   }
 

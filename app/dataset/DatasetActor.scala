@@ -32,7 +32,6 @@ import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import mapping.Skosifier.SkosificationComplete
 import mapping.{CategoryCounter, Skosifier}
-import org.OrgActor.DatasetQuestion
 import org.OrgContext
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
@@ -104,8 +103,6 @@ object DatasetActor {
 
   // messages to receive
 
-  case class Command(name: String)
-
   trait HarvestStrategy
 
   case class ModifiedAfter(mod: DateTime, justDate: Boolean) extends HarvestStrategy
@@ -115,6 +112,8 @@ object DatasetActor {
   case object FromScratch extends HarvestStrategy
 
   case class StartHarvest(strategy: HarvestStrategy)
+
+  case class Command(name: String)
 
   case class StartAnalysis(processed: Boolean)
 
@@ -129,8 +128,6 @@ object DatasetActor {
   case object StartCategoryCounting
 
   case class WorkFailure(message: String, exceptionOpt: Option[Throwable] = None)
-
-  case object CheckState
 
   case class ProgressTick(reporterOpt: Option[ProgressReporter], progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0)
 
@@ -166,7 +163,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   when(Idle) {
 
-    case Event(DatasetQuestion(listener, Command(commandName)), Dormant) =>
+    case Event(Command(commandName), Dormant) =>
       val replyTry = Try {
 
         def startHarvest(strategy: HarvestStrategy) = {
@@ -255,6 +252,11 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             self ! StartSkosification
             "skosification started"
 
+          case "refresh" =>
+            log.info("refresh")
+            broadcastIdleState()
+            "refreshed"
+
           // todo: category counting?
 
           case _ =>
@@ -268,7 +270,6 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
       val replyString: String = replyTry.getOrElse(s"unrecovered exception")
       log.info(s"Command $commandName: $replyString")
-      listener ! replyString
       stay()
 
     case Event(StartHarvest(strategy), Dormant) =>
@@ -486,15 +487,13 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         stay() using nextActive
       }
 
-    case Event(DatasetQuestion(listener, Command(commandName)), InError(message)) =>
+    case Event(Command(commandName), InError(message)) =>
       log.info(s"In error. Command name: $commandName")
       if (commandName == "clear error") {
         dsInfo.removeLiteralProp(datasetErrorMessage)
-        listener ! "error cleared"
         goto(Idle) using Dormant
       }
       else {
-        listener ! message
         stay()
       }
 
@@ -502,10 +501,9 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       log.info(s"Not interested in: $whatever")
       stay()
 
-    case Event(DatasetQuestion(listener, Command(commandName)), active: Active) =>
+    case Event(Command(commandName), active: Active) =>
       log.info(s"Active. Command name: $commandName")
       if (commandName == "interrupt") {
-        listener ! "interrupt sent to child"
         stay() using active.copy(interrupt = true)
       }
       else {
@@ -531,10 +529,6 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
       dsInfo.setError(s"While not active, failure: $message")
       goto(Idle) using InError(message)
-
-    case Event(DatasetQuestion(listener, CheckState), data) =>
-      listener ! data
-      stay()
 
     case Event(request, data) =>
       log.warning(s"Unhandled request $request in state $stateName/$data")

@@ -298,17 +298,13 @@ define(["angular"], function () {
             setUnchanged()
         });
 
-        function refreshInfo() {
-            alert('NOT!! refresh info'); // todo: for these few cases the websocket should push somehow
-        }
-
         $scope.$watch("expanded", function (expanded) {
             if (expanded) {
                 $location.search("dataset", $scope.dataset.datasetSpec);
             }
         });
 
-        function fileDropped($files, after) {
+        $scope.receiveDropped = function ($files) {
             //$files: an array of files selected, each file has name, size, and type.  Take the first only.
             if (!($files.length && !$scope.dataset.uploading)) return;
             var onlyFile = $files[0];
@@ -328,7 +324,6 @@ define(["angular"], function () {
                 function () {
                     $scope.dataset.uploading = false;
                     $scope.dataset.uploadPercent = null;
-                    if (after) after();
                 }
             ).error(
                 function (data, status, headers, config) {
@@ -341,10 +336,6 @@ define(["angular"], function () {
                     alert(data.problem);
                 }
             );
-        }
-
-        $scope.receiveDropped = function ($files) {
-            fileDropped($files, refreshInfo());
         };
 
         function setProperties(propertyList) {
@@ -352,7 +343,7 @@ define(["angular"], function () {
             _.forEach(propertyList, function (propertyName) {
                 payload.values[propertyName] = angular.copy($scope.dataset.edit[propertyName]);
             });
-            datasetListService.setDatasetProperties($scope.dataset.datasetSpec, payload).then(refreshInfo);
+            datasetListService.setDatasetProperties($scope.dataset.datasetSpec, payload);
         }
 
         $scope.setMetadata = function () {
@@ -404,7 +395,6 @@ define(["angular"], function () {
         $scope.toggleDatasetProduction = function() {
             datasetListService.toggleDatasetProduction($scope.dataset.datasetSpec).then(function(data) {
                 console.log("toggleDatasetProduction", data);
-                refreshInfo()
             });
         };
 
