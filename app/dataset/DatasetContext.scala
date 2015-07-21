@@ -20,6 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import analysis.NodeRepo
+import dataset.DatasetActor.Command
 import dataset.DsInfo.DsMetadata
 import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
@@ -33,6 +34,7 @@ import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
 import services.StringHandling.pathToDirectory
 import services.{FileHandling, StringHandling}
+import triplestore.GraphProperties
 
 import scala.util.{Failure, Success, Try}
 
@@ -87,6 +89,9 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def sourceRepoOpt: Option[SourceRepo] = if (sourceDir.exists()) Some(new SourceRepo(sourceDir)) else None
 
   def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
+
+    def sendRefresh() = OrgActor.actor ! dsInfo.createMessage(Command("refresh"))
+
     if (fileName.endsWith(".csv")) {
       val csvFile = setTargetFile(createRawFile(fileName))
       val reader = FileHandling.createReader(csvFile)
@@ -103,6 +108,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       dsInfo.removeState(RAW_ANALYZED)
       dsInfo.removeState(ANALYZED)
       dropTree()
+      sendRefresh()
       None
     }
     else if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
@@ -110,7 +116,9 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       dsInfo.setState(RAW)
       dsInfo.removeState(RAW_ANALYZED)
       dsInfo.removeState(ANALYZED)
+      dsInfo.removeLiteralProp(GraphProperties.harvestType)
       dropTree()
+      sendRefresh()
       None
     }
     else if (fileName.endsWith(".sip.zip")) {
@@ -136,6 +144,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
             createSourceRepo(PocketParser.POCKET_SOURCE_FACTS)
             sip.copySourceToTempFile.map { sourceFile =>
               OrgActor.actor ! dsInfo.createMessage(AdoptSource(sourceFile))
+              sendRefresh()
               None
             } getOrElse {
               dropSourceRepo()
@@ -143,6 +152,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
             }
           }
           else {
+            sendRefresh()
             None
           }
         } getOrElse {

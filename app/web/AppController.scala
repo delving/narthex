@@ -19,7 +19,6 @@ package web
 import java.util.concurrent.TimeUnit
 
 import akka.actor._
-import akka.pattern.ask
 import akka.util.Timeout
 import dataset.DatasetActor._
 import dataset.DsInfo._
@@ -63,7 +62,7 @@ object AppController extends Controller with Security {
     }
   }
 
-  def sendRefresh(spec: String) = OrgActor.actor ? DatasetMessage(spec, Command("refresh"))
+  def sendRefresh(spec: String) = OrgActor.actor ! DatasetMessage(spec, Command("refresh"))
 
   def datasetSocket = WebSocket.acceptWithActor[String, String] { request => out =>
     DatasetSocketActor.props(out)
@@ -99,7 +98,6 @@ object AppController extends Controller with Security {
       val error = datasetContext.acceptUpload(file.filename, { target =>
         file.ref.moveTo(target, replace = true)
         Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
-        sendRefresh(spec)
         target
       })
       error.map {

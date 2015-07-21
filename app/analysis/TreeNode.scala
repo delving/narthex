@@ -30,6 +30,7 @@ import services.{NarthexEventReader, ProgressReporter}
 import scala.collection.mutable
 import scala.io.Source
 import scala.util.Random
+import scala.xml.NamespaceBinding
 import scala.xml.pull._
 
 object TreeNode {
@@ -38,6 +39,11 @@ object TreeNode {
     val base = new TreeNode(datasetContext.treeRoot, null, null, null)
     var node = base
     val events = new NarthexEventReader(source)
+    def getNamespace(pre: String, scope: NamespaceBinding) = {
+      val uri = scope.getURI(pre)
+      if (uri == null) throw new Exception( s"""No namespace declared for "$pre" prefix!""")
+      uri
+    }
 
     try {
       while (events.hasNext) {
@@ -47,11 +53,10 @@ object TreeNode {
         events.next() match {
 
           case EvElemStart(pre, label, attrs, scope) =>
-            node = node.kid(tag(pre, label), scope.getURI(pre) + label).start()
+            node = node.kid(tag(pre, label), getNamespace(pre, scope) + label).start()
             attrs.foreach { attr =>
               val kid = if (attr.isPrefixed) {
-                val uri = scope.getURI(attr.stringPrefix)
-                node.kid(s"@${attr.prefixedKey}", uri + attr.key)
+                node.kid(s"@${attr.prefixedKey}", getNamespace(attr.stringPrefix, scope) + attr.key)
               }
               else {
                 // todo: get default URI to prefix key?
