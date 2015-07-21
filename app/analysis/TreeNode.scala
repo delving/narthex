@@ -30,8 +30,8 @@ import services.{NarthexEventReader, ProgressReporter}
 import scala.collection.mutable
 import scala.io.Source
 import scala.util.Random
-import scala.xml.NamespaceBinding
 import scala.xml.pull._
+import scala.xml.{MetaData, NamespaceBinding}
 
 object TreeNode {
 
@@ -55,13 +55,8 @@ object TreeNode {
           case EvElemStart(pre, label, attrs, scope) =>
             node = node.kid(tag(pre, label), getNamespace(pre, scope) + label).start()
             attrs.foreach { attr =>
-              val kid = if (attr.isPrefixed) {
-                node.kid(s"@${attr.prefixedKey}", getNamespace(attr.stringPrefix, scope) + attr.key)
-              }
-              else {
-                // todo: get default URI to prefix key?
-                node.kid(s"@${attr.prefixedKey}", attr.key)
-              }
+              val uri = MetaData.getUniversalKey(attr, scope)
+              val kid = node.kid(s"@${attr.prefixedKey}", uri)
               kid.start().value(attr.value.toString()).end()
             }
 

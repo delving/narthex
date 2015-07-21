@@ -232,11 +232,11 @@ define(["angular"], function () {
                         break;
                     case "progress-workers":
                         p.count = 100;
-                        post = " workers";
+                        post = " wrk";
                         break;
                     case "progress-pages":
                         p.count = p.count % 100;
-                        post = " pages";
+                        post = " pg";
                         break;
                 }
                 p.message = pre + post;
