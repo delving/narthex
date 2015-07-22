@@ -416,7 +416,9 @@ define(["angular"], function () {
         };
 
         $scope.deleteDataset = function () {
-            command("delete", "Delete dataset?", $scope.fetchDatasetList);
+            command("delete", "Delete dataset?", function() {
+                $timeout($scope.fetchDatasetList, 2000);
+            });
         };
 
         $scope.start = function(commandMessage, question) {
