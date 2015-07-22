@@ -211,6 +211,10 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     ts.up.sparqlUpdate(deleteDatasetQ(graphName, uri, skosGraphName)).map(ok => true)
   }
 
+  def dropDatasetRecords = {
+    ts.up.sparqlUpdate(deleteDatasetRecordsQ(uri)).map(ok => true)
+  }
+
   def getIdFilter: IdFilter = {
     getLiteralProp(idFilterType).map { filterType =>
       val expressionOpt = getLiteralProp(idFilterExpression).flatMap(ex => if (ex.trim.isEmpty) None else Some(ex))

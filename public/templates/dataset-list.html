@@ -629,11 +629,14 @@
             <button class="btn btn-danger" data-ng-show="dataset.stateSourced" data-ng-click="remove('remove source', 'Remove source records?')">
                 <i class="fa fa-trash"></i> Source
             </button>
+            <button class="btn btn-danger" data-ng-show="dataset.stateProcessed" data-ng-click="remove('remove processed', 'Remove processsed records?')">
+                <i class="fa fa-trash"></i> Processed
+            </button>
             <button class="btn btn-danger" data-ng-show="dataset.stateAnalyzed" data-ng-click="remove('remove tree', 'Remove Analysis?')">
                 <i class="fa fa-trash"></i> Analysis
             </button>
-            <button class="btn btn-danger" data-ng-show="dataset.stateProcessed" data-ng-click="remove('remove processed', 'Remove processsed records?')">
-                <i class="fa fa-trash"></i> Processed
+            <button class="btn btn-danger" data-ng-show="dataset.stateSaved" data-ng-click="remove('delete records', 'Delete Records?')">
+                <i class="fa fa-trash"></i> Records
             </button>
         </div>
         <hr/>

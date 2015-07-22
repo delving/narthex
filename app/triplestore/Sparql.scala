@@ -366,6 +366,25 @@ object Sparql {
       |};
      """.stripMargin
 
+  def deleteDatasetRecordsQ(uri: String) =
+    s"""
+      |DELETE {
+      |   GRAPH ?g {
+      |      ?s ?p ?o .
+      |   }
+      |}
+      |WHERE {
+      |   GRAPH ?g {
+      |      ?foafDoc <$foafPrimaryTopic> ?record .
+      |      ?foafDoc <$belongsTo> <$uri> .
+      |      ?record a <$recordEntity> .
+      |   }
+      |   GRAPH ?g {
+      |      ?s ?p ?o .
+      |   }
+      |};
+     """.stripMargin
+
   def markOlderRecordsDeletedQ(fromSaveTime: DateTime, uri:String) =
     s"""
       |DELETE {

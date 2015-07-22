@@ -202,9 +202,15 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   }
 
   def dropTree() = {
+    dropRecords
     deleteQuietly(treeDir)
     dsInfo.removeState(RAW_ANALYZED)
     dsInfo.removeState(ANALYZED)
+  }
+
+  def dropRecords = {
+    dsInfo.removeState(SAVED)
+    dsInfo.dropDatasetRecords
   }
 
   def startSipZipGeneration() = OrgActor.actor ! dsInfo.createMessage(GenerateSipZip)

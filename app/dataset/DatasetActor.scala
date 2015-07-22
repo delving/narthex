@@ -199,6 +199,11 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             self ! PoisonPill
             "deleted"
 
+          case "delete records" =>
+            Await.ready(datasetContext.dropRecords, 2.minutes)
+            broadcastIdleState()
+            "deleted records"
+
           case "remove raw" =>
             datasetContext.dropRaw()
             broadcastIdleState()
