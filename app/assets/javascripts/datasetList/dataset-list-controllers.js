@@ -24,7 +24,6 @@ define(["angular"], function () {
 
 
     var progressStates = {
-        'state-preparing': "Preparing",
         'state-harvesting': "Harvesting",
         'state-collecting': "Collecting",
         'state-adopting': "Adopting",
@@ -45,13 +44,40 @@ define(["angular"], function () {
         if (user == null) $location.path("/");
         $scope.user = user;
         $scope.uploading = false;
-        $scope.filteredDatasets = [];
-        $scope.files = [];
+        $scope.datasets = [];
         $scope.percent = null;
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
         $scope.newDataset = {};
         $scope.specFilter = "";
+        $scope.socketSubscribers = {};
+
+        var socket = datasetListService.datasetSocket();
+        socket.onopen = function() {
+            socket.send(user.username + " arrived on datasets page");
+        };
+        socket.onmessage = function(messageReturned) {
+            var message = JSON.parse(messageReturned.data);
+            var callback = $scope.socketSubscribers[message.datasetSpec];
+            if (callback) {
+                callback(message);
+            }
+            else {
+                console.warn("Message for unknown dataset: " + message.datasetSpec);
+            }
+        };
+        $scope.$on('$destroy', function () {
+            socket.send(user.username + " left datasets page");
+            socket.close();
+        });
+
+        $scope.subscribe = function(spec, callback) {
+            $scope.socketSubscribers[spec] = callback;
+        };
+
+        $scope.unsubscribe = function(spec) {
+            $scope.socketSubscribers[spec] = undefined;
+        };
 
         function checkNewEnabled() {
             if ($scope.newDataset.specTyped)
@@ -64,19 +90,18 @@ define(["angular"], function () {
         $scope.$watch("newDataset.specTyped", checkNewEnabled);
         $scope.$watch("newDataset.character", checkNewEnabled);
 
-        function filterDatasets() {
+        function filterDataset(ds) {
             var filter = $scope.specFilter.trim();
-            if (filter) {
-                $scope.filteredDatasets = _.filter($scope.datasets, function (dataset) {
-                    return dataset.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
-                });
-            }
-            else {
-                $scope.filteredDatasets = $scope.datasets;
-            }
+            ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
         }
 
-        $scope.$watch("specFilter", filterDatasets);
+        $scope.datasetVisibleFilter = function(ds) {
+            return ds.visible;
+        };
+
+        $scope.$watch("specFilter", function() {
+            _.each($scope.datasets, filterDataset);
+        });
 
         datasetListService.listPrefixes().then(function (prefixes) {
             $scope.characters = _.map(prefixes, function (prefix) {
@@ -136,21 +161,16 @@ define(["angular"], function () {
             if (!stateVisible) {
                 dataset.empty = true;
             }
+            filterDataset(dataset);
+            return dataset;
         };
 
         $scope.fetchDatasetList = function () {
-            console.log('fetching list');
+            //console.log('fetching list');
             $scope.specFilter = "";
             datasetListService.listDatasets().then(function (array) {
-                // kill existing progress checkers
-                if ($scope.datasets) _.forEach($scope.datasets, function (dataset) {
-                    if (dataset.progressCheckerTimeout) {
-                        $timeout.cancel(dataset.progressCheckerTimeout);
-                        delete(dataset.progressCheckerTimeout);
-                    }
-                });
                 _.forEach(array, $scope.decorateDataset);
-                $scope.datasets = $scope.filteredDatasets = array;
+                $scope.datasets = array;
             });
         };
 
@@ -198,186 +218,71 @@ define(["angular"], function () {
     ];
 
     var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload, $routeParams) {
-
-        var ds = $scope.dataset;
-
-        $scope.expanded = $routeParams.dataset == ds.datasetSpec;
-
-        $scope.idFilter = {};
-
-        var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
-        $scope.searchLink = baseUrl + "/search?qf=delving_spec:" + ds.datasetSpec;
-        $scope.apiLink = baseUrl + "/api/search/v1/?qf=delving_spec:" + ds.datasetSpec;
-        // todo: note that edm is hardcoded here:
-        $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + ds.datasetSpec;
-        $scope.apiPathErrors = $scope.user.narthexAPI + "/" + ds.datasetSpec + "/errors";
-
-        function checkProgress() {
-            datasetListService.datasetProgress(ds.datasetSpec).then(
-                function (data) {
-                    if (data.progressType == 'progress-idle') {
-                        console.log(ds.datasetSpec + " is idle, stopping check");
-                        ds.progress = undefined;
-                        if (data.errorMessage) {
-                            console.log(ds.datasetSpec + " has error message " + data.errorMessage);
-                            ds.error = data.errorMessage;
-                        }
-                        if (ds.refreshAfter) {
-                            delete ds.refreshAfter;
-                            console.log(ds.datasetSpec + " refreshing after progress");
-                            refreshInfo();
-                        }
-                        delete ds.progress;
-                    }
-                    else {
-                        console.log(ds.datasetSpec + " is in progress");
-                        ds.progress = {
-                            state: data.progressState,
-                            type: data.progressType,
-                            count: parseInt(data.count)
-                        };
-                        createProgressMessage(ds.progress);
-                        ds.progressCheckerTimeout = $timeout(checkProgress, 900 + Math.floor(Math.random() * 200));
-                    }
-                },
-                function (problem) {
-                    if (problem.status == 404) {
-                        alert("Processing problem with " + ds.datasetSpec);
-                    }
-                    else {
-                        alert("Network problem " + problem.status);
-                    }
-                }
-            );
+        if (!$scope.dataset) {
+            alert("no dataset!");
+            return;
         }
-
-        function refreshProgress() {
-            console.log('refresh progress');
-            datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
-                if (ds.progressCheckerTimeout) $timeout.cancel(ds.progressCheckerTimeout);
-                $scope.decorateDataset(dataset);
-                ds = $scope.dataset = dataset;
-                dataset.refreshAfter = true;
-                dataset.progressCheckerTimeout = $timeout(checkProgress, 1000);
-            });
-        }
-
-        function refreshInfo() {
-            console.log('refresh info');
-            datasetListService.datasetInfo(ds.datasetSpec).then(function (dataset) {
-                $scope.decorateDataset(dataset);
-                ds = $scope.dataset = dataset;
-            });
-        }
-
-        function refreshInfoSoon() {
-            $timeout(refreshInfo, 2000);
-        }
-
-        $scope.leftTabOpen = "metadata";
-        $scope.rightTabOpen = ds.harvestURL ? "harvest" : "drop";
-
-        $scope.$watch("expanded", function (expanded) {
-            if (expanded) {
-                $location.search("dataset", ds.datasetSpec);
-                refreshInfo();
-            }
-            else {
-                refreshProgress();
-            }
-        });
-
-        if (!ds) return;
-
-        ds.progressCheckerTimeout = $timeout(checkProgress, 1000 + Math.floor(Math.random() * 1000));
-
-        $scope.$watch("dataset", function (newDs) {
-            ds = newDs;
-            setUnchanged()
-        });
-
-        function fileDropped($files, after) {
-            //$files: an array of files selected, each file has name, size, and type.  Take the first only.
-            if (!($files.length && !ds.uploading)) return;
-            var onlyFile = $files[0];
-            if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml') || onlyFile.name.endsWith('.csv') || onlyFile.name.endsWith('.sip.zip'))) {
-                alert("Sorry, the file must end with '.xml.gz', '.xml', '.csv' or '.sip.zip'");
-                return;
-            }
-            ds.uploading = true;
-            $upload.upload({
-                url: '/narthex/app/dataset/' + ds.datasetSpec + '/upload',
-                file: onlyFile
-            }).progress(
-                function (evt) {
-                    if (ds.uploading) ds.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
-                }
-            ).success(
-                function () {
-                    ds.uploading = false;
-                    ds.uploadPercent = null;
-                    if (after) after();
-                }
-            ).error(
-                function (data, status, headers, config) {
-                    ds.uploading = false;
-                    ds.uploadPercent = null;
-                    console.log("Failure during upload: data", data);
-                    console.log("Failure during upload: status", status);
-                    console.log("Failure during upload: headers", headers);
-                    console.log("Failure during upload: config", config);
-                    alert(data.problem);
-                }
-            );
-        }
-
-        $scope.receiveDropped = function ($files) {
-            fileDropped($files, refreshProgress);
-        };
-
-        function createProgressMessage(p) {
-            if (p.count == 0) p.count = 1;
-            var pre = '';
-            var post = '';
-            var mid = p.count.toString();
-            if (p.count > 3) {
+        $scope.subscribe($scope.dataset.datasetSpec, function(message){
+            function addProgressMessage(p) {
+                var pre = progressStates[p.state] + " " + p.count.toString();
+                var post = '';
                 switch (p.type) {
-                    case "progress-busy":
-                        p.count = 100;
-                        mid = "...";
-                        break;
                     case "progress-percent":
                         post = " %";
                         break;
                     case "progress-workers":
                         p.count = 100;
-                        post = " workers";
+                        post = " wrk";
                         break;
                     case "progress-pages":
                         p.count = p.count % 100;
-                        post = " pages";
+                        post = " pg";
                         break;
                 }
-                if (p.count > 9) {
-                    pre = progressStates[p.state] + " ";
-                }
+                p.message = pre + post;
+                if (p.count < 10) p.count = 10; // minimum space to write the text above
+                return p;
             }
-            p.message = pre + mid + post;
-        }
-
-
-        function unchanged(fieldNameList) {
-            var unchanged = true;
-            _.forEach(fieldNameList, function (fieldName) {
-                if (!angular.equals(ds[fieldName], ds.edit[fieldName])) {
-//                    console.log("changed " + fieldName);
-                    unchanged = false;
+            $scope.$apply(function() {
+                if (message.progressState) {
+                    $scope.dataset.progress = addProgressMessage({
+                        state: message.progressState,
+                        type: message.progressType,
+                        count: parseInt(message.count)
+                    });
+                    //console.log("PROGRESS: " + message.datasetSpec, $scope.dataset.progress);
+                }
+                else {
+                    $scope.dataset = $scope.decorateDataset(message);
+                    //console.log("IDLE: " + message.datasetSpec, message);
                 }
             });
-            return unchanged;
-        }
+        });
+        $scope.$on('$destroy', function () {
+            $scope.unsubscribe($scope.dataset.spec);
+        });
+        $scope.leftTabOpen = "metadata";
+        $scope.rightTabOpen = $scope.dataset.harvestURL ? "harvest" : "drop";
+        $scope.expanded = $routeParams.dataset == $scope.dataset.datasetSpec;
+        $scope.idFilter = {};
+        var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
+        $scope.searchLink = baseUrl + "/search?qf=delving_spec:" + $scope.dataset.datasetSpec;
+        $scope.apiLink = baseUrl + "/api/search/v1/?qf=delving_spec:" + $scope.dataset.datasetSpec;
+        // todo: note that edm is hardcoded here:
+        $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + $scope.dataset.datasetSpec;
+        $scope.apiPathErrors = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/errors";
 
         function setUnchanged() {
+            function unchanged(fieldNameList) {
+                var unchanged = true;
+                _.forEach(fieldNameList, function (fieldName) {
+                    if (!angular.equals($scope.dataset[fieldName], $scope.dataset.edit[fieldName])) {
+//                    console.log("changed " + fieldName);
+                        unchanged = false;
+                    }
+                });
+                return unchanged;
+            }
             $scope.unchangedMetadata = unchanged(metadataFields);
             $scope.unchangedPublish = unchanged(publishFields);
             $scope.unchangedHarvest = unchanged(harvestFields);
@@ -386,14 +291,59 @@ define(["angular"], function () {
             $scope.unchangedCategories = unchanged(categoriesFields);
         }
 
-        $scope.$watch("dataset.edit", setUnchanged, true);
+        $scope.$watch("dataset.edit", setUnchanged, true); // deep comparison
+
+        $scope.$watch("dataset", function (newDs) {
+            //console.log("watched ds="+$scope.dataset.datasetSpec);
+            setUnchanged()
+        });
+
+        $scope.$watch("expanded", function (expanded) {
+            if (expanded) {
+                $location.search("dataset", $scope.dataset.datasetSpec);
+            }
+        });
+
+        $scope.receiveDropped = function ($files) {
+            //$files: an array of files selected, each file has name, size, and type.  Take the first only.
+            if (!($files.length && !$scope.dataset.uploading)) return;
+            var onlyFile = $files[0];
+            if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml') || onlyFile.name.endsWith('.csv') || onlyFile.name.endsWith('.sip.zip'))) {
+                alert("Sorry, the file must end with '.xml.gz', '.xml', '.csv' or '.sip.zip'");
+                return;
+            }
+            $scope.dataset.uploading = true;
+            $upload.upload({
+                url: '/narthex/app/dataset/' + $scope.dataset.datasetSpec + '/upload',
+                file: onlyFile
+            }).progress(
+                function (evt) {
+                    if ($scope.dataset.uploading) $scope.dataset.uploadPercent = parseInt(100.0 * evt.loaded / evt.total);
+                }
+            ).success(
+                function () {
+                    $scope.dataset.uploading = false;
+                    $scope.dataset.uploadPercent = null;
+                }
+            ).error(
+                function (data, status, headers, config) {
+                    $scope.dataset.uploading = false;
+                    $scope.dataset.uploadPercent = null;
+                    console.log("Failure during upload: data", data);
+                    console.log("Failure during upload: status", status);
+                    console.log("Failure during upload: headers", headers);
+                    console.log("Failure during upload: config", config);
+                    alert(data.problem);
+                }
+            );
+        };
 
         function setProperties(propertyList) {
             var payload = {propertyList: propertyList, values: {}};
             _.forEach(propertyList, function (propertyName) {
-                payload.values[propertyName] = angular.copy(ds.edit[propertyName]);
+                payload.values[propertyName] = angular.copy($scope.dataset.edit[propertyName]);
             });
-            datasetListService.setDatasetProperties(ds.datasetSpec, payload).then(refreshInfo);
+            datasetListService.setDatasetProperties($scope.dataset.datasetSpec, payload);
         }
 
         $scope.setMetadata = function () {
@@ -431,27 +381,26 @@ define(["angular"], function () {
         };
 
         $scope.goToDataset = function () {
-            $location.path("/dataset/" + ds.datasetSpec);
+            $location.path("/dataset/" + $scope.dataset.datasetSpec);
         };
 
         $scope.goToTerms = function () {
-            $location.path("/terms/" + ds.datasetSpec);
+            $location.path("/terms/" + $scope.dataset.datasetSpec);
         };
 
         $scope.goToCategories = function () {
-            $location.path("/categories/" + ds.datasetSpec);
+            $location.path("/categories/" + $scope.dataset.datasetSpec);
         };
 
         $scope.toggleDatasetProduction = function() {
-            datasetListService.toggleDatasetProduction(ds.datasetSpec).then(function(data) {
+            datasetListService.toggleDatasetProduction($scope.dataset.datasetSpec).then(function(data) {
                 console.log("toggleDatasetProduction", data);
-                refreshInfo()
             });
         };
 
         function command(command, areYouSure, after) {
             if (areYouSure && !confirm(areYouSure)) return;
-            datasetListService.command(ds.datasetSpec, command).then(function (reply) {
+            datasetListService.command($scope.dataset.datasetSpec, command).then(function (reply) {
                 console.log(reply);
             }).then(function () {
                 if (after) after();
@@ -463,23 +412,25 @@ define(["angular"], function () {
         };
 
         $scope.clearError = function () {
-            command("clear error", null, refreshInfo());
+            command("clear error", null);
         };
 
         $scope.deleteDataset = function () {
-            command("delete", "Delete dataset?", $scope.fetchDatasetList);
+            command("delete", "Delete dataset?", function() {
+                $timeout($scope.fetchDatasetList, 2000);
+            });
         };
 
         $scope.start = function(commandMessage, question) {
-            command(commandMessage, question, refreshProgress());
+            command(commandMessage, question);
         };
 
         $scope.remove = function(commandMessage, question) {
-            command(commandMessage, question, refreshInfoSoon());
+            command(commandMessage, question);
         };
 
         function fetchSipFileList() {
-            datasetListService.listSipFiles(ds.datasetSpec).then(function (data) {
+            datasetListService.listSipFiles($scope.dataset.datasetSpec).then(function (data) {
                 $scope.sipFiles = (data && data.list && data.list.length) ? data.list : undefined;
             });
         }
@@ -487,13 +438,13 @@ define(["angular"], function () {
         fetchSipFileList();
 
         $scope.deleteSipZip = function () {
-            datasetListService.deleteLatestSipFile(ds.datasetSpec).then(function () {
+            datasetListService.deleteLatestSipFile($scope.dataset.datasetSpec).then(function () {
                 fetchSipFileList();
             });
         };
 
         function executeIdFilter() {
-            var expression = ds.edit.idFilterExpression || '';
+            var expression = $scope.dataset.edit.idFilterExpression || '';
             var delimiter = ":::";
             var divider = expression.indexOf(delimiter);
             if (divider < 0) {

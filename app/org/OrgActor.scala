@@ -34,9 +34,7 @@ object OrgActor {
 
   lazy val actor: ActorRef = Akka.system.actorOf(Props[OrgActor], orgContext.orgId)
 
-  case class DatasetMessage(spec: String, message: AnyRef, question: Boolean = false)
-
-  case class DatasetQuestion(requester: ActorRef, question: AnyRef)
+  case class DatasetMessage(spec: String, message: AnyRef)
 
   case class DatasetsCountCategories(datasets: Seq[String])
 
@@ -49,7 +47,7 @@ class OrgActor extends Actor with ActorLogging {
 
   def receive = {
 
-    case DatasetMessage(spec, message, question) =>
+    case DatasetMessage(spec, message) =>
       val actor: ActorRef = context.child(spec).getOrElse {
         val datasetContext = orgContext.datasetContext(spec)
         val datasetActor = context.actorOf(props(datasetContext), spec)
@@ -57,11 +55,7 @@ class OrgActor extends Actor with ActorLogging {
         context.watch(datasetActor)
         datasetActor
       }
-      if (question) {
-        actor ! DatasetQuestion(sender(), message)
-      } else {
-        actor ! message
-      }
+      actor ! message
 
     case DatasetsCountCategories(datasets) =>
       results = datasets.map(name => (name, None)).toMap

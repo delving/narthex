@@ -39,12 +39,11 @@ object ProgressReporter {
 
   object ProgressType {
     val TYPE_IDLE = ProgressType("progress-idle")
-    val BUSY = ProgressType("progress-busy")
     val PERCENT = ProgressType("progress-percent")
     val WORKERS = ProgressType("progress-workers")
     val PAGES = ProgressType("progress-pages")
 
-    val ALL_PROGRESS_TYPES = List(TYPE_IDLE, BUSY, PERCENT, WORKERS, PAGES)
+    val ALL_PROGRESS_TYPES = List(TYPE_IDLE, PERCENT, WORKERS, PAGES)
 
     def progressTypeFromString(string: String): Option[ProgressType] = ALL_PROGRESS_TYPES.find(s => s.matches(string))
 
@@ -59,7 +58,6 @@ object ProgressReporter {
 
   object ProgressState {
     val STATE_IDLE = ProgressState("state-idle")
-    val PREPARING = ProgressState("state-preparing")
     val HARVESTING = ProgressState("state-harvesting")
     val COLLECTING = ProgressState("state-collecting")
     val ADOPTING = ProgressState("state-adopting")
@@ -72,7 +70,7 @@ object ProgressReporter {
     val SKOSIFYING = ProgressState("state-skosifying")
     val ERROR = ProgressState("state-error")
 
-    val ALL_STATES = List(STATE_IDLE, PREPARING, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, PROCESSING, SAVING, SKOSIFYING, ERROR)
+    val ALL_STATES = List(STATE_IDLE, HARVESTING, COLLECTING, ADOPTING, GENERATING, SPLITTING, COLLATING, CATEGORIZING, PROCESSING, SAVING, SKOSIFYING, ERROR)
 
     def progressStateFromString(string: String): Option[ProgressState] = ALL_STATES.find(s => s.matches(string))
 
@@ -126,7 +124,7 @@ class FakeProgressReporter extends ProgressReporter {
 }
 
 class UpdatingProgressReporter(progressState: ProgressState, datasetActor: ActorRef) extends ProgressReporter {
-  val PATIENCE_MILLIS = 333
+  val PATIENCE_MILLIS = 100
   var interrupted = false
   var readProgressOption: Option[ReadProgress] = None
   var maximumOption: Option[Int] = None
@@ -170,18 +168,9 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetActor: Actor
   }
 
   override def sendValue(value: Option[Int]): Unit = {
-    readProgressOption.map { readProgress =>
-      val percentZero = readProgress.getPercentRead
-      val percent = if (percentZero == 0) 1 else percentZero
-      if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > PATIENCE_MILLIS) {
-        val running = sendPercent(percent)
-        percentWas = percent
-        lastProgress = System.currentTimeMillis()
-        running
-      }
-    } getOrElse {
-      maximumOption.map { maximum =>
-        val percentZero = (100 * value.get) / maximum
+    readProgressOption match {
+      case Some(readProgress) =>
+        val percentZero = readProgress.getPercentRead
         val percent = if (percentZero == 0) 1 else percentZero
         if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > PATIENCE_MILLIS) {
           val running = sendPercent(percent)
@@ -189,10 +178,21 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetActor: Actor
           lastProgress = System.currentTimeMillis()
           running
         }
-      } getOrElse {
-        Logger.warn("Expecting readProgress or maximum")
-        false
-      }
+      case None =>
+        maximumOption match {
+          case Some(maximum) =>
+            val percentZero = (100 * value.get) / maximum
+            val percent = if (percentZero == 0) 1 else percentZero
+            if (percent > percentWas && (System.currentTimeMillis() - lastProgress) > PATIENCE_MILLIS) {
+              val running = sendPercent(percent)
+              percentWas = percent
+              lastProgress = System.currentTimeMillis()
+              running
+            }
+          case None =>
+            Logger.warn("Expecting readProgress or maximum")
+            false
+        }
     }
   }
 }

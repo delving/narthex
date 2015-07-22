@@ -29,6 +29,7 @@ POST        /narthex/set-password                                            web
 GET         /narthex/test-email/:emailType                                   web.MainController.testEmail(emailType)
 
 # File Handling
+GET         /narthex/app/dataset-socket                                      web.AppController.datasetSocket
 GET         /narthex/app/dataset-list                                        web.AppController.listDatasets
 GET         /narthex/app/prefixes                                            web.AppController.listPrefixes
 GET         /narthex/app/dataset/:spec/create/:character/:prefix             web.AppController.createDataset(spec, character, prefix)
@@ -38,7 +39,6 @@ POST        /narthex/app/dataset/:spec/toggle-skos                           web
 POST        /narthex/app/dataset/:spec/set-delimiter                         web.AppController.setRecordDelimiter(spec)
 GET         /narthex/app/dataset/:spec/index                                 web.AppController.index(spec)
 GET         /narthex/app/dataset/:spec/info                                  web.AppController.datasetInfo(spec)
-GET         /narthex/app/dataset/:spec/progress                              web.AppController.datasetProgress(spec)
 GET         /narthex/app/dataset/:spec/command/:command                      web.AppController.command(spec, command)
 GET         /narthex/app/dataset/:spec/status/*path                          web.AppController.nodeStatus(spec, path)
 GET         /narthex/app/dataset/:spec/sample/:size/*path                    web.AppController.sample(spec, path, size:Int)

@@ -18,7 +18,7 @@ package web
 
 import java.util.concurrent.TimeUnit
 
-import akka.pattern.{AskTimeoutException, ask}
+import akka.actor._
 import akka.util.Timeout
 import dataset.DatasetActor._
 import dataset.DsInfo._
@@ -33,11 +33,10 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.{OrgActor, OrgContext}
 import play.api.Logger
+import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
-import services.ProgressReporter.ProgressState._
-import services.ProgressReporter.ProgressType._
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.Sparql
@@ -51,6 +50,23 @@ object AppController extends Controller with Security {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
   implicit val ts = OrgContext.TS
+
+  object DatasetSocketActor {
+    def props(out: ActorRef) = Props(new DatasetSocketActor(out))
+  }
+
+  class DatasetSocketActor(out: ActorRef) extends Actor {
+    def receive = {
+      case politeMessage: String =>
+        Logger.info(s"WebSocket: $politeMessage")
+    }
+  }
+
+  def sendRefresh(spec: String) = OrgActor.actor ! DatasetMessage(spec, Command("refresh"))
+
+  def datasetSocket = WebSocket.acceptWithActor[String, String] { request => out =>
+    DatasetSocketActor.props(out)
+  }
 
   def listDatasets = SecureAsync() { session => request =>
     listDsInfo.map(list => Ok(Json.toJson(list)))
@@ -71,42 +87,9 @@ object AppController extends Controller with Security {
     )
   }
 
-  def datasetProgress(spec: String) = SecureAsync() { session => request =>
-    val replyData = (OrgActor.actor ? DatasetMessage(spec, CheckState, question = true)).mapTo[DatasetActorData]
-    replyData.map {
-      case Dormant =>
-        Ok(Json.obj(
-          "progressType" -> TYPE_IDLE.name
-        ))
-      case Active(_, progressState, progressType, count, interrupt) =>
-        Ok(Json.obj(
-          "progressState" -> progressState.name,
-          "progressType" -> progressType.name,
-          "count" -> count,
-          "interrupt" -> interrupt
-        ))
-      case InError(message) =>
-        Ok(Json.obj(
-          "progressType" -> TYPE_IDLE.name,
-          "errorMessage" -> message
-        ))
-    } recover {
-      case t: AskTimeoutException =>
-        Ok(Json.obj(
-          "progressType" -> TYPE_IDLE.name,
-          "errorMessage" -> "actor didn't answer"
-        ))
-    }
-  }
-
-  def command(spec: String, command: String) = SecureAsync() { session => request =>
-    val replyString = (OrgActor.actor ? DatasetMessage(spec, Command(command), question = true)).mapTo[String]
-    replyString.map { reply =>
-      Ok(Json.obj("reply" -> reply))
-    } recover {
-      case t: AskTimeoutException =>
-        Ok(Json.obj("reply" -> "there was no reply"))
-    }
+  def command(spec: String, command: String) = Secure() { session => request =>
+    OrgActor.actor ! DatasetMessage(spec, Command(command))
+    Ok
   }
 
   def uploadDataset(spec: String) = Secure(parse.multipartFormData) { session => request =>
@@ -115,7 +98,6 @@ object AppController extends Controller with Security {
       val error = datasetContext.acceptUpload(file.filename, { target =>
         file.ref.moveTo(target, replace = true)
         Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
-        OrgActor.actor ! datasetContext.dsInfo.createMessage(ProgressTick(None, PREPARING, BUSY, 100))
         target
       })
       error.map {
@@ -136,13 +118,17 @@ object AppController extends Controller with Security {
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
       Logger.info(s"setDatasetProperties $propsValues")
       dsInfo.setSingularLiteralProps(propsValues: _*)
+      sendRefresh(spec)
       Ok
     }
   }
 
   def toggleDatasetProduction(spec: String) = SecureAsync() { session => request =>
     withDsInfo(spec) { dsInfo =>
-      dsInfo.toggleProduction().map(acceptanceOnly => Ok(Json.obj("acceptanceOnly" -> acceptanceOnly.toString)))
+      dsInfo.toggleProduction().map { acceptanceOnly =>
+        sendRefresh(spec)
+        Ok(Json.obj("acceptanceOnly" -> acceptanceOnly.toString))
+      }
     }
   }
 

@@ -40,6 +40,9 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
+                datasetSocket: function() {
+                    return new WebSocket(app.datasetSocket().webSocketUrl());
+                },
                 create: function (spec, character, prefix) {
                     return app.createDataset(spec, character, prefix).get().then(
                         function (response) {
@@ -58,22 +61,6 @@ define(["angular", "common"], function (angular) {
                 },
                 toggleDatasetProduction: function (spec) {
                     return app.toggleDatasetProduction(spec).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                datasetInfo: function (spec) {
-                    return app.datasetInfo(spec).get().then(
-                        function (response) {
-                            return response.data;
-                        },
-                        rejection
-                    );
-                },
-                datasetProgress: function (spec) {
-                    return app.datasetProgress(spec).get().then(
                         function (response) {
                             return response.data;
                         },
