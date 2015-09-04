@@ -20,6 +20,7 @@ import analysis.TreeNode.LengthHistogram
 import dataset.DatasetContext
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils.writeStringToFile
+import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
@@ -41,7 +42,9 @@ object TreeNode {
     val events = new NarthexEventReader(source)
     def getNamespace(pre: String, scope: NamespaceBinding) = {
       val uri = scope.getURI(pre)
-      if (uri == null) throw new Exception( s"""No namespace declared for "$pre" prefix!""")
+      // TODO: implement better checke for missing namespaces. Declaring all null namespaces illegal breaks CSV and Adlib import
+      // Logger.info(uri)
+      // if (uri == null) throw new Exception( s"""No namespace declared for "$pre" prefix!""")
       uri
     }
 
