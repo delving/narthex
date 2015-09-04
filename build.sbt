@@ -28,7 +28,7 @@ scalaVersion := "2.10.4"
 //  "org.webjars" % "webjars-locator" % "0.14",
 
 libraryDependencies ++= Seq(
-  "org.webjars" %% "webjars-play" % "2.3.0-2",
+  "org.webjars" %% "webjars-play" % "2.3.0-3",
   "org.webjars" % "bootstrap" % "3.1.1-2",
   "org.webjars" % "underscorejs" % "1.8.3",
   "org.webjars" % "jquery" % "2.1.1",
