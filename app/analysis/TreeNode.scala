@@ -42,9 +42,7 @@ object TreeNode {
     val events = new NarthexEventReader(source)
     def getNamespace(pre: String, scope: NamespaceBinding) = {
       val uri = scope.getURI(pre)
-      // TODO: implement better checke for missing namespaces. Declaring all null namespaces illegal breaks CSV and Adlib import
-      // Logger.info(uri)
-      // if (uri == null) throw new Exception( s"""No namespace declared for "$pre" prefix!""")
+      if (uri == null && pre != null) throw new Exception( s"""No namespace declared for "$pre" prefix!""")
       uri
     }
 
