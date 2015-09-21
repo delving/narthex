@@ -34,6 +34,7 @@ define(["angular"], function (angular) {
         $scope.change = {};
         $scope.changeDisabled = true;
 
+
         function checkLogin() {
             userService.checkLogin().then(function (user) {
                 $scope.editedUser = angular.copy(user);
@@ -117,7 +118,7 @@ define(["angular"], function (angular) {
     };
     DashboardCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$window", "userService", "$timeout"];
 
-    /** Controls the header */
+    /** Controls the sidebar and headers */
     var IndexCtrl = function ($rootScope, $scope, userService, $location) {
 
         $scope.initialize = function (orgId, sipCreatorLink, oauthUrl) {
@@ -128,15 +129,25 @@ define(["angular"], function (angular) {
             $scope.toggleBar = true;
         };
 
-        $scope.sidebarNav = function (page) {
+        $rootScope.sidebarNav = function (page, dataset) {
+
             var navlist = $('#sidebar-nav a');
             navlist.removeClass('active');
+
             switch (page) {
                 case 'homepage':
                     $location.path('/');
                     break;
                 case 'dataset-list':
-                    $location.path('/dataset-list');
+                    var dsPath = "/dataset-list?dataset="+dataset;
+
+                    if(dataset){
+                        $location.search('dataset', dataset).path('/dataset-list');
+                    }
+                    else {
+                        $location.path('/dataset-list');
+                    }
+
                     break;
                 case 'skos':
                     $location.path('/skos');
