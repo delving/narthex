@@ -64,3 +64,41 @@
 .pull(@offset:1) {
   margin-right: @total-width*(((@gutter-width+@column-width)*@offset) / @gridsystem-width) + @total-width*((@gutter-width*.5)/@gridsystem-width);
 }
+
+/****************************************************************************************/
+
+// Specify the number of available columns
+@grid-columns:          12;
+// Inner padding on each side of a column to create gutters
+@grid-column-padding:   15px;
+// Point at which the floats kick in and horizontally align columns
+@grid-float-breakpoint: 768px;
+
+.make-row() {
+  // Negative margin the row out to align the content of columns
+  margin-left: -@grid-column-padding;
+  margin-right: -@grid-column-padding;
+  // Then clear the floated columns
+  .clearfix();
+}
+
+.make-column(@columns) {
+  @media (min-width: @grid-float-breakpoint) {
+    float: left;
+    // Calculate width based on number of columns available
+    width: percentage(@columns / @grid-columns);
+  }
+  // Prevent columns from collapsing when empty
+  min-height: 1px;
+  // Set inner padding as gutters instead of margin
+  padding-left: @grid-column-padding;
+  padding-right: @grid-column-padding;
+  // Proper box-model (padding doesn't add to width)
+  .box-sizing(border-box);
+}
+
+.make-column-offset(@columns) {
+  @media (min-width: @grid-float-breakpoint) {
+    margin-left: percentage(@columns / @grid-columns);
+  }
+}
