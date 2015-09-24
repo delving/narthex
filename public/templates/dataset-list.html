@@ -1,3 +1,4 @@
+<!-- E -->
 <div class="page-header">
     <!-- page location, org -->
     <div class="meta">
@@ -127,14 +128,14 @@
 
             <div class="ds-states">
                 <div data-ng-show="dataset.empty">
-                    <div><strong>Empty</strong></div>
+                    <h6>Empty</h6>
                 </div>
                 <div data-ng-show="dataset.stateRaw" class="ds-state">
                     <h6>Raw</h6>
-                    {{ dataset.stateRaw.d }}<br/>
-                    {{ dataset.stateRaw.t }}
-                    <div class="ds-footer" class="btn-toolbar">
-                        <button class="btn btn-sm btn-success" data-ng-click="startRawAnalysis()">
+                    <div class="small">{{ dataset.stateRaw.d }}</div>
+                    <div>{{ dataset.stateRaw.t }}</div>
+                    <div>
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start raw analysis')">
                             <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
                         </button>
                     </div>
@@ -143,7 +144,7 @@
                     <h6>Raw Analyzed</h6>
                     {{ dataset.stateRawAnalyzed.d }}<br/>
                     {{ dataset.stateRawAnalyzed.t }}
-                    <button class="btn btn-sm btn-i class=btn-toolbarnfo" data-ng-click="goToDataset()">
+                    <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
                         <i class="fa fa-fw fa-eye"></i> <span>Delimit</span>
                     </button>
                 </div>
@@ -152,8 +153,8 @@
                     <h6>Sourced</h6>
                     {{ dataset.stateSourced.d }}<br/>
                     {{ dataset.stateSourced.t }}
-                    <div class="btn-toolbar">
-                        <button class="btn btn-sm btn-success" data-ng-click="startGeneratingSip()">
+                    <div>
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start generating sip')">
                             <i class="fa fa-fw fa-cube"></i> <span>Make SIP</span>
                         </button>
                     </div>
@@ -163,7 +164,7 @@
                     <h6>Mappable</h6>
                     {{ dataset.stateMappable.d }}<br/>
                     {{ dataset.stateMappable.t }}
-                    <div class="btn-toolbar">
+                    <div>
                         <a href="{{sipCreatorLink}}" class="btn btn-sm btn-default">
                             <i class="fa fa-fw fa-download"></i> Mapper
                         </a>
@@ -174,8 +175,8 @@
                     <h6>Processable</h6>
                     {{ dataset.stateProcessable.d }}<br/>
                     {{ dataset.stateProcessable.t }}
-                    <div class="btn-toolbar">
-                        <button class="btn btn-sm btn-success" data-ng-click="startProcessing()">
+                    <div>
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start processing')">
                             <i class="fa fa-fw fa-cogs"></i> <span>Process</span>
                         </button>
                     </div>
@@ -185,8 +186,8 @@
                     <h6>Processed</h6>
                     {{ dataset.stateProcessed.d }}<br/>
                     {{ dataset.stateProcessed.t }}
-                    <div class="btn-toolbar">
-                        <button class="btn btn-sm btn-success" data-ng-click="startProcessedAnalysis()">
+                    <div>
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start processed analysis')">
                             <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
                         </button>
                     </div>
@@ -196,8 +197,8 @@
                     <h6>Analyzed</h6>
                     {{ dataset.stateAnalyzed.d }}<br/>
                     {{ dataset.stateAnalyzed.t }}
-                    <div class="btn-toolbar">
-                        <button class="btn btn-sm btn-success" data-ng-click="startSaving()">
+                    <div>
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start saving')">
                             <i class="fa fa-fw fa-database"></i> <span>Save</span>
                         </button>
                     </div>
@@ -206,11 +207,9 @@
                     <h6>Saved</h6>
                     {{ dataset.stateSaved.d }}<br/>
                     {{ dataset.stateSaved.t }}
-                    <div class="btn-toolbar">
-                        <button class="btn btn-sm class=btn-toolbar btn-info" data-ng-click="goToDataset()">
-                            <i class="fa fa-fw fa-eye"></i> <span>Explore</span>
-                        </button>
-                    </div>
+                    <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
+                        <i class="fa fa-fw fa-eye"></i> <span>Explore</span>
+                    </button>
                 </div>
                 <div data-ng-show="dataset.stateSaved && dataset.skosField" class="ds-state">
                     <h6>Map Terms</h6>
