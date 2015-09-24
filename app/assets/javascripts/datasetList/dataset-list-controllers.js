@@ -266,8 +266,8 @@ define(["angular"], function () {
         $scope.expanded = $routeParams.dataset == $scope.dataset.datasetSpec;
         $scope.idFilter = {};
         var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
-        $scope.searchLink = baseUrl + "/search?qf=delving_spec:" + $scope.dataset.datasetSpec;
-        $scope.apiLink = baseUrl + "/api/search/v1/?qf=delving_spec:" + $scope.dataset.datasetSpec;
+        $scope.searchLink = baseUrl + "/search?q=delving_spec:" + $scope.dataset.datasetSpec;
+        $scope.apiLink = baseUrl + "/api/search/v1/?q=delving_spec:" + $scope.dataset.datasetSpec;
         // todo: note that edm is hardcoded here:
         $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + $scope.dataset.datasetSpec;
         $scope.apiPathErrors = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/errors";
