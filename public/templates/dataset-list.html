@@ -107,6 +107,11 @@
                     <i class="fa fa-fw fa-eye bg-success"></i>
                     <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
+
+                <span class="btn btn-default" data-ng-click="goToSparql()" data-ng-show="dataset.stateSaved">
+                    <i class="fa fa-fw fa-database bg-success"></i>
+                    <span>RDF saved</span>
+                </span>
             </span>
             <span data-ng-show="dataset.datasetRecordCount && dataset.stateAnalyzed">
                 <span>{{ dataset.datasetRecordCount }}</span>
@@ -438,11 +443,11 @@
                     <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
                 </div>
             </div>
-            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start first harvest', 'Erase existing data?')"  data-ng-disabled="!unchangedHarvest">
+            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')"  data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-download"></i>
                 <span>Harvest</span>
             </button>
-            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start sample harvest', 'Erase existing data?')"  data-ng-disabled="!unchangedHarvest">
+            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start sample harvest', 'Erase existing data,including records from the triple-store?')"  data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-binoculars"></i>
                 <span>Sample</span>
             </button>

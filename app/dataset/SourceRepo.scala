@@ -107,7 +107,7 @@ object SourceRepo {
 
   def sourceFacts(home: File): SourceFacts = {
     val file = sourceFactsFile(home)
-    val lines = Source.fromFile(file).getLines()
+    val lines = Source.fromFile(file, "UTF-8").getLines()
     val map = lines.flatMap { line =>
       val equals = line.indexOf("=")
       if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
