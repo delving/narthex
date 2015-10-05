@@ -165,9 +165,8 @@ define(["angular"], function () {
             if (!stateVisible) {
                 dataset.empty = true;
             }
-            dataset.current_state = _.max(dataset.states, function(state){ return state.date});
+            dataset.stateCurrent = _.max(dataset.states, function(state){ return state.date});
             filterDataset(dataset);
-            console.log(dataset);
             return dataset;
         };
 
