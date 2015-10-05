@@ -58,4 +58,4 @@ Further development funding will be provided by the Swedish Arts Council and Lä
 
 ---
 
-Contact: Gerald de Jong &lt;gerald@delving.eu&gt;
+Contact: info@delving.eu

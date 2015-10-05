@@ -30,4 +30,4 @@ The Narthex user interface or something like it will also probably be the best s
 
 ---
 
-Contact: Gerald de Jong &lt;gerald@delving.eu&gt;
+Contact: info@delving.eu;

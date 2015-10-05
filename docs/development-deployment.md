@@ -127,4 +127,4 @@ Note that once a dataset is in production mode, it will be necessary to "Save" t
 
 ---
 
-Contact: Gerald de Jong &lt;gerald@delving.eu&gt;
+Contact: info@delving.eu;

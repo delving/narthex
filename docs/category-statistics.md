@@ -28,4 +28,4 @@ The data for the Excel file are also recorded separately as text data files, so 
 
 ---
 
-Contact: Gerald de Jong &lt;gerald@delving.eu&gt;
+Contact: info@delving.eu;
