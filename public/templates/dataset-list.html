@@ -268,6 +268,9 @@
                         <li data-ng-class="{'active':leftTabOpen === 'check'}">
                             <a href role="tab" data-ng-click="leftTabOpen ='check'">Links</a>
                         </li>
+                        <li data-ng-class="{'active':leftTabOpen === 'statistics'}">
+                            <a href role="tab" data-ng-click="leftTabOpen ='statistics'">statistics</a>
+                        </li>
                     </ul>
 
                     <div class="tab-content clearfix">
@@ -284,6 +287,9 @@
                             <div ng-switch-when="check">
                                 <div data-ng-include="'check-links.html'">check links</div>
                             </div>
+                            <div ng-switch-when="statistics">
+                            <div data-ng-include="'sync-statistics.html'">statistics</div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -618,6 +624,21 @@
         <li class="list-group-item">
             <a class="" ng-href="{{ oaiPmhLink }}" target="_blank">
                 <i class="fa fa-download"></i> <span>OAI-PMH</span>
+            </a>
+        </li>
+        <li class="list-group-item">
+            <a class="" ng-href="{{ sparqlPath }}" target="_blank">
+                <i class="fa fa-database"></i> <span>SPARQL</span>
+            </a>
+        </li>
+    </ul>
+</script>
+
+<script type="text/ng-template" id="'sync-statistics.html'">
+    <ul class="list-group">
+        <li class="list-group-item">
+            <a class="" ng-href="{{ searchLink }}" target="_blank">
+                <i class="fa fa-search"></i> <span>Search</span>
             </a>
         </li>
     </ul>
