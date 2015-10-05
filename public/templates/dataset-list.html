@@ -82,12 +82,16 @@
     <div data-ng-controller="DatasetEntryCtrl" class="widget">
 
         <div class="widget-header">
+
             <!-- todo: should be a caret down to indicate expansion -->
             <span class="clickable" data-ng-click="expanded = !expanded">
                 <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
                 <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
+
             </span>
-            <span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">
+
+            <!--<span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">-->
+            <span class="pull-right">
 
                 <span data-ng-show="!user.singleTripleStore">
                     <span class="btn btn-default" data-ng-click="toggleDatasetProduction()">
@@ -98,7 +102,7 @@
                     </span>
                 </span>
 
-                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()">
+                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.stateAnalyzed">
                     <i class="fa fa-fw fa-bug bg-danger"></i>
                     <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
@@ -108,29 +112,34 @@
                     <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
 
+                <!--<span data-ng-if="dataset.stateCurrent.name == 'stateSaved'" class="btn btn-default" data-ng-click="goToSparql()">-->
+                    <!--<i class="fa fa-fw fa-database bg-success"></i>-->
+                        <!--<span>RDF saved</span>-->
+                <!--</span>-->
 
-                <span class="btn btn-default" data-ng-click="goToSparql()" data-ng-show="dataset.stateSaved">
-                    <i class="fa fa-fw fa-database bg-success"></i>
-                    <span>RDF saved</span>
+                <span ng-switch="dataset.stateCurrent.name">
+                    <span ng-switch-when="stateRaw" class="label label-info">stateRaw</span>
+                    <span ng-switch-when="stateRawAnalyzed" class="label label-info">stateRawAnalyzed</span>
+                    <span ng-switch-when="stateSourced" class="label label-info">stateSourced</span>
+                    <span ng-switch-when="stateMappable" class="label label-info">stateMappable</span>
+                    <span ng-switch-when="stateProcessable" class="label label-info">stateProcessed</span>
+                    <span ng-switch-when="stateAnalyzed" class="label label-info">stateAnalyzed</span>
+                    <span ng-switch-when="stateSaved" class="btn btn-success" data-ng-click="goToSparql()">
+                        <i class="fa fa-fw fa-database"></i>
+                        <span>RDF saved</span>
+                    </span>
+                    <span ng-switch-default class="label label-warning">
+                        <span >I'm empty :-(</span>
+                    </span>
                 </span>
 
-
-
-            </span>
-            <span data-ng-show="dataset.datasetRecordCount && dataset.stateAnalyzed">
-                <span>{{ dataset.datasetRecordCount }}</span>
             </span>
 
-                <span ng-switch="dataset.stateCurrent.name" class="btn btn-default">
-                    <span ng-switch-when="stateRaw">stateRaw</span>
-                    <span ng-switch-when="stateRawAnalyzed">stateRawAnalyzed</span>
-                    <span ng-switch-when="stateSourced">stateSourced</span>
-                    <span ng-switch-when="stateMappable">stateMappable</span>
-                    <span ng-switch-when="stateProcessable">stateProcessed</span>
-                    <span ng-switch-when="stateAnalyzed">stateAnalyzed</span>
-                    <span ng-switch-when="stateSaved">stateSaved</span>
-                    <span ng-switch-default>stateEmpty</span>
-                </span>
+            <!--<span data-ng-show="dataset.datasetRecordCount && dataset.stateAnalyzed">-->
+                <!--<span>{{ dataset.datasetRecordCount }}</span>-->
+            <!--</span>-->
+
+
         </div>
 
         <div class="widget-body" data-ng-if="dataset.progress">
