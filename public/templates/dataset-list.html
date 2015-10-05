@@ -108,14 +108,29 @@
                     <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
 
+
                 <span class="btn btn-default" data-ng-click="goToSparql()" data-ng-show="dataset.stateSaved">
                     <i class="fa fa-fw fa-database bg-success"></i>
                     <span>RDF saved</span>
                 </span>
+
+
+
             </span>
             <span data-ng-show="dataset.datasetRecordCount && dataset.stateAnalyzed">
                 <span>{{ dataset.datasetRecordCount }}</span>
             </span>
+
+                <span ng-switch="dataset.stateCurrent.name" class="btn btn-default">
+                    <span ng-switch-when="stateRaw">stateRaw</span>
+                    <span ng-switch-when="stateRawAnalyzed">stateRawAnalyzed</span>
+                    <span ng-switch-when="stateSourced">stateSourced</span>
+                    <span ng-switch-when="stateMappable">stateMappable</span>
+                    <span ng-switch-when="stateProcessable">stateProcessed</span>
+                    <span ng-switch-when="stateAnalyzed">stateAnalyzed</span>
+                    <span ng-switch-when="stateSaved">stateSaved</span>
+                    <span ng-switch-default>stateEmpty</span>
+                </span>
         </div>
 
         <div class="widget-body" data-ng-if="dataset.progress">
