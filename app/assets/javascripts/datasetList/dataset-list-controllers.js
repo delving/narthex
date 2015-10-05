@@ -133,23 +133,27 @@ define(["angular"], function () {
             $scope.dropSupported = true;
         };
 
+        $scope.datasetStates =  [
+            'stateRaw', 'stateRawAnalyzed', 'stateSourced',
+            'stateMappable', 'stateProcessable', 'stateProcessed',
+            'stateAnalyzed', 'stateSaved'
+        ];
+
         $scope.decorateDataset = function (dataset) {
             dataset.edit = angular.copy(dataset);
             dataset.apiMappings = user.narthexAPI + '/' + dataset.datasetSpec + '/mappings';
+            dataset.states = [];
 //            if (dataset.character) dataset.prefix = info.character.prefix;
 //            split the states into date and time
             var stateVisible = false;
             _.forEach(
-                [
-                    'stateRaw', 'stateRawAnalyzed', 'stateSourced',
-                    'stateMappable', 'stateProcessable', 'stateProcessed',
-                    'stateAnalyzed', 'stateSaved'
-                ],
+                $scope.datasetStates,
                 function (stateName) {
                     var time = dataset[stateName];
                     if (time) {
                         stateVisible = true;
                         var dt = time.split('T');
+                        dataset.states.push({"name": stateName, "date": Date.parse(time)});
                         dataset[stateName] = {
                             d: dt[0],
                             t: dt[1].split('+')[0],
@@ -161,7 +165,9 @@ define(["angular"], function () {
             if (!stateVisible) {
                 dataset.empty = true;
             }
+            dataset.current_state = _.max(dataset.states, function(state){ return state.date});
             filterDataset(dataset);
+            console.log(dataset);
             return dataset;
         };
 
@@ -375,6 +381,12 @@ define(["angular"], function () {
             if (!nextState) return true;
             if (currState) return currState.dt > nextState.dt;
             return false;
+        };
+
+        $scope.currentState = function(dataSet) {
+            // list all dates from states (dictionary)
+            // find latest
+            // return give back state name
         };
 
         $scope.showInvalidRecordsPage = function () {
