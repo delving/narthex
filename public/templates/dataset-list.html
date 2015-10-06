@@ -16,6 +16,19 @@
             <div class="form-group">
                 <label>Filter:</label>
                 <input type="text" class="form-control" data-ng-model="specFilter" placeholder="dataset"/>
+                <!-- TODO: make a stateFilter that is triggered on-change -->
+                <!--<select class="form-control" data-ng-model="stateFilter" ng-change="">-->
+                    <!--<option>All</option>-->
+                    <!--<option value="">Empty</option>-->
+                    <!--<option value="stateRaw">Raw</option>-->
+                    <!--<option value="stateRawAnalyzed">Raw analyzed</option>-->
+                    <!--<option value="stateSourced">Sourced</option>-->
+                    <!--<option value="stateMappable">Mappable</option>-->
+                    <!--<option value="stateProcessable">Processable</option>-->
+                    <!--<option value="stateProcessed">Processed</option>-->
+                    <!--<option value="stateAnalyzed">Analyzed</option>-->
+                    <!--<option value="stateSaved">Saved</option>-->
+                <!--</select>-->
             </div>
             <div class="form-group">
                 <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
@@ -25,6 +38,10 @@
 </div>
 
 <div class="file-list">
+    <!-- TODO: make this look nice and update on dataset state change. Also make use of this for filtering -->
+    <div data-ng-repeat="(name, count)  in datasetStateCounter">
+        <span><em>{{ name }} ({{ count }})</em></span>
+    </div>
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
     </div>
@@ -82,12 +99,16 @@
     <div data-ng-controller="DatasetEntryCtrl" class="widget">
 
         <div class="widget-header">
+
             <!-- todo: should be a caret down to indicate expansion -->
-            <span class="clickable" data-ng-click="expanded = !expanded">
+            <a href class="clickable" data-ng-click="expanded = !expanded">
                 <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
                 <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
-            </span>
-            <span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">
+
+            </a>
+
+            <!--<span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">-->
+            <span class="pull-right">
 
                 <span data-ng-show="!user.singleTripleStore">
                     <span class="btn btn-default" data-ng-click="toggleDatasetProduction()">
@@ -98,7 +119,7 @@
                     </span>
                 </span>
 
-                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()">
+                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.stateAnalyzed">
                     <i class="fa fa-fw fa-bug bg-danger"></i>
                     <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
@@ -108,14 +129,35 @@
                     <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
 
-                <span class="btn btn-default" data-ng-click="goToSparql()" data-ng-show="dataset.stateSaved">
-                    <i class="fa fa-fw fa-database bg-success"></i>
-                    <span>RDF saved</span>
+                <!--<span data-ng-if="dataset.stateCurrent.name == 'stateSaved'" class="btn btn-default" data-ng-click="goToSparql()">-->
+                    <!--<i class="fa fa-fw fa-database bg-success"></i>-->
+                        <!--<span>RDF saved</span>-->
+                <!--</span>-->
+
+                <span ng-switch="dataset.stateCurrent.name">
+                    <span ng-switch-when="stateRaw" class="label label-info">Raw source</span>
+                    <span ng-switch-when="stateRawAnalyzed" class="label label-info">Raw source analyzed</span>
+                    <span ng-switch-when="stateSourced" class="label label-info">Sourced</span>
+                    <span ng-switch-when="stateMappable" class="label label-info">Mappable</span>
+                    <span ng-switch-when="stateProcessable" class="label label-info">Processable</span>
+                    <span ng-switch-when="stateProcessed" class="label label-info">Processed</span>
+                    <span ng-switch-when="stateAnalyzed" class="label label-info">Analyzed</span>
+                    <span ng-switch-when="stateSaved" class="btn btn-success" data-ng-click="goToSparql()">
+                        <i class="fa fa-fw fa-database"></i>
+                        <span>RDF saved</span>
+                    </span>
+                    <span ng-switch-default class="label label-warning">
+                        <span >Empty :-(</span>
+                    </span>
                 </span>
+
             </span>
-            <span data-ng-show="dataset.datasetRecordCount && dataset.stateAnalyzed">
-                <span>{{ dataset.datasetRecordCount }}</span>
-            </span>
+
+            <!--<span data-ng-show="dataset.datasetRecordCount && dataset.stateAnalyzed">-->
+                <!--<span>{{ dataset.datasetRecordCount }}</span>-->
+            <!--</span>-->
+
+
         </div>
 
         <div class="widget-body" data-ng-if="dataset.progress">
@@ -132,9 +174,9 @@
         <div class="widget-body" data-ng-if="expanded && !dataset.progress">
 
             <div class="ds-states">
-                <div data-ng-show="dataset.empty">
-                    <h6>Empty</h6>
-                </div>
+                <!--<div data-ng-show="dataset.empty">-->
+                    <!--<h6>Empty</h6>-->
+                <!--</div>-->
                 <div data-ng-show="dataset.stateRaw" class="ds-state">
                     <h6>Raw</h6>
                     <div class="small">{{ dataset.stateRaw.d }}</div>
@@ -268,6 +310,9 @@
                         <li data-ng-class="{'active':leftTabOpen === 'check'}">
                             <a href role="tab" data-ng-click="leftTabOpen ='check'">Links</a>
                         </li>
+                        <li data-ng-class="{'active':leftTabOpen === 'statistics'}">
+                            <a href role="tab" data-ng-click="leftTabOpen ='statistics'">statistics</a>
+                        </li>
                     </ul>
 
                     <div class="tab-content clearfix">
@@ -284,6 +329,9 @@
                             <div ng-switch-when="check">
                                 <div data-ng-include="'check-links.html'">check links</div>
                             </div>
+                            <div ng-switch-when="statistics">
+                            <div data-ng-include="'sync-statistics.html'">statistics</div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -618,6 +666,21 @@
         <li class="list-group-item">
             <a class="" ng-href="{{ oaiPmhLink }}" target="_blank">
                 <i class="fa fa-download"></i> <span>OAI-PMH</span>
+            </a>
+        </li>
+        <li class="list-group-item">
+            <a class="" ng-href="{{ sparqlPath }}" target="_blank">
+                <i class="fa fa-database"></i> <span>SPARQL</span>
+            </a>
+        </li>
+    </ul>
+</script>
+
+<script type="text/ng-template" id="'sync-statistics.html'">
+    <ul class="list-group">
+        <li class="list-group-item">
+            <a class="" ng-href="{{ searchLink }}" target="_blank">
+                <i class="fa fa-search"></i> <span>Search</span>
             </a>
         </li>
     </ul>

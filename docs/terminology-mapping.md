@@ -40,4 +40,4 @@ Currently the mappings are recorded as **skos:exactMatch** but we may want to ex
 
 ---
 
-Contact: Gerald de Jong &lt;gerald@delving.eu&gt;
+Contact: info@delving.eu;

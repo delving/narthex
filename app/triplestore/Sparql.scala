@@ -373,6 +373,13 @@ object Sparql {
       |      ?s ?p ?o .
       |   }
       |}
+      | INSERT {
+      |   GRAPH ? g {
+      |     ?foafDoc <$deleted> true .
+      |     ?foafDoc <$synced> false .
+      |     ?foafDoc <$foafPrimaryTopic> ?record .
+      |     ?foafDoc <$belongsTo> <$uri> .
+      |     ?record a <$recordEntity> .
       |WHERE {
       |   GRAPH ?g {
       |      ?foafDoc <$foafPrimaryTopic> ?record .

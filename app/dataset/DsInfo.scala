@@ -278,7 +278,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   )
 
   def setIncrementalProcessedRecordCounts(validCount: Int, invalidCount: Int) = setSingularLiteralProps(
-    processedIncrementalInvalid -> validCount.toString,
+    processedIncrementalValid -> validCount.toString,
     processedIncrementalInvalid -> invalidCount.toString
   )
 

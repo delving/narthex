@@ -31,23 +31,22 @@ class TestOrphanDelete extends PlaySpec with OneAppPerSuite with PrepareEDM with
 
     def process(processedDir: File, idFilter: IdFilter, timeStamp: DateTime) = {
       val processedRepo = new ProcessedRepo(FileHandling.clearDir(processedDir), info)
-      var processedFile = processedRepo.createOutput.xmlFile
+      val processedFile = processedRepo.createOutput.xmlFile
       val processedWriter = createWriter(processedFile)
       // fill processed repo by mapping records
       val source = latestSip.copySourceToTempFile
-      source.isDefined must be(true)
+      source.isDefined must be(right = true)
       val sourceRepo = createSourceRepo
       sourceRepo.acceptFile(source.get, ProgressReporter())
       var mappedPockets = List.empty[Pocket]
       latestSip.createSipMapper.map { sipMapper =>
         def pocketCatcher(pocket: Pocket): Unit = {
-          var mappedPocket = sipMapper.executeMapping(pocket)
+          val mappedPocket = sipMapper.executeMapping(pocket)
           mappedPocket.map(_.writeTo(processedWriter))
           mappedPockets = mappedPocket.get :: mappedPockets
         }
         sourceRepo.parsePockets(pocketCatcher, idFilter, ProgressReporter())
       }
-      mappedPockets
       mappedPockets.size must be(3)
       processedWriter.close()
 
