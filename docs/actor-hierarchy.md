@@ -32,4 +32,4 @@ The actor hierarchy is still very simple but in the future we will want to have 
 
 ---
 
-Contact: Gerald de Jong &lt;gerald@delving.eu&gt;
+Contact: info@delving.eu;

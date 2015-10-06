@@ -108,6 +108,13 @@ object GraphProperties {
   val processedIncrementalValid = NXProp("processedIncrementalValid", intProp)
   val processedIncrementalInvalid = NXProp("processedIncrementalInvalid", intProp)
 
+  val recordGraphsStored = NXProp("recordGraphsStored", intProp)
+  val recordGraphsIndexed = NXProp("recordGraphsIndexed", intProp)
+  val recordGraphsInSync = NXProp("recordGraphsInSync", intProp)
+  val recordGraphsOutOfSync = NXProp("recordGraphsOutOfSync", intProp)
+  val recordGraphsDeleted = NXProp("recordGraphsDeleted", intProp)
+  val naveSyncErrorMessage = NXProp("naveSyncErrorMessage")
+
   val publishOAIPMH = NXProp("publishOAIPMH", booleanProp)
   val publishIndex = NXProp("publishIndex", booleanProp)
   val publishLOD = NXProp("publishLOD", booleanProp)

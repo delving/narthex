@@ -45,4 +45,4 @@ Once the SIP-Zip has been uploaded, Narthex uses its mapping to map and validate
 
 ---
 
-Contact: Gerald de Jong &lt;gerald@delving.eu&gt;
+Contact: info@delving.eu;

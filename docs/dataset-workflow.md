@@ -42,4 +42,4 @@ Narthex saves the processed RDF data to the associated triple store. Initially t
 
 ---
 
-Contact: Gerald de Jong &lt;gerald@delving.eu&gt;
+Contact: info@delving.eu;

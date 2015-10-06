@@ -36,4 +36,4 @@ Taking this further to have SKOS contain the names of people may be a bridge too
 
 ---
 
-Contact: Gerald de Jong &lt;gerald@delving.eu&gt;
+Contact: info@delving.eu;
