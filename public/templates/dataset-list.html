@@ -10,6 +10,7 @@
             <span>{{ orgId }}</span>
         </div>
     </div>
+    </div>
     <!-- page specifiction actions/tools -->
     <div class="actions">
         <form class="form-inline">
@@ -28,11 +29,14 @@
     </div>
 </div>
 
-<div class="file-list">
-    <!-- TODO: make this look nice and update on dataset state change. Also make use of this for filtering -->
-    <div data-ng-repeat="(name, count)  in datasetStateCounter">
-        <span><em>{{ name }} ({{ count }})</em></span>
+<!-- TODO: make this look nice and update on dataset state change. Also make use of this for filtering -->
+<div class="widget-header">
+    <div data-ng-repeat="state in datasetStates">
+        <div class="btn btn-default">{{ state.label }} <strong>{{ state.count }}</strong></div>
     </div>
+</div>
+
+<div class="file-list">
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
     </div>
@@ -95,7 +99,6 @@
             <a href class="clickable" data-ng-click="expanded = !expanded">
                 <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
                 <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
-
             </a>
 
             <!--<span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">-->

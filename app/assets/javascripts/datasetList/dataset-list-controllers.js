@@ -102,9 +102,9 @@ define(["angular"], function () {
             ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
         }
 
-        function filterDatasetByState(ds){
+        function filterDatasetByState(ds) {
             var filter = $scope.stateFilter.name;
-            if (filter != 'stateEmpty'){
+            if (filter != 'stateEmpty') {
                 ds.visible = !filter || ds.stateCurrent.name === filter;
             }
             else {
@@ -112,15 +112,15 @@ define(["angular"], function () {
             }
         }
 
-        $scope.datasetVisibleFilter = function(ds) {
+        $scope.datasetVisibleFilter = function (ds) {
             return ds.visible;
         };
 
-        $scope.$watch("specFilter", function() {
+        $scope.$watch("specFilter", function () {
             _.each($scope.datasets, filterDatasetBySpec);
         });
 
-        $scope.$watch("stateFilter", function() {
+        $scope.$watch("stateFilter", function () {
             console.log($scope.stateFilter);
             _.each($scope.datasets, filterDatasetByState);
         });
@@ -156,15 +156,16 @@ define(["angular"], function () {
         };
 
         $scope.datasetStates = [
-            {name: 'stateEmpty', label: 'Empty'},
-            {name: 'stateRaw', label: 'Raw'},
-            {name: 'stateRawAnalyzed', label: 'Raw analyzed'},
-            {name: 'stateSourced', label: 'Sourced'},
-            {name: 'stateMappable', label: 'Mappable'},
-            {name: 'stateProcessable', label: 'Processable'},
-            {name: 'stateProcessed', label: 'Processed'},
-            {name: 'stateAnalyzed', label: 'Analyzed'},
-            {name: 'stateSaved', label: 'Saved'},
+            {name: 'stateEmpty', label: 'Empty', count: 0},
+            {name: 'stateRaw', label: 'Raw', count: 0},
+            {name: 'stateRawAnalyzed', label: 'Raw analyzed', count: 0},
+            {name: 'stateSourced', label: 'Sourced', count: 0},
+            {name: 'stateMappable', label: 'Mappable', count: 0},
+            {name: 'stateProcessable', label: 'Processable', count: 0},
+            {name: 'stateProcessed', label: 'Processed', count: 0},
+            {name: 'stateAnalyzed', label: 'Analyzed', count: 0},
+            {name: 'stateSaved', label: 'Saved', count: 0},
+            {name: 'stateSynced', label: 'Synced', count: 0}
         ];
 
         $scope.decorateDataset = function (dataset) {
@@ -206,16 +207,35 @@ define(["angular"], function () {
             datasetListService.listDatasets().then(function (array) {
                 _.forEach(array, $scope.decorateDataset);
                 $scope.datasets = array;
-                $scope.datasetStateCounter = $scope.updateDatasetStateCounter();
+                $scope.updateDatasetStateCounter();
             });
         };
 
         $scope.fetchDatasetList();
 
+        $scope.updateDatasetList = function (dataset) {
+            $scope.datasets = _.reject($scope.datasets, function (ds) {
+                return ds.datasetSpec == dataset.datasetSpec;
+            });
+            $scope.datasets.push(dataset);
+        };
+
         $scope.updateDatasetStateCounter = function () {
-            return _.countBy($scope.datasets, function (dataset) {
+            var datasetStateCounter = _.countBy($scope.datasets, function (dataset) {
                 return dataset.stateCurrent.name;
             });
+            $scope.datasetStates = _.map(
+                $scope.datasetStates,
+                function (state) {
+                    if (_.has(datasetStateCounter, state.name)) {
+                        state.count = datasetStateCounter[state.name];
+                    }
+                    else {
+                        state.count = 0;
+                    }
+                    return state;
+                }
+            );
         };
 
         $scope.createDataset = function () {
@@ -297,7 +317,9 @@ define(["angular"], function () {
                 }
                 else {
                     $scope.dataset = $scope.decorateDataset(message);
-                    //console.log("IDLE: " + message.datasetSpec, message);
+                    $scope.updateDatasetList(message);
+                    $scope.updateDatasetStateCounter();
+                    console.log("IDLE: " + message.datasetSpec, message);
                 }
             });
         });
