@@ -50,6 +50,7 @@ define(["angular"], function () {
         $scope.newFileOpen = false;
         $scope.newDataset = {};
         $scope.specFilter = "";
+        $scope.stateFilter = "";
         $scope.socketSubscribers = {};
 
         var socket = datasetListService.datasetSocket();
@@ -90,17 +91,38 @@ define(["angular"], function () {
         $scope.$watch("newDataset.specTyped", checkNewEnabled);
         $scope.$watch("newDataset.character", checkNewEnabled);
 
-        function filterDataset(ds) {
+
+        /********************************************************************/
+        /* dataset filtering                                                */
+        /********************************************************************/
+
+
+        function filterDatasetBySpec(ds) {
             var filter = $scope.specFilter.trim();
             ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
         }
 
-        $scope.datasetVisibleFilter = function (ds) {
+        function filterDatasetByState(ds){
+            var filter = $scope.stateFilter.name;
+            if (filter != 'stateEmpty'){
+                ds.visible = !filter || ds.stateCurrent.name === filter;
+            }
+            else {
+                ds.visible = !filter || ds.empty;
+            }
+        }
+
+        $scope.datasetVisibleFilter = function(ds) {
             return ds.visible;
         };
 
-        $scope.$watch("specFilter", function () {
-            _.each($scope.datasets, filterDataset);
+        $scope.$watch("specFilter", function() {
+            _.each($scope.datasets, filterDatasetBySpec);
+        });
+
+        $scope.$watch("stateFilter", function() {
+            console.log($scope.stateFilter);
+            _.each($scope.datasets, filterDatasetByState);
         });
 
         datasetListService.listPrefixes().then(function (prefixes) {
@@ -134,9 +156,15 @@ define(["angular"], function () {
         };
 
         $scope.datasetStates = [
-            'stateRaw', 'stateRawAnalyzed', 'stateSourced',
-            'stateMappable', 'stateProcessable', 'stateProcessed',
-            'stateAnalyzed', 'stateSaved'
+            {name: 'stateEmpty', label: 'Empty'},
+            {name: 'stateRaw', label: 'Raw'},
+            {name: 'stateRawAnalyzed', label: 'Raw analyzed'},
+            {name: 'stateSourced', label: 'Sourced'},
+            {name: 'stateMappable', label: 'Mappable'},
+            {name: 'stateProcessable', label: 'Processable'},
+            {name: 'stateProcessed', label: 'Processed'},
+            {name: 'stateAnalyzed', label: 'Analyzed'},
+            {name: 'stateSaved', label: 'Saved'},
         ];
 
         $scope.decorateDataset = function (dataset) {
@@ -148,13 +176,13 @@ define(["angular"], function () {
             var stateVisible = false;
             _.forEach(
                 $scope.datasetStates,
-                function (stateName) {
-                    var time = dataset[stateName];
+                function (state) {
+                    var time = dataset[state.name];
                     if (time) {
                         stateVisible = true;
                         var dt = time.split('T');
-                        dataset.states.push({"name": stateName, "date": Date.parse(time)});
-                        dataset[stateName] = {
+                        dataset.states.push({"name": state.name, "date": Date.parse(time)});
+                        dataset[state.name] = {
                             d: dt[0],
                             t: dt[1].split('+')[0],
                             dt: dt
@@ -168,7 +196,7 @@ define(["angular"], function () {
             dataset.stateCurrent = _.max(dataset.states, function (state) {
                 return state.date
             });
-            filterDataset(dataset);
+            filterDatasetBySpec(dataset);
             return dataset;
         };
 

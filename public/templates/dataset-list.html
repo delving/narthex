@@ -16,19 +16,10 @@
             <div class="form-group">
                 <label>Filter:</label>
                 <input type="text" class="form-control" data-ng-model="specFilter" placeholder="dataset"/>
-                <!-- TODO: make a stateFilter that is triggered on-change -->
-                <!--<select class="form-control" data-ng-model="stateFilter" ng-change="">-->
-                    <!--<option>All</option>-->
-                    <!--<option value="">Empty</option>-->
-                    <!--<option value="stateRaw">Raw</option>-->
-                    <!--<option value="stateRawAnalyzed">Raw analyzed</option>-->
-                    <!--<option value="stateSourced">Sourced</option>-->
-                    <!--<option value="stateMappable">Mappable</option>-->
-                    <!--<option value="stateProcessable">Processable</option>-->
-                    <!--<option value="stateProcessed">Processed</option>-->
-                    <!--<option value="stateAnalyzed">Analyzed</option>-->
-                    <!--<option value="stateSaved">Saved</option>-->
-                <!--</select>-->
+                <select class="form-control"
+                        data-ng-model="stateFilter"
+                        data-ng-options="state.label for state in datasetStates track by state.name">
+                </select>
             </div>
             <div class="form-group">
                 <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
