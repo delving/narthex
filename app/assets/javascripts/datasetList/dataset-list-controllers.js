@@ -53,10 +53,10 @@ define(["angular"], function () {
         $scope.socketSubscribers = {};
 
         var socket = datasetListService.datasetSocket();
-        socket.onopen = function() {
+        socket.onopen = function () {
             socket.send(user.username + " arrived on datasets page");
         };
-        socket.onmessage = function(messageReturned) {
+        socket.onmessage = function (messageReturned) {
             var message = JSON.parse(messageReturned.data);
             var callback = $scope.socketSubscribers[message.datasetSpec];
             if (callback) {
@@ -71,11 +71,11 @@ define(["angular"], function () {
             socket.close();
         });
 
-        $scope.subscribe = function(spec, callback) {
+        $scope.subscribe = function (spec, callback) {
             $scope.socketSubscribers[spec] = callback;
         };
 
-        $scope.unsubscribe = function(spec) {
+        $scope.unsubscribe = function (spec) {
             $scope.socketSubscribers[spec] = undefined;
         };
 
@@ -95,11 +95,11 @@ define(["angular"], function () {
             ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
         }
 
-        $scope.datasetVisibleFilter = function(ds) {
+        $scope.datasetVisibleFilter = function (ds) {
             return ds.visible;
         };
 
-        $scope.$watch("specFilter", function() {
+        $scope.$watch("specFilter", function () {
             _.each($scope.datasets, filterDataset);
         });
 
@@ -133,7 +133,7 @@ define(["angular"], function () {
             $scope.dropSupported = true;
         };
 
-        $scope.datasetStates =  [
+        $scope.datasetStates = [
             'stateRaw', 'stateRawAnalyzed', 'stateSourced',
             'stateMappable', 'stateProcessable', 'stateProcessed',
             'stateAnalyzed', 'stateSaved'
@@ -165,7 +165,9 @@ define(["angular"], function () {
             if (!stateVisible) {
                 dataset.empty = true;
             }
-            dataset.stateCurrent = _.max(dataset.states, function(state){ return state.date});
+            dataset.stateCurrent = _.max(dataset.states, function (state) {
+                return state.date
+            });
             filterDataset(dataset);
             return dataset;
         };
@@ -176,10 +178,17 @@ define(["angular"], function () {
             datasetListService.listDatasets().then(function (array) {
                 _.forEach(array, $scope.decorateDataset);
                 $scope.datasets = array;
+                $scope.datasetStateCounter = $scope.updateDatasetStateCounter();
             });
         };
 
         $scope.fetchDatasetList();
+
+        $scope.updateDatasetStateCounter = function () {
+            return _.countBy($scope.datasets, function (dataset) {
+                return dataset.stateCurrent.name;
+            });
+        };
 
         $scope.createDataset = function () {
             datasetListService.create($scope.newDataset.spec, $scope.newDataset.character.code, $scope.newDataset.character.prefix).then(function () {
@@ -227,7 +236,7 @@ define(["angular"], function () {
             alert("no dataset!");
             return;
         }
-        $scope.subscribe($scope.dataset.datasetSpec, function(message){
+        $scope.subscribe($scope.dataset.datasetSpec, function (message) {
             function addProgressMessage(p) {
                 var pre = progressStates[p.state] + " " + p.count.toString();
                 var post = '';
@@ -248,7 +257,8 @@ define(["angular"], function () {
                 if (p.count < 10) p.count = 10; // minimum space to write the text above
                 return p;
             }
-            $scope.$apply(function() {
+
+            $scope.$apply(function () {
                 if (message.progressState) {
                     $scope.dataset.progress = addProgressMessage({
                         state: message.progressState,
@@ -289,6 +299,7 @@ define(["angular"], function () {
                 });
                 return unchanged;
             }
+
             $scope.unchangedMetadata = unchanged(metadataFields);
             $scope.unchangedPublish = unchanged(publishFields);
             $scope.unchangedHarvest = unchanged(harvestFields);
@@ -372,7 +383,7 @@ define(["angular"], function () {
             setProperties(harvestCronFields);
         };
 
-        $scope.setIdFilter = function() {
+        $scope.setIdFilter = function () {
             setProperties(idFilterFields);
         };
 
@@ -382,7 +393,7 @@ define(["angular"], function () {
             return false;
         };
 
-        $scope.currentState = function(dataSet) {
+        $scope.currentState = function (dataSet) {
             // list all dates from states (dictionary)
             // find latest
             // return give back state name
@@ -408,8 +419,8 @@ define(["angular"], function () {
             $location.path("/categories/" + $scope.dataset.datasetSpec);
         };
 
-        $scope.toggleDatasetProduction = function() {
-            datasetListService.toggleDatasetProduction($scope.dataset.datasetSpec).then(function(data) {
+        $scope.toggleDatasetProduction = function () {
+            datasetListService.toggleDatasetProduction($scope.dataset.datasetSpec).then(function (data) {
                 console.log("toggleDatasetProduction", data);
             });
         };
@@ -432,16 +443,16 @@ define(["angular"], function () {
         };
 
         $scope.deleteDataset = function () {
-            command("delete", "Delete dataset?", function() {
+            command("delete", "Delete dataset?", function () {
                 $timeout($scope.fetchDatasetList, 2000);
             });
         };
 
-        $scope.start = function(commandMessage, question) {
+        $scope.start = function (commandMessage, question) {
             command(commandMessage, question);
         };
 
-        $scope.remove = function(commandMessage, question) {
+        $scope.remove = function (commandMessage, question) {
             command(commandMessage, question);
         };
 

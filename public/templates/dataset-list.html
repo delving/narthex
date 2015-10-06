@@ -38,6 +38,10 @@
 </div>
 
 <div class="file-list">
+    <!-- TODO: make this look nice and update on dataset state change. Also make use of this for filtering -->
+    <div data-ng-repeat="(name, count)  in datasetStateCounter">
+        <span><em>{{ name }} ({{ count }})</em></span>
+    </div>
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
     </div>
