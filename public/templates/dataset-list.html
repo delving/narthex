@@ -29,14 +29,16 @@
     </div>
 </div>
 
-<!-- TODO: make this look nice and update on dataset state change. Also make use of this for filtering -->
-<div class="widget-header">
-    <div data-ng-repeat="state in datasetStates">
-        <div class="btn btn-default">{{ state.label }} <strong>{{ state.count }}</strong></div>
-    </div>
-</div>
 
 <div class="file-list">
+
+    <!-- TODO: make this look nice and update on dataset state change. Also make use of this for filtering -->
+    <div class="widget-header">
+        <div data-ng-repeat="state in datasetStates">
+            <div class="btn btn-default">{{ state.label }} <strong>{{ state.count }}</strong></div>
+        </div>
+    </div>
+
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
     </div>
@@ -168,10 +170,12 @@
         <div class="widget-body" data-ng-if="expanded && !dataset.progress">
 
             <div class="ds-states">
-                <!--<div data-ng-show="dataset.empty">-->
-                    <!--<h6>Empty</h6>-->
-                <!--</div>-->
-                <div data-ng-show="dataset.stateRaw" class="ds-state">
+                <div data-ng-show="dataset.empty" class="ds-state"
+                     data-ng-class="{ 'later': isCurrent('stateEmpty') }">
+                    <h6>Empty</h6>
+                </div>
+                <div data-ng-show="dataset.stateRaw" class="ds-state"
+                     data-ng-class="{ 'later': isCurrent('stateRaw') }">
                     <h6>Raw</h6>
                     <div class="small">{{ dataset.stateRaw.d }}</div>
                     <div>{{ dataset.stateRaw.t }}</div>
@@ -181,7 +185,8 @@
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state">
+                <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state"
+                     data-ng-class="{ 'later': isCurrent('stateRawAnalyzed') }">
                     <h6>Raw Analyzed</h6>
                     {{ dataset.stateRawAnalyzed.d }}<br/>
                     {{ dataset.stateRawAnalyzed.t }}
@@ -190,7 +195,7 @@
                     </button>
                 </div>
                 <div data-ng-show="dataset.stateSourced" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateSourced, dataset.stateMappable) }">
+                     data-ng-class="{ 'later': isCurrent('stateSourced') }">
                     <h6>Sourced</h6>
                     {{ dataset.stateSourced.d }}<br/>
                     {{ dataset.stateSourced.t }}
@@ -201,7 +206,7 @@
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateMappable" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateMappable, dataset.stateProcessable) }">
+                     data-ng-class="{ 'later': isCurrent('stateMappable') }">
                     <h6>Mappable</h6>
                     {{ dataset.stateMappable.d }}<br/>
                     {{ dataset.stateMappable.t }}
@@ -212,7 +217,7 @@
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateProcessable" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateProcessable, dataset.stateProcessed) }">
+                     data-ng-class="{ 'later': isCurrent('stateProcessable') }">
                     <h6>Processable</h6>
                     {{ dataset.stateProcessable.d }}<br/>
                     {{ dataset.stateProcessable.t }}
@@ -223,7 +228,7 @@
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateProcessed" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateProcessed, dataset.stateAnalyzed) }">
+                     data-ng-class="{ 'later': isCurrent('stateProcessed') }">
                     <h6>Processed</h6>
                     {{ dataset.stateProcessed.d }}<br/>
                     {{ dataset.stateProcessed.t }}
@@ -234,7 +239,7 @@
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateAnalyzed" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateAnalyzed, dataset.stateSaved) }">
+                     data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
                     <h6>Analyzed</h6>
                     {{ dataset.stateAnalyzed.d }}<br/>
                     {{ dataset.stateAnalyzed.t }}
@@ -244,7 +249,8 @@
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="dataset.stateSaved" class="ds-state">
+                <div data-ng-show="dataset.stateSaved" class="ds-state"
+                     data-ng-class="{ 'later': isCurrent('stateSaved') }">
                     <h6>Saved</h6>
                     {{ dataset.stateSaved.d }}<br/>
                     {{ dataset.stateSaved.t }}

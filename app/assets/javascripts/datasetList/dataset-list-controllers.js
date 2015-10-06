@@ -214,10 +214,12 @@ define(["angular"], function () {
         $scope.fetchDatasetList();
 
         $scope.updateDatasetList = function (dataset) {
-            $scope.datasets = _.reject($scope.datasets, function (ds) {
-                return ds.datasetSpec == dataset.datasetSpec;
+            $scope.datasets = _.map($scope.datasets, function (ds) {
+                if (ds.datasetSpec == dataset.datasetSpec){
+                    ds = dataset;
+                }
+                return ds;
             });
-            $scope.datasets.push(dataset);
         };
 
         $scope.updateDatasetStateCounter = function () {
@@ -443,10 +445,8 @@ define(["angular"], function () {
             return false;
         };
 
-        $scope.currentState = function (dataSet) {
-            // list all dates from states (dictionary)
-            // find latest
-            // return give back state name
+        $scope.isCurrent = function (currState) {
+            return currState == $scope.dataset.stateCurrent.name;
         };
 
         $scope.showInvalidRecordsPage = function () {
