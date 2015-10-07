@@ -133,12 +133,12 @@
                     </span>
                 </span>
 
-                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.stateAnalyzed">
+                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.stateProcessed">
                     <i class="fa fa-fw fa-bug bg-danger"></i>
                     <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
 
-                <span class="btn btn-default" data-ng-click="goToDataset()" data-ng-show="dataset.stateAnalyzed">
+                <span class="btn btn-default" data-ng-click="goToDataset()" data-ng-show="dataset.stateProcessed">
                     <i class="fa fa-fw fa-eye bg-success"></i>
                     <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
