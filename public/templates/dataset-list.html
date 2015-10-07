@@ -19,12 +19,23 @@
             </div>
             <div class="form-group">
                 <div class="dropdown">
-                    <button id="state-filter-button" type="button" class="btn btn-primary" dropdown-toggle ng-disabled="disabled">
+                    <button id="state-filter-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
                         Filter by state <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
                         <li data-ng-repeat="state in datasetStates" role="menuitem"><a href data-ng-click="setStateFilter(state.name)">{{ state.label }} ({{ state.count }})</a></li>
                         <li role="menuitem"><a href data-ng-click="stateFilter = ''">Reset</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="dropdown">
+                    <button id="order-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
+                        Order by <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
+                        <li role="menuitem"><a href data-ng-click="datasetListOrder('state')">State</a></li>
+                        <li role="menuitem"><a href data-ng-click="datasetListOrder('lastmodified')">Date last modified</a></li>
                     </ul>
                 </div>
             </div>
@@ -692,19 +703,19 @@
             the subsequent processes can be repeated.
         </div>
         <div>
-            <button class="btn btn-danger" data-ng-show="dataset.stateRaw" data-ng-click="remove('remove raw', 'Remove raw file?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateRaw" data-ng-click="remove('remove raw', 'Remove raw file?')">
                 <i class="fa fa-trash"></i> Raw
             </button>
-            <button class="btn btn-danger" data-ng-show="dataset.stateSourced" data-ng-click="remove('remove source', 'Remove source records?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateSourced" data-ng-click="remove('remove source', 'Remove source records?')">
                 <i class="fa fa-trash"></i> Source
             </button>
-            <button class="btn btn-danger" data-ng-show="dataset.stateProcessed" data-ng-click="remove('remove processed', 'Remove processsed records?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateProcessed" data-ng-click="remove('remove processed', 'Remove processsed records?')">
                 <i class="fa fa-trash"></i> Processed
             </button>
-            <button class="btn btn-danger" data-ng-show="dataset.stateAnalyzed" data-ng-click="remove('remove tree', 'Remove Analysis?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateAnalyzed" data-ng-click="remove('remove tree', 'Remove Analysis?')">
                 <i class="fa fa-trash"></i> Analysis
             </button>
-            <button class="btn btn-danger" data-ng-show="dataset.stateSaved" data-ng-click="remove('delete records', 'Delete Records?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateSaved" data-ng-click="remove('delete records', 'Delete Records?')">
                 <i class="fa fa-trash"></i> Records
             </button>
         </div>

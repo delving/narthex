@@ -112,6 +112,10 @@ define(["angular"], function () {
             }
         }
 
+        $scope.datasetListOrder = function(orderBy){
+            alert('order by:' + orderBy)
+        }
+
         $scope.setStateFilter = function(state){
             $scope.stateFilter = state;
             //filterDatasetByState(ds)
