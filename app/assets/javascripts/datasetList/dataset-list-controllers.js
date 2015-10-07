@@ -103,7 +103,7 @@ define(["angular"], function () {
         }
 
         function filterDatasetByState(ds) {
-            var filter = $scope.stateFilter.name;
+            var filter = $scope.stateFilter;
             if (filter != 'stateEmpty') {
                 ds.visible = !filter || ds.stateCurrent.name === filter;
             }
@@ -111,6 +111,11 @@ define(["angular"], function () {
                 ds.visible = !filter || ds.empty;
             }
         }
+
+        $scope.setStateFilter = function(state){
+            $scope.stateFilter = state;
+            //filterDatasetByState(ds)
+        };
 
         $scope.datasetVisibleFilter = function (ds) {
             return ds.visible;
@@ -121,7 +126,7 @@ define(["angular"], function () {
         });
 
         $scope.$watch("stateFilter", function () {
-            console.log($scope.stateFilter);
+            console.log('wathc tri');
             _.each($scope.datasets, filterDatasetByState);
         });
 
