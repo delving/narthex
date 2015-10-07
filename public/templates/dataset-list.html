@@ -12,40 +12,47 @@
     </div>
     <!-- page specifiction actions/tools -->
     <div class="actions">
-        <form class="form-inline">
+        <form action="" class="form-inline">
             <div class="form-group">
-                <label>Filter:</label>
-                <input type="text" class="form-control" data-ng-model="specFilter" placeholder="Filter by name"/>
+                <button class="btn btn-default" data-ng-click="toggleToolbar()">&nbsp;<i class="fa fa-filter"></i>&nbsp;</button>
             </div>
             <div class="form-group">
-                <div class="dropdown">
-                    <button id="state-filter-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
-                        Filter by state <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
-                        <li data-ng-repeat="state in datasetStates" role="menuitem"><a href data-ng-click="setStateFilter(state.name)">{{ state.label }} ({{ state.count }})</a></li>
-                        <li role="menuitem"><a href data-ng-click="stateFilter = ''">Reset</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="dropdown">
-                    <button id="order-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
-                        Order by <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
-                        <li role="menuitem"><a href data-ng-click="datasetListOrder('state')">State</a></li>
-                        <li role="menuitem"><a href data-ng-click="datasetListOrder('lastmodified')">Date last modified</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="form-group">
-                <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
+                <a href class="btn btn-default" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
             </div>
         </form>
+
     </div>
 </div>
 
+<div class="navbar navbar-default" data-ng-show="showToolbar">
+    <form class="navbar-form navbar-left">
+        <div class="form-group">
+            <div class="dropdown">
+                <button id="order-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
+                    Order by <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
+                    <li role="menuitem"><a href data-ng-click="datasetListOrder('state')">State</a></li>
+                    <li role="menuitem"><a href data-ng-click="datasetListOrder('lastmodified')">Date last modified</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="dropdown">
+                <button id="state-filter-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
+                    Filter by state <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
+                    <li data-ng-repeat="state in datasetStates" role="menuitem"><a href data-ng-click="setStateFilter(state.name)">{{ state.label }} ({{ state.count }})</a></li>
+                    <li role="menuitem"><a href data-ng-click="stateFilter = ''">Reset</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="form-group">
+            <input type="text" class="form-control" data-ng-model="specFilter" placeholder="Filter by name"/>
+        </div>
+    </form>
+</div>
 
 <div class="file-list">
 

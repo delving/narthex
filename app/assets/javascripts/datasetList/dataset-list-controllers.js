@@ -95,6 +95,10 @@ define(["angular"], function () {
         /********************************************************************/
         /* dataset filtering                                                */
         /********************************************************************/
+        $scope.showToolbar = false;
+        $scope.toggleToolbar = function () {
+            $scope.showToolbar = !$scope.showToolbar;
+        }
 
 
         function filterDatasetBySpec(ds) {
@@ -130,7 +134,6 @@ define(["angular"], function () {
         });
 
         $scope.$watch("stateFilter", function () {
-            console.log('wathc tri');
             _.each($scope.datasets, filterDatasetByState);
         });
 
