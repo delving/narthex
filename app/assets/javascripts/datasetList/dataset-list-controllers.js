@@ -116,9 +116,23 @@ define(["angular"], function () {
             }
         }
 
-        $scope.datasetListOrder = function(orderBy){
-            alert('order by:' + orderBy)
-        }
+        $scope.datasetListOrder = function (orderBy) {
+            switch (orderBy) {
+                case "state":
+                    $scope.datasets = _.sortBy($scope.datasets, function (ds) {return ds.stateCurrent.name});
+                    $scope.currentSortOrder = orderBy;
+                    break;
+                case "lastmodified":
+                    $scope.datasets = _.sortBy($scope.datasets, function (ds) {return ds.stateCurrent.date}).reverse();
+                    $scope.currentSortOrder = orderBy;
+                    break;
+                default:
+                    $scope.datasets = _.sortBy($scope.datasets, 'datasetSpec');
+                    $scope.currentSortOrder = 'spec';
+                    break;
+            }
+            console.log($scope.datasets)
+        };
 
         $scope.setStateFilter = function(state){
             $scope.stateFilter = state;
@@ -333,6 +347,7 @@ define(["angular"], function () {
                     $scope.dataset = $scope.decorateDataset(message);
                     $scope.updateDatasetList(message);
                     $scope.updateDatasetStateCounter();
+                    $scope.datasetListOrder($scope.currentSortOrder);
                     console.log("IDLE: " + message.datasetSpec, message);
                 }
             });
