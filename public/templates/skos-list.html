@@ -22,7 +22,7 @@
     <div data-ng-if="!skosList.length" class="col-md-12">
         <h4>No Vocabularies</h4>
     </div>
-    <div ng-repeat="skos in skosList" class="col-lg-12">
+    <div ng-repeat="skos in skosList" class="">
         <div data-ng-include="'skos-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">

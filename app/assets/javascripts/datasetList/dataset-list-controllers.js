@@ -50,6 +50,7 @@ define(["angular"], function () {
         $scope.newFileOpen = false;
         $scope.newDataset = {};
         $scope.specFilter = "";
+        $scope.stateFilter = "";
         $scope.socketSubscribers = {};
 
         var socket = datasetListService.datasetSocket();
@@ -90,17 +91,64 @@ define(["angular"], function () {
         $scope.$watch("newDataset.specTyped", checkNewEnabled);
         $scope.$watch("newDataset.character", checkNewEnabled);
 
-        function filterDataset(ds) {
+
+        /********************************************************************/
+        /* dataset filtering                                                */
+        /********************************************************************/
+        $scope.showToolbar = false;
+        $scope.toggleToolbar = function () {
+            $scope.showToolbar = !$scope.showToolbar;
+        }
+
+
+        function filterDatasetBySpec(ds) {
             var filter = $scope.specFilter.trim();
             ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
         }
+
+        function filterDatasetByState(ds) {
+            var filter = $scope.stateFilter;
+            if (filter != 'stateEmpty') {
+                ds.visible = !filter || ds.stateCurrent.name === filter;
+            }
+            else {
+                ds.visible = !filter || ds.empty;
+            }
+        }
+
+        $scope.datasetListOrder = function (orderBy) {
+            switch (orderBy) {
+                case "state":
+                    $scope.datasets = _.sortBy($scope.datasets, function (ds) {return ds.stateCurrent.name});
+                    $scope.currentSortOrder = orderBy;
+                    break;
+                case "lastmodified":
+                    $scope.datasets = _.sortBy($scope.datasets, function (ds) {return ds.stateCurrent.date}).reverse();
+                    $scope.currentSortOrder = orderBy;
+                    break;
+                default:
+                    $scope.datasets = _.sortBy($scope.datasets, 'datasetSpec');
+                    $scope.currentSortOrder = 'spec';
+                    break;
+            }
+            console.log($scope.datasets)
+        };
+
+        $scope.setStateFilter = function(state){
+            $scope.stateFilter = state;
+            //filterDatasetByState(ds)
+        };
 
         $scope.datasetVisibleFilter = function (ds) {
             return ds.visible;
         };
 
         $scope.$watch("specFilter", function () {
-            _.each($scope.datasets, filterDataset);
+            _.each($scope.datasets, filterDatasetBySpec);
+        });
+
+        $scope.$watch("stateFilter", function () {
+            _.each($scope.datasets, filterDatasetByState);
         });
 
         datasetListService.listPrefixes().then(function (prefixes) {
@@ -134,9 +182,16 @@ define(["angular"], function () {
         };
 
         $scope.datasetStates = [
-            'stateRaw', 'stateRawAnalyzed', 'stateSourced',
-            'stateMappable', 'stateProcessable', 'stateProcessed',
-            'stateAnalyzed', 'stateSaved'
+            {name: 'stateEmpty', label: 'Empty', count: 0},
+            {name: 'stateRaw', label: 'Raw', count: 0},
+            {name: 'stateRawAnalyzed', label: 'Raw analyzed', count: 0},
+            {name: 'stateSourced', label: 'Sourced', count: 0},
+            {name: 'stateMappable', label: 'Mappable', count: 0},
+            {name: 'stateProcessable', label: 'Processable', count: 0},
+            {name: 'stateProcessed', label: 'Processed', count: 0},
+            {name: 'stateAnalyzed', label: 'Analyzed', count: 0},
+            {name: 'stateSaved', label: 'Saved', count: 0},
+            {name: 'stateSynced', label: 'Synced', count: 0}
         ];
 
         $scope.decorateDataset = function (dataset) {
@@ -148,13 +203,13 @@ define(["angular"], function () {
             var stateVisible = false;
             _.forEach(
                 $scope.datasetStates,
-                function (stateName) {
-                    var time = dataset[stateName];
+                function (state) {
+                    var time = dataset[state.name];
                     if (time) {
                         stateVisible = true;
                         var dt = time.split('T');
-                        dataset.states.push({"name": stateName, "date": Date.parse(time)});
-                        dataset[stateName] = {
+                        dataset.states.push({"name": state.name, "date": Date.parse(time)});
+                        dataset[state.name] = {
                             d: dt[0],
                             t: dt[1].split('+')[0],
                             dt: dt
@@ -168,7 +223,7 @@ define(["angular"], function () {
             dataset.stateCurrent = _.max(dataset.states, function (state) {
                 return state.date
             });
-            filterDataset(dataset);
+            filterDatasetBySpec(dataset);
             return dataset;
         };
 
@@ -178,16 +233,37 @@ define(["angular"], function () {
             datasetListService.listDatasets().then(function (array) {
                 _.forEach(array, $scope.decorateDataset);
                 $scope.datasets = array;
-                $scope.datasetStateCounter = $scope.updateDatasetStateCounter();
+                $scope.updateDatasetStateCounter();
             });
         };
 
         $scope.fetchDatasetList();
 
+        $scope.updateDatasetList = function (dataset) {
+            $scope.datasets = _.map($scope.datasets, function (ds) {
+                if (ds.datasetSpec == dataset.datasetSpec){
+                    ds = dataset;
+                }
+                return ds;
+            });
+        };
+
         $scope.updateDatasetStateCounter = function () {
-            return _.countBy($scope.datasets, function (dataset) {
+            var datasetStateCounter = _.countBy($scope.datasets, function (dataset) {
                 return dataset.stateCurrent.name;
             });
+            $scope.datasetStates = _.map(
+                $scope.datasetStates,
+                function (state) {
+                    if (_.has(datasetStateCounter, state.name)) {
+                        state.count = datasetStateCounter[state.name];
+                    }
+                    else {
+                        state.count = 0;
+                    }
+                    return state;
+                }
+            );
         };
 
         $scope.createDataset = function () {
@@ -269,7 +345,10 @@ define(["angular"], function () {
                 }
                 else {
                     $scope.dataset = $scope.decorateDataset(message);
-                    //console.log("IDLE: " + message.datasetSpec, message);
+                    $scope.updateDatasetList(message);
+                    $scope.updateDatasetStateCounter();
+                    $scope.datasetListOrder($scope.currentSortOrder);
+                    console.log("IDLE: " + message.datasetSpec, message);
                 }
             });
         });
@@ -393,10 +472,8 @@ define(["angular"], function () {
             return false;
         };
 
-        $scope.currentState = function (dataSet) {
-            // list all dates from states (dictionary)
-            // find latest
-            // return give back state name
+        $scope.isCurrent = function (currState) {
+            return currState == $scope.dataset.stateCurrent.name;
         };
 
         $scope.showInvalidRecordsPage = function () {

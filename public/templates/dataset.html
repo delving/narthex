@@ -3,21 +3,21 @@
     <div class="meta">
         <div class="page">
             Dataset: {{spec}}
-            <button ng-click="sidebarNav('dataset-list', spec)" class="btn btn-default btn-sm">
-                <i class="fa fa-cog"></i> {{spec}}
-            </button>
         </div>
         <div class="organization">
             <span class="fa fa-institution"></span>
             <span>{{ orgId }}</span>
+            <span class="file-path-info">
+                <span class="file-name">{{spec}}</span><span class="file-path">{{activePath}}</span>
+            </span>
         </div>
 
     </div>
     <!-- page specifiction actions/tools -->
     <div class="actions">
-        <div class="file-path-info breadcrumb">
-            <span class="file-name">{{spec}}</span><span class="file-path">{{activePath}}</span>
-        </div>
+        <button ng-click="sidebarNav('dataset-list', spec)" class="btn btn-default">
+            <i class="fa fa-cog"></i> {{spec}}
+        </button>
     </div>
 
 </div>
