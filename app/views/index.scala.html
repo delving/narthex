@@ -43,7 +43,6 @@
                                 <a href id="nav-dataset-list" data-ng-click="sidebarNav('dataset-list')">
                                     Datasets <span class="menu-icon fa fa-cubes"></span>
                                 </a>
-                                @* TODO include list for all states with updates on the counts *@
                             </li>
                             <li class="sidebar-list">
                                 <a href id="nav-skos" data-ng-click="sidebarNav('skos')">
@@ -84,8 +83,8 @@
             <div class="user-actions" data-ng-if="user">
 
                 <div class="btn-group pull-right clearfix">
-                    <button class="btn btn-primary"><i class="fa fa-user fa-fw"></i> {{user.username}}</button>
-                    <a class="btn btn-primary dropdown-toggle" data-toggle="dropdown" href="#">
+                    <button class="btn btn-default"><i class="fa fa-user fa-fw"></i> {{user.username}}</button>
+                    <a class="btn btn-default dropdown-toggle" data-toggle="dropdown" href="#">
                         <i class="fa fa-caret-down"></i>&nbsp;
                     </a>
                     <ul class="dropdown-menu">

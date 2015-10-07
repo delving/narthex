@@ -1,5 +1,5 @@
 <!-- E -->
-<div class="page-header">
+<div class="page-header no-margin">
     <!-- page location, org -->
     <div class="meta">
         <div class="page">
@@ -12,40 +12,55 @@
     </div>
     <!-- page specifiction actions/tools -->
     <div class="actions">
-        <form class="form-inline">
+        <form action="" class="form-inline">
             <div class="form-group">
-                <label>Filter:</label>
-                <input type="text" class="form-control" data-ng-model="specFilter" placeholder="dataset"/>
-                <!-- TODO: make a stateFilter that is triggered on-change -->
-                <!--<select class="form-control" data-ng-model="stateFilter" ng-change="">-->
-                    <!--<option>All</option>-->
-                    <!--<option value="">Empty</option>-->
-                    <!--<option value="stateRaw">Raw</option>-->
-                    <!--<option value="stateRawAnalyzed">Raw analyzed</option>-->
-                    <!--<option value="stateSourced">Sourced</option>-->
-                    <!--<option value="stateMappable">Mappable</option>-->
-                    <!--<option value="stateProcessable">Processable</option>-->
-                    <!--<option value="stateProcessed">Processed</option>-->
-                    <!--<option value="stateAnalyzed">Analyzed</option>-->
-                    <!--<option value="stateSaved">Saved</option>-->
-                <!--</select>-->
+                <button class="btn btn-default" data-ng-click="toggleToolbar()">&nbsp;<i class="fa fa-filter"></i>&nbsp;</button>
             </div>
             <div class="form-group">
-                <a href class="btn btn-default pull-right" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
+                <a href class="btn btn-default" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
             </div>
         </form>
+
     </div>
 </div>
 
+<div class="navbar navbar-default" data-ng-show="showToolbar">
+    <form class="navbar-form navbar-left">
+        <div class="form-group">
+            <div class="dropdown">
+                <button id="order-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
+                    Order by <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
+                    <li role="menuitem"><a href data-ng-click="datasetListOrder('spec')">Spec</a></li>
+                    <li role="menuitem"><a href data-ng-click="datasetListOrder('state')">State</a></li>
+                    <li role="menuitem"><a href data-ng-click="datasetListOrder('lastmodified')">Date last modified</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="dropdown">
+                <button id="state-filter-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
+                    Filter by state <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
+                    <li data-ng-repeat="state in datasetStates" role="menuitem"><a href data-ng-click="setStateFilter(state.name)">{{ state.label }} ({{ state.count }})</a></li>
+                    <li role="menuitem"><a href data-ng-click="stateFilter = ''">Reset</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="form-group">
+            <input type="text" class="form-control" data-ng-model="specFilter" placeholder="Filter by name"/>
+        </div>
+    </form>
+</div>
+
 <div class="file-list">
-    <!-- TODO: make this look nice and update on dataset state change. Also make use of this for filtering -->
-    <div data-ng-repeat="(name, count)  in datasetStateCounter">
-        <span><em>{{ name }} ({{ count }})</em></span>
-    </div>
+
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
     </div>
-    <div ng-repeat="dataset in datasets | filter: datasetVisibleFilter" class="col-md-12">
+    <div ng-repeat="dataset in datasets | filter: datasetVisibleFilter" class="">
         <div data-ng-include="'dataset-entry.html'">entry</div>
     </div>
     <div data-ng-show="newFileOpen">
@@ -104,7 +119,6 @@
             <a href class="clickable" data-ng-click="expanded = !expanded">
                 <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
                 <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
-
             </a>
 
             <!--<span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">-->
@@ -174,10 +188,12 @@
         <div class="widget-body" data-ng-if="expanded && !dataset.progress">
 
             <div class="ds-states">
-                <!--<div data-ng-show="dataset.empty">-->
-                    <!--<h6>Empty</h6>-->
-                <!--</div>-->
-                <div data-ng-show="dataset.stateRaw" class="ds-state">
+                <div data-ng-show="dataset.empty" class="ds-state"
+                     data-ng-class="{ 'later': isCurrent('stateEmpty') }">
+                    <h6>Empty</h6>
+                </div>
+                <div data-ng-show="dataset.stateRaw" class="ds-state"
+                     data-ng-class="{ 'later': isCurrent('stateRaw') }">
                     <h6>Raw</h6>
                     <div class="small">{{ dataset.stateRaw.d }}</div>
                     <div>{{ dataset.stateRaw.t }}</div>
@@ -187,7 +203,8 @@
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state">
+                <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state"
+                     data-ng-class="{ 'later': isCurrent('stateRawAnalyzed') }">
                     <h6>Raw Analyzed</h6>
                     {{ dataset.stateRawAnalyzed.d }}<br/>
                     {{ dataset.stateRawAnalyzed.t }}
@@ -196,7 +213,7 @@
                     </button>
                 </div>
                 <div data-ng-show="dataset.stateSourced" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateSourced, dataset.stateMappable) }">
+                     data-ng-class="{ 'later': isCurrent('stateSourced') }">
                     <h6>Sourced</h6>
                     {{ dataset.stateSourced.d }}<br/>
                     {{ dataset.stateSourced.t }}
@@ -207,7 +224,7 @@
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateMappable" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateMappable, dataset.stateProcessable) }">
+                     data-ng-class="{ 'later': isCurrent('stateMappable') }">
                     <h6>Mappable</h6>
                     {{ dataset.stateMappable.d }}<br/>
                     {{ dataset.stateMappable.t }}
@@ -218,7 +235,7 @@
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateProcessable" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateProcessable, dataset.stateProcessed) }">
+                     data-ng-class="{ 'later': isCurrent('stateProcessable') }">
                     <h6>Processable</h6>
                     {{ dataset.stateProcessable.d }}<br/>
                     {{ dataset.stateProcessable.t }}
@@ -229,7 +246,7 @@
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateProcessed" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateProcessed, dataset.stateAnalyzed) }">
+                     data-ng-class="{ 'later': isCurrent('stateProcessed') }">
                     <h6>Processed</h6>
                     {{ dataset.stateProcessed.d }}<br/>
                     {{ dataset.stateProcessed.t }}
@@ -240,7 +257,7 @@
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateAnalyzed" class="ds-state"
-                     data-ng-class="{ 'later': isLater(dataset.stateAnalyzed, dataset.stateSaved) }">
+                     data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
                     <h6>Analyzed</h6>
                     {{ dataset.stateAnalyzed.d }}<br/>
                     {{ dataset.stateAnalyzed.t }}
@@ -250,7 +267,8 @@
                         </button>
                     </div>
                 </div>
-                <div data-ng-show="dataset.stateSaved" class="ds-state">
+                <div data-ng-show="dataset.stateSaved" class="ds-state"
+                     data-ng-class="{ 'later': isCurrent('stateSaved') }">
                     <h6>Saved</h6>
                     {{ dataset.stateSaved.d }}<br/>
                     {{ dataset.stateSaved.t }}
@@ -693,19 +711,19 @@
             the subsequent processes can be repeated.
         </div>
         <div>
-            <button class="btn btn-danger" data-ng-show="dataset.stateRaw" data-ng-click="remove('remove raw', 'Remove raw file?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateRaw" data-ng-click="remove('remove raw', 'Remove raw file?')">
                 <i class="fa fa-trash"></i> Raw
             </button>
-            <button class="btn btn-danger" data-ng-show="dataset.stateSourced" data-ng-click="remove('remove source', 'Remove source records?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateSourced" data-ng-click="remove('remove source', 'Remove source records?')">
                 <i class="fa fa-trash"></i> Source
             </button>
-            <button class="btn btn-danger" data-ng-show="dataset.stateProcessed" data-ng-click="remove('remove processed', 'Remove processsed records?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateProcessed" data-ng-click="remove('remove processed', 'Remove processsed records?')">
                 <i class="fa fa-trash"></i> Processed
             </button>
-            <button class="btn btn-danger" data-ng-show="dataset.stateAnalyzed" data-ng-click="remove('remove tree', 'Remove Analysis?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateAnalyzed" data-ng-click="remove('remove tree', 'Remove Analysis?')">
                 <i class="fa fa-trash"></i> Analysis
             </button>
-            <button class="btn btn-danger" data-ng-show="dataset.stateSaved" data-ng-click="remove('delete records', 'Delete Records?')">
+            <button class="btn btn-warning" data-ng-show="dataset.stateSaved" data-ng-click="remove('delete records', 'Delete Records?')">
                 <i class="fa fa-trash"></i> Records
             </button>
         </div>

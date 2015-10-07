@@ -224,11 +224,11 @@ object Sparql {
       |      <$userEMail> ${literalExpression(profile.email, None)} .
       |}
       |WHERE {
-      |   <$actor>
-      |      a <$actorEntity> ;
-      |      <$userFirstName> ?firstName ;
-      |      <$userLastName> ?lastName ;
-      |      <$userEMail> ?email .
+      |   Bind(<$actor> as ?actor)
+      |   ?actor a  <$actorEntity> .
+      |   OPTIONAL {?s <$userFirstName> ?firstName } .
+      |   OPTIONAL {?s  <$userLastName> ?lastName  } .
+      |   OPTIONAL {?s  <$userEMail> ?email  } .
       |}
      """.stripMargin
 
