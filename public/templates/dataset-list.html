@@ -161,6 +161,10 @@
                         <i class="fa fa-fw fa-database"></i>
                         <span>RDF saved</span>
                     </span>
+                    <span ng-switch-when="stateSynced" class="btn btn-success" data-ng-click="{{apiLink}}">
+                        <i class="fa fa-fw fa-search"></i>
+                        <span>synced</span>
+                    </span>
                     <span ng-switch-default class="label label-warning">
                         <span >Empty :-(</span>
                     </span>

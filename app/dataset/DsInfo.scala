@@ -66,6 +66,7 @@ object DsInfo {
     val PROCESSED = DsState(stateProcessed)
     val ANALYZED = DsState(stateAnalyzed)
     val SAVED = DsState(stateSaved)
+    val SYNCED = DsState(stateSynced)
   }
 
   case class DsMetadata(name: String,
@@ -255,6 +256,25 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def setState(state: DsState) = setSingularLiteralProps(state.prop -> now)
+
+  def setRecordsSync(state: Boolean = false) = {
+    val syncState = state match {
+      case true => "true"
+      case false => "false"
+    }
+    Logger.info(s"set Records in Sync: $syncState")
+    removeLiteralProp(datasetRecordsInSync)
+    setSingularLiteralProps(datasetRecordsInSync -> syncState)
+  }
+
+  def setProxyResourcesSync(state: Boolean = false) = {
+    val syncState = state match {
+      case true => "true"
+      case false => "false"
+    }
+    removeLiteralProp(datasetResourcePropertiesInSync)
+    setSingularLiteralProps(datasetResourcePropertiesInSync -> syncState)
+  }
 
   def removeState(state: DsState) = removeLiteralProp(state.prop)
 
