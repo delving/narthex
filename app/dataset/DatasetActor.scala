@@ -450,6 +450,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(GraphSaveComplete, active: Active) =>
       dsInfo.setState(SAVED)
+      dsInfo.setRecordsSync(false)
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
 
@@ -459,6 +460,8 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
     case Event(SkosificationComplete(skosifiedField), active: Active) =>
       log.info(s"Skosification complete: $skosifiedField")
+      dsInfo.setProxyResourcesSync(false)
+      dsInfo.setRecordsSync(false)
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
 
