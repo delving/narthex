@@ -235,6 +235,9 @@ define(["angular"], function () {
             dataset.showCounters = _.some(dataset.states, function (state) {
                return state.name == 'stateProcessed';
             });
+            dataset.showMapTerms = _.some(dataset.states, function (state) {
+                return state.name == 'stateProcessed';
+            });
             filterDatasetBySpec(dataset);
             return dataset;
         };
