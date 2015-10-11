@@ -188,6 +188,7 @@ define(["angular"], function () {
             {name: 'stateSourced', label: 'Sourced', count: 0},
             {name: 'stateMappable', label: 'Mappable', count: 0},
             {name: 'stateProcessable', label: 'Processable', count: 0},
+            {name: 'stateInError', label: 'In error', count: 0},
             {name: 'stateProcessed', label: 'Processed', count: 0},
             {name: 'stateAnalyzed', label: 'Analyzed', count: 0},
             {name: 'stateSaved', label: 'Saved', count: 0},
@@ -219,9 +220,20 @@ define(["angular"], function () {
             );
             if (!stateVisible) {
                 dataset.empty = true;
-            }
+            };
             dataset.stateCurrent = _.max(dataset.states, function (state) {
                 return state.date
+            });
+
+            if (_.isEmpty(dataset.states)) {
+                dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
+            }
+            if (!_.isUndefined(dataset.datasetErrorMessage)) {
+                dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
+            }
+            console.log(dataset, dataset.stateCurrent, dataset.states, dataset.datasetErrorMessage)
+            dataset.showCounters = _.some(dataset.states, function (state) {
+               return state.name == 'stateProcessed';
             });
             filterDatasetBySpec(dataset);
             return dataset;
@@ -252,6 +264,10 @@ define(["angular"], function () {
             var datasetStateCounter = _.countBy($scope.datasets, function (dataset) {
                 return dataset.stateCurrent.name;
             });
+            //var datasetErrorCounter = _.countBy($scope.datasets, function (dataset) {
+            //   return _.isUndefined(dataset.errorMessage);
+            //});
+            //console.log(datasetErrorCounter);
             $scope.datasetStates = _.map(
                 $scope.datasetStates,
                 function (state) {

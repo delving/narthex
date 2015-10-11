@@ -133,12 +133,12 @@
                     </span>
                 </span>
 
-                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.stateProcessed">
+                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters">
                     <i class="fa fa-fw fa-bug bg-danger"></i>
                     <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
 
-                <span class="btn btn-default" data-ng-click="goToDataset()" data-ng-show="dataset.stateProcessed">
+                <span class="btn btn-default" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
                     <i class="fa fa-fw fa-eye bg-success"></i>
                     <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                 </span>
@@ -154,6 +154,7 @@
                     <span ng-switch-when="stateSourced" class="label label-info">Sourced</span>
                     <span ng-switch-when="stateMappable" class="label label-info">Mappable</span>
                     <span ng-switch-when="stateProcessable" class="label label-info">Processable</span>
+                    <span ng-switch-when="stateInError" class="label label-danger">Processing error</span>
                     <span ng-switch-when="stateProcessed" class="label label-info">Processed</span>
                     <span ng-switch-when="stateAnalyzed" class="label label-info">Analyzed</span>
                     <span ng-switch-when="stateSaved" class="btn btn-success" data-ng-click="goToSparql()">
