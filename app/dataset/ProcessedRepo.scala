@@ -72,6 +72,7 @@ object ProcessedRepo {
         val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
         val actionMap = Json.obj(
             "hubId" -> hubId,
+            "dataset" -> spec,
             "graphUri" -> graphUri,
             "type" -> "void_EDMRecord",
             "action" -> "index",
