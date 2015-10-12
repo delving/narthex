@@ -16,6 +16,10 @@
 
 package triplestore
 
+import java.io.{OutputStream, InputStream}
+import java.util
+import javax.xml.ws.http.HTTPException
+
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Incremental, WorkFailure}
 import dataset.DatasetContext
@@ -23,6 +27,9 @@ import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import org.OrgContext
 import org.OrgContext._
 import org.joda.time.DateTime
+import play.api.Logger
+import play.api.libs.ws.{WSResponse, WS}
+import play.api.Play.current
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import triplestore.GraphProperties.acceptanceOnly
@@ -47,6 +54,20 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
   val saveTime = new DateTime()
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
+  val bulkApi = s"${OrgContext.NAVE_DOMAIN}/api/index/bulk"
+
+  private def checkUpdateResponse(response: WSResponse, logString: String): Unit = if (response.status / 100 != 2) {
+    Logger.error(logString)
+    throw new Exception(s"${response.statusText}: ${response.body}:")
+  }
+
+  def bulkApiUpdate(bulkActions: String) = {
+    Logger.info("Storing bulk api request")
+    val request = WS.url(s"$bulkApi").withHeaders(
+      "Content-Type" -> "application/json; charset=utf-8"
+    )
+    request.post(bulkActions).map(checkUpdateResponse(_, bulkActions))
+  }
 
   def failure(ex: Throwable) = {
     reader.foreach(_.close())
@@ -77,6 +98,9 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
     case Some(chunk: GraphChunk) => actorWork(context) {
       log.info("Save a chunk of graphs")
       val update = ts.up.acceptanceOnly(chunk.dsInfo.getBooleanProp(acceptanceOnly)).sparqlUpdate(chunk.sparqlUpdateQ)
+      // TODO: add service to upload to bulk api
+      log.info(chunk.bulkAPIQ)
+      // val update = bulkApiUpdate(chunk.bulkAPIQ)
       update.map(ok => sendGraphChunkOpt())
       update.onFailure {
         case ex: Throwable => failure(ex)

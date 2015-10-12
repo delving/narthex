@@ -19,10 +19,12 @@ import java.io._
 import java.lang.Boolean.FALSE
 
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
+import org.OrgContext
 import org.apache.commons.io.input.CountingInputStream
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
+import play.api.libs.json.Json
 import services.FileHandling.{ReadProgress, clearDir}
 import services.StringHandling.createFOAFAbout
 import services.{FileHandling, ProgressReporter, StringHandling, Temporal}
@@ -56,6 +58,29 @@ object ProcessedRepo {
       }
 
       dataset.listNames().toList.map(g => singleGraphUpdate(dataset, g)).mkString("\n")
+    }
+
+    def bulkAPIQ: String = {
+
+      def createBulkAction(dataset: Dataset, graphUri: String) = {
+        val model = dataset.getNamedModel(graphUri)
+        val triples = new StringWriter()
+        RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
+        val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
+        val SpecIdExtractor(spec, localId) = graphUri
+        val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
+        val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
+        val actionMap = Json.obj(
+            "hubId" -> hubId,
+            "graphUri" -> graphUri,
+            "type" -> "void_EDMRecord",
+            "action" -> "index",
+            "contentHash" -> localHash.toString,
+            "graph" -> s"$triples".stripMargin.trim
+        )
+        actionMap.toString()
+      }
+      dataset.listNames().toList.map(g => createBulkAction(dataset, g)).mkString("\n")
     }
   }
 
@@ -156,8 +181,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
         progressReporter.checkInterrupt()
         readerOpt.map { reader =>
           Option(reader.readLine()).map {
-            case LineId(graphName, contentHash) =>
-              val currentHash = contentHash
+            case LineId(graphName, currentHash) =>
               val m = dataset.getNamedModel(graphName)
               try {
                 m.read(new StringReader(recordText.toString()), null, "RDF/XML")
@@ -175,6 +199,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               m.add(foafAbout, m.getProperty(ccAttributionName), m.createLiteral(dsInfo.spec))
               m.add(foafAbout, m.getProperty(foafPrimaryTopic), subjectResource)
               m.add(foafAbout, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
+              m.add(foafAbout, m.getProperty(contentHash.uri), m.createLiteral(currentHash))
               m.add(foafAbout, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
               m.add(foafAbout, m.getProperty(saveTime.uri), m.createLiteral(timeString))
               graphCount += 1
