@@ -22,6 +22,7 @@ import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
 import org.apache.commons.io.input.CountingInputStream
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
+import play.api.Logger
 import services.FileHandling.{ReadProgress, clearDir}
 import services.StringHandling.createFOAFAbout
 import services.{FileHandling, ProgressReporter, StringHandling, Temporal}
@@ -111,7 +112,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
   def clear() = clearDir(home)
 
   def createGraphReader(fileOpt: Option[File], timeStamp: DateTime, progressReporter: ProgressReporter) = new GraphReader {
-    val LineId = "<!--<([^>]+)>-->".r
+    val LineId = "<!--<([^>]+)__([^>]+)>-->".r
     var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listXmlFiles)
     val totalLength = (0L /: files.map(_.length()))(_ + _)
     var activeReader: Option[BufferedReader] = None
@@ -155,14 +156,15 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
         progressReporter.checkInterrupt()
         readerOpt.map { reader =>
           Option(reader.readLine()).map {
-            case LineId(graphName) =>
+            case LineId(graphName, contentHash) =>
+              val currentHash = contentHash
               val m = dataset.getNamedModel(graphName)
               try {
                 m.read(new StringReader(recordText.toString()), null, "RDF/XML")
               }
               catch {
                 case e: Throwable =>
-                  println(recordText.toString())
+                  Logger.error(recordText.toString())
                   throw e
               }
               val StringHandling.SubjectOfGraph(subject) = graphName
