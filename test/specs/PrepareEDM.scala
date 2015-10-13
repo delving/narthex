@@ -12,7 +12,7 @@ trait PrepareEDM {
 
   val edmDirNames = List("ton-smits", "difo")
 
-  val naveDomain = "http://nave"
+  val rdfBaseUrl = "http://nave"
   val sipsDir = new File(getClass.getResource("/edm").getFile)
   val sipZipFile = new File(sipsDir, "test-edm.sip.zip")
 
@@ -42,7 +42,7 @@ trait PrepareEDM {
     source.listFiles().toList.filter(!_.getName.endsWith(".gz")).foreach(f => copyFile(zos, f))
     zos.close()
     println(s"created $sipZipFile")
-    new SipRepo(sipsDir, dirName, naveDomain)
+    new SipRepo(sipsDir, dirName, rdfBaseUrl)
   }
 
   def createSourceRepo: SourceRepo = {

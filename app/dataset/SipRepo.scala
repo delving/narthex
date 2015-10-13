@@ -71,7 +71,7 @@ object SipRepo {
 
 }
 
-class SipRepo(home: File, spec: String, naveDomain: String) {
+class SipRepo(home: File, spec: String, rdfBaseUrl: String) {
 
   def createSipZipFile(sipZipFileName: String) = {
     home.mkdir()
@@ -88,7 +88,7 @@ class SipRepo(home: File, spec: String, naveDomain: String) {
           filesLastToFirst.head.delete()
           filesLastToFirst.tail
         }
-      filesLimited.reverse.map(Sip(spec, naveDomain, _))
+      filesLimited.reverse.map(Sip(spec, rdfBaseUrl, _))
     }
     else Seq.empty[Sip]
   }
@@ -125,7 +125,7 @@ object Sip {
 
   val PrefixVersion = "(.*)_(.*)".r
 
-  def apply(datasetName: String, naveDomain: String, zipFile: File) = new Sip(datasetName, naveDomain, zipFile)
+  def apply(datasetName: String, rdfBaseUrl: String, zipFile: File) = new Sip(datasetName, rdfBaseUrl, zipFile)
 
   val XMLNS = "http://www.w3.org/2000/xmlns/"
   val RDF_ROOT_TAG: String = "RDF"
@@ -150,7 +150,7 @@ object Sip {
 
 }
 
-class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
+class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
   import dataset.Sip._
   import dataset.SipRepo._
@@ -326,7 +326,7 @@ class Sip(val dsInfoSpec: String, naveDomain: String, val file: File) {
 
         case _ =>
           val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-          val rdfAbout = s"$naveDomain/resource/graph/$datasetName/${urlEncodeValue(pocket.id)}"
+          val rdfAbout = s"$rdfBaseUrl/resource/graph/$datasetName/${urlEncodeValue(pocket.id)}"
           rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
           kids.foreach(rdfElement.appendChild)
           val graphName = rdfAbout
