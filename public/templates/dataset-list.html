@@ -267,7 +267,11 @@
                     {{ dataset.stateAnalyzed.d }}<br/>
                     {{ dataset.stateAnalyzed.t }}
                     <br/>
-                    <br/>
+                    <div>
+                        <button class="btn btn-sm btn-success" data-ng-click="goToDataset()">
+                            <i class="fa fa-fw fa-bar-chart"></i> <span>Explore</span>
+                        </button>
+                    </div>
                 </div>
                 <div data-ng-show="dataset.showMapTerms" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
