@@ -17,6 +17,7 @@
 package record
 
 import java.io.{ByteArrayInputStream, Writer}
+import java.security.{NoSuchAlgorithmException, MessageDigest}
 
 import dataset.SourceRepo.{IdFilter, SourceFacts}
 import play.Logger
@@ -35,9 +36,22 @@ object PocketParser {
     def textBytes: ByteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"))
 
     def writeTo(writer: Writer) = {
+      val sha1: String = PocketParser.sha1(text)
       writer.write(text)
-      writer.write(s"<!--<$id>-->\n")
+      writer.write(s"""<!--<${id}__$sha1>-->\n""")
     }
+
+  }
+
+  @throws(classOf[NoSuchAlgorithmException])
+  def sha1(input: String): String = {
+    val mDigest: MessageDigest = MessageDigest.getInstance("SHA1")
+    val result: Array[Byte] = mDigest.digest(input.getBytes)
+    val sb: StringBuffer = new StringBuffer()
+    for (i <- result.indices) {
+      sb.append(Integer.toString((result(i) & 0xff) + 0x100, 16).substring(1))
+    }
+    sb.toString
   }
 
   val POCKET_LIST = "pockets"

@@ -57,6 +57,7 @@ object GraphProperties {
   val synced = NXProp("synced")
   val deleted = NXProp("deleted")
   val saveTime = NXProp("saveTime")
+  val contentHash = NXProp("contentHash")
   val acceptanceOnly = NXProp("acceptanceOnly")
 
   val datasetCharacter = NXProp("datasetCharacter")
@@ -76,6 +77,9 @@ object GraphProperties {
   val datasetErrorTime = NXProp("datasetErrorTime")
   val datasetErrorMessage = NXProp("datasetErrorMessage")
 
+  val datasetRecordsInSync = NXProp("datasetRecordsInSync", booleanProp)
+  val datasetResourcePropertiesInSync = NXProp("datasetResourcePropertiesInSync", booleanProp)
+
   val skosField = NXProp("skosField")
   val skosFieldTag = NXProp("skosFieldTag")
   val proxyLiteralValue = NXProp("proxyLiteralValue")
@@ -89,6 +93,7 @@ object GraphProperties {
   val stateProcessed = NXProp("stateProcessed", timeProp)
   val stateAnalyzed = NXProp("stateAnalyzed", timeProp)
   val stateSaved = NXProp("stateSaved", timeProp)
+  val stateSynced = NXProp("stateSynced", timeProp)
 
   val harvestType = NXProp("harvestType")
   val harvestURL = NXProp("harvestURL")
@@ -108,9 +113,9 @@ object GraphProperties {
   val processedIncrementalValid = NXProp("processedIncrementalValid", intProp)
   val processedIncrementalInvalid = NXProp("processedIncrementalInvalid", intProp)
 
+  val recordGraphsInSync = NXProp("recordGraphsInSync", booleanProp)
   val recordGraphsStored = NXProp("recordGraphsStored", intProp)
   val recordGraphsIndexed = NXProp("recordGraphsIndexed", intProp)
-  val recordGraphsInSync = NXProp("recordGraphsInSync", intProp)
   val recordGraphsOutOfSync = NXProp("recordGraphsOutOfSync", intProp)
   val recordGraphsDeleted = NXProp("recordGraphsDeleted", intProp)
   val naveSyncErrorMessage = NXProp("naveSyncErrorMessage")

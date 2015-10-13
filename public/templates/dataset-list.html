@@ -161,6 +161,10 @@
                         <i class="fa fa-fw fa-database"></i>
                         <span>RDF saved</span>
                     </span>
+                    <span ng-switch-when="stateSynced" class="btn btn-success" data-ng-click="{{apiLink}}">
+                        <i class="fa fa-fw fa-search"></i>
+                        <span>synced</span>
+                    </span>
                     <span ng-switch-default class="label label-warning">
                         <span >Empty :-(</span>
                     </span>
@@ -262,10 +266,24 @@
                     <h6>Analyzed</h6>
                     {{ dataset.stateAnalyzed.d }}<br/>
                     {{ dataset.stateAnalyzed.t }}
+                    <br/>
                     <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="start('start saving')">
-                            <i class="fa fa-fw fa-database"></i> <span>Save</span>
+                        <button class="btn btn-sm btn-success" data-ng-click="goToDataset()">
+                            <i class="fa fa-fw fa-bar-chart"></i> <span>Explore</span>
                         </button>
+                    </div>
+                </div>
+                <div data-ng-show="dataset.showMapTerms" class="ds-state"
+                     data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
+                    <h6>Select Terms</h6>
+                    <!--<a href  tooltip-placement="left" tooltip="On the Left!"><i class="fa fa-info-circle">&nbsp;</i></a>-->
+                    <div class="btn-toolbar">
+                        <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
+                            <i class="fa fa-fw fa-arrows-h"></i> <span>Terms</span>
+                        </button>
+                            <button class="btn btn-sm btn-success" data-ng-click="start('start saving')">
+                                <i class="fa fa-fw fa-database"></i> <span>Save</span>
+                            </button>
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateSaved" class="ds-state"

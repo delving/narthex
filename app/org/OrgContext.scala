@@ -73,6 +73,11 @@ object OrgContext {
   val NARTHEX_DOMAIN = configStringNoSlash("domains.narthex")
   val NAVE_DOMAIN = configStringNoSlash("domains.nave")
 
+  val NAVE_BULK_API_AUTH_TOKEN = configStringNoSlash("naveAuthToken")
+  val USE_BULK_API = configFlag("useBulkApi")
+
+  val RDF_BASE_URL = configStringNoSlash("rdfBaseUrl")
+
   val OAUTH_ID = config.getString("oauth2.id")
   val OAUTH_SECRET = config.getString("oauth2.secret")
 
@@ -90,7 +95,7 @@ object OrgContext {
 
   lazy val OAUTH_USER_URL = configString("oauth2.userUrl")
 
-  val NX_URI_PREFIX = s"$NAVE_DOMAIN/resource"
+  val NX_URI_PREFIX = s"$RDF_BASE_URL/resource"
 
   val TRIPLE_STORE_URL: Option[String] = config.getString("triple-store")
   val TRIPLE_STORE_URLS: Option[(String, String)] = config.getObject("triple-stores").map(_.toConfig).map { tripleStores =>

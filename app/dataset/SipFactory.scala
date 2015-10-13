@@ -148,7 +148,7 @@ class SipPrefixRepo(home: File)(implicit ec: ExecutionContext) {
          |language=${facts.language}
          |schemaVersions=$schemaVersions
          |rights=${facts.rights}
-         |baseUrl=${OrgContext.NAVE_DOMAIN}
+         |baseUrl=${OrgContext.RDF_BASE_URL}
          |""".stripMargin
     zos.write(factsString.getBytes("UTF-8"))
     zos.closeEntry()

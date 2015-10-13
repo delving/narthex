@@ -82,7 +82,7 @@ define(["angular"], function () {
 
         function checkNewEnabled() {
             if ($scope.newDataset.specTyped)
-                $scope.newDataset.spec = $scope.newDataset.specTyped.trim().replace(/\W+/g, "-").replace(/[-]+/g, "-").toLowerCase();
+                $scope.newDataset.spec = $scope.newDataset.specTyped.trim().replace(/\W+/g, "-").replace(/[-_]+/g, "-").toLowerCase();
             else
                 $scope.newDataset.spec = "";
             $scope.newDataset.enabled = $scope.newDataset.spec.length && $scope.newDataset.character;
@@ -234,6 +234,9 @@ define(["angular"], function () {
             console.log(dataset, dataset.stateCurrent, dataset.states, dataset.datasetErrorMessage)
             dataset.showCounters = _.some(dataset.states, function (state) {
                return state.name == 'stateProcessed';
+            });
+            dataset.showMapTerms = _.some(dataset.states, function (state) {
+                return state.name == 'stateProcessed';
             });
             filterDatasetBySpec(dataset);
             return dataset;
