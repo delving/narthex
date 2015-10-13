@@ -56,15 +56,20 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
   var progressOpt: Option[ProgressReporter] = None
   val bulkApi = s"${OrgContext.NAVE_DOMAIN}/api/index/bulk"
 
-  private def checkUpdateResponse(response: WSResponse, logString: String): Unit = if (response.status / 100 != 2) {
-    Logger.error(logString)
-    throw new Exception(s"${response.statusText}: ${response.body}:")
+  private def checkUpdateResponse(response: WSResponse, logString: String): Unit = {
+    Logger.info(response.status.toString)
+    if (response.status != 201) {
+      Logger.error(logString)
+      throw new Exception(s"${response.statusText}: ${response.body}:")
+    }
   }
 
   def bulkApiUpdate(bulkActions: String) = {
     Logger.info("Storing bulk api request")
     val request = WS.url(s"$bulkApi").withHeaders(
-      "Content-Type" -> "application/json; charset=utf-8"
+      "Content-Type" -> "text/plain; charset=utf-8",
+      "Accept" -> "application/json",
+      "Authorization" -> s"Token ${OrgContext.NAVE_BULK_API_AUTH_TOKEN}"
     )
     request.post(bulkActions).map(checkUpdateResponse(_, bulkActions))
   }
@@ -97,10 +102,7 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
 
     case Some(chunk: GraphChunk) => actorWork(context) {
       log.info("Save a chunk of graphs")
-      val update = ts.up.acceptanceOnly(chunk.dsInfo.getBooleanProp(acceptanceOnly)).sparqlUpdate(chunk.sparqlUpdateQ)
-      // TODO: add service to upload to bulk api
-      log.info(chunk.bulkAPIQ)
-      // val update = bulkApiUpdate(chunk.bulkAPIQ)
+      val update = if (OrgContext.USE_BULK_API) bulkApiUpdate(chunk.bulkAPIQ) else ts.up.acceptanceOnly(chunk.dsInfo.getBooleanProp(acceptanceOnly)).sparqlUpdate(chunk.sparqlUpdateQ)
       update.map(ok => sendGraphChunkOpt())
       update.onFailure {
         case ex: Throwable => failure(ex)
