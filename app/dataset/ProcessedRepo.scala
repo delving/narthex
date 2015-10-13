@@ -1,6 +1,7 @@
 //===========================================================================
 //    Copyright 2014 Delving B.V.
 //
+//
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
 //    You may obtain a copy of the License at
@@ -19,9 +20,12 @@ import java.io._
 import java.lang.Boolean.FALSE
 
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
+import org.OrgContext
 import org.apache.commons.io.input.CountingInputStream
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
+import play.api.Logger
+import play.api.libs.json.Json
 import services.FileHandling.{ReadProgress, clearDir}
 import services.StringHandling.createFOAFAbout
 import services.{FileHandling, ProgressReporter, StringHandling, Temporal}
@@ -55,6 +59,32 @@ object ProcessedRepo {
       }
 
       dataset.listNames().toList.map(g => singleGraphUpdate(dataset, g)).mkString("\n")
+    }
+
+    def bulkAPIQ: String = {
+
+      def createBulkAction(dataset: Dataset, graphUri: String) = {
+        val model = dataset.getNamedModel(graphUri)
+        val triples = new StringWriter()
+        RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
+        val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
+        val SpecIdExtractor(spec, localId) = graphUri
+        val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
+        val currentSkosFields = dsInfo.getLiteralPropList(skosField)
+        val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
+        val actionMap = Json.obj(
+            "hubId" -> hubId,
+            "dataset" -> spec,
+            "graphUri" -> graphUri,
+            "proxyResourceFields" -> currentSkosFields.mkString("::"),
+            "type" -> "void_EDMRecord",
+            "action" -> "index",
+            "contentHash" -> localHash.toString,
+            "graph" -> s"$triples".stripMargin.trim
+        )
+        actionMap.toString()
+      }
+      dataset.listNames().toList.map(g => createBulkAction(dataset, g)).mkString("\n")
     }
   }
 
@@ -111,7 +141,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
   def clear() = clearDir(home)
 
   def createGraphReader(fileOpt: Option[File], timeStamp: DateTime, progressReporter: ProgressReporter) = new GraphReader {
-    val LineId = "<!--<([^>]+)>-->".r
+    val LineId = "<!--<([^>]+)__([^>]+)>-->".r
     var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listXmlFiles)
     val totalLength = (0L /: files.map(_.length()))(_ + _)
     var activeReader: Option[BufferedReader] = None
@@ -155,14 +185,14 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
         progressReporter.checkInterrupt()
         readerOpt.map { reader =>
           Option(reader.readLine()).map {
-            case LineId(graphName) =>
+            case LineId(graphName, currentHash) =>
               val m = dataset.getNamedModel(graphName)
               try {
                 m.read(new StringReader(recordText.toString()), null, "RDF/XML")
               }
               catch {
                 case e: Throwable =>
-                  println(recordText.toString())
+                  Logger.error(recordText.toString())
                   throw e
               }
               val StringHandling.SubjectOfGraph(subject) = graphName
@@ -173,6 +203,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               m.add(foafAbout, m.getProperty(ccAttributionName), m.createLiteral(dsInfo.spec))
               m.add(foafAbout, m.getProperty(foafPrimaryTopic), subjectResource)
               m.add(foafAbout, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
+              m.add(foafAbout, m.getProperty(contentHash.uri), m.createLiteral(currentHash))
               m.add(foafAbout, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
               m.add(foafAbout, m.getProperty(saveTime.uri), m.createLiteral(timeString))
               graphCount += 1
