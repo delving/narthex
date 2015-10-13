@@ -1,6 +1,7 @@
 //===========================================================================
 //    Copyright 2014 Delving B.V.
 //
+//
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
 //    You may obtain a copy of the License at
@@ -69,11 +70,13 @@ object ProcessedRepo {
         val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
         val SpecIdExtractor(spec, localId) = graphUri
         val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
+        val currentSkosFields = dsInfo.getLiteralPropList(skosField)
         val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
         val actionMap = Json.obj(
             "hubId" -> hubId,
             "dataset" -> spec,
             "graphUri" -> graphUri,
+            "proxyResourceFields" -> currentSkosFields.mkString("::"),
             "type" -> "void_EDMRecord",
             "action" -> "index",
             "contentHash" -> localHash.toString,
