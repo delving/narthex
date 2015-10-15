@@ -54,7 +54,7 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
   val saveTime = new DateTime()
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
-  val bulkApi = s"${OrgContext.NAVE_DOMAIN}/api/index/bulk/"
+  val bulkApi = s"${OrgContext.NAVE_API_URL}/api/index/bulk/"
 
   private def checkUpdateResponse(response: WSResponse, logString: String): Unit = {
     if (response.status != 201) {
