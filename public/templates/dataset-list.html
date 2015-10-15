@@ -149,17 +149,17 @@
                 <!--</span>-->
 
                 <span ng-switch="dataset.stateCurrent.name">
-                    <span ng-switch-when="stateRaw" class="label label-info">Raw source</span>
-                    <span ng-switch-when="stateRawAnalyzed" class="label label-info">Raw source analyzed</span>
-                    <span ng-switch-when="stateSourced" class="label label-info">Sourced</span>
-                    <span ng-switch-when="stateMappable" class="label label-info">Mappable</span>
-                    <span ng-switch-when="stateProcessable" class="label label-info">Processable</span>
-                    <span ng-switch-when="stateInError" class="label label-danger">Processing error</span>
-                    <span ng-switch-when="stateProcessed" class="label label-info">Processed</span>
-                    <span ng-switch-when="stateAnalyzed" class="label label-info">Analyzed</span>
+                    <span ng-switch-when="stateRaw" class="label label-info">Raw source - {{ dataset.stateCurrent.date | date:'medium' }}</span>
+                    <span ng-switch-when="stateRawAnalyzed" class="label label-info">Raw source analyzed - {{ dataset.stateCurrent.date | date:'medium' }}</span>
+                    <span ng-switch-when="stateSourced" class="label label-info">Sourced - {{ dataset.stateCurrent.date | date:'medium' }}</span>
+                    <span ng-switch-when="stateMappable" class="label label-info">Mappable - {{ dataset.stateCurrent.date | date:'medium' }}</span>
+                    <span ng-switch-when="stateProcessable" class="label label-info">Processable - {{ dataset.stateCurrent.date | date:'medium' }}</span>
+                    <span ng-switch-when="stateInError" class="label label-danger">Processing error - {{ dataset.stateCurrent.date | date:'medium' }}</span>
+                    <span ng-switch-when="stateProcessed" class="label label-info">Processed - {{ dataset.stateCurrent.date | date:'medium' }}</span>
+                    <span ng-switch-when="stateAnalyzed" class="label label-info">Analyzed - {{ dataset.stateCurrent.date | date:'medium' }}</span>
                     <span ng-switch-when="stateSaved" class="btn btn-success" data-ng-click="goToSparql()">
                         <i class="fa fa-fw fa-database"></i>
-                        <span>RDF saved</span>
+                        <span>RDF saved - {{ dataset.stateCurrent.date | date:'medium' }}</span>
                     </span>
                     <span ng-switch-when="stateSynced" class="btn btn-success" data-ng-click="{{apiLink}}">
                         <i class="fa fa-fw fa-search"></i>
