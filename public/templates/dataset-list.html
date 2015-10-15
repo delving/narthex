@@ -14,10 +14,13 @@
     <div class="actions">
         <form action="" class="form-inline">
             <div class="form-group">
-                <button class="btn btn-default" data-ng-click="toggleToolbar()">&nbsp;<i class="fa fa-filter"></i>&nbsp;</button>
+                <button class="btn btn-default" data-ng-click="toggleToolbar()">&nbsp;<i class="fa fa-filter"></i>&nbsp;
+                </button>
             </div>
             <div class="form-group">
-                <a href class="btn btn-default" data-ng-click="newFileOpen = true"><i class="fa fa-star"></i> New Dataset</a>
+                <a href class="btn btn-default" data-ng-click="newFileOpen = true">
+                    <i class="fa fa-star"></i> New Dataset
+                </a>
             </div>
         </form>
 
@@ -32,9 +35,15 @@
                     Order by <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
-                    <li role="menuitem"><a href data-ng-click="datasetListOrder('spec')">Spec</a></li>
-                    <li role="menuitem"><a href data-ng-click="datasetListOrder('state')">State</a></li>
-                    <li role="menuitem"><a href data-ng-click="datasetListOrder('lastmodified')">Date last modified</a></li>
+                    <li role="menuitem">
+                        <a href data-ng-click="datasetListOrder('spec')">Spec</a>
+                    </li>
+                    <li role="menuitem">
+                        <a href data-ng-click="datasetListOrder('state')">State</a>
+                    </li>
+                    <li role="menuitem">
+                        <a href data-ng-click="datasetListOrder('lastmodified')">Date last modified</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -44,8 +53,12 @@
                     Filter by state <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">
-                    <li data-ng-repeat="state in datasetStates" role="menuitem"><a href data-ng-click="setStateFilter(state.name)">{{ state.label }} ({{ state.count }})</a></li>
-                    <li role="menuitem"><a href data-ng-click="stateFilter = ''">Reset</a></li>
+                    <li data-ng-repeat="state in datasetStates" role="menuitem">
+                        <a href data-ng-click="setStateFilter(state.name)">{{ state.label }} ({{ state.count }})</a>
+                    </li>
+                    <li role="menuitem">
+                        <a href data-ng-click="stateFilter = ''">Reset</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -85,7 +98,9 @@
                             </div>
                             <div data-ng-if="characters.length > 1">
                                 <span data-ng-repeat="ch in characters" class="radio">
-                                    <label><input type="radio" name="character" data-ng-model="newDataset.character" data-ng-value="ch"> {{ ch.title }}</label>
+                                    <label>
+                                        <input type="radio" name="character" data-ng-model="newDataset.character" data-ng-value="ch"> {{ ch.title }}
+                                    </label>
                                 </span>
                             </div>
                             <div data-ng-if="characters.length == 1">
@@ -115,15 +130,16 @@
 
         <div class="widget-header">
 
-                <table class="state-table">
-                    <tr>
-                        <td>
-                            <a href class="clickable" data-ng-click="expanded = !expanded">
-                                <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
-                                <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
-                            </a>
-                        </td>
-                        <td>
+            <table class="state-table">
+                <tr>
+                    <td>
+                        <a href class="clickable" data-ng-click="expanded = !expanded">
+                            <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
+                            <strong>{{ dataset.datasetSpec }}</strong>
+                            <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
+                        </a>
+                    </td>
+                    <td>
                             <span data-ng-show="!user.singleTripleStore">
                                 <span class="btn btn-default" data-ng-click="toggleDatasetProduction()">
                                     <i class="fa fa-fw bg-danger" data-ng-class="{ 'fa-star-half-empty': dataset.acceptanceOnly == 'true', 'fa-star': dataset.acceptanceOnly == 'false' }"></i>
@@ -131,23 +147,23 @@
                                     <span data-ng-show="dataset.acceptanceOnly == 'false'">Production</span>
                                 </span>
                             </span>
-                        </td>
-                        <td class="invalid">
+                    </td>
+                    <td class="invalid">
                             <span class="" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters">
                                 <i class="fa fa-fw fa-bug bg-danger"></i>
                                 <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
                             </span>
-                        </td>
-                        <td class="valid">
+                    </td>
+                    <td class="valid">
                             <span class="" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
                                 <i class="fa fa-fw fa-eye bg-success"></i>
                                 <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                             </span>
-                        </td>
-                        <td class="date">
-                            {{ dataset.stateCurrent.date | date:'medium' }}
-                        </td>
-                        <td class="state">
+                    </td>
+                    <td class="date">
+                        {{ dataset.stateCurrent.date | date:'medium' }}
+                    </td>
+                    <td class="state">
                             <span ng-switch="dataset.stateCurrent.name">
                                 <span ng-switch-when="stateRaw" class="label label-info">Raw source</span>
                                 <span ng-switch-when="stateRawAnalyzed" class="label label-info">Raw source analyzed</span>
@@ -161,9 +177,9 @@
                                 <span ng-switch-when="stateSynced" class="label label-success">Synced</span>
                                 <span ng-switch-default class="label label-warning">Empty :-(</span>
                             </span>
-                        </td>
-                    </tr>
-                </table>
+                    </td>
+                </tr>
+            </table>
 
         </div>
 
@@ -199,7 +215,8 @@
                 <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateRawAnalyzed') }">
                     <h6>Raw Analyzed</h6>
-                    {{ dataset.stateRawAnalyzed.d }}<br/>
+                    {{ dataset.stateRawAnalyzed.d }}
+                    <br/>
                     {{ dataset.stateRawAnalyzed.t }}
                     <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
                         <i class="fa fa-fw fa-eye"></i> <span>Delimit</span>
@@ -208,7 +225,8 @@
                 <div data-ng-show="dataset.stateSourced" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateSourced') }">
                     <h6>Sourced</h6>
-                    {{ dataset.stateSourced.d }}<br/>
+                    {{ dataset.stateSourced.d }}
+                    <br/>
                     {{ dataset.stateSourced.t }}
                     <div>
                         <button class="btn btn-sm btn-success" data-ng-click="start('start generating sip')">
@@ -219,7 +237,8 @@
                 <div data-ng-show="dataset.stateMappable" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateMappable') }">
                     <h6>Mappable</h6>
-                    {{ dataset.stateMappable.d }}<br/>
+                    {{ dataset.stateMappable.d }}
+                    <br/>
                     {{ dataset.stateMappable.t }}
                     <div>
                         <a href="{{sipCreatorLink}}" class="btn btn-sm btn-default">
@@ -230,7 +249,8 @@
                 <div data-ng-show="dataset.stateProcessable" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateProcessable') }">
                     <h6>Processable</h6>
-                    {{ dataset.stateProcessable.d }}<br/>
+                    {{ dataset.stateProcessable.d }}
+                    <br/>
                     {{ dataset.stateProcessable.t }}
                     <div>
                         <button class="btn btn-sm btn-success" data-ng-click="start('start processing')">
@@ -241,7 +261,8 @@
                 <div data-ng-show="dataset.stateProcessed" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateProcessed') }">
                     <h6>Processed</h6>
-                    {{ dataset.stateProcessed.d }}<br/>
+                    {{ dataset.stateProcessed.d }}
+                    <br/>
                     {{ dataset.stateProcessed.t }}
                     <div>
                         <button class="btn btn-sm btn-success" data-ng-click="start('start processed analysis')">
@@ -252,7 +273,8 @@
                 <div data-ng-show="dataset.stateAnalyzed" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
                     <h6>Analyzed</h6>
-                    {{ dataset.stateAnalyzed.d }}<br/>
+                    {{ dataset.stateAnalyzed.d }}
+                    <br/>
                     {{ dataset.stateAnalyzed.t }}
                     <br/>
                     <div>
@@ -269,15 +291,16 @@
                         <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
                             <i class="fa fa-fw fa-arrows-h"></i> <span>Terms</span>
                         </button>
-                            <button class="btn btn-sm btn-success" data-ng-click="start('start saving')">
-                                <i class="fa fa-fw fa-database"></i> <span>Save</span>
-                            </button>
+                        <button class="btn btn-sm btn-success" data-ng-click="start('start saving')">
+                            <i class="fa fa-fw fa-database"></i> <span>Save</span>
+                        </button>
                     </div>
                 </div>
                 <div data-ng-show="dataset.stateSaved" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateSaved') }">
                     <h6>Saved</h6>
-                    {{ dataset.stateSaved.d }}<br/>
+                    {{ dataset.stateSaved.d }}
+                    <br/>
                     {{ dataset.stateSaved.t }}
                     <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
                         <i class="fa fa-fw fa-eye"></i> <span>Explore</span>
@@ -296,12 +319,10 @@
                     </div>
                 </div>
 
-                <span if="dataset.stateCurrent.name = 'stateSaved'" class="btn btn-success" data-ng-click="goToSparql()">
+                <button ng-if="dataset.stateSaved" class="btn btn-success" data-ng-click="goToSparql()">
                         <i class="fa fa-fw fa-database"></i>
                         <span>View saved RDF</span>
-                    </span>
-
-
+                </button>
             </div>
 
             <hr/>
@@ -359,8 +380,8 @@
                                 <div data-ng-include="'check-links.html'">check links</div>
                             </div>
                             <div ng-switch-when="statistics">
-                            <div data-ng-include="'sync-statistics.html'">statistics</div>
-                        </div>
+                                <div data-ng-include="'sync-statistics.html'">statistics</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -520,11 +541,11 @@
                     <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
                 </div>
             </div>
-            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')"  data-ng-disabled="!unchangedHarvest">
+            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')" data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-download"></i>
                 <span>Harvest</span>
             </button>
-            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start sample harvest', 'Erase existing data,including records from the triple-store?')"  data-ng-disabled="!unchangedHarvest">
+            <button type="button" class="btn btn-default pull-right" data-ng-click="start('start sample harvest', 'Erase existing data,including records from the triple-store?')" data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-binoculars"></i>
                 <span>Sample</span>
             </button>
@@ -542,13 +563,13 @@
             <div class="form-group">
                 <label class="col-sm-3" for="hc_prev">Previous</label>
                 <div class="col-sm-9">
-                <input id="hc_prev" class="form-control" data-ng-model="dataset.edit.harvestPreviousTime"/>
+                    <input id="hc_prev" class="form-control" data-ng-model="dataset.edit.harvestPreviousTime"/>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="hc_delay">Delay</label>
                 <div class="col-sm-9">
-                <input id="hc_delay" class="form-control" data-ng-model="dataset.edit.harvestDelay"/>
+                    <input id="hc_delay" class="form-control" data-ng-model="dataset.edit.harvestDelay"/>
                 </div>
             </div>
             <div class="form-group">
@@ -669,7 +690,7 @@
                     <input id="cat" type="checkbox" data-ng-model="dataset.edit.categoriesInclude" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
-            <button typ="button" class="btn btn-success btn-sm"  data-ng-click="setCategories()" data-ng-disabled="unchangedCategories">
+            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setCategories()" data-ng-disabled="unchangedCategories">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
@@ -754,46 +775,46 @@
 </script>
 
 <!--<script type="text/ng-template" id="sip-zip.html">-->
-    <!--<ul class="sip-files">-->
-        <!--<li data-ng-repeat="sip in sipFiles">-->
-            <!--<span data-ng-class="{ 'latest': $index == 0}">{{ sip }}</span>-->
-        <!--</li>-->
-    <!--</ul>-->
+<!--<ul class="sip-files">-->
+<!--<li data-ng-repeat="sip in sipFiles">-->
+<!--<span data-ng-class="{ 'latest': $index == 0}">{{ sip }}</span>-->
+<!--</li>-->
+<!--</ul>-->
 <!--</script>-->
 
 <!--<script type="text/ng-template" id="info.html">-->
-    <!--<div class="file-info-harvest" data-ng-show="nonEmpty(dataset.harvest)">-->
-        <!--<h4 class="heading">Harvest</h4>-->
-        <!--<ul class="list-unstyled">-->
-            <!--<li data-ng-repeat="(key, value) in dataset.harvest">-->
-                <!--<b>{{ key }}</b> = "{{ value }}"-->
-            <!--</li>-->
-        <!--</ul>-->
-    <!--</div>-->
-    <!--<div class="file-info-namespace" data-ng-show="nonEmpty(dataset.namespaces)">-->
-        <!--<h4 class="heading">Namespace(s)</h4>-->
-        <!--<ul class="list-unstyled">-->
-            <!--<li data-ng-repeat="(prefix, uri) in dataset.namespaces">-->
-                <!--<b>{{ prefix }}</b> = "{{ uri }}"-->
-            <!--</li>-->
-        <!--</ul>-->
-    <!--</div>-->
-    <!--<div class="file-info-sip-facts" data-ng-show="nonEmpty(dataset.sipFacts)">-->
-        <!--<h4 class="heading">SIP Facts</h4>-->
-        <!--<ul class="list-unstyled">-->
-            <!--<li data-ng-repeat="(key, value) in dataset.sipFacts">-->
-                <!--<b>{{ key }}</b> = "{{ value }}"-->
-            <!--</li>-->
-        <!--</ul>-->
-    <!--</div>-->
-    <!--<div class="file-info-sip-hints" data-ng-show="nonEmpty(dataset.sipHints)">-->
-        <!--<h4 class="heading">SIP Hints</h4>-->
-        <!--<ul class="list-unstyled">-->
-            <!--<li data-ng-repeat="(key, value) in dataset.sipHints">-->
-                <!--<b>{{ key }}</b> = "{{ value }}"-->
-            <!--</li>-->
-        <!--</ul>-->
-    <!--</div>-->
+<!--<div class="file-info-harvest" data-ng-show="nonEmpty(dataset.harvest)">-->
+<!--<h4 class="heading">Harvest</h4>-->
+<!--<ul class="list-unstyled">-->
+<!--<li data-ng-repeat="(key, value) in dataset.harvest">-->
+<!--<b>{{ key }}</b> = "{{ value }}"-->
+<!--</li>-->
+<!--</ul>-->
+<!--</div>-->
+<!--<div class="file-info-namespace" data-ng-show="nonEmpty(dataset.namespaces)">-->
+<!--<h4 class="heading">Namespace(s)</h4>-->
+<!--<ul class="list-unstyled">-->
+<!--<li data-ng-repeat="(prefix, uri) in dataset.namespaces">-->
+<!--<b>{{ prefix }}</b> = "{{ uri }}"-->
+<!--</li>-->
+<!--</ul>-->
+<!--</div>-->
+<!--<div class="file-info-sip-facts" data-ng-show="nonEmpty(dataset.sipFacts)">-->
+<!--<h4 class="heading">SIP Facts</h4>-->
+<!--<ul class="list-unstyled">-->
+<!--<li data-ng-repeat="(key, value) in dataset.sipFacts">-->
+<!--<b>{{ key }}</b> = "{{ value }}"-->
+<!--</li>-->
+<!--</ul>-->
+<!--</div>-->
+<!--<div class="file-info-sip-hints" data-ng-show="nonEmpty(dataset.sipHints)">-->
+<!--<h4 class="heading">SIP Hints</h4>-->
+<!--<ul class="list-unstyled">-->
+<!--<li data-ng-repeat="(key, value) in dataset.sipHints">-->
+<!--<b>{{ key }}</b> = "{{ value }}"-->
+<!--</li>-->
+<!--</ul>-->
+<!--</div>-->
 <!--</script>-->
 
 <div class="fade" ng-file-drop-available="setDropSupported()" ng-show="!dropSupported">
