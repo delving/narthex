@@ -124,6 +124,7 @@
             <!--<span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">-->
             <span class="pull-right">
 
+
                 <span data-ng-show="!user.singleTripleStore">
                     <span class="btn btn-default" data-ng-click="toggleDatasetProduction()">
                         <i class="fa fa-fw bg-danger"
@@ -133,21 +134,17 @@
                     </span>
                 </span>
 
-                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters">
+                <ul class="list-inline">
+                    <li class="" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters">
                     <i class="fa fa-fw fa-bug bg-danger"></i>
                     <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
-                </span>
+                </li>
 
-                <span class="btn btn-default" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
-                    <i class="fa fa-fw fa-eye bg-success"></i>
-                    <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
-                </span>
-
-                <!--<span data-ng-if="dataset.stateCurrent.name == 'stateSaved'" class="btn btn-default" data-ng-click="goToSparql()">-->
-                    <!--<i class="fa fa-fw fa-database bg-success"></i>-->
-                        <!--<span>RDF saved</span>-->
-                <!--</span>-->
-
+                    <li class="" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
+                        <i class="fa fa-fw fa-eye bg-success"></i>
+                        <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
+                    </li>
+                    <li>
                 <span ng-switch="dataset.stateCurrent.name">
                     <span ng-switch-when="stateRaw" class="label label-info">Raw source - {{ dataset.stateCurrent.date | date:'medium' }}</span>
                     <span ng-switch-when="stateRawAnalyzed" class="label label-info">Raw source analyzed - {{ dataset.stateCurrent.date | date:'medium' }}</span>
@@ -157,18 +154,14 @@
                     <span ng-switch-when="stateInError" class="label label-danger">Processing error - {{ dataset.stateCurrent.date | date:'medium' }}</span>
                     <span ng-switch-when="stateProcessed" class="label label-info">Processed - {{ dataset.stateCurrent.date | date:'medium' }}</span>
                     <span ng-switch-when="stateAnalyzed" class="label label-info">Analyzed - {{ dataset.stateCurrent.date | date:'medium' }}</span>
-                    <span ng-switch-when="stateSaved" class="btn btn-success" data-ng-click="goToSparql()">
-                        <i class="fa fa-fw fa-database"></i>
-                        <span>RDF saved - {{ dataset.stateCurrent.date | date:'medium' }}</span>
-                    </span>
-                    <span ng-switch-when="stateSynced" class="btn btn-success" data-ng-click="{{apiLink}}">
-                        <i class="fa fa-fw fa-search"></i>
-                        <span>synced</span>
-                    </span>
-                    <span ng-switch-default class="label label-warning">
-                        <span >Empty :-(</span>
-                    </span>
+                    <span ng-switch-when="stateSaved" class="label label-success">Saved - {{ dataset.stateCurrent.date | date:'medium' }}</span>
+                    <span ng-switch-when="stateSynced" class="label label-success">Synced - {{ dataset.stateCurrent.date | date:'medium' }}</span>
+                    <span ng-switch-default class="label label-warning">Empty :-(</span>
                 </span>
+                    </li>
+                </ul>
+
+
 
             </span>
 
@@ -308,6 +301,10 @@
                     </div>
                 </div>
 
+                <span if="dataset.stateCurrent.name = 'stateSaved'" class="btn btn-success" data-ng-click="goToSparql()">
+                        <i class="fa fa-fw fa-database"></i>
+                        <span>View saved RDF</span>
+                    </span>
 
 
             </div>
