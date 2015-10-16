@@ -354,9 +354,8 @@ a {
     padding: 0 0 0 0;
     border: none;
     &.state {
-      width: 130px;
+      width: 200px;
       div {
-        background: @brand-info;
         color: @white;
         padding: 5px;
         text-align: center;
@@ -375,12 +374,14 @@ a {
         }
       }
     }
-    &.date {
-      width: 170px;
-    }
     &.invalid,
     &.valid {
       width: 140px;
+    }
+    .datetime {
+      display: block;
+      font-size: .9em;
+      margin-top: 4px;
     }
   }
 }

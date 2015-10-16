@@ -160,9 +160,6 @@
                             <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                         </span>
                     </td>
-                    <td class="date">
-                        {{ dataset.stateCurrent.date | date:"dd/MM/yyyy HH:mm" }}
-                    </td>
                     <td class="state">
                         <div ng-class="{stateEmpty:'empty', stateInError:'error',stateSaved:'saved',stateSynced:'synced','':'info'}[dataset.stateCurrent.name]">
                             <span ng-switch="dataset.stateCurrent.name">
@@ -178,6 +175,7 @@
                                 <span ng-switch-when="stateSynced">Synced</span>
                                 <span ng-switch-default>Empty</span>
                             </span>
+                            <span class="datetime">{{ dataset.stateCurrent.date | date:"dd/MM/yyyy HH:mm" }}</span>
                         </div>
                     </td>
                 </tr>
