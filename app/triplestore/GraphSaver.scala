@@ -112,16 +112,17 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
       reader = None
       log.info("All graphs saved")
       // todo: Make sure that this doesn't delete everything upon an incremental update
-      val info = datasetContext.dsInfo
-      val update = ts.up.acceptanceOnly(info.getBooleanProp(acceptanceOnly)).sparqlUpdate(Sparql.markOlderRecordsDeletedQ(saveTime, info.uri))
-      update.onFailure {
-        case ex: Throwable => failure(ex)
-      }
-      update.onSuccess {
-        case _ =>
-          log.info("Old graphs removed")
-          context.parent ! GraphSaveComplete
-      }
+      // todo: either enable or completely remove orphans later
+//      val info = datasetContext.dsInfo
+//      val update = ts.up.acceptanceOnly(info.getBooleanProp(acceptanceOnly)).sparqlUpdate(Sparql.markOlderRecordsDeletedQ(saveTime, info.uri))
+//      update.onFailure {
+//        case ex: Throwable => failure(ex)
+//      }
+//      update.onSuccess {
+//        case _ =>
+//          log.info("Old graphs removed")
+//          context.parent ! GraphSaveComplete
+//      }
     }
   }
 }
