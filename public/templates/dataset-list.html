@@ -161,10 +161,10 @@
                         </span>
                     </td>
                     <td class="date">
-                        {{ dataset.stateCurrent.date | date:"yyyy/MM/dd HH:mm" }}
+                        {{ dataset.stateCurrent.date | date:"dd/MM/yyyy HH:mm" }}
                     </td>
                     <td class="state">
-                        <div ng-class="{stateEmpty:'empty', stateInError:'error',stateSaved:'success',stateSynced:'success','':'info'}[dataset.stateCurrent.name]">
+                        <div ng-class="{stateEmpty:'empty', stateInError:'error',stateSaved:'saved',stateSynced:'synced','':'info'}[dataset.stateCurrent.name]">
                             <span ng-switch="dataset.stateCurrent.name">
                                 <span ng-switch-when="stateRaw">Raw source</span>
                                 <span ng-switch-when="stateRawAnalyzed">Raw source analyzed</span>
