@@ -72,6 +72,7 @@ object OrgContext {
   val ORG_ID = configString("orgId")
   val NARTHEX_DOMAIN = configStringNoSlash("domains.narthex")
   val NAVE_DOMAIN = configStringNoSlash("domains.nave")
+  val NAVE_API_URL = configStringNoSlash("naveApiUrl")
 
   val NAVE_BULK_API_AUTH_TOKEN = configStringNoSlash("naveAuthToken")
   val USE_BULK_API = configFlag("useBulkApi")
@@ -132,7 +133,7 @@ object OrgContext {
   val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
   val harvestTicker = system.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
   val periodicSkosifyCheck = system.actorOf(PeriodicSkosifyCheck.props(), "PeriodicSkosifyCheck")
-  val skosifyTicker = system.scheduler.schedule(30.seconds, 30.seconds, periodicSkosifyCheck, ScanForWork)
+//  val skosifyTicker = system.scheduler.schedule(30.seconds, 30.seconds, periodicSkosifyCheck, ScanForWork)
   val orgContext = new OrgContext(USER_HOME, ORG_ID)(global, tripleStore)
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))

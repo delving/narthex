@@ -345,6 +345,53 @@ a {
   }
 }
 
+.state-table {
+  display: inline-block;
+  margin: 0 0 0 0;
+  border-top: none;
+  width: 100%;
+  td {
+    padding: 0 0 0 0;
+    border: none;
+    &.state {
+      width: 200px;
+      div {
+        color: @white;
+        padding: 5px;
+        text-align: center;
+        &.empty {
+          background: @white;
+          color: @gray-light;
+        }
+        &.processed {
+          background: @gray;
+        }
+        &.analyzed {
+          background: @brand-info;
+        }
+        &.saved {
+          background: @brand-success;
+        }
+        &.error {
+          background: @brand-danger;
+        }
+        &.synced {
+          background: @brand-primary
+        }
+      }
+    }
+    &.invalid,
+    &.valid {
+      width: 140px;
+    }
+    .datetime {
+      display: block;
+      font-size: .9em;
+      margin-top: 4px;
+    }
+  }
+}
+
 .file-drop {
 //  background: @gray-lighter;
 //  border: 4px dashed @ash-gray;

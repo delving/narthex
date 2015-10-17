@@ -231,7 +231,7 @@ define(["angular"], function () {
             if (!_.isUndefined(dataset.datasetErrorMessage)) {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
             }
-            console.log(dataset, dataset.stateCurrent, dataset.states, dataset.datasetErrorMessage)
+            //console.log(dataset, dataset.stateCurrent, dataset.states, dataset.datasetErrorMessage)
             dataset.showCounters = _.some(dataset.states, function (state) {
                return state.name == 'stateProcessed';
             });
@@ -577,7 +577,7 @@ define(["angular"], function () {
             }
             else {
                 $scope.idFilter.error = "";
-                var regExp = new RegExp(expression.substring(0, divider));
+                var regExp = new RegExp(expression.substring(0, divider), 'g');
                 var replacement = expression.substring(divider + delimiter.length);
                 $scope.idFilter.output = $scope.idFilter.input.replace(regExp, replacement);
             }
