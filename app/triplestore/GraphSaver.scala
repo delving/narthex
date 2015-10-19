@@ -111,6 +111,7 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
       reader.foreach(_.close())
       reader = None
       log.info("All graphs saved")
+      context.parent ! GraphSaveComplete
       // todo: Make sure that this doesn't delete everything upon an incremental update
       // todo: either enable or completely remove orphans later
 //      val info = datasetContext.dsInfo
