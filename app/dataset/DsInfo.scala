@@ -262,7 +262,6 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
       case true => "true"
       case false => "false"
     }
-    Logger.info(s"set Records in Sync: $syncState")
     removeLiteralProp(datasetRecordsInSync)
     setSingularLiteralProps(datasetRecordsInSync -> syncState)
   }

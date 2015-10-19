@@ -41,7 +41,7 @@ object ProcessedRepo {
 
   val XML_SUFFIX = ".xml"
   val ERROR_SUFFIX = ".txt"
-  val chunkSize = 200
+  val chunkSize = 100
 
   case class GraphChunk(dataset: Dataset, dsInfo: DsInfo) {
 

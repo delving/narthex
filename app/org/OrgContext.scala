@@ -72,6 +72,7 @@ object OrgContext {
   val ORG_ID = configString("orgId")
   val NARTHEX_DOMAIN = configStringNoSlash("domains.narthex")
   val NAVE_DOMAIN = configStringNoSlash("domains.nave")
+  val NAVE_API_URL = configStringNoSlash("naveApiUrl")
 
   val NAVE_BULK_API_AUTH_TOKEN = configStringNoSlash("naveAuthToken")
   val USE_BULK_API = configFlag("useBulkApi")
