@@ -114,7 +114,18 @@
                         </a>
                     </td>
                     <td class="state">
-                        <div ng-class="{stateEmpty:'empty', stateInError:'error', stateProcessed: 'processed', stateAnalyzed: 'analyzed', stateSaved:'saved',stateSynced:'synced','':'default'}[dataset.stateCurrent.name]">
+                        <div ng-class="{stateEmpty:'empty',
+                                        stateRaw: 'raw',
+                                        stateRawAnalyzed: 'raw-analyzed',
+                                        stateSourced: 'sourced',
+                                        stateMappable: 'mappable',
+                                        stateInError:'error',
+                                        stateProcessable:'processable',
+                                        stateProcessed: 'processed',
+                                        stateAnalyzed: 'analyzed',
+                                        stateSaved:'saved',
+                                        stateSynced:'synced',
+                                        '':'default'}[dataset.stateCurrent.name]">
                             <span ng-switch="dataset.stateCurrent.name">
                                 <span ng-switch-when="stateRaw">Raw source</span>
                                 <span ng-switch-when="stateRawAnalyzed">Raw source analyzed</span>
