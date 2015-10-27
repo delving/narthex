@@ -14,10 +14,6 @@
     <div class="actions">
         <form action="" class="form-inline">
             <div class="form-group">
-                <button class="btn btn-default" data-ng-click="toggleToolbar()">&nbsp;<i class="fa fa-filter"></i>&nbsp;
-                </button>
-            </div>
-            <div class="form-group">
                 <a href class="btn btn-default" data-ng-click="newFileOpen = true">
                     <i class="fa fa-star"></i> New Dataset
                 </a>
@@ -27,22 +23,10 @@
     </div>
 </div>
 
-<div class="navbar" data-ng-show="showToolbar">
-    <form class="navbar-form navbar-filters">
-        <div class="state-filters">
-            <div class="btn-group" data-toggle="buttons">
-                <label class="btn btn-primary active" data-ng-click="stateFilter = ''">
-                    <input type="radio" name="dataset-state"autocomplete="off" checked>Show all
-                </label>
-                <label class="btn btn-primary btn-xms" data-ng-repeat="state in datasetStates" data-ng-click="setStateFilter(state.name)">
-                    <input type="radio" name="dataset-state"> {{ state.label }}: {{ state.count }}
-                </label>
-
-            </div>
-        </div>
-
+<div class="toolbar">
+    <form class="form-inline">
         <div class="form-group">
-            <div class="dropdown">
+            <span class="dropdown">
                 <button id="order-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
                     Order by <span class="caret"></span>
                 </button>
@@ -57,19 +41,8 @@
                         <a href data-ng-click="datasetListOrder('lastmodified')">Date last modified</a>
                     </li>
                 </ul>
-            </div>
+            </span>
         </div>
-        <!--<div class="form-group">-->
-            <!--<div class="dropdown">-->
-                <!--<button id="state-filter-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">-->
-                    <!--Filter by state <span class="caret"></span>-->
-                <!--</button>-->
-                <!--<ul class="dropdown-menu" role="menu" aria-labelledby="single-button">-->
-                    <!--<li data-ng-repeat="state in datasetStates" role="menuitem"><a href data-ng-click="setStateFilter(state.name)">{{ state.label }} ({{ state.count }})</a></li>-->
-                    <!--<li role="menuitem"><a href data-ng-click="stateFilter = ''">Reset</a></li>-->
-                <!--</ul>-->
-            <!--</div>-->
-        <!--</div>-->
         <div class="form-group">
             <div class="dropdown">
                 <button id="state-filter-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">
@@ -104,117 +77,62 @@
     </div>
 </div>
 
-<script type="text/ng-template" id="new-dataset.html">
-    <div class="aside-backdrop am-fade" style=""></div>
-    <div class="aside right animated fadeInRightBig">
-        <div class="aside-dialog">
-            <div class="aside-content">
-                <div class="aside-header">
-                    Create a new dataset:
-                </div>
-                <div class="aside-body">
-                    <form name="form" class="form">
-                        <fieldset>
-                            <div class="form-group">
-                                <label for="new-name">Dataset Short Name</label>
-                                <input id="new-name" class="form-control" data-ng-model="newDataset.specTyped" placeholder="spec" required autofocus/>
-                            </div>
-                            <div data-ng-if="characters.length > 1">
-                                <span data-ng-repeat="ch in characters" class="radio">
-                                    <label>
-                                        <input type="radio" name="character" data-ng-model="newDataset.character" data-ng-value="ch"> {{ ch.title }}
-                                    </label>
-                                </span>
-                            </div>
-                            <div data-ng-if="characters.length == 1">
-                                {{ characters[0].title }}
-                            </div>
-                            <hr/>
-                            <div class="form-group">
-                                <span typ="button" class="btn btn-success" data-ng-class="{ 'disabled': !newDataset.enabled }" data-ng-click="createDataset()">
-                                    <i class="fa fa-plus"></i> <span>Create</span>
-                                    <span>"{{ newDataset.spec }}"</span>
-                                </span>
-                            </div>
-                        </fieldset>
-                    </form>
-                </div>
-                <div class="aside-footer">
-                    <button type="button" class="btn btn-default" data-ng-click="cancelNewFile()">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</script>
-
 <script type="text/ng-template" id="dataset-entry.html">
 
     <div data-ng-controller="DatasetEntryCtrl" class="widget">
 
         <div class="widget-header">
 
-            <!-- todo: should be a caret down to indicate expansion -->
-            <a href class="clickable" data-ng-click="expanded = !expanded">
-                <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
-                <strong>{{ dataset.datasetSpec }}</strong> <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
-            </a>
-
-            <!--<span class="pull-right" data-ng-show="dataset.processedValid || dataset.processedInvalid">-->
-            <span class="pull-right">
-
-                <span data-ng-show="!user.singleTripleStore">
-                    <span class="btn btn-default" data-ng-click="toggleDatasetProduction()">
-                        <i class="fa fa-fw bg-danger"
-                           data-ng-class="{ 'fa-star-half-empty': dataset.acceptanceOnly == 'true', 'fa-star': dataset.acceptanceOnly == 'false' }"></i>
-                        <span data-ng-show="dataset.acceptanceOnly == 'true'">Acceptance</span>
-                        <span data-ng-show="dataset.acceptanceOnly == 'false'">Production</span>
-                    </span>
-                </span>
-
-                <span class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters">
-                    <i class="fa fa-fw fa-bug bg-danger"></i>
-                    <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
-                </span>
-
-                <span class="btn btn-default" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
-                    <i class="fa fa-fw fa-eye bg-success"></i>
-                    <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
-                </span>
-
-                <!--<span data-ng-if="dataset.stateCurrent.name == 'stateSaved'" class="btn btn-default" data-ng-click="goToSparql()">-->
-                    <!--<i class="fa fa-fw fa-database bg-success"></i>-->
-                        <!--<span>RDF saved</span>-->
-                <!--</span>-->
-
-                <span ng-switch="dataset.stateCurrent.name">
-                    <span ng-switch-when="stateRaw" class="label label-info">Raw source</span>
-                    <span ng-switch-when="stateRawAnalyzed" class="label label-info">Raw source analyzed</span>
-                    <span ng-switch-when="stateSourced" class="label label-info">Sourced</span>
-                    <span ng-switch-when="stateMappable" class="label label-info">Mappable</span>
-                    <span ng-switch-when="stateProcessable" class="label label-info">Processable</span>
-                    <span ng-switch-when="stateInError" class="label label-danger">Processing error</span>
-                    <span ng-switch-when="stateProcessed" class="label label-info">Processed</span>
-                    <span ng-switch-when="stateAnalyzed" class="label label-info">Analyzed</span>
-                    <span ng-switch-when="stateSaved" class="btn btn-success" data-ng-click="goToSparql()">
-                        <i class="fa fa-fw fa-database"></i>
-                        <span>RDF saved</span>
-                    </span>
-                    <a ng-switch-when="stateSynced" class="btn btn-success" href="{{apiLink}}">
-                        <i class="fa fa-fw fa-search"></i>
-                        <span>synced</span>
-                    </a>
-                    <span ng-switch-default class="label label-warning">
-                        <span >Empty :-(</span>
-                    </span>
-                </span>
-
-            </span>
-
-            <!--<span data-ng-show="dataset.datasetRecordCount && dataset.stateAnalyzed">-->
-                <!--<span>{{ dataset.datasetRecordCount }}</span>-->
-            <!--</span>-->
-
-
+            <table class="state-table">
+                <tr>
+                    <td>
+                        <a href class="clickable" data-ng-click="expanded = !expanded">
+                            <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
+                            <strong>{{ dataset.datasetSpec }}</strong>
+                            <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
+                        </a>
+                    </td>
+                    <td>
+                        <span data-ng-show="!user.singleTripleStore">
+                            <span class="btn btn-default" data-ng-click="toggleDatasetProduction()">
+                                <i class="fa fa-fw bg-danger" data-ng-class="{ 'fa-star-half-empty': dataset.acceptanceOnly == 'true', 'fa-star': dataset.acceptanceOnly == 'false' }"></i>
+                                <span data-ng-show="dataset.acceptanceOnly == 'true'">Acceptance</span>
+                                <span data-ng-show="dataset.acceptanceOnly == 'false'">Production</span>
+                            </span>
+                        </span>
+                    </td>
+                    <td class="invalid">
+                        <a href class="" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters">
+                            <i class="fa fa-fw fa-bug bg-danger"></i>
+                            <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
+                        </a>
+                    </td>
+                    <td class="valid">
+                        <a href class="" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
+                            <i class="fa fa-fw fa-eye bg-success"></i>
+                            <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
+                        </a>
+                    </td>
+                    <td class="state">
+                        <div ng-class="{stateEmpty:'empty', stateInError:'error', stateProcessed: 'processed', stateAnalyzed: 'analyzed', stateSaved:'saved',stateSynced:'synced','':'default'}[dataset.stateCurrent.name]">
+                            <span ng-switch="dataset.stateCurrent.name">
+                                <span ng-switch-when="stateRaw">Raw source</span>
+                                <span ng-switch-when="stateRawAnalyzed">Raw source analyzed</span>
+                                <span ng-switch-when="stateSourced">Sourced</span>
+                                <span ng-switch-when="stateMappable">Mappable</span>
+                                <span ng-switch-when="stateProcessable">Processable</span>
+                                <span ng-switch-when="stateInError">Processing error</span>
+                                <span ng-switch-when="stateProcessed">Processed</span>
+                                <span ng-switch-when="stateAnalyzed">Analyzed</span>
+                                <span ng-switch-when="stateSaved">Saved</span>
+                                <span ng-switch-when="stateSynced">Synced</span>
+                                <span ng-switch-default>Empty</span>
+                            </span>
+                            <span class="datetime" ng-hide="dataset.stateCurrent.name == 'stateEmpty'">{{ dataset.stateCurrent.date | date:"dd/MM/yyyy HH:mm" }}</span>
+                        </div>
+                    </td>
+                </tr>
+            </table>
         </div>
 
         <div class="widget-body" data-ng-if="dataset.progress">
@@ -354,8 +272,8 @@
                 </div>
 
                 <button ng-if="dataset.stateSaved" class="btn btn-success" data-ng-click="goToSparql()">
-                        <i class="fa fa-fw fa-database"></i>
-                        <span>View saved RDF</span>
+                    <i class="fa fa-fw fa-database"></i>
+                    <span>View saved RDF</span>
                 </button>
             </div>
 
@@ -806,6 +724,50 @@
             </button>
         </fieldset>
     </form>
+</script>
+
+
+<script type="text/ng-template" id="new-dataset.html">
+    <div class="aside-backdrop am-fade" style=""></div>
+    <div class="aside right animated fadeInRightBig">
+        <div class="aside-dialog">
+            <div class="aside-content">
+                <div class="aside-header">
+                    Create a new dataset:
+                </div>
+                <div class="aside-body">
+                    <form name="form" class="form">
+                        <fieldset>
+                            <div class="form-group">
+                                <label for="new-name">Dataset Short Name</label>
+                                <input id="new-name" class="form-control" data-ng-model="newDataset.specTyped" placeholder="spec" required autofocus/>
+                            </div>
+                            <div data-ng-if="characters.length > 1">
+                                <span data-ng-repeat="ch in characters" class="radio">
+                                    <label>
+                                        <input type="radio" name="character" data-ng-model="newDataset.character" data-ng-value="ch"> {{ ch.title }}
+                                    </label>
+                                </span>
+                            </div>
+                            <div data-ng-if="characters.length == 1">
+                                {{ characters[0].title }}
+                            </div>
+                            <hr/>
+                            <div class="form-group">
+                                <span typ="button" class="btn btn-success" data-ng-class="{ 'disabled': !newDataset.enabled }" data-ng-click="createDataset()">
+                                    <i class="fa fa-plus"></i> <span>Create</span>
+                                    <span>"{{ newDataset.spec }}"</span>
+                                </span>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+                <div class="aside-footer">
+                    <button type="button" class="btn btn-default" data-ng-click="cancelNewFile()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </script>
 
 <!--<script type="text/ng-template" id="sip-zip.html">-->
