@@ -56,9 +56,11 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph)(implicit ec: Executi
   def toggleMapping(mapping: SkosMapping): Future[String] = {
     ts.ask(mapping.existenceQ).flatMap { exists =>
       if (exists) {
+        // todo insert mapping to nave here
         ts.up.sparqlUpdate(mapping.deleteQ).map(ok => "removed")
       }
       else {
+        // todo insert mapping to nave here
         ts.up.sparqlUpdate(mapping.insertQ(skosA, skosB)).map(ok => "added")
       }
     }
@@ -78,8 +80,10 @@ class TermMappingStore(termGraph: SkosGraph)(implicit ec: ExecutionContext, ts: 
     ts.ask(mapping.existenceQ).flatMap { exists =>
       if (exists) {
         ts.up.sparqlUpdate(mapping.deleteQ).map(ok => "removed")
+        // todo insert mapping to nave here
       }
       else {
+        // todo insert mapping to nave here
         ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph)).map(ok => "added")
       }
     }

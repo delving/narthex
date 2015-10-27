@@ -64,6 +64,9 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
   }
 
   def bulkApiUpdate(bulkActions: String) = {
+    if (OrgContext.LOG_BULK_API) {
+      Logger.info(bulkActions)
+    }
     val request = WS.url(s"$bulkApi").withHeaders(
       "Content-Type" -> "text/plain; charset=utf-8",
       "Accept" -> "application/json",
