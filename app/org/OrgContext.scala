@@ -76,6 +76,7 @@ object OrgContext {
 
   val NAVE_BULK_API_AUTH_TOKEN = configStringNoSlash("naveAuthToken")
   val USE_BULK_API = configFlag("useBulkApi")
+  val LOG_BULK_API = configFlag("logBulkApi")
 
   val RDF_BASE_URL = configStringNoSlash("rdfBaseUrl")
 
