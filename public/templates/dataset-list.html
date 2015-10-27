@@ -158,129 +158,134 @@
         <div class="widget-body" data-ng-if="expanded && !dataset.progress">
 
             <div class="ds-states">
-                <div data-ng-show="dataset.empty" class="ds-state"
+                <ul class="list-inline">
+                <li data-ng-show="dataset.empty" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateEmpty') }">
                     <h6>Empty</h6>
-                </div>
-                <div data-ng-show="dataset.stateRaw" class="ds-state"
+                </li>
+                <li data-ng-show="dataset.stateRaw" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateRaw') }">
                     <h6>Raw</h6>
-                    <div class="small">{{ dataset.stateRaw.d }}</div>
-                    <div>{{ dataset.stateRaw.t }}</div>
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="start('start raw analysis')">
+                    {{ dataset.stateRaw.d }}
+                    <br/>
+                    {{ dataset.stateRaw.t }}
+                    <div class="btn-toolbar">
+                        <a href data-ng-click="start('start raw analysis')">
                             <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
-                        </button>
+                        </a>
                     </div>
-                </div>
-                <div data-ng-show="dataset.stateRawAnalyzed" class="ds-state"
+                </li>
+                <li data-ng-show="dataset.stateRawAnalyzed" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateRawAnalyzed') }">
                     <h6>Raw Analyzed</h6>
                     {{ dataset.stateRawAnalyzed.d }}
                     <br/>
                     {{ dataset.stateRawAnalyzed.t }}
-                    <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
-                        <i class="fa fa-fw fa-eye"></i> <span>Delimit</span>
-                    </button>
-                </div>
-                <div data-ng-show="dataset.stateSourced" class="ds-state"
+                    <div class="btn-toolbar">
+                        <a href data-ng-click="goToDataset()">
+                            <i class="fa fa-fw fa-eye"></i> <span>Delimit</span>
+                        </a>
+                    </div>
+                </li>
+                <li data-ng-show="dataset.stateSourced" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateSourced') }">
                     <h6>Sourced</h6>
                     {{ dataset.stateSourced.d }}
                     <br/>
                     {{ dataset.stateSourced.t }}
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="start('start generating sip')">
+                    <div class="btn-toolbar">
+                        <a href data-ng-click="start('start generating sip')">
                             <i class="fa fa-fw fa-cube"></i> <span>Make SIP</span>
-                        </button>
+                        </a>
                     </div>
-                </div>
-                <div data-ng-show="dataset.stateMappable" class="ds-state"
+                </li>
+                <li data-ng-show="dataset.stateMappable" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateMappable') }">
                     <h6>Mappable</h6>
                     {{ dataset.stateMappable.d }}
                     <br/>
                     {{ dataset.stateMappable.t }}
-                    <div>
-                        <a href="{{sipCreatorLink}}" class="btn btn-sm btn-default">
+                    <div class="btn-toolbar">
+                        <a href="{{sipCreatorLink}}" class="ult">
                             <i class="fa fa-fw fa-download"></i> Mapper
                         </a>
                     </div>
-                </div>
-                <div data-ng-show="dataset.stateProcessable" class="ds-state"
+                </li>
+                <li data-ng-show="dataset.stateProcessable" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateProcessable') }">
                     <h6>Processable</h6>
                     {{ dataset.stateProcessable.d }}
                     <br/>
                     {{ dataset.stateProcessable.t }}
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="start('start processing')">
+                    <div class="btn-toolbar">
+                        <a href data-ng-click="start('start processing')">
                             <i class="fa fa-fw fa-cogs"></i> <span>Process</span>
-                        </button>
+                        </a>
                     </div>
-                </div>
-                <div data-ng-show="dataset.stateProcessed" class="ds-state"
+                </li>
+                <li data-ng-show="dataset.stateProcessed" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateProcessed') }">
                     <h6>Processed</h6>
                     {{ dataset.stateProcessed.d }}
                     <br/>
                     {{ dataset.stateProcessed.t }}
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="start('start processed analysis')">
+                    <div class="btn-toolbar">
+                        <a href data-ng-click="start('start processed analysis')">
                             <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
-                        </button>
+                        </a>
                     </div>
-                </div>
-                <div data-ng-show="dataset.stateAnalyzed" class="ds-state"
+                </li>
+                <li data-ng-show="dataset.stateAnalyzed" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
                     <h6>Analyzed</h6>
                     {{ dataset.stateAnalyzed.d }}
                     <br/>
                     {{ dataset.stateAnalyzed.t }}
-                    <br/>
-                    <div>
-                        <button class="btn btn-sm btn-success" data-ng-click="goToDataset()">
+                    <div class="btn-toolbar">
+                        <a href data-ng-click="goToDataset()">
                             <i class="fa fa-fw fa-bar-chart"></i> <span>Explore</span>
-                        </button>
+                        </a>
                     </div>
-                </div>
-                <div data-ng-show="dataset.showMapTerms" class="ds-state"
+                </li>
+                <li data-ng-show="dataset.showMapTerms" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
                     <h6>Select Terms</h6>
                     <!--<a href  tooltip-placement="left" tooltip="On the Left!"><i class="fa fa-info-circle">&nbsp;</i></a>-->
                     <div class="btn-toolbar">
-                        <!--<button class="btn btn-sm btn-info" data-ng-click="goToDataset()">-->
+                        <!--<a href data-ng-click="goToDataset()">-->
                             <!--<i class="fa fa-fw fa-arrows-h"></i> <span>Terms</span>-->
-                        <!--</button>-->
-                        <button class="btn btn-sm btn-success" data-ng-click="start('start saving')">
+                        <!--</a><br/>-->
+                        <a href data-ng-click="start('start saving')">
                             <i class="fa fa-fw fa-database"></i> <span>Save</span>
-                        </button>
+                        </a>
                     </div>
-                </div>
-                <div data-ng-show="dataset.stateSaved" class="ds-state"
+                </li>
+                <li data-ng-show="dataset.stateSaved" class="ds-state"
                      data-ng-class="{ 'later': isCurrent('stateSaved') }">
                     <h6>Saved</h6>
                     {{ dataset.stateSaved.d }}
                     <br/>
                     {{ dataset.stateSaved.t }}
-                    <button class="btn btn-sm btn-info" data-ng-click="goToDataset()">
-                        <i class="fa fa-fw fa-eye"></i> <span>Explore</span>
-                    </button>
-                </div>
-                <div data-ng-show="dataset.stateSaved && dataset.skosField" class="ds-state">
+                    <div class="btn-toolbar">
+                        <a href data-ng-click="goToDataset()">
+                            <i class="fa fa-fw fa-eye"></i> <span>Explore</span>
+                        </a>
+                    </div>
+                </li>
+                <li data-ng-show="dataset.stateSaved && dataset.skosField" class="ds-state">
                     <h6>Map Terms</h6>
                     <!--<a href  tooltip-placement="left" tooltip="On the Left!"><i class="fa fa-info-circle">&nbsp;</i></a>-->
                     <div class="btn-toolbar">
-                        <!--<button class="btn btn-sm btn-info" data-ng-click="goToTerms()">-->
+                        <!--<a href data-ng-click="goToTerms()">-->
                             <!--<span>Concepts</span> <i class="fa fa-fw fa-arrows-h"></i>-->
-                        <!--</button>-->
-                        <button class="btn btn-sm btn-info" data-ng-click="goToCategories()">
-                            <span>Categories</span> <i class="fa fa-fw fa-bar-chart"></i>
-                        </button>
+                        <!--</a><br/>-->
+                        <a href data-ng-click="goToCategories()">
+                            <i class="fa fa-fw fa-bar-chart"></i> <span>Categories</span>
+                        </a>
                     </div>
-                </div>
-
-                <button ng-if="dataset.stateSaved" class="btn btn-success" data-ng-click="goToSparql()">
+                </li>
+                </ul>
+                <button ng-if="dataset.stateSaved" class="btn btn-default" data-ng-click="goToSparql()">
                     <i class="fa fa-fw fa-database"></i>
                     <span>View saved RDF</span>
                 </button>
