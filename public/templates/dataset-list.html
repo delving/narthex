@@ -292,7 +292,7 @@
                 <span>View saved RDF</span>
             </button>
 
-            <hr/>
+            <hr data-ng-hide="dataset.empty"/>
 
             <div data-ng-if="dataset.datasetErrorMessage">
                 <div class="alert alert-danger" role="alert">
