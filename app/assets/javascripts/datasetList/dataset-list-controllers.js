@@ -40,7 +40,7 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/dataset-list-services.js) object used by dashboard.routes.
      */
-    var DatasetListCtrl = function ($rootScope, $scope, user, datasetListService, $location, $timeout) {
+    var DatasetListCtrl = function ($rootScope, $scope, user, datasetListService, $location, pageScroll) {
         if (user == null) $location.path("/");
         $scope.user = user;
         $scope.uploading = false;
@@ -252,6 +252,10 @@ define(["angular"], function () {
         };
 
         $scope.fetchDatasetList();
+        // if the url contains a hash with the dataset name, then be so nice as to scroll right to it.
+        if($location.hash()){
+            pageScroll.scrollTo({hash: $location.hash()});
+        }
 
         $scope.updateDatasetList = function (dataset) {
             $scope.datasets = _.map($scope.datasets, function (ds) {
@@ -296,7 +300,7 @@ define(["angular"], function () {
     };
 
     DatasetListCtrl.$inject = [
-        "$rootScope", "$scope", "user", "datasetListService", "$location", "$timeout"
+        "$rootScope", "$scope", "user", "datasetListService", "$location", "pageScroll"
     ];
 
     // these lists must match with DsInfo.scala
@@ -340,11 +344,11 @@ define(["angular"], function () {
                         break;
                     case "progress-workers":
                         p.count = 100;
-                        post = " wrk";
+                        post = " worker(s)";
                         break;
                     case "progress-pages":
                         p.count = p.count % 100;
-                        post = " pg";
+                        post = " page(s)";
                         break;
                 }
                 p.message = pre + post;
