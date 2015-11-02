@@ -289,8 +289,12 @@ a {
 .ds-states {
   //.clearfix();
 //  .make-row();
+  .list-states {
+    margin-left: 0px;
+  }
   .later {
-    background: lighten(@brand-success, 40%);
+    //background: lighten(@brand-success, 40%);
+    border-color: @brand-info;
   }
 
 }
@@ -299,10 +303,9 @@ a {
   //background: @white;
   border: 1px solid @alert-info-border;
   .border-radius(5px);
-  color: @gray;
-  //display: inline-block;
-  ////margin: 0px 10px 10px 0px;
-  //font-size: 12px;
+  color: @gray-light;
+  margin-right: 8px;
+  margin-bottom: 8px;
   min-height: 120px;
   padding: 10px;
   text-align: center;
@@ -322,9 +325,10 @@ a {
     bottom: 10px;
     width: 100%;
   }
-  //.btn {
-  //  margin-bottom: 10px;
-  //}
+}
+
+.ds-progress {
+  margin-bottom: 10px;
 }
 
 .list-files {

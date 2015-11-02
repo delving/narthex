@@ -22,8 +22,8 @@ define(["angular"], function (angular) {
     mod.service(
         "pageScroll",
         [
-            "$timeout", "$location",
-            function ($timeout, $location) {
+            "$timeout", "$location",'$anchorScroll',
+            function ($timeout, $location, $anchorScroll) {
                 return {
                     scrollTo: function (options) {
                         /**
@@ -36,12 +36,13 @@ define(["angular"], function (angular) {
                         var hash = options.hash || undefined,
                             element = options.element || undefined,
                             direction = options.direction || 'up';
-                        // navigate to hash
                         if (hash) {
                             var old = $location.hash();
-                            $location.hash(hash);
-                            $anchorScroll();
-                            $location.hash(old);//reset to old location in order to maintain routing logic (no hash in the url)
+                            $timeout(function () {
+                                $location.hash(hash);
+                                $anchorScroll();
+                                $location.hash(old);//reset to old location in order to maintain routing logic (no hash in the url)
+                            },500);
                         }
                         // scroll the provided dom element if it exists
                         if (element && $(options.element).length) {
