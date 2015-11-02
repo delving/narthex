@@ -122,7 +122,7 @@ define(["angular"], function (angular) {
     var IndexCtrl = function ($rootScope, $scope, userService, $location) {
 
         $scope.initialize = function (orgId, sipCreatorLink, oauthUrl) {
-            console.log("Initializing index");
+            //console.log("Initializing index");
             $rootScope.orgId = orgId;
             $rootScope.sipCreatorLink = sipCreatorLink;
             $rootScope.oauthUrl = oauthUrl;
@@ -133,21 +133,17 @@ define(["angular"], function (angular) {
 
             var navlist = $('#sidebar-nav a');
             navlist.removeClass('active');
-
             switch (page) {
                 case 'homepage':
                     $location.path('/');
                     break;
                 case 'dataset-list':
-                    var dsPath = "/dataset-list?dataset="+dataset;
-
                     if(dataset){
-                        $location.search('dataset', dataset).path('/dataset-list');
+                        $location.search('dataset', dataset).hash(dataset).path('/dataset-list');
                     }
                     else {
                         $location.path('/dataset-list');
                     }
-
                     break;
                 case 'skos':
                     $location.path('/skos');
@@ -162,6 +158,7 @@ define(["angular"], function (angular) {
                     $location.path('/');
             }
             $('#nav-' + page).addClass('active');
+
         };
 
         $scope.toggleSidebar = function () {
