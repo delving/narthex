@@ -405,38 +405,42 @@
             <div class="form-group">
                 <label for="meta_name" class="col-sm-3">Dataset Name</label>
                 <div class="col-sm-9">
-                    <input id="meta_name" class="form-control" data-ng-model="dataset.edit.datasetName"/>
+                    <input id="meta_name" required class="form-control" data-ng-model="dataset.edit.datasetName"/>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_description">Description</label>
                 <div class="col-sm-9">
-                    <input id="meta_description" class="form-control" data-ng-model="dataset.edit.datasetDescription"/>
+                    <input id="meta_description" required class="form-control" data-ng-model="dataset.edit.datasetDescription"/>
+                </div>
+
+                <div role="alert">
+                  <span class="error" ng-show="form.meta_description.$error.required">Required!</span>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_aggr">Aggregator</label>
                 <div class="col-sm-9">
-                    <input id="meta_aggr" class="form-control" data-ng-model="dataset.edit.datasetAggregator"/>
+                    <input id="meta_aggr" required class="form-control" data-ng-model="dataset.edit.datasetAggregator"/>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_owner">Owner</label>
                 <div class="col-sm-9">
-                    <input id="meta_owner" class="form-control" data-ng-model="dataset.edit.datasetOwner"/>
+                    <input id="meta_owner" required class="form-control" data-ng-model="dataset.edit.datasetOwner"/>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_language">Language</label>
                 <div class="col-sm-9">
-                    <input id="meta_language" class="form-control" data-ng-model="dataset.edit.datasetLanguage"/>
+                    <input id="meta_language" required class="form-control" data-ng-model="dataset.edit.datasetLanguage"/>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_rights">Rights</label>
                 <div class="col-sm-9">
                     <!--<input id="meta_rights" class="form-control" data-ng-model="dataset.edit.datasetRights"/>-->
-                    <select name="singleSelect" id="meta_rights" data-ng-model="dataset.edit.datasetRights" class="form-control">
+                    <select name="singleSelect" required id="meta_rights" data-ng-model="dataset.edit.datasetRights" class="form-control">
                         <option value="">---Please select---</option> <!-- not selected / blank option -->
                         <option value="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons - Attribution, ShareAlike (BY-SA)"</option>
                         <option value="http://creativecommons.org/licenses/by-nd/4.0/">Creative Commons - Attribution, No Derivatives (BY-ND)"</option>
