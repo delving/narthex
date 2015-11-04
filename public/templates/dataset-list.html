@@ -400,47 +400,58 @@
 </script>
 
 <script type="text/ng-template" id="dataset-metadata-form.html" class="">
-    <form name="form" class="form-horizontal">
+    <form name="metadataform" class="form-horizontal" novalidate ng-submit="submitMetadataForm(metadataform)">
+        <div class="alert alert-danger alert-dismissible" ng-show="metadataform.$invalid">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            Please fill in all the fields of the form.
+        </div>
+        <div class="alert alert-success alert-dismissible" ng-show="showMetadataSubmitSuccess">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            Form saved successfully!
+        </div>
         <fieldset>
             <div class="form-group">
-                <label for="meta_name" class="col-sm-3">Dataset Name</label>
+                <label for="meta_name" class="col-sm-3">
+                    Dataset Name
+                </label>
                 <div class="col-sm-9">
-                    <input id="meta_name" required class="form-control" data-ng-model="dataset.edit.datasetName"/>
+                    <input id="meta_name" name="meta_name" required class="form-control" data-ng-model="dataset.edit.datasetName"/>
+                    <p ng-show="metadataform.meta_name.$invalid && !metadataform.meta_name.$pristine" class="help-block">What is the dataset name?</p>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_description">Description</label>
                 <div class="col-sm-9">
-                    <input id="meta_description" required class="form-control" data-ng-model="dataset.edit.datasetDescription"/>
-                </div>
-
-                <div role="alert">
-                  <span class="error" ng-show="form.meta_description.$error.required">Required!</span>
+                    <input id="meta_description" name="meta_description" required class="form-control" data-ng-model="dataset.edit.datasetDescription"/>
+                    <p ng-show="metadataform.meta_description.$invalid && !metadataform.meta_description.$pristine" class="help-block">How would you describe the dataset?</p>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_aggr">Aggregator</label>
                 <div class="col-sm-9">
-                    <input id="meta_aggr" required class="form-control" data-ng-model="dataset.edit.datasetAggregator"/>
+                    <input id="meta_aggr" name="meta_aggr" required class="form-control" data-ng-model="dataset.edit.datasetAggregator"/>
+                    <p ng-show="metadataform.meta_aggr.$invalid && !metadataform.meta_aggr.$pristine" class="help-block">Who is the aggregator for this data?</p>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_owner">Owner</label>
                 <div class="col-sm-9">
-                    <input id="meta_owner" required class="form-control" data-ng-model="dataset.edit.datasetOwner"/>
+                    <input id="meta_owner" name="meta_owner" required class="form-control" data-ng-model="dataset.edit.datasetOwner"/>
+                    <p ng-show="metadataform.meta_owner.$invalid && !metadataform.meta_owner.$pristine" class="help-block">Who is the owner of the data?</p>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_language">Language</label>
                 <div class="col-sm-9">
-                    <input id="meta_language" required class="form-control" data-ng-model="dataset.edit.datasetLanguage"/>
+                    <input id="meta_language" name="meta_language" required class="form-control" data-ng-model="dataset.edit.datasetLanguage"/>
+                    <p ng-show="metadataform.meta_language.$invalid && !metadataform.meta_language.$pristine" class="help-block">What language is the data in?</p>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3" for="meta_rights">Rights</label>
                 <div class="col-sm-9">
                     <!--<input id="meta_rights" class="form-control" data-ng-model="dataset.edit.datasetRights"/>-->
-                    <select name="singleSelect" required id="meta_rights" data-ng-model="dataset.edit.datasetRights" class="form-control">
+                    <select name="meta_rights" required id="meta_rights" data-ng-model="dataset.edit.datasetRights" class="form-control">
                         <option value="">---Please select---</option> <!-- not selected / blank option -->
                         <option value="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons - Attribution, ShareAlike (BY-SA)"</option>
                         <option value="http://creativecommons.org/licenses/by-nd/4.0/">Creative Commons - Attribution, No Derivatives (BY-ND)"</option>
@@ -452,12 +463,14 @@
                         <option value="http://www.europeana.eu/rights/orphan-work-eu/">Orphan work"</option>
                         <option value="http://www.europeana.eu/rights/unknown/">Unknown"</option>
                     </select>
+                    <p ng-show="metadataform.meta_rights.$invalid && !metadataform.meta_rights.$pristine" class="help-block">What are the rights for this dataset?</p>
                 </div>
             </div>
-            <button type="button" class="btn btn-success btn-sm" data-ng-click="setMetadata()" data-ng-disabled="unchangedMetadata">
+            <button type="submit" class="btn btn-success btn-sm" data-ng-disabled="unchangedMetadata">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
+
         </fieldset>
     </form>
 </script>

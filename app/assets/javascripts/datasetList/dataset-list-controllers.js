@@ -131,7 +131,7 @@ define(["angular"], function () {
                     $scope.currentSortOrder = 'spec';
                     break;
             }
-            console.log($scope.datasets)
+            //console.log($scope.datasets)
         };
 
         $scope.setStateFilter = function(state){
@@ -366,14 +366,17 @@ define(["angular"], function () {
                     //console.log("PROGRESS: " + message.datasetSpec, $scope.dataset.progress);
                 }
                 else {
+                    console.log($scope.dataset);
                     $scope.dataset = $scope.decorateDataset(message);
                     $scope.updateDatasetList(message);
                     $scope.updateDatasetStateCounter();
                     $scope.datasetListOrder($scope.currentSortOrder);
-                    console.log("IDLE: " + message.datasetSpec, message);
+                    //console.log("IDLE: " + message.datasetSpec, message);
+
                 }
             });
         });
+
         $scope.$on('$destroy', function () {
             $scope.unsubscribe($scope.dataset.spec);
         });
@@ -456,12 +459,22 @@ define(["angular"], function () {
             );
         };
 
+        $scope.showMetadataSubmitSuccess = false;
+
         function setProperties(propertyList) {
             var payload = {propertyList: propertyList, values: {}};
             _.forEach(propertyList, function (propertyName) {
                 payload.values[propertyName] = angular.copy($scope.dataset.edit[propertyName]);
+                //console.log(propertyName, angular.copy($scope.dataset.edit[propertyName]));
             });
             datasetListService.setDatasetProperties($scope.dataset.datasetSpec, payload);
+            $scope.showMetadataSubmitSuccess = true;
+        }
+
+        $scope.submitMetadataForm = function (metadataform) {
+            if (metadataform.$valid) {
+                setProperties(metadataFields);
+            }
         }
 
         $scope.setMetadata = function () {
