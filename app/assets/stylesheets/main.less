@@ -258,7 +258,7 @@ a {
 
 .file-list {
   .row(12);
-  margin-top: -15px;
+  //margin-top: -15px;
   .progress {
     margin-bottom: 0px;
     height: 22px;
@@ -286,46 +286,79 @@ a {
   }
 }
 
+.datasets {
+  .widget-body {
+    //background:@pale-blue;
+    padding-bottom: 0px;
+  }
+}
+
 .ds-states {
-  //.clearfix();
-//  .make-row();
-  .list-states {
+  //padding: 0 0 0 0;
+  padding-right: 0px;
+  float: right;
+  .btn-toolbar {
     margin-left: 0px;
   }
-  .later {
-    //background: lighten(@brand-success, 40%);
-    border-color: @brand-info;
+  .list-group {
+    //first reset
+    border: none;
+    border-left: 1px solid @gray-lighter;
+    margin-top: -21px;
+    margin-bottom: 0px;
+    margin-right: -2px;
+    //border-bottom: none;
   }
-
-}
-
-.ds-state {
-  //background: @white;
-  border: 1px solid @alert-info-border;
-  .border-radius(5px);
-  color: @gray-light;
-  margin-right: 8px;
-  margin-bottom: 8px;
-  min-height: 120px;
-  padding: 10px;
-  text-align: center;
-  vertical-align: top;
-  position: relative;
-  width: 120px;
-  h6 {
+  .list-group-item{
+    padding: 10px 20px;
+    &:first-child {
+      border-top:none;
+    }
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+  .list-group-item-heading {
     color: @gray-light;
-    margin: 4px 0px 8px 0px;
+    font-size: 1em;
     font-weight: bold;
-    //font-size: 13px;
-    text-transform: uppercase;
+    .badge {
+      background: @gray-lighter;
+      color: @gray-light;
+      float: right;
+      font-weight: normal;
+    }
   }
-  .btn-toolbar {
-    //margin-top: 10px;
-    position: absolute;
-    bottom: 10px;
-    width: 100%;
+  .later {
+    //background: @light-gray;
+    .list-group-item-heading {;
+      font-size: 1.5em;
+    }
+    //.badge {
+    //  background: @gray-light;
+    //  color: @white;
+    //}
   }
 }
+
+@media (max-width: @screen-md ){
+  .dataset-forms {
+    clear: both;
+    float: none;
+  }
+  .ds-states {
+    float: none;
+    display: block;
+    clear: both;
+    padding-right: 20px;
+    .list-group {
+      border-right: 1px solid @gray-lighter;
+      border-bottom: 1px solid @gray-lighter;
+      margin: 0 0 20px 0;
+    }
+  }
+}
+
 
 .ds-progress {
   margin-bottom: 10px;
@@ -410,12 +443,14 @@ a {
 }
 
 .file-drop {
-//  background: @gray-lighter;
+  background: @pale-blue;
 //  border: 4px dashed @ash-gray;
 //  .border-radius(10px);
 //  height: 120px;
 //  margin-top: 10px;
 //  padding: 10px;
+  height: 290px;
+  padding-top: 90px;
 }
 
 .file-drop-over {
@@ -430,23 +465,24 @@ a {
 
 /* nav-tabs ************************************************************/
 
-.nav-tabs {
-  dipsplay: inline-block;
-  width: 100%;
-  font-size: .9em;
-//  margin: 10px 0;
-  a {
-    background: lighten(@bright-blue, 40%);
-    padding: 4px 8px;
-    margin-right: 1px;
-  }
-  &.active a {
-    background: @white
-  }
-  .badge {
-    font-size: smaller;
-    font-weight: normal;
-  }
+.nav-tabs,
+.nav-pills{
+//  dipsplay: inline-block;
+//  width: 100%;
+//  font-size: .9em;
+////  margin: 10px 0;
+//  a {
+//    background: lighten(@bright-blue, 40%);
+//    padding: 4px 8px;
+//    margin-right: 1px;
+//  }
+//  &.active a {
+//    background: @white
+//  }
+//  .badge {
+//    font-size: smaller;
+//    font-weight: normal;
+//  }
   .bg-danger {
     background: lighten(@brand-danger, 15%);
     color: @white;
@@ -513,7 +549,6 @@ a {
     &.chosen {
       background: @linnen;
       cursor: default;
-      overflow: none;
     }
   }
   .inner-node {
@@ -783,7 +818,7 @@ textarea.code {
 .nav-pills {
   a {
     border: 1px solid @ash-gray;
-    background: @silver;
+    background: @light-gray;
   }
   &.pills-small a {
     padding: 6px 12px;
@@ -830,4 +865,20 @@ label.norm {
 .fadeInRightBig {
   -webkit-animation-name: fadeInRightBig;
   animation-name: fadeInRightBig;
+}
+
+/* form validation **************************/
+
+//input.form-control.ng-invalid-required,
+//select.form-control.ng-invalid-required{
+//  background: lighten(@alert-danger-bg, 35%);
+//}
+
+form .control-label {
+  padding: 0;
+}
+
+p.help-block {
+  font-size: smaller;
+  margin: 0;
 }
