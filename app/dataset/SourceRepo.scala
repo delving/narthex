@@ -208,7 +208,7 @@ class SourceRepo(home: File) {
     val file = provideZipFile(createZipFile(fileNumber))
     val idSet = new mutable.HashSet[String]()
     val parser = new PocketParser(sourceFacts, idFilter)
-    def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.id)
+    def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.getId)
     val (source, readProgress) = sourceFromFile(file)
     progress.setReadProgress(readProgress)
     try {
@@ -320,7 +320,7 @@ class SourceRepo(home: File) {
       val endList = s"""</$POCKET_LIST>\n"""
       rawOutput.write(startList)
       def pocketWriter(pocket: Pocket): Unit = {
-        rawOutput.write(pocket.text)
+        rawOutput.write(pocket.getText)
       }
       recordCount = parsePockets(pocketWriter, idFilter, progress)
       rawOutput.write(endList)

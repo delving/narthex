@@ -33,6 +33,20 @@ object PocketParser {
 
   case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
 
+    def getId: String = id.replaceAll("[-]{2,20}", "-")
+
+    val IdPattern = ".*?<pocket id=\"(.*?)\" .*".r
+
+    def getText: String = {
+      IdPattern.findFirstMatchIn(text) match {
+        case Some(pocketId) =>
+                val sourceId = pocketId.group(1)
+                val cleanId = sourceId.replaceAll("[-]{2,20}", "-")
+                text.replaceAll(sourceId, cleanId)
+        case None => text
+      }
+    }
+
     def textBytes: ByteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"))
 
     def writeTo(writer: Writer) = {
@@ -104,7 +118,10 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
       }
     }
 
-    def setUniqueId(id: String) = uniqueId = Some(idFilter.filter(id))
+    def setUniqueId(id: String) = {
+      val clean_id = id.replaceAll("[-]{2,20}", "-")
+      uniqueId = Some(idFilter.filter(clean_id))
+    }
 
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
       def recordNamespace(binding: NamespaceBinding): Unit = {
@@ -166,17 +183,18 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
           recordText.append(s"</${if (introduceRecord) SIP_RECORD_TAG else tag}>\n")
           val record = uniqueId.map { id =>
             if (id.trim.isEmpty) throw new RuntimeException("Empty unique id!")
-            if (avoidIds.contains(id)) None
+            val clean_id = id.replaceAll("[-]{2,20}", "-")
+            if (avoidIds.contains(clean_id)) None
             else {
               val recordContent = recordText.toString()
               val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
               val scopedRecordContent = recordContent.replaceFirst(">", s" $scope>")
               if (pocketWrap) {
-                val wrapped = s"""<$POCKET id="$id">\n$scopedRecordContent</$POCKET>\n"""
-                Some(Pocket(id, wrapped, namespaceMap))
+                val wrapped = s"""<$POCKET id="$clean_id">\n$scopedRecordContent</$POCKET>\n"""
+                Some(Pocket(clean_id, wrapped, namespaceMap))
               }
               else {
-                Some(Pocket(id, scopedRecordContent, namespaceMap))
+                Some(Pocket(clean_id, scopedRecordContent, namespaceMap))
               }
             }
           } getOrElse {

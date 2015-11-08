@@ -45,7 +45,7 @@ class TestEDM extends PlaySpec with PrepareEDM {
     targetOutput.close()
 
     mappedPockets.take(1).foreach { pocket =>
-      var recordString = pocket.text
+      var recordString = pocket.getText
 //      println(s"### mapped pocket:\n$pocket")
       val model = ModelFactory.createDefaultModel()
       model.read(new StringReader(recordString), null, "RDF/XML")
