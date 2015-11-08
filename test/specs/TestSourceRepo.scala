@@ -95,10 +95,10 @@ class TestSourceRepo extends FlatSpec with Matchers {
     var recordCount = 0
 
     def receiveRecord(record: Pocket): Unit = {
-      //      println(s"${record.id}: ${record.text}")
-      if (seenIds.contains(record.id)) fail(s"seen id ${record.id}")
+      //      println(s"${record.getId}: ${record.text}")
+      if (seenIds.contains(record.getId)) fail(s"seen id ${record.getId}")
       recordCount += 1
-      seenIds.add(record.id)
+      seenIds.add(record.getId)
       val narthex = XML.loadString(record.text)
       val content = (narthex \ "thing" \ "box").text
       content should be("final")
@@ -142,10 +142,10 @@ class TestSourceRepo extends FlatSpec with Matchers {
     var recordCount = 0
 
     def receiveRecord(record: Pocket): Unit = {
-      //      println(s"${record.id}: ${record.text}")
-      if (seenIds.contains(record.id)) fail(s"seen id ${record.id}")
+      //      println(s"${record.getId}: ${record.text}")
+      if (seenIds.contains(record.getId)) fail(s"seen id ${record.getId}")
       recordCount += 1
-      seenIds.add(record.id)
+      seenIds.add(record.getId)
       val narthex = XML.loadString(record.text)
       val content = (narthex \ "record" \ "metadata" \ "thing" \ "box").text
       content should be("final")
