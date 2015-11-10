@@ -33,7 +33,7 @@ object PocketParser {
 
   case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
 
-    def getId: String = id.replaceAll("[-]{2,20}", "-")
+    def getId: String = id.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
 
     val IdPattern = ".*?<pocket id=\"(.*?)\" .*".r
 
@@ -41,7 +41,7 @@ object PocketParser {
       IdPattern.findFirstMatchIn(text) match {
         case Some(pocketId) =>
                 val sourceId = pocketId.group(1)
-                val cleanId = sourceId.replaceAll("[-]{2,20}", "-")
+                val cleanId = sourceId.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
                 text.replaceAll(sourceId, cleanId)
         case None => text
       }
@@ -119,7 +119,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
     }
 
     def setUniqueId(id: String) = {
-      val clean_id = id.replaceAll("[-]{2,20}", "-")
+      val clean_id = id.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
       uniqueId = Some(idFilter.filter(clean_id))
     }
 
@@ -183,7 +183,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
           recordText.append(s"</${if (introduceRecord) SIP_RECORD_TAG else tag}>\n")
           val record = uniqueId.map { id =>
             if (id.trim.isEmpty) throw new RuntimeException("Empty unique id!")
-            val clean_id = id.replaceAll("[-]{2,20}", "-")
+            val clean_id = id.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
             if (avoidIds.contains(clean_id)) None
             else {
               val recordContent = recordText.toString()
