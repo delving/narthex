@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor._
 import akka.util.Timeout
 import dataset.DatasetActor._
+import dataset.DsInfo
 import dataset.DsInfo._
 import harvest.Harvesting.HarvestType.harvestTypeFromString
 import mapping.SkosMappingStore.SkosMapping
@@ -36,6 +37,7 @@ import play.api.Logger
 import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
+import play.api.libs.ws.{WS, WSResponse}
 import play.api.mvc._
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -172,7 +174,7 @@ object AppController extends Controller with Security {
   // ====== vocabularies =====
 
   def toggleSkosifiedField(spec: String) = Secure(parse.json) { session => request =>
-    withDsInfo(spec) { dsInfo =>
+    withDsInfo(spec) { dsInfo: DsInfo =>
       val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
       val skosFieldTag = (request.body \ "skosFieldTag").as[String]
       val skosFieldUri = (request.body \ "skosFieldUri").as[String]
@@ -195,6 +197,7 @@ object AppController extends Controller with Security {
               val addSkosEntriesQ = caseList.map(_.ensureSkosEntryQ).mkString
               val futureUpdate = ts.up.sparqlUpdate(addSkosEntriesQ).map { ok =>
                 dsInfo.addLiteralPropToList(skosField, skosFieldValue)
+                dsInfo.toggleNaveSkosField(datasetUri=dsInfo.uri, propertyUri=skosFieldUri, delete=false)
               }
               Await.result(futureUpdate, 1.minute)
               "added"
@@ -211,6 +214,7 @@ object AppController extends Controller with Security {
           val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldValue)
           val futureUpdate = ts.up.sparqlUpdate(skosifiedField.removeSkosEntriesQ).map { ok =>
             dsInfo.removeLiteralPropFromList(skosField, skosFieldValue)
+            dsInfo.toggleNaveSkosField(datasetUri=dsInfo.uri, propertyUri=skosFieldUri, delete=true)
           }
           Await.result(futureUpdate, 1.minute)
           "removed"

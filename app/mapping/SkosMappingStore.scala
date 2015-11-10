@@ -19,6 +19,10 @@ package mapping
 import java.util.UUID
 
 import org.ActorStore.NXActor
+import org.OrgContext
+import play.api.Logger
+import play.api.libs.json.{Json, JsObject}
+import play.api.libs.ws.{WS, WSResponse}
 import services.StringHandling.createGraphName
 import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
@@ -75,15 +79,40 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph)(implicit ec: Executi
 class TermMappingStore(termGraph: SkosGraph)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
+  import play.api.Play.current
+
+  def toggleNaveMapping(mapping: SkosMapping, delete: Boolean = false) = {
+    def checkUpdateResponse(response: WSResponse, logString: JsObject): Unit = {
+      if (response.status != 201) {
+        Logger.error(logString.toString())
+        throw new Exception(s"${response.statusText}: ${response.body}:")
+      }
+    }
+
+    val skosMappingApi = s"${OrgContext.NAVE_API_URL}/api/index/narthex/toggle/proxymapping/"
+    val request = WS.url(s"$skosMappingApi").withHeaders(
+      "Content-Type" -> "application/json; charset=utf-8",
+      "Accept" -> "application/json",
+      "Authorization" -> s"Token ${OrgContext.NAVE_BULK_API_AUTH_TOKEN}"
+    )
+    val json = Json.obj(
+      "proxy_resource_uri" -> mapping.uriA,
+      "skos_concept_uri" -> mapping.uriB,
+      "user_uri" -> mapping.actor.uri,
+      "delete" -> delete
+    )
+
+    request.post(json) // .map(checkUpdateResponse(_, json))
+  }
 
   def toggleMapping(mapping: SkosMapping, vocabGraph: SkosGraph): Future[String] = {
     ts.ask(mapping.existenceQ).flatMap { exists =>
       if (exists) {
+        toggleNaveMapping(mapping, true)
         ts.up.sparqlUpdate(mapping.deleteQ).map(ok => "removed")
-        // todo insert mapping to nave here
       }
       else {
-        // todo insert mapping to nave here
+        toggleNaveMapping(mapping, false)
         ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph)).map(ok => "added")
       }
     }
