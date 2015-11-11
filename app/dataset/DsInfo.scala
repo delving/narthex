@@ -22,15 +22,18 @@ import com.hp.hpl.jena.rdf.model._
 import dataset.SourceRepo.{IdFilter, VERBATIM_FILTER}
 import harvest.Harvesting.{HarvestCron, HarvestType}
 import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
+import net.sf.saxon.functions.False
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
+import org.OrgContext
 import org.OrgContext.{NX_URI_PREFIX, orgContext}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
-import play.api.libs.json.{JsValue, Json, Writes}
+import play.api.libs.json.{JsObject, JsValue, Json, Writes}
+import play.api.libs.ws.{WS, WSResponse}
 import services.StringHandling.{createGraphName, urlEncodeValue}
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -322,6 +325,29 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     datasetLanguage -> metadata.language,
     datasetRights -> metadata.rights
   )
+
+  def toggleNaveSkosField(datasetUri: String, propertyUri: String, delete: Boolean = false) = {
+    def checkUpdateResponse(response: WSResponse, logString: JsObject): Unit = {
+      if (response.status != 201) {
+        Logger.error(logString.toString())
+        throw new Exception(s"${response.statusText}: ${response.body}:")
+      }
+    }
+
+    val skosFieldApi = s"${OrgContext.NAVE_API_URL}/api/index/narthex/toggle/proxyfield/"
+    val request = WS.url(s"$skosFieldApi").withHeaders(
+      "Content-Type" -> "application/json; charset=utf-8",
+      "Accept" -> "application/json",
+      "Authorization" -> s"Token ${OrgContext.NAVE_BULK_API_AUTH_TOKEN}"
+    )
+    val json = Json.obj(
+      "dataset_uri" -> datasetUri,
+      "property_uri" -> propertyUri,
+      "delete" -> delete
+    )
+    request.post(json) // .map(checkUpdateResponse(_, json))
+  }
+
 
   def currentHarvestCron = {
     (getLiteralProp(harvestPreviousTime), getLiteralProp(harvestDelay), getLiteralProp(harvestDelayUnit), getLiteralProp(harvestIncremental)) match {
