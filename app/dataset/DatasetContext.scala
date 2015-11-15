@@ -29,6 +29,7 @@ import harvest.Harvesting.HarvestType
 import org.OrgContext._
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
+import play.api.Logger
 import record.PocketParser
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
@@ -202,10 +203,12 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   }
 
   def dropTree() = {
-    dropRecords
+    // dropRecords should not be called here
+    // dropRecords
     deleteQuietly(treeDir)
     dsInfo.removeState(RAW_ANALYZED)
     dsInfo.removeState(ANALYZED)
+    Logger.debug("Dropping Analyses Tree")
   }
 
   def dropRecords = {

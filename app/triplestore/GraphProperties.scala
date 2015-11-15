@@ -93,6 +93,7 @@ object GraphProperties {
   val stateProcessed = NXProp("stateProcessed", timeProp)
   val stateAnalyzed = NXProp("stateAnalyzed", timeProp)
   val stateSaved = NXProp("stateSaved", timeProp)
+  val stateIncrementalSaved = NXProp("stateIncrementalSaved", timeProp)
   val stateSynced = NXProp("stateSynced", timeProp)
 
   val harvestType = NXProp("harvestType")
