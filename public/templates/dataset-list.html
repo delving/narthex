@@ -733,7 +733,7 @@
 
 <script type="text/ng-template" id="dataset-delete.html">
     <div data-ng-show="dataset.stateRaw || dataset.stateSourced || dataset.stateAnalyzed || dataset.stateProcessed">
-        <div class="alert alert-danger">
+        <div class="alert alert-warning">
             Removing the results of a workflow phase returns the dataset to a previous state, at which point
             the subsequent processes can be repeated.
         </div>
@@ -758,7 +758,7 @@
     </div>
     <div class="alert alert-danger">
         By clicking the 'Delete' button below you will remove the entire dataset and all its accompanying information.
-        This process is <em>not</em> reversible so proceed with caution!
+        <strong>This process is <em>not</em> reversible so proceed with caution!</strong>
     </div>
     <form name="form" class="form">
         <fieldset>
