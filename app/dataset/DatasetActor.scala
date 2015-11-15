@@ -438,20 +438,22 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       if (incrementalOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
         dsInfo.setState(INCREMENTAL_SAVED)
-        self ! SaveGraphs(incrementalOpt)
+        val graphSaver = context.actorOf(GraphSaver.props(datasetContext), "graph-saver")
+        graphSaver ! SaveGraphs(incrementalOpt)
+        active.childOpt.foreach(_ ! PoisonPill)
+        goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
       }
       else {
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
+        MailProcessingComplete(
+          spec = dsInfo.spec,
+          ownerEmailOpt = dsInfo.ownerEmailOpt,
+          validString = dsInfo.processedValidVal,
+          invalidString = dsInfo.processedInvalidVal
+        ).send()
+        active.childOpt.foreach(_ ! PoisonPill)
+        goto(Idle) using Dormant
       }
-      MailProcessingComplete(
-        spec = dsInfo.spec,
-        ownerEmailOpt = dsInfo.ownerEmailOpt,
-        validString = dsInfo.processedValidVal,
-        invalidString = dsInfo.processedInvalidVal
-      ).send()
-      active.childOpt.foreach(_ ! PoisonPill)
-      goto(Idle) using Dormant
-
   }
 
   when(Saving) {

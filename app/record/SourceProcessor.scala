@@ -202,7 +202,9 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       xmlOutput.close()
       errorOutput.close()
       if (invalidRecords == 0) deleteQuietly(processedOutput.errorFile)
-      context.parent ! ProcessingComplete(validRecords, invalidRecords, incrementalOpt)
+      val incrementalOptOutput = if (!incrementalOpt.isEmpty) Some(incrementalOpt.get.copy(file=processedOutput.xmlFile)) else incrementalOpt
+
+      context.parent ! ProcessingComplete(validRecords, invalidRecords, incrementalOptOutput)
     }
   }
 
