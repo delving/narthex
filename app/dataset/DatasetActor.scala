@@ -35,6 +35,7 @@ import mapping.{CategoryCounter, Skosifier}
 import org.OrgContext
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.libs.json.{Json, Writes}
 import record.SourceProcessor
 import record.SourceProcessor._
@@ -346,14 +347,20 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
 
   when(Harvesting) {
 
-    case Event(HarvestComplete(strategy, fileOpt), active: Active) =>
+    case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch), active: Active) =>
       strategy match {
         case Sample =>
           dsInfo.setState(RAW)
         case FromScratch =>
           dsInfo.setState(SOURCED)
         case ModifiedAfter(mod, _) =>
-          dsInfo.setState(SOURCED)
+          noRecordsMatch match {
+            case true =>
+              Logger.info("NoRecordsMatch, so setting state to Incremental Saved")
+              dsInfo.setState(INCREMENTAL_SAVED)
+            case _ =>
+              dsInfo.setState(SOURCED)
+          }
           dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
           fileOpt match {
             case Some(file) =>
@@ -430,6 +437,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       dsInfo.setState(PROCESSED)
       if (incrementalOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
+        dsInfo.setState(INCREMENTAL_SAVED)
         self ! SaveGraphs(incrementalOpt)
       }
       else {

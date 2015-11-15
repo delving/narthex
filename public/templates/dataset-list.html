@@ -121,6 +121,7 @@
                                         stateMappable: 'mappable',
                                         stateInError:'error',
                                         stateProcessable:'processable',
+                                        stateIncrementalSaved: 'incremental-saved',
                                         stateProcessed: 'processed',
                                         stateAnalyzed: 'analyzed',
                                         stateSaved:'saved',
@@ -131,6 +132,7 @@
                                 <span ng-switch-when="stateSourced">Sourced</span>
                                 <span ng-switch-when="stateMappable">Mappable</span>
                                 <span ng-switch-when="stateProcessable">Processable</span>
+                                <span ng-switch-when="stateIncrementalSaved">Incremental Saved</span>
                                 <span ng-switch-when="stateInError">Processing error</span>
                                 <span ng-switch-when="stateProcessed">Processed</span>
                                 <span ng-switch-when="stateAnalyzed">Analyzed</span>
@@ -206,6 +208,17 @@
                             <div class="btn-toolbar">
                                 <a href data-ng-click="start('start processing')">
                                     <i class="fa fa-fw fa-cogs"></i> <span>Process</span>
+                                </a>
+                            </div>
+                        </li>
+                        <li data-ng-show="dataset.stateIncrementalSaved" class="ds-state list-group-item"
+                            data-ng-class="{ 'later': isCurrent('stateIncrementalSaved') }">
+                            <h4 class="list-group-item-heading">Incremental Saved
+                                <small class="badge">{{ dataset.stateIncrementalSaved.d }} {{ dataset.stateIncrementalSaved.t }}</small>
+                            </h4>
+                            <div class="btn-toolbar">
+                                <a href data-ng-click="start('start saving')">
+                                    <i class="fa fa-fw fa-database"></i> <span>Full Save</span>
                                 </a>
                             </div>
                         </li>
@@ -446,7 +459,7 @@
                         <option value="http://www.europeana.eu/rights/rr-f/">Rights Reserved - Free Access</option>
                         <option value="http://www.europeana.eu/rights/rr-p/">Rights Reserved - Paid Access</option>
                         <option value="http://www.europeana.eu/rights/orphan-work-eu/">Orphan work</option>
-                        <option value="http://www.europeana.eu/rights/unknown/">Unknown"</option>
+                        <option value="http://www.europeana.eu/rights/unknown/">Unknown</option>
                     </select>
                 </div>
             </div>
@@ -576,9 +589,9 @@
                     <div id="hc_inc">
                         <input type="radio" ng-model="dataset.edit.harvestIncremental" value="false">
                         <span>Full harvest</span>
-                        <!--<span>&nbsp;&nbsp;&nbsp;&nbsp;</span>-->
-                        <!--<input type="radio" ng-model="dataset.edit.harvestIncremental" value="true">-->
-                        <!--<span>Incremental harvest</span>-->
+                        <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <input type="radio" ng-model="dataset.edit.harvestIncremental" value="true">
+                        <span>Incremental harvest</span>
                     </div>
                 </div>
             </div>

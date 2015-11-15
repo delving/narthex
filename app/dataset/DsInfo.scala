@@ -69,6 +69,7 @@ object DsInfo {
     val PROCESSED = DsState(stateProcessed)
     val ANALYZED = DsState(stateAnalyzed)
     val SAVED = DsState(stateSaved)
+    val INCREMENTAL_SAVED = DsState(stateIncrementalSaved)
     val SYNCED = DsState(stateSynced)
   }
 

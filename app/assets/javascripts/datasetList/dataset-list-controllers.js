@@ -191,7 +191,8 @@ define(["angular"], function () {
             {name: 'stateInError', label: 'In error', count: 0},
             {name: 'stateProcessed', label: 'Processed', count: 0},
             {name: 'stateAnalyzed', label: 'Analyzed', count: 0},
-            {name: 'stateSaved', label: 'Saved', count: 0}
+            {name: 'stateSaved', label: 'Saved', count: 0},
+            {name: 'stateIncrementalSaved', label: 'Incremental Saved', count: 0}
         ];
 
         $scope.decorateDataset = function (dataset) {

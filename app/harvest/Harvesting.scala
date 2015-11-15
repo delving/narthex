@@ -79,6 +79,8 @@ object Harvesting {
 
   case class HarvestError(error: String, strategy: HarvestStrategy)
 
+  case class NoRecordsMatch(message: String, strategy: HarvestStrategy)
+
   case class PMHHarvestPage
   (
     records: String,
@@ -189,28 +191,39 @@ trait Harvesting {
         listRecords.withQueryString("resumptionToken" -> token.value)
     }
     request.get().map { response =>
+      Logger.debug(s"OAI-PMH response: $response.body")
       val error: Option[HarvestError] = if (response.status != 200) {
-        Logger.info(s"response: ${response.body}")
+        Logger.info(s"eror response: ${response.underlying[NettyResponse].getResponseBody}")
         Some(HarvestError(s"HTTP Response: ${response.statusText}", strategy))
       }
       else {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBodyAsStream
+        Logger.debug(s"OAI-PMH Response: \n ${netty.getResponseBody}")
         val xml = XML.load(FileHandling.createReader(body))
         val errorNode = xml \ "error"
         if (errorNode.nonEmpty) {
           val errorCode = (errorNode \ "@code").text
           if ("noRecordsMatch" == errorCode) {
             Logger.info("No PMH Records returned")
-            None
+             Some(HarvestError("noRecordsMatch", strategy))
           }
           else {
             Some(HarvestError(errorNode.text, strategy))
           }
         }
-        else None
+        else {
+        None
       }
-      error getOrElse {
+      }
+      Logger.debug(s"HarvestState: $error")
+      if (!error.isEmpty) {
+        error.get match {
+          case HarvestError("noRecordsMatch", strategy) => NoRecordsMatch("noRecordsMatch", strategy)
+          case _ => error.get
+        }
+      }
+      else {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBodyAsStream
         val xml = XML.load(FileHandling.createReader(body))

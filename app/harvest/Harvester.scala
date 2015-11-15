@@ -24,7 +24,7 @@ import akka.pattern.pipe
 import dataset.DatasetActor._
 import dataset.DatasetContext
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
-import harvest.Harvesting.{AdLibHarvestPage, HarvestError, PMHHarvestPage}
+import harvest.Harvesting.{NoRecordsMatch, AdLibHarvestPage, HarvestError, PMHHarvestPage}
 import org.OrgContext.actorWork
 import org.apache.commons.io.FileUtils
 import play.api.Logger
@@ -40,7 +40,7 @@ object Harvester {
 
   case class HarvestPMH(strategy: HarvestStrategy, url: String, set: String, prefix: String)
 
-  case class HarvestComplete(strategy: HarvestStrategy, fileOpt: Option[File])
+  case class HarvestComplete(strategy: HarvestStrategy, fileOpt: Option[File], noRecordsMatch: Boolean=false)
 
   def props(datasetContext: DatasetContext) = Props(new Harvester(datasetContext))
 }
@@ -76,6 +76,9 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
     zipOutputOpt.foreach(_.close())
     log.info(s"Finished $strategy harvest error=$errorOpt")
     errorOpt match {
+      case Some("noRecordsMatch") =>
+        log.info(s"Finished incremental harvest with noRecordsMatch")
+        context.parent ! HarvestComplete(strategy, None, true)
       case Some(message) =>
         context.parent ! WorkFailure(message)
       case None =>
@@ -193,5 +196,8 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
     case HarvestError(error, strategy) =>
       finish(strategy, Some(error))
 
+    case NoRecordsMatch(message, strategy) =>
+      Logger.debug("noRecordsMatch (pre-finish)")
+      finish(strategy, Some(message))
   }
 }
