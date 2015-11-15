@@ -352,6 +352,10 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         case Sample =>
           dsInfo.setState(RAW)
         case FromScratch =>
+          dsInfo.removeState(SAVED)
+          dsInfo.removeState(ANALYZED)
+          dsInfo.removeState(INCREMENTAL_SAVED)
+          dsInfo.removeState(PROCESSED)
           dsInfo.setState(SOURCED)
         case ModifiedAfter(mod, _) =>
           noRecordsMatch match {
@@ -359,6 +363,11 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
               Logger.info("NoRecordsMatch, so setting state to Incremental Saved")
               dsInfo.setState(INCREMENTAL_SAVED)
             case _ =>
+              dsInfo.removeState(SAVED)
+              dsInfo.removeState(ANALYZED)
+              dsInfo.removeState(INCREMENTAL_SAVED)
+              dsInfo.removeState(PROCESSED)
+              dsInfo.removeState(PROCESSABLE)
               dsInfo.setState(SOURCED)
           }
           dsInfo.setHarvestCron(dsInfo.currentHarvestCron)

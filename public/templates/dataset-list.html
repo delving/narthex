@@ -132,7 +132,7 @@
                                 <span ng-switch-when="stateSourced">Sourced</span>
                                 <span ng-switch-when="stateMappable">Mappable</span>
                                 <span ng-switch-when="stateProcessable">Processable</span>
-                                <span ng-switch-when="stateIncrementalSaved">Incremental Saved</span>
+                                <span ng-switch-when="stateIncrementalSaved">Incremental Processed</span>
                                 <span ng-switch-when="stateInError">Processing error</span>
                                 <span ng-switch-when="stateProcessed">Processed</span>
                                 <span ng-switch-when="stateAnalyzed">Analyzed</span>
@@ -217,8 +217,8 @@
                                 <small class="badge">{{ dataset.stateIncrementalSaved.d }} {{ dataset.stateIncrementalSaved.t }}</small>
                             </h4>
                             <div class="btn-toolbar">
-                                <a href data-ng-click="start('start saving')">
-                                    <i class="fa fa-fw fa-database"></i> <span>Full Save</span>
+                                <a href data-ng-click="start('start processed analysis')">
+                                    <i class="fa fa-fw fa-bar-chart"></i> <span>Analyze</span>
                                 </a>
                             </div>
                         </li>
