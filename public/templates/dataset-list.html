@@ -338,7 +338,7 @@
                                     <a href role="tab" data-ng-click="leftTabOpen ='check'">Links</a>
                                 </li>
                                 <li data-ng-class="{'active':leftTabOpen === 'harvesting'}">
-                                <a href role="tab" data-ng-click="leftTabOpen ='harvesting'">harvesting statistics</a>
+                                    <a href role="tab" data-ng-click="leftTabOpen = 'harvesting'">harvesting statistics</a>
                                 </li>
                             </ul>
 
@@ -721,25 +721,24 @@
     </ul>
 </script>
 
-<script type="text/ng-template" id="'harvesting-statistics.html'">
-    <ul class="list-group">
-        <li class="list-group-item">
-            date last full harvest
-            valid
-            invalid
-            date last incremental harvest
-            valid
-            invalid
-            count harvested
-            link to harvested records
-            count processed
-            link to processed records
-            link to errors
-            <a class="" ng-href="{{ searchLink }}" target="_blank">
-                <i class="fa fa-search"></i> <span>Sjoerd</span>
-            </a>
-        </li>
-    </ul>
+<script type="text/ng-template" id="harvesting-statistics.html">
+    <!-- TODO: hide if no data available -->
+
+    <!-- If last full harvest date -->
+    Last full harvest date: <!-- DATA HERE --><br/>
+    Valid records: <!-- DATA HERE --><br/>
+    Invalid records: <!-- DATA HERE --><br/><br/>
+
+    <!-- If last incremental harvest date -->
+    Last incremental harvest date: <!-- DATA HERE --><br/>
+    Valid records: <!-- DATA HERE --><br/>
+    Invalid records: <!-- DATA HERE --><br/><br/>
+
+    Count harvested: <a ng-href="<!-- link to harvested records -->"><!-- DATA COUNT HERE HERE --></a><br/>
+    Count processed: <a ng-href="<!-- link to processed records -->"><!-- DATA COUNT HERE HERE --></a><br/><br/>
+
+    Errors: <a ng-href="<!-- link to errors -->"><!-- DATA COUNT HERE HERE --></a><br/>
+
 </script>
 
 <script type="text/ng-template" id="dataset-delete.html">
