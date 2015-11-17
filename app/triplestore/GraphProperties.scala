@@ -59,6 +59,7 @@ object GraphProperties {
   val saveTime = NXProp("saveTime")
   val contentHash = NXProp("contentHash")
   val acceptanceOnly = NXProp("acceptanceOnly")
+  val acceptanceMode = NXProp("acceptanceMode")
 
   val datasetCharacter = NXProp("datasetCharacter")
 

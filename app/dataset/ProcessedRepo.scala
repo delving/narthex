@@ -71,12 +71,13 @@ object ProcessedRepo {
         val SpecIdExtractor(spec, localId) = graphUri
         val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
         val currentSkosFields = dsInfo.getLiteralPropList(skosField)
+        val acceptanceMode = dsInfo.getBooleanProp(acceptanceMode)
         val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
         val actionMap = Json.obj(
             "hubId" -> hubId,
             "dataset" -> spec,
+            "acceptanceMode" -> acceptanceMode,
             "graphUri" -> graphUri,
-            "proxyResourceFields" -> currentSkosFields.mkString("::"),
             "type" -> "void_EDMRecord",
             "action" -> "index",
             "contentHash" -> localHash.toString,

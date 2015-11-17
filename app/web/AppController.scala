@@ -129,7 +129,7 @@ object AppController extends Controller with Security {
     withDsInfo(spec) { dsInfo =>
       dsInfo.toggleProduction().map { acceptanceOnly =>
         sendRefresh(spec)
-        Ok(Json.obj("acceptanceOnly" -> acceptanceOnly.toString))
+        Ok(Json.obj("acceptanceMode" -> acceptanceOnly.toString))
       }
     }
   }
