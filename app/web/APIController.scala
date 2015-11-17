@@ -39,6 +39,24 @@ object APIController extends Controller {
     latestErrorFile.map(OkFile(_)).getOrElse(NotFound(s"No errors found for $spec"))
   }
 
+  def processingSourcedText(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val latestSourcedFile = datasetContext.processedRepo.getLatestSourced
+    latestSourcedFile.map(OkFile(_)).getOrElse(NotFound(s"No sourced files found for $spec"))
+  }
+
+  def processingProcessedText(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val latestProcessedFiles = datasetContext.processedRepo.getLatestProcessed
+    latestProcessedFiles.map(OkFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
+  }
+
+  def processingHarvestingLog(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val latestProcessedFiles = datasetContext.processedRepo.getLatestProcessed
+    latestProcessedFiles.map(OkFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
+  }
+
   def pathsJSON(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val treeFile = orgContext.datasetContext(spec).index
     if (treeFile.exists()) {
