@@ -211,7 +211,7 @@
                                 </a>
                             </div>
                         </li>
-                        <li data-ng-show="dataset.stateIncrementalSaved" class="ds-state list-group-item"
+                        <li data-ng-show="dataset.stateIncrementalSaved && dataset.harvestIncrementalMode" class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateIncrementalSaved') }">
                             <h4 class="list-group-item-heading">Incremental Saved
                                 <small class="badge">{{ dataset.stateIncrementalSaved.d }} {{ dataset.stateIncrementalSaved.t }}</small>
@@ -222,7 +222,7 @@
                                 </a>
                             </div>
                         </li>
-                        <li data-ng-show="dataset.stateProcessed" class="ds-state list-group-item"
+                        <li data-ng-show="dataset.stateProcessed && !dataset.harvestIncrementalMode" class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateProcessed') }">
                             <h4 class="list-group-item-heading">Processed
                                 <small class="badge">{{ dataset.stateProcessed.d }} {{ dataset.stateProcessed.t }}</small>
@@ -233,7 +233,7 @@
                                 </a>
                             </div>
                         </li>
-                        <li data-ng-show="dataset.stateAnalyzed" class="ds-state list-group-item"
+                        <li data-ng-show="dataset.stateAnalyzed " class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
                             <h4 class="list-group-item-heading">Analyzed
                                 <small class="badge">{{ dataset.stateAnalyzed.d }} {{ dataset.stateAnalyzed.t }}</small>
@@ -731,7 +731,7 @@
     Invalid records: {{ dataset.processedInvalid }}<br/><br/>
 
     <!-- If last incremental harvest date -->
-    In incremenal mode: {{ dataset.harvestIncremental}} <br/>
+    In incremenal mode: {{ dataset.harvestIncrementalMode }} <br/>
     Last incremental harvest date: {{ dataset.lastIncrementalHarvestTime }} <br/>
     Valid records: {{ dataset.processedIncrementalValid }} <br/>
     Invalid records: {{ dataset.processedIncrementalInvalid }}<br/><br/>
