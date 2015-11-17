@@ -725,19 +725,21 @@
     <!-- TODO: hide if no data available -->
 
     <!-- If last full harvest date -->
-    Last full harvest date: <!-- DATA HERE --><br/>
-    Valid records: <!-- DATA HERE --><br/>
-    Invalid records: <!-- DATA HERE --><br/><br/>
+    Last full harvest date: {{ dataset.lastFullHarvestTime }}<br/>
+    Valid records: {{ dataset.processedValid }} <br/>
+    Invalid records: {{ dataset.processedInvalid }}<br/><br/>
 
     <!-- If last incremental harvest date -->
-    Last incremental harvest date: <!-- DATA HERE --><br/>
-    Valid records: <!-- DATA HERE --><br/>
-    Invalid records: <!-- DATA HERE --><br/><br/>
+    In incremenal mode: {{ dataset.harvestIncremental}} <br/>
+    Last incremental harvest date: {{ dataset.lastIncrementalHarvestTime }} <br/>
+    Valid records: {{ dataset.processedIncrementalValid }} <br/>
+    Invalid records: {{ dataset.processedIncrementalInvalid }}<br/><br/>
 
-    Count harvested: <a ng-href="<!-- link to harvested records -->"><!-- DATA COUNT HERE HERE --></a><br/>
-    Count processed: <a ng-href="<!-- link to processed records -->"><!-- DATA COUNT HERE HERE --></a><br/><br/>
 
-    Errors: <a ng-href="<!-- link to errors -->"><!-- DATA COUNT HERE HERE --></a><br/>
+
+    <a ng-href="" data-ng-click="showLastSourcedPage()">Last harvested records</a><br/>
+    <a ng-href="" data-ng-click="showLastProcessedPage()">Last processed records</a><br/>
+    <a ng-href="" data-ng-click="showInvalidRecordsPage()">Last processing errors</a><br/>
 
 </script>
 

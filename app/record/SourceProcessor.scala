@@ -17,6 +17,7 @@
 package record
 
 import java.io.{File, FileOutputStream}
+import java.time.LocalDateTime
 
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Incremental, WorkFailure}
@@ -132,18 +133,22 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       val processedOutput = datasetContext.processedRepo.createOutput
       val xmlOutput = createWriter(processedOutput.xmlFile)
       val errorOutput = createWriter(processedOutput.errorFile)
+      val harvestingLogger = appender(datasetContext.harvestLogger)
       var validRecords = 0
       var invalidRecords = 0
       var time = System.currentTimeMillis()
 
-      def writeError(heading: String, error: String) = {
+      def writeError(heading: String, error: String, id: String) = {
         invalidRecords += 1
-        errorOutput.write(
-          s"""
-            |===== $invalidRecords: $heading =====
-                                             |$error
+        val errorString = s"""
+                         |===== $invalidRecords: $heading === ( $id )=====
+                         |$error
              """.stripMargin.trim
-        )
+        if (!incrementalOpt.isEmpty) {
+          harvestingLogger.write(errorString)
+          harvestingLogger.newLine()
+        }
+        errorOutput.write(errorString)
         errorOutput.write("\n")
       }
 
@@ -156,16 +161,16 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
             validRecords += 1
 
           case Failure(ue: URIErrorsException) =>
-            writeError("URI ERRORS", ue.uriErrors.mkString("\n"))
+            writeError("URI ERRORS", ue.uriErrors.mkString("\n"), rawPocket.getId)
 
           case Failure(disc: DiscardRecordException) =>
-            writeError("DISCARDED RECORD", disc.getMessage)
+            writeError("DISCARDED RECORD", disc.getMessage, rawPocket.getId)
 
           case Failure(sax: SAXException) =>
-            writeError("XSD ERROR", sax.getMessage)
+            writeError("XSD ERROR", sax.getMessage, rawPocket.getId)
 
           case Failure(unexpected: Throwable) =>
-            writeError("UNEXPECTED ERROR", unexpected.toString)
+            writeError("UNEXPECTED ERROR", unexpected.toString, rawPocket.getId)
         }
         val total = validRecords + invalidRecords
         if (total % 10000 == 0) {
@@ -203,7 +208,9 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       errorOutput.close()
       if (invalidRecords == 0) deleteQuietly(processedOutput.errorFile)
       val incrementalOptOutput = if (!incrementalOpt.isEmpty) Some(incrementalOpt.get.copy(file=processedOutput.xmlFile)) else incrementalOpt
-      // todo add logging for lars
+      harvestingLogger.write(s"Processed Source Records - ${LocalDateTime.now()} - valid records: $validRecords - invalid records: $invalidRecords - incremental: ${!incrementalOpt.isEmpty}")
+      harvestingLogger.newLine()
+      harvestingLogger.close()
       context.parent ! ProcessingComplete(validRecords, invalidRecords, incrementalOptOutput)
     }
   }

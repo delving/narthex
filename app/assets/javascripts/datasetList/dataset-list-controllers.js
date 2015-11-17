@@ -330,6 +330,11 @@ define(["angular"], function () {
         "categoriesInclude"
     ];
 
+    var harvestingStatisticsFields = [
+        "lastFullHarvestTime", "processedValid", "processedInvalid",
+        "lastIncrementalHarvestTime", "processedIncrementalValid", "processedIncrementalInvalid"
+    ];
+
     var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload, $routeParams) {
         if (!$scope.dataset) {
             alert("no dataset!");
@@ -391,6 +396,8 @@ define(["angular"], function () {
         // todo: note that edm is hardcoded here:
         $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + $scope.dataset.datasetSpec;
         $scope.apiPathErrors = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/errors";
+        $scope.apiPathSourced = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/sourced";
+        $scope.apiPathProcessed = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/processed";
         $scope.sparqlPath = $scope.user.naveDomain + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
 
         function setUnchanged() {
@@ -510,6 +517,14 @@ define(["angular"], function () {
 
         $scope.isCurrent = function (currState) {
             return currState == $scope.dataset.stateCurrent.name;
+        };
+
+        $scope.showLastSourcedPage = function () {
+            window.open($scope.apiPathSourced, "_blank")
+        };
+
+        $scope.showLastProcessedPage = function () {
+            window.open($scope.apiPathProcessed, "_blank")
         };
 
         $scope.showInvalidRecordsPage = function () {

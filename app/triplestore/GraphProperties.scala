@@ -102,9 +102,13 @@ object GraphProperties {
   val harvestPrefix = NXProp("harvestPrefix")
   val harvestSearch = NXProp("harvestSearch")
   val harvestPreviousTime = NXProp("harvestPreviousTime", timeProp)
+  val lastFullHarvestTime = NXProp("lastFullHarvestTime", timeProp)
+  val lastIncrementalHarvestTime = NXProp("lastIncrementalHarvestTime", timeProp)
   val harvestDelay = NXProp("harvestDelay")
   val harvestDelayUnit = NXProp("harvestDelayUnit")
   val harvestIncremental = NXProp("harvestIncremental")
+  val harvestIncrementalCount = NXProp("harvestIncrementalCount", intProp)
+  val harvestFullCount = NXProp("harvestFullCount", intProp)
 
   val idFilterType = NXProp("idFilterType")
   val idFilterExpression = NXProp("idFilterExpression")
