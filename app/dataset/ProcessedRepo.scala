@@ -129,6 +129,11 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
     listXmlFiles.map(file => ProcessedOutput(home, getFileNumber(file))).toList
   }
 
+  def listSourceFiles: List[File] = {
+    val sourceHome = new File(home.getParentFile, "/source")
+    sourceHome.listFiles().filter(f => f.getName.endsWith(".zip")).sortBy(_.getName).toList
+  }
+
   def createOutput: ProcessedOutput = {
     val number = listOutputs.lastOption.map(_.number + 1).getOrElse(0)
     ProcessedOutput(home, number)
@@ -136,6 +141,16 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   def getLatestErrors: Option[File] = {
     listOutputs.filter(_.errorFile.exists()).map(_.errorFile).lastOption
+  }
+
+  def getLatestProcessed: Option[File] = {
+    val files = listOutputs
+    files.filter(_.xmlFile.exists()).map(_.xmlFile).lastOption
+  }
+
+  def getLatestSourced: Option[File] = {
+    val sourceZips = listSourceFiles
+    sourceZips.sortBy(_.lastModified).headOption
   }
 
   def clear() = clearDir(home)

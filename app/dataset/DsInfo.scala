@@ -261,6 +261,16 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   def setState(state: DsState) = setSingularLiteralProps(state.prop -> now)
 
+  def setLastHarvestTime(incremental: Boolean = false) = {
+    if (incremental) {
+      setSingularLiteralProps(lastIncrementalHarvestTime -> now)
+    } else {
+      setSingularLiteralProps(lastFullHarvestTime -> now)
+      setIncrementalProcessedRecordCounts(0, 0)
+      removeLiteralProp(lastIncrementalHarvestTime)
+    }
+  }
+
   def setRecordsSync(state: Boolean = false) = {
     val syncState = state match {
       case true => "true"
