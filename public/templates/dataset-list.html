@@ -449,14 +449,15 @@
             <div class="form-group" ng-class="{'has-error' : metadataform.meta_rights.$invalid, 'has-success' : metadataform.meta_rights.$valid && !metadataform.meta_rights.$pristine }">
                 <label class="col-sm-3 control-label" for="meta_rights">Rights</label>
                 <div class="col-sm-9">
-                    <select name="meta_rights" required id="meta_rights" data-ng-model="dataset.edit.datasetRights" class="form-control">
-                        <option value="">---Please select---</option>
+                    <!--<input id="meta_rights" class="form-control" data-ng-model="dataset.edit.datasetRights"/>-->
+                    <select name="singleSelect" id="meta_rights" data-ng-model="dataset.edit.datasetRights">
+                        <option value="">---Please select---</option> <!-- not selected / blank option -->
                         <option value="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons - Attribution, ShareAlike (BY-SA)</option>
                         <option value="http://creativecommons.org/licenses/by-nd/4.0/">Creative Commons - Attribution, No Derivatives (BY-ND)</option>
                         <option value="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons - Attribution, Non-Commercial (BY-NC)</option>
                         <option value="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons - Attribution, Non-Commercial, ShareAlike (BY-NC-SA)</option>
                         <option value="http://creativecommons.org/licenses/by-nc-nd/4.0/">Creative Commons - Attribution, Non-Commercial, No Derivatives (BY-NC-ND)</option>
-                        <option value="http://www.europeana.eu/rights/rr-f/">Rights Reserved - Free Access</option>
+                        <option value="http://www.europeana.eu/rights/rr-f/">Rights Reserved - Free Access </option>
                         <option value="http://www.europeana.eu/rights/rr-p/">Rights Reserved - Paid Access</option>
                         <option value="http://www.europeana.eu/rights/orphan-work-eu/">Orphan work</option>
                         <option value="http://www.europeana.eu/rights/unknown/">Unknown</option>
