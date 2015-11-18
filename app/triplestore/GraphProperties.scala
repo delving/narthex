@@ -59,6 +59,7 @@ object GraphProperties {
   val saveTime = NXProp("saveTime")
   val contentHash = NXProp("contentHash")
   val acceptanceOnly = NXProp("acceptanceOnly")
+  val acceptanceMode = NXProp("acceptanceMode", booleanProp)
 
   val datasetCharacter = NXProp("datasetCharacter")
 
@@ -107,6 +108,7 @@ object GraphProperties {
   val harvestDelay = NXProp("harvestDelay")
   val harvestDelayUnit = NXProp("harvestDelayUnit")
   val harvestIncremental = NXProp("harvestIncremental")
+  val harvestIncrementalMode = NXProp("harvestIncrementalMode", booleanProp)
   val harvestIncrementalCount = NXProp("harvestIncrementalCount", intProp)
   val harvestFullCount = NXProp("harvestFullCount", intProp)
 

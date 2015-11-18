@@ -85,36 +85,36 @@
 
             <table class="state-table">
                 <tr>
-                    <td>
+                    <td class="name">
                         <a href class="clickable" data-ng-click="expanded = !expanded">
                             <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
                             <strong>{{ dataset.datasetSpec }}</strong>
                             <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
                         </a>
                     </td>
-                    <td>
-                        <span data-ng-show="!user.singleTripleStore">
-                            <span class="btn btn-default" data-ng-click="toggleDatasetProduction()">
-                                <i class="fa fa-fw bg-danger" data-ng-class="{ 'fa-star-half-empty': dataset.acceptanceOnly == 'true', 'fa-star': dataset.acceptanceOnly == 'false' }"></i>
-                                <span data-ng-show="dataset.acceptanceOnly == 'true'">Acceptance</span>
-                                <span data-ng-show="dataset.acceptanceOnly == 'false'">Production</span>
-                            </span>
-                        </span>
-                    </td>
                     <td class="invalid">
-                        <a href class="" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters">
-                            <i class="fa fa-fw fa-bug bg-danger"></i>
+                        <a href class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters">
+                            <i class="fa fa-fw fa-exclamation"></i>
                             <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
                         </a>
                     </td>
                     <td class="valid">
-                        <a href class="" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
-                            <i class="fa fa-fw fa-eye bg-success"></i>
+                        <a href class="btn btn-default" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
+                            <i class="fa fa-fw fa-check"></i>
                             <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                         </a>
                     </td>
+                    <td class="acc-prod">
+                        <span data-ng-show="user.singleTripleStore" ng-if="dataset.acceptanceMode">
+                            <a href class="btn btn-default" data-ng-click="toggleDatasetProduction()">
+                                <i class="fa fa-fw" data-ng-class="{ 'fa-star-half-empty': dataset.acceptanceMode == 'true', 'fa-star': dataset.acceptanceMode == 'false' }"></i>
+                                <span data-ng-show="dataset.acceptanceMode == 'true'">Acceptance</span>
+                                <span data-ng-show="dataset.acceptanceMode == 'false'">Production</span>
+                            </a>
+                        </span>
+                    </td>
                     <td class="state">
-                        <div ng-class="{stateEmpty:'empty',
+                        <div class="btn btn-default btn-block" ng-class="{stateEmpty:'empty',
                                         stateRaw: 'raw',
                                         stateRawAnalyzed: 'raw-analyzed',
                                         stateSourced: 'sourced',
@@ -211,7 +211,7 @@
                                 </a>
                             </div>
                         </li>
-                        <li data-ng-show="dataset.stateIncrementalSaved" class="ds-state list-group-item"
+                        <li data-ng-show="dataset.stateIncrementalSaved && dataset.harvestIncrementalMode" class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateIncrementalSaved') }">
                             <h4 class="list-group-item-heading">Incremental Saved
                                 <small class="badge">{{ dataset.stateIncrementalSaved.d }} {{ dataset.stateIncrementalSaved.t }}</small>
@@ -222,7 +222,7 @@
                                 </a>
                             </div>
                         </li>
-                        <li data-ng-show="dataset.stateProcessed" class="ds-state list-group-item"
+                        <li data-ng-show="dataset.stateProcessed && !dataset.harvestIncrementalMode" class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateProcessed') }">
                             <h4 class="list-group-item-heading">Processed
                                 <small class="badge">{{ dataset.stateProcessed.d }} {{ dataset.stateProcessed.t }}</small>
@@ -233,7 +233,7 @@
                                 </a>
                             </div>
                         </li>
-                        <li data-ng-show="dataset.stateAnalyzed" class="ds-state list-group-item"
+                        <li data-ng-show="dataset.stateAnalyzed " class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
                             <h4 class="list-group-item-heading">Analyzed
                                 <small class="badge">{{ dataset.stateAnalyzed.d }} {{ dataset.stateAnalyzed.t }}</small>
@@ -450,7 +450,7 @@
                 <label class="col-sm-3 control-label" for="meta_rights">Rights</label>
                 <div class="col-sm-9">
                     <!--<input id="meta_rights" class="form-control" data-ng-model="dataset.edit.datasetRights"/>-->
-                    <select name="singleSelect" id="meta_rights" data-ng-model="dataset.edit.datasetRights">
+                    <select name="singleSelect" id="meta_rights" data-ng-model="dataset.edit.datasetRights" class="form-control">
                         <option value="">---Please select---</option> <!-- not selected / blank option -->
                         <option value="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons - Attribution, ShareAlike (BY-SA)</option>
                         <option value="http://creativecommons.org/licenses/by-nd/4.0/">Creative Commons - Attribution, No Derivatives (BY-ND)</option>
@@ -731,7 +731,7 @@
     Invalid records: {{ dataset.processedInvalid }}<br/><br/>
 
     <!-- If last incremental harvest date -->
-    In incremenal mode: {{ dataset.harvestIncremental}} <br/>
+    In incremenal mode: {{ dataset.harvestIncrementalMode }} <br/>
     Last incremental harvest date: {{ dataset.lastIncrementalHarvestTime }} <br/>
     Valid records: {{ dataset.processedIncrementalValid }} <br/>
     Invalid records: {{ dataset.processedIncrementalInvalid }}<br/><br/>
@@ -739,6 +739,7 @@
 
 
     <a ng-href="" data-ng-click="showLastSourcedPage()">Last harvested records</a><br/>
+    <a ng-href="" data-ng-click="showHarvestingLog()">Harvesting log</a><br/>
     <a ng-href="" data-ng-click="showLastProcessedPage()">Last processed records</a><br/>
     <a ng-href="" data-ng-click="showInvalidRecordsPage()">Last processing errors</a><br/>
 

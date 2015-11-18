@@ -403,6 +403,7 @@ a {
     border: none;
     &.state {
       width: 200px;
+
       div {
         color: @white;
         padding: 5px;
@@ -453,7 +454,8 @@ a {
       }
     }
     &.invalid,
-    &.valid {
+    &.valid,
+    &.acc-prod{
       width: 160px;
     }
     .datetime {
@@ -461,17 +463,17 @@ a {
       font-size: .9em;
       margin-top: 4px;
     }
+    .btn-default {
+      border: none;
+      .border-radius(0px);
+    }
   }
 }
 
 .file-drop {
   background: @pale-blue;
-//  border: 4px dashed @ash-gray;
-//  .border-radius(10px);
-//  height: 120px;
-//  margin-top: 10px;
-//  padding: 10px;
-  height: 290px;
+  height: 280px;
+  margin-bottom: 0px !important;
   padding-top: 90px;
 }
 
@@ -619,6 +621,14 @@ code {
 .alert-small {
   padding: 5px 10px;
   margin: 0px;
+}
+
+.terms-language-choice {
+  .radio {
+    display: inline-block;
+    float: none;
+    margin-top: 20px;
+  }
 }
 
 .terminology-list {

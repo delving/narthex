@@ -100,9 +100,7 @@ object OrgContext {
   val NX_URI_PREFIX = s"$RDF_BASE_URL/resource"
 
   val TRIPLE_STORE_URL: Option[String] = config.getString("triple-store")
-  val TRIPLE_STORE_URLS: Option[(String, String)] = config.getObject("triple-stores").map(_.toConfig).map { tripleStores =>
-    (tripleStores.getString("acceptance"), tripleStores.getString("production"))
-  }
+
   val TRIPLE_STORE_LOG = configFlag("triple-store-log")
 
   Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")
@@ -115,19 +113,11 @@ object OrgContext {
   System.setProperty("XSD_VALIDATION", XSD_VALIDATION.toString)
 
   // tests are using this
-  private def tripleStore(implicit executionContext: ExecutionContext) = TRIPLE_STORE_URL.map { tripleStoreUrl =>
+  private def tripleStore(implicit executionContext: ExecutionContext): TripleStore = TRIPLE_STORE_URL.map { tripleStoreUrl =>
     TripleStore.single(tripleStoreUrl, TRIPLE_STORE_LOG)
   } getOrElse {
-    TRIPLE_STORE_URLS.map { tripleStoreUrls =>
-      TripleStore.double(
-        acceptanceStoreUrl = tripleStoreUrls._1,
-        productionStoreUrl = tripleStoreUrls._2,
-        TRIPLE_STORE_LOG
-      )
-    } getOrElse {
-      throw new RuntimeException("Must have either triple-store= or triple-stores { acceptance=, production= }")
+      throw new RuntimeException("Must have triple-store= ")
     }
-  }
 
   implicit val TS: TripleStore = tripleStore
 

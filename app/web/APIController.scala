@@ -53,8 +53,7 @@ object APIController extends Controller {
 
   def processingHarvestingLog(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
-    val latestProcessedFiles = datasetContext.processedRepo.getLatestProcessed
-    latestProcessedFiles.map(OkFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
+    Some(datasetContext.harvestLogger).map(OkFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
   }
 
   def pathsJSON(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
