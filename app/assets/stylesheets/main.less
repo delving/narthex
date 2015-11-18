@@ -403,6 +403,7 @@ a {
     border: none;
     &.state {
       width: 200px;
+
       div {
         color: @white;
         padding: 5px;
@@ -453,13 +454,18 @@ a {
       }
     }
     &.invalid,
-    &.valid {
+    &.valid,
+    &.acc-prod{
       width: 160px;
     }
     .datetime {
       display: block;
       font-size: .9em;
       margin-top: 4px;
+    }
+    .btn-default {
+      border: none;
+      .border-radius(0px);
     }
   }
 }
