@@ -398,6 +398,7 @@ define(["angular"], function () {
         $scope.apiPathErrors = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/errors";
         $scope.apiPathSourced = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/sourced";
         $scope.apiPathProcessed = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/processed";
+        $scope.apiPathHarvestLog = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/log";
         $scope.sparqlPath = $scope.user.naveDomain + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
 
         function setUnchanged() {
@@ -529,6 +530,10 @@ define(["angular"], function () {
 
         $scope.showInvalidRecordsPage = function () {
             window.open($scope.apiPathErrors, "_blank")
+        };
+
+        $scope.showHarvestingLog = function () {
+            window.open($scope.apiPathHarvestLog, "_blank")
         };
 
         $scope.goToDataset = function () {

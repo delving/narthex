@@ -115,6 +115,7 @@ object DsInfo {
     m.add(subject, m.getProperty(publishIndex.uri), trueLiteral)
     m.add(subject, m.getProperty(publishLOD.uri), trueLiteral)
     m.add(subject, m.getProperty(acceptanceOnly.uri), trueLiteral)
+    m.add(subject, m.getProperty(acceptanceMode.uri), trueLiteral)
     if (mapToPrefix != "-") m.add(subject, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.up.dataPost(getGraphName(spec), m).map { ok =>
       val cacheName = getDsInfoUri(spec)
@@ -177,7 +178,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   def getTimeProp(prop: NXProp): Option[DateTime] = getLiteralProp(prop).map(stringToTime)
 
-  def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
+  def getBooleanProp(prop: NXProp): Boolean = getLiteralProp(prop).exists(_ == "true")
 
   def setSingularLiteralProps(propVals: (NXProp, String)*): Unit = {
     val sparqlPerPropQ = propVals.map(pv => updatePropertyQ(graphName, uri, pv._1, pv._2)).toList
@@ -230,31 +231,12 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def toggleProduction(): Future[Boolean] = {
-    val production = ts.up.production
-    if (getBooleanProp(acceptanceOnly)) {
-      val doSkosTransfer = for {
-        datasetModel <- ts.dataGet(graphName)
-        putDataset <- production.dataPutGraph(graphName, datasetModel)
-        skosExists <- ts.ask(graphExistsQ(skosGraphName))
-      } yield skosExists
-      doSkosTransfer.flatMap { skosExists =>
-        if (skosExists) {
-          for {
-            skosModel <- ts.dataGet(skosGraphName)
-            putSkos <- production.dataPutGraph(skosGraphName, skosModel)
-          } yield {
-            setSingularLiteralProps(acceptanceOnly -> "false")
-            false
-          }
-        }
-        else {
-          setSingularLiteralProps(acceptanceOnly -> "false")
-          Future(false)
-        }
-      }
+    if (getBooleanProp(acceptanceMode)) {
+      setSingularLiteralProps(acceptanceMode -> "false")
+      Future(false)
     }
     else {
-      setSingularLiteralProps(acceptanceOnly -> "true")
+      setSingularLiteralProps(acceptanceMode -> "true")
       Future(true)
     }
   }
@@ -264,9 +246,11 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   def setLastHarvestTime(incremental: Boolean = false) = {
     if (incremental) {
       setSingularLiteralProps(lastIncrementalHarvestTime -> now)
+      setSingularLiteralProps(harvestIncrementalMode -> "true")
     } else {
       setSingularLiteralProps(lastFullHarvestTime -> now)
       setIncrementalProcessedRecordCounts(0, 0)
+      setSingularLiteralProps(harvestIncrementalMode -> "false")
       removeLiteralProp(lastIncrementalHarvestTime)
     }
   }

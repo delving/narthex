@@ -87,13 +87,15 @@
                     <input class="form-control" type="text" data-ng-model="sought.label"/>
                 </div>
 
-                <form data-ng-show="languages.length > 1" class="form-inline">
-                    <i class="fa fa-language"></i> Languages
-                    <div class="radio" data-ng-repeat="lang in languages">
+                <form data-ng-show="languages.length > 1" class="form-inline terms-language-choice">
+                    <button class="btn btn-default btn-block" ng-click="showLanguages = !showLanguages">Languages <span class="caret"></span></button>
+
+                    <div class="radio" data-ng-repeat="lang in languages" ng-show="showLanguages">
                         <label class="btn btn-default">
                             <input type="radio" ng-model="sought.language" data-ng-value="lang" name="radio-lang" id="radio-lang-{{$index}}" autocomplete="off"> {{lang}}
                         </label>
                     </div>
+
                 </form>
 
                 <!-- lEGEND -->
