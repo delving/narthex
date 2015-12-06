@@ -16,6 +16,8 @@
 
 package harvest
 
+import java.io.BufferedReader
+
 import com.ning.http.client.providers.netty.NettyResponse
 import dataset.DatasetActor._
 import org.OrgContext._
@@ -171,7 +173,7 @@ trait Harvesting {
   def fetchPMHPage(strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
                    resumption: Option[PMHResumptionToken] = None)(implicit ec: ExecutionContext): Future[AnyRef] = {
 
-    // Teylers 2014-09-15
+    Logger.debug(s"start fetch PMH Page: $url, $resumption")
     val listRecords = WS.url(url)
       .withRequestTimeout(HARVEST_TIMEOUT)
       .withQueryString("verb" -> "ListRecords")
@@ -191,16 +193,17 @@ trait Harvesting {
         listRecords.withQueryString("resumptionToken" -> token.value)
     }
     request.get().map { response =>
-      Logger.debug(s"OAI-PMH response: $response.body")
+      Logger.debug(s"start get for: \n ${response.underlying[NettyResponse].getUri}")
       val error: Option[HarvestError] = if (response.status != 200) {
-        Logger.info(s"eror response: ${response.underlying[NettyResponse].getResponseBody}")
+        Logger.info(s"error response: ${response.underlying[NettyResponse].getResponseBody}")
         Some(HarvestError(s"HTTP Response: ${response.statusText}", strategy))
       }
       else {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBodyAsStream
-        Logger.debug(s"OAI-PMH Response: \n ${netty.getResponseBody}")
-        val xml = XML.load(FileHandling.createReader(body))
+        Logger.trace(s"OAI-PMH Response: \n ${netty.getResponseBody}")
+        val reader: BufferedReader = FileHandling.createReader(body)
+        val xml = XML.load(reader)
         val errorNode = xml \ "error"
         if (errorNode.nonEmpty) {
           val errorCode = (errorNode \ "@code").text
@@ -216,8 +219,8 @@ trait Harvesting {
         None
       }
       }
-      Logger.debug(s"HarvestState: $error")
       if (!error.isEmpty) {
+        Logger.debug(s"HarvestState in error: $error")
         error.get match {
           case HarvestError("noRecordsMatch", strategy) => NoRecordsMatch("noRecordsMatch", strategy)
           case _ => error.get
@@ -228,6 +231,7 @@ trait Harvesting {
         val body = netty.getResponseBodyAsStream
         val xml = XML.load(FileHandling.createReader(body))
         val tokenNode = xml \ "ListRecords" \ "resumptionToken"
+        // todo: fix issue with missing resumptionToken on last page of pmh harvest
         val newToken = if (tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
           val cursor = tagToInt(tokenNode, "@cursor", 1)
@@ -245,7 +249,7 @@ trait Harvesting {
           if (newToken.isDefined) newToken.get.totalRecords
           else if (resumption.isDefined) resumption.get.totalRecords
           else 0
-        PMHHarvestPage(
+        val harvestPage = PMHHarvestPage(
           records = xml.toString(),
           url = url,
           set = set,
@@ -254,6 +258,8 @@ trait Harvesting {
           strategy,
           resumptionToken = newToken
         )
+        Logger.debug(s"Return PMHHarvestPage: $newToken, ${netty.getUri}")
+        harvestPage
       }
     }
   }

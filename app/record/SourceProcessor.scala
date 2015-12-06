@@ -117,7 +117,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         else {
           sipFileOpt.map(_.delete())
           deleteQuietly(datasetContext.pocketFile)
-          context.parent ! WorkFailure("Zero pockets generated")
+          context.parent ! WorkFailure("Zero pockets generated. You probably forgot te set the record root and unique identifier.")
         }
       } getOrElse {
         context.parent ! WorkFailure("No data for generating SipZip")
