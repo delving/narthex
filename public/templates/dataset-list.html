@@ -222,7 +222,8 @@
                                 </a>
                             </div>
                         </li>
-                        <li data-ng-show="dataset.stateProcessed && !dataset.harvestIncrementalMode" class="ds-state list-group-item"
+                        <!-- todo add incremental mode back && !dataset.harvestIncrementalMode   -->
+                        <li data-ng-show="dataset.stateProcessed" class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateProcessed') }">
                             <h4 class="list-group-item-heading">Processed
                                 <small class="badge">{{ dataset.stateProcessed.d }} {{ dataset.stateProcessed.t }}</small>
