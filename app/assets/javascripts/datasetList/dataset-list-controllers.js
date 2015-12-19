@@ -362,6 +362,8 @@ define(["angular"], function () {
                 return p;
             }
 
+            $scope.datasetBusy = false;
+
             $scope.$apply(function () {
                 if (message.progressState) {
                     $scope.dataset.progress = addProgressMessage({
@@ -369,6 +371,7 @@ define(["angular"], function () {
                         type: message.progressType,
                         count: parseInt(message.count)
                     });
+                    $scope.datasetBusy = true;
                     //console.log("PROGRESS: " + message.datasetSpec, $scope.dataset.progress);
                 }
                 else {
@@ -378,7 +381,7 @@ define(["angular"], function () {
                     $scope.updateDatasetStateCounter();
                     $scope.datasetListOrder($scope.currentSortOrder);
                     //console.log("IDLE: " + message.datasetSpec, message);
-
+                    $scope.datasetBusy = false;
                 }
             });
         });
@@ -582,6 +585,7 @@ define(["angular"], function () {
         };
 
         $scope.start = function (commandMessage, question) {
+            $scope.datasetBusy = true;
             command(commandMessage, question);
         };
 

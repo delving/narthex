@@ -87,7 +87,10 @@
                 <tr>
                     <td class="name">
                         <a href class="clickable" data-ng-click="expanded = !expanded">
-                            <span class="widget-icon"><i class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i></span>
+                            <span class="widget-icon">
+                                <i  data-ng-show="datasetBusy" class="fa fa-cog fa-spin fa-fw"></i>
+                                <i data-ng-hide="datasetBusy" class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i>
+                            </span>
                             <strong>{{ dataset.datasetSpec }}</strong>
                             <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
                         </a>
@@ -295,7 +298,7 @@
                 <div class="col-md-9 dataset-forms">
                     <div data-ng-if="dataset.progress" class="ds-progress">
                         <div class="input-group">
-                            <progressbar class="form-control-feedback" animate="true" value="dataset.progress.count" max="100">{{ dataset.progress.message }}</progressbar>
+                            <progressbar class="form-control-feedback progress-striped" value="dataset.progress.count" max="100">{{ dataset.progress.message }}</progressbar>
                             <div class="input-group-btn">
                                 <button class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)" data-ng-show="dataset.progress">
                                     <i class="fa fa-trash-o"></i> <span>Cancel</span>
