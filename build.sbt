@@ -66,11 +66,11 @@ libraryDependencies += ws
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 
-resolvers += "Delving" at "http://artifactory.delving.org/artifactory/delving"
+resolvers += "Delving" at "http://artifactory.delving.org:8081/artifactory/delving"
 
-resolvers += "Release" at "http://artifactory.delving.org/artifactory/libs-release"
+resolvers += "Release" at "http://artifactory.delving.org:8081/artifactory/libs-release"
 
-resolvers += "Snapshot" at "http://artifactory.delving.org/artifactory/libs-snapshot"
+resolvers += "Snapshot" at "http://artifactory.delving.org:8081/artifactory/libs-snapshot"
 
 //requireJs += "main.js" // optimize this file and its dependencies
 
@@ -86,7 +86,7 @@ publishArtifact in(Compile, packageDoc) := false
 
 publishArtifact in(Compile, packageSrc) := false
 
-publishTo := Some("Delving" at "http://artifactory.delving.org/artifactory/delving")
+publishTo := Some("Delving" at "http://artifactory.delving.org:8081/artifactory/delving")
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
