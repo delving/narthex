@@ -327,12 +327,13 @@ object Sparql {
      """.stripMargin
 
   def deleteDatasetQ(datasetGraphName: String, uri: String, skosGraphName: String) =
+    //    INSERT DATA {
+    //      GRAPH <$datasetGraphName> {
+    //        <$uri> <$deleted> true .
+    //      }
+    //    };
     s"""
-      |INSERT DATA {
-      |   GRAPH <$datasetGraphName> {
-      |     <$uri> <$deleted> true .
-      |   }
-      |};
+      |DROP SILENT GRAPH <$datasetGraphName>;
       |DROP SILENT GRAPH <$skosGraphName>;
       |DELETE {
       |   GRAPH ?g {
