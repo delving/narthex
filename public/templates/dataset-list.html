@@ -321,7 +321,7 @@
                     </div>
 
                     <h4 data-ng-show="dataset.metadata.name">
-                        <span>"{{ dataset.metadata.name }}"</span>
+                        <span>"{{ dataset.metadata.name | unsafe }}"</span>
                         <span data-ng-show="dataset.metadata.dataProvider">from "{{ dataset.metadata.dataProvider }}": </span>
                     </h4>
 

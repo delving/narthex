@@ -16,5 +16,13 @@ define(["angular"], function (angular) {
             }
         }
     });
+
+
+    mod.filter('unsafe', function($sce) {
+        return function(val) {
+            return $sce.trustAsHtml(val);
+        };
+    });
+
     return mod;
 });
