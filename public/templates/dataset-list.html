@@ -197,7 +197,9 @@
                                 <small class="badge">{{ dataset.stateMappable.d }} {{ dataset.stateMappable.t }}</small>
                             </h4>
                             <div class="btn-toolbar">
-                                <p>Download the mapping tool</p>
+                                <a href="{{sipCreatorLink}}" id="nav-mapper">
+                                    <i class="fa fa-fw fa-download"></i> Download the mapping tool
+                                </a>
                                 <!--<a href="{{sipCreatorLink}}" class="ult">-->
                                 <!--<i class="fa fa-fw fa-download"></i> Mapper-->
                                 <!--</a>-->
@@ -244,52 +246,28 @@
                             </h4>
                             <div class="btn-toolbar">
                                 <a href data-ng-click="goToDataset()">
-                                    <i class="fa fa-fw fa-eye"></i> <span>Explore</span>
-                                </a> |
+                                    <i class="fa fa-fw fa-language"></i> <span>Explore</span>
+                                </a> <br/>
                                 <a href data-ng-click="start('start saving')">
                                     <i class="fa fa-fw fa-database"></i> <span>Save</span>
                                 </a>
                             </div>
                         </li>
-                        <!--<li data-ng-show="dataset.showMapTerms" class="ds-state list-group-item"-->
-                        <!--data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">-->
-                        <!--<h4 class="list-group-item-heading">Select Terms</h4>-->
-                        <!--&lt;!&ndash;<a href  tooltip-placement="left" tooltip="On the Left!"><i class="fa fa-info-circle">&nbsp;</i></a>&ndash;&gt;-->
-                        <!--<div class="btn-toolbar">-->
-                        <!--&lt;!&ndash;<a href data-ng-click="goToDataset()">&ndash;&gt;-->
-                        <!--&lt;!&ndash;<i class="fa fa-fw fa-arrows-h"></i> <span>Terms</span>&ndash;&gt;-->
-                        <!--&lt;!&ndash;</a><br/>&ndash;&gt;-->
-                        <!--<a href data-ng-click="start('start saving')">-->
-                        <!--<i class="fa fa-fw fa-database"></i> <span>Save</span>-->
-                        <!--</a>-->
-                        <!--</div>-->
-                        <!--</li>-->
                         <li data-ng-show="dataset.stateSaved" class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateSaved') }">
                             <h4 class="list-group-item-heading">Saved
                                 <small class="badge">{{ dataset.stateSaved.d }} {{ dataset.stateSaved.t }}</small>
                             </h4>
                             <div class="btn-toolbar">
-                                <!--<a href data-ng-click="goToDataset()">-->
-                                <!--<i class="fa fa-fw fa-eye"></i> <span>Explore</span>-->
-                                <!--</a>-->
-                                <!--|-->
-                                <a href data-ng-click="goToSparql()">
-                                    <i class="fa fa-fw fa-database"></i>
-                                    <span>View saved RDF</span>
-                                </a>
-                            </div>
-                        </li>
-                        <li data-ng-show="dataset.stateSaved && dataset.skosField" class="ds-state list-group-item">
-                            <h4 class="list-group-item-heading">Map Terms</h4>
-                            <!--<a href  tooltip-placement="left" tooltip="On the Left!"><i class="fa fa-info-circle">&nbsp;</i></a>-->
-                            <div class="btn-toolbar">
-                                <a href data-ng-click="goToTerms()">
-                                    <i class="fa fa-fw fa-arrows-h"></i> <span>Concepts</span>
-                                </a> |
-                                <a href data-ng-click="goToCategories()">
-                                    <i class="fa fa-fw fa-bar-chart"></i> <span>Categories</span>
-                                </a>
+                                <div class="btn-toolbar">
+                                    <a href="{{ sparqlPath }}">
+                                        <i class="fa fa-fw fa-eye"></i>
+                                        <span>View saved RDF</span>
+                                    </a><br/>
+                                    <a href data-ng-click="goToTerms()" data-ng-if="dataset.skosField">
+                                        <i class="fa fa-fw fa-magic"></i> <span>Map vocabulary terms</span>
+                                    </a>
+                                </div>
                             </div>
                         </li>
                     </ul>
@@ -335,9 +313,9 @@
                                 <li ng-class="{'active':leftTabOpen === 'publication'}">
                                     <a href role="tab" data-ng-click="leftTabOpen = 'publication'">Publication</a>
                                 </li>
-                                <li ng-class="{'active':leftTabOpen === 'categories'}">
-                                    <a href role="tab" data-ng-click="leftTabOpen ='categories'">Categories</a>
-                                </li>
+                                <!--<li ng-class="{'active':leftTabOpen === 'categories'}">-->
+                                    <!--<a href role="tab" data-ng-click="leftTabOpen ='categories'">Categories</a>-->
+                                <!--</li>-->
                                 <li data-ng-class="{'active':leftTabOpen === 'check'}">
                                     <a href role="tab" data-ng-click="leftTabOpen ='check'">Links</a>
                                 </li>
@@ -354,9 +332,9 @@
                                     <div ng-switch-when="publication">
                                         <div data-ng-include="'publication-form.html'">publication form</div>
                                     </div>
-                                    <div ng-switch-when="categories">
-                                        <div data-ng-include="'categories-form.html'">categories form</div>
-                                    </div>
+                                    <!--<div ng-switch-when="categories">-->
+                                        <!--<div data-ng-include="'categories-form.html'">categories form</div>-->
+                                    <!--</div>-->
                                     <div ng-switch-when="check">
                                         <div data-ng-include="'check-links.html'">check links</div>
                                     </div>
