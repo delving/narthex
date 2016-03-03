@@ -88,12 +88,20 @@
                 </div>
 
                 <form data-ng-show="languages.length > 1" class="form-inline terms-language-choice">
-                    <button class="btn btn-default btn-block" ng-click="showLanguages = !showLanguages">Languages <span class="caret"></span></button>
-
-                    <div class="radio" data-ng-repeat="lang in languages" ng-show="showLanguages">
-                        <label class="btn btn-default">
-                            <input type="radio" ng-model="sought.language" data-ng-value="lang" name="radio-lang" id="radio-lang-{{$index}}" autocomplete="off"> {{lang}}
-                        </label>
+                    <div data-ng-if="languages.length < 10">
+                        <div class="radio" data-ng-repeat="lang in languages">
+                            <label class="btn btn-default">
+                                <input type="radio" ng-model="sought.language" data-ng-value="lang" name="radio-lang" id="radio-lang-{{$index}}" autocomplete="off"> {{lang}}
+                            </label>
+                        </div>
+                    </div>
+                    <div data-ng-if="languages.length > 10">
+                        <button class="btn btn-default btn-block" ng-click="showLanguages = !showLanguages">Languages <span class="caret"></span></button>
+                        <div class="radio" data-ng-repeat="lang in languages" ng-show="showLanguages">
+                            <label class="btn btn-default">
+                                <input type="radio" ng-model="sought.language" data-ng-value="lang" name="radio-lang" id="dd-radio-lang-{{$index}}" autocomplete="off"> {{lang}}
+                            </label>
+                        </div>
                     </div>
 
                 </form>

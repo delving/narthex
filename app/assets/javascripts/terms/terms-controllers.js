@@ -176,9 +176,15 @@ define(["angular"], function () {
             $scope.thesaurus = spec;
             $scope.skosTab();
             termsService.getVocabularyLanguages(spec).then(function (data) {
-                console.log("Languages", data.languages);
+                //console.log("Languages", data.languages);
                 $scope.languages = data.languages;
                 $scope.sought.language = $scope.languages[0];
+                // if lang 'nl' is available set for default;
+                // todo: make this configurable at some point for international use
+                if(_.indexOf($scope.languages, "nl") != -1 ){
+                    $scope.sought.language = $scope.languages[_.indexOf($scope.languages, "nl")];
+                }
+
                 searchThesaurus($scope.sought.label);
 
                 // little extra data for the frontend. used for the terms srollable div.

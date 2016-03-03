@@ -637,7 +637,7 @@ code {
       background: @ash-gray !important;
     }
     &.list-item-mapped {
-      background: @brand-success;
+      background: lighten(@brand-success, 25%);
     }
     .term-mapped {
       font-weight: normal;
@@ -660,7 +660,7 @@ code {
     background: @linnen;
   }
   .list-item-mapped {
-    background: @mid-green;
+    background: lighten(@brand-success, 25%);
   }
 }
 
@@ -669,7 +669,7 @@ code {
 ****************************/
 
 .input-group-skos-term {
-  margin-bottom: 20px;
+  //margin-bottom: 20px;
   .input-group-addon {
     background: @gray-lighter;
     color: @gray-darker;
@@ -689,7 +689,7 @@ code {
     }
   }
   .concept-selected {
-    background: @linnen;
+    background: lighten(@brand-success, 25%);
     padding: 8px;
   }
   .concept-mapped {
