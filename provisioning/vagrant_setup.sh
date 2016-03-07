@@ -66,6 +66,7 @@ echo "FUSEKI_BASE=/opt/fuseki/run" | sudo tee -a /etc/default/fuseki > /dev/null
 echo "FUSEKI_HOME=/opt/fuseki" | sudo tee -a /etc/default/fuseki > /dev/null
 
 sudo cp /home/vagrant/NarthexVersions/narthex-dev/provisioning/templates/fuseki_init.sh  /etc/init.d/fuseki
+sudo cp /home/vagrant/NarthexVersions/narthex-dev/provisioning/templates/shiro.ini /opt/fuseki/run/
 sudo chmod +x /etc/init.d/fuseki
 sudo update-rc.d fuseki defaults 95 10
 sudo /etc/init.d/fuseki restart
@@ -75,7 +76,7 @@ echo "Done installing fuseki. "
 echo "Getting all the sbt dependencies ..."
 
 cd /home/vagrant/NarthexVersions/narthex-dev/
-sbt build
+sbt compile 
 
 echo "Done building the Narthex project for the first time. "
 

@@ -53,6 +53,8 @@ object PocketParser {
       val sha1: String = PocketParser.sha1(text)
       writer.write(text)
       writer.write(s"""<!--<${id}__$sha1>-->\n""")
+      // TODO: insert code that pushed the this string to the NAVE API
+      // if from version + extract the information + build the query + push + catch 
     }
 
   }
@@ -93,7 +95,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
   var recordCount = 0
   var namespaceMap: Map[String, String] = Map.empty
 
-  def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progress: ProgressReporter): Int = {
+  def parse(source: Source, avoid: Set[String], output: Pocket => Unit, progress: ProgressReporter): Int = {
     val events = new NarthexEventReader(source)
     var depth = 0
     var recordText = new mutable.StringBuilder()
