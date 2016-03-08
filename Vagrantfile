@@ -7,7 +7,7 @@
 # you're doing.
 
 
-ip_adress = "192.168.33.11"
+ip_adress = "192.168.33.20"
 
 Vagrant.configure(2) do |config|
   # The most common configuration options are documented and commented below.
