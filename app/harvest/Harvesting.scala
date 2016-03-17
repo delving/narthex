@@ -205,8 +205,9 @@ trait Harvesting {
         val reader: BufferedReader = FileHandling.createReader(body)
         val xml = XML.load(reader)
         val errorNode = xml \ "error"
-        if (errorNode.nonEmpty) {
-          val errorCode = (errorNode \ "@code").text
+        val records = xml \ "ListRecords" \ "record"
+        if (errorNode.nonEmpty || records.isEmpty) {
+          val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text  else "noRecordsMatch"
           if ("noRecordsMatch" == errorCode) {
             Logger.info("No PMH Records returned")
              Some(HarvestError("noRecordsMatch", strategy))
@@ -231,8 +232,7 @@ trait Harvesting {
         val body = netty.getResponseBodyAsStream
         val xml = XML.load(FileHandling.createReader(body))
         val tokenNode = xml \ "ListRecords" \ "resumptionToken"
-        // todo: fix issue with missing resumptionToken on last page of pmh harvest
-        val newToken = if (tokenNode.text.trim.nonEmpty) {
+        val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
           val cursor = tagToInt(tokenNode, "@cursor", 1)
           Some(PMHResumptionToken(
