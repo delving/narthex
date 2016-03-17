@@ -202,8 +202,9 @@ trait Harvesting {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBodyAsStream
         Logger.trace(s"OAI-PMH Response: \n ${netty.getResponseBody}")
-        val reader: BufferedReader = FileHandling.createReader(body)
-        val xml = XML.load(reader)
+//        val reader: BufferedReader = FileHandling.createReader(body)
+//        val xml = XML.load(reader)
+        val xml = XML.loadString(netty.getResponseBody) // reader old
         val errorNode = xml \ "error"
         val records = xml \ "ListRecords" \ "record"
         if (errorNode.nonEmpty || records.isEmpty) {
@@ -230,7 +231,8 @@ trait Harvesting {
       else {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBodyAsStream
-        val xml = XML.load(FileHandling.createReader(body))
+//        val xml = XML.load(FileHandling.createReader(body))
+        val xml = XML.loadString(netty.getResponseBody)
         val tokenNode = xml \ "ListRecords" \ "resumptionToken"
         val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
