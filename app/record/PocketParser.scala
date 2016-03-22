@@ -19,12 +19,20 @@ package record
 import java.io.{ByteArrayInputStream, Writer}
 import java.security.{NoSuchAlgorithmException, MessageDigest}
 
+import akka.actor.Status.Success
 import dataset.SourceRepo.{IdFilter, SourceFacts}
-import play.Logger
+import org.OrgContext
+import play.api.Play.current
+import play.api.Logger
+import play.api.libs.json.Json
+import play.api.libs.ws.{WSResponse, WS}
 import services.StringHandling._
 import services._
+import triplestore.GraphProperties._
 
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
 import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
@@ -53,6 +61,49 @@ object PocketParser {
       val sha1: String = PocketParser.sha1(text)
       writer.write(text)
       writer.write(s"""<!--<${id}__$sha1>-->\n""")
+      if (OrgContext.USE_BULK_API) {
+        storeBulkAction(text, id, sha1)
+      }
+    }
+
+    def storeBulkAction(triples: String, id: String, hash: String) = {
+      val bulkAction = createBulkAction(triples, id, hash)
+      val bulkApi = s"${OrgContext.NAVE_API_URL}/api/index/bulk/"
+      if (OrgContext.LOG_BULK_API) {
+        Logger.info(bulkAction)
+      }
+      val request = WS.url(s"$bulkApi").withHeaders(
+        "Content-Type" -> "text/plain; charset=utf-8",
+        "Accept" -> "application/json",
+        "Authorization" -> s"Token ${OrgContext.NAVE_BULK_API_AUTH_TOKEN}"
+      )
+      val response = request.post(bulkAction).map(checkUpdateResponse(_, bulkAction))
+    }
+
+    private def checkUpdateResponse(response: WSResponse, logString: String): Unit = {
+      if (response.status != 201) {
+        Logger.error(logString)
+        throw new Exception(s"${response.statusText}: ${response.body}:")
+      }
+    }
+
+    def createBulkAction(triples: String, id: String, hash: String) = {
+      val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
+      val SpecIdExtractor(spec, localId) = id
+      val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
+      // val currentSkosFields = dsInfo.getLiteralPropList(skosField)
+      // val acceptanceModeString= dsInfo.getLiteralProp(acceptanceMode)
+      val actionMap = Json.obj(
+        "hubId" -> hubId,
+        "dataset" -> spec,
+        // "acceptanceMode" -> acceptanceModeString,
+        "graphUri" -> id,
+        "type" -> "void_EDMRecord",
+        "action" -> "index",
+        "contentHash" -> hash,
+        "graph" -> s"$triples".stripMargin.trim
+      )
+      actionMap.toString()
     }
 
   }
@@ -93,7 +144,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
   var recordCount = 0
   var namespaceMap: Map[String, String] = Map.empty
 
-  def parse(source: Source, avoidIds: Set[String], output: Pocket => Unit, progress: ProgressReporter): Int = {
+  def parse(source: Source, avoid: Set[String], output: Pocket => Unit, progress: ProgressReporter): Int = {
     val events = new NarthexEventReader(source)
     var depth = 0
     var recordText = new mutable.StringBuilder()
@@ -184,7 +235,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
           val record = uniqueId.map { id =>
             if (id.trim.isEmpty) throw new RuntimeException("Empty unique id!")
             val clean_id = id.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
-            if (avoidIds.contains(clean_id)) None
+            if (avoid.contains(clean_id)) None
             else {
               val recordContent = recordText.toString()
               val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
