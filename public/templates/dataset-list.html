@@ -290,7 +290,7 @@
                         <div class="alert alert-danger" role="alert">
                             <button type="button" class="close" data-dismiss="alert" data-ng-click="clearError()" aria-label="Close">
                                 <span aria-hidden="true">&times;</span></button>
-                            <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}
+                            <i class="fa fa-exclamation-circle"></i> {{$sce.trustAsHtml(dataset.datasetErrorMessage);}}
                             <hr/>
                             You must
                             <a href data-dismiss="alert" data-ng-click="clearError()" class="alert-link">close/clear</a>
@@ -529,7 +529,7 @@
                 <i class="fa fa-binoculars"></i>
                 <span>Sample</span>
             </button>
-            <a href="<!-- url here -->" type="button" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
+            <a href="{{dataset.edit.harvestURL}}verb=ListRecords&set={{dataset.edit.harvestDataset}}&metadataPrefix={{dataset.edit.harvestPrefix}}" target="_blank" type="button" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-binoculars"></i>
                 <span>Preview</span>
             </a>
