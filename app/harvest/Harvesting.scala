@@ -207,9 +207,21 @@ trait Harvesting {
         val xml = XML.loadString(netty.getResponseBody) // reader old
         val errorNode = xml \ "error"
         val records = xml \ "ListRecords" \ "record"
-        if (errorNode.nonEmpty || records.isEmpty) {
+        // todo: if there is a resumptionToken end the list size is greater than the cursor but zero records are returned through an error.
+        val tokenNode = xml \ "ListRecords" \ "resumptionToken"
+        val faultyEmptyResponse: String = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
+          val completeListSize = tagToInt(tokenNode, "@completeListSize")
+          val cursor = tagToInt(tokenNode, "@cursor", 1)
+          if (completeListSize > cursor && records.isEmpty) {
+            s"""For set ${set} with <a href="${netty.getUri}">url</a>, the completeLisSize was reported to be ${completeListSize} but at cursor ${cursor} 0 records were returned"""
+          } else ""
+        } else ""
+        if (errorNode.nonEmpty || records.isEmpty || faultyEmptyResponse.nonEmpty) {
           val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text  else "noRecordsMatch"
-          if ("noRecordsMatch" == errorCode) {
+          if (faultyEmptyResponse.nonEmpty){
+            Some(HarvestError(faultyEmptyResponse, strategy))
+          }
+          else if ("noRecordsMatch" == errorCode) {
             Logger.info("No PMH Records returned")
              Some(HarvestError("noRecordsMatch", strategy))
           }
