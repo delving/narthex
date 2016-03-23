@@ -16,7 +16,7 @@
 
 package dataset
 
-import java.io.StringWriter
+import java.io.{File, StringWriter}
 
 import com.hp.hpl.jena.rdf.model._
 import dataset.SourceRepo.{IdFilter, VERBATIM_FILTER}
@@ -43,6 +43,7 @@ import triplestore.{SkosGraph, TripleStore}
 import scala.collection.JavaConversions._
 import scala.concurrent._
 import scala.concurrent.duration._
+import scala.io.Source
 
 object DsInfo {
 
@@ -285,6 +286,61 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
         datasetErrorTime -> now
       )
     }
+  }
+
+  val LineId = "<!--<([^>]+)__([^>]+)>-->".r
+
+  def uniqueCounterSource(sourceDirectory: String): Map[String, Int] = {
+    new File(sourceDirectory)
+      .listFiles
+      .filter(_.getName.endsWith(".ids"))
+      .flatMap(Source.fromFile(_).getLines)
+      .foldLeft(Map.empty[String, Int]){
+        (count, keyword) => {
+          count + (keyword -> (count.getOrElse(keyword, 0) + 1))
+        }
+      }
+  }
+
+  def uniqueCounterProcessed(processedRecordDiretory: String): Map[String, Int] = {
+    new File(processedRecordDiretory)
+      .listFiles
+      .filter(_.getName.endsWith(".xml"))
+      .flatMap{
+        fname => {
+          Source.fromFile(fname).getLines.filter{line =>
+            line match {
+              case LineId(graphName, currentHash) => true
+              case _ => false
+            }}.map{line =>
+            line match {
+              case LineId(graphName, currentHash) =>  graphName
+              case _ =>
+            }
+          }
+        }
+      }
+      .foldLeft(Map.empty[String, Int]){
+        (count, word) =>
+          val keyword = word.asInstanceOf[String]
+          count + (keyword -> (count.getOrElse(keyword, 0) + 1))
+      }
+  }
+
+  def updatedSpecCountFromFile(
+                                   specName: String = spec,
+                                   narthexBaseDir: File = OrgContext.NARTHEX,
+                                   orgId: String = OrgContext.ORG_ID): (Int, Int, Int) = {
+
+    val spec_source_dir = s"""${narthexBaseDir.toString}/$orgId/datasets/$specName"""
+    val processed_dir = s"$spec_source_dir/processed"
+    val source_dir = s"$spec_source_dir/source"
+    val valid: Int = uniqueCounterProcessed(processed_dir).size
+    val total: Int = uniqueCounterSource(source_dir).size
+    val invalid = total - valid
+    setRecordCount(total)
+    setProcessedRecordCounts(valid, invalid)
+    return (invalid, valid, total)
   }
 
   def setRecordCount(count: Int) = setSingularLiteralProps(datasetRecordCount -> count.toString)
