@@ -291,7 +291,11 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   val LineId = "<!--<([^>]+)__([^>]+)>-->".r
 
   def uniqueCounterSource(sourceDirectory: String): Map[String, Int] = {
-    new File(sourceDirectory)
+    val sourceFiles = new File(sourceDirectory)
+    if (!sourceFiles.exists()){
+      return Map.empty[String, Int]
+    }
+    sourceFiles
       .listFiles
       .filter(_.getName.endsWith(".ids"))
       .flatMap(Source.fromFile(_).getLines)
@@ -303,7 +307,11 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def uniqueCounterProcessed(processedRecordDiretory: String): Map[String, Int] = {
-    new File(processedRecordDiretory)
+    val processedFiles = new File(processedRecordDiretory)
+    if (!processedFiles.exists()){
+      return Map.empty[String, Int]
+    }
+    processedFiles
       .listFiles
       .filter(_.getName.endsWith(".xml"))
       .flatMap{
