@@ -15,6 +15,7 @@
 //===========================================================================
 
 import org.sbtidea.SbtIdeaPlugin._
+import play.PlayImport.PlayKeys
 
 lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
 
@@ -40,6 +41,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "angular-ui-bootstrap" % "0.11.2",
   "org.webjars" % "ng-grid" % "2.0.13",
   "org.webjars" % "ngStorage" % "0.3.0",
+  "org.webjars" % "angular-sanitize" % "1.3.11",
   "org.scalatest" % "scalatest_2.10" % "2.2.1",
   "org.scalautils" % "scalautils_2.10" % "2.1.3",
   "com.typesafe.akka" % "akka-testkit_2.10" % "2.2.0" % "test",
@@ -86,7 +88,7 @@ publishArtifact in(Compile, packageDoc) := false
 
 publishArtifact in(Compile, packageSrc) := false
 
-publishTo := Some("Delving" at "http://artifactory.delving.org:8081/artifactory/delving")
+publishTo := Some("Delving" at "http://artifactory.delving.org/artifactory/delving")
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
@@ -100,6 +102,8 @@ ideaExcludeFolders += ".idea_modules"
 ideaExcludeFolders += "target"
 
 ideaExcludeFolders += "logs"
+
+PlayKeys.playWatchService := play.sbtplugin.run.PlayWatchService.sbt(pollInterval.value)
 
 
 // http://stackoverflow.com/questions/25182581/logging-in-unit-tests-for-play-2-3

@@ -25,13 +25,17 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.ws.WS
+import play.libs.Akka
 import services.FileHandling
 import services.Temporal._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.xml.{NodeSeq, XML}
 
-// todo: use the actor's execution context?
+
+object Contexts {
+  implicit val harvestExecutionContext: ExecutionContext = Akka.system.dispatchers.lookup("dataset-execution-context")
+}
 
 object Harvesting {
 
@@ -127,7 +131,7 @@ trait Harvesting {
   }
 
   def fetchAdLibPage(strategy: HarvestStrategy, url: String, database: String, search: String,
-                     diagnosticOption: Option[AdLibDiagnostic] = None)(implicit ec: ExecutionContext): Future[AnyRef] = {
+                     diagnosticOption: Option[AdLibDiagnostic] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(HARVEST_TIMEOUT)
     // UMU 2014-10-16T15:00
@@ -171,7 +175,7 @@ trait Harvesting {
   }
 
   def fetchPMHPage(strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
-                   resumption: Option[PMHResumptionToken] = None)(implicit ec: ExecutionContext): Future[AnyRef] = {
+                   resumption: Option[PMHResumptionToken] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
 
     Logger.debug(s"start fetch PMH Page: $url, $resumption")
     val listRecords = WS.url(url)
@@ -207,9 +211,21 @@ trait Harvesting {
         val xml = XML.loadString(netty.getResponseBody) // reader old
         val errorNode = xml \ "error"
         val records = xml \ "ListRecords" \ "record"
-        if (errorNode.nonEmpty || records.isEmpty) {
+        // todo: if there is a resumptionToken end the list size is greater than the cursor but zero records are returned through an error.
+        val tokenNode = xml \ "ListRecords" \ "resumptionToken"
+        val faultyEmptyResponse: String = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
+          val completeListSize = tagToInt(tokenNode, "@completeListSize")
+          val cursor = tagToInt(tokenNode, "@cursor", 1)
+          if (completeListSize > cursor && records.isEmpty) {
+            s"""For set ${set} with <a href="${netty.getUri}" target="_blank">url</a>, the completeLisSize was reported to be ${completeListSize} but at cursor ${cursor} 0 records were returned"""
+          } else ""
+        } else ""
+        if (errorNode.nonEmpty || records.isEmpty || faultyEmptyResponse.nonEmpty) {
           val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text  else "noRecordsMatch"
-          if ("noRecordsMatch" == errorCode) {
+          if (faultyEmptyResponse.nonEmpty){
+            Some(HarvestError(faultyEmptyResponse, strategy))
+          }
+          else if ("noRecordsMatch" == errorCode) {
             Logger.info("No PMH Records returned")
              Some(HarvestError("noRecordsMatch", strategy))
           }

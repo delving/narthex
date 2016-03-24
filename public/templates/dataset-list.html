@@ -290,10 +290,9 @@
                         <div class="alert alert-danger" role="alert">
                             <button type="button" class="close" data-dismiss="alert" data-ng-click="clearError()" aria-label="Close">
                                 <span aria-hidden="true">&times;</span></button>
-                            <i class="fa fa-exclamation-circle"></i> {{ dataset.datasetErrorMessage }}
+                            <i class="fa fa-exclamation-circle"></i> <span ng-bind-html="dataset.datasetErrorMessage"></span>
                             <hr/>
-                            You must
-                            <a href data-dismiss="alert" data-ng-click="clearError()" class="alert-link">close/clear</a>
+                            You must <a href data-dismiss="alert" data-ng-click="clearError()" class="alert-link">close/clear</a>
                             this error message to continue
                         </div>
                     </div>
@@ -529,6 +528,10 @@
                 <i class="fa fa-binoculars"></i>
                 <span>Sample</span>
             </button>
+            <a href="{{dataset.edit.harvestURL}}verb=ListRecords&set={{dataset.edit.harvestDataset}}&metadataPrefix={{dataset.edit.harvestPrefix}}" target="_blank" type="button" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
+                <i class="fa fa-binoculars"></i>
+                <span>Preview</span>
+            </a>
             <button type="button" class="btn btn-success" data-ng-click="setHarvest()" data-ng-disabled="unchangedHarvest">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
@@ -586,6 +589,10 @@
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
+            <a href="{{dataset.edit.harvestURL}}verb=ListRecords&set={{dataset.edit.harvestDataset}}&metadataPrefix={{dataset.edit.harvestPrefix}}&from={{dataset.edit.harvestPreviousTime}}" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
+                <i class="fa fa-binoculars"></i>
+                <span>Preview</span>
+            </a>
         </fieldset>
     </form>
 </script>

@@ -358,6 +358,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
           dsInfo.removeState(PROCESSED)
           dsInfo.setState(SOURCED)
           dsInfo.setLastHarvestTime(incremental = false)
+
         case ModifiedAfter(mod, _) =>
           noRecordsMatch match {
             case true =>
@@ -373,6 +374,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
               dsInfo.setLastHarvestTime(incremental = true)
           }
           dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
+          dsInfo.updatedSpecCountFromFile()
           fileOpt match {
             case Some(file) =>
               if (datasetContext.sipMapperOpt.isDefined) {

@@ -37,6 +37,7 @@ requirejs.config({
         "angular": "empty:",
         "angular-cookies": "empty:",
         "angular-route": "empty:",
+        "angular-sanitize": "empty:",
         // empty: so the optimizer doesn't try to find jsRoutes.js in our project
         "jsRoutes": "empty:"
     }
