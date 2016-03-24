@@ -25,15 +25,17 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.ws.WS
+import play.libs.Akka
 import services.FileHandling
 import services.Temporal._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.xml.{NodeSeq, XML}
 
-// todo: use the actor's execution context?
 
-
+object Contexts {
+  implicit val harvestExecutionContext: ExecutionContext = Akka.system.dispatchers.lookup("dataset-execution-context")
+}
 
 object Harvesting {
 
@@ -129,7 +131,7 @@ trait Harvesting {
   }
 
   def fetchAdLibPage(strategy: HarvestStrategy, url: String, database: String, search: String,
-                     diagnosticOption: Option[AdLibDiagnostic] = None)(implicit ec: ExecutionContext): Future[AnyRef] = {
+                     diagnosticOption: Option[AdLibDiagnostic] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
     val requestUrl = WS.url(url).withRequestTimeout(HARVEST_TIMEOUT)
     // UMU 2014-10-16T15:00
@@ -173,7 +175,7 @@ trait Harvesting {
   }
 
   def fetchPMHPage(strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
-                   resumption: Option[PMHResumptionToken] = None)(implicit ec: ExecutionContext): Future[AnyRef] = {
+                   resumption: Option[PMHResumptionToken] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
 
     Logger.debug(s"start fetch PMH Page: $url, $resumption")
     val listRecords = WS.url(url)
