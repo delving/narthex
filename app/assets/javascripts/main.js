@@ -53,6 +53,7 @@
                 "angular-route",
                 "angular-file-upload",
                 "angularjs-nvd3-directives",
+                "angular-sanitize",
 //                "angular-pusher",
                 "ngStorage",
                 "jquery",

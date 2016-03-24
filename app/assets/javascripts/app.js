@@ -47,6 +47,7 @@ define(
                 "narthex.terms",
                 "narthex.categories",
                 "angularFileUpload",
+                 "ngSanitize",
                 "ui.bootstrap.tpls",
                 "ui.bootstrap",
                 "ngGrid",

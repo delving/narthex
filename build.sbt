@@ -41,6 +41,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "angular-ui-bootstrap" % "0.11.2",
   "org.webjars" % "ng-grid" % "2.0.13",
   "org.webjars" % "ngStorage" % "0.3.0",
+  "org.webjars" % "angular-sanitize" % "1.3.11",
   "org.scalatest" % "scalatest_2.10" % "2.2.1",
   "org.scalautils" % "scalautils_2.10" % "2.1.3",
   "com.typesafe.akka" % "akka-testkit_2.10" % "2.2.0" % "test",
