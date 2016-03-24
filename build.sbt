@@ -86,7 +86,7 @@ publishArtifact in(Compile, packageDoc) := false
 
 publishArtifact in(Compile, packageSrc) := false
 
-publishTo := Some("Delving" at "http://artifactory.delving.org:8081/artifactory/delving")
+publishTo := Some("Delving" at "http://artifactory.delving.org/artifactory/delving")
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
@@ -100,7 +100,6 @@ ideaExcludeFolders += ".idea_modules"
 ideaExcludeFolders += "target"
 
 ideaExcludeFolders += "logs"
-
 
 // http://stackoverflow.com/questions/25182581/logging-in-unit-tests-for-play-2-3
 // doesn't work
