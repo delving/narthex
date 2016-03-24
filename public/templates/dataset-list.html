@@ -585,15 +585,11 @@
                     </div>
                 </div>
             </div>
-            <a href="{{dataset.edit.harvestURL}}verb=ListRecords&set={{dataset.edit.harvestDataset}}&metadataPrefix={{dataset.edit.harvestPrefix}}&from={{dataset.edit.harvestPreviousTime}}" target="_blank" type="button" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
-                <i class="fa fa-binoculars"></i>
-                <span>Preview</span>
-            </a>
             <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()" data-ng-disabled="unchangedHarvestCron">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
-            <a href="<!-- url here -->" type="button" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
+            <a href="{{dataset.edit.harvestURL}}verb=ListRecords&set={{dataset.edit.harvestDataset}}&metadataPrefix={{dataset.edit.harvestPrefix}}&from={{dataset.edit.harvestPreviousTime}}" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-binoculars"></i>
                 <span>Preview</span>
             </a>

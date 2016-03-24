@@ -217,7 +217,7 @@ trait Harvesting {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
           val cursor = tagToInt(tokenNode, "@cursor", 1)
           if (completeListSize > cursor && records.isEmpty) {
-            s"""For set ${set} with <a href="${netty.getUri}">url</a>, the completeLisSize was reported to be ${completeListSize} but at cursor ${cursor} 0 records were returned"""
+            s"""For set ${set} with <a href="${netty.getUri}" target="_blank">url</a>, the completeLisSize was reported to be ${completeListSize} but at cursor ${cursor} 0 records were returned"""
           } else ""
         } else ""
         if (errorNode.nonEmpty || records.isEmpty || faultyEmptyResponse.nonEmpty) {
