@@ -15,6 +15,7 @@
 //===========================================================================
 
 import org.sbtidea.SbtIdeaPlugin._
+import play.PlayImport.PlayKeys
 
 lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
 
@@ -100,6 +101,8 @@ ideaExcludeFolders += ".idea_modules"
 ideaExcludeFolders += "target"
 
 ideaExcludeFolders += "logs"
+
+PlayKeys.playWatchService := play.sbtplugin.run.PlayWatchService.sbt(pollInterval.value)
 
 
 // http://stackoverflow.com/questions/25182581/logging-in-unit-tests-for-play-2-3
