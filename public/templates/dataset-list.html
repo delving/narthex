@@ -84,8 +84,8 @@
         <div class="widget-header">
 
             <table class="state-table">
-                <tr>
-                    <td class="name">
+                <tr class="row">
+                    <td class="name col-sm-4">
                         <a href class="clickable" data-ng-click="expanded = !expanded">
                             <span class="widget-icon">
                                 <i  data-ng-show="datasetBusy" class="fa fa-cog fa-spin fa-fw"></i>
@@ -95,19 +95,19 @@
                             <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
                         </a>
                     </td>
-                    <td class="invalid">
+                    <td class="invalid col-sm-2">
                         <a href class="btn btn-default" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters">
                             <i class="fa fa-fw fa-exclamation"></i>
                             <span>{{ dataset.processedInvalid }}/{{ dataset.datasetRecordCount }}</span>
                         </a>
                     </td>
-                    <td class="valid">
+                    <td class="valid col-sm-2">
                         <a href class="btn btn-default" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
                             <i class="fa fa-fw fa-check"></i>
                             <span>{{ dataset.processedValid }}/{{ dataset.datasetRecordCount }}</span>
                         </a>
                     </td>
-                    <td class="acc-prod">
+                    <td class="acc-prod col-sm-2">
                         <span data-ng-show="user.singleTripleStore" ng-if="dataset.acceptanceMode">
                             <a href class="btn btn-default" data-ng-click="toggleDatasetProduction()">
                                 <i class="fa fa-fw" data-ng-class="{ 'fa-star-half-empty': dataset.acceptanceMode == 'true', 'fa-star': dataset.acceptanceMode == 'false' }"></i>
@@ -116,8 +116,8 @@
                             </a>
                         </span>
                     </td>
-                    <td class="state">
-                        <div class="btn btn-default btn-block" ng-class="{stateEmpty:'empty',
+                    <td class="state col-sm-2">
+                        <div class="indicator" ng-class="{stateEmpty:'empty',
                                         stateRaw: 'raw',
                                         stateRawAnalyzed: 'raw-analyzed',
                                         stateSourced: 'sourced',
@@ -315,11 +315,14 @@
                                 <!--<li ng-class="{'active':leftTabOpen === 'categories'}">-->
                                     <!--<a href role="tab" data-ng-click="leftTabOpen ='categories'">Categories</a>-->
                                 <!--</li>-->
-                                <li data-ng-class="{'active':leftTabOpen === 'check'}">
-                                    <a href role="tab" data-ng-click="leftTabOpen ='check'">Links</a>
-                                </li>
                                 <li data-ng-class="{'active':leftTabOpen === 'harvesting'}">
-                                    <a href role="tab" data-ng-click="leftTabOpen = 'harvesting'">harvesting statistics</a>
+                                    <a href role="tab" data-ng-click="leftTabOpen = 'harvesting'">Harvesting</a>
+                                </li>
+                                <li data-ng-class="{'active':leftTabOpen === 'check-links'}">
+                                    <a href role="tab" data-ng-click="leftTabOpen ='check-links'">Links</a>
+                                </li>
+                                <li data-ng-class="{'active':leftTabOpen === 'mapping'}">
+                                    <a href role="tab" data-ng-click="leftTabOpen ='mapping'">Mapping</a>
                                 </li>
                             </ul>
 
@@ -334,11 +337,14 @@
                                     <!--<div ng-switch-when="categories">-->
                                         <!--<div data-ng-include="'categories-form.html'">categories form</div>-->
                                     <!--</div>-->
-                                    <div ng-switch-when="check">
+                                    <div ng-switch-when="check-links">
                                         <div data-ng-include="'check-links.html'">check links</div>
                                     </div>
                                     <div ng-switch-when="harvesting">
-                                        <div data-ng-include="'harvesting-statistics.html'">harvesting statistics</div>
+                                        <div data-ng-include="'harvesting-info.html'">harvesting statistics</div>
+                                    </div>
+                                    <div ng-switch-when="mapping">
+                                        <div data-ng-include="'mapping.html'">harvesting statistics</div>
                                     </div>
                                 </div>
                             </div>
@@ -392,6 +398,7 @@
         </div>
     </div>
 </script>
+
 
 <script type="text/ng-template" id="dataset-metadata-form.html" class="">
     <form name="metadataform" class="form-horizontal" novalidate ng-submit="submitMetadataForm(metadataform)">
@@ -667,7 +674,6 @@
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
-            <div>WebResource Path: {{ apiWebResourcePath }}</div>
         </fieldset>
     </form>
 </script>
@@ -721,7 +727,16 @@
     </ul>
 </script>
 
-<script type="text/ng-template" id="harvesting-statistics.html">
+<script type="text/ng-template" id="mapping.html">
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <label>WebResource Path:</label>
+            <code class="success">{{ apiWebResourcePath }}</code>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="harvesting-info.html">
     <!-- TODO: hide if no data available -->
 
     <!-- If last full harvest date -->
