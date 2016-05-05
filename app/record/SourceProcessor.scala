@@ -158,6 +158,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         pocketTry match {
           case Success(pocket) =>
             pocket.writeTo(xmlOutput)
+            // todo send record to the bulk api
             validRecords += 1
 
           case Failure(ue: URIErrorsException) =>
@@ -186,6 +187,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         log.info(s"Processing incremental $sourceFacts")
         val (source, readProgress) = FileHandling.sourceFromFile(incremental.file)
         try {
+
           val progressReporter = ProgressReporter(PROCESSING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
@@ -197,11 +199,13 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         }
       } getOrElse {
         log.info(s"Processing all $sourceFacts")
+        // todo: send the toggle to mark everything an orphan
         datasetContext.sourceRepoOpt.map { sourceRepo =>
           val progressReporter = ProgressReporter(PROCESSING, context.parent)
           progress = Some(progressReporter)
           sourceRepo.parsePockets(catchPocket, idFilter, progressReporter)
         }
+        // todo: send delete orphans toggle
       }
 
       xmlOutput.close()

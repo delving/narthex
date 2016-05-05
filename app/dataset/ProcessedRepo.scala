@@ -63,7 +63,7 @@ object ProcessedRepo {
 
     def bulkAPIQ: String = {
 
-      def createBulkAction(dataset: Dataset, graphUri: String) = {
+      def createBulkAction(dataset: Dataset, graphUri: String): String = {
         val model = dataset.getNamedModel(graphUri)
         val triples = new StringWriter()
         RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)

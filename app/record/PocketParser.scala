@@ -62,9 +62,9 @@ object PocketParser {
       writer.write(text)
       writer.write(s"""<!--<${id}__$sha1>-->\n""")
       // TODO: enable later when save button is removed.
-//      if (OrgContext.USE_BULK_API) {
-//        storeBulkAction(text, id, sha1)
-//      }
+      if (OrgContext.USE_BULK_API) {
+        storeBulkAction(text, id, sha1)
+      }
     }
 
     def storeBulkAction(triples: String, id: String, hash: String) = {
@@ -93,7 +93,7 @@ object PocketParser {
       val SpecIdExtractor(spec, localId) = id
       val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
       // val currentSkosFields = dsInfo.getLiteralPropList(skosField)
-      // val acceptanceModeString= dsInfo.getLiteralProp(acceptanceMode)
+      val acceptanceModeString= "false"
       val actionMap = Json.obj(
         "hubId" -> hubId,
         "dataset" -> spec,
@@ -104,7 +104,7 @@ object PocketParser {
         "contentHash" -> hash,
         "graph" -> s"$triples".stripMargin.trim
       )
-      actionMap.toString()
+      s"${actionMap.toString()}\n"
     }
 
   }

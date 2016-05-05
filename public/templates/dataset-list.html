@@ -212,7 +212,7 @@
                             </h4>
                             <div class="btn-toolbar">
                                 <a href data-ng-click="start('start processing')">
-                                    <i class="fa fa-fw fa-cogs"></i> <span>Process</span>
+                                    <i class="fa fa-fw fa-cogs"></i> <span>Process and save</span>
                                 </a>
                             </div>
                         </li>
@@ -230,7 +230,7 @@
                         <!-- todo add incremental mode back && !dataset.harvestIncrementalMode   -->
                         <li data-ng-show="dataset.stateProcessed" class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateProcessed') }">
-                            <h4 class="list-group-item-heading">Processed
+                            <h4 class="list-group-item-heading">Processed / Saved
                                 <small class="badge">{{ dataset.stateProcessed.d }} {{ dataset.stateProcessed.t }}</small>
                             </h4>
                             <div class="btn-toolbar">
@@ -248,11 +248,19 @@
                                 <a href data-ng-click="goToDataset()">
                                     <i class="fa fa-fw fa-language"></i> <span>Explore</span>
                                 </a> <br/>
+                                <a href="{{ sparqlPath }}">
+                                    <i class="fa fa-fw fa-eye"></i>
+                                    <span>View saved RDF</span>
+                                </a><br/>
+                                <a href data-ng-click="goToTerms()" data-ng-if="dataset.skosField">
+                                    <i class="fa fa-fw fa-magic"></i> <span>Map vocabulary terms</span>
+                                </a>
                                 <a href data-ng-click="start('start saving')">
                                     <i class="fa fa-fw fa-database"></i> <span>Save</span>
                                 </a>
                             </div>
                         </li>
+                        <!--todo: hide this -->
                         <li data-ng-show="dataset.stateSaved" class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateSaved') }">
                             <h4 class="list-group-item-heading">Saved
