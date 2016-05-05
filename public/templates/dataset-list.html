@@ -663,10 +663,11 @@
                     <input id="pub_lod" type="checkbox" data-ng-model="dataset.edit.publishLOD" ng-true-value="'true'" ng-false-value="'false'"/>
                 </label>
             </div>
-            <button typ="button" class="btn btn-success btn-sm" data-ng-click="setPublish()" data-ng-disabled="unchangedPublish">
+            <button type="button" class="btn btn-success btn-sm" data-ng-click="setPublish()" data-ng-disabled="unchangedPublish">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
+            <div>WebResource Path: {{ apiWebResourcePath }}</div>
         </fieldset>
     </form>
 </script>
