@@ -63,6 +63,7 @@ object GraphProperties {
 
   val datasetCharacter = NXProp("datasetCharacter")
 
+  val orgId = NXProp("orgId")
   val datasetSpec = NXProp("datasetSpec")
   val datasetName = NXProp("datasetName")
   val datasetDescription = NXProp("datasetDescription")

@@ -109,6 +109,7 @@ object DsInfo {
     val subject = m.getResource(getDsInfoUri(spec))
     m.add(subject, m.getProperty(rdfType), m.getResource(datasetEntity))
     m.add(subject, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
+    m.add(subject, m.getProperty(orgId.uri), m.createLiteral(orgContext.orgId))
     m.add(subject, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
     m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
     val trueLiteral = m.createLiteral("true")
