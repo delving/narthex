@@ -26,12 +26,13 @@ import dataset.SipRepo.URIErrorsException
 import eu.delving.groovy.DiscardRecordException
 import org.OrgContext.actorWork
 import org.apache.commons.io.FileUtils.deleteQuietly
-import org.joda.time.LocalDateTime
+import org.joda.time.{DateTime, LocalDateTime}
 import org.xml.sax.SAXException
 import record.PocketParser.Pocket
 import record.SourceProcessor._
 import services.FileHandling._
 import services.ProgressReporter.ProgressState._
+import services.Temporal._
 import services.{FileHandling, ProgressReporter}
 
 import scala.language.postfixOps
@@ -137,6 +138,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
       var validRecords = 0
       var invalidRecords = 0
       var time = System.currentTimeMillis()
+      val start = timeToString(new DateTime())
 
       def writeError(heading: String, error: String, id: String) = {
         invalidRecords += 1
@@ -186,6 +188,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
         log.info(s"Processing incremental $sourceFacts")
         val (source, readProgress) = FileHandling.sourceFromFile(incremental.file)
         try {
+
           val progressReporter = ProgressReporter(PROCESSING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
@@ -202,6 +205,7 @@ class SourceProcessor(val datasetContext: DatasetContext) extends Actor with Act
           progress = Some(progressReporter)
           sourceRepo.parsePockets(catchPocket, idFilter, progressReporter)
         }
+        dsInfo.removeNaveOrphans(start)
       }
 
       xmlOutput.close()

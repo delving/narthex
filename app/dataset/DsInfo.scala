@@ -113,11 +113,12 @@ object DsInfo {
     m.add(subject, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
     m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
     val trueLiteral = m.createLiteral("true")
+    val falseLiteral = m.createLiteral("false")
     m.add(subject, m.getProperty(publishOAIPMH.uri), trueLiteral)
     m.add(subject, m.getProperty(publishIndex.uri), trueLiteral)
     m.add(subject, m.getProperty(publishLOD.uri), trueLiteral)
     m.add(subject, m.getProperty(acceptanceOnly.uri), trueLiteral)
-    m.add(subject, m.getProperty(acceptanceMode.uri), trueLiteral)
+    m.add(subject, m.getProperty(acceptanceMode.uri), falseLiteral)
     if (mapToPrefix != "-") m.add(subject, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.up.dataPost(getGraphName(spec), m).map { ok =>
       val cacheName = getDsInfoUri(spec)
@@ -216,10 +217,12 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def dropDataset = {
+    removeNaveDataSet()
     ts.up.sparqlUpdate(deleteDatasetQ(graphName, uri, skosGraphName)).map(ok => true)
   }
 
   def dropDatasetRecords = {
+    disableInNaveIndex()
     ts.up.sparqlUpdate(deleteDatasetRecordsQ(uri)).map(ok => true)
   }
 
@@ -456,4 +459,80 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   def processedInvalidVal = orUnknown(processedInvalid)
 
   override def toString = spec
+
+  val bulkApi = s"${OrgContext.NAVE_API_URL}/api/index/bulk/"
+
+  private def checkUpdateResponse(response: WSResponse, logString: String): Unit = {
+    if (response.status != 201) {
+      Logger.error(logString)
+      throw new Exception(s"${response.statusText}: ${response.body}:")
+    }
+  }
+
+  def bulkApiUpdate(bulkActions: String) = {
+    if (OrgContext.LOG_BULK_API) {
+      Logger.info(bulkActions)
+    }
+    val request = WS.url(s"$bulkApi").withHeaders(
+      "Content-Type" -> "text/plain; charset=utf-8",
+      "Accept" -> "application/json",
+      "Authorization" -> s"Token ${OrgContext.NAVE_BULK_API_AUTH_TOKEN}"
+    )
+    request.post(bulkActions).map(checkUpdateResponse(_, bulkActions))
+  }
+
+  def extractSpecIdFromGraphName(id: String): (String, String) = {
+    val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
+    val SpecIdExtractor(spec, localId) = id
+    (spec, localId)
+  }
+
+  def removeNaveOrphans(timeStamp: String) = {
+    val actionMap = Json.obj(
+      "dataset" -> spec,
+      // "acceptanceMode" -> acceptanceModeString,
+      "action" -> "clear_orphans",
+      "modification_date" -> timeStamp
+    )
+    bulkApiUpdate(s"${actionMap.toString()}\n")
+  }
+
+  def disableInNaveIndex() = {
+    val actionMap = Json.obj(
+      "dataset" -> spec,
+      // "acceptanceMode" -> acceptanceModeString,
+      "action" -> "disable_index"
+    )
+    bulkApiUpdate(s"${actionMap.toString()}\n")
+  }
+
+  def removeNaveDataSet() = {
+    val actionMap = Json.obj(
+      "dataset" -> spec,
+      // "acceptanceMode" -> acceptanceModeString,
+      "action" -> "drop_dataset"
+    )
+    bulkApiUpdate(s"${actionMap.toString()}\n")
+  }
+
+
+
+  def createBulkAction(triples: String, id: String, hash: String) = {
+    val (spec, localId) = extractSpecIdFromGraphName(id)
+    val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
+    // val currentSkosFields = dsInfo.getLiteralPropList(skosField)
+    val acceptanceModeString= "false"
+    val actionMap = Json.obj(
+      "hubId" -> hubId,
+      "dataset" -> spec,
+      // "acceptanceMode" -> acceptanceModeString,
+      "graphUri" -> id,
+      "type" -> "void_EDMRecord",
+      "action" -> "index",
+      "contentHash" -> hash,
+      "graph" -> s"$triples".stripMargin.trim
+    )
+    s"${actionMap.toString()}\n"
+  }
+
 }

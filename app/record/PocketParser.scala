@@ -17,15 +17,16 @@
 package record
 
 import java.io.{ByteArrayInputStream, Writer}
-import java.security.{NoSuchAlgorithmException, MessageDigest}
+import java.security.{MessageDigest, NoSuchAlgorithmException}
 
 import akka.actor.Status.Success
+import dataset.DsInfo
 import dataset.SourceRepo.{IdFilter, SourceFacts}
 import org.OrgContext
 import play.api.Play.current
 import play.api.Logger
 import play.api.libs.json.Json
-import play.api.libs.ws.{WSResponse, WS}
+import play.api.libs.ws.{WS, WSResponse}
 import services.StringHandling._
 import services._
 import triplestore.GraphProperties._
@@ -68,45 +69,12 @@ object PocketParser {
     }
 
     def storeBulkAction(triples: String, id: String, hash: String) = {
-      val bulkAction = createBulkAction(triples, id, hash)
-      val bulkApi = s"${OrgContext.NAVE_API_URL}/api/index/bulk/"
-      if (OrgContext.LOG_BULK_API) {
-        Logger.info(bulkAction)
-      }
-      val request = WS.url(s"$bulkApi").withHeaders(
-        "Content-Type" -> "text/plain; charset=utf-8",
-        "Accept" -> "application/json",
-        "Authorization" -> s"Token ${OrgContext.NAVE_BULK_API_AUTH_TOKEN}"
-      )
-      val response = request.post(bulkAction).map(checkUpdateResponse(_, bulkAction))
-    }
-
-    private def checkUpdateResponse(response: WSResponse, logString: String): Unit = {
-      if (response.status != 201) {
-        Logger.error(logString)
-        throw new Exception(s"${response.statusText}: ${response.body}:")
-      }
-    }
-
-    def createBulkAction(triples: String, id: String, hash: String) = {
       val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
-      val SpecIdExtractor(spec, localId) = id
-      val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
-      // val currentSkosFields = dsInfo.getLiteralPropList(skosField)
-      // val acceptanceModeString= dsInfo.getLiteralProp(acceptanceMode)
-      val actionMap = Json.obj(
-        "hubId" -> hubId,
-        "dataset" -> spec,
-        // "acceptanceMode" -> acceptanceModeString,
-        "graphUri" -> id,
-        "type" -> "void_EDMRecord",
-        "action" -> "index",
-        "contentHash" -> hash,
-        "graph" -> s"$triples".stripMargin.trim
-      )
-      actionMap.toString()
+      val (spec, localId) = id
+      val dsInfo = new DsInfo(spec)
+      val bulkAction = dsInfo.createBulkAction(triples, id, hash)
+      dsInfo.bulkApiUpdate(bulkAction)
     }
-
   }
 
   @throws(classOf[NoSuchAlgorithmException])

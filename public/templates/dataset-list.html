@@ -248,11 +248,20 @@
                                 <a href data-ng-click="goToDataset()">
                                     <i class="fa fa-fw fa-language"></i> <span>Explore</span>
                                 </a> <br/>
+                                <!-- TODO: enable when process and save are folded together -->
+                                <!--<a href="{{ sparqlPath }}">-->
+                                    <!--<i class="fa fa-fw fa-eye"></i>-->
+                                    <!--<span>View saved RDF</span>-->
+                                <!--</a><br/>-->
+                                <!--<a href data-ng-click="goToTerms()" data-ng-if="dataset.skosField">-->
+                                    <!--<i class="fa fa-fw fa-magic"></i> <span>Map vocabulary terms</span>-->
+                                <!--</a>-->
                                 <a href data-ng-click="start('start saving')">
                                     <i class="fa fa-fw fa-database"></i> <span>Save</span>
                                 </a>
                             </div>
                         </li>
+                        <!--todo: hide this when bulk is enabled -->
                         <li data-ng-show="dataset.stateSaved" class="ds-state list-group-item"
                             data-ng-class="{ 'later': isCurrent('stateSaved') }">
                             <h4 class="list-group-item-heading">Saved
