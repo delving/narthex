@@ -114,6 +114,13 @@ a {
   color: @link-color;
 }
 
+code {
+  color: @gray;
+  background: @gray-lighter;
+}
+
+
+
 /* login & user-dashboard ************************************************/
 
 .user-actions {
@@ -397,17 +404,20 @@ a {
   display: inline-block;
   margin: 0 0 0 0;
   border-top: none;
+  border-collapse: collapse;
   width: 100%;
   td {
     padding: 0 0 0 0;
     border: none;
     &.state {
-      width: 200px;
-
-      div {
+      //width: auto;
+      text-align: right;
+      .indicator {
+        width: 200px;
         color: @white;
-        padding: 5px;
+        padding: 8px;
         text-align: center;
+        float: right;
         &:hover {
           cursor: default;
         }
@@ -456,14 +466,15 @@ a {
         }
       }
     }
-    &.invalid,
-    &.valid,
-    &.acc-prod{
-      width: 160px;
-    }
+    //&.invalid,
+    //&.valid,
+    //&.acc-prod{
+    //  width: 160px;
+    //}
     .datetime {
       display: block;
-      font-size: .9em;
+      font-size: .75em;
+      letter-spacing: 1px;
       margin-top: 4px;
     }
     .btn-default {

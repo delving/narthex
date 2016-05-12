@@ -54,9 +54,11 @@ define(["angular"], function () {
         $scope.socketSubscribers = {};
 
         var socket = datasetListService.datasetSocket();
+
         socket.onopen = function () {
             socket.send(user.username + " arrived on datasets page");
         };
+
         socket.onmessage = function (messageReturned) {
             var message = JSON.parse(messageReturned.data);
             var callback = $scope.socketSubscribers[message.datasetSpec];
@@ -67,6 +69,7 @@ define(["angular"], function () {
                 console.warn("Message for unknown dataset: " + message.datasetSpec);
             }
         };
+
         $scope.$on('$destroy', function () {
             socket.send(user.username + " left datasets page");
             socket.close();
@@ -250,6 +253,7 @@ define(["angular"], function () {
                 $scope.datasets = array;
                 $scope.updateDatasetStateCounter();
             });
+            console.log( $scope.datasets);
         };
 
         $scope.fetchDatasetList();
@@ -395,6 +399,7 @@ define(["angular"], function () {
         $scope.idFilter = {};
         var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
         $scope.searchLink = baseUrl + "/search?q=delving_spec:" + "\"" + $scope.dataset.datasetSpec + "\"";
+
         $scope.apiLink = baseUrl + "/api/search/v1/?q=delving_spec:" + $scope.dataset.datasetSpec;
         // todo: note that edm is hardcoded here:
         $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + $scope.dataset.datasetSpec;
@@ -403,8 +408,8 @@ define(["angular"], function () {
         $scope.apiPathProcessed = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/processed";
         $scope.apiPathHarvestLog = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/log";
         $scope.apiDownloadSipZip = "/narthex/sip-app/" + $scope.dataset.datasetSpec;
+        $scope.apiWebResourcePath = "/data/webresource/" + $scope.dataset.orgId + "/" + $scope.dataset.datasetSpec + "/source/";
         $scope.sparqlPath = $scope.user.naveDomain + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
-
 
         function setUnchanged() {
             function unchanged(fieldNameList) {
