@@ -38,6 +38,7 @@ import scala.io.Source
 import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
+
 object PocketParser {
 
   case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
@@ -68,10 +69,12 @@ object PocketParser {
 //      }
     }
 
+    implicit val ts = OrgContext.TS
+
     def storeBulkAction(triples: String, id: String, hash: String) = {
       val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
-      val (spec, localId) = id
-      val dsInfo = new DsInfo(spec)
+      val SpecIdExtractor(spec, localId) = id
+      val dsInfo = DsInfo.getDsInfo(spec)
       val bulkAction = dsInfo.createBulkAction(triples, id, hash)
       dsInfo.bulkApiUpdate(bulkAction)
     }

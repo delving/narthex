@@ -146,7 +146,9 @@ object DsInfo {
       block(dsInfo)
     }
   }
-
+  def getDsInfo(spec: String)(implicit ec: ExecutionContext, ts: TripleStore) = {
+    new DsInfo(spec)
+  }
 }
 
 class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) extends SkosGraph {
