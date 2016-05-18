@@ -417,8 +417,14 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   def currentHarvestCron = {
     (getLiteralProp(harvestPreviousTime), getLiteralProp(harvestDelay), getLiteralProp(harvestDelayUnit), getLiteralProp(harvestIncremental)) match {
       case (Some(previousString), Some(delayString), Some(unitString), Some(incrementalString)) =>
+        val previousTime = try {
+          stringToTime(previousString)
+        } catch {
+          case iae: IllegalArgumentException =>
+            new DateTime(1970, 1, 1)
+        }
         HarvestCron(
-          previous = stringToTime(previousString),
+          previous = previousTime,
           delay = delayString.toInt,
           unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS),
           incremental = incrementalString.toBoolean
