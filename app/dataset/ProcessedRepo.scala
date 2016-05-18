@@ -67,7 +67,7 @@ object ProcessedRepo {
         val model = dataset.getNamedModel(graphUri)
         val triples = new StringWriter()
         RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
-        val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
+        val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/(.+)/graph".r
         val SpecIdExtractor(spec, localId) = graphUri
         val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
         val currentSkosFields = dsInfo.getLiteralPropList(skosField)
