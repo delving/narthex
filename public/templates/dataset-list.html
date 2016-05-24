@@ -515,7 +515,7 @@
             <div class="form-group">
                 <label class="col-sm-3" for="harv_url">Server URL</label>
                 <div class="col-sm-9">
-                    <input id="harv_url" class="form-control" data-ng-model="dataset.edit.harvestURL" placeholder="http://..." required/>
+                    <input id="harv_url" class="form-control" data-ng-model="dataset.edit.harvestURL" placeholder="http://...?" required/>
                 </div>
             </div>
             <div class="form-group">
@@ -544,7 +544,7 @@
                 <i class="fa fa-binoculars"></i>
                 <span>Sample</span>
             </button>
-            <a href="{{dataset.edit.harvestURL}}verb=ListRecords&set={{dataset.edit.harvestDataset}}&metadataPrefix={{dataset.edit.harvestPrefix}}" target="_blank" type="button" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
+            <a href="{{ pmhPreviewBase }}" target="_blank" type="button" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-binoculars"></i>
                 <span>Preview</span>
             </a>
@@ -605,7 +605,7 @@
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
-            <a href="{{dataset.edit.harvestURL}}verb=ListRecords&set={{dataset.edit.harvestDataset}}&metadataPrefix={{dataset.edit.harvestPrefix}}&from={{dataset.edit.harvestPreviousTime}}" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
+            <a href="{{ pmhPreviewBase }}&from={{dataset.edit.harvestPreviousTime}}" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!unchangedHarvest">
                 <i class="fa fa-binoculars"></i>
                 <span>Preview</span>
             </a>

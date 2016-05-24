@@ -155,7 +155,8 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
       }
     }
 
-    case HarvestPMH(strategy: HarvestStrategy, url, set, prefix) => actorWork(context) {
+    case HarvestPMH(strategy: HarvestStrategy, raw_url, set, prefix) => actorWork(context) {
+      val url = s"${raw_url.stripSuffix("?")}?"
       log.info(s"Harvesting $strategy: $url $set $prefix to $datasetContext")
       val futurePage = fetchPMHPage(strategy, url, set, prefix)
       handleFailure(futurePage, strategy, "pmh harvest")
