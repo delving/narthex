@@ -609,7 +609,7 @@ define(["angular"], function () {
             });
         }
 
-        fetchSipFileList();
+        // fetchSipFileList();
 
         $scope.deleteSipZip = function () {
             datasetListService.deleteLatestSipFile($scope.dataset.datasetSpec).then(function () {
