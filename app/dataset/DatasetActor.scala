@@ -206,6 +206,11 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             broadcastIdleState()
             "deleted records"
 
+          case "delete index" =>
+            Await.ready(datasetContext.dropIndex, 2.minutes)
+            broadcastIdleState()
+            "deleted index"
+
           case "remove raw" =>
             datasetContext.dropRaw()
             broadcastIdleState()

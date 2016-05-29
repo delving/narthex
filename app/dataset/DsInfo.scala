@@ -224,8 +224,12 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def dropDatasetRecords = {
-    disableInNaveIndex()
     ts.up.sparqlUpdate(deleteDatasetRecordsQ(uri)).map(ok => true)
+  }
+
+  def dropDatasetIndex = {
+    disableInNaveIndex()
+    true
   }
 
   def getIdFilter: IdFilter = {
