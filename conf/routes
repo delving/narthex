@@ -25,6 +25,9 @@ GET         /narthex/_oauth-success                                          web
 POST        /narthex/set-profile                                             web.MainController.setProfile
 GET         /narthex/list-actors                                             web.MainController.listActors
 POST        /narthex/create-actor                                            web.MainController.createActor
+POST        /narthex/delete-actor                                            web.MainController.deleteActor
+POST        /narthex/disable-actor                                           web.MainController.disableActor
+POST        /narthex/make-admin                                              web.MainController.makeAdmin
 POST        /narthex/set-password                                            web.MainController.setPassword
 GET         /narthex/test-email/:emailType                                   web.MainController.testEmail(emailType)
 

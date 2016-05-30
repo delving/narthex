@@ -252,6 +252,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   def setLastHarvestTime(incremental: Boolean = false) = {
     if (incremental) {
+      // todo: fix this by setting the start date
       setSingularLiteralProps(lastIncrementalHarvestTime -> now)
       setSingularLiteralProps(harvestIncrementalMode -> "true")
     } else {

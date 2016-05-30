@@ -102,6 +102,20 @@ define(["angular"], function (angular) {
             });
         };
 
+        $scope.removeActor = function (actor) {
+            userService.deleteActor(actor)
+        };
+
+        $scope.disableActor = function (actor) {
+            userService.disableActor(actor)
+        };
+        $scope.makeAdmin = function (actor) {
+            userService.makeAdmin(actor)
+        };
+        $scope.removeAdmin = function (actor) {
+            userService.removeAdmin(actor)
+        };
+
         function comparePasswords(newValue, oldValue) {
             var c = $scope.change;
             $scope.changeDisabled = !(c.a && c.b) || c.a != c.b || !c.a.length;

@@ -121,6 +121,7 @@
                 <div class="widget-body">
 
                     <p data-ng-show="!actorList.length">
+                        {{ actorList }}
                         There are currently no Sub-Actors
                     </p>
 
@@ -147,8 +148,21 @@
                     </div>
 
                     <ol data-ng-show="actorList.length" class="">
+                        {{ actorList }}
                         <li data-ng-repeat="actor in actorList">
-                            {{ actor }}
+                            {{ actor.userName }}  enabled => {{ actor.userEnabled }} isAdmin => {{ actor.isAdmin }}
+                            <button class="btn btn-warning" data-ng-click="deleteActor(userName)">
+                                delete
+                            </button>
+                            <button class="btn btn-warning" data-ng-click="disableActor(userName)">
+                                disable
+                            </button>
+                            <button class="btn btn-warning" data-ng-click="disableActor(userName)">
+                                make admin
+                            </button>
+                            <button class="btn btn-warning" data-ng-click="disableActor(userName)">
+                                remove admin
+                            </button>
                         </li>
                     </ol>
 

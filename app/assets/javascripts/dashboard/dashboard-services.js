@@ -97,6 +97,35 @@ define(["angular", "common"], function (angular) {
                             }
                         );
                     },
+                    disableActor: function (credentials) {
+                        return main.disableActor.post(credentials).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    }, 
+                    deleteActor: function (credentials) {
+                        return main.deleteActor().post(credentials).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
+                    makeAdmin: function (credentials) {
+                        return main.makeAdmin().post(credentials).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
+                    removeAdmin: function (credentials) {
+                        return main.makeAdmin().post(credentials).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
+                    
                     getUser: function () {
                         return user;
                     }

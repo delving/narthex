@@ -16,6 +16,7 @@
 
 package org
 
+import java.io.Serializable
 import java.security.MessageDigest
 
 import org.OrgContext._
@@ -54,7 +55,9 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   }
 
   def emailFromUri(actorUri: String): Option[String] = {
-    val query = ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
+    //val query = ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
+    // send email to all admins
+    val query = ts.query(getAdminEMailQ()).map(emailFromResult)
     // todo: maybe make this async
     Await.result(query, 5.seconds)
   }
@@ -88,9 +91,21 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     }
   }
 
-  def listSubActors(nxActor: NXActor): List[String] = {
+  def listSubActors(nxActor: NXActor): List[Map[String, String]] = {
     val query = ts.query(getSubActorList(nxActor)).map { list =>
-      list.flatMap(m => m.get("username")).map(_.text)
+//      list.flatMap(m => m.get("username")).map(_.text)
+        list.map(m =>
+          Map(
+            "userName" -> m.get("username").get.text,
+            "isAdmin" -> {
+              val isAdmin = m.get("isAdmin")
+              if (isAdmin.nonEmpty) isAdmin.get.text else "false"},
+            "userEnabled" -> {
+              val userEnabled = m.get("userEnabled")
+              if (userEnabled.nonEmpty) userEnabled.get.text else "true"
+            }
+          )
+        )
     }
     // todo: maybe make this async
     Await.result(query, 5.seconds)
@@ -102,6 +117,46 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     val update = ts.up.sparqlUpdate(insertSubActorQ(newActor, hash, adminActor))
     checkFail(update)
     update.map(ok => Some(newActor))
+  }
+
+  def makeAdmin(userName: String) = {
+    val actor = NXActor(userName, None, None)
+    val q = setActorAdminQ(actor, true)
+    val update = ts.up.sparqlUpdate(q)
+    checkFail(update)
+    update
+  }
+
+  def removeAdmin(userName: String) = {
+    val actor = NXActor(userName, None, None)
+    val q = setActorAdminQ(actor, true)
+    val update = ts.up.sparqlUpdate(q)
+    checkFail(update)
+    update
+  }
+
+  def deleteActor(userName: String) = {
+    val actor = NXActor(userName, None, None)
+    val q = removeActorQ(actor)
+    val update = ts.up.sparqlUpdate(q)
+    checkFail(update)
+    update
+  }
+
+  def disableActor(userName: String) = {
+    val actor = NXActor(userName, None, None)
+    val q = enableActorQ(actor, false)
+    val update = ts.up.sparqlUpdate(q)
+    checkFail(update)
+    update
+  }
+
+  def enableActor(userName: String) = {
+    val actor = NXActor(userName, None, None)
+    val q = enableActorQ(actor, true)
+    val update = ts.up.sparqlUpdate(q)
+    checkFail(update)
+    update
   }
 
   def setProfile(actor: NXActor, nxProfile: NXProfile): Future[Unit] = {

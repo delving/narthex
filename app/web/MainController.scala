@@ -142,8 +142,8 @@ object MainController extends Controller with Security {
   }
 
   def login = Action.async(parse.json) { implicit request =>
-    var username = (request.body \ "username").as[String]
-    var password = (request.body \ "password").as[String]
+    val username = (request.body \ "username").as[String]
+    val password = (request.body \ "password").as[String]
     Logger.info(s"Login $username")
     orgContext.us.authenticate(username, password).map { actorOpt =>
       actorOpt.map { actor =>
@@ -201,6 +201,28 @@ object MainController extends Controller with Security {
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
     orgContext.us.createSubActor(session.actor, username, password).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
+  def deleteActor() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    orgContext.us.deleteActor(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
+  def disableActor() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    orgContext.us.disableActor(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
+  def makeAdmin() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    val isAdmin = (request.body \ "isAdmin").as[Boolean]
+    orgContext.us.deleteActor(username).map { actorOpt =>
       Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
     }
   }
