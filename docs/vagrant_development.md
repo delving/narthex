@@ -6,6 +6,8 @@ steps are required to get up and running.
     * Install Vagrant from the vagrantup.com website.
     * Go to the root directory of the project
     * Edit the development.conf file where applicable
+    * run `vagrant plugin install vagrant-hostsupdater`
+    * run `vagrant plugin install vagrant-triggers`
     * Run `vagrant up`
     * Run `vagrant ssh`
     * navigate to NarthexVersions/narthex_dev/
