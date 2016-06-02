@@ -618,13 +618,12 @@ define(["angular"], function () {
                 fetchSipFileList();
             });
         };
-
         function executeIdFilter() {
             var expression = $scope.dataset.edit.idFilterExpression || '';
             var delimiter = ":::";
             var divider = expression.indexOf(delimiter);
             if (divider < 0) {
-                $scope.idFilter.output = "";
+                $scope.idFilter.input = "";
                 $scope.idFilter.error = "No divider";
                 $scope.idFilter.output = "";
             }
@@ -632,7 +631,9 @@ define(["angular"], function () {
                 $scope.idFilter.error = "";
                 var regExp = new RegExp(expression.substring(0, divider), 'g');
                 var replacement = expression.substring(divider + delimiter.length);
-                $scope.idFilter.output = $scope.idFilter.input.replace(regExp, replacement);
+                if($scope.idFilter.input){
+                    $scope.idFilter.output = $scope.idFilter.input.replace(regExp, replacement);
+                }
             }
         }
 
