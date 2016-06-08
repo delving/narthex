@@ -217,6 +217,12 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     dsInfo.dropDatasetRecords
   }
 
+  def dropIndex = {
+    dsInfo.removeState(SAVED)
+    dsInfo.dropDatasetIndex
+    dsInfo.dropDatasetRecords
+  }
+
   def startSipZipGeneration() = OrgActor.actor ! dsInfo.createMessage(GenerateSipZip)
 
   // ==================================================
