@@ -112,6 +112,8 @@ object DatasetActor {
 
   case object FromScratch extends HarvestStrategy
 
+  case object FromScratchIncremental extends HarvestStrategy
+
   case class StartHarvest(strategy: HarvestStrategy)
 
   case class Command(name: String)

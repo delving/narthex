@@ -358,7 +358,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
     val invalid = total - valid
     setRecordCount(total)
     setProcessedRecordCounts(valid, invalid)
-    return (invalid, valid, total)
+    (invalid, valid, total)
   }
 
   def setRecordCount(count: Int) = setSingularLiteralProps(datasetRecordCount -> count.toString)
@@ -425,7 +425,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
           stringToTime(previousString)
         } catch {
           case iae: IllegalArgumentException =>
-            new DateTime(1970, 1, 1)
+            stringToTime("1970-01-01")
         }
         HarvestCron(
           previous = previousTime,
