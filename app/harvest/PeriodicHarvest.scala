@@ -17,7 +17,7 @@
 package harvest
 
 import akka.actor.{Actor, Props}
-import dataset.DatasetActor.{FromScratch, ModifiedAfter, StartHarvest}
+import dataset.DatasetActor.{FromScratch, FromScratchIncremental, ModifiedAfter, StartHarvest}
 import dataset.DsInfo
 import dataset.DsInfo.withDsInfo
 import harvest.PeriodicHarvest.ScanForHarvests
@@ -64,7 +64,7 @@ class PeriodicHarvest extends Actor {
               log.info(s"Set harvest cron: $next")
               info.setHarvestCron(next)
               val justDate = harvestCron.unit == DelayUnit.WEEKS
-              val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, justDate) else FromScratch
+              val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, justDate) else FromScratchIncremental
               val startHarvest = StartHarvest(strategy)
               log.info(s"$info incremental harvest kickoff $startHarvest")
               OrgActor.actor ! info.createMessage(startHarvest)
