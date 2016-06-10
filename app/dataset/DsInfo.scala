@@ -427,9 +427,15 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
           case iae: IllegalArgumentException =>
             stringToTime("1970-01-01")
         }
+        val delay = try {
+            delayString.toInt
+        } catch {
+          case ine: NumberFormatException =>
+            1
+        }
         HarvestCron(
           previous = previousTime,
-          delay = delayString.toInt,
+          delay = delay,
           unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS),
           incremental = incrementalString.toBoolean
         )
