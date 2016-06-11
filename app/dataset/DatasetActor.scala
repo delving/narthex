@@ -476,6 +476,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       dsInfo.setState(PROCESSED)
       if (incrementalOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
+        dsInfo.setState(PROCESSABLE)
         dsInfo.setState(INCREMENTAL_SAVED)
         val graphSaver = context.actorOf(GraphSaver.props(datasetContext), "graph-saver")
         graphSaver ! SaveGraphs(incrementalOpt)
@@ -483,6 +484,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
       }
       else {
+        dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
         MailProcessingComplete(
           spec = dsInfo.spec,
