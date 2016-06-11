@@ -254,14 +254,19 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   def setState(state: DsState) = setSingularLiteralProps(state.prop -> now)
 
+  def setHarvestIncrementalMode(enabled: Boolean = false) = {
+    val mode = if (enabled) "true" else "false"
+    setSingularLiteralProps(harvestIncrementalMode -> mode)
+  }
+
   def setLastHarvestTime(incremental: Boolean = false) = {
     if (incremental) {
       setSingularLiteralProps(lastIncrementalHarvestTime -> now)
-      setSingularLiteralProps(harvestIncrementalMode -> "true")
+      setHarvestIncrementalMode(true)
     } else {
       setSingularLiteralProps(lastFullHarvestTime -> now)
+      setHarvestIncrementalMode(false)
       setIncrementalProcessedRecordCounts(0, 0)
-      setSingularLiteralProps(harvestIncrementalMode -> "false")
       removeLiteralProp(lastIncrementalHarvestTime)
     }
   }

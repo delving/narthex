@@ -120,7 +120,7 @@ object DatasetActor {
 
   case class StartAnalysis(processed: Boolean)
 
-  case class Incremental(modifiedAfter: DateTime, file: File)
+  case class Incremental(modifiedAfter: Option[DateTime], file: File)
 
   case class StartProcessing(incrementalOpt: Option[Incremental])
 
@@ -177,6 +177,14 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             log.info(s"Starting harvest $strategy with type $harvestType")
             strategy match {
               case FromScratch =>
+                datasetContext.sourceRepoOpt match {
+                  case Some(sourceRepo) =>
+                    sourceRepo.clearData()
+                  case None =>
+                    // no source repo, use the default for the harvest type
+                    datasetContext.createSourceRepo(SourceFacts(harvestType))
+                }
+              case FromScratchIncremental =>
                 datasetContext.sourceRepoOpt match {
                   case Some(sourceRepo) =>
                     sourceRepo.clearData()
@@ -356,6 +364,39 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   when(Harvesting) {
 
     case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch), active: Active) =>
+      def processIncremental(fileOpt: Option[File], noRecordsMatch: Boolean=false, mod: Option[DateTime]) = {
+        noRecordsMatch match {
+          case true =>
+            Logger.info("NoRecordsMatch, so setting state to Incremental Saved")
+            dsInfo.setState(INCREMENTAL_SAVED)
+            if (dsInfo.getLiteralProp(harvestIncrementalMode).getOrElse("false") != "true") {
+              dsInfo.setHarvestIncrementalMode(true)
+            }
+          case _ =>
+            dsInfo.removeState(SAVED)
+            dsInfo.removeState(ANALYZED)
+            dsInfo.removeState(INCREMENTAL_SAVED)
+            dsInfo.removeState(PROCESSED)
+            dsInfo.removeState(PROCESSABLE)
+            dsInfo.setState(SOURCED)
+            dsInfo.setLastHarvestTime(incremental = true)
+        }
+        dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
+        dsInfo.updatedSpecCountFromFile()
+        fileOpt match {
+          case Some(file) =>
+            if (datasetContext.sipMapperOpt.isDefined) {
+              log.info(s"There is a mapper, so trigger processing")
+              self ! StartProcessing(Some(Incremental(mod, file)))
+            }
+            else {
+              log.info("No mapper, so generating sip zip only")
+              self ! GenerateSipZip
+            }
+          case None =>
+            log.info("No incremental file, back to sleep")
+        }
+      }
       strategy match {
         case Sample =>
           dsInfo.setState(RAW)
@@ -367,35 +408,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
           dsInfo.setState(SOURCED)
           dsInfo.setLastHarvestTime(incremental = false)
 
+
         case ModifiedAfter(mod, _) =>
-          noRecordsMatch match {
-            case true =>
-              Logger.info("NoRecordsMatch, so setting state to Incremental Saved")
-              dsInfo.setState(INCREMENTAL_SAVED)
-            case _ =>
-              dsInfo.removeState(SAVED)
-              dsInfo.removeState(ANALYZED)
-              dsInfo.removeState(INCREMENTAL_SAVED)
-              dsInfo.removeState(PROCESSED)
-              dsInfo.removeState(PROCESSABLE)
-              dsInfo.setState(SOURCED)
-              dsInfo.setLastHarvestTime(incremental = true)
-          }
-          dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
-          dsInfo.updatedSpecCountFromFile()
-          fileOpt match {
-            case Some(file) =>
-              if (datasetContext.sipMapperOpt.isDefined) {
-                log.info(s"There is a mapper, so trigger processing")
-                self ! StartProcessing(Some(Incremental(mod, file)))
-              }
-              else {
-                log.info("No mapper, so generating sip zip only")
-                self ! GenerateSipZip
-              }
-            case None =>
-              log.info("No incremental file, back to sleep")
-          }
+          processIncremental(fileOpt, noRecordsMatch, Some(mod))
+
+        case FromScratchIncremental =>
+          processIncremental(fileOpt, noRecordsMatch, None)
       }
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
@@ -458,6 +476,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       dsInfo.setState(PROCESSED)
       if (incrementalOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
+        dsInfo.setState(PROCESSABLE)
         dsInfo.setState(INCREMENTAL_SAVED)
         val graphSaver = context.actorOf(GraphSaver.props(datasetContext), "graph-saver")
         graphSaver ! SaveGraphs(incrementalOpt)
@@ -465,6 +484,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
       }
       else {
+        dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
         MailProcessingComplete(
           spec = dsInfo.spec,
