@@ -222,7 +222,15 @@ object MainController extends Controller with Security {
   def makeAdmin() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     val isAdmin = (request.body \ "isAdmin").as[Boolean]
-    orgContext.us.deleteActor(username).map { actorOpt =>
+    orgContext.us.makeAdmin(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
+  def removeAdmin() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    val isAdmin = (request.body \ "isAdmin").as[Boolean]
+    orgContext.us.removeAdmin(username).map { actorOpt =>
       Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
     }
   }
@@ -278,9 +286,13 @@ object MainController extends Controller with Security {
           routes.javascript.MainController.checkLogin,
           routes.javascript.MainController.logout,
           routes.javascript.MainController.setProfile,
+          routes.javascript.MainController.setPassword,
           routes.javascript.MainController.listActors,
           routes.javascript.MainController.createActor,
-          routes.javascript.MainController.setPassword,
+          routes.javascript.MainController.disableActor,
+          routes.javascript.MainController.deleteActor,
+          routes.javascript.MainController.makeAdmin,
+          routes.javascript.MainController.removeAdmin,
           routes.javascript.AppController.datasetSocket,
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
