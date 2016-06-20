@@ -150,19 +150,22 @@
                     <ol data-ng-show="actorList.length" class="">
                         {{ actorList }}
                         <li data-ng-repeat="actor in actorList">
+
+                            <form name="actorEditForm" method="POST">
                             {{ actor.userName }}  enabled => {{ actor.userEnabled }} isAdmin => {{ actor.isAdmin }}
-                            <button class="btn btn-warning" data-ng-click="deleteActor(userName)">
+                            <button class="btn btn-warning" data-ng-click="deleteActor(actor.userName)">
                                 delete
                             </button>
-                            <button class="btn btn-warning" data-ng-click="disableActor(userName)">
+                            <button class="btn btn-warning" data-ng-click="disableActor(actor.userName)">
                                 disable
                             </button>
-                            <button class="btn btn-warning" data-ng-click="disableActor(userName)">
-                                make admin
+                            <button type="submit" class="btn btn-warning" data-ng-click="makeAdmin(actor.userName)">
+                                make admin {{ actor.userName }}
                             </button>
-                            <button class="btn btn-warning" data-ng-click="disableActor(userName)">
+                            <button class="btn btn-warning" data-ng-click="disableActor(actor.userName)">
                                 remove admin
                             </button>
+                            </form>
                         </li>
                     </ol>
 
