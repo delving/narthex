@@ -129,7 +129,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
 
   def removeAdmin(userName: String) = {
     val actor = NXActor(userName, None, None)
-    val q = setActorAdminQ(actor, true)
+    val q = setActorAdminQ(actor, false)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update
