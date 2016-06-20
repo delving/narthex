@@ -119,7 +119,7 @@ define(["angular", "common"], function (angular) {
                         );
                     },
                     removeAdmin: function (credentials) {
-                        return main.makeAdmin().post(credentials).then(
+                        return main.removeAdmin().post(credentials).then(
                             function (response) {
                                 return response.data.actorList;
                             }
