@@ -41,8 +41,6 @@ define(["angular"], function (angular) {
             });
         }
 
-        checkLogin();
-
         function listActors() {
             if (userService.getUser()) {
                 userService.listActors().then(function (actorList) {
@@ -50,8 +48,6 @@ define(["angular"], function (angular) {
                 });
             }
         }
-
-        listActors();
 
         $scope.toggleOAuth = function() {
             $cookies[OAUTH_COOKIE] = $scope.credentials.oauth = !$scope.credentials.oauth;
@@ -82,6 +78,10 @@ define(["angular"], function (angular) {
             }
         };
 
+        checkLogin();
+
+        listActors();
+
         function compareUserToEdited() {
             return $scope.unchangedUser = angular.equals($scope.user, $scope.editedUser);
         }
@@ -109,9 +109,11 @@ define(["angular"], function (angular) {
         $scope.disableActor = function (actor) {
             userService.disableActor(actor)
         };
+        
         $scope.makeAdmin = function (actor) {
             userService.makeAdmin(actor)
         };
+        
         $scope.removeAdmin = function (actor) {
             userService.removeAdmin(actor)
         };

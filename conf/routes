@@ -28,6 +28,7 @@ POST        /narthex/create-actor                                            web
 POST        /narthex/delete-actor                                            web.MainController.deleteActor
 POST        /narthex/disable-actor                                           web.MainController.disableActor
 POST        /narthex/make-admin                                              web.MainController.makeAdmin
+POST        /narthex/remove-admin                                            web.MainController.removeAdmin
 POST        /narthex/set-password                                            web.MainController.setPassword
 GET         /narthex/test-email/:emailType                                   web.MainController.testEmail(emailType)
 
