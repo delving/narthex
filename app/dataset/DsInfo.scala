@@ -386,7 +386,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   )
 
   def setHarvestCron(harvestCron: HarvestCron = currentHarvestCron) = setSingularLiteralProps(
-    harvestPreviousTime -> timeToString(harvestCron.previous),
+    harvestPreviousTime -> timeToLocalString(harvestCron.previous),
     harvestDelay -> harvestCron.delay.toString,
     harvestDelayUnit -> harvestCron.unit.toString
   )
@@ -436,14 +436,18 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
             delayString.toInt
         } catch {
           case ine: NumberFormatException =>
-            1
+            0
         }
-        HarvestCron(
-          previous = previousTime,
-          delay = delay,
-          unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS),
-          incremental = incrementalString.toBoolean
-        )
+        if (delay == 0) {
+          HarvestCron(new DateTime(), 1, DelayUnit.WEEKS, incremental = false)
+        } else {
+          HarvestCron(
+            previous = previousTime,
+            delay = delay,
+            unit = DelayUnit.fromString(unitString).getOrElse(DelayUnit.WEEKS),
+            incremental = incrementalString.toBoolean
+          )
+        }
       case _ =>
         HarvestCron(new DateTime(), 1, DelayUnit.WEEKS, incremental = false)
     }
