@@ -27,6 +27,7 @@ GET         /narthex/list-actors                                             web
 POST        /narthex/create-actor                                            web.MainController.createActor
 POST        /narthex/delete-actor                                            web.MainController.deleteActor
 POST        /narthex/disable-actor                                           web.MainController.disableActor
+POST        /narthex/enable-actor                                            web.MainController.enableActor
 POST        /narthex/make-admin                                              web.MainController.makeAdmin
 POST        /narthex/remove-admin                                            web.MainController.removeAdmin
 POST        /narthex/set-password                                            web.MainController.setPassword

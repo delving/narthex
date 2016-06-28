@@ -219,9 +219,15 @@ object MainController extends Controller with Security {
     }
   }
 
+  def enableActor() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    orgContext.us.enableActor(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
   def makeAdmin() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
-    val isAdmin = (request.body \ "isAdmin").as[Boolean]
     orgContext.us.makeAdmin(username).map { actorOpt =>
       Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
     }
@@ -229,7 +235,6 @@ object MainController extends Controller with Security {
 
   def removeAdmin() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
-    val isAdmin = (request.body \ "isAdmin").as[Boolean]
     orgContext.us.removeAdmin(username).map { actorOpt =>
       Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
     }
@@ -290,6 +295,7 @@ object MainController extends Controller with Security {
           routes.javascript.MainController.listActors,
           routes.javascript.MainController.createActor,
           routes.javascript.MainController.disableActor,
+          routes.javascript.MainController.enableActor,
           routes.javascript.MainController.deleteActor,
           routes.javascript.MainController.makeAdmin,
           routes.javascript.MainController.removeAdmin,

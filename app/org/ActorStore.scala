@@ -101,8 +101,8 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
               val isAdmin = m.get("isAdmin")
               if (isAdmin.nonEmpty) isAdmin.get.text else "false"},
             "userEnabled" -> {
-              val userEnabled = m.get("userEnabled")
-              if (userEnabled.nonEmpty) userEnabled.get.text else "true"
+              val actorEnabled = m.get("actorEnabled")
+              if (actorEnabled.nonEmpty) actorEnabled.get.text else "true"
             }
           )
         )
@@ -124,6 +124,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     val q = setActorAdminQ(actor, true)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
+    update.map(ok => Some(actor))
     update
   }
 
@@ -132,6 +133,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     val q = setActorAdminQ(actor, false)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
+    update.map(ok => Some(actor))
     update
   }
 
@@ -140,6 +142,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     val q = removeActorQ(actor)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
+    update.map(ok => Some(actor))
     update
   }
 
@@ -148,6 +151,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     val q = enableActorQ(actor, false)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
+    update.map(ok => Some(actor))
     update
   }
 
@@ -156,6 +160,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     val q = enableActorQ(actor, true)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
+    update.map(ok => Some(actor))
     update
   }
 

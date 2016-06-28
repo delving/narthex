@@ -153,16 +153,19 @@
 
                             <form name="actorEditForm" method="POST">
 oe                            {{ actor.userName }}  enabled => {{ actor.userEnabled }} isAdmin => {{ actor.isAdmin }}
-                            <button class="btn btn-warning" data-ng-click="deleteActor(actor.userName)">
-                                delete
-                            </button>
-                            <button class="btn btn-warning" data-ng-click="disableActor(actor.userName)">
+                            <!--<button class="btn btn-warning" data-ng-click="deleteActor(actor.userName)">-->
+                                <!--delete-->
+                            <!--</button>-->
+                            <button class="btn btn-warning" data-ng-click="disableActor(actor.userName)" data-ng-show="actor.userEnabled">
                                 disable
+                            </button>
+                            <button class="btn btn-warning" data-ng-click="enableActor(actor.userName)" data-ng-show="!actor.userEnabled">
+                                enable
                             </button>
                             <button type="submit" class="btn btn-warning" data-ng-click="makeAdmin(actor.userName)">
                                 make admin {{ actor.userName }}
                             </button>
-                            <button class="btn btn-warning" data-ng-click="disableActor(actor.userName)">
+                            <button class="btn btn-warning" data-ng-click="removeAdmin(actor.userName)">
                                 remove admin
                             </button>
                             </form>

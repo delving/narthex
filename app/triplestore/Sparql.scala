@@ -285,6 +285,9 @@ object Sparql {
        |}
        |INSERT {
        |   <$actor> <$actorEnabled> $enabled .
+       |}
+       |WHERE {
+       |   <$actor> <$actorEnabled> ?actorEnabled .
        |}""".stripMargin
 
   def setActorAdminQ(actor: NXActor, isAdminToggle: Boolean) =
@@ -292,13 +295,13 @@ object Sparql {
     s"""
        |WITH <$actorsGraph>
        |DELETE {
-       |   <$actor> <$isAdmin> ?oldBoolean
+       |   <$actor> <$isAdmin> ?oldBoolean .
        |}
        |INSERT {
-       |   <$actor> <$isAdmin> "$isAdminToggle"
+       |   <$actor> <$isAdmin> $isAdminToggle .
        |}
        |WHERE {
-       |   <$actor> <$isAdmin> ?oldBoolean
+       |   <$actor> <$isAdmin> ?oldBoolean .
        |}
      """.stripMargin
 

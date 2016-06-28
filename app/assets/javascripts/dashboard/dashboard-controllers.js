@@ -103,19 +103,23 @@ define(["angular"], function (angular) {
         };
 
         $scope.removeActor = function (actor) {
-            userService.deleteActor(actor)
+            userService.deleteActor(actor);
         };
 
         $scope.disableActor = function (actor) {
-            userService.disableActor(actor)
+            userService.disableActor(actor);
+        };
+
+        $scope.enableActor = function (actor) {
+            userService.enableActor(actor);
         };
         
         $scope.makeAdmin = function (actor) {
-            userService.makeAdmin(actor)
+            userService.makeAdmin(actor);
         };
         
         $scope.removeAdmin = function (actor) {
-            userService.removeAdmin(actor)
+            userService.removeAdmin(actor);
         };
 
         function comparePasswords(newValue, oldValue) {
