@@ -66,8 +66,8 @@ define(["angular"], function (angular) {
                     function (response) {
                         if (response.profile) {
                             checkLogin();
-                            listActors();
                             $cookies[USERNAME_COOKIE] = $scope.credentials.username;
+                            listActors();
                         }
                         else {
                             $scope.credentials.password = "";

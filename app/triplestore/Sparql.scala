@@ -137,13 +137,13 @@ object Sparql {
   }
 
   def getAdminEMailQ() =
-    //          <$isAdmin> "true";
     s"""
        |SELECT ?email
        |WHERE {
        |   GRAPH <$actorsGraph> {
        |      ?s
        |         a <$actorEntity> ;
+       |         <$isAdmin> true;
        |         <$userEMail> ?email .
        |   }
        |}
@@ -163,6 +163,10 @@ object Sparql {
 
   def emailFromResult(mapList: List[Map[String, QueryValue]]): Option[String] = {
     mapList.headOption.flatMap(resultMap => resultMap.get("email").map(_.text))
+  }
+
+  def emailsFromResult(mapList: List[Map[String, QueryValue]]): List[String] = {
+    mapList.flatMap(resultMap => resultMap.get("email").map(_.text))
   }
 
   def insertTopActorQ(actor: NXActor, passwordHashString: String) =
@@ -287,10 +291,11 @@ object Sparql {
        |   <$actor> <$actorEnabled> $enabled .
        |}
        |WHERE {
-       |   <$actor> <$actorEnabled> ?actorEnabled .
+       |   <$actor> a <$actorEntity> .
+       |   OPTIONAL { <$actor> <$actorEnabled> ?actorEnabled .}
        |}""".stripMargin
 
-  def setActorAdminQ(actor: NXActor, isAdminToggle: Boolean) =
+  def setActorAdminQ(actor: NXActor, isAdminToggle: Boolean = true) =
   // todo add ^^xsd:boolean
     s"""
        |WITH <$actorsGraph>
@@ -301,7 +306,8 @@ object Sparql {
        |   <$actor> <$isAdmin> $isAdminToggle .
        |}
        |WHERE {
-       |   <$actor> <$isAdmin> ?oldBoolean .
+       |   <$actor> a <$actorEntity> .
+       |   OPTIONAL { <$actor> <$isAdmin> ?oldBoolean .}
        |}
      """.stripMargin
 

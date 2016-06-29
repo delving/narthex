@@ -55,9 +55,14 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   }
 
   def emailFromUri(actorUri: String): Option[String] = {
-    //val query = ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
-    // send email to all admins
-    val query = ts.query(getAdminEMailQ()).map(emailFromResult)
+    val query = ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
+    // todo: maybe make this async
+    Await.result(query, 5.seconds)
+  }
+
+  def adminEmails: List[String] = {
+    val sparqlQuery = getAdminEMailQ()
+    val query = ts.query(sparqlQuery).map(emailsFromResult)
     // todo: maybe make this async
     Await.result(query, 5.seconds)
   }
