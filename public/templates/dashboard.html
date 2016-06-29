@@ -146,31 +146,33 @@
                             <i class="fa fa-exclamation-circle"></i> {{ errorMessage }}
                         </div>
                     </div>
-
-                    <ol data-ng-show="actorList.length" class="">
-                        <li data-ng-repeat="actor in actorList">
-                            <form name="actorEditForm" method="POST">
-                                {{ actor.userName }}
-                                <!-- todo enable delete button later -->
-                                <!--<button class="btn btn-warning" data-ng-click="deleteActor(actor.userName)">-->
-                                    <!--delete-->
-                                <!--</button>-->
-                                <button class="btn btn-warning" data-ng-click="disableActor(actor.userName)" data-ng-show="actor.userEnabled == 'true'">
-                                    disable
-                                </button>
-                                <button class="btn btn-warning" data-ng-click="enableActor(actor.userName)" data-ng-show="actor.userEnabled != 'true'">
-                                    enable
-                                </button>
-                                <button type="submit" class="btn btn-warning" data-ng-click="makeAdmin(actor.userName)" data-ng-show="actor.isAdmin != 'true'">
-                                    make admin {{ actor.userName }}
-                                </button>
-                                <button class="btn btn-warning" data-ng-click="removeAdmin(actor.userName)" data-ng-show="actor.isAdmin == 'true'">
-                                    remove admin
-                                </button>
-                            </form>
-                        </li>
-                    </ol>
-
+                    <form name="actorEditForm" method="POST" data-ng-show="actorList.length">
+                        <table class="table" >
+                            <tbody>
+                            <tr data-ng-repeat="actor in actorList">
+                                <th width="50%">
+                                    {{ actor.userName }}
+                                </th>
+                                <td width="25%">
+                                    <button type="submit" class="btn btn-success" data-ng-click="makeAdmin(actor.userName)" data-ng-show="actor.isAdmin != 'true'">
+                                    make admin
+                                    </button>
+                                    <button class="btn btn-info" data-ng-click="removeAdmin(actor.userName)" data-ng-show="actor.isAdmin == 'true'">
+                                        remove admin
+                                    </button>
+                                </td>
+                                <td width="25%">
+                                    <button class="btn btn-danger" data-ng-click="disableActor(actor.userName)" data-ng-show="actor.userEnabled == 'true'">
+                                        disable
+                                    </button>
+                                    <button class="btn btn-warning" data-ng-click="enableActor(actor.userName)" data-ng-show="actor.userEnabled != 'true'">
+                                        enable
+                                    </button>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </form>
                 </div>
             </div>
         </div>
