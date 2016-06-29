@@ -102,6 +102,7 @@ object Sparql {
        |          a <$actorEntity> ;
        |          <$username> ${literalExpression(actorName, None)} ;
        |          <$username> ?username ;
+       |          <$actorEnabled> true ;
        |          <$passwordHash> '$passwordHashString' .
        |   }
        |   OPTIONAL {
