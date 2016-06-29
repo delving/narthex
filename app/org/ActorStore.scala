@@ -98,7 +98,6 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
 
   def listSubActors(nxActor: NXActor): List[Map[String, String]] = {
     val query = ts.query(getSubActorList(nxActor)).map { list =>
-//      list.flatMap(m => m.get("username")).map(_.text)
         list.map(m =>
           Map(
             "userName" -> m.get("username").get.text,
@@ -124,49 +123,44 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     update.map(ok => Some(newActor))
   }
 
-  def makeAdmin(userName: String) = {
+  def makeAdmin(userName: String): Future[Option[NXActor]] = {
     val actor = NXActor(userName, None, None)
     val q = setActorAdminQ(actor, true)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
-    update
   }
 
-  def removeAdmin(userName: String) = {
+  def removeAdmin(userName: String): Future[Option[NXActor]] = {
     val actor = NXActor(userName, None, None)
     val q = setActorAdminQ(actor, false)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
-    update
   }
 
-  def deleteActor(userName: String) = {
+  def deleteActor(userName: String): Future[Option[NXActor]] = {
     val actor = NXActor(userName, None, None)
     val q = removeActorQ(actor)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
-    update
   }
 
-  def disableActor(userName: String) = {
+  def disableActor(userName: String): Future[Option[NXActor]] = {
     val actor = NXActor(userName, None, None)
     val q = enableActorQ(actor, false)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
-    update
   }
 
-  def enableActor(userName: String) = {
+  def enableActor(userName: String): Future[Option[NXActor]] = {
     val actor = NXActor(userName, None, None)
     val q = enableActorQ(actor, true)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
-    update
   }
 
   def setProfile(actor: NXActor, nxProfile: NXProfile): Future[Unit] = {

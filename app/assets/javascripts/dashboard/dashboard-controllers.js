@@ -103,23 +103,38 @@ define(["angular"], function (angular) {
         };
 
         $scope.removeActor = function (actor) {
-            userService.deleteActor(actor);
+            userService.deleteActor(actor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
         };
 
         $scope.disableActor = function (actor) {
-            userService.disableActor(actor);
+            userService.disableActor(actor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
         };
 
         $scope.enableActor = function (actor) {
-            userService.enableActor(actor);
+            userService.enableActor(actor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
         };
         
         $scope.makeAdmin = function (actor) {
-            userService.makeAdmin(actor);
+            userService.makeAdmin(actor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
         };
         
         $scope.removeAdmin = function (actor) {
-            userService.removeAdmin(actor);
+            userService.removeAdmin(actor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
         };
 
         function comparePasswords(newValue, oldValue) {
