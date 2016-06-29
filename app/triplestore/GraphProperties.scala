@@ -52,6 +52,8 @@ object GraphProperties {
   val userFirstName = NXProp("userFirstName")
   val userLastName = NXProp("userLastName")
   val actorOwner = NXProp("actorOwner")
+  val isAdmin = NXProp("isAdmin", booleanProp)
+  val actorEnabled = NXProp("actorEnabled", booleanProp)
 
   val belongsTo = NXProp("belongsTo")
   val synced = NXProp("synced")

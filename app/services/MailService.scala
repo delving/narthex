@@ -14,21 +14,27 @@ object MailService {
   val fromNarthex = "Narthex <narthex@delving.eu>"
 
   private def sendMail(toOpt: Option[String], subject: String, html: String)(implicit ec: ExecutionContext): Unit = {
+    val emailList: Seq[String] = if (toOpt.nonEmpty) {
+      val all = OrgContext.orgContext.us.adminEmails :+ toOpt.get
+      all.distinct
+    } else {
+      OrgContext.orgContext.us.adminEmails
+    }
     if (OrgContext.MAIL_CONFIGURED) {
-      toOpt.map { to =>
-        val email = Email(to = Seq(to), from = fromNarthex, subject = subject, bodyHtml = Some(html))
-        if (current.mode != Mode.Prod) {
-          Logger.info(s"Not production mode, so this was not sent:\n$email")
-        }
-        else {
-          MailerPlugin.send(email)
-        }
-      } getOrElse {
+      toOpt.getOrElse {
         Logger.warn(s"EMail: '$subject' not sent because there is no recipient email address available.")
+      }
+
+      val email = Email(to = emailList, from = fromNarthex, subject = subject, bodyHtml = Some(html))
+      if (current.mode != Mode.Prod) {
+        Logger.info(s"Not production mode, so this was not sent:\n$email")
+      }
+      else {
+        MailerPlugin.send(email)
       }
     }
     else {
-      Logger.warn(s"EMail to $toOpt: '$subject' not sent because SMTP is not configured.")
+      Logger.warn(s"EMail to $emailList: '$subject' not sent because SMTP is not configured.")
     }
   }
 

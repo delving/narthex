@@ -97,6 +97,42 @@ define(["angular", "common"], function (angular) {
                             }
                         );
                     },
+                    disableActor: function (credentials) {
+                        return main.disableActor().post(JSON.stringify({username: credentials})).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
+                    enableActor: function (credentials) {
+                        return main.enableActor().post(JSON.stringify({username: credentials})).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
+                    deleteActor: function (credentials) {
+                        return main.deleteActor().post(JSON.stringify({username: credentials})).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
+                    makeAdmin: function (credentials) {
+                        return main.makeAdmin().post(JSON.stringify({username: credentials})).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
+                    removeAdmin: function (credentials) {
+                        return main.removeAdmin().post(JSON.stringify({username: credentials})).then(
+                            function (response) {
+                                return response.data.actorList;
+                            }
+                        );
+                    },
+                    
                     getUser: function () {
                         return user;
                     }
