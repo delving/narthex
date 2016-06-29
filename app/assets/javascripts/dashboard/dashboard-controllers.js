@@ -41,8 +41,6 @@ define(["angular"], function (angular) {
             });
         }
 
-        checkLogin();
-
         function listActors() {
             if (userService.getUser()) {
                 userService.listActors().then(function (actorList) {
@@ -50,8 +48,6 @@ define(["angular"], function (angular) {
                 });
             }
         }
-
-        listActors();
 
         $scope.toggleOAuth = function() {
             $cookies[OAUTH_COOKIE] = $scope.credentials.oauth = !$scope.credentials.oauth;
@@ -70,8 +66,8 @@ define(["angular"], function (angular) {
                     function (response) {
                         if (response.profile) {
                             checkLogin();
-                            listActors();
                             $cookies[USERNAME_COOKIE] = $scope.credentials.username;
+                            listActors();
                         }
                         else {
                             $scope.credentials.password = "";
@@ -81,6 +77,10 @@ define(["angular"], function (angular) {
                 );
             }
         };
+
+        checkLogin();
+
+        listActors();
 
         function compareUserToEdited() {
             return $scope.unchangedUser = angular.equals($scope.user, $scope.editedUser);
@@ -97,6 +97,41 @@ define(["angular"], function (angular) {
 
         $scope.addActor = function (newActor) {
             userService.createActor(newActor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
+        };
+
+        $scope.removeActor = function (actor) {
+            userService.deleteActor(actor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
+        };
+
+        $scope.disableActor = function (actor) {
+            userService.disableActor(actor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
+        };
+
+        $scope.enableActor = function (actor) {
+            userService.enableActor(actor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
+        };
+        
+        $scope.makeAdmin = function (actor) {
+            userService.makeAdmin(actor).then(function (actorList) {
+                $scope.actorList = actorList;
+                $scope.newActor = {};
+            });
+        };
+        
+        $scope.removeAdmin = function (actor) {
+            userService.removeAdmin(actor).then(function (actorList) {
                 $scope.actorList = actorList;
                 $scope.newActor = {};
             });

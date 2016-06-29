@@ -434,6 +434,7 @@ define(["angular"], function () {
             $scope.unchangedHarvestCron = unchanged(harvestCronFields);
             $scope.unchangedIdFilter = unchanged(idFilterFields);
             $scope.unchangedCategories = unchanged(categoriesFields);
+            $scope.incrementalPreview  = $scope.dataset['harvestPreviousTime'];
         }
 
         $scope.$watch("dataset.edit", setUnchanged, true); // deep comparison

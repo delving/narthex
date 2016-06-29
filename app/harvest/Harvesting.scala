@@ -34,7 +34,7 @@ import scala.xml.{NodeSeq, XML}
 
 
 object Contexts {
-  implicit val harvestExecutionContext: ExecutionContext = Akka.system.dispatchers.lookup("dataset-execution-context")
+  implicit val harvestExecutionContext: ExecutionContext = Akka.system.dispatchers.lookup("dataset-harvesting-execution-context")
 }
 
 object Harvesting {

@@ -102,6 +102,7 @@ object Sparql {
        |          a <$actorEntity> ;
        |          <$username> ${literalExpression(actorName, None)} ;
        |          <$username> ?username ;
+       |          <$actorEnabled> true ;
        |          <$passwordHash> '$passwordHashString' .
        |   }
        |   OPTIONAL {
@@ -136,6 +137,19 @@ object Sparql {
     }
   }
 
+  def getAdminEMailQ() =
+    s"""
+       |SELECT ?email
+       |WHERE {
+       |   GRAPH <$actorsGraph> {
+       |      ?s
+       |         a <$actorEntity> ;
+       |         <$isAdmin> true;
+       |         <$userEMail> ?email .
+       |   }
+       |}
+     """.stripMargin
+
   def getEMailOfActor(actorUri: String) =
     s"""
       |SELECT ?email
@@ -152,13 +166,20 @@ object Sparql {
     mapList.headOption.flatMap(resultMap => resultMap.get("email").map(_.text))
   }
 
+  def emailsFromResult(mapList: List[Map[String, QueryValue]]): List[String] = {
+    mapList.flatMap(resultMap => resultMap.get("email").map(_.text))
+  }
+
   def insertTopActorQ(actor: NXActor, passwordHashString: String) =
+    // todo make boolean later ^^xsd:boolean
     s"""
       |INSERT DATA {
       |   GRAPH <$actorsGraph> {
       |      <$actor>
       |         a <$actorEntity> ;
       |         <$username> ${literalExpression(actor.actorName, None)} ;
+      |         <$isAdmin> "true";
+      |         <$actorEnabled> "true";
       |         <$passwordHash> '$passwordHashString' .
       |   }
       |}
@@ -186,6 +207,8 @@ object Sparql {
       |      a <$actorEntity>;
       |      <$username> ${literalExpression(actor.actorName, None)} ;
       |      <$actorOwner> <$adminActor> ;
+      |      <$actorEnabled> "true" ;
+      |      <$isAdmin> "false" ;
       |      <$passwordHash> '$passwordHashString' .
       |}
       |WHERE {
@@ -196,15 +219,21 @@ object Sparql {
      """.stripMargin
 
   def getSubActorList(actor: NXActor) =
+    // todo: add ^^xsd:boolean
     s"""
-       |SELECT ?username
+       |SELECT ?username ?isAdmin ?actorEnabled
        |WHERE {
        | GRAPH <$actorsGraph> {
        |   ?actor
        |     a <$actorEntity> ;
-       |     <$actorOwner> <$actor> ;
        |     <$username> ?username .
-       | }
+       |     OPTIONAL {
+       |      ?actor <$isAdmin> ?isAdmin .
+       |      }
+       |     OPTIONAL {
+       |      ?actor <$actorEnabled> ?actorEnabled .
+       |      }
+       |   }
        |}
       """.stripMargin
 
@@ -244,6 +273,43 @@ object Sparql {
       |WHERE {
       |   <$actor> <$passwordHash> ?oldPassword
       |}
+      """.stripMargin
+
+  def removeActorQ(actor: NXActor) =
+    s"""
+       |WITH <$actorsGraph>
+       |DELETE {
+       |   <$actor> ?p ?o .
+       |}""".stripMargin
+
+  def enableActorQ(actor: NXActor, enabled: Boolean = true) =
+    s"""
+       |WITH <$actorsGraph>
+       |DELETE {
+       |   <$actor> <$actorEnabled> ?actorEnabled .
+       |}
+       |INSERT {
+       |   <$actor> <$actorEnabled> $enabled .
+       |}
+       |WHERE {
+       |   <$actor> a <$actorEntity> .
+       |   OPTIONAL { <$actor> <$actorEnabled> ?actorEnabled .}
+       |}""".stripMargin
+
+  def setActorAdminQ(actor: NXActor, isAdminToggle: Boolean = true) =
+  // todo add ^^xsd:boolean
+    s"""
+       |WITH <$actorsGraph>
+       |DELETE {
+       |   <$actor> <$isAdmin> ?oldBoolean .
+       |}
+       |INSERT {
+       |   <$actor> <$isAdmin> $isAdminToggle .
+       |}
+       |WHERE {
+       |   <$actor> a <$actorEntity> .
+       |   OPTIONAL { <$actor> <$isAdmin> ?oldBoolean .}
+       |}
      """.stripMargin
 
   // === dataset info ===

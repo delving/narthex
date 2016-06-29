@@ -142,8 +142,8 @@ object MainController extends Controller with Security {
   }
 
   def login = Action.async(parse.json) { implicit request =>
-    var username = (request.body \ "username").as[String]
-    var password = (request.body \ "password").as[String]
+    val username = (request.body \ "username").as[String]
+    val password = (request.body \ "password").as[String]
     Logger.info(s"Login $username")
     orgContext.us.authenticate(username, password).map { actorOpt =>
       actorOpt.map { actor =>
@@ -205,6 +205,41 @@ object MainController extends Controller with Security {
     }
   }
 
+  def deleteActor() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    orgContext.us.deleteActor(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
+  def disableActor() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    orgContext.us.disableActor(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
+  def enableActor() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    orgContext.us.enableActor(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
+  def makeAdmin() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    orgContext.us.makeAdmin(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
+  def removeAdmin() = SecureAsync(parse.json) { session => implicit request =>
+    val username = (request.body \ "username").as[String]
+    orgContext.us.removeAdmin(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    }
+  }
+
   def setPassword() = SecureAsync(parse.json) { session => implicit request =>
     val newPassword = (request.body \ "newPassword").as[String]
     orgContext.us.setPassword(session.actor, newPassword).map(alright => Ok)
@@ -256,9 +291,14 @@ object MainController extends Controller with Security {
           routes.javascript.MainController.checkLogin,
           routes.javascript.MainController.logout,
           routes.javascript.MainController.setProfile,
+          routes.javascript.MainController.setPassword,
           routes.javascript.MainController.listActors,
           routes.javascript.MainController.createActor,
-          routes.javascript.MainController.setPassword,
+          routes.javascript.MainController.disableActor,
+          routes.javascript.MainController.enableActor,
+          routes.javascript.MainController.deleteActor,
+          routes.javascript.MainController.makeAdmin,
+          routes.javascript.MainController.removeAdmin,
           routes.javascript.AppController.datasetSocket,
           routes.javascript.AppController.listDatasets,
           routes.javascript.AppController.listPrefixes,
