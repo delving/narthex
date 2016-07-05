@@ -88,7 +88,7 @@ publishArtifact in(Compile, packageDoc) := false
 
 publishArtifact in(Compile, packageSrc) := false
 
-publishTo := Some("Delving" at "http://artifactory.delving.org/artifactory/delving")
+publishTo := Some("DelvingPublish" at "http://artifactory.delving.org/artifactory/delving")
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
