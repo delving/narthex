@@ -154,12 +154,14 @@
                                     {{ actor.userName }}
                                 </th>
                                 <td width="25%">
+
                                     <button type="submit" class="btn btn-success" data-ng-click="makeAdmin(actor.userName)" data-ng-show="actor.isAdmin != 'true'">
                                     make admin
                                     </button>
                                     <button class="btn btn-info" data-ng-click="removeAdmin(actor.userName)" data-ng-show="actor.isAdmin == 'true'">
                                         remove admin
                                     </button>
+
                                 </td>
                                 <td width="25%">
                                     <button class="btn btn-danger" data-ng-click="disableActor(actor.userName)" data-ng-show="actor.userEnabled == 'true'">

@@ -406,11 +406,27 @@ code {
   border-top: none;
   border-collapse: collapse;
   width: 100%;
+  tr, tbody {
+    width: 100%;
+    display: block;
+  }
   td {
     padding: 0 0 0 0;
     border: none;
+    &.name {
+      width: 50%
+    }
+    &.invalid {
+      width: 15%
+    }
+    &.valid {
+      width: 15%
+    }
+    &.acc-prod {
+      width: 15%
+    }
     &.state {
-      //width: auto;
+      width: auto;
       text-align: right;
       .indicator {
         width: 200px;
