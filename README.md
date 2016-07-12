@@ -1,5 +1,6 @@
 # Narthex
 [![Build Status](https://travis-ci.org/delving/narthex.svg)](https://travis-ci.org/delving/narthex)
+[![codecov.io](https://codecov.io/github/delving/narthex/coverage.svg)](https://codecov.io/github/delving/narthex)
 
 | >>>>>>>>>>>>>>>>>>>> | What? |
 |-----|------|
