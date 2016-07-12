@@ -1,5 +1,5 @@
-
 # Narthex
+[![Build Status](https://travis-ci.org/delving/narthex.svg)](https://travis-ci.org/delving/narthex)
 
 | >>>>>>>>>>>>>>>>>>>> | What? |
 |-----|------|
