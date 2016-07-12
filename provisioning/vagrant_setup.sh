@@ -25,10 +25,13 @@ wget https://raw.githubusercontent.com/delving/schemas.delving.eu/master/edm/edm
 
 echo "Done setting up narthex"
 
+sudo apt-get update -y -q
+
 # installing java8
 sudo apt-get install software-properties-common debconf-utils python-software-properties -y -q
 sudo apt-add-repository ppa:webupd8team/java -y
 sudo apt-get update -y -q
+
 echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | sudo debconf-set-selections
 sudo apt-get install oracle-java8-installer -y -q
 
