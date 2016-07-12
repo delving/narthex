@@ -24,4 +24,5 @@ server.pid
 # ignore all conf files in the project root
 *.conf
 !narthex.conf
+!.travis.yml
 out
