@@ -3,6 +3,7 @@
 .*
 # except for .gitignore
 !.gitignore
+!.java-version
 
 # Ignore Play! working directory #
 db
@@ -23,4 +24,5 @@ server.pid
 # ignore all conf files in the project root
 *.conf
 !narthex.conf
+!.travis.yml
 out

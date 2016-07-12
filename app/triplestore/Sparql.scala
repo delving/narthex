@@ -21,6 +21,7 @@ import dataset.DsInfo._
 import mapping.VocabInfo.CATEGORIES_SPEC
 import org.ActorStore.{NXActor, NXProfile}
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.libs.json.JsValue
 import services.StringHandling._
 import services.Temporal
@@ -170,20 +171,25 @@ object Sparql {
     mapList.flatMap(resultMap => resultMap.get("email").map(_.text))
   }
 
-  def insertTopActorQ(actor: NXActor, passwordHashString: String) =
-    // todo make boolean later ^^xsd:boolean
-    s"""
-      |INSERT DATA {
-      |   GRAPH <$actorsGraph> {
-      |      <$actor>
-      |         a <$actorEntity> ;
-      |         <$username> ${literalExpression(actor.actorName, None)} ;
-      |         <$isAdmin> "true";
-      |         <$actorEnabled> "true";
-      |         <$passwordHash> '$passwordHashString' .
-      |   }
-      |}
+  def insertTopActorQ(actor: NXActor, passwordHashString: String) = {
+    val enabled = true
+    val admin = true
+    val query = s"""
+       |INSERT DATA {
+       |   GRAPH <$actorsGraph> {
+       |      <$actor>
+       |         a <$actorEntity> ;
+       |         <$username> ${literalExpression(actor.actorName, None)} ;
+       |         <$isAdmin> $admin;
+       |         <$actorEnabled> $enabled;
+       |         <$passwordHash> '$passwordHashString' .
+       |   }
+       |}
      """.stripMargin
+
+    Logger.info("Query will be " + query)
+    query
+  }
 
   def insertOAuthActorQ(actor: NXActor) =
     s"""
@@ -196,27 +202,31 @@ object Sparql {
       |}
      """.stripMargin
 
-  def insertSubActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
+  def insertSubActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) = {
+    val enabled = true
+    val admin = false
     s"""
-      |WITH <$actorsGraph>
-      |DELETE {
-      |   <$actor> ?p ?o .
-      |}
-      |INSERT {
-      |   <$actor>
-      |      a <$actorEntity>;
-      |      <$username> ${literalExpression(actor.actorName, None)} ;
-      |      <$actorOwner> <$adminActor> ;
-      |      <$actorEnabled> "true" ;
-      |      <$isAdmin> "false" ;
-      |      <$passwordHash> '$passwordHashString' .
-      |}
-      |WHERE {
-      |   OPTIONAL {
-      |      <$actor> ?p ?o .
-      |   }
-      |}
+       |WITH <$actorsGraph>
+       |DELETE {
+       |   <$actor> ?p ?o .
+       |}
+       |INSERT {
+       |   <$actor>
+       |      a <$actorEntity>;
+       |      <$username> ${literalExpression(actor.actorName, None)} ;
+       |      <$actorOwner> <$adminActor> ;
+       |      <$actorEnabled> $enabled ;
+       |      <$isAdmin> $admin ;
+       |      <$passwordHash> '$passwordHashString' .
+       |}
+       |WHERE {
+       |   OPTIONAL {
+       |      <$actor> ?p ?o .
+       |   }
+       |}
      """.stripMargin
+  }
+
 
   def getSubActorList(actor: NXActor) =
     // todo: add ^^xsd:boolean

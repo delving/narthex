@@ -21,7 +21,7 @@ lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
 
 name := "narthex"
 
-version := "1.0.0-SNAPSHOT"
+version := "0.3.5"
 
 scalaVersion := "2.10.4"
 
@@ -53,7 +53,7 @@ libraryDependencies ++= Seq(
   "org.apache.jena" % "jena-arq" % "2.12.1" excludeAll ExclusionRule(organization = "org.slf4j"),
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "2.4.0",
-  "eu.delving" % "sip-core" % "1.0.8-SNAPSHOT" changing()
+  "eu.delving" % "sip-core" % "1.0.9"
 )
 
 libraryDependencies ~= {
@@ -64,7 +64,7 @@ libraryDependencies += cache
 
 libraryDependencies += ws
 
-//resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
+resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 
@@ -88,7 +88,7 @@ publishArtifact in(Compile, packageDoc) := false
 
 publishArtifact in(Compile, packageSrc) := false
 
-publishTo := Some("Delving" at "http://artifactory.delving.org/artifactory/delving")
+publishTo := Some("DelvingPublish" at "http://artifactory.delving.org/artifactory/delving")
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
