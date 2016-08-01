@@ -37,7 +37,7 @@ import scala.concurrent.Future
 
 object MainController extends Controller with Security {
 
-  val SIP_APP_VERSION = "1.0.8"
+  val SIP_APP_VERSION = "1.0.9"
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
 
