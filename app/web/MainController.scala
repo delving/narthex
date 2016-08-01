@@ -29,6 +29,7 @@ import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
 import play.api.libs.ws.WS
 import play.api.mvc._
+import play.api.routing.JavaScriptReverseRouter
 import services.MailService.{MailDatasetError, MailProcessingComplete}
 
 import scala.collection.JavaConversions._
@@ -281,12 +282,13 @@ object MainController extends Controller with Security {
 
   /**
    * Returns the JavaScript router that the client can use for "type-safe" routes.
+ *
    * @param varName The name of the global variable, defaults to `jsRoutes`
    */
   def jsRoutes(varName: String = "jsRoutes") = Action {
     implicit request =>
-      Ok(// IntelliJ Idea shows errors here but it compiles:
-        Routes.javascriptRouter(varName)(
+      Ok(
+        JavaScriptReverseRouter(varName)(
           routes.javascript.MainController.login,
           routes.javascript.MainController.checkLogin,
           routes.javascript.MainController.logout,

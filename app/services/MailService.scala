@@ -1,15 +1,19 @@
 package services
 
 import java.io.{PrintWriter, StringWriter}
+import javax.inject.Inject
 
 import org.OrgContext
 import play.api.Play.current
-import play.api.libs.mailer.{Email, MailerPlugin}
+import play.api.libs.mailer._
 import play.api.{Logger, Mode}
 
 import scala.concurrent.ExecutionContext
 
 object MailService {
+
+  @Inject
+  val mailerClient: MailerClient = null
 
   val fromNarthex = "Narthex <narthex@delving.eu>"
 
@@ -30,7 +34,7 @@ object MailService {
         Logger.info(s"Not production mode, so this was not sent:\n$email")
       }
       else {
-        MailerPlugin.send(email)
+        mailerClient.send(email)
       }
     }
     else {
