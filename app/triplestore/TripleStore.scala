@@ -19,7 +19,7 @@ package triplestore
 import java.io.{File, StringReader, StringWriter}
 
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
-import com.ning.http.client.providers.netty.NettyResponse
+import com.ning.http.client.providers.netty.response.NettyResponse
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.json.JsObject

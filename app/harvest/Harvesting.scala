@@ -18,7 +18,7 @@ package harvest
 
 import java.io.BufferedReader
 
-import com.ning.http.client.providers.netty.NettyResponse
+import com.ning.http.client.providers.netty.response.NettyResponse
 import dataset.DatasetActor._
 import org.OrgContext._
 import org.joda.time.DateTime

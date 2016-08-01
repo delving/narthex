@@ -146,7 +146,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
               val histogramSizes = nodeRepo.writeHistograms(uniqueCount)
               Json.obj(
                 "uniqueCount" -> uniqueCount,
-                "samples" -> samples,
+                "samples" -> samples.get,
                 "histograms" -> histogramSizes
               )
           }
