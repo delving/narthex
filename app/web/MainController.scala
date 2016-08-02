@@ -18,6 +18,7 @@ package web
 
 import java.io.{File, FileInputStream, FileNotFoundException}
 import java.util.UUID
+import javax.inject.Inject
 
 import akka.util.ByteString
 import org.ActorStore.{NXActor, NXProfile}
@@ -25,10 +26,10 @@ import org.OrgContext._
 import org.apache.commons.io.IOUtils
 import play.api.Play.current
 import play.api._
-import play.api.cache.Cache
+import play.api.cache.{CacheApi, Cache}
 import play.api.http.{HeaderNames, HttpEntity, MimeTypes}
 import play.api.libs.json._
-import play.api.libs.ws.WS
+import play.api.libs.ws.{WSClient}
 import play.api.mvc._
 import play.api.routing._
 import services.MailService.{MailDatasetError, MailProcessingComplete}
@@ -40,6 +41,12 @@ import scala.concurrent.Future
 object MainController extends Controller with Security {
 
   val SIP_APP_VERSION = "1.0.9"
+
+  @Inject
+  val wsClient: WSClient = null
+
+  @Inject
+  val cacheApi: CacheApi = null
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
 
@@ -74,7 +81,7 @@ object MainController extends Controller with Security {
         "code" -> Seq(code),
         "redirect_uri" -> Seq(OAUTH_CALLBACK)
       )
-      WS.url(OAUTH_TOKEN_URL)
+      wsClient.url(OAUTH_TOKEN_URL)
         .withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON)
         .post(form)
         .flatMap { response =>
@@ -113,7 +120,7 @@ object MainController extends Controller with Security {
 
   def oauthSuccess() = Action.async { request =>
     request.session.get("oauth-token").map { token =>
-      WS.url(OAUTH_USER_URL).withHeaders(
+      wsClient.url(OAUTH_USER_URL).withHeaders(
         HeaderNames.ACCEPT -> MimeTypes.JSON,
         HeaderNames.AUTHORIZATION -> s"Bearer $token"
       ).get().flatMap { response =>
@@ -160,7 +167,7 @@ object MainController extends Controller with Security {
     val maybeToken = request.headers.get(TOKEN)
     maybeToken flatMap {
       token =>
-        Cache.getAs[ActorSession](token) map { session =>
+        cacheApi.get[ActorSession](token) map { session =>
           Ok(Json.toJson(session)).withSession(session)
         }
     } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
