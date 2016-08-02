@@ -17,8 +17,10 @@
 package web
 
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
 import akka.actor._
+import akka.stream.Materializer
 import akka.util.Timeout
 import dataset.DatasetActor._
 import dataset.DsInfo
@@ -52,6 +54,9 @@ object AppController extends Controller with Security {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
   implicit val ts = OrgContext.TS
+
+  @Inject
+  implicit val mat: Materializer = null
 
   object DatasetSocketActor {
     def props(out: ActorRef) = Props(new DatasetSocketActor(out))
