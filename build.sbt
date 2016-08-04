@@ -16,16 +16,15 @@
 
 import org.sbtidea.SbtIdeaPlugin._
 
-lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
-
 name := "narthex"
 
 version := "0.3.6-SNAPSHOT"
 
-scalaVersion := "2.10.5"
+scalaVersion := "2.11.7"
 
-//scalacOptions += "-feature"
-//  "org.webjars" % "webjars-locator" % "0.14",
+lazy val root = (project in file(".")).enablePlugins(PlayScala)
+
+routesGenerator := StaticRoutesGenerator
 
 libraryDependencies ++= Seq(
   "org.webjars" %% "webjars-play" % "2.4.0-2",
@@ -41,17 +40,17 @@ libraryDependencies ++= Seq(
   "org.webjars" % "ng-grid" % "2.0.13",
   "org.webjars" % "ngStorage" % "0.3.0",
   "org.webjars" % "angular-sanitize" % "1.3.11",
-  "org.scalatest" % "scalatest_2.10" % "2.2.1",
-  "org.scalautils" % "scalautils_2.10" % "2.1.3",
-  "com.typesafe.akka" % "akka-testkit_2.10" % "2.2.0" % "test",
-  "org.scalatestplus" %% "play" % "1.2.0" % "test",
+  "org.scalatest" % "scalatest_2.11" % "2.2.1",
+  "org.scalautils" % "scalautils_2.11" % "2.1.3",
+  "com.typesafe.akka" % "akka-testkit_2.11" % "2.4.8" % "test",
+  "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % "test",
   "commons-io" % "commons-io" % "2.4",
-  "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.2",
+  "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.4",
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
   "org.apache.jena" % "jena-arq" % "2.12.1" excludeAll ExclusionRule(organization = "org.slf4j"),
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
-  "com.typesafe.play" %% "play-mailer" % "4.0.0",
+  "com.typesafe.play" %% "play-mailer" % "5.0.0",
   "eu.delving" % "sip-core" % "1.0.9"
 )
 

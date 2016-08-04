@@ -16,19 +16,17 @@
 
 package harvest
 
-import java.io.BufferedReader
-
-import com.ning.http.client.providers.netty.response.NettyResponse
 import dataset.DatasetActor._
 import org.OrgContext._
+import org.asynchttpclient.netty.NettyResponse
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.ws.WS
 import play.libs.Akka
-import services.FileHandling
 import services.Temporal._
 
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.xml.{NodeSeq, XML}
 
@@ -133,7 +131,7 @@ trait Harvesting {
   def fetchAdLibPage(strategy: HarvestStrategy, url: String, database: String, search: String,
                      diagnosticOption: Option[AdLibDiagnostic] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
-    val requestUrl = WS.url(url).withRequestTimeout(HARVEST_TIMEOUT)
+    val requestUrl = WS.url(url).withRequestTimeout(HARVEST_TIMEOUT.seconds)
     // UMU 2014-10-16T15:00
     val searchModified = strategy match {
       case ModifiedAfter(mod, _) =>
@@ -179,7 +177,7 @@ trait Harvesting {
 
     Logger.debug(s"start fetch PMH Page: $url, $resumption")
     val listRecords = WS.url(url)
-      .withRequestTimeout(HARVEST_TIMEOUT)
+      .withRequestTimeout(HARVEST_TIMEOUT.seconds)
       .withQueryString("verb" -> "ListRecords")
     val request = resumption match {
       case None =>
@@ -206,8 +204,8 @@ trait Harvesting {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBodyAsStream
         Logger.trace(s"OAI-PMH Response: \n ${netty.getResponseBody}")
-//        val reader: BufferedReader = FileHandling.createReader(body)
-//        val xml = XML.load(reader)
+        //        val reader: BufferedReader = FileHandling.createReader(body)
+        //        val xml = XML.load(reader)
         val xml = XML.loadString(netty.getResponseBody) // reader old
         val errorNode = xml \ "error"
         val records = xml \ "ListRecords" \ "record"
@@ -221,21 +219,21 @@ trait Harvesting {
           } else ""
         } else ""
         if (errorNode.nonEmpty || records.isEmpty || faultyEmptyResponse.nonEmpty) {
-          val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text  else "noRecordsMatch"
-          if (faultyEmptyResponse.nonEmpty){
+          val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text else "noRecordsMatch"
+          if (faultyEmptyResponse.nonEmpty) {
             Some(HarvestError(faultyEmptyResponse, strategy))
           }
           else if ("noRecordsMatch" == errorCode) {
             Logger.info("No PMH Records returned")
-             Some(HarvestError("noRecordsMatch", strategy))
+            Some(HarvestError("noRecordsMatch", strategy))
           }
           else {
             Some(HarvestError(errorNode.text, strategy))
           }
         }
         else {
-        None
-      }
+          None
+        }
       }
       if (!error.isEmpty) {
         Logger.debug(s"HarvestState in error: $error")
@@ -247,7 +245,7 @@ trait Harvesting {
       else {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBodyAsStream
-//        val xml = XML.load(FileHandling.createReader(body))
+        //        val xml = XML.load(FileHandling.createReader(body))
         val xml = XML.loadString(netty.getResponseBody)
         val tokenNode = xml \ "ListRecords" \ "resumptionToken"
         val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
