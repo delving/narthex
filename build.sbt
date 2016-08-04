@@ -15,7 +15,6 @@
 //===========================================================================
 
 import org.sbtidea.SbtIdeaPlugin._
-import play.PlayImport.PlayKeys
 
 lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
 
@@ -23,13 +22,13 @@ name := "narthex"
 
 version := "0.3.6-SNAPSHOT"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.5"
 
 //scalacOptions += "-feature"
 //  "org.webjars" % "webjars-locator" % "0.14",
 
 libraryDependencies ++= Seq(
-  "org.webjars" %% "webjars-play" % "2.3.0-3",
+  "org.webjars" %% "webjars-play" % "2.4.0-2",
   "org.webjars" % "bootstrap" % "3.1.1-2",
   "org.webjars" % "underscorejs" % "1.8.3",
   "org.webjars" % "jquery" % "2.1.1",
@@ -52,7 +51,7 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
   "org.apache.jena" % "jena-arq" % "2.12.1" excludeAll ExclusionRule(organization = "org.slf4j"),
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
-  "com.typesafe.play" %% "play-mailer" % "2.4.0",
+  "com.typesafe.play" %% "play-mailer" % "4.0.0",
   "eu.delving" % "sip-core" % "1.0.9"
 )
 
@@ -103,7 +102,7 @@ ideaExcludeFolders += "target"
 
 ideaExcludeFolders += "logs"
 
-PlayKeys.playWatchService := play.sbtplugin.run.PlayWatchService.sbt(pollInterval.value)
+PlayKeys.fileWatchService := play.runsupport.FileWatchService.sbt(pollInterval.value)
 
 
 // http://stackoverflow.com/questions/25182581/logging-in-unit-tests-for-play-2-3
