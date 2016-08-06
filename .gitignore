@@ -21,8 +21,6 @@ test-result
 server.pid
 *.iml
 *.eml
-# ignore all conf files in the project root
-*.conf
-!narthex.conf
+
 !.travis.yml
 out
