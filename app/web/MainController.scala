@@ -314,7 +314,6 @@ object MainController extends Controller with Security {
         routes.javascript.AppController.toggleSkosifiedField,
         routes.javascript.AppController.datasetInfo,
         routes.javascript.AppController.command,
-        routes.javascript.AppController.toggleDatasetProduction,
         routes.javascript.AppController.nodeStatus,
         routes.javascript.AppController.index,
         routes.javascript.AppController.sample,
