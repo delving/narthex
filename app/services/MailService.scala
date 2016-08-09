@@ -24,21 +24,16 @@ object MailService {
     } else {
       OrgContext.orgContext.us.adminEmails
     }
-    if (OrgContext.MAIL_CONFIGURED) {
-      toOpt.getOrElse {
-        Logger.warn(s"EMail: '$subject' not sent because there is no recipient email address available.")
-      }
+    toOpt.getOrElse {
+      Logger.warn(s"EMail: '$subject' not sent because there is no recipient email address available.")
+    }
 
-      val email = Email(to = emailList, from = fromNarthex, subject = subject, bodyHtml = Some(html))
-      if (current.mode != Mode.Prod) {
-        Logger.info(s"Not production mode, so this was not sent:\n$email")
-      }
-      else {
-        mailerClient.send(email)
-      }
+    val email = Email(to = emailList, from = fromNarthex, subject = subject, bodyHtml = Some(html))
+    if (current.mode != Mode.Prod) {
+      Logger.info(s"Not production mode, so this was not sent:\n$email")
     }
     else {
-      Logger.warn(s"EMail to $emailList: '$subject' not sent because SMTP is not configured.")
+      mailerClient.send(email)
     }
   }
 

@@ -108,8 +108,6 @@ object OrgContext {
 
   val SINGLE_TRIPLE_STORE = TRIPLE_STORE_URL.isDefined
 
-  val MAIL_CONFIGURED = config.getString("smtp.host").isDefined
-
   val XSD_VALIDATION = configFlag("xsd-validation")
   System.setProperty("XSD_VALIDATION", XSD_VALIDATION.toString)
 
