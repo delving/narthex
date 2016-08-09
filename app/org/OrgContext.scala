@@ -106,8 +106,6 @@ object OrgContext {
 
   Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")
 
-  val SINGLE_TRIPLE_STORE = TRIPLE_STORE_URL.isDefined
-
   val MAIL_CONFIGURED = config.getString("smtp.host").isDefined
 
   val XSD_VALIDATION = configFlag("xsd-validation")
