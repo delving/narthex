@@ -16,7 +16,6 @@
 
 package org
 
-import java.io.Serializable
 import java.security.MessageDigest
 
 import org.OrgContext._
@@ -46,6 +45,24 @@ object ActorStore {
 class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import org.ActorStore._
+
+  val topActorUsername = "admin"
+  val topActorConfigProp = "topActor.initialPassword"
+  if (!hasAdmin) {
+    val topActor = NXActor(topActorUsername, None)
+    ts.up.sparqlUpdate(insertTopActorQ(topActor, hashPassword(
+      config.getString(topActorConfigProp).getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set")),
+      topActorUsername))).map(ok => Some(topActor))
+    Logger.info(s"Created initial admin user")
+  }
+
+  private def hasAdmin: Boolean = {
+    val result: Future[Option[NXActor]] =
+      ts.query(getActor(topActorUsername))
+        .map(m => actorFromResult(m))
+    val actorOpt: Option[NXActor] = Await.result(result, 5.seconds)
+    actorOpt.isDefined
+  }
 
   private def hashPassword(password: String, salt: String): String = {
     val digest = MessageDigest.getInstance("SHA-256")
@@ -78,38 +95,24 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
 
   def authenticate(actorName: String, password: String): Future[Option[NXActor]] = {
     val passwordHashString = hashPassword(password, actorName)
-    ts.query(getActorWithPassword(actorName, passwordHashString)).map(actorFromResult).flatMap { actorOpt =>
-      if (actorOpt.isEmpty) {
-        ts.ask(graphExistsQ(actorsGraph)).flatMap { exists =>
-          if (exists) {
-            Future.successful(None)
-          }
-          else {
-            val topActor = NXActor(actorName, None)
-            ts.up.sparqlUpdate(insertTopActorQ(topActor, passwordHashString)).map(ok => Some(topActor))
-          }
-        }
-      }
-      else {
-        Future.successful(actorOpt)
-      }
-    }
+    ts.query(getActorWithPassword(actorName, passwordHashString)).map(actorFromResult)
   }
 
   def listSubActors(nxActor: NXActor): List[Map[String, String]] = {
     val query = ts.query(getSubActorList(nxActor)).map { list =>
-        list.map(m =>
-          Map(
-            "userName" -> m.get("username").get.text,
-            "isAdmin" -> {
-              val isAdmin = m.get("isAdmin")
-              if (isAdmin.nonEmpty) isAdmin.get.text else "false"},
-            "userEnabled" -> {
-              val actorEnabled = m.get("actorEnabled")
-              if (actorEnabled.nonEmpty) actorEnabled.get.text else "true"
-            }
-          )
+      list.map(m =>
+        Map(
+          "userName" -> m.get("username").get.text,
+          "isAdmin" -> {
+            val isAdmin = m.get("isAdmin")
+            if (isAdmin.nonEmpty) isAdmin.get.text else "false"
+          },
+          "userEnabled" -> {
+            val actorEnabled = m.get("actorEnabled")
+            if (actorEnabled.nonEmpty) actorEnabled.get.text else "true"
+          }
         )
+      )
     }
     // todo: maybe make this async
     Await.result(query, 5.seconds)
