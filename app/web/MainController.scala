@@ -46,8 +46,7 @@ object MainController extends Controller with Security {
     actor,
     apiKey = API_ACCESS_KEYS(0),
     narthexDomain = NARTHEX_DOMAIN,
-    naveDomain = NAVE_DOMAIN,
-    singleTripleStore = SINGLE_TRIPLE_STORE
+    naveDomain = NAVE_DOMAIN
   )
 
   def root = Action { request =>
