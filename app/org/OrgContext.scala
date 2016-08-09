@@ -106,8 +106,6 @@ object OrgContext {
 
   Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")
 
-  val MAIL_CONFIGURED = config.getString("smtp.host").isDefined
-
   val XSD_VALIDATION = configFlag("xsd-validation")
   System.setProperty("XSD_VALIDATION", XSD_VALIDATION.toString)
 
