@@ -17,10 +17,8 @@
 package web
 
 import java.util.concurrent.TimeUnit
-import javax.inject.Inject
 
 import akka.actor._
-import akka.stream.Materializer
 import akka.util.Timeout
 import dataset.DatasetActor._
 import dataset.DsInfo
@@ -36,10 +34,9 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.{OrgActor, OrgContext}
 import play.api.Logger
-import play.api.Play.current
+import play.api.Play.{current, materializer}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
-import play.api.libs.ws.{WS, WSResponse}
 import play.api.mvc._
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -54,9 +51,6 @@ object AppController extends Controller with Security {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
   implicit val ts = OrgContext.TS
-
-  @Inject
-  implicit val mat: Materializer = null
 
   object DatasetSocketActor {
     def props(out: ActorRef) = Props(new DatasetSocketActor(out))
@@ -193,7 +187,7 @@ object AppController extends Controller with Security {
               val addSkosEntriesQ = caseList.map(_.ensureSkosEntryQ).mkString
               val futureUpdate = ts.up.sparqlUpdate(addSkosEntriesQ).map { ok =>
                 dsInfo.addLiteralPropToList(skosField, skosFieldValue)
-                dsInfo.toggleNaveSkosField(datasetUri=dsInfo.uri, propertyUri=skosFieldUri, delete=false)
+                dsInfo.toggleNaveSkosField(datasetUri = dsInfo.uri, propertyUri = skosFieldUri, delete = false)
               }
               Await.result(futureUpdate, 1.minute)
               "added"
@@ -210,7 +204,7 @@ object AppController extends Controller with Security {
           val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldValue)
           val futureUpdate = ts.up.sparqlUpdate(skosifiedField.removeSkosEntriesQ).map { ok =>
             dsInfo.removeLiteralPropFromList(skosField, skosFieldValue)
-            dsInfo.toggleNaveSkosField(datasetUri=dsInfo.uri, propertyUri=skosFieldUri, delete=true)
+            dsInfo.toggleNaveSkosField(datasetUri = dsInfo.uri, propertyUri = skosFieldUri, delete = true)
           }
           Await.result(futureUpdate, 1.minute)
           "removed"
