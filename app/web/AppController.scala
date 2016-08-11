@@ -33,10 +33,11 @@ import org.OrgContext.orgContext
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.{OrgActor, OrgContext}
-import play.api.Logger
+import play.api.{Play, Logger}
 import play.api.Play.{current, materializer}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
+import play.api.libs.streams._
 import play.api.mvc._
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -52,6 +53,7 @@ object AppController extends Controller with Security {
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
   implicit val ts = OrgContext.TS
 
+
   object DatasetSocketActor {
     def props(out: ActorRef) = Props(new DatasetSocketActor(out))
   }
@@ -65,8 +67,10 @@ object AppController extends Controller with Security {
 
   def sendRefresh(spec: String) = OrgActor.actor ! DatasetMessage(spec, Command("refresh"))
 
-  def datasetSocket = WebSocket.acceptWithActor[String, String] { request => out =>
-    DatasetSocketActor.props(out)
+  def datasetSocket = WebSocket.accept[String, String] { request =>
+    implicit val actorSystem = play.api.libs.concurrent.Akka.system(Play.current)
+
+    ActorFlow.actorRef(out => DatasetSocketActor.props(out))
   }
 
   def listDatasets = SecureAsync() { session => request =>
