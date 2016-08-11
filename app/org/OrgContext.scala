@@ -35,7 +35,7 @@ import play.libs.Akka._
 import services.FileHandling.clearDir
 import services.StringHandling.urlEncodeValue
 import triplestore.GraphProperties.categoriesInclude
-import triplestore.TripleStore
+import triplestore.{Fuseki, TripleStore}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -106,14 +106,11 @@ object OrgContext {
 
   Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")
 
-  val SINGLE_TRIPLE_STORE = TRIPLE_STORE_URL.isDefined
-
   val XSD_VALIDATION = configFlag("xsd-validation")
   System.setProperty("XSD_VALIDATION", XSD_VALIDATION.toString)
 
-  // tests are using this
   private def tripleStore(implicit executionContext: ExecutionContext): TripleStore = TRIPLE_STORE_URL.map { tripleStoreUrl =>
-    TripleStore.single(tripleStoreUrl, TRIPLE_STORE_LOG)
+    new Fuseki(tripleStoreUrl, TRIPLE_STORE_LOG)
   } getOrElse {
       throw new RuntimeException("Must have triple-store= ")
     }

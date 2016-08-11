@@ -20,6 +20,7 @@ object MailService {
     } else {
       OrgContext.orgContext.us.adminEmails
     }
+
     toOpt.getOrElse {
       Logger.warn(s"EMail: '$subject' not sent because there is no recipient email address available.")
     }
@@ -31,6 +32,7 @@ object MailService {
     else {
       MailerPlugin.send(email)
     }
+
   }
 
   abstract class MailMessage {
