@@ -6,33 +6,13 @@ Narthex is built on the basis of the [Scala Build Tool](http://www.scala-sbt.org
 
 With the **sbt** installed, and the below configuration completed, one can run Narthex in **development mode** using the **run** command and then opening a browser to [http://localhost:9000/](http://localhost:9000/), which the default location of the Play server.
 
-## Configuring the Fuseki triple store
+## Getting started
 
-Documentation about how to configure Fuseki should be found at the [source](http://jena.apache.org/documentation/serving_data/#getting-started-with-fuseki) rather than here, but the main thing to set up a TDB triple store instance with an appropriate name.
+ - Download and install [Fuseki 2.4.x](https://jena.apache.org/download/index.cgi)
+ - Startup fuseki from this project's root-dir: `fuseki-server --config=./fuseki.ttl`
+ - Start the Play app: `sbt run`
 
-For this example, the **fuseki.ttl** could contain configuration like this:
-
-	fuseki:services (
-     <#narthex_service>
-	) .
-	
-	<#narthex_service>  rdf:type fuseki:Service ;
-	    fuseki:name                        "narthex" ;
-	    fuseki:serviceQuery                "sparql" ;
-	    fuseki:serviceQuery                "query" ;
-	    fuseki:serviceUpdate               "update" ;
-	    fuseki:serviceUpload               "upload" ;
-	    fuseki:serviceReadWriteGraphStore  "data" ;
-	    fuseki:serviceReadGraphStore       "get" ;
-	    fuseki:dataset                     <#narthex> ;
-	    .
-	
-	<#narthex> rdf:type tdb:DatasetTDB ;
-	    tdb:location "narthex" ;
-	    tdb:unionDefaultGraph true ;
-	    .
-
-This defines a triple store called **"narthex"** and its URL must be defined in the Narthex configuration.  When Fuseki is running with this configuration, this triple store should be visible at [http://localhost:3030/](http://localhost:3030/) or wherever it is set up.
+You're good to go!
 
 ## Building a distribution
 
@@ -46,30 +26,6 @@ Unpacking this file will reveal that it has a **"bin"** directory, and inside th
 
 For production deployment, the program must be started up with some extra [configuration parameters](https://www.playframework.com/documentation/2.3.x/ProductionConfiguration), especially using the **-Dconfig.file** option to tell it where to find its configuration.
 
-## Narthex configuration
-
-A minimal configuration of Narthex might look like this:
-
-	// organization name
-	orgId = "demo_organization"
-	
-	// persistence
-	triple-store = "http://localhost:3030/narthex"
-	
-	// email (see https://github.com/playframework/play-mailer)
-	smtp.mock = true
-
-	// link prefixes
-	domains = {
-	  narthex = "http://localhost:9000"
-	  nave = "http://localhost:8000"
-	}
-	
-The organization identifier (**orgId**) distinguishes different Narthex instances from each other, should there be more than one deployed.
-
-The **triple-store** URL must be present, and the SMTP system for sending email can either be set to "mock" to log the inteded emails, or to use a server and actually send the mail.
-
-URIs are generated throughout Narthex, and since they are designed to link things together and these things are really only rendered for the public on the accompanying public-faceing "Nave" LoD server.  The **domains** group defines the links to this Narthex instance, as well as the prefix needed to find the objects via the Nave public-facing server.
 
 ## The NarthexFiles directory
 
@@ -107,23 +63,6 @@ Narthex persists all of its information on the file system and in the triple sto
 The public-facing server which is the counterpart to Narthex is referred to as "Nave" (yes, another part of the church).  It gets its data from the triple store, so the triple store is the point of transfer between the two systems.  Nave must periodically query for changes and then act on them.  It must be able to interpret the stored triples, and follow links created by the terminology mapping and vocabulary mapping to build its index and to display the results properly in good LoD tradition.
 
 There is currently a working Nave LoD server, but its release into open source is not yet complete.
-
-## Acceptance vs Production
-
-When data is being presented to the public, it is important that the publishing organization can verify that everything is presented in the right way **before** it is released.  That means not only viewing the data in Narthex, but also seeing the datasets presented as they later will be in production.
-
-For this, Narthex also allows for using **two** triple stores.
-
-	triple-stores = {
-	  acceptance = "http://localhost:3030/narthex"
-	  production = "http://localhost:3030/narthex_production"
-	}
-
-Datasets can be marked as being "Production" or "Acceptance Only" on the fly by actors, and in the latter case, changes are no longer made to the production triple store.  When a dataset is marked as production, every update is sent to both triple stores in parallel.
-
-There is also a flag in each dataset's information block called **nx:acceptanceOnly** indicating the state, so the Nave server can pay attention and act accordingly.
-
-Note that once a dataset is in production mode, it will be necessary to "Save" the dataset once again so it will be saved to both triple stores.
 
 ---
 
