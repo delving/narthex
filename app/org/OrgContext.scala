@@ -124,10 +124,16 @@ object OrgContext {
   val harvestTicker = system.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
   val periodicSkosifyCheck = system.actorOf(PeriodicSkosifyCheck.props(), "PeriodicSkosifyCheck")
 //  val skosifyTicker = system.scheduler.schedule(30.seconds, 30.seconds, periodicSkosifyCheck, ScanForWork)
-  val orgContext = new OrgContext(USER_HOME, ORG_ID)(global, tripleStore)
+  val orgContext = new OrgContext(authenticationService, USER_HOME, ORG_ID)(global, tripleStore)
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
   check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e) }
+
+  lazy val authenticationService : AuthenticationService = configString("authenticationMode") match {
+    case "mock" => new MockAuthenticationService
+    case "ts" => new TsBasedAuthenticationService
+    case _ => throw new RuntimeException(s"Unknown authentication mode specified")
+  }
 
   def actorWork(actorContext: ActorContext)(block: => Unit) = {
     try {
@@ -140,7 +146,7 @@ object OrgContext {
   }
 }
 
-class OrgContext(userHome: String, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
+class OrgContext(val authenticationService: AuthenticationService, userHome: String, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
@@ -152,7 +158,9 @@ class OrgContext(userHome: String, val orgId: String)(implicit ec: ExecutionCont
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir)
   lazy val sipFactory = new SipFactory(factoryDir)
-  val us = new ActorStore
+
+
+  val us = new ActorStore(authenticationService)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
