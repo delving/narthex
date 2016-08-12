@@ -19,18 +19,17 @@ package web
 import java.io.{File, FileInputStream, FileNotFoundException}
 import java.util.UUID
 
-import akka.util.ByteString
 import org.ActorStore.{NXActor, NXProfile}
 import org.OrgContext._
-import org.apache.commons.io.IOUtils
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
-import play.api.http.{HeaderNames, HttpEntity, MimeTypes}
+import play.api.http.{HeaderNames, MimeTypes}
+import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._
 import play.api.libs.ws.WS
 import play.api.mvc._
-import play.api.routing._
+import play.api.routing.JavaScriptReverseRouter
 import services.MailService.{MailDatasetError, MailProcessingComplete}
 
 import scala.collection.JavaConversions._
@@ -79,32 +78,32 @@ object MainController extends Controller with Security {
         .post(form)
         .flatMap { response =>
 
-          if (response.status / 100 != 2) {
-            throw new RuntimeException(s"$OAUTH_TOKEN_URL response not 2XX, but ${response.status}: ${response.statusText}")
-          }
-          val tokenOpt = (response.json \ "access_token").asOpt[String]
-          tokenOpt.map(token => Future.successful(token)).getOrElse(Future.failed(new IllegalStateException("No access!")))
+        if (response.status / 100 != 2) {
+          throw new RuntimeException(s"$OAUTH_TOKEN_URL response not 2XX, but ${response.status}: ${response.statusText}")
         }
+        val tokenOpt = (response.json \ "access_token").asOpt[String]
+        tokenOpt.map(token => Future.successful(token)).getOrElse(Future.failed(new IllegalStateException("No access!")))
+      }
     }
     val resultFutureOpt: Option[Future[Result]] = for {
       code <- code
       state <- state
       oauthState <- request.session.get("oauth-state")
     } yield {
-      if (state == oauthState) {
-        getToken(code).map { token =>
-          Logger.info(s"We got us a dang token $token")
-          Redirect("/narthex/_oauth-success").withSession("oauth-token" -> token)
-        }.recover {
-          case ex: Exception =>
-            Logger.warn(s"No token!", ex)
-            Unauthorized(ex.getMessage)
+        if (state == oauthState) {
+          getToken(code).map { token =>
+            Logger.info(s"We got us a dang token $token")
+            Redirect("/narthex/_oauth-success").withSession("oauth-token" -> token)
+          }.recover {
+            case ex: Exception =>
+              Logger.warn(s"No token!", ex)
+              Unauthorized(ex.getMessage)
+          }
+        }
+        else {
+          Future.successful(BadRequest("Invalid oauth login"))
         }
       }
-      else {
-        Future.successful(BadRequest("Invalid oauth login"))
-      }
-    }
     resultFutureOpt.getOrElse {
       Logger.warn( s"""### no result code=$code state=$state session.oauth-state=${request.session.get("oauth-state")}""")
       Future.successful(BadRequest(s"Unable to get OAuth token"))
@@ -250,14 +249,14 @@ object MainController extends Controller with Security {
   def OkFile(file: File, attempt: Int = 0): Result = {
     try {
       val input = new FileInputStream(file)
-      val resourceData = IOUtils.toByteArray(input)
+      val resourceData = Enumerator.fromStream(input)
       val contentType = if (file.getName.endsWith(".json")) "application/json" else "text/plain; charset=utf-8"
       Result(
         ResponseHeader(OK, Map(
           CONTENT_LENGTH -> file.length().toString,
           CONTENT_TYPE -> contentType
         )),
-        HttpEntity.Strict(ByteString.fromArray(resourceData), Option(contentType))
+        resourceData
       )
     }
     catch {
@@ -271,69 +270,71 @@ object MainController extends Controller with Security {
 
   // todo: move this
   def OkXml(xml: String): Result = {
-    val contentType = "application/xml"
     Result(
       ResponseHeader(OK, Map(
         CONTENT_LENGTH -> xml.length().toString,
-        CONTENT_TYPE -> contentType
+        CONTENT_TYPE -> "application/xml"
       )),
-      HttpEntity.Strict(ByteString.fromArray(xml.getBytes()), Option(contentType))
+      body = Enumerator(xml.getBytes)
     )
   }
 
   /**
-    * Returns the JavaScript router that the client can use for "type-safe" routes.
-    */
-  def jsRoutes(varName: String = "jsRoutes") = Action { implicit request =>
-    Ok(
-      JavaScriptReverseRouter(varName)(
-        routes.javascript.MainController.login,
-        routes.javascript.MainController.checkLogin,
-        routes.javascript.MainController.logout,
-        routes.javascript.MainController.setProfile,
-        routes.javascript.MainController.setPassword,
-        routes.javascript.MainController.listActors,
-        routes.javascript.MainController.createActor,
-        routes.javascript.MainController.disableActor,
-        routes.javascript.MainController.enableActor,
-        routes.javascript.MainController.deleteActor,
-        routes.javascript.MainController.makeAdmin,
-        routes.javascript.MainController.removeAdmin,
-        routes.javascript.AppController.datasetSocket,
-        routes.javascript.AppController.listDatasets,
-        routes.javascript.AppController.listPrefixes,
-        routes.javascript.AppController.createDataset,
-        routes.javascript.AppController.setDatasetProperties,
-        routes.javascript.AppController.toggleSkosifiedField,
-        routes.javascript.AppController.datasetInfo,
-        routes.javascript.AppController.command,
-        routes.javascript.AppController.toggleDatasetProduction,
-        routes.javascript.AppController.nodeStatus,
-        routes.javascript.AppController.index,
-        routes.javascript.AppController.sample,
-        routes.javascript.AppController.histogram,
-        routes.javascript.AppController.setRecordDelimiter,
-        routes.javascript.AppController.getTermVocabulary,
-        routes.javascript.AppController.getTermMappings,
-        routes.javascript.AppController.getCategoryMappings,
-        routes.javascript.AppController.toggleTermMapping,
-        routes.javascript.AppController.getCategoryList,
-        routes.javascript.AppController.listSheets,
-        routes.javascript.AppController.gatherCategoryCounts,
-        routes.javascript.AppController.listSipFiles,
-        routes.javascript.AppController.deleteLatestSipFile,
-        routes.javascript.AppController.listVocabularies,
-        routes.javascript.AppController.createVocabulary,
-        routes.javascript.AppController.deleteVocabulary,
-        routes.javascript.AppController.setVocabularyProperties,
-        routes.javascript.AppController.vocabularyInfo,
-        routes.javascript.AppController.vocabularyStatistics,
-        routes.javascript.AppController.getSkosMappings,
-        routes.javascript.AppController.toggleSkosMapping,
-        routes.javascript.AppController.searchVocabulary,
-        routes.javascript.AppController.getVocabularyLanguages
-      )
-    ).as(JAVASCRIPT)
+   * Returns the JavaScript router that the client can use for "type-safe" routes.
+ *
+   * @param varName The name of the global variable, defaults to `jsRoutes`
+   */
+  def jsRoutes(varName: String = "jsRoutes") = Action {
+    implicit request =>
+      Ok(
+        JavaScriptReverseRouter(varName)(
+          routes.javascript.MainController.login,
+          routes.javascript.MainController.checkLogin,
+          routes.javascript.MainController.logout,
+          routes.javascript.MainController.setProfile,
+          routes.javascript.MainController.setPassword,
+          routes.javascript.MainController.listActors,
+          routes.javascript.MainController.createActor,
+          routes.javascript.MainController.disableActor,
+          routes.javascript.MainController.enableActor,
+          routes.javascript.MainController.deleteActor,
+          routes.javascript.MainController.makeAdmin,
+          routes.javascript.MainController.removeAdmin,
+          routes.javascript.AppController.datasetSocket,
+          routes.javascript.AppController.listDatasets,
+          routes.javascript.AppController.listPrefixes,
+          routes.javascript.AppController.createDataset,
+          routes.javascript.AppController.setDatasetProperties,
+          routes.javascript.AppController.toggleSkosifiedField,
+          routes.javascript.AppController.datasetInfo,
+          routes.javascript.AppController.command,
+          routes.javascript.AppController.toggleDatasetProduction,
+          routes.javascript.AppController.nodeStatus,
+          routes.javascript.AppController.index,
+          routes.javascript.AppController.sample,
+          routes.javascript.AppController.histogram,
+          routes.javascript.AppController.setRecordDelimiter,
+          routes.javascript.AppController.getTermVocabulary,
+          routes.javascript.AppController.getTermMappings,
+          routes.javascript.AppController.getCategoryMappings,
+          routes.javascript.AppController.toggleTermMapping,
+          routes.javascript.AppController.getCategoryList,
+          routes.javascript.AppController.listSheets,
+          routes.javascript.AppController.gatherCategoryCounts,
+          routes.javascript.AppController.listSipFiles,
+          routes.javascript.AppController.deleteLatestSipFile,
+          routes.javascript.AppController.listVocabularies,
+          routes.javascript.AppController.createVocabulary,
+          routes.javascript.AppController.deleteVocabulary,
+          routes.javascript.AppController.setVocabularyProperties,
+          routes.javascript.AppController.vocabularyInfo,
+          routes.javascript.AppController.vocabularyStatistics,
+          routes.javascript.AppController.getSkosMappings,
+          routes.javascript.AppController.toggleSkosMapping,
+          routes.javascript.AppController.searchVocabulary,
+          routes.javascript.AppController.getVocabularyLanguages
+        )
+      ).as(JAVASCRIPT)
   }
 
   def testEmail(messageType: String) = Action { request =>

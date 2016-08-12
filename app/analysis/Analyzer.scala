@@ -76,7 +76,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
       log.info(s"Analyzer on $file processed=$processed")
       processedOpt = Some(processed)
       datasetContext.dropTree()
-      Future {
+      future {
         val (source, readProgress) = sourceFromFile(file)
         try {
           val progressReporter = ProgressReporter(SPLITTING, context.parent)

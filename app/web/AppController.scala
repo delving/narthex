@@ -34,7 +34,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.{OrgActor, OrgContext}
 import play.api.Logger
-import play.api.Play.{current, materializer}
+import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
