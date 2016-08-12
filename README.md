@@ -6,6 +6,11 @@
 |-----|------|
 | ![](public/images/narthex-1.png?raw=true) | The **[Narthex](http://en.wikipedia.org/wiki/Narthex)** is a place which separates the entrance of the church from the inner **Nave**, and it was considered to be a place of penitence. This software is the place where metadata is collected, analyzed, and improved, in preparation for use for research or online presentation.  
 
+
+## Getting started with local development
+
+Read [this article](docs/development-deployment.md).
+
 ## Introduction
 
 | video
