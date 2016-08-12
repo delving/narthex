@@ -47,16 +47,16 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   import org.ActorStore._
 
   val topActorUsername = "admin"
-  val topActorConfigProp = "topActor.initialPassword"
-  if (!hasAdmin) {
+
+
+  def insertAdmin(passwd: String): NXActor = {
     val topActor = NXActor(topActorUsername, None)
-    ts.up.sparqlUpdate(insertTopActorQ(topActor, hashPassword(
-      config.getString(topActorConfigProp).getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set")),
-      topActorUsername))).map(ok => Some(topActor))
+    ts.up.sparqlUpdate(insertTopActorQ(topActor, hashPassword(passwd, topActorUsername))).map(ok => Some(topActor))
     Logger.info(s"Created initial admin user")
+    topActor
   }
 
-  private def hasAdmin: Boolean = {
+  def hasAdmin: Boolean = {
     val result: Future[Option[NXActor]] =
       ts.query(getActor(topActorUsername))
         .map(m => actorFromResult(m))
