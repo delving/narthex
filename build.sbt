@@ -14,8 +14,6 @@
 //    limitations under the License.
 //===========================================================================
 
-import org.sbtidea.SbtIdeaPlugin._
-
 lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
 
 name := "narthex"
@@ -23,9 +21,6 @@ name := "narthex"
 version := "0.3.6-SNAPSHOT"
 
 scalaVersion := "2.11.6"
-
-//scalacOptions += "-feature"
-//  "org.webjars" % "webjars-locator" % "0.14",
 
 libraryDependencies ++= Seq(
   "org.webjars" %% "webjars-play" % "2.4.0-2",
@@ -74,10 +69,6 @@ resolvers += "Release" at "http://artifactory.delving.org:8081/artifactory/libs-
 
 resolvers += "Snapshot" at "http://artifactory.delving.org:8081/artifactory/libs-snapshot"
 
-//requireJs += "main.js" // optimize this file and its dependencies
-
-//requireJsShim := "build.js" // http://requirejs.org/docs/optimization.html#mainConfigFile
-
 resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"))(Resolver.ivyStylePatterns)
 
 publishMavenStyle := true
@@ -94,18 +85,4 @@ credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
 javaOptions += "-Djava.awt.headless=true"
 
-
-ideaExcludeFolders += ".idea"
-
-ideaExcludeFolders += ".idea_modules"
-
-ideaExcludeFolders += "target"
-
-ideaExcludeFolders += "logs"
-
 PlayKeys.fileWatchService := play.runsupport.FileWatchService.sbt(pollInterval.value)
-
-
-// http://stackoverflow.com/questions/25182581/logging-in-unit-tests-for-play-2-3
-// doesn't work
-//javaOptions in Test += "-Dlogger.file=conf/logger.xml"
