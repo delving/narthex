@@ -17,6 +17,7 @@
 
 lazy val root = (project in file(".")).
   enablePlugins(play.PlayScala).
+  enablePlugins(DockerPlugin).
   enablePlugins(BuildInfoPlugin).
   settings(
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
@@ -101,4 +102,6 @@ packageName in Docker := "delving-narthex"
 
 maintainer in Docker := "info@delving.eu"
 
-//dockerEntrypoint in Docker :+ "bin/narthex -Dconfig.file="
+dockerBaseImage := "openjdk:8"
+
+dockerEntrypoint := Seq("bin/narthex", "-Dconfig.file=/opt/narthex-overrides.conf")
