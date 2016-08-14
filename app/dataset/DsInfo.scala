@@ -352,9 +352,9 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def updatedSpecCountFromFile(
-                                   specName: String = spec,
-                                   narthexBaseDir: File = OrgContext.NARTHEX,
-                                   orgId: String = OrgContext.ORG_ID): (Int, Int, Int) = {
+                                specName: String = spec,
+                                narthexBaseDir: File = OrgContext.NARTHEX_HOME,
+                                orgId: String = OrgContext.ORG_ID): (Int, Int, Int) = {
 
     val spec_source_dir = s"""${narthexBaseDir.toString}/$orgId/datasets/$specName"""
     val processed_dir = s"$spec_source_dir/processed"

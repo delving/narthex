@@ -60,8 +60,12 @@ object OrgContext {
 
   def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List("secret"))
 
-  val USER_HOME = System.getProperty("user.home")
-  val NARTHEX = new File(USER_HOME, "NarthexFiles")
+  val userHome = System.getProperty("user.home")
+
+  val NARTHEX_HOME = config.getString("narthexHome") match {
+    case None => new File(System.getProperty("user.home"), "NarthexFiles")
+    case Some(path) => new File(path)
+  }
 
   lazy val API_ACCESS_KEYS = secretList("api.accessKeys")
 
@@ -133,7 +137,7 @@ object OrgContext {
     case AuthenticationMode.TS => new TsBasedAuthenticationService
   }
 
-  val orgContext = new OrgContext(authenticationService, USER_HOME, ORG_ID)(global, tripleStore)
+  val orgContext = new OrgContext(authenticationService, NARTHEX_HOME, ORG_ID)(global, tripleStore)
 
   def actorWork(actorContext: ActorContext)(block: => Unit) = {
     try {
@@ -146,9 +150,9 @@ object OrgContext {
   }
 }
 
-class OrgContext(val authenticationService: AuthenticationService, userHome: String, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
+class OrgContext(val authenticationService: AuthenticationService, narthexHome: File, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
 
-  val root = new File(userHome, "NarthexFiles")
+  val root = narthexHome
   val orgRoot = new File(root, orgId)
   val factoryDir = new File(orgRoot, "factory")
   val categoriesDir = new File(orgRoot, "categories")
