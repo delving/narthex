@@ -41,6 +41,47 @@ Unpacking this file will reveal that it has a **"bin"** directory, and inside th
 
 For production deployment, the program must be started up with some extra [configuration parameters](https://www.playframework.com/documentation/2.3.x/ProductionConfiguration), especially using the **-Dconfig.file** option to tell it where to find its configuration.
 
+## Using Docker
+This assumes you have installed docker.
+
+First, create a local image: `$ sbt docker:publishLocal`
+
+Run `$ docker images` and see that 'delving-narthex' was added to your local images.
+
+To run, Narthex requires the following arguments:
+
+1. A mount of the app-config file containing overrides of the defaults in [application.conf](../conf/application.conf) which resides on the host
+2. A mount of the narthexdir which resides on the host
+3. Access to the tripleStore running on the host. Execute `$ docker-machine inspect | grep HostOnlyCIDR`. 
+In our case the address was `192.168.99.1` and we need it for the contents of the override-conf file below
+
+The contents of the override-file must look like this.
+*Note* the include statement is required or defaults won't load
+
+```hocon
+include "application.conf"
+authenticationMode = "mock"
+narthexHome = "/opt/narthexfiles"
+triple-store = "http://192.168.99.1:3030/devorg"
+```
+
+In our case, that would result in the following docker command:
+
+```bash
+$ docker run --rm --net host --name narthex -v /Users/hw/NarthexFiles:/opt/narthexfiles \ 
+    -v /Users/hw/Desktop/narthex-overrides.conf:/opt/narthex-overrides.conf \
+    -p 8888:9000 delving-narthex:0.3.6-SNAPSHOT
+```
+
+After that, Narthex is running at http://localhost:8888
+*Note* If you are on Mac or Windows, Narthex runs inside your docker-machine. In our case, `$ docker-machine ls` outputs:
+
+```
+NAME      ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER    ERRORS
+default   *        virtualbox   Running   tcp://192.168.99.100:2376           v1.12.0   
+```
+
+So, I can reach narthex at [http://192.168.99.100:8888](http://192.168.99.100:8888)
 
 ## The NarthexFiles directory
 
