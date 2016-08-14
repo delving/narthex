@@ -95,3 +95,4 @@ GET         /narthex/api/:apiKey/:spec/histogram/*path                       web
 GET         /narthex/webjars/*file                                           controllers.WebJarAssets.at(file)
 GET         /narthex/assets/*file                                            controllers.Assets.at(path="/public", file)
 
+#GET         /non-public/monitoring/metrics                                   @com.kenshoo.play.metrics.MetricsController.metrics
