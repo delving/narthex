@@ -14,8 +14,14 @@
 //    limitations under the License.
 //===========================================================================
 
-lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
 
+lazy val root = (project in file(".")).
+  enablePlugins(play.PlayScala).
+  enablePlugins(BuildInfoPlugin).
+  settings(
+    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
+    buildInfoPackage := "buildinfo"
+  )
 name := "narthex"
 
 version := "0.3.6-SNAPSHOT"
