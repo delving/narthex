@@ -96,3 +96,9 @@ credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 javaOptions += "-Djava.awt.headless=true"
 
 PlayKeys.fileWatchService := play.runsupport.FileWatchService.sbt(pollInterval.value)
+
+packageName in Docker := "delving-narthex"
+
+maintainer in Docker := "info@delving.eu"
+
+//dockerEntrypoint in Docker :+ "bin/narthex -Dconfig.file="
