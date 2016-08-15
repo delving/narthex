@@ -16,7 +16,7 @@
 
 
 lazy val root = (project in file(".")).
-  enablePlugins(play.PlayScala).
+  enablePlugins(play.sbt.PlayScala).
   enablePlugins(DockerPlugin).
   enablePlugins(BuildInfoPlugin).
   settings(
@@ -25,7 +25,7 @@ lazy val root = (project in file(".")).
   )
 name := "narthex"
 
-version := "0.3.6-SNAPSHOT"
+version := "0.3.7-SNAPSHOT"
 
 scalaVersion := "2.11.6"
 
@@ -52,7 +52,8 @@ libraryDependencies ++= Seq(
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.4",
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
-  "org.apache.jena" % "jena-arq" % "2.12.1",
+  "org.apache.jena" % "jena-arq" % "2.12.1" exclude("log4j", "log4j"),
+  "org.slf4j" % "log4j-over-slf4j" % "1.7.21",
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "4.0.0",
   "eu.delving" % "sip-core" % "1.0.9"
