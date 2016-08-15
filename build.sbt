@@ -16,7 +16,7 @@
 
 
 lazy val root = (project in file(".")).
-  enablePlugins(play.PlayScala).
+  enablePlugins(play.sbt.PlayScala).
   enablePlugins(BuildInfoPlugin).
   settings(
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
