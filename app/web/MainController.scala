@@ -57,9 +57,9 @@ object MainController extends Controller with Security {
     val state = UUID.randomUUID().toString
     createOAuthUrl(state).map { oauthUrl =>
       Logger.info(s"Create state $state")
-      Ok(views.html.index(ORG_ID, SIP_APP_URL, oauthUrl)).withSession("oauth-state" -> state)
+      Ok(views.html.index(ORG_ID, SIP_APP_URL, oauthUrl, buildinfo.BuildInfo.version)).withSession("oauth-state" -> state)
     } getOrElse {
-      Ok(views.html.index(ORG_ID, SIP_APP_URL, ""))
+      Ok(views.html.index(ORG_ID, SIP_APP_URL, "", buildinfo.BuildInfo.version))
     }
   }
 
@@ -144,7 +144,7 @@ object MainController extends Controller with Security {
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
     Logger.info(s"Login $username")
-    orgContext.us.authenticate(username, password).map { actorOpt =>
+    orgContext.authenticationService.authenticate(username, password).map { actorOpt =>
       actorOpt.map { actor =>
         val session = actorSession(actor)
         Ok(Json.toJson(session)).withSession(session)

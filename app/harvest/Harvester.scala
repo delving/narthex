@@ -88,7 +88,7 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
           case _ =>
             datasetContext.sourceRepoOpt match {
               case Some(sourceRepo) =>
-                future {
+                Future {
                   val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
                   val fileOption = sourceRepo.acceptFile(tempFileOpt.get, acceptZipReporter)
                   log.info(s"Zip file accepted: $fileOption")

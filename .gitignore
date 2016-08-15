@@ -24,3 +24,4 @@ server.pid
 
 !.travis.yml
 out
+fuseki_data

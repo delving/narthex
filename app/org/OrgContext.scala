@@ -26,7 +26,7 @@ import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
 import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
-import mapping.PeriodicSkosifyCheck.ScanForWork
+import init.AuthenticationMode
 import mapping._
 import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
@@ -123,10 +123,16 @@ object OrgContext {
   val harvestTicker = system.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
   val periodicSkosifyCheck = system.actorOf(PeriodicSkosifyCheck.props(), "PeriodicSkosifyCheck")
 //  val skosifyTicker = system.scheduler.schedule(30.seconds, 30.seconds, periodicSkosifyCheck, ScanForWork)
-  val orgContext = new OrgContext(USER_HOME, ORG_ID)(global, tripleStore)
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
   check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e) }
+
+  val authenticationService : AuthenticationService = AuthenticationMode.fromConfigString(config.getString(AuthenticationMode.PROPERTY_NAME)) match {
+    case AuthenticationMode.MOCK => new MockAuthenticationService
+    case AuthenticationMode.TS => new TsBasedAuthenticationService
+  }
+
+  val orgContext = new OrgContext(authenticationService, USER_HOME, ORG_ID)(global, tripleStore)
 
   def actorWork(actorContext: ActorContext)(block: => Unit) = {
     try {
@@ -139,7 +145,7 @@ object OrgContext {
   }
 }
 
-class OrgContext(userHome: String, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
+class OrgContext(val authenticationService: AuthenticationService, userHome: String, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
@@ -151,7 +157,9 @@ class OrgContext(userHome: String, val orgId: String)(implicit ec: ExecutionCont
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir)
   lazy val sipFactory = new SipFactory(factoryDir)
-  val us = new ActorStore
+
+
+  val us = new ActorStore(authenticationService)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
