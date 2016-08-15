@@ -66,6 +66,10 @@ libraryDependencies ~= {
   _.map(_.exclude("org.slf4j", "slf4j-log4j12"))
 }
 
+libraryDependencies ~= {
+  _.map(_.exclude("org.fluentlenium", "fluentlenium-core"))
+}
+
 libraryDependencies += cache
 
 libraryDependencies += ws
