@@ -16,8 +16,6 @@
 
 package org
 
-import java.security.MessageDigest
-
 import org.OrgContext._
 import play.api.Logger
 import triplestore.Sparql._
