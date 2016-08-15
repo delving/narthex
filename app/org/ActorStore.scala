@@ -20,7 +20,6 @@ import java.security.MessageDigest
 
 import org.OrgContext._
 import play.api.Logger
-import triplestore.GraphProperties._
 import triplestore.Sparql._
 import triplestore.TripleStore
 
@@ -42,16 +41,15 @@ object ActorStore {
 
 }
 
-class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
+class ActorStore(val authenticationService: AuthenticationService)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import org.ActorStore._
 
   val topActorUsername = "admin"
 
-
   def insertAdmin(passwd: String): NXActor = {
     val topActor = NXActor(topActorUsername, None)
-    ts.up.sparqlUpdate(insertTopActorQ(topActor, hashPassword(passwd, topActorUsername))).map(ok => Some(topActor))
+    ts.up.sparqlUpdate(insertTopActorQ(topActor, Utils.hashPasswordUnsecure(passwd, topActorUsername))).map(ok => Some(topActor))
     Logger.info(s"Created initial admin user")
     topActor
   }
@@ -64,12 +62,6 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
     actorOpt.isDefined
   }
 
-  private def hashPassword(password: String, salt: String): String = {
-    val digest = MessageDigest.getInstance("SHA-256")
-    val salted = password + salt
-    val ba = digest.digest(salted.getBytes("UTF-8"))
-    ba.map("%02x".format(_)).mkString
-  }
 
   def emailFromUri(actorUri: String): Option[String] = {
     val query = ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
@@ -85,17 +77,11 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   }
 
   def oAuthenticated(actorName: String): Future[NXActor] = {
-    ts.query(getActor(actorName)).map(actorFromResult).flatMap { actorOpt =>
-      actorOpt.map(Future.successful).getOrElse {
-        val newActor = NXActor(actorName, None)
-        ts.up.sparqlUpdate(insertOAuthActorQ(newActor)).map(ok => newActor)
-      }
-    }
+    authenticationService.oAuthenticated(actorName)
   }
 
   def authenticate(actorName: String, password: String): Future[Option[NXActor]] = {
-    val passwordHashString = hashPassword(password, actorName)
-    ts.query(getActorWithPassword(actorName, passwordHashString)).map(actorFromResult)
+    authenticationService.authenticate(actorName, password)
   }
 
   def listSubActors(nxActor: NXActor): List[Map[String, String]] = {
@@ -119,7 +105,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   }
 
   def createSubActor(adminActor: NXActor, usernameString: String, password: String): Future[Option[NXActor]] = {
-    val hash = hashPassword(password, usernameString)
+    val hash = Utils.hashPasswordUnsecure(password, usernameString)
     val newActor = NXActor(usernameString, Some(adminActor.uri))
     val update = ts.up.sparqlUpdate(insertSubActorQ(newActor, hash, adminActor))
     checkFail(update)
@@ -174,7 +160,7 @@ class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
   }
 
   def setPassword(actor: NXActor, newPassword: String): Future[Boolean] = {
-    val hash = hashPassword(newPassword, actor.actorName)
+    val hash = Utils.hashPasswordUnsecure(newPassword, actor.actorName)
     val update = ts.up.sparqlUpdate(setActorPasswordQ(actor, hash))
     checkFail(update)
     update.map(ok => true)

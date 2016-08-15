@@ -4,7 +4,7 @@ import java.util.concurrent.Executors
 
 import play.api.test.Helpers._
 import triplestore.GraphProperties.deleted
-import triplestore.TripleStore
+import triplestore.{Fuseki, TripleStore}
 
 import scala.concurrent.ExecutionContext
 
@@ -15,7 +15,7 @@ trait FakeTripleStore {
   implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
   // logQueries = true if you want to see them
-  implicit val ts = TripleStore.single("http://localhost:3030/test", logQueries = false)
+  implicit val ts = new Fuseki("http://localhost:3030/test", false)
 
   def cleanStart() = {
     await(ts.up.sparqlUpdate("DROP ALL"))
@@ -24,7 +24,6 @@ trait FakeTripleStore {
 
   def countGraphs = {
     val graphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")).map(m => m("g"))
-//    println(graphs.mkString("\n"))
     graphs.foreach { qv =>
       if (qv.text.contains(WRONG_URI)) throw new RuntimeException(s"Wrong URI! ${qv.text}")
     }
@@ -33,7 +32,6 @@ trait FakeTripleStore {
 
   def countDeletedGraphs = {
     val graphs = await(ts.query(s"SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s <$deleted> ?o } }")).map(m => m("g"))
-//    println(graphs.mkString("\n"))
     graphs.size
   }
 

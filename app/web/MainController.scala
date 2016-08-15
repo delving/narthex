@@ -46,8 +46,7 @@ object MainController extends Controller with Security {
     actor,
     apiKey = API_ACCESS_KEYS(0),
     narthexDomain = NARTHEX_DOMAIN,
-    naveDomain = NAVE_DOMAIN,
-    singleTripleStore = SINGLE_TRIPLE_STORE
+    naveDomain = NAVE_DOMAIN
   )
 
   def root = Action { request =>
@@ -58,9 +57,9 @@ object MainController extends Controller with Security {
     val state = UUID.randomUUID().toString
     createOAuthUrl(state).map { oauthUrl =>
       Logger.info(s"Create state $state")
-      Ok(views.html.index(ORG_ID, SIP_APP_URL, oauthUrl)).withSession("oauth-state" -> state)
+      Ok(views.html.index(ORG_ID, SIP_APP_URL, oauthUrl, buildinfo.BuildInfo.version)).withSession("oauth-state" -> state)
     } getOrElse {
-      Ok(views.html.index(ORG_ID, SIP_APP_URL, ""))
+      Ok(views.html.index(ORG_ID, SIP_APP_URL, "", buildinfo.BuildInfo.version))
     }
   }
 
@@ -145,7 +144,7 @@ object MainController extends Controller with Security {
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
     Logger.info(s"Login $username")
-    orgContext.us.authenticate(username, password).map { actorOpt =>
+    orgContext.authenticationService.authenticate(username, password).map { actorOpt =>
       actorOpt.map { actor =>
         val session = actorSession(actor)
         Ok(Json.toJson(session)).withSession(session)
@@ -280,61 +279,57 @@ object MainController extends Controller with Security {
   }
 
   /**
-   * Returns the JavaScript router that the client can use for "type-safe" routes.
- *
-   * @param varName The name of the global variable, defaults to `jsRoutes`
-   */
-  def jsRoutes(varName: String = "jsRoutes") = Action {
-    implicit request =>
-      Ok(
-        JavaScriptReverseRouter(varName)(
-          routes.javascript.MainController.login,
-          routes.javascript.MainController.checkLogin,
-          routes.javascript.MainController.logout,
-          routes.javascript.MainController.setProfile,
-          routes.javascript.MainController.setPassword,
-          routes.javascript.MainController.listActors,
-          routes.javascript.MainController.createActor,
-          routes.javascript.MainController.disableActor,
-          routes.javascript.MainController.enableActor,
-          routes.javascript.MainController.deleteActor,
-          routes.javascript.MainController.makeAdmin,
-          routes.javascript.MainController.removeAdmin,
-          routes.javascript.AppController.datasetSocket,
-          routes.javascript.AppController.listDatasets,
-          routes.javascript.AppController.listPrefixes,
-          routes.javascript.AppController.createDataset,
-          routes.javascript.AppController.setDatasetProperties,
-          routes.javascript.AppController.toggleSkosifiedField,
-          routes.javascript.AppController.datasetInfo,
-          routes.javascript.AppController.command,
-          routes.javascript.AppController.toggleDatasetProduction,
-          routes.javascript.AppController.nodeStatus,
-          routes.javascript.AppController.index,
-          routes.javascript.AppController.sample,
-          routes.javascript.AppController.histogram,
-          routes.javascript.AppController.setRecordDelimiter,
-          routes.javascript.AppController.getTermVocabulary,
-          routes.javascript.AppController.getTermMappings,
-          routes.javascript.AppController.getCategoryMappings,
-          routes.javascript.AppController.toggleTermMapping,
-          routes.javascript.AppController.getCategoryList,
-          routes.javascript.AppController.listSheets,
-          routes.javascript.AppController.gatherCategoryCounts,
-          routes.javascript.AppController.listSipFiles,
-          routes.javascript.AppController.deleteLatestSipFile,
-          routes.javascript.AppController.listVocabularies,
-          routes.javascript.AppController.createVocabulary,
-          routes.javascript.AppController.deleteVocabulary,
-          routes.javascript.AppController.setVocabularyProperties,
-          routes.javascript.AppController.vocabularyInfo,
-          routes.javascript.AppController.vocabularyStatistics,
-          routes.javascript.AppController.getSkosMappings,
-          routes.javascript.AppController.toggleSkosMapping,
-          routes.javascript.AppController.searchVocabulary,
-          routes.javascript.AppController.getVocabularyLanguages
-        )
-      ).as(JAVASCRIPT)
+    * Returns the JavaScript router that the client can use for "type-safe" routes.
+    */
+  def jsRoutes(varName: String = "jsRoutes") = Action { implicit request =>
+    Ok(
+      JavaScriptReverseRouter(varName)(
+        routes.javascript.MainController.login,
+        routes.javascript.MainController.checkLogin,
+        routes.javascript.MainController.logout,
+        routes.javascript.MainController.setProfile,
+        routes.javascript.MainController.setPassword,
+        routes.javascript.MainController.listActors,
+        routes.javascript.MainController.createActor,
+        routes.javascript.MainController.disableActor,
+        routes.javascript.MainController.enableActor,
+        routes.javascript.MainController.deleteActor,
+        routes.javascript.MainController.makeAdmin,
+        routes.javascript.MainController.removeAdmin,
+        routes.javascript.AppController.datasetSocket,
+        routes.javascript.AppController.listDatasets,
+        routes.javascript.AppController.listPrefixes,
+        routes.javascript.AppController.createDataset,
+        routes.javascript.AppController.setDatasetProperties,
+        routes.javascript.AppController.toggleSkosifiedField,
+        routes.javascript.AppController.datasetInfo,
+        routes.javascript.AppController.command,
+        routes.javascript.AppController.nodeStatus,
+        routes.javascript.AppController.index,
+        routes.javascript.AppController.sample,
+        routes.javascript.AppController.histogram,
+        routes.javascript.AppController.setRecordDelimiter,
+        routes.javascript.AppController.getTermVocabulary,
+        routes.javascript.AppController.getTermMappings,
+        routes.javascript.AppController.getCategoryMappings,
+        routes.javascript.AppController.toggleTermMapping,
+        routes.javascript.AppController.getCategoryList,
+        routes.javascript.AppController.listSheets,
+        routes.javascript.AppController.gatherCategoryCounts,
+        routes.javascript.AppController.listSipFiles,
+        routes.javascript.AppController.deleteLatestSipFile,
+        routes.javascript.AppController.listVocabularies,
+        routes.javascript.AppController.createVocabulary,
+        routes.javascript.AppController.deleteVocabulary,
+        routes.javascript.AppController.setVocabularyProperties,
+        routes.javascript.AppController.vocabularyInfo,
+        routes.javascript.AppController.vocabularyStatistics,
+        routes.javascript.AppController.getSkosMappings,
+        routes.javascript.AppController.toggleSkosMapping,
+        routes.javascript.AppController.searchVocabulary,
+        routes.javascript.AppController.getVocabularyLanguages
+      )
+    ).as(JAVASCRIPT)
   }
 
   def testEmail(messageType: String) = Action { request =>

@@ -14,18 +14,19 @@
 //    limitations under the License.
 //===========================================================================
 
-import org.sbtidea.SbtIdeaPlugin._
 
-lazy val root = (project in file(".")).enablePlugins(play.PlayScala)
-
+lazy val root = (project in file(".")).
+  enablePlugins(play.PlayScala).
+  enablePlugins(BuildInfoPlugin).
+  settings(
+    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
+    buildInfoPackage := "buildinfo"
+  )
 name := "narthex"
 
 version := "0.3.6-SNAPSHOT"
 
 scalaVersion := "2.11.6"
-
-//scalacOptions += "-feature"
-//  "org.webjars" % "webjars-locator" % "0.14",
 
 libraryDependencies ++= Seq(
   "org.webjars" %% "webjars-play" % "2.4.0-2",
@@ -41,22 +42,27 @@ libraryDependencies ++= Seq(
   "org.webjars" % "ng-grid" % "2.0.13",
   "org.webjars" % "ngStorage" % "0.3.0",
   "org.webjars" % "angular-sanitize" % "1.3.11",
-  "org.scalatest" % "scalatest_2.11" % "2.2.1",
+  "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+  "de.leanovate.play-mockws" %% "play-mockws" % "2.4.2" % "test",
   "org.scalautils" % "scalautils_2.11" % "2.1.3",
   "com.typesafe.akka" % "akka-testkit_2.11" % "2.4.8" % "test",
-  "org.scalatestplus" %% "play" % "1.2.0" % "test",
+  "org.scalatestplus" %% "play" % "1.4.0" % "test",
   "commons-io" % "commons-io" % "2.4",
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.4",
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
-  "org.apache.jena" % "jena-arq" % "2.12.1" excludeAll ExclusionRule(organization = "org.slf4j"),
+  "org.apache.jena" % "jena-arq" % "2.12.1",
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "4.0.0",
   "eu.delving" % "sip-core" % "1.0.9"
 )
 
 libraryDependencies ~= {
-  _.map(_.exclude("org.slf4j", "slf4j-jdk14"))
+  _.map(_.exclude("commons-logging", "commons-logging"))
+}
+
+libraryDependencies ~= {
+  _.map(_.exclude("org.slf4j", "slf4j-log4j12"))
 }
 
 libraryDependencies += cache
@@ -72,10 +78,6 @@ resolvers += "Delving" at "http://artifactory.delving.org:8081/artifactory/delvi
 resolvers += "Release" at "http://artifactory.delving.org:8081/artifactory/libs-release"
 
 resolvers += "Snapshot" at "http://artifactory.delving.org:8081/artifactory/libs-snapshot"
-
-//requireJs += "main.js" // optimize this file and its dependencies
-
-//requireJsShim := "build.js" // http://requirejs.org/docs/optimization.html#mainConfigFile
 
 resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"))(Resolver.ivyStylePatterns)
 
@@ -93,18 +95,4 @@ credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
 javaOptions += "-Djava.awt.headless=true"
 
-
-ideaExcludeFolders += ".idea"
-
-ideaExcludeFolders += ".idea_modules"
-
-ideaExcludeFolders += "target"
-
-ideaExcludeFolders += "logs"
-
 PlayKeys.fileWatchService := play.runsupport.FileWatchService.sbt(pollInterval.value)
-
-
-// http://stackoverflow.com/questions/25182581/logging-in-unit-tests-for-play-2-3
-// doesn't work
-//javaOptions in Test += "-Dlogger.file=conf/logger.xml"
