@@ -76,7 +76,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
       log.info(s"Analyzer on $file processed=$processed")
       processedOpt = Some(processed)
       datasetContext.dropTree()
-      future {
+      Future {
         val (source, readProgress) = sourceFromFile(file)
         try {
           val progressReporter = ProgressReporter(SPLITTING, context.parent)
@@ -146,7 +146,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
               val histogramSizes = nodeRepo.writeHistograms(uniqueCount)
               Json.obj(
                 "uniqueCount" -> uniqueCount,
-                "samples" -> samples,
+                "samples" -> samples.get,
                 "histograms" -> histogramSizes
               )
           }

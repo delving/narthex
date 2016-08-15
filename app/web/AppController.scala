@@ -37,7 +37,6 @@ import play.api.Logger
 import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
-import play.api.libs.ws.{WS, WSResponse}
 import play.api.mvc._
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -125,15 +124,6 @@ object AppController extends Controller with Security {
     }
   }
 
-  def toggleDatasetProduction(spec: String) = SecureAsync() { session => request =>
-    withDsInfo(spec) { dsInfo =>
-      dsInfo.toggleProduction().map { acceptanceOnly =>
-        sendRefresh(spec)
-        Ok(Json.obj("acceptanceMode" -> acceptanceOnly.toString))
-      }
-    }
-  }
-
   // ====== stats files =====
 
   def index(spec: String) = Secure() { session => request =>
@@ -197,7 +187,7 @@ object AppController extends Controller with Security {
               val addSkosEntriesQ = caseList.map(_.ensureSkosEntryQ).mkString
               val futureUpdate = ts.up.sparqlUpdate(addSkosEntriesQ).map { ok =>
                 dsInfo.addLiteralPropToList(skosField, skosFieldValue)
-                dsInfo.toggleNaveSkosField(datasetUri=dsInfo.uri, propertyUri=skosFieldUri, delete=false)
+                dsInfo.toggleNaveSkosField(datasetUri = dsInfo.uri, propertyUri = skosFieldUri, delete = false)
               }
               Await.result(futureUpdate, 1.minute)
               "added"
@@ -214,7 +204,7 @@ object AppController extends Controller with Security {
           val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldValue)
           val futureUpdate = ts.up.sparqlUpdate(skosifiedField.removeSkosEntriesQ).map { ok =>
             dsInfo.removeLiteralPropFromList(skosField, skosFieldValue)
-            dsInfo.toggleNaveSkosField(datasetUri=dsInfo.uri, propertyUri=skosFieldUri, delete=true)
+            dsInfo.toggleNaveSkosField(datasetUri = dsInfo.uri, propertyUri = skosFieldUri, delete = true)
           }
           Await.result(futureUpdate, 1.minute)
           "removed"
