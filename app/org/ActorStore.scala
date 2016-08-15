@@ -76,10 +76,6 @@ class ActorStore(val authenticationService: AuthenticationService)(implicit ec: 
     Await.result(query, 5.seconds)
   }
 
-  def oAuthenticated(actorName: String): Future[NXActor] = {
-    authenticationService.oAuthenticated(actorName)
-  }
-
   def authenticate(actorName: String, password: String): Future[Option[NXActor]] = {
     authenticationService.authenticate(actorName, password)
   }

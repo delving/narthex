@@ -17,10 +17,6 @@ POST        /narthex/login                                                   web
 GET         /narthex/checkLogin                                              web.MainController.checkLogin
 GET         /narthex/logout                                                  web.MainController.logout
 
-# OAuth2 Stuff
-GET         /narthex/_oauth-callback                                         web.MainController.oauthCallback(code: Option[String], state: Option[String])
-GET         /narthex/_oauth-success                                          web.MainController.oauthSuccess
-
 # Users
 POST        /narthex/set-profile                                             web.MainController.setProfile
 GET         /narthex/list-actors                                             web.MainController.listActors

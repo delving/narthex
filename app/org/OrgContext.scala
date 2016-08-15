@@ -81,23 +81,6 @@ object OrgContext {
 
   val RDF_BASE_URL = configStringNoSlash("rdfBaseUrl")
 
-  val OAUTH_ID = config.getString("oauth2.id")
-  val OAUTH_SECRET = config.getString("oauth2.secret")
-
-  lazy val OAUTH_CALLBACK = {
-    val callbackBaseUrl = configString("oauth2.callbackBaseUrl")
-    s"$callbackBaseUrl/narthex/_oauth-callback"
-  }
-
-  def createOAuthUrl(state: String) = OAUTH_ID.map { id =>
-    val server = configString("oauth2.server")
-    s"$server/authorize/?client_id=$id&state=$state&response_type=code&redirect_uri=${urlEncodeValue(OAUTH_CALLBACK)}"
-  }
-
-  lazy val OAUTH_TOKEN_URL = config.getString("oauth2.server").map(server => s"$server/token/").getOrElse(throw new RuntimeException(s"No token URL"))
-
-  lazy val OAUTH_USER_URL = configString("oauth2.userUrl")
-
   val NX_URI_PREFIX = s"$RDF_BASE_URL/resource"
 
   val TRIPLE_STORE_URL: Option[String] = config.getString("triple-store")
