@@ -7,29 +7,36 @@ import play.api.Play.current
 import play.api.libs.mailer._
 import play.api.{Logger, Mode}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 object MailService {
 
   val fromNarthex = "Narthex <narthex@delving.eu>"
 
   private def sendMail(toOpt: Option[String], subject: String, html: String)(implicit ec: ExecutionContext): Unit = {
-    val emailList: Seq[String] = if (toOpt.nonEmpty) {
-      val all = OrgContext.orgContext.us.adminEmails :+ toOpt.get
-      all.distinct
-    } else {
-      OrgContext.orgContext.us.adminEmails
-    }
-    toOpt.getOrElse {
-      Logger.warn(s"EMail: '$subject' not sent because there is no recipient email address available.")
-    }
+    val emailList = prepareRecipients(toOpt)
 
-    val email = Email(to = emailList, from = fromNarthex, subject = subject, bodyHtml = Some(html))
-    if (current.mode != Mode.Prod) {
-      Logger.info(s"Not production mode, so this was not sent:\n$email")
+    emailList.map { recipients =>
+      if (recipients.isEmpty) {
+        Logger.warn(s"EMail: '$subject' not sent because there is no recipient email address available.")
+      } else {
+        val email = Email(to = recipients, from = fromNarthex, subject = subject, bodyHtml = Some(html))
+        if (current.mode != Mode.Prod) {
+          Logger.info(s"Not production mode, so this was not sent:\n$email")
+        }
+        else {
+          MailerPlugin.send(email)
+        }
+      }
     }
-    else {
-      MailerPlugin.send(email)
+  }
+
+  private def prepareRecipients(overrideTo: Option[String]): Future[List[String]] = {
+    overrideTo match {
+      case Some(to) => Future.successful(List(to))
+      case None => {
+        OrgContext.orgContext.us.adminEmails
+      }
     }
   }
 

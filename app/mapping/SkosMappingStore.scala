@@ -18,10 +18,9 @@ package mapping
 
 import java.util.UUID
 
-import org.ActorStore.NXActor
-import org.OrgContext
+import org.{OrgContext, User}
 import play.api.Logger
-import play.api.libs.json.{Json, JsObject}
+import play.api.libs.json.{JsObject, Json}
 import play.api.libs.ws.{WS, WSResponse}
 import services.StringHandling.createGraphName
 import triplestore.Sparql._
@@ -31,7 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object SkosMappingStore {
 
-  case class SkosMapping(actor: NXActor, uriA: String, uriB: String) {
+  case class SkosMapping(actor: User, uriA: String, uriB: String) {
 
     val existenceQ = doesMappingExistQ(uriA, uriB)
 
@@ -41,7 +40,7 @@ object SkosMappingStore {
 
       val uuid = UUID.randomUUID().toString
 
-      val uri = s"${actor.uri}/mapping/$uuid"
+      val uri = s"${actor.uri(OrgContext.NX_URI_PREFIX)}/mapping/$uuid"
 
       val graphName = createGraphName(uri)
 
@@ -98,7 +97,7 @@ class TermMappingStore(termGraph: SkosGraph)(implicit ec: ExecutionContext, ts: 
     val json = Json.obj(
       "proxy_resource_uri" -> mapping.uriA,
       "skos_concept_uri" -> mapping.uriB,
-      "user_uri" -> mapping.actor.uri,
+      "user_uri" -> mapping.actor.uri(OrgContext.NX_URI_PREFIX),
       "delete" -> delete
     )
 

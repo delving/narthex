@@ -4,6 +4,8 @@ import java.security.MessageDigest
 
 object Utils {
 
+  def sanitizedUsername(proposed: String) = proposed.replaceAll("[^\\w-]", "").toLowerCase
+
   // that's not how you do hashing/salting, folks...
   def hashPasswordUnsecure(password: String, salt: String): String = {
     val digest = MessageDigest.getInstance("SHA-256")

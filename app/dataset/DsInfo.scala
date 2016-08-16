@@ -22,13 +22,11 @@ import com.hp.hpl.jena.rdf.model._
 import dataset.SourceRepo.{IdFilter, VERBATIM_FILTER}
 import harvest.Harvesting.{HarvestCron, HarvestType}
 import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
-import net.sf.saxon.functions.False
-import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
-import org.OrgContext
 import org.OrgContext.{NX_URI_PREFIX, orgContext}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
+import org.{OrgContext, User}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -104,14 +102,14 @@ object DsInfo {
 
   def getSkosGraphName(datasetUri: String) = createGraphName(s"$datasetUri/skos")
 
-  def createDsInfo(owner: NXActor, spec: String, character: DsCharacter, mapToPrefix: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[DsInfo] = {
+  def createDsInfo(owner: User, spec: String, character: DsCharacter, mapToPrefix: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
     val subject = m.getResource(getDsInfoUri(spec))
     m.add(subject, m.getProperty(rdfType), m.getResource(datasetEntity))
     m.add(subject, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(subject, m.getProperty(orgId.uri), m.createLiteral(orgContext.orgId))
     m.add(subject, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
-    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
+    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(NX_URI_PREFIX)))
     val trueLiteral = m.createLiteral("true")
     val falseLiteral = m.createLiteral("false")
     m.add(subject, m.getProperty(publishOAIPMH.uri), trueLiteral)
@@ -465,7 +463,15 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   lazy val vocabulary = new SkosVocabulary(spec, skosGraphName)
 
-  def ownerEmailOpt = getUriProp(actorOwner).flatMap(ownerUri => orgContext.us.emailFromUri(ownerUri))
+  def ownerEmailOpt: Future[Option[String]] = {
+    val uriOpt: Option[String] = getUriProp(actorOwner)
+    uriOpt match {
+      case None => Future.successful(None)
+      case Some(uri) => {
+        orgContext.us.emailFromUri(uri)
+      }
+    }
+  }
 
   def orUnknown(nxProp: NXProp) = getLiteralProp(nxProp).getOrElse("Unknown")
 

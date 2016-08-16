@@ -15,7 +15,7 @@ With the **sbt** installed, and the below configuration completed, one can run N
 fuseki-server --config=./fuseki.ttl
 ```
 
-You will notice that it creates a `./fuseki_data` directory which is in .gitignore.
+You will notice that it creates a `./fuseki_data` directory which is in .gitignore. To start with a fresh database, stop fuseki and delete the data-directory.
 
  - Narthex uses your local filesystem for persistence, and we must initialize it. Perform the following steps from the project root-dir.
     
