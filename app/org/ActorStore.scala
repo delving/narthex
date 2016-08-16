@@ -27,19 +27,17 @@ class ActorStore(val authenticationService: AuthenticationService)(implicit ec: 
 
   val topActorUsername = "admin"
 
-  override def insertAdmin(passwd: String): User = {
+  override def insertAdmin(passwd: String): Future[User] = {
     val topActor = User(topActorUsername, None)
-    ts.up.sparqlUpdate(insertTopActorQ(topActor, Utils.hashPasswordUnsecure(passwd, topActorUsername))).map(ok => Some(topActor))
-    Logger.info(s"Created initial admin user")
-    topActor
+    ts.up.sparqlUpdate(insertTopActorQ(topActor, Utils.hashPasswordUnsecure(passwd, topActorUsername))).
+      map{ ok =>
+        Logger.info(s"Created initial admin user")
+        topActor
+      }
   }
 
-  override def hasAdmin: Boolean = {
-    val result: Future[Option[User]] =
-      ts.query(getActor(topActorUsername))
-        .map(m => actorFromResult(m))
-    val actorOpt: Option[User] = Await.result(result, 5.seconds)
-    actorOpt.isDefined
+  override def hasAdmin: Future[Boolean] = {
+   ts.query(getActor(topActorUsername)).map(m => actorFromResult(m).isDefined)
   }
 
   /**
@@ -55,17 +53,13 @@ class ActorStore(val authenticationService: AuthenticationService)(implicit ec: 
     }
   }
 
-  override def emailFromUri(actorUri: String): Option[String] = {
-    val query = ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
-    // todo: maybe make this async
-    Await.result(query, 5.seconds)
+  override def emailFromUri(actorUri: String): Future[Option[String]] = {
+    ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
   }
 
-  override def adminEmails: List[String] = {
+  override def adminEmails = {
     val sparqlQuery = getAdminEMailQ()
-    val query = ts.query(sparqlQuery).map(emailsFromResult)
-    // todo: maybe make this async
-    Await.result(query, 5.seconds)
+    ts.query(sparqlQuery).map(emailsFromResult)
   }
 
   override def listSubActors(nxActor: User): List[Map[String, String]] = {

@@ -1,7 +1,8 @@
 import init.AuthenticationMode
 import org.OrgContext._
-import org.{User, UserRepository}
+import org.UserRepository
 import play.api._
+import play.api.libs.concurrent.Execution.Implicits
 
 
 object Global extends GlobalSettings {
@@ -17,13 +18,16 @@ object Global extends GlobalSettings {
 
 
   override def onStart(app: Application) {
-    val userRepository = orgContext.us
     val initialPassword: String = config.getString(topActorConfigProp).
       getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set"))
-    if (!userRepository.hasAdmin) {
-      val topActorConfigProp = "topActor.initialPassword"
-      val admin: User = userRepository.insertAdmin(initialPassword)
-      Logger.info(s"Inserted initial admin user, details: ${admin}")
+    implicit val executionContext = Implicits.defaultContext
+
+    orgContext.us.hasAdmin.
+      filter( hasAdmin => !hasAdmin).
+      map { hasAdmin =>
+        val topActorConfigProp = "topActor.initialPassword"
+        orgContext.us.insertAdmin(initialPassword)
+        Logger.info(s"Inserted initial admin user, details")
     }
   }
 

@@ -23,10 +23,10 @@ import dataset.SourceRepo.{IdFilter, VERBATIM_FILTER}
 import harvest.Harvesting.{HarvestCron, HarvestType}
 import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
 import org.OrgActor.DatasetMessage
-import org.{OrgContext, User}
 import org.OrgContext.{NX_URI_PREFIX, orgContext}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
+import org.{OrgContext, User}
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.Cache
@@ -463,7 +463,15 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   lazy val vocabulary = new SkosVocabulary(spec, skosGraphName)
 
-  def ownerEmailOpt = getUriProp(actorOwner).flatMap(ownerUri => orgContext.us.emailFromUri(ownerUri))
+  def ownerEmailOpt: Future[Option[String]] = {
+    val uriOpt: Option[String] = getUriProp(actorOwner)
+    uriOpt match {
+      case None => Future.successful(None)
+      case Some(uri) => {
+        orgContext.us.emailFromUri(uri)
+      }
+    }
+  }
 
   def orUnknown(nxProp: NXProp) = getLiteralProp(nxProp).getOrElse("Unknown")
 

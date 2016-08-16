@@ -486,9 +486,10 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       else {
         dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
+        val ownerEmailOpt = Await.result(dsInfo.ownerEmailOpt, 2.seconds)
         MailProcessingComplete(
           spec = dsInfo.spec,
-          ownerEmailOpt = dsInfo.ownerEmailOpt,
+          ownerEmailOpt = ownerEmailOpt,
           validString = dsInfo.processedValidVal,
           invalidString = dsInfo.processedInvalidVal
         ).send()
@@ -576,7 +577,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         case Some(exception) => log.error(exception, message)
         case None => log.error(message)
       }
-      MailDatasetError(dsInfo.spec, dsInfo.ownerEmailOpt, message, exceptionOpt).send()
+      MailDatasetError(dsInfo.spec, Await.result(dsInfo.ownerEmailOpt, 2.seconds), message, exceptionOpt).send()
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using InError(message)
 
