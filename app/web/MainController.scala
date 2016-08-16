@@ -103,7 +103,7 @@ object MainController extends Controller with Security {
       email = (request.body \ "email").as[String]
     )
     val setOp = orgContext.us.setProfile(session.actor, nxProfile).map { ok =>
-      val newSession = session.copy(actor = session.actor.copy(profileOpt = Some(nxProfile)))
+      val newSession = session.copy(user = session.actor.copy(profileOpt = Some(nxProfile)))
       Ok(Json.toJson(newSession)).withSession(newSession)
     }
     setOp.onFailure {
