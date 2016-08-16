@@ -18,9 +18,10 @@ object Global extends GlobalSettings {
 
 
   override def onStart(app: Application) {
+    import play.api.libs.concurrent.Execution.Implicits._
+
     val initialPassword: String = config.getString(topActorConfigProp).
       getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set"))
-    implicit val executionContext = Implicits.defaultContext
 
     orgContext.us.hasAdmin.
       filter( hasAdmin => !hasAdmin).

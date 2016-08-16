@@ -29,6 +29,7 @@ import harvest.PeriodicHarvest.ScanForHarvests
 import init.AuthenticationMode
 import mapping._
 import org.OrgActor.DatasetsCountCategories
+import play.api.libs.concurrent.Execution.Implicits
 import play.api.{Logger, Play}
 import play.libs.Akka._
 import services.FileHandling.clearDir
@@ -108,16 +109,17 @@ object OrgContext {
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
   check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e) }
 
-  val authenticationService : AuthenticationService = AuthenticationMode.fromConfigString(config.getString(AuthenticationMode.PROPERTY_NAME)) match {
+  lazy val authenticationService : AuthenticationService = AuthenticationMode.fromConfigString(config.getString(AuthenticationMode.PROPERTY_NAME)) match {
     case AuthenticationMode.MOCK => new MockAuthenticationService
     case AuthenticationMode.TS => new TsBasedAuthenticationService
   }
-  val userRepository: UserRepository = UserRepository.Mode.fromConfigString(config.getString(UserRepository.Mode.PROPERTY_NAME)) match {
+  lazy val userRepository: UserRepository = {
+    UserRepository.Mode.fromConfigString(config.getString(UserRepository.Mode.PROPERTY_NAME)) match {
     case UserRepository.Mode.MOCK => new MockUserRepository(NX_URI_PREFIX)
     case UserRepository.Mode.TS => new ActorStore(authenticationService)
-  }
+  }}
 
-  val orgContext = new OrgContext(authenticationService, userRepository, USER_HOME, ORG_ID)(global, tripleStore)
+  val orgContext = new OrgContext(authenticationService, userRepository, USER_HOME, ORG_ID)(Implicits.defaultContext, tripleStore)
 
   def actorWork(actorContext: ActorContext)(block: => Unit) = {
     try {

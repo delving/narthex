@@ -1,12 +1,12 @@
 package org
 
-import scala.concurrent.Future
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * In-memory impl for use during development. This impl suffers from race-conditions but it is sufficient during dev
   */
-class MockUserRepository(val uriPrefix: String) extends UserRepository {
-  import scala.concurrent.ExecutionContext.Implicits.global
+class MockUserRepository(val uriPrefix: String)(implicit ec: ExecutionContext) extends UserRepository {
 
   val topActorUsername = "admin"
 
