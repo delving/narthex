@@ -28,12 +28,10 @@ import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
 import init.AuthenticationMode
 import mapping._
-import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
 import play.api.{Logger, Play}
 import play.libs.Akka._
 import services.FileHandling.clearDir
-import services.StringHandling.urlEncodeValue
 import triplestore.GraphProperties.categoriesInclude
 import triplestore.{Fuseki, TripleStore}
 
@@ -114,8 +112,12 @@ object OrgContext {
     case AuthenticationMode.MOCK => new MockAuthenticationService
     case AuthenticationMode.TS => new TsBasedAuthenticationService
   }
+  val userRepository: UserRepository = UserRepository.Mode.fromConfigString(config.getString(UserRepository.Mode.PROPERTY_NAME)) match {
+    case UserRepository.Mode.MOCK => new MockUserRepository(NX_URI_PREFIX)
+    case UserRepository.Mode.TS => new ActorStore(authenticationService)
+  }
 
-  val orgContext = new OrgContext(authenticationService, USER_HOME, ORG_ID)(global, tripleStore)
+  val orgContext = new OrgContext(authenticationService, userRepository, USER_HOME, ORG_ID)(global, tripleStore)
 
   def actorWork(actorContext: ActorContext)(block: => Unit) = {
     try {
@@ -128,7 +130,7 @@ object OrgContext {
   }
 }
 
-class OrgContext(val authenticationService: AuthenticationService, userHome: String, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
+class OrgContext(val authenticationService: AuthenticationService, val us: UserRepository, userHome: String, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
@@ -140,9 +142,6 @@ class OrgContext(val authenticationService: AuthenticationService, userHome: Str
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir)
   lazy val sipFactory = new SipFactory(factoryDir)
-
-
-  val us = new ActorStore(authenticationService)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
@@ -157,7 +156,7 @@ class OrgContext(val authenticationService: AuthenticationService, userHome: Str
     // todo: categories too when they are no longer defined there
   }
 
-  def createDsInfo(owner: NXActor, spec: String, characterString: String, prefix: String) = {
+  def createDsInfo(owner: User, spec: String, characterString: String, prefix: String) = {
     val character = DsInfo.getCharacter(characterString).get
     DsInfo.createDsInfo(owner, spec, character, prefix)
   }

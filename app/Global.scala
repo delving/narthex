@@ -1,6 +1,6 @@
 import init.AuthenticationMode
-import org.ActorStore.NXActor
 import org.OrgContext._
+import org.{User, UserRepository}
 import play.api._
 
 
@@ -10,17 +10,19 @@ object Global extends GlobalSettings {
 
   override def beforeStart(app: Application) {
     val authMode = AuthenticationMode.fromConfigString(app.configuration.getString(AuthenticationMode.PROPERTY_NAME))
-    Logger.info(s"Narthex initializing for ${orgContext.orgId}, authMode: $authMode")
+    val backingRepo = UserRepository.Mode.fromConfigString(app.configuration.getString(UserRepository.Mode.PROPERTY_NAME))
+
+    Logger.info(s"Narthex initializing for ${orgContext.orgId}, authMode: $authMode, backingRepo: $backingRepo")
   }
 
 
   override def onStart(app: Application) {
-    val actorStore = orgContext.us
+    val userRepository = orgContext.us
     val initialPassword: String = config.getString(topActorConfigProp).
       getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set"))
-    if (!actorStore.hasAdmin) {
+    if (!userRepository.hasAdmin) {
       val topActorConfigProp = "topActor.initialPassword"
-      val admin: NXActor = actorStore.insertAdmin(initialPassword)
+      val admin: User = userRepository.insertAdmin(initialPassword)
       Logger.info(s"Inserted initial admin user, details: ${admin}")
     }
   }

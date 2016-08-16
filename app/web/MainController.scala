@@ -19,8 +19,8 @@ package web
 import java.io.{File, FileInputStream, FileNotFoundException}
 import java.util.UUID
 
-import org.ActorStore.{NXActor, NXProfile}
 import org.OrgContext._
+import org.{Profile, User}
 import play.api.Play.current
 import play.api._
 import play.api.cache.Cache
@@ -42,8 +42,8 @@ object MainController extends Controller with Security {
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
 
-  def actorSession(actor: NXActor) = ActorSession(
-    actor,
+  def userSession(user: User) = UserSession(
+    user,
     apiKey = API_ACCESS_KEYS(0),
     narthexDomain = NARTHEX_DOMAIN,
     naveDomain = NAVE_DOMAIN
@@ -61,12 +61,16 @@ object MainController extends Controller with Security {
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
     Logger.info(s"Login $username")
-    orgContext.authenticationService.authenticate(username, password).map { actorOpt =>
-      actorOpt.map { actor =>
-        val session = actorSession(actor)
-        Ok(Json.toJson(session)).withSession(session)
-      } getOrElse {
-        Unauthorized("Username/password not found")
+
+    val authenticated: Future[Boolean] = orgContext.authenticationService.authenticate(username, password)
+
+    authenticated.flatMap {
+      case false => Future.successful(Unauthorized("Username/password not found"))
+      case true => {
+        orgContext.us.loadActor(username).map { actor =>
+          val session = userSession(actor)
+          Ok(Json.toJson(session)).withSession(session)
+        }
       }
     }
   }
@@ -75,7 +79,7 @@ object MainController extends Controller with Security {
     val maybeToken = request.headers.get(TOKEN)
     maybeToken flatMap {
       token =>
-        Cache.getAs[ActorSession](token) map { session =>
+        Cache.getAs[UserSession](token) map { session =>
           Ok(Json.toJson(session)).withSession(session)
         }
     } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
@@ -93,7 +97,7 @@ object MainController extends Controller with Security {
   }
 
   def setProfile() = SecureAsync(parse.json) { session => implicit request =>
-    val nxProfile = NXProfile(
+    val nxProfile = Profile(
       firstName = (request.body \ "firstName").as[String],
       lastName = (request.body \ "lastName").as[String],
       email = (request.body \ "email").as[String]

@@ -19,8 +19,8 @@ package mapping
 import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
-import org.ActorStore.NXActor
 import org.OrgContext.NX_URI_PREFIX
+import org.{OrgContext, User}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -70,12 +70,12 @@ object VocabInfo {
 
   def getVocabGraphName(spec: String) = createGraphName(s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}")
 
-  def createVocabInfo(owner: NXActor, spec: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[VocabInfo] = {
+  def createVocabInfo(owner: User, spec: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[VocabInfo] = {
     val m = ModelFactory.createDefaultModel()
     val subject = m.getResource(getVocabInfoUri(spec))
     m.add(subject, m.getProperty(rdfType), m.getResource(skosCollection))
     m.add(subject, m.getProperty(skosSpec.uri), m.createLiteral(spec))
-    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
+    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(OrgContext.NX_URI_PREFIX)))
     ts.up.dataPost(getGraphName(spec), m).map(ok => new VocabInfo(spec))
   }
 
