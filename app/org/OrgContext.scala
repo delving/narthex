@@ -67,13 +67,6 @@ class OrgContext(val cacheApi: CacheApi, val wsClient: WSClient, val harvestTime
   rawDir.mkdirs()
   sipsDir.mkdirs()
 
-  def clear() = {
-    clearDir(datasetsDir)
-    clearDir(sipsDir)
-    clearDir(rawDir)
-    // todo: categories too when they are no longer defined there
-  }
-
   def createDsInfo(owner: User, spec: String, characterString: String, prefix: String) = {
     val character = DsInfo.getCharacter(characterString).get
     DsInfo.createDsInfo(owner, spec, character, prefix, this)

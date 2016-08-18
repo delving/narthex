@@ -244,11 +244,6 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     }
   }
 
-  //  def histograms(path: String, size: Int): Option[File] = nodeRepo(path).map { repo =>
-  //    val fileList = repo.histogramJson.filter(pair => pair._1 == size)
-  //    fileList.headOption.map(_._2)
-  //  } getOrElse None
-  //
   def histogram(path: String, size: Int): Option[File] = nodeRepo(path).map { repo =>
     val fileList = repo.histogramJson.filter(pair => pair._1 == size)
     fileList.headOption.map(_._2)
