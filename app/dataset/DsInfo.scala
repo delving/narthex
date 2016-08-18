@@ -319,11 +319,9 @@ class DsInfo(val spec: String, orgContext: OrgContext)(implicit ec: ExecutionCon
             line match {
               case LineId(graphName, currentHash) => true
               case _ => false
-            }}.map{line =>
-            line match {
-              case LineId(graphName, currentHash) =>  graphName
-              case _ =>
-            }
+            }}.map {
+            case LineId(graphName, currentHash) => graphName
+            case _ =>
           }
         }
       }
@@ -509,7 +507,6 @@ class DsInfo(val spec: String, orgContext: OrgContext)(implicit ec: ExecutionCon
   def removeNaveOrphans(timeStamp: String) = {
     val actionMap = Json.obj(
       "dataset" -> spec,
-      // "acceptanceMode" -> acceptanceModeString,
       "action" -> "clear_orphans",
       "modification_date" -> timeStamp
     )
@@ -519,7 +516,6 @@ class DsInfo(val spec: String, orgContext: OrgContext)(implicit ec: ExecutionCon
   def disableInNaveIndex() = {
     val actionMap = Json.obj(
       "dataset" -> spec,
-      // "acceptanceMode" -> acceptanceModeString,
       "action" -> "disable_index"
     )
     bulkApiUpdate(s"${actionMap.toString()}\n")
@@ -528,7 +524,6 @@ class DsInfo(val spec: String, orgContext: OrgContext)(implicit ec: ExecutionCon
   def removeNaveDataSet() = {
     val actionMap = Json.obj(
       "dataset" -> spec,
-      // "acceptanceMode" -> acceptanceModeString,
       "action" -> "drop_dataset"
     )
     bulkApiUpdate(s"${actionMap.toString()}\n")
@@ -540,11 +535,9 @@ class DsInfo(val spec: String, orgContext: OrgContext)(implicit ec: ExecutionCon
     val (spec, localId) = extractSpecIdFromGraphName(id)
     val hubId = s"${orgContext.orgId}_${spec}_$localId"
     // val currentSkosFields = dsInfo.getLiteralPropList(skosField)
-    val acceptanceModeString= "false"
     val actionMap = Json.obj(
       "hubId" -> hubId,
       "dataset" -> spec,
-      // "acceptanceMode" -> acceptanceModeString,
       "graphUri" -> id,
       "type" -> "void_EDMRecord",
       "action" -> "index",
