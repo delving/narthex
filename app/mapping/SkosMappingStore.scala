@@ -36,11 +36,11 @@ object SkosMappingStore {
 
     val deleteQ = deleteMappingQ(uriA, uriB)
 
-    def insertQ(skosA: SkosGraph, skosB: SkosGraph, orgContext: OrgContext) = {
+    def insertQ(skosA: SkosGraph, skosB: SkosGraph, nxUriPrefix: String) = {
 
       val uuid = UUID.randomUUID().toString
 
-      val uri = s"${actor.uri(orgContext.nxUriPrefix)}/mapping/$uuid"
+      val uri = s"${actor.uri(nxUriPrefix)}/mapping/$uuid"
 
       val graphName = createGraphName(uri)
 
@@ -64,7 +64,7 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, orgContext: OrgConte
       }
       else {
         // todo insert mapping to nave here
-        ts.up.sparqlUpdate(mapping.insertQ(skosA, skosB, orgContext)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertQ(skosA, skosB, orgContext.nxUriPrefix)).map(ok => "added")
       }
     }
   }
@@ -101,7 +101,7 @@ class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext)(implicit ec
       "delete" -> delete
     )
 
-    request.post(json) // .map(checkUpdateResponse(_, json))
+    request.post(json)
   }
 
   def toggleMapping(mapping: SkosMapping, vocabGraph: SkosGraph): Future[String] = {
@@ -112,7 +112,7 @@ class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext)(implicit ec
       }
       else {
         toggleNaveMapping(mapping, false)
-        ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph, orgContext)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph, orgContext.nxUriPrefix)).map(ok => "added")
       }
     }
   }
