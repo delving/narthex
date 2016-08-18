@@ -21,7 +21,7 @@ import dataset.DatasetActor.{FromScratchIncremental, ModifiedAfter, StartHarvest
 import dataset.DsInfo
 import dataset.DsInfo.withDsInfo
 import harvest.PeriodicHarvest.ScanForHarvests
-import org.{OrgActor, OrgContext}
+import org.OrgContext
 import play.api.Logger
 import services.Temporal.DelayUnit
 
@@ -67,7 +67,7 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
               val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, justDate) else FromScratchIncremental
               val startHarvest = StartHarvest(strategy)
               log.info(s"$info incremental harvest kickoff $startHarvest")
-              OrgActor.actor(orgContext) ! info.createMessage(startHarvest)
+              orgContext.orgActor ! info.createMessage(startHarvest)
             }
           }
 

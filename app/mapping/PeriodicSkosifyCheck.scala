@@ -4,7 +4,7 @@ import akka.actor.{Actor, Props}
 import dataset.DatasetActor.StartSkosification
 import dataset.DsInfo
 import mapping.PeriodicSkosifyCheck.ScanForWork
-import org.{OrgActor, OrgContext}
+import org.OrgContext
 import play.api.Logger
 import triplestore.Sparql._
 
@@ -35,7 +35,7 @@ class PeriodicSkosifyCheck(orgContext: OrgContext) extends Actor {
           DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
             skosifiedFields.map { sf =>
               ts.ask(skosificationCasesExistQ(sf)).map(exists => if (exists) {
-                OrgActor.actor(orgContext) ! dsInfo.createMessage(StartSkosification(sf))
+                orgContext.orgActor ! dsInfo.createMessage(StartSkosification(sf))
               })
             }
           }

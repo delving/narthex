@@ -18,7 +18,7 @@ package org
 
 import java.io.File
 
-import akka.actor.ActorContext
+import akka.actor.{ActorContext, ActorRef}
 import dataset.DatasetActor.WorkFailure
 import dataset.DsInfo.withDsInfo
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
@@ -44,7 +44,7 @@ import scala.language.postfixOps
   * allowing this class to be deleted, which I vow to do.
   */
 class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsClient: WSClient, val mailService: MailService,
-                 val authenticationService: AuthenticationService, val us: UserRepository)
+                 val authenticationService: AuthenticationService, val us: UserRepository, val orgActor: ActorRef)
                 (implicit ec: ExecutionContext, val ts: TripleStore) {
 
   val root = appConfig.narthexDataDir
@@ -102,7 +102,7 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsClient:
   def startCategoryCounts() = {
     val catDatasets = DsInfo.listDsInfo(this).map(_.filter(_.getBooleanProp(categoriesInclude)))
     catDatasets.map { dsList =>
-      OrgActor.actor(this) ! DatasetsCountCategories(dsList.map(_.spec))
+      orgActor ! DatasetsCountCategories(dsList.map(_.spec))
     }
   }
 

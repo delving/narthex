@@ -3,6 +3,7 @@ package init
 import java.io.File
 import java.util
 
+import akka.actor.{ActorRef, Props}
 import com.kenshoo.play.metrics.{MetricsController, MetricsImpl}
 import controllers.WebJarAssets
 import harvest.PeriodicHarvest
@@ -19,6 +20,7 @@ import web.{APIController, AppController, MainController, SipAppController}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.mailer._
 import play.api.libs.ws.WSClient
+import play.libs.Akka
 import services.{MailService, MailServiceImpl}
 
 import scala.concurrent.duration._
@@ -55,18 +57,16 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   with EhCacheComponents
   with MailerComponents {
 
-
-
-
   val appConfig = initAppConfig
 
 
   lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsClient,
-    mailService, authenticationService, userRepository)
+    mailService, authenticationService, userRepository, orgActorRef)
 
   lazy val router = new Routes(httpErrorHandler, mainController, appController,
     sipAppController, apiController, webJarAssets, assets, metricsController)
 
+  lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(new OrgActor(orgContext)), appConfig.orgId)
 
   private lazy val metrics = new MetricsImpl(applicationLifecycle, configuration)
 

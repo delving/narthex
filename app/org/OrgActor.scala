@@ -21,7 +21,6 @@ import dataset.DatasetActor._
 import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.CategoryCountComplete
 import org.OrgActor._
-import play.libs.Akka
 
 import scala.language.postfixOps
 
@@ -30,8 +29,6 @@ import scala.language.postfixOps
  */
 
 object OrgActor {
-
-  def actor(orgContext: OrgContext): ActorRef = Akka.system.actorOf(Props(new OrgActor(orgContext)), orgContext.appConfig.orgId)
 
   case class DatasetMessage(spec: String, message: AnyRef)
 

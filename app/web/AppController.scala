@@ -62,7 +62,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implici
     }
   }
 
-  def sendRefresh(spec: String) = OrgActor.actor(orgContext) ! DatasetMessage(spec, Command("refresh"))
+  def sendRefresh(spec: String) = orgContext.orgActor ! DatasetMessage(spec, Command("refresh"))
 
   def datasetSocket = WebSocket.acceptWithActor[String, String] { request => out =>
     DatasetSocketActor.props(out)
@@ -88,7 +88,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implici
   }
 
   def command(spec: String, command: String) = Secure() { session => request =>
-    OrgActor.actor(orgContext) ! DatasetMessage(spec, Command(command))
+    orgContext.orgActor ! DatasetMessage(spec, Command(command))
     Ok
   }
 
