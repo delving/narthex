@@ -30,7 +30,7 @@ class MyApplicationLoader extends ApplicationLoader {
   val topActorConfigProp = "topActor.initialPassword"
 
   def load(context: Context) = {
-    Logger.info("initializing the application in play 2.4-style")
+    Logger.info("Narthex starting up...")
 
     val components = new MyComponents(context)
     val initialPassword: String = context.initialConfiguration.getString(topActorConfigProp).getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set"))
