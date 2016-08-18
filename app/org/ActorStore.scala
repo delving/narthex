@@ -16,6 +16,7 @@
 
 package org
 
+import nxutil.Utils
 import play.api.Logger
 import triplestore.Sparql._
 import triplestore.{Sparql, TripleStore}

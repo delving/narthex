@@ -19,7 +19,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.WorkFailure
 import dataset.DsInfo
 import org.OrgContext
-import org.OrgContext._
+import nxutil.Utils._
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState
 import services.StringHandling.slugify

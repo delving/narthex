@@ -1,6 +1,9 @@
-package org
+package nxutil
 
 import java.security.MessageDigest
+
+import akka.actor.ActorContext
+import dataset.DatasetActor.WorkFailure
 
 object Utils {
 
@@ -12,5 +15,15 @@ object Utils {
     val salted = password + salt
     val ba = digest.digest(salted.getBytes("UTF-8"))
     ba.map("%02x".format(_)).mkString
+  }
+
+  def actorWork(actorContext: ActorContext)(block: => Unit) = {
+    try {
+      block
+    }
+    catch {
+      case e: Throwable =>
+        actorContext.parent ! WorkFailure(e.getMessage, Some(e))
+    }
   }
 }

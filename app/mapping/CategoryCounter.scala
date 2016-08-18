@@ -24,7 +24,7 @@ import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories, Counter}
 import mapping.VocabInfo._
 import org.OrgContext
-import org.OrgContext.actorWork
+import nxutil.Utils.actorWork
 import org.joda.time.DateTime
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._

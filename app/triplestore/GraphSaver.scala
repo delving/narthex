@@ -21,7 +21,7 @@ import dataset.DatasetActor.{Incremental, WorkFailure}
 import dataset.DatasetContext
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import org.OrgContext
-import org.OrgContext._
+import nxutil.Utils._
 import org.joda.time.DateTime
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._

@@ -37,19 +37,6 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.language.postfixOps
 
-object OrgContext {
-
-  def actorWork(actorContext: ActorContext)(block: => Unit) = {
-    try {
-      block
-    }
-    catch {
-      case e: Throwable =>
-        actorContext.parent ! WorkFailure(e.getMessage, Some(e))
-    }
-  }
-}
-
 /**
   * Best way to describe this class is that it has functioned as some means of passing around globals.
   * It is obvious that we need to remove this class and only DI the specific values that a component requires,

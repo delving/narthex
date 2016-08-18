@@ -1,5 +1,7 @@
 package org
 
+import nxutil.Utils
+
 case class Profile(val firstName: String, val lastName: String, val email: String)
 
 case class User(val userNameProposed: String, val makerOpt: Option[String],

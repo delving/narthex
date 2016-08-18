@@ -25,7 +25,7 @@ import dataset.DatasetActor._
 import dataset.DatasetContext
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, NoRecordsMatch, PMHHarvestPage}
-import org.OrgContext.actorWork
+import nxutil.Utils.actorWork
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import services.ProgressReporter.ProgressState._
