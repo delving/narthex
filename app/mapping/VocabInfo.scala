@@ -19,13 +19,10 @@ package mapping
 import java.io.StringWriter
 
 import com.hp.hpl.jena.rdf.model._
-import org.OrgContext.NX_URI_PREFIX
-import org.{OrgContext, User}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
+import org.{OrgContext, User}
 import play.api.Logger
-import play.api.Play.current
-import play.api.cache.Cache
 import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.{createGraphName, urlEncodeValue}
 import services.Temporal._
@@ -58,59 +55,59 @@ object VocabInfo {
     }
   }
 
-  def listVocabInfo(implicit ec: ExecutionContext, ts: TripleStore): Future[List[VocabInfo]] = {
+  def listVocabInfo(orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[List[VocabInfo]] = {
     ts.query(listVocabInfoQ).map { list =>
-      list.map(entry => new VocabInfo(spec = entry("spec").text))
+      list.map(entry => new VocabInfo(spec = entry("spec").text, orgContext))
     }
   }
 
-  def getVocabInfoUri(spec: String) = s"$NX_URI_PREFIX/skos-info/${urlEncodeValue(spec)}"
+  def getVocabInfoUri(spec: String, orgContext: OrgContext) = s"${orgContext.NX_URI_PREFIX}/skos-info/${urlEncodeValue(spec)}"
 
-  def getGraphName(spec: String) = createGraphName(getVocabInfoUri(spec))
+  def getGraphName(spec: String, orgContext: OrgContext) = createGraphName(getVocabInfoUri(spec, orgContext))
 
-  def getVocabGraphName(spec: String) = createGraphName(s"$NX_URI_PREFIX/skos/${urlEncodeValue(spec)}")
+  def getVocabGraphName(spec: String, orgContext: OrgContext) = createGraphName(s"${orgContext.NX_URI_PREFIX}/skos/${urlEncodeValue(spec)}")
 
-  def createVocabInfo(owner: User, spec: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[VocabInfo] = {
+  def createVocabInfo(owner: User, spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[VocabInfo] = {
     val m = ModelFactory.createDefaultModel()
-    val subject = m.getResource(getVocabInfoUri(spec))
+    val subject = m.getResource(getVocabInfoUri(spec, orgContext))
     m.add(subject, m.getProperty(rdfType), m.getResource(skosCollection))
     m.add(subject, m.getProperty(skosSpec.uri), m.createLiteral(spec))
-    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(OrgContext.NX_URI_PREFIX)))
-    ts.up.dataPost(getGraphName(spec), m).map(ok => new VocabInfo(spec))
+    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.NX_URI_PREFIX)))
+    ts.up.dataPost(getGraphName(spec, orgContext), m).map(ok => new VocabInfo(spec, orgContext))
   }
 
-  def freshVocabInfo(spec: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[Option[VocabInfo]] = {
-    val infoUri = getVocabInfoUri(spec)
-    ts.ask(checkVocabQ(infoUri)).map(answer => if (answer) Some(new VocabInfo(spec)) else None)
+  def freshVocabInfo(spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[Option[VocabInfo]] = {
+    val infoUri = getVocabInfoUri(spec, orgContext)
+    ts.ask(checkVocabQ(infoUri)).map(answer => if (answer) Some(new VocabInfo(spec, orgContext)) else None)
   }
 
-  def withVocabInfo[T](spec: String)(block: VocabInfo => T)(implicit ec: ExecutionContext, ts: TripleStore) = {
-    val cacheName = getVocabInfoUri(spec)
-    Cache.getAs[VocabInfo](cacheName) map { vocabInfo =>
+  def withVocabInfo[T](spec: String, orgContext: OrgContext)(block: VocabInfo => T)(implicit ec: ExecutionContext, ts: TripleStore) = {
+    val cacheName = getVocabInfoUri(spec, orgContext)
+    orgContext.cacheApi.get[VocabInfo](cacheName) map { vocabInfo =>
       block(vocabInfo)
     } getOrElse {
-      val vocabInfo = Await.result(freshVocabInfo(spec), patience).getOrElse {
+      val vocabInfo = Await.result(freshVocabInfo(spec, orgContext), patience).getOrElse {
         throw new RuntimeException(s"No skos info for $spec")
       }
-      Cache.set(cacheName, vocabInfo, cacheTime)
+      orgContext.cacheApi.set(cacheName, vocabInfo, cacheTime)
       block(vocabInfo)
     }
   }
 }
 
-class VocabInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) extends SkosGraph {
+class VocabInfo(val spec: String, val orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore) extends SkosGraph {
 
   import mapping.VocabInfo._
 
   def now: String = timeToString(new DateTime())
 
-  val uri = getVocabInfoUri(spec)
+  val uri = getVocabInfoUri(spec, orgContext)
 
-  val graphName = getGraphName(spec)
+  val graphName = getGraphName(spec, orgContext)
 
   val skosified = false
 
-  val skosGraphName = getVocabGraphName(spec)
+  val skosGraphName = getVocabGraphName(spec, orgContext)
 
   // could cache as well so that the get happens less
   def futureModel = ts.dataGet(graphName)
@@ -129,7 +126,7 @@ class VocabInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore
 
   def getTimeProp(prop: NXProp): Option[DateTime] = getLiteralProp(prop).map(stringToTime)
 
-  def getBooleanProp(prop: NXProp) = getLiteralProp(prop).exists(_ == "true")
+  def getBooleanProp(prop: NXProp) = getLiteralProp(prop).contains("true")
 
   def setSingularLiteralProps(propVal: (NXProp, String)*): Unit = {
     val sparqlPerProp = propVal.map(pv => updatePropertyQ(graphName, uri, pv._1, pv._2))

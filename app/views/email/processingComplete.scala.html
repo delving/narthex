@@ -1,4 +1,4 @@
-@(mail: services.MailService.MailProcessingComplete)
+@(spec: String, valids: String, invalids: String)
 <html>
     <head>
         <style type="text/css">
@@ -33,13 +33,13 @@
         </style>
     </head>
     <body>
-        <h1 class="narthex-heading">Processing of dataset <span class="narthex-spec">@{mail.spec}</span> completed.</h1>
+        <h1 class="narthex-heading">Processing of dataset <span class="narthex-spec">@{spec}</span> completed.</h1>
         <ul class="narthex-list">
             <li>
-                Valid records: <span class="narthex-count">@{mail.validString}</span>
+                Valid records: <span class="narthex-count">@{valids}</span>
             </li>
             <li>
-                Invalid records: <span class="narthex-count">@(mail.invalidString)</span>
+                Invalid records: <span class="narthex-count">@(invalids)</span>
             </li>
         </ul>
         <hr/>

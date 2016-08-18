@@ -16,20 +16,13 @@
 
 package triplestore
 
-import java.io.{InputStream, OutputStream}
-import java.util
-import javax.xml.ws.http.HTTPException
-
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Incremental, WorkFailure}
-import dataset.{DatasetContext, DsInfo}
+import dataset.DatasetContext
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import org.OrgContext
 import org.OrgContext._
 import org.joda.time.DateTime
-import play.api.Logger
-import play.api.libs.ws.{WS, WSResponse}
-import play.api.Play.current
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 
@@ -39,16 +32,16 @@ object GraphSaver {
 
   case class SaveGraphs(incrementalOpt: Option[Incremental])
 
-  def props(datasetContext: DatasetContext) = Props(new GraphSaver(datasetContext))
+  def props(datasetContext: DatasetContext, orgContext: OrgContext) = Props(new GraphSaver(datasetContext, orgContext))
 
 }
 
-class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging {
+class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) extends Actor with ActorLogging {
 
   import context.dispatcher
   import triplestore.GraphSaver._
 
-  implicit val ts = OrgContext.TS
+  implicit val ts = orgContext.TS
 
   val saveTime = new DateTime()
   var reader: Option[GraphReader] = None
@@ -81,8 +74,8 @@ class GraphSaver(datasetContext: DatasetContext) extends Actor with ActorLogging
     }
 
     case Some(chunk: GraphChunk) => actorWork(context) {
-      log.info(s"Save a chunk of graphs (bulk-api: ${OrgContext.USE_BULK_API})")
-      val update = if (OrgContext.USE_BULK_API) chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ) else ts.up.sparqlUpdate(chunk.sparqlUpdateQ)
+      log.info(s"Save a chunk of graphs (bulk-api: ${orgContext.USE_BULK_API})")
+      val update = if (orgContext.USE_BULK_API) chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.orgId)) else ts.up.sparqlUpdate(chunk.sparqlUpdateQ)
       update.map(ok => sendGraphChunkOpt())
       update.onFailure {
         case ex: Throwable => failure(ex)

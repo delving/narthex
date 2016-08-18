@@ -31,7 +31,7 @@ object Skosifier {
 
   case class SkosificationComplete(skosifiedField: SkosifiedField)
 
-  def props(dsInfo: DsInfo) = Props(new Skosifier(dsInfo))
+  def props(dsInfo: DsInfo, orgContext: OrgContext) = Props(new Skosifier(dsInfo, orgContext))
 
   case class SkosificationJob(skosifiedField: SkosifiedField, cases: List[SkosificationCase]) {
     val ensureSkosEntries = cases.map(_.ensureSkosEntryQ).mkString
@@ -42,12 +42,12 @@ object Skosifier {
 
 }
 
-class Skosifier(dsInfo: DsInfo) extends Actor with ActorLogging {
+class Skosifier(dsInfo: DsInfo, orgContext: OrgContext) extends Actor with ActorLogging {
 
   import context.dispatcher
   import mapping.Skosifier._
 
-  implicit val ts = OrgContext.TS
+  implicit val ts = orgContext.TS
 
   var progressOpt: Option[ProgressReporter] = None
   var progressCount = 0

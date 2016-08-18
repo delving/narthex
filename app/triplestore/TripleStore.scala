@@ -21,9 +21,8 @@ import java.io.{File, StringReader, StringWriter}
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
 import com.ning.http.client.providers.netty.response.NettyResponse
 import play.api.Logger
-import play.api.Play.current
 import play.api.libs.json.JsObject
-import play.api.libs.ws.{WS, WSResponse}
+import play.api.libs.ws.{WSAPI, WSResponse}
 import triplestore.TripleStore.{QueryValue, TripleStoreException}
 
 import scala.concurrent._
@@ -81,10 +80,10 @@ trait TripleStore {
 
 
 
-class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContext: ExecutionContext) extends TripleStore {
+class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val executionContext: ExecutionContext) extends TripleStore {
   var queryIndex = 0
 
-  private def dataRequest(graphUri: String) = WS.url(s"$storeURL/data").withQueryString("graph" -> graphUri)
+  private def dataRequest(graphUri: String) = wsApi.url(s"$storeURL/data").withQueryString("graph" -> graphUri)
 
   private def toLog(sparql: String): String = {
     queryIndex += 1
@@ -97,7 +96,7 @@ class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContex
 
   override def ask(sparqlQuery: String): Future[Boolean] = {
     logSparql(sparqlQuery)
-    val request = WS.url(s"$storeURL/query").withQueryString(
+    val request = wsApi.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
       "output" -> "json"
     )
@@ -111,7 +110,7 @@ class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContex
 
   override def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = {
     logSparql(sparqlQuery)
-    val request = WS.url(s"$storeURL/query").withQueryString(
+    val request = wsApi.url(s"$storeURL/query").withQueryString(
       "query" -> sparqlQuery,
       "output" -> "json"
     )
@@ -157,7 +156,7 @@ class Fuseki(storeURL: String, logQueries: Boolean)(implicit val executionContex
 
     override def sparqlUpdate(sparqlUpdate: String) = {
       logSparql(sparqlUpdate)
-      val request = WS.url(s"$storeURL/update").withHeaders(
+      val request = wsApi.url(s"$storeURL/update").withHeaders(
         "Content-Type" -> "application/sparql-update; charset=utf-8"
       )
       request.post(sparqlUpdate).map(checkUpdateResponse(_, sparqlUpdate))

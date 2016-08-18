@@ -24,6 +24,7 @@ import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
 import dataset.SipRepo.URIErrorsException
 import eu.delving.groovy.DiscardRecordException
+import org.OrgContext
 import org.OrgContext.actorWork
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.joda.time.{DateTime, LocalDateTime}
@@ -52,11 +53,11 @@ object SourceProcessor {
 
   case class ProcessingComplete(validRecords: Int, invalidRecords: Int, incrementalOpt: Option[Incremental])
 
-  def props(datasetContext: DatasetContext) = Props(new SourceProcessor(datasetContext))
+  def props(datasetContext: DatasetContext, orgContext: OrgContext) = Props(new SourceProcessor(datasetContext, orgContext))
 
 }
 
-class SourceProcessor(val datasetContext: DatasetContext) extends Actor with ActorLogging {
+class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext) extends Actor with ActorLogging {
 
   var progress: Option[ProgressReporter] = None
   val dsInfo = datasetContext.dsInfo

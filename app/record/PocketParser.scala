@@ -19,20 +19,14 @@ package record
 import java.io.{ByteArrayInputStream, Writer}
 import java.security.{MessageDigest, NoSuchAlgorithmException}
 
-import akka.actor.Status.Success
 import dataset.DsInfo
 import dataset.SourceRepo.{IdFilter, SourceFacts}
 import org.OrgContext
-import play.api.Play.current
 import play.api.Logger
-import play.api.libs.json.Json
-import play.api.libs.ws.{WS, WSResponse}
 import services.StringHandling._
 import services._
-import triplestore.GraphProperties._
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
 import scala.xml.pull._
@@ -69,12 +63,11 @@ object PocketParser {
 //      }
     }
 
-    implicit val ts = OrgContext.TS
-
-    def storeBulkAction(triples: String, id: String, hash: String) = {
+    def storeBulkAction(triples: String, id: String, hash: String, orgContext: OrgContext) = {
       val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
       val SpecIdExtractor(spec, localId) = id
-      val dsInfo = DsInfo.getDsInfo(spec)
+      implicit val ts = orgContext.ts
+      val dsInfo = DsInfo.getDsInfo(spec, orgContext)
       val bulkAction = dsInfo.createBulkAction(triples, id, hash)
       dsInfo.bulkApiUpdate(bulkAction)
     }

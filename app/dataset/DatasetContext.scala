@@ -26,7 +26,6 @@ import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
 import harvest.Harvesting.HarvestType
-import org.OrgContext._
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.{OrgActor, OrgContext}
 import play.api.Logger
@@ -60,7 +59,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   val treeRoot = new NodeRepo(this, treeDir)
 
-  lazy val sipRepo = new SipRepo(sipsDir, dsInfo.spec, RDF_BASE_URL)
+  lazy val sipRepo = new SipRepo(sipsDir, dsInfo.spec, orgContext.RDF_BASE_URL)
 
   lazy val processedRepo = new ProcessedRepo(processedDir, dsInfo)
 
@@ -82,7 +81,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       case None =>
         dropTree()
         createSourceRepo(SourceFacts("raw", recordRoot, uniqueId, None))
-        OrgActor.actor ! dsInfo.createMessage(AdoptSource(raw))
+        OrgActor.actor(orgContext) ! dsInfo.createMessage(AdoptSource(raw))
     }
   }
 
@@ -92,7 +91,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
 
-    def sendRefresh() = OrgActor.actor ! dsInfo.createMessage(Command("refresh"))
+    def sendRefresh() = OrgActor.actor(orgContext) ! dsInfo.createMessage(Command("refresh"))
 
     if (fileName.endsWith(".csv")) {
       val csvFile = setTargetFile(createRawFile(fileName))
@@ -145,7 +144,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
           if (sip.containsSource) {
             createSourceRepo(PocketParser.POCKET_SOURCE_FACTS)
             sip.copySourceToTempFile.map { sourceFile =>
-              OrgActor.actor ! dsInfo.createMessage(AdoptSource(sourceFile))
+              OrgActor.actor(orgContext) ! dsInfo.createMessage(AdoptSource(sourceFile))
               sendRefresh()
               None
             } getOrElse {
@@ -223,7 +222,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     dsInfo.dropDatasetRecords
   }
 
-  def startSipZipGeneration() = OrgActor.actor ! dsInfo.createMessage(GenerateSipZip)
+  def startSipZipGeneration() = OrgActor.actor(orgContext) ! dsInfo.createMessage(GenerateSipZip)
 
   // ==================================================
 

@@ -16,17 +16,13 @@
 
 package harvest
 
-import java.io.BufferedReader
-
 import com.ning.http.client.providers.netty.response.NettyResponse
 import dataset.DatasetActor._
-import org.OrgContext._
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.ws.WS
 import play.libs.Akka
-import services.FileHandling
 import services.Temporal._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -130,10 +126,11 @@ trait Harvesting {
       default
   }
 
-  def fetchAdLibPage(strategy: HarvestStrategy, url: String, database: String, search: String,
-                     diagnosticOption: Option[AdLibDiagnostic] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
+  def fetchAdLibPage(timeOut: Long, strategy: HarvestStrategy, url: String, database: String, search: String,
+                     diagnosticOption: Option[AdLibDiagnostic] = None)
+                    (implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
-    val requestUrl = WS.url(url).withRequestTimeout(HARVEST_TIMEOUT)
+    val requestUrl = WS.url(url).withRequestTimeout(timeOut)
     // UMU 2014-10-16T15:00
     val searchModified = strategy match {
       case ModifiedAfter(mod, _) =>
@@ -174,12 +171,12 @@ trait Harvesting {
     }
   }
 
-  def fetchPMHPage(strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
+  def fetchPMHPage(timeOut: Long, strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
                    resumption: Option[PMHResumptionToken] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
 
     Logger.debug(s"start fetch PMH Page: $url, $resumption")
     val listRecords = WS.url(url)
-      .withRequestTimeout(HARVEST_TIMEOUT)
+      .withRequestTimeout(timeOut)
       .withQueryString("verb" -> "ListRecords")
     val request = resumption match {
       case None =>

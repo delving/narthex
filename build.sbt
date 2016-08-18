@@ -99,4 +99,4 @@ javaOptions += "-Djava.awt.headless=true"
 
 PlayKeys.fileWatchService := play.runsupport.FileWatchService.sbt(pollInterval.value)
 
-routesGenerator := StaticRoutesGenerator
+routesGenerator := InjectedRoutesGenerator

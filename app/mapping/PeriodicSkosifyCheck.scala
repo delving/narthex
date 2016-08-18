@@ -12,15 +12,14 @@ object PeriodicSkosifyCheck {
 
   case object ScanForWork
 
-  def props() = Props[PeriodicSkosifyCheck]
-
+  def props(orgContext: OrgContext) = Props(new PeriodicSkosifyCheck(orgContext))
 }
 
-class PeriodicSkosifyCheck extends Actor {
+class PeriodicSkosifyCheck(orgContext: OrgContext) extends Actor {
 
   import context.dispatcher
 
-  implicit val ts = OrgContext.TS
+  implicit val ts = orgContext.TS
 
   val log = Logger.logger
 
@@ -33,11 +32,11 @@ class PeriodicSkosifyCheck extends Actor {
         perDataset.map { entry =>
           val spec = entry._1
           val skosifiedFields = entry._2
-          DsInfo.withDsInfo(spec) { dsInfo =>
+          DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
             skosifiedFields.map { sf =>
               ts.ask(skosificationCasesExistQ(sf)).map(exists => if (exists) {
 //                log.info(s"Work for $sf: sending StartSkosification")
-                OrgActor.actor ! dsInfo.createMessage(StartSkosification(sf))
+                OrgActor.actor(orgContext) ! dsInfo.createMessage(StartSkosification(sf))
               })
             }
           }

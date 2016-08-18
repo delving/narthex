@@ -19,11 +19,9 @@ import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import dataset.SipRepo.FACTS_FILE
-import org.OrgContext
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.Logger
-import play.api.Play.current
-import play.api.libs.ws.WS
+import play.api.libs.ws.WSClient
 import triplestore.GraphProperties._
 
 import scala.concurrent.duration._
@@ -78,15 +76,15 @@ object SipFactory {
 
 }
 
-class SipFactory(home: File)(implicit ec: ExecutionContext) {
+class SipFactory(home: File, rdfBaseUrl: String, wsClient: WSClient)(implicit ec: ExecutionContext) {
 
-  lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map(new SipPrefixRepo(_))
+  lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map( home => new SipPrefixRepo(home, rdfBaseUrl, wsClient))
 
   def prefixRepo(prefix: String) = prefixRepos.find(_.prefix == prefix)
 
 }
 
-class SipPrefixRepo(home: File)(implicit ec: ExecutionContext) {
+class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient)(implicit ec: ExecutionContext) {
 
   import dataset.SipFactory._
 
@@ -110,7 +108,7 @@ class SipPrefixRepo(home: File)(implicit ec: ExecutionContext) {
   lazy val schemaVersions = recordDefinition.getName.substring(0, recordDefinition.getName.length - RECORD_DEFINITION_SUFFIX.length)
 
   private def differenceWithSchemasDelvingEu(file: File): Option[String] = {
-    val fo :Future[Option[String]] = WS.url(s"http://schemas.delving.eu/$prefix/${file.getName}").get().map { response =>
+    val fo :Future[Option[String]] = ws.url(s"http://schemas.delving.eu/$prefix/${file.getName}").get().map { response =>
       val fileLines = FileUtils.readFileToString(file).trim.split("\n")
       val onlineLines = response.body.trim.split("\n")
       if (fileLines.size != onlineLines.size) {
@@ -148,7 +146,7 @@ class SipPrefixRepo(home: File)(implicit ec: ExecutionContext) {
          |language=${facts.language}
          |schemaVersions=$schemaVersions
          |rights=${facts.rights}
-         |baseUrl=${OrgContext.RDF_BASE_URL}
+         |baseUrl=${rdfBaseUrl}
          |""".stripMargin
     zos.write(factsString.getBytes("UTF-8"))
     zos.closeEntry()
