@@ -31,7 +31,7 @@ import scala.language.postfixOps
 
 object OrgActor {
 
-  def actor(orgContext: OrgContext): ActorRef = Akka.system.actorOf(Props(new OrgActor(orgContext)), orgContext.orgId)
+  def actor(orgContext: OrgContext): ActorRef = Akka.system.actorOf(Props(new OrgActor(orgContext)), orgContext.appConfig.orgId)
 
   case class DatasetMessage(spec: String, message: AnyRef)
 

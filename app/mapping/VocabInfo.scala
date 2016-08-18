@@ -61,18 +61,18 @@ object VocabInfo {
     }
   }
 
-  def getVocabInfoUri(spec: String, orgContext: OrgContext) = s"${orgContext.nxUriPrefix}/skos-info/${urlEncodeValue(spec)}"
+  def getVocabInfoUri(spec: String, orgContext: OrgContext) = s"${orgContext.appConfig.nxUriPrefix}/skos-info/${urlEncodeValue(spec)}"
 
   def getGraphName(spec: String, orgContext: OrgContext) = createGraphName(getVocabInfoUri(spec, orgContext))
 
-  def getVocabGraphName(spec: String, orgContext: OrgContext) = createGraphName(s"${orgContext.nxUriPrefix}/skos/${urlEncodeValue(spec)}")
+  def getVocabGraphName(spec: String, orgContext: OrgContext) = createGraphName(s"${orgContext.appConfig.nxUriPrefix}/skos/${urlEncodeValue(spec)}")
 
   def createVocabInfo(owner: User, spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[VocabInfo] = {
     val m = ModelFactory.createDefaultModel()
     val subject = m.getResource(getVocabInfoUri(spec, orgContext))
     m.add(subject, m.getProperty(rdfType), m.getResource(skosCollection))
     m.add(subject, m.getProperty(skosSpec.uri), m.createLiteral(spec))
-    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.nxUriPrefix)))
+    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.appConfig.nxUriPrefix)))
     ts.up.dataPost(getGraphName(spec, orgContext), m).map(ok => new VocabInfo(spec, orgContext))
   }
 

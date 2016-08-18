@@ -74,9 +74,9 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
     }
 
     case Some(chunk: GraphChunk) => actorWork(context) {
-      log.info(s"Save a chunk of graphs (bulk-api: ${orgContext.useBulkApi})")
-      val update = if (orgContext.useBulkApi)
-        chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.orgId))
+      log.info(s"Save a chunk of graphs (bulk-api: ${orgContext.appConfig.useBulkApi})")
+      val update = if (orgContext.appConfig.useBulkApi)
+        chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
       else
         ts.up.sparqlUpdate(chunk.sparqlUpdateQ)
       update.map(ok => sendGraphChunkOpt())

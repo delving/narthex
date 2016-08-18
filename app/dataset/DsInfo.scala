@@ -89,7 +89,7 @@ object DsInfo {
     ts.query(selectDatasetSpecsQ).map { list =>
       list.map { entry =>
         val spec = entry("spec").text
-        new DsInfo(spec, orgContext.nxUriPrefix, orgContext.naveBulkApiAuthToken, orgContext.naveApiUrl, orgContext)
+        new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)
       }
     }
   }
@@ -102,34 +102,34 @@ object DsInfo {
 
   def createDsInfo(owner: User, spec: String, character: DsCharacter, mapToPrefix: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
-    val subject = m.getResource(getDsInfoUri(spec, orgContext.nxUriPrefix))
+    val subject = m.getResource(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix))
     m.add(subject, m.getProperty(rdfType), m.getResource(datasetEntity))
     m.add(subject, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
-    m.add(subject, m.getProperty(orgId.uri), m.createLiteral(orgContext.orgId))
+    m.add(subject, m.getProperty(orgId.uri), m.createLiteral(orgContext.appConfig.orgId))
     m.add(subject, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
-    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.nxUriPrefix)))
+    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.appConfig.nxUriPrefix)))
     val trueLiteral = m.createLiteral("true")
     val falseLiteral = m.createLiteral("false")
     m.add(subject, m.getProperty(publishOAIPMH.uri), trueLiteral)
     m.add(subject, m.getProperty(publishIndex.uri), trueLiteral)
     m.add(subject, m.getProperty(publishLOD.uri), trueLiteral)
     if (mapToPrefix != "-") m.add(subject, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
-    ts.up.dataPost(getGraphName(spec, orgContext.nxUriPrefix), m).map { ok =>
-      val cacheName = getDsInfoUri(spec, orgContext.nxUriPrefix)
-      val dsInfo = new DsInfo(spec, orgContext.nxUriPrefix, orgContext.naveBulkApiAuthToken, orgContext.naveApiUrl, orgContext)
+    ts.up.dataPost(getGraphName(spec, orgContext.appConfig.nxUriPrefix), m).map { ok =>
+      val cacheName = getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)
+      val dsInfo = new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)
       orgContext.cacheApi.set(cacheName, dsInfo, cacheTime)
       dsInfo
     }
   }
 
   def freshDsInfo(spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[Option[DsInfo]] = {
-    ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec, orgContext.nxUriPrefix))).map(answer =>
-      if (answer) Some(new DsInfo(spec, orgContext.nxUriPrefix, orgContext.naveBulkApiAuthToken, orgContext.naveApiUrl, orgContext)) else None
+    ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix))).map(answer =>
+      if (answer) Some(new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)) else None
     )
   }
 
   def withDsInfo[T](spec: String, orgContext: OrgContext)(block: DsInfo => T)(implicit ec: ExecutionContext, ts: TripleStore) = {
-    val cacheName = getDsInfoUri(spec, orgContext.nxUriPrefix)
+    val cacheName = getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)
     orgContext.cacheApi.get[DsInfo](cacheName) map { dsInfo =>
       block(dsInfo)
     } getOrElse {
@@ -141,11 +141,11 @@ object DsInfo {
     }
   }
   def getDsInfo(spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore) = {
-    new DsInfo(spec, orgContext.nxUriPrefix, orgContext.naveBulkApiAuthToken, orgContext.naveApiUrl, orgContext)
+    new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)
   }
 }
 
-class DsInfo(val spec: String, val nxUriPrefix: String, val naveBulkApiAuthToken: String,
+class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: String,
              val naveApiUrl: String, val orgContext: OrgContext)
             (implicit ec: ExecutionContext, ts: TripleStore) extends SkosGraph {
 
@@ -396,7 +396,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveBulkApiAuthToken
     val request = WS.url(s"$skosFieldApi").withHeaders(
       "Content-Type" -> "application/json; charset=utf-8",
       "Accept" -> "application/json",
-      "Authorization" -> s"Token ${naveBulkApiAuthToken}"
+      "Authorization" -> s"Token ${naveApiAuthToken}"
     )
     val json = Json.obj(
       "dataset_uri" -> datasetUri,
@@ -493,7 +493,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveBulkApiAuthToken
     val request = orgContext.wsClient.url(s"$bulkApi").withHeaders(
       "Content-Type" -> "text/plain; charset=utf-8",
       "Accept" -> "application/json",
-      "Authorization" -> s"Token ${naveBulkApiAuthToken}"
+      "Authorization" -> s"Token ${naveApiAuthToken}"
     )
     request.post(bulkActions).map(checkUpdateResponse(_, bulkActions))
   }
@@ -531,7 +531,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveBulkApiAuthToken
 
   def createBulkAction(triples: String, id: String, hash: String) = {
     val (spec, localId) = extractSpecIdFromGraphName(id)
-    val hubId = s"${orgContext.orgId}_${spec}_$localId"
+    val hubId = s"${orgContext.appConfig.orgId}_${spec}_$localId"
     // val currentSkosFields = dsInfo.getLiteralPropList(skosField)
     val actionMap = Json.obj(
       "hubId" -> hubId,

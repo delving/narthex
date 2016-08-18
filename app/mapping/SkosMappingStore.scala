@@ -64,7 +64,7 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, orgContext: OrgConte
       }
       else {
         // todo insert mapping to nave here
-        ts.up.sparqlUpdate(mapping.insertQ(skosA, skosB, orgContext.nxUriPrefix)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertQ(skosA, skosB, orgContext.appConfig.nxUriPrefix)).map(ok => "added")
       }
     }
   }
@@ -88,16 +88,16 @@ class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext)(implicit ec
       }
     }
 
-    val skosMappingApi = s"${orgContext.naveApiUrl}/api/index/narthex/toggle/proxymapping/"
+    val skosMappingApi = s"${orgContext.appConfig.naveApiUrl}/api/index/narthex/toggle/proxymapping/"
     val request = WS.url(s"$skosMappingApi").withHeaders(
       "Content-Type" -> "application/json; charset=utf-8",
       "Accept" -> "application/json",
-      "Authorization" -> s"Token ${orgContext.naveBulkApiAuthToken}"
+      "Authorization" -> s"Token ${orgContext.appConfig.naveApiAuthToken}"
     )
     val json = Json.obj(
       "proxy_resource_uri" -> mapping.uriA,
       "skos_concept_uri" -> mapping.uriB,
-      "user_uri" -> mapping.actor.uri(orgContext.nxUriPrefix),
+      "user_uri" -> mapping.actor.uri(orgContext.appConfig.nxUriPrefix),
       "delete" -> delete
     )
 
@@ -112,7 +112,7 @@ class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext)(implicit ec
       }
       else {
         toggleNaveMapping(mapping, false)
-        ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph, orgContext.nxUriPrefix)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph, orgContext.appConfig.nxUriPrefix)).map(ok => "added")
       }
     }
   }

@@ -11,13 +11,14 @@ import mapping.PeriodicSkosifyCheck
 import org._
 import play.api._
 import play.api.ApplicationLoader.Context
-import play.api.cache.EhCacheComponents
+import play.api.cache.{CacheApi, EhCacheComponents}
 import play.api.libs.ws.ning.NingWSComponents
 import play.libs.Akka._
 import triplestore.Fuseki
 import web.{APIController, AppController, MainController, SipAppController}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.mailer._
+import play.api.libs.ws.WSClient
 import services.{MailService, MailServiceImpl}
 
 import scala.concurrent.duration._
@@ -55,9 +56,13 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   with MailerComponents {
 
 
-  lazy val orgContext = new OrgContext(defaultCacheApi, wsClient, harvestTimeout, useBUlkApi,
-    rdfBaseUrl, nxUriPrefix, naveApiUrl, naveBulkApiAuthToken, narthexDatadir, mailService,
-    authenticationService, userRepository, userHome, orgId)
+
+
+  val appConfig = initAppConfig
+
+
+  lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsClient,
+    mailService, authenticationService, userRepository)
 
   lazy val router = new Routes(httpErrorHandler, mainController, appController,
     sipAppController, apiController, webJarAssets, assets, metricsController)
@@ -68,11 +73,10 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   private lazy val metricsController = new MetricsController(metrics)
   private lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext)
   private lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
-    apiAccessKeys,
-    narthexDomain, naveDomain, orgId
+    appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId
   )
   private lazy val appController = new AppController(defaultCacheApi, orgContext)(tripleStore)
-  private lazy val apiController = new APIController(apiAccessKeys, orgContext)
+  private lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
 
   lazy val assets = new controllers.Assets(httpErrorHandler)
   lazy val webJarAssets = new WebJarAssets(httpErrorHandler, configuration, environment)
@@ -89,30 +93,11 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
 
   lazy val userRepository: UserRepository = {
     UserRepository.Mode.fromConfigString(configuration.getString(UserRepository.Mode.PROPERTY_NAME)) match {
-      case UserRepository.Mode.MOCK => new MockUserRepository(nxUriPrefix)
-      case UserRepository.Mode.TS => new ActorStore(authenticationService, nxUriPrefix, orgContext)
+      case UserRepository.Mode.MOCK => new MockUserRepository(appConfig.nxUriPrefix)
+      case UserRepository.Mode.TS => new ActorStore(authenticationService, appConfig.nxUriPrefix, orgContext)
     }
   }
 
-
-  val orgId = configString("orgId")
-  val narthexDomain = configStringNoSlash("domains.narthex")
-  val naveDomain = configStringNoSlash("domains.nave")
-  val naveApiUrl = configStringNoSlash("naveApiUrl")
-
-  val naveBulkApiAuthToken = configStringNoSlash("naveAuthToken")
-  val useBUlkApi = configFlag("useBulkApi")
-
-  val rdfBaseUrl = configStringNoSlash("rdfBaseUrl")
-
-  val nxUriPrefix = s"$rdfBaseUrl/resource"
-
-  val userHome = System.getProperty("user.home")
-  val narthexDatadir = new File(userHome, "NarthexFiles")
-
-  val apiAccessKeys = secretList("api.accessKeys").toList
-
-  val harvestTimeout = configuration.getInt("harvest.timeout").getOrElse(3 * 60 * 1000)
 
   val periodicHarvest = actorSystem.actorOf(PeriodicHarvest.props(orgContext), "PeriodicHarvest")
   val harvestTicker = actorSystem.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
@@ -133,6 +118,21 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
     })
   }
 
+  private def initAppConfig: AppConfig = {
+    val harvestTimeout = configuration.getInt("harvest.timeout").getOrElse(3 * 60 * 1000)
+    val rdfBaseUrl = configStringNoSlash("rdfBaseUrl")
+    val narthexDomain = configStringNoSlash("domains.narthex")
+    val naveDomain = configStringNoSlash("domains.nave")
+    val apiAccessKeys = secretList("api.accessKeys").toList
+    val narthexDataDir: File = new File(System.getProperty("user.home"), "NarthexFiles")
+
+    AppConfig(
+      harvestTimeout, configFlag("useBulkApi"), rdfBaseUrl,
+      configStringNoSlash("naveApiUrl"), configStringNoSlash("naveAuthToken"),
+      narthexDataDir, configString("orgId"), narthexDomain, naveDomain,
+      apiAccessKeys)
+  }
+
   private def configFlag(name: String): Boolean = configuration.getBoolean(name).getOrElse(false)
 
   private def configString(name: String) = configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config string: $name"))
@@ -142,6 +142,16 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   private def configInt(name: String) = configuration.getInt(name).getOrElse(throw new RuntimeException(s"Missing config int: $name"))
 
   private def secretList(name: String): util.List[String] = configuration.getStringList(name).getOrElse(List("secret"))
+}
 
+/**
+  * Contains all application-specific configuration-values obtained from the play environment and that are used
+  * by various components
+  */
+case class AppConfig(harvestTimeOut: Long, useBulkApi: Boolean, rdfBaseUrl: String,
+                     naveApiUrl: String, naveApiAuthToken: String,
+                     narthexDataDir: File, orgId: String,
+                     narthexDomain: String, naveDomain: String, apiAccessKeys: List[String]) {
 
+  def nxUriPrefix: String = s"$rdfBaseUrl/resource"
 }

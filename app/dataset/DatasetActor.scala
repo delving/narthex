@@ -302,7 +302,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           case PMH => HarvestPMH(strategy, url, ds, pre)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
-        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.harvestTimeOut), "harvester")
+        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut), "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
@@ -382,7 +382,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
             dsInfo.setLastHarvestTime(incremental = true)
         }
         dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
-        dsInfo.updatedSpecCountFromFile(dsInfo.spec, orgContext.narthexDataDir, orgContext.orgId)
+        dsInfo.updatedSpecCountFromFile(dsInfo.spec, orgContext.appConfig.narthexDataDir, orgContext.appConfig.orgId)
         fileOpt match {
           case Some(file) =>
             if (datasetContext.sipMapperOpt.isDefined) {

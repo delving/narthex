@@ -23,6 +23,7 @@ import dataset.DatasetActor.WorkFailure
 import dataset.DsInfo.withDsInfo
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
+import init.AppConfig
 import mapping._
 import org.OrgActor.DatasetsCountCategories
 import play.api.cache.CacheApi
@@ -42,24 +43,20 @@ import scala.language.postfixOps
   * It is obvious that we need to remove this class and only DI the specific values that a component requires,
   * allowing this class to be deleted, which I vow to do.
   */
-class OrgContext(val cacheApi: CacheApi, val wsClient: WSClient, val harvestTimeOut: Long, val useBulkApi: Boolean, val rdfBaseUrl: String,
-                 val nxUriPrefix: String, val naveApiUrl: String,
-                 val naveBulkApiAuthToken: String,
-                 val narthexDataDir: File, val mailService: MailService,
-                 val authenticationService: AuthenticationService, val us: UserRepository, val userHome: String,
-                 val orgId: String)
+class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsClient: WSClient, val mailService: MailService,
+                 val authenticationService: AuthenticationService, val us: UserRepository)
                 (implicit ec: ExecutionContext, val ts: TripleStore) {
 
-  val root = new File(userHome, "NarthexFiles")
-  val orgRoot = new File(root, orgId)
+  val root = appConfig.narthexDataDir
+  val orgRoot = new File(root, appConfig.orgId)
   val factoryDir = new File(orgRoot, "factory")
   val categoriesDir = new File(orgRoot, "categories")
   val datasetsDir = new File(orgRoot, "datasets")
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
 
-  lazy val categoriesRepo = new CategoriesRepo(categoriesDir, orgId)
-  lazy val sipFactory = new SipFactory(factoryDir, rdfBaseUrl, wsClient)
+  lazy val categoriesRepo = new CategoriesRepo(categoriesDir, appConfig.orgId)
+  lazy val sipFactory = new SipFactory(factoryDir, appConfig.rdfBaseUrl, wsClient)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
