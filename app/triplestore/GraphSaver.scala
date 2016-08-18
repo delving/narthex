@@ -41,7 +41,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
   import context.dispatcher
   import triplestore.GraphSaver._
 
-  implicit val ts = orgContext.TS
+  implicit val ts = orgContext.ts
 
   val saveTime = new DateTime()
   var reader: Option[GraphReader] = None
@@ -74,8 +74,11 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
     }
 
     case Some(chunk: GraphChunk) => actorWork(context) {
-      log.info(s"Save a chunk of graphs (bulk-api: ${orgContext.USE_BULK_API})")
-      val update = if (orgContext.USE_BULK_API) chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.orgId)) else ts.up.sparqlUpdate(chunk.sparqlUpdateQ)
+      log.info(s"Save a chunk of graphs (bulk-api: ${orgContext.useBulkApi})")
+      val update = if (orgContext.useBulkApi)
+        chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.orgId))
+      else
+        ts.up.sparqlUpdate(chunk.sparqlUpdateQ)
       update.map(ok => sendGraphChunkOpt())
       update.onFailure {
         case ex: Throwable => failure(ex)

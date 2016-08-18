@@ -45,7 +45,7 @@ import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
 import triplestore.GraphProperties._
-import triplestore.{GraphSaver}
+import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 import triplestore.Sparql.SkosifiedField
 
@@ -302,7 +302,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           case PMH => HarvestPMH(strategy, url, ds, pre)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
-        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.HARVEST_TIMEOUT), "harvester")
+        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.harvestTimeOut), "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {

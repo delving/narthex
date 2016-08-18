@@ -39,7 +39,7 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
 
   val log = Logger.logger
   import context.dispatcher
-  implicit val ts = orgContext.TS
+  implicit val ts = orgContext.ts
 
   def receive = {
 

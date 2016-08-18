@@ -19,7 +19,7 @@ class PeriodicSkosifyCheck(orgContext: OrgContext) extends Actor {
 
   import context.dispatcher
 
-  implicit val ts = orgContext.TS
+  implicit val ts = orgContext.ts
 
   val log = Logger.logger
 
@@ -35,7 +35,6 @@ class PeriodicSkosifyCheck(orgContext: OrgContext) extends Actor {
           DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
             skosifiedFields.map { sf =>
               ts.ask(skosificationCasesExistQ(sf)).map(exists => if (exists) {
-//                log.info(s"Work for $sf: sending StartSkosification")
                 OrgActor.actor(orgContext) ! dsInfo.createMessage(StartSkosification(sf))
               })
             }

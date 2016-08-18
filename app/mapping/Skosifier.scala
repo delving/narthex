@@ -47,7 +47,7 @@ class Skosifier(dsInfo: DsInfo, orgContext: OrgContext) extends Actor with Actor
   import context.dispatcher
   import mapping.Skosifier._
 
-  implicit val ts = orgContext.TS
+  implicit val ts = orgContext.ts
 
   var progressOpt: Option[ProgressReporter] = None
   var progressCount = 0

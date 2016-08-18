@@ -49,19 +49,6 @@ class OrgContext(val cacheApi: CacheApi, val wsClient: WSClient, val harvestTime
                  val authenticationService: AuthenticationService, val us: UserRepository, val userHome: String,
                  val orgId: String)
                 (implicit ec: ExecutionContext, val ts: TripleStore) {
-  val HARVEST_TIMEOUT: Long = harvestTimeOut
-
-  val TS = ts
-
-  val USE_BULK_API : Boolean = useBulkApi
-
-  val RDF_BASE_URL: String = rdfBaseUrl
-
-
-  val NX_URI_PREFIX: String = nxUriPrefix
-  val NAVE_API_URL: String = naveApiUrl
-  val LOG_BULK_API: Boolean = logBulkApi
-  val NAVE_BULK_API_AUTH_TOKEN: String = naveApiUrl
 
   val root = new File(userHome, "NarthexFiles")
   val orgRoot = new File(root, orgId)
@@ -72,7 +59,7 @@ class OrgContext(val cacheApi: CacheApi, val wsClient: WSClient, val harvestTime
   val sipsDir = new File(orgRoot, "sips")
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir, orgId)
-  lazy val sipFactory = new SipFactory(factoryDir, RDF_BASE_URL, wsClient)
+  lazy val sipFactory = new SipFactory(factoryDir, rdfBaseUrl, wsClient)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()

@@ -94,7 +94,7 @@ object DsInfo {
     }
   }
 
-  def getDsInfoUri(spec: String, orgContext: OrgContext) = s"${orgContext.NX_URI_PREFIX}/dataset/${urlEncodeValue(spec)}"
+  def getDsInfoUri(spec: String, orgContext: OrgContext) = s"${orgContext.nxUriPrefix}/dataset/${urlEncodeValue(spec)}"
 
   def getGraphName(spec: String, orgContext: OrgContext) = createGraphName(getDsInfoUri(spec, orgContext))
 
@@ -107,7 +107,7 @@ object DsInfo {
     m.add(subject, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
     m.add(subject, m.getProperty(orgId.uri), m.createLiteral(orgContext.orgId))
     m.add(subject, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
-    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.NX_URI_PREFIX)))
+    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.nxUriPrefix)))
     val trueLiteral = m.createLiteral("true")
     val falseLiteral = m.createLiteral("false")
     m.add(subject, m.getProperty(publishOAIPMH.uri), trueLiteral)
@@ -392,11 +392,11 @@ class DsInfo(val spec: String, orgContext: OrgContext)(implicit ec: ExecutionCon
       }
     }
 
-    val skosFieldApi = s"${orgContext.NAVE_API_URL}/api/index/narthex/toggle/proxyfield/"
+    val skosFieldApi = s"${orgContext.naveApiUrl}/api/index/narthex/toggle/proxyfield/"
     val request = WS.url(s"$skosFieldApi").withHeaders(
       "Content-Type" -> "application/json; charset=utf-8",
       "Accept" -> "application/json",
-      "Authorization" -> s"Token ${orgContext.NAVE_BULK_API_AUTH_TOKEN}"
+      "Authorization" -> s"Token ${orgContext.naveBulkApiAuthToken}"
     )
     val json = Json.obj(
       "dataset_uri" -> datasetUri,
@@ -479,7 +479,7 @@ class DsInfo(val spec: String, orgContext: OrgContext)(implicit ec: ExecutionCon
 
   override def toString = spec
 
-  val bulkApi = s"${orgContext.NAVE_API_URL}/api/index/bulk/"
+  val bulkApi = s"${orgContext.naveApiUrl}/api/index/bulk/"
 
   private def checkUpdateResponse(response: WSResponse, logString: String): Unit = {
     if (response.status != 201) {
@@ -489,13 +489,13 @@ class DsInfo(val spec: String, orgContext: OrgContext)(implicit ec: ExecutionCon
   }
 
   def bulkApiUpdate(bulkActions: String) = {
-    if (orgContext.LOG_BULK_API) {
+    if (orgContext.logBulkApi) {
       Logger.info(bulkActions)
     }
     val request = orgContext.wsClient.url(s"$bulkApi").withHeaders(
       "Content-Type" -> "text/plain; charset=utf-8",
       "Accept" -> "application/json",
-      "Authorization" -> s"Token ${orgContext.NAVE_BULK_API_AUTH_TOKEN}"
+      "Authorization" -> s"Token ${orgContext.naveBulkApiAuthToken}"
     )
     request.post(bulkActions).map(checkUpdateResponse(_, bulkActions))
   }

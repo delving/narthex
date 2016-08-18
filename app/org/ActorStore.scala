@@ -85,7 +85,7 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
 
   override def createSubActor(adminActor: User, usernameString: String, password: String): Future[Option[User]] = {
     val hash = Utils.hashPasswordUnsecure(password, usernameString)
-    val newActor = User(usernameString, Some(adminActor.uri(orgContext.NX_URI_PREFIX)))
+    val newActor = User(usernameString, Some(adminActor.uri(orgContext.nxUriPrefix)))
     val update = ts.up.sparqlUpdate(insertSubActorQ(newActor, hash, adminActor))
     checkFail(update)
     update.map(ok => Some(newActor))

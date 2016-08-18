@@ -40,7 +40,7 @@ object SkosMappingStore {
 
       val uuid = UUID.randomUUID().toString
 
-      val uri = s"${actor.uri(orgContext.NX_URI_PREFIX)}/mapping/$uuid"
+      val uri = s"${actor.uri(orgContext.nxUriPrefix)}/mapping/$uuid"
 
       val graphName = createGraphName(uri)
 
@@ -88,16 +88,16 @@ class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext)(implicit ec
       }
     }
 
-    val skosMappingApi = s"${orgContext.NAVE_API_URL}/api/index/narthex/toggle/proxymapping/"
+    val skosMappingApi = s"${orgContext.naveApiUrl}/api/index/narthex/toggle/proxymapping/"
     val request = WS.url(s"$skosMappingApi").withHeaders(
       "Content-Type" -> "application/json; charset=utf-8",
       "Accept" -> "application/json",
-      "Authorization" -> s"Token ${orgContext.NAVE_BULK_API_AUTH_TOKEN}"
+      "Authorization" -> s"Token ${orgContext.naveBulkApiAuthToken}"
     )
     val json = Json.obj(
       "proxy_resource_uri" -> mapping.uriA,
       "skos_concept_uri" -> mapping.uriB,
-      "user_uri" -> mapping.actor.uri(orgContext.NX_URI_PREFIX),
+      "user_uri" -> mapping.actor.uri(orgContext.nxUriPrefix),
       "delete" -> delete
     )
 
