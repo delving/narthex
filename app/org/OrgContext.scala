@@ -43,7 +43,7 @@ import scala.language.postfixOps
   * allowing this class to be deleted, which I vow to do.
   */
 class OrgContext(val cacheApi: CacheApi, val wsClient: WSClient, val harvestTimeOut: Long, val useBulkApi: Boolean, val rdfBaseUrl: String,
-                 val nxUriPrefix: String, val naveApiUrl: String, val logBulkApi: Boolean,
+                 val nxUriPrefix: String, val naveApiUrl: String,
                  val naveBulkApiAuthToken: String,
                  val narthexDataDir: File, val mailService: MailService,
                  val authenticationService: AuthenticationService, val us: UserRepository, val userHome: String,

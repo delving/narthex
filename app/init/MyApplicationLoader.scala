@@ -56,7 +56,7 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
 
 
   lazy val orgContext = new OrgContext(defaultCacheApi, wsClient, harvestTimeout, useBUlkApi,
-    rdfBaseUrl, nxUriPrefix, naveApiUrl,logBulkApi, naveBulkApiAuthToken, narthexDatadir, mailService,
+    rdfBaseUrl, nxUriPrefix, naveApiUrl, naveBulkApiAuthToken, narthexDatadir, mailService,
     authenticationService, userRepository, userHome, orgId)
 
   lazy val router = new Routes(httpErrorHandler, mainController, appController,
@@ -102,7 +102,6 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
 
   val naveBulkApiAuthToken = configStringNoSlash("naveAuthToken")
   val useBUlkApi = configFlag("useBulkApi")
-  val logBulkApi = configFlag("logBulkApi")
 
   val rdfBaseUrl = configStringNoSlash("rdfBaseUrl")
 
