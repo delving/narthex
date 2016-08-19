@@ -83,7 +83,7 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsClient:
   }
 
   def termMappingStore(spec: String): TermMappingStore = {
-    withDsInfo(spec, this)(dsInfo => new TermMappingStore(dsInfo, this))
+    withDsInfo(spec, this)(dsInfo => new TermMappingStore(dsInfo, this, this.wsClient))
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(

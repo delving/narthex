@@ -302,7 +302,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           case PMH => HarvestPMH(strategy, url, ds, pre)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
-        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut), "harvester")
+        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut, orgContext.wsClient), "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {

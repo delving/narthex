@@ -90,13 +90,6 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient)(implicit ec: E
 
   val prefix = home.getName
 
-//  lazy val futureSchemas = {
-//    WS.url("http://schemas.delving.eu/schema-repository.xml").get().map{ response =>
-//      val schema = (response.xml \ "schema").filter(s => (s \ "@prefix").text == prefix)
-//      val version = (schema \ "version").sortBy(v => (v \ "@number").text)
-//    }
-//  }
-
   lazy val recordDefinition: File = home.listFiles().find(f => f.getName.endsWith(RECORD_DEFINITION_SUFFIX)).getOrElse(
     throw new RuntimeException(s"Missing record definition in $home")
   )

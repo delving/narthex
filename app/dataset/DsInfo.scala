@@ -393,7 +393,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
     }
 
     val skosFieldApi = s"${naveApiUrl}/api/index/narthex/toggle/proxyfield/"
-    val request = WS.url(s"$skosFieldApi").withHeaders(
+    val request = orgContext.wsClient.url(s"$skosFieldApi").withHeaders(
       "Content-Type" -> "application/json; charset=utf-8",
       "Accept" -> "application/json",
       "Authorization" -> s"Token ${naveApiAuthToken}"
@@ -438,7 +438,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
   }
 
   def termCategoryMap(categoryVocabularyInfo: VocabInfo): Map[String, List[String]] = {
-    val mappingStore = new TermMappingStore(this, orgContext)
+    val mappingStore = new TermMappingStore(this, orgContext, orgContext.wsClient)
     val mappings = Await.result(mappingStore.getMappings(categories = true), 1.minute)
     val uriLabelMap = categoryVocabularyInfo.vocabulary.uriLabelMap
     val termUriLabels = mappings.flatMap { mapping =>
@@ -532,7 +532,6 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
   def createBulkAction(triples: String, id: String, hash: String) = {
     val (spec, localId) = extractSpecIdFromGraphName(id)
     val hubId = s"${orgContext.appConfig.orgId}_${spec}_$localId"
-    // val currentSkosFields = dsInfo.getLiteralPropList(skosField)
     val actionMap = Json.obj(
       "hubId" -> hubId,
       "dataset" -> spec,

@@ -12,15 +12,12 @@ import mapping.PeriodicSkosifyCheck
 import org._
 import play.api._
 import play.api.ApplicationLoader.Context
-import play.api.cache.{CacheApi, EhCacheComponents}
+import play.api.cache.{EhCacheComponents}
 import play.api.libs.ws.ning.NingWSComponents
-import play.libs.Akka._
 import triplestore.Fuseki
 import web.{APIController, AppController, MainController, SipAppController}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.mailer._
-import play.api.libs.ws.WSClient
-import play.libs.Akka
 import services.{MailService, MailServiceImpl}
 
 import scala.concurrent.duration._
