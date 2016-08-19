@@ -39,8 +39,7 @@ import play.api.Logger
 import play.api.libs.json.{Json, Writes}
 import record.SourceProcessor
 import record.SourceProcessor._
-import services.MailService
-import services.ProgressReporter
+import services.{MailService, ProgressReporter}
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}

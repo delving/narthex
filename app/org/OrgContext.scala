@@ -18,8 +18,7 @@ package org
 
 import java.io.File
 
-import akka.actor.{ActorContext, ActorRef}
-import dataset.DatasetActor.WorkFailure
+import akka.actor.ActorRef
 import dataset.DsInfo.withDsInfo
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
@@ -28,7 +27,6 @@ import mapping._
 import org.OrgActor.DatasetsCountCategories
 import play.api.cache.CacheApi
 import play.api.libs.ws.WSClient
-import services.FileHandling.clearDir
 import services.MailService
 import triplestore.GraphProperties.categoriesInclude
 import triplestore.TripleStore

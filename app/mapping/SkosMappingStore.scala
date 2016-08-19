@@ -21,7 +21,7 @@ import java.util.UUID
 import org.{OrgContext, User}
 import play.api.Logger
 import play.api.libs.json.{JsObject, Json}
-import play.api.libs.ws.{WS, WSClient, WSResponse}
+import play.api.libs.ws.{WSClient, WSResponse}
 import services.StringHandling.createGraphName
 import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
@@ -78,7 +78,6 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, orgContext: OrgConte
 class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext, wsClient: WSClient)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
-  import play.api.Play.current
 
   def toggleNaveMapping(mapping: SkosMapping, delete: Boolean = false) = {
     def checkUpdateResponse(response: WSResponse, logString: JsObject): Unit = {
