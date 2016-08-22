@@ -21,7 +21,7 @@ import java.util.UUID
 import org.{OrgContext, User}
 import play.api.Logger
 import play.api.libs.json.{JsObject, Json}
-import play.api.libs.ws.{WS, WSResponse}
+import play.api.libs.ws.{WSClient, WSResponse}
 import services.StringHandling.createGraphName
 import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
@@ -36,11 +36,11 @@ object SkosMappingStore {
 
     val deleteQ = deleteMappingQ(uriA, uriB)
 
-    def insertQ(skosA: SkosGraph, skosB: SkosGraph) = {
+    def insertQ(skosA: SkosGraph, skosB: SkosGraph, nxUriPrefix: String) = {
 
       val uuid = UUID.randomUUID().toString
 
-      val uri = s"${actor.uri(OrgContext.NX_URI_PREFIX)}/mapping/$uuid"
+      val uri = s"${actor.uri(nxUriPrefix)}/mapping/$uuid"
 
       val graphName = createGraphName(uri)
 
@@ -52,7 +52,7 @@ object SkosMappingStore {
 
 }
 
-class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph)(implicit ec: ExecutionContext, ts: TripleStore) {
+class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
 
@@ -64,7 +64,7 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph)(implicit ec: Executi
       }
       else {
         // todo insert mapping to nave here
-        ts.up.sparqlUpdate(mapping.insertQ(skosA, skosB)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertQ(skosA, skosB, orgContext.appConfig.nxUriPrefix)).map(ok => "added")
       }
     }
   }
@@ -75,10 +75,9 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph)(implicit ec: Executi
 
 }
 
-class TermMappingStore(termGraph: SkosGraph)(implicit ec: ExecutionContext, ts: TripleStore) {
+class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext, wsClient: WSClient)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
-  import play.api.Play.current
 
   def toggleNaveMapping(mapping: SkosMapping, delete: Boolean = false) = {
     def checkUpdateResponse(response: WSResponse, logString: JsObject): Unit = {
@@ -88,20 +87,20 @@ class TermMappingStore(termGraph: SkosGraph)(implicit ec: ExecutionContext, ts: 
       }
     }
 
-    val skosMappingApi = s"${OrgContext.NAVE_API_URL}/api/index/narthex/toggle/proxymapping/"
-    val request = WS.url(s"$skosMappingApi").withHeaders(
+    val skosMappingApi = s"${orgContext.appConfig.naveApiUrl}/api/index/narthex/toggle/proxymapping/"
+    val request = wsClient.url(s"$skosMappingApi").withHeaders(
       "Content-Type" -> "application/json; charset=utf-8",
       "Accept" -> "application/json",
-      "Authorization" -> s"Token ${OrgContext.NAVE_BULK_API_AUTH_TOKEN}"
+      "Authorization" -> s"Token ${orgContext.appConfig.naveApiAuthToken}"
     )
     val json = Json.obj(
       "proxy_resource_uri" -> mapping.uriA,
       "skos_concept_uri" -> mapping.uriB,
-      "user_uri" -> mapping.actor.uri(OrgContext.NX_URI_PREFIX),
+      "user_uri" -> mapping.actor.uri(orgContext.appConfig.nxUriPrefix),
       "delete" -> delete
     )
 
-    request.post(json) // .map(checkUpdateResponse(_, json))
+    request.post(json)
   }
 
   def toggleMapping(mapping: SkosMapping, vocabGraph: SkosGraph): Future[String] = {
@@ -112,7 +111,7 @@ class TermMappingStore(termGraph: SkosGraph)(implicit ec: ExecutionContext, ts: 
       }
       else {
         toggleNaveMapping(mapping, false)
-        ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph)).map(ok => "added")
+        ts.up.sparqlUpdate(mapping.insertQ(termGraph, vocabGraph, orgContext.appConfig.nxUriPrefix)).map(ok => "added")
       }
     }
   }
@@ -125,4 +124,3 @@ class TermMappingStore(termGraph: SkosGraph)(implicit ec: ExecutionContext, ts: 
     }
   }
 }
-

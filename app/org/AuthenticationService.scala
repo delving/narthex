@@ -1,5 +1,6 @@
 package org
 
+import nxutil.Utils
 import triplestore.Sparql._
 import triplestore.TripleStore
 

@@ -1,6 +1,8 @@
 package org
 
 
+import nxutil.Utils
+
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

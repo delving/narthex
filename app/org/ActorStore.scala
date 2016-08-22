@@ -16,6 +16,7 @@
 
 package org
 
+import nxutil.Utils
 import play.api.Logger
 import triplestore.Sparql._
 import triplestore.{Sparql, TripleStore}
@@ -23,7 +24,7 @@ import triplestore.{Sparql, TripleStore}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
-class ActorStore(val authenticationService: AuthenticationService)(implicit ec: ExecutionContext, ts: TripleStore) extends UserRepository {
+class ActorStore(val authenticationService: AuthenticationService, val uriPrefix: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore) extends UserRepository {
 
   val topActorUsername = "admin"
 
@@ -84,7 +85,7 @@ class ActorStore(val authenticationService: AuthenticationService)(implicit ec: 
 
   override def createSubActor(adminActor: User, usernameString: String, password: String): Future[Option[User]] = {
     val hash = Utils.hashPasswordUnsecure(password, usernameString)
-    val newActor = User(usernameString, Some(adminActor.uri(OrgContext.NX_URI_PREFIX)))
+    val newActor = User(usernameString, Some(adminActor.uri(orgContext.appConfig.nxUriPrefix)))
     val update = ts.up.sparqlUpdate(insertSubActorQ(newActor, hash, adminActor))
     checkFail(update)
     update.map(ok => Some(newActor))

@@ -18,18 +18,20 @@ package web
 
 import org.User
 import play.Logger
-import play.api.Play.current
-import play.api.cache.Cache
+import play.api.cache.CacheApi
 import play.api.libs.json._
 import play.api.mvc._
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 trait Security {
   this: Controller =>
   val TOKEN = "X-XSRF-TOKEN"
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
   lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
+
+  def cacheApi: CacheApi
 
   implicit val userSessionWrites = new Writes[UserSession] {
     def writes(us: UserSession) = {
@@ -71,7 +73,7 @@ trait Security {
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[UserSession](token) map { session =>
+      cacheApi.get[UserSession](token) map { session =>
         block(session)(request).withSession(session)
       }
     } getOrElse {
@@ -84,7 +86,7 @@ trait Security {
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[UserSession](token) map { session =>
+      cacheApi.get[UserSession](token) map { session =>
         block(session)(request)
       }
     } getOrElse {
@@ -95,13 +97,13 @@ trait Security {
   implicit class ResultWithToken(result: Result) {
 
     def withSession(session: UserSession): Result = {
-      Cache.set(session.token, session, CACHE_EXPIRATION)
+      cacheApi.set(session.token, session, CACHE_EXPIRATION.seconds)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, session.token, None, httpOnly = false))
     }
 
     def discardingToken(token: String): Result = {
       Logger.info(s"discarding token $token")
-      Cache.remove(token)
+      cacheApi.remove(token)
       result.discardingCookies(DiscardingCookie(name = TOKEN_COOKIE_KEY))
     }
   }

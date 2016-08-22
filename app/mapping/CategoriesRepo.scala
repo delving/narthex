@@ -18,7 +18,6 @@ package mapping
 import java.io.{File, FileOutputStream}
 
 import mapping.CategoriesSpreadsheet.CategoryCount
-import org.OrgContext._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{JsPath, Json, Writes}
 import services.FileHandling.createWriter
@@ -35,10 +34,9 @@ object CategoriesRepo {
 
   case class CategoryMapping(source: String, categories: Seq[String])
 
-
 }
 
-class CategoriesRepo(root: File) {
+class CategoriesRepo(root: File, orgId: String) {
   root.mkdirs()
   val SPREADSHEET = ".xlsx"
   val JSON = ".json"
@@ -57,13 +55,13 @@ class CategoriesRepo(root: File) {
   def sheet(name: String) = new File(sheets, name)
 
   def createSheet(counts: List[CategoryCount]) = {
-    val jsonName = Temporal.nowFileName(ORG_ID, JSON)
+    val jsonName = Temporal.nowFileName(orgId, JSON)
     val jsonFile = new File(data, jsonName)
     val jsonList = Json.arr(counts)
     val fw = createWriter(jsonFile)
     fw.write(Json.prettyPrint(jsonList))
     fw.close()
-    val sheetName = Temporal.nowFileName(ORG_ID, SPREADSHEET)
+    val sheetName = Temporal.nowFileName(orgId, SPREADSHEET)
     val sheetFile = new File(sheets, sheetName)
     val fos = new FileOutputStream(sheetFile)
     val spreadsheet = new CategoriesSpreadsheet(counts)

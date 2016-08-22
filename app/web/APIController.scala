@@ -21,39 +21,38 @@ import java.io.FileInputStream
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
 import dataset.SipRepo.AvailableSip
-import org.OrgContext.{apiKeyFits, orgContext}
+import org.OrgContext
 import org.apache.commons.io.IOUtils
 import play.api.http.ContentTypes
 import play.api.libs.json.Json
 import play.api.mvc._
-import web.MainController.OkFile
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object APIController extends Controller {
+class APIController(val apiKeys: List[String], val orgContext: OrgContext) extends Controller {
 
   def processingErrorsText(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestErrorFile = datasetContext.processedRepo.getLatestErrors
-    latestErrorFile.map(OkFile(_)).getOrElse(NotFound(s"No errors found for $spec"))
+    latestErrorFile.map(Utils.okFile(_)).getOrElse(NotFound(s"No errors found for $spec"))
   }
 
   def processingSourcedText(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestSourcedFile = datasetContext.processedRepo.getLatestSourced
-    latestSourcedFile.map(OkFile(_)).getOrElse(NotFound(s"No sourced files found for $spec"))
+    latestSourcedFile.map(Utils.okFile(_)).getOrElse(NotFound(s"No sourced files found for $spec"))
   }
 
   def processingProcessedText(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestProcessedFiles = datasetContext.processedRepo.getLatestProcessed
-    latestProcessedFiles.map(OkFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
+    latestProcessedFiles.map(Utils.okFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
   }
 
   def processingHarvestingLog(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
-    Some(datasetContext.harvestLogger).map(OkFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
+    Some(datasetContext.harvestLogger).map(Utils.okFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
   }
 
   def pathsJSON(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
@@ -72,7 +71,7 @@ object APIController extends Controller {
   }
 
   def indexJSON(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
-    OkFile(orgContext.datasetContext(spec).index)
+    Utils.okFile(orgContext.datasetContext(spec).index)
   }
 
   def uniqueText(apiKey: String, spec: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
@@ -80,7 +79,7 @@ object APIController extends Controller {
       case None =>
         NotFound(s"No list found for $path")
       case Some(file) =>
-        OkFile(file)
+        Utils.okFile(file)
     }
   }
 
@@ -89,7 +88,7 @@ object APIController extends Controller {
       case None =>
         NotFound(s"No list found for $path")
       case Some(file) =>
-        OkFile(file)
+        Utils.okFile(file)
     }
   }
 
@@ -122,7 +121,7 @@ object APIController extends Controller {
   }
 
   def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>
-    if (apiKeyFits(apiKey)) {
+    if (apiKeys.contains(apiKey)) {
       block(request)
     }
     else {
@@ -131,7 +130,7 @@ object APIController extends Controller {
   }
 
   def KeyFitsAsync[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
-    if (apiKeyFits(apiKey)) {
+    if (apiKeys.contains(apiKey)) {
       block(request)
     }
     else {

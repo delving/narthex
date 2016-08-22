@@ -39,8 +39,7 @@ import play.api.Logger
 import play.api.libs.json.{Json, Writes}
 import record.SourceProcessor
 import record.SourceProcessor._
-import services.MailService.{MailDatasetError, MailProcessingComplete}
-import services.ProgressReporter
+import services.{MailService, ProgressReporter}
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
@@ -136,15 +135,14 @@ object DatasetActor {
 
   // create one
 
-  def props(datasetContext: DatasetContext) = Props(new DatasetActor(datasetContext))
+  def props(datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext) = Props(new DatasetActor(datasetContext, mailService, orgContext))
 
 }
 
-class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
+class DatasetActor(val datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext) extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
 
   import context.dispatcher
 
-  implicit val ts = OrgContext.TS
 
   override val supervisorStrategy = OneForOneStrategy() {
     case throwable: Throwable =>
@@ -303,7 +301,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
           case PMH => HarvestPMH(strategy, url, ds, pre)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
-        val harvester = context.actorOf(Harvester.props(datasetContext), "harvester")
+        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut, orgContext.wsClient), "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
@@ -311,12 +309,12 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
 
     case Event(AdoptSource(file), Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-adopter")
+      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext, orgContext), "source-adopter")
       sourceProcessor ! AdoptSource(file)
       goto(Adopting) using Active(dsInfo.spec, Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-generator")
+      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext, orgContext), "source-generator")
       sourceProcessor ! GenerateSipZip
       goto(Generating) using Active(dsInfo.spec, Some(sourceProcessor), GENERATING)
 
@@ -335,23 +333,24 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
       }
 
     case Event(StartProcessing(incrementalOpt), Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext), "source-processor")
+      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext, orgContext), "source-processor")
       sourceProcessor ! Process(incrementalOpt)
       goto(Processing) using Active(dsInfo.spec, Some(sourceProcessor), PROCESSING)
 
     case Event(StartSaving(incrementalOpt), Dormant) =>
-      val graphSaver = context.actorOf(GraphSaver.props(datasetContext), "graph-saver")
+      val graphSaver = context.actorOf(GraphSaver.props(datasetContext, orgContext), "graph-saver")
       graphSaver ! SaveGraphs(incrementalOpt)
       goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
-      val skosifier = context.actorOf(Skosifier.props(dsInfo), "skosifier")
+      val skosifier = context.actorOf(Skosifier.props(dsInfo, orgContext), "skosifier")
       skosifier ! skosifiedField
       goto(Skosifying) using Active(dsInfo.spec, Some(skosifier), SKOSIFYING)
 
     case Event(StartCategoryCounting, Dormant) =>
       if (datasetContext.processedRepo.nonEmpty) {
-        val categoryCounter = context.actorOf(CategoryCounter.props(dsInfo, datasetContext.processedRepo), "category-counter")
+        implicit val ts = orgContext.ts
+        val categoryCounter = context.actorOf(CategoryCounter.props(dsInfo, datasetContext.processedRepo, orgContext), "category-counter")
         categoryCounter ! CountCategories
         goto(Categorizing) using Active(dsInfo.spec, Some(categoryCounter), CATEGORIZING)
       }
@@ -382,7 +381,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
             dsInfo.setLastHarvestTime(incremental = true)
         }
         dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
-        dsInfo.updatedSpecCountFromFile()
+        dsInfo.updatedSpecCountFromFile(dsInfo.spec, orgContext.appConfig.narthexDataDir, orgContext.appConfig.orgId)
         fileOpt match {
           case Some(file) =>
             if (datasetContext.sipMapperOpt.isDefined) {
@@ -478,7 +477,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
         dsInfo.setState(PROCESSABLE)
         dsInfo.setState(INCREMENTAL_SAVED)
-        val graphSaver = context.actorOf(GraphSaver.props(datasetContext), "graph-saver")
+        val graphSaver = context.actorOf(GraphSaver.props(datasetContext, orgContext), "graph-saver")
         graphSaver ! SaveGraphs(incrementalOpt)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
@@ -487,12 +486,7 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
         val ownerEmailOpt = Await.result(dsInfo.ownerEmailOpt, 2.seconds)
-        MailProcessingComplete(
-          spec = dsInfo.spec,
-          ownerEmailOpt = ownerEmailOpt,
-          validString = dsInfo.processedValidVal,
-          invalidString = dsInfo.processedInvalidVal
-        ).send()
+        mailService.sendProcessingCompleteMessage(dsInfo.spec, ownerEmailOpt, dsInfo.processedValidVal, dsInfo.processedInvalidVal)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Idle) using Dormant
       }
@@ -577,7 +571,8 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
         case Some(exception) => log.error(exception, message)
         case None => log.error(message)
       }
-      MailDatasetError(dsInfo.spec, Await.result(dsInfo.ownerEmailOpt, 2.seconds), message, exceptionOpt).send()
+      val ownerEmail: Option[String] = Await.result(dsInfo.ownerEmailOpt, 2.seconds)
+      mailService.sendProcessingErrorMessage(dsInfo.spec, ownerEmail, message, exceptionOpt)
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using InError(message)
 
@@ -602,12 +597,3 @@ class DatasetActor(val datasetContext: DatasetContext) extends FSM[DatasetActorS
   }
 
 }
-
-
-
-
-
-
-
-
-
