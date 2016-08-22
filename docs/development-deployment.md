@@ -10,9 +10,12 @@ With the **sbt** installed, and the below configuration completed, one can run N
  - Startup fuseki from this project's root-dir:
 
 ```bash
-/[path-to-fuseki]/fuseki-server --config=./fuseki.ttl
+cd [fuseki_homedir]
+
+./fuseki-server --config=[/full/path_to_nathex_project_dir]/fuseki.ttl
 ```
 
+Don't use the '~' character for your homedir, Fuseki runs inside the JVM and won't replace that with the path to your homedir.
 
 You will notice that it creates a `./fuseki_data` directory which is in .gitignore. To start with a fresh database, stop fuseki and delete the data-directory.
 
