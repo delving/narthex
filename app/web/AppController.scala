@@ -29,29 +29,27 @@ import mapping.SkosVocabulary._
 import mapping.VocabInfo
 import mapping.VocabInfo._
 import org.OrgActor.DatasetMessage
-import org.OrgContext.orgContext
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.{OrgActor, OrgContext}
 import play.api.Logger
 import play.api.Play.current
+import play.api.cache.CacheApi
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
-import play.api.libs.ws.{WS, WSResponse}
 import play.api.mvc._
 import services.Temporal._
 import triplestore.GraphProperties._
-import triplestore.Sparql
+import triplestore.{Sparql, TripleStore}
 import triplestore.Sparql.SkosifiedField
-import web.MainController.OkFile
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-object AppController extends Controller with Security {
+class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implicit val ts: TripleStore) extends Controller with Security {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
-  implicit val ts = OrgContext.TS
+
 
   object DatasetSocketActor {
     def props(out: ActorRef) = Props(new DatasetSocketActor(out))
@@ -64,14 +62,14 @@ object AppController extends Controller with Security {
     }
   }
 
-  def sendRefresh(spec: String) = OrgActor.actor ! DatasetMessage(spec, Command("refresh"))
+  def sendRefresh(spec: String) = orgContext.orgActor ! DatasetMessage(spec, Command("refresh"))
 
   def datasetSocket = WebSocket.acceptWithActor[String, String] { request => out =>
     DatasetSocketActor.props(out)
   }
 
   def listDatasets = SecureAsync() { session => request =>
-    listDsInfo.map(list => Ok(Json.toJson(list)))
+    listDsInfo(orgContext).map(list => Ok(Json.toJson(list)))
   }
 
   def listPrefixes = Secure() { session => request =>
@@ -80,7 +78,7 @@ object AppController extends Controller with Security {
   }
 
   def datasetInfo(spec: String) = Secure() { session => request =>
-    withDsInfo(spec)(dsInfo => Ok(Json.toJson(dsInfo)))
+    withDsInfo(spec, orgContext)(dsInfo => Ok(Json.toJson(dsInfo)))
   }
 
   def createDataset(spec: String, character: String, mapToPrefix: String) = SecureAsync() { session => request =>
@@ -90,7 +88,7 @@ object AppController extends Controller with Security {
   }
 
   def command(spec: String, command: String) = Secure() { session => request =>
-    OrgActor.actor ! DatasetMessage(spec, Command(command))
+    orgContext.orgActor ! DatasetMessage(spec, Command(command))
     Ok
   }
 
@@ -113,7 +111,7 @@ object AppController extends Controller with Security {
   }
 
   def setDatasetProperties(spec: String) = Secure(parse.json) { session => request =>
-    withDsInfo(spec) { dsInfo =>
+    withDsInfo(spec, orgContext) { dsInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
@@ -125,39 +123,30 @@ object AppController extends Controller with Security {
     }
   }
 
-  def toggleDatasetProduction(spec: String) = SecureAsync() { session => request =>
-    withDsInfo(spec) { dsInfo =>
-      dsInfo.toggleProduction().map { acceptanceOnly =>
-        sendRefresh(spec)
-        Ok(Json.obj("acceptanceMode" -> acceptanceOnly.toString))
-      }
-    }
-  }
-
   // ====== stats files =====
 
   def index(spec: String) = Secure() { session => request =>
-    OkFile(orgContext.datasetContext(spec).index)
+    Utils.okFile(orgContext.datasetContext(spec).index)
   }
 
   def nodeStatus(spec: String, path: String) = Secure() { session => request =>
     orgContext.datasetContext(spec).status(path) match {
       case None => NotFound(Json.obj("path" -> path))
-      case Some(file) => OkFile(file)
+      case Some(file) => Utils.okFile(file)
     }
   }
 
   def sample(spec: String, path: String, size: Int) = Secure() { session => request =>
     orgContext.datasetContext(spec).sample(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
-      case Some(file) => OkFile(file)
+      case Some(file) => Utils.okFile(file)
     }
   }
 
   def histogram(spec: String, path: String, size: Int) = Secure() { session => request =>
     orgContext.datasetContext(spec).histogram(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
-      case Some(file) => OkFile(file)
+      case Some(file) => Utils.okFile(file)
     }
   }
 
@@ -174,7 +163,7 @@ object AppController extends Controller with Security {
   // ====== vocabularies =====
 
   def toggleSkosifiedField(spec: String) = Secure(parse.json) { session => request =>
-    withDsInfo(spec) { dsInfo: DsInfo =>
+    withDsInfo(spec, orgContext) { dsInfo: DsInfo =>
       val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
       val skosFieldTag = (request.body \ "skosFieldTag").as[String]
       val skosFieldUri = (request.body \ "skosFieldUri").as[String]
@@ -197,7 +186,7 @@ object AppController extends Controller with Security {
               val addSkosEntriesQ = caseList.map(_.ensureSkosEntryQ).mkString
               val futureUpdate = ts.up.sparqlUpdate(addSkosEntriesQ).map { ok =>
                 dsInfo.addLiteralPropToList(skosField, skosFieldValue)
-                dsInfo.toggleNaveSkosField(datasetUri=dsInfo.uri, propertyUri=skosFieldUri, delete=false)
+                dsInfo.toggleNaveSkosField(datasetUri = dsInfo.uri, propertyUri = skosFieldUri, delete = false)
               }
               Await.result(futureUpdate, 1.minute)
               "added"
@@ -214,7 +203,7 @@ object AppController extends Controller with Security {
           val skosifiedField = SkosifiedField(dsInfo.spec, dsInfo.uri, skosFieldValue)
           val futureUpdate = ts.up.sparqlUpdate(skosifiedField.removeSkosEntriesQ).map { ok =>
             dsInfo.removeLiteralPropFromList(skosField, skosFieldValue)
-            dsInfo.toggleNaveSkosField(datasetUri=dsInfo.uri, propertyUri=skosFieldUri, delete=true)
+            dsInfo.toggleNaveSkosField(datasetUri = dsInfo.uri, propertyUri = skosFieldUri, delete = true)
           }
           Await.result(futureUpdate, 1.minute)
           "removed"
@@ -225,17 +214,17 @@ object AppController extends Controller with Security {
   }
 
   def listVocabularies = SecureAsync() { session => request =>
-    listVocabInfo.map(list => Ok(Json.toJson(list)))
+    listVocabInfo(orgContext).map(list => Ok(Json.toJson(list)))
   }
 
   def createVocabulary(spec: String) = SecureAsync() { session => request =>
-    VocabInfo.createVocabInfo(session.actor, spec).map(ok =>
+    VocabInfo.createVocabInfo(session.actor, spec, orgContext).map(ok =>
       Ok(Json.obj("created" -> s"Skos $spec created"))
     )
   }
 
   def deleteVocabulary(spec: String) = SecureAsync() { session => request =>
-    VocabInfo.freshVocabInfo(spec).map { vocabInfoOpt =>
+    VocabInfo.freshVocabInfo(spec, orgContext).map { vocabInfoOpt =>
       vocabInfoOpt.map { vocabInfo =>
         vocabInfo.dropVocabulary
         Ok(Json.obj("created" -> s"Vocabulary $spec deleted"))
@@ -246,7 +235,7 @@ object AppController extends Controller with Security {
   }
 
   def uploadVocabulary(spec: String) = SecureAsync(parse.multipartFormData) { session => request =>
-    withVocabInfo(spec) { vocabInfo =>
+    withVocabInfo(spec, orgContext) { vocabInfo =>
       request.body.file("file").map { bodyFile =>
         val file = bodyFile.ref.file
         val putFile = ts.up.dataPutXMLFile(vocabInfo.skosGraphName, file)
@@ -263,17 +252,17 @@ object AppController extends Controller with Security {
   }
 
   def vocabularyInfo(spec: String) = Secure() { session => request =>
-    withVocabInfo(spec)(vocabInfo => Ok(Json.toJson(vocabInfo)))
+    withVocabInfo(spec, orgContext)(vocabInfo => Ok(Json.toJson(vocabInfo)))
   }
 
   def vocabularyStatistics(spec: String) = SecureAsync() { session => request =>
-    withVocabInfo(spec) { vocabInfo =>
+    withVocabInfo(spec, orgContext) { vocabInfo =>
       vocabInfo.conceptCount.map(stats => Ok(Json.toJson(stats)))
     }
   }
 
   def setVocabularyProperties(spec: String) = Secure(parse.json) { session => request =>
-    withVocabInfo(spec) { vocabInfo =>
+    withVocabInfo(spec, orgContext) { vocabInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
       Logger.info(s"setVocabularyProperties $propertyList")
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
@@ -285,7 +274,7 @@ object AppController extends Controller with Security {
   }
 
   def getVocabularyLanguages(spec: String) = Secure() { session => request =>
-    withVocabInfo(spec) { vocabInfo =>
+    withVocabInfo(spec, orgContext) { vocabInfo =>
       Ok(Json.obj("languages" -> vocabInfo.vocabulary.languages))
     }
   }
@@ -293,7 +282,7 @@ object AppController extends Controller with Security {
   def searchVocabulary(spec: String, sought: String, language: String) = Secure() { session => request =>
     val languageOpt = Option(language).find(lang => lang.trim.nonEmpty && lang != "-")
     Logger.info(s"Search $spec/$language: $sought")
-    withVocabInfo(spec) { vocabInfo =>
+    withVocabInfo(spec, orgContext) { vocabInfo =>
       val labelSearch: LabelSearch = vocabInfo.vocabulary.search(sought, 25, languageOpt)
       Ok(Json.obj("search" -> labelSearch))
     }
@@ -314,7 +303,7 @@ object AppController extends Controller with Security {
   }
 
   def getTermVocabulary(spec: String) = Secure() { session => request =>
-    withDsInfo(spec) { dsInfo =>
+    withDsInfo(spec, orgContext) { dsInfo =>
       val results = dsInfo.vocabulary.concepts.map(concept => {
         //          val freq: Int = concept.frequency.getOrElse(0)
         val label = concept.getAltLabel(None).map(_.text).getOrElse("Label missing")
@@ -344,7 +333,7 @@ object AppController extends Controller with Security {
     val uriA = (request.body \ "uriA").as[String]
     val uriB = (request.body \ "uriB").as[String]
     val store = orgContext.termMappingStore(dsSpec)
-    withVocabInfo(vocabSpec) { vocabInfo =>
+    withVocabInfo(vocabSpec, orgContext) { vocabInfo =>
       store.toggleMapping(SkosMapping(session.actor, uriA, uriB), vocabInfo).map { action =>
         Ok(Json.obj("action" -> action))
       }
@@ -370,7 +359,7 @@ object AppController extends Controller with Security {
   }
 
   def getCategoryList = SecureAsync() { session => request =>
-    val map: Future[Option[VocabInfo]] = listVocabInfo.map(list => list.find(_.spec == CATEGORIES_SPEC))
+    val map: Future[Option[VocabInfo]] = listVocabInfo(orgContext).map(list => list.find(_.spec == CATEGORIES_SPEC))
     map.map { catVocabInfoOpt =>
       catVocabInfoOpt.map { catVocabInfo =>
         val count = Await.result(catVocabInfo.conceptCount, 30.seconds)
@@ -404,7 +393,7 @@ object AppController extends Controller with Security {
   }
 
   def sheet(spec: String) = Action(parse.anyContent) { implicit request =>
-    OkFile(orgContext.categoriesRepo.sheet(spec))
+    Utils.okFile(orgContext.categoriesRepo.sheet(spec))
   }
 
 }

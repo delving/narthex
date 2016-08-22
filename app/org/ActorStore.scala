@@ -16,162 +16,130 @@
 
 package org
 
-import java.io.Serializable
-import java.security.MessageDigest
-
-import org.OrgContext._
+import nxutil.Utils
 import play.api.Logger
-import triplestore.GraphProperties._
 import triplestore.Sparql._
-import triplestore.TripleStore
+import triplestore.{Sparql, TripleStore}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
-object ActorStore {
+class ActorStore(val authenticationService: AuthenticationService, val uriPrefix: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore) extends UserRepository {
 
-  case class NXProfile(firstName: String, lastName: String, email: String) {
-    val nonEmpty = if (firstName.isEmpty && lastName.isEmpty && email.isEmpty) None else Some(this)
+  val topActorUsername = "admin"
+
+  override def insertAdmin(passwd: String): Future[User] = {
+    val topActor = User(topActorUsername, None)
+    ts.up.sparqlUpdate(insertTopActorQ(topActor, Utils.hashPasswordUnsecure(passwd, topActorUsername))).
+      map{ ok =>
+        Logger.info(s"Created initial admin user")
+        topActor
+      }
   }
 
-  case class NXActor(userNameProposed: String, makerOpt: Option[String], profileOpt: Option[NXProfile] = None) {
-    val actorName = userNameProposed.replaceAll("[^\\w-]", "").toLowerCase
-    val uri = s"$NX_URI_PREFIX/actor/$actorName"
-
-    override def toString = uri
+  override def hasAdmin: Future[Boolean] = {
+   ts.query(getActor(topActorUsername)).map(m => actorFromResult(m).isDefined)
   }
 
-}
-
-class ActorStore()(implicit ec: ExecutionContext, ts: TripleStore) {
-
-  import org.ActorStore._
-
-  private def hashPassword(password: String, salt: String): String = {
-    val digest = MessageDigest.getInstance("SHA-256")
-    val salted = password + salt
-    val ba = digest.digest(salted.getBytes("UTF-8"))
-    ba.map("%02x".format(_)).mkString
+  /**
+    * Retrieve a an actor known to exist
+    * @param name
+    * @return
+    * @throws IllegalArgumentException if the actor does not exist
+    */
+  override def loadActor(name: String): Future[User] = {
+    val result: Future[Option[User]] = ts.query(Sparql.getActor(name)).map(actorFromResult)
+    result.map { someActor: Option[User] =>
+      someActor.getOrElse(throw new IllegalArgumentException(s"No such user $name"))
+    }
   }
 
-  def emailFromUri(actorUri: String): Option[String] = {
-    val query = ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
-    // todo: maybe make this async
-    Await.result(query, 5.seconds)
+  override def emailFromUri(actorUri: String): Future[Option[String]] = {
+    ts.query(getEMailOfActor(actorUri)).map(emailFromResult)
   }
 
-  def adminEmails: List[String] = {
+  override def adminEmails = {
     val sparqlQuery = getAdminEMailQ()
-    val query = ts.query(sparqlQuery).map(emailsFromResult)
-    // todo: maybe make this async
-    Await.result(query, 5.seconds)
+    ts.query(sparqlQuery).map(emailsFromResult)
   }
 
-  def oAuthenticated(actorName: String): Future[NXActor] = {
-    ts.query(getActor(actorName)).map(actorFromResult).flatMap { actorOpt =>
-      actorOpt.map(Future.successful).getOrElse {
-        val newActor = NXActor(actorName, None)
-        ts.up.sparqlUpdate(insertOAuthActorQ(newActor)).map(ok => newActor)
-      }
-    }
-  }
-
-  def authenticate(actorName: String, password: String): Future[Option[NXActor]] = {
-    val passwordHashString = hashPassword(password, actorName)
-    ts.query(getActorWithPassword(actorName, passwordHashString)).map(actorFromResult).flatMap { actorOpt =>
-      if (actorOpt.isEmpty) {
-        ts.ask(graphExistsQ(actorsGraph)).flatMap { exists =>
-          if (exists) {
-            Future.successful(None)
-          }
-          else {
-            val topActor = NXActor(actorName, None)
-            ts.up.sparqlUpdate(insertTopActorQ(topActor, passwordHashString)).map(ok => Some(topActor))
-          }
-        }
-      }
-      else {
-        Future.successful(actorOpt)
-      }
-    }
-  }
-
-  def listSubActors(nxActor: NXActor): List[Map[String, String]] = {
+  override def listSubActors(nxActor: User): List[Map[String, String]] = {
     val query = ts.query(getSubActorList(nxActor)).map { list =>
-        list.map(m =>
-          Map(
-            "userName" -> m.get("username").get.text,
-            "isAdmin" -> {
-              val isAdmin = m.get("isAdmin")
-              if (isAdmin.nonEmpty) isAdmin.get.text else "false"},
-            "userEnabled" -> {
-              val actorEnabled = m.get("actorEnabled")
-              if (actorEnabled.nonEmpty) actorEnabled.get.text else "true"
-            }
-          )
+      list.map(m =>
+        Map(
+          "userName" -> m.get("username").get.text,
+          "isAdmin" -> {
+            val isAdmin = m.get("isAdmin")
+            if (isAdmin.nonEmpty) isAdmin.get.text else "false"
+          },
+          "userEnabled" -> {
+            val actorEnabled = m.get("actorEnabled")
+            if (actorEnabled.nonEmpty) actorEnabled.get.text else "true"
+          }
         )
+      )
     }
     // todo: maybe make this async
     Await.result(query, 5.seconds)
   }
 
-  def createSubActor(adminActor: NXActor, usernameString: String, password: String): Future[Option[NXActor]] = {
-    val hash = hashPassword(password, usernameString)
-    val newActor = NXActor(usernameString, Some(adminActor.uri))
+  override def createSubActor(adminActor: User, usernameString: String, password: String): Future[Option[User]] = {
+    val hash = Utils.hashPasswordUnsecure(password, usernameString)
+    val newActor = User(usernameString, Some(adminActor.uri(orgContext.appConfig.nxUriPrefix)))
     val update = ts.up.sparqlUpdate(insertSubActorQ(newActor, hash, adminActor))
     checkFail(update)
     update.map(ok => Some(newActor))
   }
 
-  def makeAdmin(userName: String): Future[Option[NXActor]] = {
-    val actor = NXActor(userName, None, None)
+  override def makeAdmin(userName: String): Future[Option[User]] = {
+    val actor = User(userName, None, None)
     val q = setActorAdminQ(actor, true)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
   }
 
-  def removeAdmin(userName: String): Future[Option[NXActor]] = {
-    val actor = NXActor(userName, None, None)
+  override def removeAdmin(userName: String): Future[Option[User]] = {
+    val actor = User(userName, None, None)
     val q = setActorAdminQ(actor, false)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
   }
 
-  def deleteActor(userName: String): Future[Option[NXActor]] = {
-    val actor = NXActor(userName, None, None)
+  override def deleteActor(userName: String): Future[Option[User]] = {
+    val actor = User(userName, None, None)
     val q = removeActorQ(actor)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
   }
 
-  def disableActor(userName: String): Future[Option[NXActor]] = {
-    val actor = NXActor(userName, None, None)
+  override def disableActor(userName: String): Future[Option[User]] = {
+    val actor = User(userName, None, None)
     val q = enableActorQ(actor, false)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
   }
 
-  def enableActor(userName: String): Future[Option[NXActor]] = {
-    val actor = NXActor(userName, None, None)
+  override def enableActor(userName: String): Future[Option[User]] = {
+    val actor = User(userName, None, None)
     val q = enableActorQ(actor, true)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
   }
 
-  def setProfile(actor: NXActor, nxProfile: NXProfile): Future[Unit] = {
+  override def setProfile(actor: User, nxProfile: Profile): Future[Unit] = {
     val q = setActorProfileQ(actor, nxProfile)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update
   }
 
-  def setPassword(actor: NXActor, newPassword: String): Future[Boolean] = {
-    val hash = hashPassword(newPassword, actor.actorName)
+  override def setPassword(actor: User, newPassword: String): Future[Boolean] = {
+    val hash = Utils.hashPasswordUnsecure(newPassword, actor.actorName)
     val update = ts.up.sparqlUpdate(setActorPasswordQ(actor, hash))
     checkFail(update)
     update.map(ok => true)

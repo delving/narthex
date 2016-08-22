@@ -19,8 +19,9 @@ package triplestore
 import dataset.DsInfo
 import dataset.DsInfo._
 import mapping.VocabInfo.CATEGORIES_SPEC
-import org.ActorStore.{NXActor, NXProfile}
+import org.{Profile, User}
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.libs.json.JsValue
 import services.StringHandling._
 import services.Temporal
@@ -121,7 +122,7 @@ object Sparql {
        |}
      """.stripMargin
 
-  def actorFromResult(mapList: List[Map[String, QueryValue]]): Option[NXActor] = {
+  def actorFromResult(mapList: List[Map[String, QueryValue]]): Option[User] = {
     mapList.headOption.map { resultMap =>
       val username = resultMap.get("username").map(_.text).get
       def text(fieldName: String) = resultMap.get(fieldName).map(_.text).getOrElse("")
@@ -130,10 +131,10 @@ object Sparql {
       val lastName = text("lastName")
       val email = text("email")
       val profileOpt = if (firstName.nonEmpty || lastName.nonEmpty || email.nonEmpty)
-          Some(NXProfile(firstName, lastName, email))
+          Some(Profile(firstName, lastName, email))
       else
           None
-      NXActor(username, makerOpt, profileOpt)
+      User(username, makerOpt, profileOpt)
     }
   }
 
@@ -170,22 +171,27 @@ object Sparql {
     mapList.flatMap(resultMap => resultMap.get("email").map(_.text))
   }
 
-  def insertTopActorQ(actor: NXActor, passwordHashString: String) =
-    // todo make boolean later ^^xsd:boolean
-    s"""
-      |INSERT DATA {
-      |   GRAPH <$actorsGraph> {
-      |      <$actor>
-      |         a <$actorEntity> ;
-      |         <$username> ${literalExpression(actor.actorName, None)} ;
-      |         <$isAdmin> "true";
-      |         <$actorEnabled> "true";
-      |         <$passwordHash> '$passwordHashString' .
-      |   }
-      |}
+  def insertTopActorQ(actor: User, passwordHashString: String) = {
+    val enabled = true
+    val admin = true
+    val query = s"""
+       |INSERT DATA {
+       |   GRAPH <$actorsGraph> {
+       |      <$actor>
+       |         a <$actorEntity> ;
+       |         <$username> ${literalExpression(actor.actorName, None)} ;
+       |         <$isAdmin> $admin;
+       |         <$actorEnabled> $enabled;
+       |         <$passwordHash> '$passwordHashString' .
+       |   }
+       |}
      """.stripMargin
 
-  def insertOAuthActorQ(actor: NXActor) =
+    Logger.info("Query will be " + query)
+    query
+  }
+
+  def insertOAuthActorQ(actor: User) =
     s"""
       |INSERT DATA {
       |   GRAPH <$actorsGraph> {
@@ -196,29 +202,33 @@ object Sparql {
       |}
      """.stripMargin
 
-  def insertSubActorQ(actor: NXActor, passwordHashString: String, adminActor: NXActor) =
+  def insertSubActorQ(actor: User, passwordHashString: String, adminActor: User) = {
+    val enabled = true
+    val admin = false
     s"""
-      |WITH <$actorsGraph>
-      |DELETE {
-      |   <$actor> ?p ?o .
-      |}
-      |INSERT {
-      |   <$actor>
-      |      a <$actorEntity>;
-      |      <$username> ${literalExpression(actor.actorName, None)} ;
-      |      <$actorOwner> <$adminActor> ;
-      |      <$actorEnabled> "true" ;
-      |      <$isAdmin> "false" ;
-      |      <$passwordHash> '$passwordHashString' .
-      |}
-      |WHERE {
-      |   OPTIONAL {
-      |      <$actor> ?p ?o .
-      |   }
-      |}
+       |WITH <$actorsGraph>
+       |DELETE {
+       |   <$actor> ?p ?o .
+       |}
+       |INSERT {
+       |   <$actor>
+       |      a <$actorEntity>;
+       |      <$username> ${literalExpression(actor.actorName, None)} ;
+       |      <$actorOwner> <$adminActor> ;
+       |      <$actorEnabled> $enabled ;
+       |      <$isAdmin> $admin ;
+       |      <$passwordHash> '$passwordHashString' .
+       |}
+       |WHERE {
+       |   OPTIONAL {
+       |      <$actor> ?p ?o .
+       |   }
+       |}
      """.stripMargin
+  }
 
-  def getSubActorList(actor: NXActor) =
+
+  def getSubActorList(actor: User) =
     // todo: add ^^xsd:boolean
     s"""
        |SELECT ?username ?isAdmin ?actorEnabled
@@ -237,7 +247,7 @@ object Sparql {
        |}
       """.stripMargin
 
-  def setActorProfileQ(actor: NXActor, profile: NXProfile) =
+  def setActorProfileQ(actor: User, profile: Profile) =
     s"""
       |WITH <$actorsGraph>
       |DELETE {
@@ -261,7 +271,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def setActorPasswordQ(actor: NXActor, passwordHashString: String) =
+  def setActorPasswordQ(actor: User, passwordHashString: String) =
     s"""
       |WITH <$actorsGraph>
       |DELETE {
@@ -275,14 +285,14 @@ object Sparql {
       |}
       """.stripMargin
 
-  def removeActorQ(actor: NXActor) =
+  def removeActorQ(actor: User) =
     s"""
        |WITH <$actorsGraph>
        |DELETE {
        |   <$actor> ?p ?o .
        |}""".stripMargin
 
-  def enableActorQ(actor: NXActor, enabled: Boolean = true) =
+  def enableActorQ(actor: User, enabled: Boolean = true) =
     s"""
        |WITH <$actorsGraph>
        |DELETE {
@@ -296,7 +306,7 @@ object Sparql {
        |   OPTIONAL { <$actor> <$actorEnabled> ?actorEnabled .}
        |}""".stripMargin
 
-  def setActorAdminQ(actor: NXActor, isAdminToggle: Boolean = true) =
+  def setActorAdminQ(actor: User, isAdminToggle: Boolean = true) =
   // todo add ^^xsd:boolean
     s"""
        |WITH <$actorsGraph>
@@ -582,7 +592,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def insertMappingQ(graphName:String, actor: NXActor, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
+  def insertMappingQ(graphName:String, actor: User, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
     val connection = if (skosB.spec == CATEGORIES_SPEC) belongsToCategory.uri else exactMatch
     s"""
       |INSERT DATA {

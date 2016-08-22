@@ -3,6 +3,7 @@
 .*
 # except for .gitignore
 !.gitignore
+!.java-version
 
 # Ignore Play! working directory #
 db
@@ -20,7 +21,7 @@ test-result
 server.pid
 *.iml
 *.eml
-# ignore all conf files in the project root
-*.conf
-!narthex.conf
+
+!.travis.yml
 out
+fuseki_data

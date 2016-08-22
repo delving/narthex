@@ -16,14 +16,14 @@
 
 package web
 
-import org.ActorStore.NXActor
+import org.User
 import play.Logger
-import play.api.Play.current
-import play.api.cache.Cache
+import play.api.cache.CacheApi
 import play.api.libs.json._
 import play.api.mvc._
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 trait Security {
   this: Controller =>
@@ -31,32 +31,35 @@ trait Security {
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
   lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
 
-  implicit val userSessionWrites = new Writes[ActorSession] {
-    def writes(us: ActorSession) = {
-      val maker = us.actor.makerOpt.getOrElse("")
-      val firstName = us.actor.profileOpt.map(_.firstName).getOrElse("")
-      val lastName = us.actor.profileOpt.map(_.lastName).getOrElse("")
-      val email = us.actor.profileOpt.map(_.email).getOrElse("")
+  def cacheApi: CacheApi
+
+  implicit val userSessionWrites = new Writes[UserSession] {
+    def writes(us: UserSession) = {
+      val maker = us.user.makerOpt.getOrElse("")
+      val firstName = us.user.profileOpt.map(_.firstName).getOrElse("")
+      val lastName = us.user.profileOpt.map(_.lastName).getOrElse("")
+      val email = us.user.profileOpt.map(_.email).getOrElse("")
       Json.obj(
-        "username" -> us.actor.actorName,
+        "username" -> us.user.actorName,
         "maker" -> maker,
         "firstName" -> firstName,
         "lastName" -> lastName,
         "email" -> email,
         "apiKey" -> us.apiKey,
         "narthexDomain" -> us.narthexDomain,
-        "naveDomain" -> us.naveDomain,
-        "singleTripleStore" -> us.singleTripleStore
+        "naveDomain" -> us.naveDomain
       )
     }
   }
 
-  case class ActorSession(actor: NXActor,
-                          apiKey: String,
-                          narthexDomain: String,
-                          naveDomain: String,
-                          singleTripleStore: Boolean,
-                          token: String = java.util.UUID.randomUUID().toString)
+  case class UserSession(user: User,
+                         apiKey: String,
+                         narthexDomain: String,
+                         naveDomain: String,
+                         token: String = java.util.UUID.randomUUID().toString) {
+    @deprecated("use the 'user' property instead", "0.3.7")
+    val actor = user
+  }
 
   /*
     To make this work seamlessly with Angular, you should read the token from a header called
@@ -65,12 +68,12 @@ trait Security {
     http://www.mariussoutier.com/blog/2013/07/14/272/
   */
 
-  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: ActorSession => Request[A] => Result): Action[A] = Action(p) { implicit request =>
+  def Secure[A](p: BodyParser[A] = parse.anyContent)(block: UserSession => Request[A] => Result): Action[A] = Action(p) { implicit request =>
     val maybeToken: Option[String] = request.headers.get(TOKEN)
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[ActorSession](token) map { session =>
+      cacheApi.get[UserSession](token) map { session =>
         block(session)(request).withSession(session)
       }
     } getOrElse {
@@ -78,12 +81,12 @@ trait Security {
     }
   }
 
-  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: ActorSession => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
+  def SecureAsync[A](p: BodyParser[A] = parse.anyContent)(block: UserSession => Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
     val maybeToken: Option[String] = request.headers.get(TOKEN)
     val maybeCookie: Option[String] = request.cookies.get(TOKEN_COOKIE_KEY).map(_.value)
     val tokenOrCookie: Option[String] = if (maybeToken.isDefined) maybeToken else maybeCookie
     tokenOrCookie.flatMap { token =>
-      Cache.getAs[ActorSession](token) map { session =>
+      cacheApi.get[UserSession](token) map { session =>
         block(session)(request)
       }
     } getOrElse {
@@ -93,14 +96,14 @@ trait Security {
 
   implicit class ResultWithToken(result: Result) {
 
-    def withSession(session: ActorSession): Result = {
-      Cache.set(session.token, session, CACHE_EXPIRATION)
+    def withSession(session: UserSession): Result = {
+      cacheApi.set(session.token, session, CACHE_EXPIRATION.seconds)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, session.token, None, httpOnly = false))
     }
 
     def discardingToken(token: String): Result = {
       Logger.info(s"discarding token $token")
-      Cache.remove(token)
+      cacheApi.remove(token)
       result.discardingCookies(DiscardingCookie(name = TOKEN_COOKIE_KEY))
     }
   }

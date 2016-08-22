@@ -20,7 +20,6 @@ import java.io._
 import java.lang.Boolean.FALSE
 
 import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
-import org.OrgContext
 import org.apache.commons.io.input.CountingInputStream
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
@@ -61,7 +60,7 @@ object ProcessedRepo {
       dataset.listNames().toList.map(g => singleGraphUpdate(dataset, g)).mkString("\n")
     }
 
-    def bulkAPIQ: String = {
+    def bulkAPIQ(orgId: String): String = {
 
       def createBulkAction(dataset: Dataset, graphUri: String): String = {
         val model = dataset.getNamedModel(graphUri)
@@ -69,14 +68,12 @@ object ProcessedRepo {
         RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
         val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/(.+)/graph".r
         val SpecIdExtractor(spec, localId) = graphUri
-        val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
+        val hubId = s"${orgId}_${spec}_$localId"
         val currentSkosFields = dsInfo.getLiteralPropList(skosField)
-        val acceptanceModeString= dsInfo.getLiteralProp(acceptanceMode)
         val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
         val actionMap = Json.obj(
             "hubId" -> hubId,
             "dataset" -> spec,
-            "acceptanceMode" -> acceptanceModeString,
             "graphUri" -> graphUri,
             "type" -> "void_EDMRecord",
             "action" -> "index",

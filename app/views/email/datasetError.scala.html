@@ -1,4 +1,4 @@
-@(mail: services.MailService.MailDatasetError)
+@(spec: String, message: String, exceptionString: String)
 <html>
     <head>
         <style type="text/css">
@@ -39,9 +39,9 @@
         </style>
     </head>
     <body>
-        <h1 class="narthex-heading">Failure in dataset <span class="narthex-spec">@{mail.spec}</span></h1>
-        <h2 class="narthex-subheading">@(mail.message)</h2>
-        <pre class="narthex-stack-trace">@(mail.exceptionString)</pre>
+        <h1 class="narthex-heading">Failure in dataset <span class="narthex-spec">@{spec}</span></h1>
+        <h2 class="narthex-subheading">@(message)</h2>
+        <pre class="narthex-stack-trace">@(exceptionString)</pre>
         <hr/>
         <div class="narthex-signature">
             Cheers,<br/>
