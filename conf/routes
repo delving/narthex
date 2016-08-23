@@ -27,7 +27,6 @@ POST        /narthex/enable-actor                                            web
 POST        /narthex/make-admin                                              web.MainController.makeAdmin
 POST        /narthex/remove-admin                                            web.MainController.removeAdmin
 POST        /narthex/set-password                                            web.MainController.setPassword
-GET         /narthex/test-email/:emailType                                   web.MainController.testEmail(emailType)
 
 # File Handling
 GET         /narthex/app/dataset-socket                                      web.AppController.datasetSocket
@@ -89,3 +88,5 @@ GET         /narthex/api/:apiKey/:spec/histogram/*path                       web
 GET         /narthex/webjars/*file                                           controllers.WebJarAssets.at(file)
 GET         /narthex/assets/*file                                            controllers.Assets.at(path="/public", file)
 
+# Monitoring
+GET         /non-public/monitoring/metrics                                   com.kenshoo.play.metrics.MetricsController.metrics

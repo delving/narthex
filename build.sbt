@@ -56,7 +56,8 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "log4j-over-slf4j" % "1.7.21",
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "4.0.0",
-  "eu.delving" % "sip-core" % "1.0.9"
+  "eu.delving" % "sip-core" % "1.0.9",
+  "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1"
 )
 
 libraryDependencies ~= {
@@ -98,6 +99,8 @@ credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 javaOptions += "-Djava.awt.headless=true"
 
 PlayKeys.fileWatchService := play.runsupport.FileWatchService.sbt(pollInterval.value)
+
+routesGenerator := InjectedRoutesGenerator
 
 packageName in Docker := "delving-narthex"
 

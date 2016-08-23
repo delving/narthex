@@ -17,136 +17,44 @@
 package org
 
 import java.io.File
-import java.util
 
-import akka.actor.ActorContext
-import dataset.DatasetActor.WorkFailure
+import akka.actor.ActorRef
 import dataset.DsInfo.withDsInfo
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
-import harvest.PeriodicHarvest
-import harvest.PeriodicHarvest.ScanForHarvests
-import init.AuthenticationMode
+import init.AppConfig
 import mapping._
-import org.ActorStore.NXActor
 import org.OrgActor.DatasetsCountCategories
-import play.api.{Logger, Play}
-import play.libs.Akka._
-import services.FileHandling.clearDir
-import services.StringHandling.urlEncodeValue
+import play.api.cache.CacheApi
+import play.api.libs.ws.WSClient
+import services.MailService
 import triplestore.GraphProperties.categoriesInclude
-import triplestore.{Fuseki, TripleStore}
+import triplestore.TripleStore
 
-import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.language.postfixOps
 
-object OrgContext {
-  val config = Play.current.configuration
+/**
+  * Best way to describe this class is that it has functioned as some means of passing around globals.
+  * It is obvious that we need to remove this class and only DI the specific values that a component requires,
+  * allowing this class to be deleted, which I vow to do.
+  */
+class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsClient: WSClient, val mailService: MailService,
+                 val authenticationService: AuthenticationService, val us: UserRepository, val orgActor: ActorRef)
+                (implicit ec: ExecutionContext, val ts: TripleStore) {
 
-  def configFlag(name: String): Boolean = config.getBoolean(name).getOrElse(false)
-
-  def configString(name: String) = config.getString(name).getOrElse(
-    throw new RuntimeException(s"Missing config string: $name")
-  )
-
-  def configStringNoSlash(name: String) = configString(name).replaceAll("\\/$", "")
-
-  def configInt(name: String) = config.getInt(name).getOrElse(
-    throw new RuntimeException(s"Missing config int: $name")
-  )
-
-  def secretList(name: String): util.List[String] = config.getStringList(name).getOrElse(List("secret"))
-
-  val userHome = System.getProperty("user.home")
-
-  val NARTHEX_HOME = config.getString("narthexHome") match {
-    case None => new File(System.getProperty("user.home"), "NarthexFiles")
-    case Some(path) => new File(path)
-  }
-
-  lazy val API_ACCESS_KEYS = secretList("api.accessKeys")
-
-  lazy val HARVEST_TIMEOUT = config.getInt("harvest.timeout").getOrElse(3 * 60 * 1000)
-
-  def apiKeyFits(accessKey: String) = API_ACCESS_KEYS.contains(accessKey)
-
-  val ORG_ID = configString("orgId")
-  val NARTHEX_DOMAIN = configStringNoSlash("domains.narthex")
-  val NAVE_DOMAIN = configStringNoSlash("domains.nave")
-  val NAVE_API_URL = configStringNoSlash("naveApiUrl")
-  val WEB_RESOURCE_PATH = config.getString("webResourcePath").getOrElse("/tmp")
-
-  val NAVE_BULK_API_AUTH_TOKEN = configStringNoSlash("naveAuthToken")
-  val USE_BULK_API = configFlag("useBulkApi")
-  val LOG_BULK_API = configFlag("logBulkApi")
-
-  val RDF_BASE_URL = configStringNoSlash("rdfBaseUrl")
-
-  val NX_URI_PREFIX = s"$RDF_BASE_URL/resource"
-
-  val TRIPLE_STORE_URL: Option[String] = config.getString("triple-store")
-
-  val TRIPLE_STORE_LOG = configFlag("triple-store-log")
-
-  Logger.info(s"Triple store logging $TRIPLE_STORE_LOG")
-
-  val SINGLE_TRIPLE_STORE = TRIPLE_STORE_URL.isDefined
-
-  val XSD_VALIDATION = configFlag("xsd-validation")
-  System.setProperty("XSD_VALIDATION", XSD_VALIDATION.toString)
-
-  private def tripleStore(implicit executionContext: ExecutionContext): TripleStore = TRIPLE_STORE_URL.map { tripleStoreUrl =>
-    new Fuseki(tripleStoreUrl, TRIPLE_STORE_LOG)
-  } getOrElse {
-      throw new RuntimeException("Must have triple-store= ")
-    }
-
-  implicit val TS: TripleStore = tripleStore
-
-  val periodicHarvest = system.actorOf(PeriodicHarvest.props(), "PeriodicHarvest")
-  val harvestTicker = system.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
-  val periodicSkosifyCheck = system.actorOf(PeriodicSkosifyCheck.props(), "PeriodicSkosifyCheck")
-//  val skosifyTicker = system.scheduler.schedule(30.seconds, 30.seconds, periodicSkosifyCheck, ScanForWork)
-
-  val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
-  check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e) }
-
-  val authenticationService : AuthenticationService = AuthenticationMode.fromConfigString(config.getString(AuthenticationMode.PROPERTY_NAME)) match {
-    case AuthenticationMode.MOCK => new MockAuthenticationService
-    case AuthenticationMode.TS => new TsBasedAuthenticationService
-  }
-
-  val orgContext = new OrgContext(authenticationService, NARTHEX_HOME, ORG_ID)(global, tripleStore)
-
-  def actorWork(actorContext: ActorContext)(block: => Unit) = {
-    try {
-      block
-    }
-    catch {
-      case e: Throwable =>
-        actorContext.parent ! WorkFailure(e.getMessage, Some(e))
-    }
-  }
-}
-
-class OrgContext(val authenticationService: AuthenticationService, narthexHome: File, val orgId: String)(implicit ec: ExecutionContext, ts: TripleStore) {
-
-  val root = narthexHome
-  val orgRoot = new File(root, orgId)
+  val root = appConfig.narthexDataDir
+  val orgRoot = new File(root, appConfig.orgId)
   val factoryDir = new File(orgRoot, "factory")
   val categoriesDir = new File(orgRoot, "categories")
   val datasetsDir = new File(orgRoot, "datasets")
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
 
-  lazy val categoriesRepo = new CategoriesRepo(categoriesDir)
-  lazy val sipFactory = new SipFactory(factoryDir)
-
-
-  val us = new ActorStore(authenticationService)
+  lazy val categoriesRepo = new CategoriesRepo(categoriesDir, appConfig.orgId)
+  lazy val sipFactory = new SipFactory(factoryDir, appConfig.rdfBaseUrl, wsClient)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
@@ -154,33 +62,26 @@ class OrgContext(val authenticationService: AuthenticationService, narthexHome: 
   rawDir.mkdirs()
   sipsDir.mkdirs()
 
-  def clear() = {
-    clearDir(datasetsDir)
-    clearDir(sipsDir)
-    clearDir(rawDir)
-    // todo: categories too when they are no longer defined there
-  }
-
-  def createDsInfo(owner: NXActor, spec: String, characterString: String, prefix: String) = {
+  def createDsInfo(owner: User, spec: String, characterString: String, prefix: String) = {
     val character = DsInfo.getCharacter(characterString).get
-    DsInfo.createDsInfo(owner, spec, character, prefix)
+    DsInfo.createDsInfo(owner, spec, character, prefix, this)
   }
 
-  def datasetContext(spec: String): DatasetContext = withDsInfo(spec)(dsInfo => new DatasetContext(this, dsInfo))
+  def datasetContext(spec: String): DatasetContext = withDsInfo(spec, this)(dsInfo => new DatasetContext(this, dsInfo))
 
   def vocabMappingStore(specA: String, specB: String): VocabMappingStore = {
     val futureStore = for {
-      infoA <- VocabInfo.freshVocabInfo(specA)
-      infoB <- VocabInfo.freshVocabInfo(specB)
+      infoA <- VocabInfo.freshVocabInfo(specA, this)
+      infoB <- VocabInfo.freshVocabInfo(specB, this)
     } yield (infoA, infoB) match {
-        case (Some(a), Some(b)) => new VocabMappingStore(a, b)
+        case (Some(a), Some(b)) => new VocabMappingStore(a, b, this)
         case _ => throw new RuntimeException(s"No vocabulary mapping found for $specA, $specB")
       }
     Await.result(futureStore, 15.seconds)
   }
 
   def termMappingStore(spec: String): TermMappingStore = {
-    withDsInfo(spec)(dsInfo => new TermMappingStore(dsInfo))
+    withDsInfo(spec, this)(dsInfo => new TermMappingStore(dsInfo, this, this.wsClient))
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(
@@ -188,7 +89,7 @@ class OrgContext(val authenticationService: AuthenticationService, narthexHome: 
   ).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
 
   def uploadedSips: Future[Seq[Sip]] = {
-    DsInfo.listDsInfo.map { list =>
+    DsInfo.listDsInfo(this).map { list =>
       list.flatMap { dsi =>
         val datasetContext = new DatasetContext(this, dsi)
         datasetContext.sipRepo.latestSipOpt
@@ -197,9 +98,9 @@ class OrgContext(val authenticationService: AuthenticationService, narthexHome: 
   }
 
   def startCategoryCounts() = {
-    val catDatasets = DsInfo.listDsInfo.map(_.filter(_.getBooleanProp(categoriesInclude)))
+    val catDatasets = DsInfo.listDsInfo(this).map(_.filter(_.getBooleanProp(categoriesInclude)))
     catDatasets.map { dsList =>
-      OrgActor.actor ! DatasetsCountCategories(dsList.map(_.spec))
+      orgActor ! DatasetsCountCategories(dsList.map(_.spec))
     }
   }
 

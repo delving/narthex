@@ -1,7 +1,5 @@
 # Development and Deployment
 
-![Package](images/development-deployment.jpg)
-
 Narthex is built on the basis of the [Scala Build Tool](http://www.scala-sbt.org/), so for development, a project in an Integrated Development Environment (IDE) like [IntelliJ]() can be built using a single command like [gen-idea](https://github.com/mpeltonen/sbt-idea). The [build file](https://github.com/delving/narthex/blob/master/build.sbt) defines the project.
 
 With the **sbt** installed, and the below configuration completed, one can run Narthex in **development mode** using the **run** command and then opening a browser to [http://localhost:9000/](http://localhost:9000/), which the default location of the Play server.
@@ -12,10 +10,14 @@ With the **sbt** installed, and the below configuration completed, one can run N
  - Startup fuseki from this project's root-dir:
 
 ```bash
-fuseki-server --config=./fuseki.ttl
+cd [fuseki_homedir]
+
+./fuseki-server --config=[/full/path_to_nathex_project_dir]/fuseki.ttl
 ```
 
-You will notice that it creates a `./fuseki_data` directory which is in .gitignore.
+Don't use the '~' character for your homedir, Fuseki runs inside the JVM and won't replace that with the path to your homedir.
+
+You will notice that it creates a `./fuseki_data` directory which is in .gitignore. To start with a fresh database, stop fuseki and delete the data-directory.
 
  - Narthex uses your local filesystem for persistence, and we must initialize it. Perform the following steps from the project root-dir.
     

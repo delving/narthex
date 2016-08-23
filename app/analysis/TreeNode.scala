@@ -20,7 +20,6 @@ import analysis.TreeNode.LengthHistogram
 import dataset.DatasetContext
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils.writeStringToFile
-import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
@@ -267,33 +266,3 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String, va
 
   override def toString = s"TreeNode($tag)"
 }
-
-// todo: Understand this:
-//import akka.actor._
-//import akka.pattern.{after, ask, pipe}
-//import akka.util.Timeout
-//
-//class LogSearchActor extends Actor {
-//
-//  def receive = {
-//    case Search(worktimes, timeout) =>
-//      // Doing all the work in one actor using futures
-//      val searchFutures = worktimes map { worktime =>
-//        val searchFuture = search(worktime)
-//        val fallback = after(timeout, context.system.scheduler) {
-//          Future successful s"$worktime ms > $timeout"
-//        }
-//        Future firstCompletedOf Seq(searchFuture, fallback)
-//      }
-//
-//      // Pipe future results to sender
-//      (Future sequence searchFutures) pipeTo sender
-//  }
-//
-//  def search(worktime: Int): Future[String] = Future {
-//    Thread sleep worktime
-//    s"found something in $worktime ms"
-//  }
-//}
-//
-//case class Search(worktime: List[Int], timeout: FiniteDuration)
