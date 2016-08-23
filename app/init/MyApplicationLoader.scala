@@ -12,7 +12,7 @@ import mapping.PeriodicSkosifyCheck
 import org._
 import play.api._
 import play.api.ApplicationLoader.Context
-import play.api.cache.{EhCacheComponents}
+import play.api.cache.EhCacheComponents
 import play.api.libs.ws.ning.NingWSComponents
 import triplestore.Fuseki
 import web.{APIController, AppController, MainController, SipAppController}
@@ -121,7 +121,8 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
     val narthexDomain = configStringNoSlash("domains.narthex")
     val naveDomain = configStringNoSlash("domains.nave")
     val apiAccessKeys = secretList("api.accessKeys").toList
-    val narthexDataDir: File = new File(System.getProperty("user.home"), "NarthexFiles")
+    val homeDir: String = configuration.getString("narthexHome").getOrElse(System.getProperty("user.home") + "NarthexFiles")
+    val narthexDataDir: File = new File(homeDir)
 
     AppConfig(
       harvestTimeout, configFlag("useBulkApi"), rdfBaseUrl,

@@ -60,9 +60,8 @@ In our case the address was `192.168.99.1` and we need it for the contents of th
 The contents of the override-file must look like this.
 *Note* the include statement is required or defaults won't load
 
-```hocon
+```
 include "application.conf"
-authenticationMode = "mock"
 narthexHome = "/opt/narthexfiles"
 triple-store = "http://192.168.99.1:3030/devorg"
 ```
@@ -70,12 +69,13 @@ triple-store = "http://192.168.99.1:3030/devorg"
 In our case, that would result in the following docker command:
 
 ```bash
-$ docker run --rm --net host --name narthex -v /Users/hw/NarthexFiles:/opt/narthexfiles \ 
-    -v /Users/hw/Desktop/narthex-overrides.conf:/opt/narthex-overrides.conf \
-    -p 8888:9000 delving-narthex:0.3.6-SNAPSHOT
+docker run --rm --net host --name narthex \
+-v /Users/hw/NarthexFiles:/opt/narthexfiles \
+-v /Users/hw/Desktop/narthex_conf:/opt/conf \
+delving-narthex:YOUR_SNAPSHOT_VERSION_HERE
 ```
 
-After that, Narthex is running at http://localhost:8888
+After that, Narthex is running (inside the docker-container) at http://localhost:9000
 *Note* If you are on Mac or Windows, Narthex runs inside your docker-machine. In our case, `$ docker-machine ls` outputs:
 
 ```
@@ -83,7 +83,7 @@ NAME      ACTIVE   DRIVER       STATE     URL                         SWARM   DO
 default   *        virtualbox   Running   tcp://192.168.99.100:2376           v1.12.0   
 ```
 
-So, I can reach narthex at [http://192.168.99.100:8888](http://192.168.99.100:8888)
+So, I can reach narthex at http://192.168.99.100:9000
 
 ## The NarthexFiles directory
 

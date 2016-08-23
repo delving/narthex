@@ -108,4 +108,6 @@ maintainer in Docker := "info@delving.eu"
 
 dockerBaseImage := "openjdk:8"
 
-dockerEntrypoint := Seq("bin/narthex", "-Dconfig.file=/opt/narthex-overrides.conf")
+dockerEntrypoint := Seq("bin/narthex", "-Dconfig.file=/opt/conf/overrides.conf")
+
+dockerExposedPorts := Seq(9000)
