@@ -56,7 +56,8 @@ libraryDependencies ++= Seq(
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "4.0.0",
   "eu.delving" % "sip-core" % "1.0.9",
-  "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1"
+  "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1",
+  "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime"
 )
 
 libraryDependencies ~= {
