@@ -1,3 +1,5 @@
+import com.typesafe.sbt.packager.docker.Cmd
+
 //===========================================================================
 //    Copyright 2014 Delving B.V.
 //
@@ -106,8 +108,13 @@ packageName in Docker := "delving-narthex"
 
 maintainer in Docker := "info@delving.eu"
 
-dockerBaseImage := "openjdk:8"
+dockerBaseImage := "frolvlad/alpine-oraclejdk8:slim"
 
 dockerEntrypoint := Seq("bin/narthex", "-Dconfig.file=/opt/conf/overrides.conf")
 
 dockerExposedPorts := Seq(9000)
+
+dockerCommands := dockerCommands.value.flatMap{
+  case cmd@Cmd("FROM",_) => List(cmd, Cmd("RUN", "apk update && apk add bash"))
+  case other => List(other)
+}
