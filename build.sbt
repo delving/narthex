@@ -1,3 +1,5 @@
+import com.typesafe.sbt.packager.docker.Cmd
+
 //===========================================================================
 //    Copyright 2014 Delving B.V.
 //
@@ -17,6 +19,7 @@
 
 lazy val root = (project in file(".")).
   enablePlugins(play.sbt.PlayScala).
+  enablePlugins(DockerPlugin).
   enablePlugins(BuildInfoPlugin).
   settings(
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
@@ -101,3 +104,18 @@ javaOptions += "-Djava.awt.headless=true"
 PlayKeys.fileWatchService := play.runsupport.FileWatchService.sbt(pollInterval.value)
 
 routesGenerator := InjectedRoutesGenerator
+
+packageName in Docker := "delving-narthex"
+
+maintainer in Docker := "info@delving.eu"
+
+dockerBaseImage := "frolvlad/alpine-oraclejdk8:slim"
+
+dockerEntrypoint := Seq("bin/narthex", "-Dconfig.file=/opt/conf/overrides.conf")
+
+dockerExposedPorts := Seq(9000)
+
+dockerCommands := dockerCommands.value.flatMap{
+  case cmd@Cmd("FROM",_) => List(cmd, Cmd("RUN", "apk update && apk add bash"))
+  case other => List(other)
+}
