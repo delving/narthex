@@ -17,20 +17,20 @@
 package web
 
 import dataset.SipRepo.AvailableSip
-import org.OrgContext.orgContext
+import org.OrgContext
 import play.api.Logger
+import play.api.cache.CacheApi
 import play.api.mvc._
-import web.MainController.{OkFile, SIP_APP_VERSION}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object SipAppController extends Controller with Security {
+class SipAppController(val cacheApi: CacheApi, val orgContext: OrgContext) extends Controller with Security {
 
   def listSipZips() = SecureAsync() { profile => implicit request =>
     val availableSips: Seq[AvailableSip] = orgContext.availableSips
     orgContext.uploadedSips.map { uploadedSips =>
       val xml =
-      <sip-zips sipAppVersion={SIP_APP_VERSION}>
+      <sip-zips sipAppVersion={Utils.SIP_APP_VERSION}>
         <available>
           {
             for (availableSip <- availableSips) yield
@@ -57,7 +57,7 @@ object SipAppController extends Controller with Security {
   def downloadSipZip(spec: String) = Secure() { profile => implicit request =>
     Logger.info(s"Download sip-zip $spec")
     val sipFileOpt = orgContext.datasetContext(spec).sipFiles.headOption
-    sipFileOpt.map(OkFile(_)).getOrElse(NotFound(s"No sip-zip for $spec"))
+    sipFileOpt.map(Utils.okFile(_)).getOrElse(NotFound(s"No sip-zip for $spec"))
   }
 
   def uploadSipZip(spec: String, zipFileName: String) = Secure(parse.temporaryFile) { profile => implicit request =>

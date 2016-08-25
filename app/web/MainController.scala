@@ -16,37 +16,32 @@
 
 package web
 
-import java.io.{File, FileInputStream, FileNotFoundException}
-import java.util.UUID
+import java.io.File
 
-import org.ActorStore.{NXActor, NXProfile}
-import org.OrgContext._
-import play.api.Play.current
+import org.{AuthenticationService, Profile, User, UserRepository}
 import play.api._
-import play.api.cache.Cache
-import play.api.http.{HeaderNames, MimeTypes}
-import play.api.libs.iteratee.Enumerator
+import play.api.cache.CacheApi
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
-import play.api.libs.ws.WS
 import play.api.mvc._
 import play.api.routing.JavaScriptReverseRouter
-import services.MailService.{MailDatasetError, MailProcessingComplete}
 
-import scala.collection.JavaConversions._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object MainController extends Controller with Security {
 
-  val SIP_APP_VERSION = "1.0.9"
+class MainController(val userRepository: UserRepository,
+                     val authenticationService: AuthenticationService,
+                     val cacheApi: CacheApi,
+                     val apiAccessKeys: List[String],
+                     val narthexDomain: String, val naveDomain: String, val orgId: String) extends Controller with Security {
 
-  val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/$SIP_APP_VERSION/sip-app-$SIP_APP_VERSION-exejar.jar"
+  val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/${Utils.SIP_APP_VERSION}/sip-app-${Utils.SIP_APP_VERSION}-exejar.jar"
 
-  def actorSession(actor: NXActor) = ActorSession(
-    actor,
-    apiKey = API_ACCESS_KEYS(0),
-    narthexDomain = NARTHEX_DOMAIN,
-    naveDomain = NAVE_DOMAIN
+  def userSession(user: User) = UserSession(
+    user,
+    apiKey = this.apiAccessKeys.head,  // this is weird but let's not yak-shave too much
+    narthexDomain = this.narthexDomain,
+    naveDomain = this.naveDomain
   )
 
   def root = Action { request =>
@@ -54,102 +49,23 @@ object MainController extends Controller with Security {
   }
 
   def index = Action { request =>
-    val state = UUID.randomUUID().toString
-    createOAuthUrl(state).map { oauthUrl =>
-      Logger.info(s"Create state $state")
-      Ok(views.html.index(ORG_ID, SIP_APP_URL, oauthUrl, buildinfo.BuildInfo.version)).withSession("oauth-state" -> state)
-    } getOrElse {
-      Ok(views.html.index(ORG_ID, SIP_APP_URL, "", buildinfo.BuildInfo.version))
-    }
-  }
-
-  def oauthCallback(code: Option[String] = None, state: Option[String] = None) = Action.async { implicit request =>
-    def getToken(code: String): Future[String] = {
-      val form = Map(
-        "grant_type" -> Seq("authorization_code"),
-        "client_id" -> Seq(OAUTH_ID.get),
-        "client_secret" -> Seq(OAUTH_SECRET.get),
-        "code" -> Seq(code),
-        "redirect_uri" -> Seq(OAUTH_CALLBACK)
-      )
-      WS.url(OAUTH_TOKEN_URL)
-        .withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON)
-        .post(form)
-        .flatMap { response =>
-
-        if (response.status / 100 != 2) {
-          throw new RuntimeException(s"$OAUTH_TOKEN_URL response not 2XX, but ${response.status}: ${response.statusText}")
-        }
-        val tokenOpt = (response.json \ "access_token").asOpt[String]
-        tokenOpt.map(token => Future.successful(token)).getOrElse(Future.failed(new IllegalStateException("No access!")))
-      }
-    }
-    val resultFutureOpt: Option[Future[Result]] = for {
-      code <- code
-      state <- state
-      oauthState <- request.session.get("oauth-state")
-    } yield {
-        if (state == oauthState) {
-          getToken(code).map { token =>
-            Logger.info(s"We got us a dang token $token")
-            Redirect("/narthex/_oauth-success").withSession("oauth-token" -> token)
-          }.recover {
-            case ex: Exception =>
-              Logger.warn(s"No token!", ex)
-              Unauthorized(ex.getMessage)
-          }
-        }
-        else {
-          Future.successful(BadRequest("Invalid oauth login"))
-        }
-      }
-    resultFutureOpt.getOrElse {
-      Logger.warn( s"""### no result code=$code state=$state session.oauth-state=${request.session.get("oauth-state")}""")
-      Future.successful(BadRequest(s"Unable to get OAuth token"))
-    }
-  }
-
-  def oauthSuccess() = Action.async { request =>
-    request.session.get("oauth-token").map { token =>
-      WS.url(OAUTH_USER_URL).withHeaders(
-        HeaderNames.ACCEPT -> MimeTypes.JSON,
-        HeaderNames.AUTHORIZATION -> s"Bearer $token"
-      ).get().flatMap { response =>
-        val username = (response.json \ "username").as[String]
-        val isStaff = (response.json \ "is_staff").as[Boolean]
-        if (isStaff) {
-          orgContext.us.oAuthenticated(username).map { actor =>
-            val session = actorSession(actor)
-            Redirect("/narthex/").withSession(session)
-          }
-        }
-        else {
-          Future.successful(Unauthorized("User is not a member of staff"))
-        }
-
-        /* this worked for github oauth
-        val login = (response.json \ "login").as[String]
-        Logger.info(s"OAuth success $login")
-        orgContext.us.oAuthenticated(login).map { actor =>
-          val session = actorSession(actor)
-          Redirect("/narthex/").withSession(session)
-        } */
-      }
-    } getOrElse {
-      Future.successful(Unauthorized("No oauth token"))
-    }
+    Ok(views.html.index(orgId, SIP_APP_URL, buildinfo.BuildInfo.version))
   }
 
   def login = Action.async(parse.json) { implicit request =>
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
     Logger.info(s"Login $username")
-    orgContext.authenticationService.authenticate(username, password).map { actorOpt =>
-      actorOpt.map { actor =>
-        val session = actorSession(actor)
-        Ok(Json.toJson(session)).withSession(session)
-      } getOrElse {
-        Unauthorized("Username/password not found")
+
+    val authenticated: Future[Boolean] = authenticationService.authenticate(username, password)
+
+    authenticated.flatMap {
+      case false => Future.successful(Unauthorized("Username/password not found"))
+      case true => {
+        userRepository.loadActor(username).map { actor =>
+          val session = userSession(actor)
+          Ok(Json.toJson(session)).withSession(session)
+        }
       }
     }
   }
@@ -158,7 +74,7 @@ object MainController extends Controller with Security {
     val maybeToken = request.headers.get(TOKEN)
     maybeToken flatMap {
       token =>
-        Cache.getAs[ActorSession](token) map { session =>
+        cacheApi.get[UserSession](token) map { session =>
           Ok(Json.toJson(session)).withSession(session)
         }
     } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
@@ -176,13 +92,13 @@ object MainController extends Controller with Security {
   }
 
   def setProfile() = SecureAsync(parse.json) { session => implicit request =>
-    val nxProfile = NXProfile(
+    val nxProfile = Profile(
       firstName = (request.body \ "firstName").as[String],
       lastName = (request.body \ "lastName").as[String],
       email = (request.body \ "email").as[String]
     )
-    val setOp = orgContext.us.setProfile(session.actor, nxProfile).map { ok =>
-      val newSession = session.copy(actor = session.actor.copy(profileOpt = Some(nxProfile)))
+    val setOp = userRepository.setProfile(session.user, nxProfile).map { ok =>
+      val newSession = session.copy(user = session.user.copy(profileOpt = Some(nxProfile)))
       Ok(Json.toJson(newSession)).withSession(newSession)
     }
     setOp.onFailure {
@@ -193,90 +109,60 @@ object MainController extends Controller with Security {
   }
 
   def listActors = Secure() { session => implicit request =>
-    Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
   }
 
   def createActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
-    orgContext.us.createSubActor(session.actor, username, password).map { actorOpt =>
-      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    userRepository.createSubActor(session.user, username, password).map { actorOpt =>
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def deleteActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
-    orgContext.us.deleteActor(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    userRepository.deleteActor(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def disableActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
-    orgContext.us.disableActor(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    userRepository.disableActor(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def enableActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
-    orgContext.us.enableActor(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    userRepository.enableActor(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def makeAdmin() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
-    orgContext.us.makeAdmin(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    userRepository.makeAdmin(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def removeAdmin() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
-    orgContext.us.removeAdmin(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> orgContext.us.listSubActors(session.actor)))
+    userRepository.removeAdmin(username).map { actorOpt =>
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def setPassword() = SecureAsync(parse.json) { session => implicit request =>
     val newPassword = (request.body \ "newPassword").as[String]
-    orgContext.us.setPassword(session.actor, newPassword).map(alright => Ok)
+    userRepository.setPassword(session.user, newPassword).map(alright => Ok)
   }
 
-  // todo: move this
-  def OkFile(file: File, attempt: Int = 0): Result = {
-    try {
-      val input = new FileInputStream(file)
-      val resourceData = Enumerator.fromStream(input)
-      val contentType = if (file.getName.endsWith(".json")) "application/json" else "text/plain; charset=utf-8"
-      Result(
-        ResponseHeader(OK, Map(
-          CONTENT_LENGTH -> file.length().toString,
-          CONTENT_TYPE -> contentType
-        )),
-        resourceData
-      )
-    }
-    catch {
-      case ex: FileNotFoundException if attempt < 5 => // sometimes status files are in the process of being written
-        Thread.sleep(333)
-        OkFile(file, attempt + 1)
-      case x: Throwable =>
-        NotFound(Json.obj("file" -> file.getName, "message" -> x.getMessage))
-    }
-  }
+  def OkFile(file: File, attempt: Int = 0): Result = Utils.okFile(file, attempt)
 
-  // todo: move this
-  def OkXml(xml: String): Result = {
-    Result(
-      ResponseHeader(OK, Map(
-        CONTENT_LENGTH -> xml.length().toString,
-        CONTENT_TYPE -> "application/xml"
-      )),
-      body = Enumerator(xml.getBytes)
-    )
-  }
+  def OkXml(xml: String): Result = Utils.okXml(xml)
 
   /**
     * Returns the JavaScript router that the client can use for "type-safe" routes.
@@ -331,39 +217,4 @@ object MainController extends Controller with Security {
       )
     ).as(JAVASCRIPT)
   }
-
-  def testEmail(messageType: String) = Action { request =>
-    messageType match {
-      case "processing-complete" =>
-        Ok(views.html.email.processingComplete(MailProcessingComplete(
-          spec = "spec",
-          ownerEmailOpt = Some("servers@delving.eu"),
-          validString = "1000000000",
-          invalidString = "0"
-        )))
-
-      case "dataset-error" =>
-        var throwable: Throwable = null
-        try {
-          throw new Exception("This is the exception's message")
-        }
-        catch {
-          case e: Throwable =>
-            throwable = e
-        }
-        Ok(views.html.email.datasetError(MailDatasetError(
-          spec = "spec",
-          ownerEmailOpt = Some("servers@delving.eu"),
-          throwable.getMessage,
-          Some(throwable)
-        )))
-
-      case badEmailType =>
-        Ok(views.html.email.emailNotFound(badEmailType, Seq(
-          "processing-complete",
-          "dataset-error"
-        )))
-    }
-  }
-
 }

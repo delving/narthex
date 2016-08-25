@@ -22,18 +22,13 @@ import com.hp.hpl.jena.rdf.model._
 import dataset.SourceRepo.{IdFilter, VERBATIM_FILTER}
 import harvest.Harvesting.{HarvestCron, HarvestType}
 import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
-import net.sf.saxon.functions.False
-import org.ActorStore.NXActor
 import org.OrgActor.DatasetMessage
-import org.OrgContext
-import org.OrgContext.{NX_URI_PREFIX, orgContext}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
+import org.{OrgContext, User}
 import play.api.Logger
-import play.api.Play.current
-import play.api.cache.Cache
 import play.api.libs.json.{JsObject, JsValue, Json, Writes}
-import play.api.libs.ws.{WS, WSResponse}
+import play.api.libs.ws.WSResponse
 import services.StringHandling.{createGraphName, urlEncodeValue}
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -89,75 +84,77 @@ object DsInfo {
     }
   }
 
-  def listDsInfo(implicit ec: ExecutionContext, ts: TripleStore): Future[List[DsInfo]] = {
+  def listDsInfo(orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[List[DsInfo]] = {
     ts.query(selectDatasetSpecsQ).map { list =>
       list.map { entry =>
         val spec = entry("spec").text
-        new DsInfo(spec)
+        new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)
       }
     }
   }
 
-  def getDsInfoUri(spec: String) = s"$NX_URI_PREFIX/dataset/${urlEncodeValue(spec)}"
+  def getDsInfoUri(spec: String, uriPrefix: String) = s"${uriPrefix}/dataset/${urlEncodeValue(spec)}"
 
-  def getGraphName(spec: String) = createGraphName(getDsInfoUri(spec))
+  def getGraphName(spec: String, uriPrefix: String) = createGraphName(getDsInfoUri(spec, uriPrefix))
 
   def getSkosGraphName(datasetUri: String) = createGraphName(s"$datasetUri/skos")
 
-  def createDsInfo(owner: NXActor, spec: String, character: DsCharacter, mapToPrefix: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[DsInfo] = {
+  def createDsInfo(owner: User, spec: String, character: DsCharacter, mapToPrefix: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[DsInfo] = {
     val m = ModelFactory.createDefaultModel()
-    val subject = m.getResource(getDsInfoUri(spec))
+    val subject = m.getResource(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix))
     m.add(subject, m.getProperty(rdfType), m.getResource(datasetEntity))
     m.add(subject, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
-    m.add(subject, m.getProperty(orgId.uri), m.createLiteral(orgContext.orgId))
+    m.add(subject, m.getProperty(orgId.uri), m.createLiteral(orgContext.appConfig.orgId))
     m.add(subject, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
-    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri))
+    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.appConfig.nxUriPrefix)))
     val trueLiteral = m.createLiteral("true")
     val falseLiteral = m.createLiteral("false")
     m.add(subject, m.getProperty(publishOAIPMH.uri), trueLiteral)
     m.add(subject, m.getProperty(publishIndex.uri), trueLiteral)
     m.add(subject, m.getProperty(publishLOD.uri), trueLiteral)
     if (mapToPrefix != "-") m.add(subject, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
-    ts.up.dataPost(getGraphName(spec), m).map { ok =>
-      val cacheName = getDsInfoUri(spec)
-      val dsInfo = new DsInfo(spec)
-      Cache.set(cacheName, dsInfo, cacheTime)
+    ts.up.dataPost(getGraphName(spec, orgContext.appConfig.nxUriPrefix), m).map { ok =>
+      val cacheName = getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)
+      val dsInfo = new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)
+      orgContext.cacheApi.set(cacheName, dsInfo, cacheTime)
       dsInfo
     }
   }
 
-  def freshDsInfo(spec: String)(implicit ec: ExecutionContext, ts: TripleStore): Future[Option[DsInfo]] = {
-    ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec))).map(answer =>
-      if (answer) Some(new DsInfo(spec)) else None
+  def freshDsInfo(spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[Option[DsInfo]] = {
+    ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix))).map(answer =>
+      if (answer) Some(new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)) else None
     )
   }
 
-  def withDsInfo[T](spec: String)(block: DsInfo => T)(implicit ec: ExecutionContext, ts: TripleStore) = {
-    val cacheName = getDsInfoUri(spec)
-    Cache.getAs[DsInfo](cacheName) map { dsInfo =>
+  def withDsInfo[T](spec: String, orgContext: OrgContext)(block: DsInfo => T)(implicit ec: ExecutionContext, ts: TripleStore) = {
+    val cacheName = getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)
+    orgContext.cacheApi.get[DsInfo](cacheName) map { dsInfo =>
       block(dsInfo)
     } getOrElse {
-      val dsInfo = Await.result(freshDsInfo(spec), 30.seconds).getOrElse {
+      val dsInfo = Await.result(freshDsInfo(spec, orgContext: OrgContext), 30.seconds).getOrElse {
         throw new RuntimeException(s"No dataset info for $spec")
       }
-      Cache.set(cacheName, dsInfo, cacheTime)
+      orgContext.cacheApi.set(cacheName, dsInfo, cacheTime)
       block(dsInfo)
     }
   }
-  def getDsInfo(spec: String)(implicit ec: ExecutionContext, ts: TripleStore) = {
-    new DsInfo(spec)
+  def getDsInfo(spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore) = {
+    new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)
   }
 }
 
-class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) extends SkosGraph {
+class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: String,
+             val naveApiUrl: String, val orgContext: OrgContext)
+            (implicit ec: ExecutionContext, ts: TripleStore) extends SkosGraph {
 
   import dataset.DsInfo._
 
   def now: String = timeToString(new DateTime())
 
-  val uri = getDsInfoUri(spec)
+  val uri = getDsInfoUri(spec, nxUriPrefix)
 
-  val graphName = getGraphName(spec)
+  val graphName = getGraphName(spec, nxUriPrefix)
 
   val skosified = true
 
@@ -323,11 +320,9 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
             line match {
               case LineId(graphName, currentHash) => true
               case _ => false
-            }}.map{line =>
-            line match {
-              case LineId(graphName, currentHash) =>  graphName
-              case _ =>
-            }
+            }}.map {
+            case LineId(graphName, currentHash) => graphName
+            case _ =>
           }
         }
       }
@@ -340,8 +335,8 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   def updatedSpecCountFromFile(
                                    specName: String = spec,
-                                   narthexBaseDir: File = OrgContext.NARTHEX,
-                                   orgId: String = OrgContext.ORG_ID): (Int, Int, Int) = {
+                                   narthexBaseDir: File,
+                                   orgId: String): (Int, Int, Int) = {
 
     val spec_source_dir = s"""${narthexBaseDir.toString}/$orgId/datasets/$specName"""
     val processed_dir = s"$spec_source_dir/processed"
@@ -396,11 +391,11 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
       }
     }
 
-    val skosFieldApi = s"${OrgContext.NAVE_API_URL}/api/index/narthex/toggle/proxyfield/"
-    val request = WS.url(s"$skosFieldApi").withHeaders(
+    val skosFieldApi = s"${naveApiUrl}/api/index/narthex/toggle/proxyfield/"
+    val request = orgContext.wsClient.url(s"$skosFieldApi").withHeaders(
       "Content-Type" -> "application/json; charset=utf-8",
       "Accept" -> "application/json",
-      "Authorization" -> s"Token ${OrgContext.NAVE_BULK_API_AUTH_TOKEN}"
+      "Authorization" -> s"Token ${naveApiAuthToken}"
     )
     val json = Json.obj(
       "dataset_uri" -> datasetUri,
@@ -442,7 +437,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def termCategoryMap(categoryVocabularyInfo: VocabInfo): Map[String, List[String]] = {
-    val mappingStore = new TermMappingStore(this)
+    val mappingStore = new TermMappingStore(this, orgContext, orgContext.wsClient)
     val mappings = Await.result(mappingStore.getMappings(categories = true), 1.minute)
     val uriLabelMap = categoryVocabularyInfo.vocabulary.uriLabelMap
     val termUriLabels = mappings.flatMap { mapping =>
@@ -465,7 +460,15 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   lazy val vocabulary = new SkosVocabulary(spec, skosGraphName)
 
-  def ownerEmailOpt = getUriProp(actorOwner).flatMap(ownerUri => orgContext.us.emailFromUri(ownerUri))
+  def ownerEmailOpt: Future[Option[String]] = {
+    val uriOpt: Option[String] = getUriProp(actorOwner)
+    uriOpt match {
+      case None => Future.successful(None)
+      case Some(uri) => {
+        orgContext.us.emailFromUri(uri)
+      }
+    }
+  }
 
   def orUnknown(nxProp: NXProp) = getLiteralProp(nxProp).getOrElse("Unknown")
 
@@ -475,7 +478,7 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
 
   override def toString = spec
 
-  val bulkApi = s"${OrgContext.NAVE_API_URL}/api/index/bulk/"
+  val bulkApi = s"${naveApiUrl}/api/index/bulk/"
 
   private def checkUpdateResponse(response: WSResponse, logString: String): Unit = {
     if (response.status != 201) {
@@ -485,13 +488,11 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   }
 
   def bulkApiUpdate(bulkActions: String) = {
-    if (OrgContext.LOG_BULK_API) {
-      Logger.info(bulkActions)
-    }
-    val request = WS.url(s"$bulkApi").withHeaders(
+    Logger.debug(bulkActions)
+    val request = orgContext.wsClient.url(s"$bulkApi").withHeaders(
       "Content-Type" -> "text/plain; charset=utf-8",
       "Accept" -> "application/json",
-      "Authorization" -> s"Token ${OrgContext.NAVE_BULK_API_AUTH_TOKEN}"
+      "Authorization" -> s"Token ${naveApiAuthToken}"
     )
     request.post(bulkActions).map(checkUpdateResponse(_, bulkActions))
   }
@@ -505,7 +506,6 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   def removeNaveOrphans(timeStamp: String) = {
     val actionMap = Json.obj(
       "dataset" -> spec,
-      // "acceptanceMode" -> acceptanceModeString,
       "action" -> "clear_orphans",
       "modification_date" -> timeStamp
     )
@@ -515,7 +515,6 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   def disableInNaveIndex() = {
     val actionMap = Json.obj(
       "dataset" -> spec,
-      // "acceptanceMode" -> acceptanceModeString,
       "action" -> "disable_index"
     )
     bulkApiUpdate(s"${actionMap.toString()}\n")
@@ -524,23 +523,17 @@ class DsInfo(val spec: String)(implicit ec: ExecutionContext, ts: TripleStore) e
   def removeNaveDataSet() = {
     val actionMap = Json.obj(
       "dataset" -> spec,
-      // "acceptanceMode" -> acceptanceModeString,
       "action" -> "drop_dataset"
     )
     bulkApiUpdate(s"${actionMap.toString()}\n")
   }
 
-
-
   def createBulkAction(triples: String, id: String, hash: String) = {
     val (spec, localId) = extractSpecIdFromGraphName(id)
-    val hubId = s"${OrgContext.ORG_ID}_${spec}_$localId"
-    // val currentSkosFields = dsInfo.getLiteralPropList(skosField)
-    val acceptanceModeString= "false"
+    val hubId = s"${orgContext.appConfig.orgId}_${spec}_$localId"
     val actionMap = Json.obj(
       "hubId" -> hubId,
       "dataset" -> spec,
-      // "acceptanceMode" -> acceptanceModeString,
       "graphUri" -> id,
       "type" -> "void_EDMRecord",
       "action" -> "index",

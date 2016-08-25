@@ -23,7 +23,8 @@ import dataset.{DsInfo, ProcessedRepo}
 import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories, Counter}
 import mapping.VocabInfo._
-import org.OrgContext.actorWork
+import org.OrgContext
+import nxutil.Utils.actorWork
 import org.joda.time.DateTime
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
@@ -42,10 +43,10 @@ object CategoryCounter {
 
   case class Counter(var count: Int)
 
-  def props(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: ExecutionContext, ts: TripleStore) = Props(new CategoryCounter(dsInfo, repo))
+  def props(dsInfo: DsInfo, repo: ProcessedRepo, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore) = Props(new CategoryCounter(dsInfo, repo, orgContext))
 }
 
-class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: ExecutionContext, ts: TripleStore) extends Actor with ActorLogging {
+class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore) extends Actor with ActorLogging {
 
   val spec = dsInfo.getLiteralProp(datasetSpec).get
   val skosFieldValues = dsInfo.getLiteralPropList(skosField)
@@ -102,7 +103,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo)(implicit ec: Executio
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
       reader = Some(repo.createGraphReader(None, saveTime, progressReporter))
-      val termMap = withVocabInfo(CATEGORIES_SPEC)(dsInfo.termCategoryMap)
+      val termMap = withVocabInfo(CATEGORIES_SPEC, orgContext)(dsInfo.termCategoryMap)
       termCatMapOpt = Some(termMap)
       sendGraphChunkOpt()
     }

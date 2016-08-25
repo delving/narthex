@@ -28,7 +28,7 @@ import analysis.Sorter._
 import analysis.TreeNode.RandomSample
 import dataset.DatasetActor.WorkFailure
 import dataset.DatasetContext
-import org.OrgContext.actorWork
+import nxutil.Utils.actorWork
 import org.apache.commons.io.FileUtils.deleteQuietly
 import play.api.libs.json._
 import services.FileHandling.{createReader, createWriter, sourceFromFile}

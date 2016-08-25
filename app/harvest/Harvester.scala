@@ -24,10 +24,11 @@ import akka.pattern.pipe
 import dataset.DatasetActor._
 import dataset.DatasetContext
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
-import harvest.Harvesting.{NoRecordsMatch, AdLibHarvestPage, HarvestError, PMHHarvestPage}
-import org.OrgContext.actorWork
+import harvest.Harvesting.{AdLibHarvestPage, HarvestError, NoRecordsMatch, PMHHarvestPage}
+import nxutil.Utils.actorWork
 import org.apache.commons.io.FileUtils
 import play.api.Logger
+import play.api.libs.ws.WSClient
 import services.ProgressReporter.ProgressState._
 import services.{ProgressReporter, StringHandling}
 
@@ -42,10 +43,10 @@ object Harvester {
 
   case class HarvestComplete(strategy: HarvestStrategy, fileOpt: Option[File], noRecordsMatch: Boolean=false)
 
-  def props(datasetContext: DatasetContext) = Props(new Harvester(datasetContext))
+  def props(datasetContext: DatasetContext, timeOut: Long, wsClient : WSClient) = Props(new Harvester(timeOut, datasetContext, wsClient))
 }
 
-class Harvester(val datasetContext: DatasetContext) extends Actor with Harvesting {
+class Harvester(val timeout: Long, val datasetContext: DatasetContext, wsClient: WSClient) extends Actor with Harvesting {
 
   import context.dispatcher
 
@@ -118,7 +119,7 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
 
     case HarvestAdLib(strategy, url, database, search) => actorWork(context) {
       log.info(s"Harvesting $url $database to $datasetContext")
-      val futurePage = fetchAdLibPage(strategy, url, database, search)
+      val futurePage = fetchAdLibPage(timeout, wsClient, strategy, url, database, search)
       handleFailure(futurePage, strategy, "adlib harvest")
       strategy match {
         case Sample =>
@@ -149,7 +150,7 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
         finish(strategy, None)
       }
       else {
-        val futurePage = fetchAdLibPage(strategy, url, database, search, Some(diagnostic))
+        val futurePage = fetchAdLibPage(timeout, wsClient, strategy, url, database, search, Some(diagnostic))
         handleFailure(futurePage, strategy, "adlib harvest page")
         futurePage pipeTo self
       }
@@ -158,7 +159,7 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
     case HarvestPMH(strategy: HarvestStrategy, raw_url, set, prefix) => actorWork(context) {
       val url = s"${raw_url.stripSuffix("?")}?"
       log.info(s"Harvesting $strategy: $url $set $prefix to $datasetContext")
-      val futurePage = fetchPMHPage(strategy, url, set, prefix)
+      val futurePage = fetchPMHPage(timeout, wsClient, strategy, url, set, prefix)
       handleFailure(futurePage, strategy, "pmh harvest")
       strategy match {
         case Sample =>
@@ -186,7 +187,7 @@ class Harvester(val datasetContext: DatasetContext) extends Actor with Harvestin
         else {
           progressOpt.get.sendPage(pageCount)
         }
-        val futurePage = fetchPMHPage(strategy, url, set, prefix, resumptionToken)
+        val futurePage = fetchPMHPage(timeout, wsClient, strategy, url, set, prefix, resumptionToken)
         handleFailure(futurePage, strategy, "pmh harvest page")
         futurePage pipeTo self
       } getOrElse {
