@@ -7,11 +7,11 @@ This page is targeted at developers. If you like to know about the concepts behi
 
 ## Getting started
 
-Narthex is ann application based on Playframework, which uses SBT as its build tool, so install it: `brew install sbt`
+Narthex is ann application based on Playframework, which uses [sbt](http://www.scala-sbt.org) as its build tool, so install it: `brew install sbt`
 
-Convince yourself you can run tests and that sbt works: `sbt test`
+Convince yourself you can run tests and that sbt works: `sbt test`.
 
-With **sbt** installed, and the below configuration completed, one can run Narthex in **development mode** using the **run** command and then opening a browser to [http://localhost:9000/](http://localhost:9000/), which the default location of the Play server.
+Narthex uses 'fuseki' for persistence, here's how to get it up and running:
 
  - Download and install [Fuseki 2.4.x](https://jena.apache.org/download/index.cgi)
  - Startup fuseki from this project's root-dir:
@@ -34,13 +34,13 @@ cp docs/files/edm* ~/NarthexFiles/devorg/factory/edm
 ```
     
  - Start the Play app: `sbt run` and go to the [app-homepage](http://localhost:9000)
- - Login with `admin`/`admin`, click on 'Datasets' => 'New dataset', enter 'first' and drag [myfirst.sip.zip](myfirst.sip.zip) to see Narthex in action.
+ - Login with `admin`/`admin`, click on 'Datasets' => 'New dataset', enter 'first' and drag [docs/files/myfirst.sip.zip](docs/files/myfirst.sip.zip) to see Narthex in action.
  
 That's all.
 
 ## Building a distribution
 
-A pre-built distribution can be downloaded from the Delving [Artifactory](http://artifactory.delving.org/artifactory/delving/narthex/) repository, or one can be built locally.
+A pre-built distribution can be downloaded from the Delving [Artifactory](http://artifactory.delving.org/artifactory/delving/eu/delvin/narthex/) repository, or one can be built locally.
 
 With the SBT in place and running, the **["dist"](https://www.playframework.com/documentation/2.3.x/ProductionDist)** command, which builds the project and produces a distribution zip file.
 
