@@ -4,7 +4,7 @@ import java.io.File
 import java.util
 
 import akka.actor.{ActorRef, Props}
-import com.kenshoo.play.metrics.{MetricsController, MetricsImpl}
+import com.kenshoo.play.metrics.{MetricsController, MetricsFilterImpl, MetricsImpl}
 import controllers.WebJarAssets
 import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
@@ -12,7 +12,7 @@ import mapping.PeriodicSkosifyCheck
 import org._
 import play.api._
 import play.api.ApplicationLoader.Context
-import play.api.cache.{EhCacheComponents}
+import play.api.cache.EhCacheComponents
 import play.api.libs.ws.ning.NingWSComponents
 import triplestore.Fuseki
 import web.{APIController, AppController, MainController, SipAppController}
@@ -43,8 +43,6 @@ class MyApplicationLoader extends ApplicationLoader {
         userRepository.insertAdmin(initialPassword)
         Logger.info(s"Inserted initial admin user, details")
       }
-
-
     components.application
   }
 }
@@ -66,6 +64,10 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(new OrgActor(orgContext)), appConfig.orgId)
 
   private lazy val metrics = new MetricsImpl(applicationLifecycle, configuration)
+
+  private lazy val metricsFilter = new MetricsFilterImpl(metrics)
+
+  override lazy val httpFilters = List(metricsFilter)
 
   private lazy val metricsController = new MetricsController(metrics)
   private lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext)
