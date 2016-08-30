@@ -93,7 +93,7 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   lazy val userRepository: UserRepository = {
     UserRepository.Mode.fromConfigString(configuration.getString(UserRepository.Mode.PROPERTY_NAME)) match {
       case UserRepository.Mode.MOCK => new MockUserRepository(appConfig.nxUriPrefix)
-      case UserRepository.Mode.TS => new ActorStore(authenticationService, appConfig.nxUriPrefix, orgContext)
+      case UserRepository.Mode.TS => new ActorStore(authenticationService, appConfig.nxUriPrefix)
     }
   }
 
