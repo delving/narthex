@@ -52,6 +52,8 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   with EhCacheComponents
   with MailerComponents {
 
+  Logger.configure(environment)
+
   val appConfig = initAppConfig
 
 
