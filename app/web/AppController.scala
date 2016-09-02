@@ -19,6 +19,7 @@ package web
 import java.util.concurrent.TimeUnit
 
 import akka.actor._
+import akka.stream.Materializer
 import akka.util.Timeout
 import dataset.DatasetActor._
 import dataset.DsInfo
@@ -31,12 +32,12 @@ import mapping.VocabInfo._
 import org.OrgActor.DatasetMessage
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
-import org.{OrgActor, OrgContext}
-import play.api.Logger
-import play.api.Play.current
+import org.OrgContext
+import play.api.{Logger}
 import play.api.cache.CacheApi
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
+import play.api.libs.streams.ActorFlow
 import play.api.mvc._
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -46,14 +47,12 @@ import triplestore.Sparql.SkosifiedField
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implicit val ts: TripleStore) extends Controller with Security {
+class AppController(val cacheApi: CacheApi, val orgContext: OrgContext)
+                   (implicit val ts: TripleStore, implicit val actorSystem: ActorSystem,
+                    implicit val materializer: Materializer)
+  extends Controller with Security {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
-
-
-  object DatasetSocketActor {
-    def props(out: ActorRef) = Props(new DatasetSocketActor(out))
-  }
 
   class DatasetSocketActor(out: ActorRef) extends Actor {
     def receive = {
@@ -64,8 +63,8 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implici
 
   def sendRefresh(spec: String) = orgContext.orgActor ! DatasetMessage(spec, Command("refresh"))
 
-  def datasetSocket = WebSocket.acceptWithActor[String, String] { request => out =>
-    DatasetSocketActor.props(out)
+  def datasetSocket = WebSocket.accept[String, String] { request =>
+    ActorFlow.actorRef( out => Props(new DatasetSocketActor(out)) )
   }
 
   def listDatasets = SecureAsync() { session => request =>

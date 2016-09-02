@@ -2,10 +2,18 @@ package web
 
 import java.io.{File, FileInputStream, FileNotFoundException}
 
+import akka.stream.IOResult
+import akka.stream.scaladsl.{Source, StreamConverters}
+import akka.util.ByteString
+import play.api.http.HttpEntity.Strict
 import play.api.http._
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json.Json
+import play.api.libs.streams.Streams
 import play.api.mvc.{ResponseHeader, Result, _}
+
+import scala.concurrent.Future
+
 
 
 object Utils {
@@ -16,14 +24,11 @@ object Utils {
   def okFile(file: File, attempt: Int = 0): Result = {
     try {
       val input = new FileInputStream(file)
-      val resourceData = Enumerator.fromStream(input)
+      val stream: Source[ByteString, Future[IOResult]] = StreamConverters.fromInputStream(() => input)
       val contentType = if (file.getName.endsWith(".json")) "application/json" else "text/plain; charset=utf-8"
       Result(
-        ResponseHeader(Status.OK, Map(
-          HeaderNames.CONTENT_LENGTH -> file.length().toString,
-          HeaderNames.CONTENT_TYPE -> contentType
-        )),
-        resourceData
+        ResponseHeader(Status.OK),
+        HttpEntity.Streamed(stream, Some(file.length()), Some(contentType))
       )
     }
     catch {
@@ -37,11 +42,8 @@ object Utils {
 
   def okXml(xml: String): Result = {
     Result(
-      ResponseHeader(Status.OK, Map(
-        HeaderNames.CONTENT_LENGTH -> xml.length().toString,
-        HeaderNames.CONTENT_TYPE -> "application/xml"
-      )),
-      body = Enumerator(xml.getBytes)
+      ResponseHeader(Status.OK),
+      HttpEntity.Strict(ByteString(xml), Some("application/xml"))
     )
   }
 }

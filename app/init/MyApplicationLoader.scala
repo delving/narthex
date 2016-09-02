@@ -13,11 +13,11 @@ import org._
 import play.api._
 import play.api.ApplicationLoader.Context
 import play.api.cache.EhCacheComponents
-import play.api.libs.ws.ning.NingWSComponents
 import triplestore.Fuseki
 import web.{APIController, AppController, MainController, SipAppController}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.mailer._
+import play.api.libs.ws.ahc.AhcWSComponents
 import services.{MailService, MailServiceImpl}
 
 import scala.concurrent.duration._
@@ -48,7 +48,7 @@ class MyApplicationLoader extends ApplicationLoader {
 }
 
 class MyComponents(context: Context) extends BuiltInComponentsFromContext(context)
-  with NingWSComponents
+  with AhcWSComponents
   with EhCacheComponents
   with MailerComponents {
 
@@ -76,7 +76,7 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   private lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
     appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId
   )
-  private lazy val appController = new AppController(defaultCacheApi, orgContext)(tripleStore)
+  private lazy val appController = new AppController(defaultCacheApi, orgContext) (tripleStore, actorSystem, materializer)
   private lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
 
   lazy val assets = new controllers.Assets(httpErrorHandler)
