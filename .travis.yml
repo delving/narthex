@@ -4,7 +4,7 @@ script:
   - sbt clean coverage test
 
 scala:
-   - 2.10.4
+   - 2.11.6
 
 jdk:
   - oraclejdk8
