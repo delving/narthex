@@ -99,7 +99,7 @@ trait Security {
     }
 
     def discardingToken(token: String): Result = {
-      Logger.info(s"discarding token $token")
+      Logger.trace(s"discarding token $token")
       cacheApi.remove(token)
       result.discardingCookies(DiscardingCookie(name = TOKEN_COOKIE_KEY))
     }
