@@ -52,7 +52,7 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   with EhCacheComponents
   with MailerComponents {
 
-  Logger.configure(environment)
+  LoggerConfigurator(context.environment.classLoader).foreach { _.configure(context.environment) }
 
   val appConfig = initAppConfig
 
