@@ -103,8 +103,6 @@ object Sip {
   // Note: this is set in the OrgContext but we don't want a dependency from there (requires app for testing)
   val XSD_VALIDATION = System.getProperty("XSD_VALIDATION", "true") == "true"
 
-  println(s"XSD_VALIDATION=$XSD_VALIDATION")
-
   case class SipMapping(spec: String, prefix: String, version: String,
                         recDefTree: RecDefTree, validatorOpt: Option[Validator],
                         recMapping: RecMapping) {
