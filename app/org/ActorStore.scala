@@ -30,7 +30,7 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
 
   override def insertAdmin(passwd: String): Future[User] = {
     val topActor = User(topActorUsername, None)
-    ts.up.sparqlUpdate(insertTopActorQ(topActor, Utils.hashPasswordUnsecure(passwd, topActorUsername))).
+    ts.up.sparqlUpdate(insertTopActorQ(topActor, uriPrefix, Utils.hashPasswordUnsecure(passwd, topActorUsername))).
       map{ ok =>
         Logger.info(s"Created initial admin user")
         topActor

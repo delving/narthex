@@ -171,15 +171,15 @@ object Sparql {
     mapList.flatMap(resultMap => resultMap.get("email").map(_.text))
   }
 
-  def insertTopActorQ(actor: User, passwordHashString: String) = {
+  def insertTopActorQ(user: User, prefix: String, passwordHashString: String) = {
     val enabled = true
     val admin = true
     val query = s"""
        |INSERT DATA {
        |   GRAPH <$actorsGraph> {
-       |      <$actor>
+       |      <${user.uri(prefix)}>
        |         a <$actorEntity> ;
-       |         <$username> ${literalExpression(actor.actorName, None)} ;
+       |         <$username> ${literalExpression(user.actorName, None)} ;
        |         <$isAdmin> $admin;
        |         <$actorEnabled> $enabled;
        |         <$passwordHash> '$passwordHashString' .
