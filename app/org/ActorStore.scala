@@ -43,7 +43,7 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
 
   /**
     * Retrieve a an actor known to exist
-    * @param name
+    * @param name the username
     * @return
     * @throws IllegalArgumentException if the actor does not exist
     */
@@ -67,7 +67,7 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
     val query = ts.query(getSubActorList(nxActor)).map { list =>
       list.map(m =>
         Map(
-          "userName" -> m.get("username").get.text,
+          "userName" -> m("username").text,
           "isAdmin" -> {
             val isAdmin = m.get("isAdmin")
             if (isAdmin.nonEmpty) isAdmin.get.text else "false"
@@ -86,14 +86,14 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
   override def createSubActor(adminActor: User, usernameString: String, password: String): Future[Option[User]] = {
     val hash = Utils.hashPasswordUnsecure(password, usernameString)
     val newActor = User(usernameString, Some(adminActor.uri(uriPrefix)))
-    val update = ts.up.sparqlUpdate(insertSubActorQ(newActor, hash, adminActor))
+    val update = ts.up.sparqlUpdate(insertSubActorQ(newActor, uriPrefix, hash, adminActor))
     checkFail(update)
     update.map(ok => Some(newActor))
   }
 
   override def makeAdmin(userName: String): Future[Option[User]] = {
     val actor = User(userName, None, None)
-    val q = setActorAdminQ(actor, true)
+    val q = setActorAdminQ(actor, uriPrefix, isAdminToggle = true)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
@@ -101,7 +101,7 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
 
   override def removeAdmin(userName: String): Future[Option[User]] = {
     val actor = User(userName, None, None)
-    val q = setActorAdminQ(actor, false)
+    val q = setActorAdminQ(actor, uriPrefix, isAdminToggle = false)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
@@ -109,7 +109,7 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
 
   override def deleteActor(userName: String): Future[Option[User]] = {
     val actor = User(userName, None, None)
-    val q = removeActorQ(actor)
+    val q = removeActorQ(actor, uriPrefix)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
@@ -117,7 +117,7 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
 
   override def disableActor(userName: String): Future[Option[User]] = {
     val actor = User(userName, None, None)
-    val q = enableActorQ(actor, false)
+    val q = enableActorQ(actor, uriPrefix, false)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
@@ -125,14 +125,14 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
 
   override def enableActor(userName: String): Future[Option[User]] = {
     val actor = User(userName, None, None)
-    val q = enableActorQ(actor, true)
+    val q = enableActorQ(actor, uriPrefix, true)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update.map(ok => Some(actor))
   }
 
   override def setProfile(actor: User, nxProfile: Profile): Future[Unit] = {
-    val q = setActorProfileQ(actor, nxProfile)
+    val q = setActorProfileQ(actor, uriPrefix, nxProfile)
     val update = ts.up.sparqlUpdate(q)
     checkFail(update)
     update
@@ -140,7 +140,7 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
 
   override def setPassword(actor: User, newPassword: String): Future[Boolean] = {
     val hash = Utils.hashPasswordUnsecure(newPassword, actor.actorName)
-    val update = ts.up.sparqlUpdate(setActorPasswordQ(actor, hash))
+    val update = ts.up.sparqlUpdate(setActorPasswordQ(actor, uriPrefix, hash))
     checkFail(update)
     update.map(ok => true)
   }

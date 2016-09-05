@@ -44,7 +44,7 @@ object SkosMappingStore {
 
       val graphName = createGraphName(uri)
 
-      insertMappingQ(graphName, actor, uri, uriA, uriB, skosA, skosB)
+      insertMappingQ(graphName, actor, nxUriPrefix, uri, uriA, uriB, skosA, skosB)
     }
 
     override def toString = s"SkosMapping($uriA, $uriB)"
