@@ -73,6 +73,51 @@ Narthex persists all of its information on the file system and in the triple sto
 * [GraphProperties.scala](https://github.com/delving/narthex/blob/master/app/triplestore/GraphProperties.scala) - all of the URIs that Narthex creates and uses
 * [Sparql.scala](https://github.com/delving/narthex/blob/master/app/triplestore/Sparql.scala) all of the SPARQL used to interact with the triple store
 
+## Running using docker
+
+To do this, we need to take care of a couple of things:
+
+1. A mount of the app-config file containing overrides of the defaults in [application.conf](../conf/application.conf) which resides on the host
+2. A docker 'named data container' for the Narthex data directory
+3. Access to the tripleStore running on the host-machine (this part isn't dockerized). Execute `$ docker-machine inspect | grep HostOnlyCIDR`. 
+In our case the address was `192.168.99.1` and we need it for the contents of the override-conf file below
+
+The contents of the override-file must look like this.
+*Note* the include statement is required or defaults won't load:
+
+```
+include "application.conf"
+narthexHome = "/opt/docker/narthexdata"
+triple-store = "http://192.168.99.1:3030/devorg"
+```
+
+Create your 'dev' shared volume on top of the empty one (which is [maintained elsewhere](https://github.com/delving/narthex-datadir-docker)):
+`docker create -v /narthexdata --name narthex-data delvingplatform/narthex-data-initial:1 /bin/true` 
+ 
+And run  the app :
+```bash
+docker run --rm --net host --volumes-from narthex-data --name narthex \
+-v /Users/hw/Desktop/narthex_conf:/opt/docker/conf \
+delvingplatform/narthex:[your_version]
+```
+
+After that, Narthex is running (inside the docker-container) at http://localhost:9000
+**Note:** If you are on Mac or Windows, Narthex runs inside your docker-machine. In our case, `$ docker-machine ls` outputs:
+
+```
+NAME      ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER    ERRORS
+default   *        virtualbox   Running   tcp://192.168.99.100:2376           v1.12.0   
+```
+
+So, I can reach narthex at http://192.168.99.100:9000
+
+## Docker development
+This assumes you have installed docker.
+
+To create a new local image: `sbt docker:publishLocal`
+
+Run `docker images` and see that 'narthex' was added to your local images.
+
 ## The "Nave" LoD server
 
 The public-facing server which is the counterpart to Narthex is referred to as "Nave" (yes, another part of the church).  It gets its data from the triple store, so the triple store is the point of transfer between the two systems.  Nave must periodically query for changes and then act on them.  It must be able to interpret the stored triples, and follow links created by the terminology mapping and vocabulary mapping to build its index and to display the results properly in good LoD tradition.

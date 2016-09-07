@@ -1,7 +1,11 @@
 language: scala
+sudo: required
+
+services:
+  - docker
 
 script:
-  - sbt clean coverage test
+  - sbt clean coverage test docker:publishLocal
 
 scala:
    - 2.11.6
@@ -11,3 +15,5 @@ jdk:
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+    docker push delvingplatform/narthex;
