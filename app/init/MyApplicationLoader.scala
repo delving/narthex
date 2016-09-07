@@ -32,8 +32,13 @@ class MyApplicationLoader extends ApplicationLoader {
   def load(context: Context) = {
     Logger.info("Narthex starting up...")
 
-    val components = new MyComponents(context)
     val initialPassword: String = context.initialConfiguration.getString(topActorConfigProp).getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set"))
+    val homeDir: String = context.initialConfiguration.getString("narthexHome").getOrElse(System.getProperty("user.home") + "/NarthexFiles")
+    val narthexDataDir: File = new File(homeDir)
+    if (! narthexDataDir.canWrite ) {
+      throw new RuntimeException(s"Configured $narthexDataDir is not writeable")
+    }
+    val components = new MyComponents(context, narthexDataDir)
 
     val userRepository: UserRepository = components.userRepository
     userRepository.hasAdmin.
@@ -47,12 +52,14 @@ class MyApplicationLoader extends ApplicationLoader {
   }
 }
 
-class MyComponents(context: Context) extends BuiltInComponentsFromContext(context)
+class MyComponents(context: Context, narthexDataDir: File) extends BuiltInComponentsFromContext(context)
   with NingWSComponents
   with EhCacheComponents
   with MailerComponents {
 
-  val appConfig = initAppConfig
+  Logger.configure(environment)
+
+  val appConfig = initAppConfig(narthexDataDir)
 
 
   lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsClient,
@@ -103,7 +110,7 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
   val periodicSkosifyCheck = actorSystem.actorOf(PeriodicSkosifyCheck.props(orgContext), "PeriodicSkosifyCheck")
 
   val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
-  check.onFailure { case e: Exception => Logger.error("Failed to check schemas", e) }
+  check.onFailure { case e: Exception => throw new RuntimeException(e) }
 
   val xsdValidation = configFlag("xsd-validation")
   System.setProperty("XSD_VALIDATION", xsdValidation.toString)
@@ -117,13 +124,13 @@ class MyComponents(context: Context) extends BuiltInComponentsFromContext(contex
     })
   }
 
-  private def initAppConfig: AppConfig = {
+  private def initAppConfig(narthexDataDir: File): AppConfig = {
     val harvestTimeout = configuration.getInt("harvest.timeout").getOrElse(3 * 60 * 1000)
     val rdfBaseUrl = configStringNoSlash("rdfBaseUrl")
     val narthexDomain = configStringNoSlash("domains.narthex")
     val naveDomain = configStringNoSlash("domains.nave")
     val apiAccessKeys = secretList("api.accessKeys").toList
-    val narthexDataDir: File = new File(System.getProperty("user.home"), "NarthexFiles")
+
 
     AppConfig(
       harvestTimeout, configFlag("useBulkApi"), rdfBaseUrl,

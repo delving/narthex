@@ -2,66 +2,126 @@
 [![Build Status](https://travis-ci.org/delving/narthex.svg)](https://travis-ci.org/delving/narthex)
 [![codecov.io](https://codecov.io/github/delving/narthex/coverage.svg)](https://codecov.io/github/delving/narthex)
 
-| >>>>>>>>>>>>>>>>>>>> | What? |
-|-----|------|
-| ![](public/images/narthex-1.png?raw=true) | The **[Narthex](http://en.wikipedia.org/wiki/Narthex)** is a place which separates the entrance of the church from the inner **Nave**, and it was considered to be a place of penitence. This software is the place where metadata is collected, analyzed, and improved, in preparation for use for research or online presentation.  
+## Audience
+This page is targeted at developers. If you like to know about the concepts behind Narthex, start at the [index of the docs](docs/README.md).
+
+## Getting started
+
+Narthex is ann application based on Playframework, which uses [sbt](http://www.scala-sbt.org) as its build tool, so install it: `brew install sbt`
+
+Convince yourself you can run tests and that sbt works: `sbt test`.
+
+Narthex uses 'fuseki' for persistence, here's how to get it up and running:
+
+ - Download and install [Fuseki 2.4.x](https://jena.apache.org/download/index.cgi)
+ - Startup fuseki from this project's root-dir:
+
+```bash
+cd [fuseki_homedir]
+
+./fuseki-server --config=[/full/path_to_nathex_project_dir]/fuseki.ttl
+```
+
+Don't use the '~' character for your homedir, Fuseki runs inside the JVM and won't replace that with the path to your homedir.
+
+You will notice that it creates a `./fuseki_data` directory which is in .gitignore. To start with a fresh database, stop fuseki and delete the data-directory.
+
+ - Narthex uses your local filesystem for persistence, and we must initialize it. Perform the following steps from the project root-dir.
+    
+```bash
+mkdir -p ~/NarthexFiles/devorg/factory/edm
+cp docs/files/edm* ~/NarthexFiles/devorg/factory/edm
+```
+    
+ - Start the Play app: `sbt run` and go to the [app-homepage](http://localhost:9000)
+ - Login with `admin`/`admin`, click on 'Datasets' => 'New dataset', enter 'first' and drag [docs/files/myfirst.sip.zip](docs/files/myfirst.sip.zip) to see Narthex in action.
+ 
+That's all.
+
+## Building a distribution
+
+A pre-built distribution can be downloaded from the Delving [Artifactory](http://artifactory.delving.org/artifactory/delving/eu/delvin/narthex/) repository, or one can be built locally.
+
+With the SBT in place and running, the **["dist"](https://www.playframework.com/documentation/2.3.x/ProductionDist)** command, which builds the project and produces a distribution zip file.
+
+	Your package is ready in [your directory]/narthex/target/universal/narthex-?.?.?-SNAPSHOT.zip
+
+Unpacking this file will reveal that it has a **"bin"** directory, and inside there is a script file called "narthex" for starting on Unix-like systems and a "narthex.bat" for starting on Windows.
+
+For production deployment, the program must be started up with some extra [configuration parameters](https://www.playframework.com/documentation/2.3.x/ProductionConfiguration), especially using the **-Dconfig.file** option to tell it where to find its configuration.
 
 
-## Getting started with local development
+## The NarthexFiles directory
 
-Read [this article](docs/development-deployment.md).
+All of the files and directories which Narthex uses are to be found within the directory corresponding to the organization id.
 
-## Introduction
+* ***~/NarthexFiles/org** - the organization root
+	* **/factory** - defines the possible 
+	* **/datasets** - all the many files associated with uploading
+		* **/source** - the XML data, whether harvested or dropped-on
+		* **/tree** - the analyzed data, in a directory tree
+		* **/processed** the data after processing
+		* **/sips** the uploaded SIP-Zip files (from the SIP-App)
+	* **/raw** - the "pockets", each containing one record
+	* **/sips** - the downloadable SIP-Zip files (SIP-App)
 
-| video
-|:-----:|
-|![](docs/images/narthex-tour.jpg)
-|Watch: [http://youtu.be/uu4lNtXtgCA](http://youtu.be/uu4lNtXtgCA)
 
-Narthex is an ingestion tool for cultural heritage metadata which has features for transforming the incoming data into target formats expressed in RDF/XML, as well as mapping terminology to given [SKOS](http://www.w3.org/2004/02/skos/) vocabularies. Vocabularies can also be mapped together and there is a system for categorizing records and generating spreadsheets with the category counts. Narthex stores the results in a triple store, and uses the file system for persisting the remainder of the information.
+## Structure of the Narthex Triple-Store
 
-Technologies: 
+Narthex persists all of its information on the file system and in the triple store, and the code responsible for this is carefully gathered together so that an overview is possible.
 
-* [AngularJS](https://angularjs.org/) - front-end browser technology
-* [RequireJS](http://requirejs.org/) - javascript organization
-* [Play Framework](https://playframework.com/) - web server
-* [Akka](http://akka.io/) - internal processing with actors
-* [Jena/Fuseki](http://jena.apache.org/documentation/serving_data/) - triple store persistence
-* [Java/Swing](http://en.wikipedia.org/wiki/Swing_%28Java%29) - SIP-Creator interface
+* [GraphProperties.scala](https://github.com/delving/narthex/blob/master/app/triplestore/GraphProperties.scala) - all of the URIs that Narthex creates and uses
+* [Sparql.scala](https://github.com/delving/narthex/blob/master/app/triplestore/Sparql.scala) all of the SPARQL used to interact with the triple store
 
-## Ingest, Map, and Improve
+## Running using docker
 
-Introducing data to Narthex is done by either dragging and dropping an XML source file onto the browser interface, or configuring a dataset to harvest its data from an [OAI-PMH](http://www.openarchives.org/pmh/) endpoint or using the [AdLib](http://www.adlibsoft.com/) API.  Once harvested, the data sources are periodically checked for new records. This periodic harvest feature requires that the source server properly implements selection of new records, and in practice, many implementations of OAI-PMH lack this.
+To do this, we need to take care of a couple of things:
 
-Narthex performs a rigorous analysis of the data it receives, separating it into fields and compiling complete unique value lists as well as frequency histograms, which are then viewable in the browser interface. This shows data providers exactly what their data looks like, sometimes giving them this view for the first time.
+1. A mount of the app-config file containing overrides of the defaults in [application.conf](../conf/application.conf) which resides on the host
+2. A docker 'named data container' for the Narthex data directory
+3. Access to the tripleStore running on the host-machine (this part isn't dockerized). Execute `$ docker-machine inspect | grep HostOnlyCIDR`. 
+In our case the address was `192.168.99.1` and we need it for the contents of the override-conf file below
 
-The task of mapping the potentially arbitrary XML structure of the incoming data to the desired target RDF/XML formats is delegated to another piece of software called [SIP-Creator](https://github.com/delving/sip-creator), which is a specialized version (referred to as "Pocket Mapper") of the software already used to build and execute very many such mappings.  It was originally developed in the context of the [Europeana](http://europeana.eu/) project, starting in 2009.  Ultimately this kind of mapping should be done in the Narthex browser interface, but in the meantime we will use this standalone Java application.
+The contents of the override-file must look like this.
+*Note* the include statement is required or defaults won't load:
 
-Once a mapping has been built, uploaded and executed, the resulting data can be improved further through the process of terminology mapping. This is an interactive online process where the terms used in the source data in particular fields is mapped to values from shared SKOS vocabularies.  This enables integrated data querying of many sources which where originally different terminology has been used. Before a field of terminology can be mapped to SKOS, it is first turned into a SKOS vocabulary itself, with the addition of the occurrence frequencies collected in the Narthex analysis for prioritization.
+```
+include "application.conf"
+narthexHome = "/opt/docker/narthexdata"
+triple-store = "http://192.168.99.1:3030/devorg"
+```
 
-The resulting mapping connections are stored alongside the other data in the triple store, so the enrichment links made can be followed when querying.  All mappings are assigned provenance based on the user who is logged in when they are made.  With terms mapped to a common vocabulary, aggregated data can be properly searched and navigated, or indexed for search.
+Create your 'dev' shared volume on top of the empty one (which is [maintained elsewhere](https://github.com/delving/narthex-datadir-docker)):
+`docker create -v /narthexdata --name narthex-data delvingplatform/narthex-data-initial:1 /bin/true` 
+ 
+And run  the app :
+```bash
+docker run --rm --net host --volumes-from narthex-data --name narthex \
+-v /Users/hw/Desktop/narthex_conf:/opt/docker/conf \
+delvingplatform/narthex:[your_version]
+```
 
-The category spreadsheet feature enables partitioning of records according to terms used in particular fields, and then scans all included datasets to generate an [Excel](http://en.wikipedia.org/wiki/Microsoft_Excel) spreadsheet containing the counts of all the various categories or category combinations.  This allows organizations to develop a clearer picture of the kinds of records that their datasets contain.
+After that, Narthex is running (inside the docker-container) at http://localhost:9000
+**Note:** If you are on Mac or Windows, Narthex runs inside your docker-machine. In our case, `$ docker-machine ls` outputs:
 
-## Background
+```
+NAME      ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER    ERRORS
+default   *        virtualbox   Running   tcp://192.168.99.100:2376           v1.12.0   
+```
 
-Initially, Narthex was funded by the [Swedish Arts Council](http://www.kulturradet.se/en/in-english/) and the [British Museum](http://www.britishmuseum.org/), specifically its [ResearchSpace](http://www.researchspace.org/) project in the context of the CultureBroker I project.
+So, I can reach narthex at http://192.168.99.100:9000
 
-Terminology mapping features funded by the [Dutch Cultural Heritaga Agency](http://www.culturalheritageagency.nl/en), the [Norwegian Cultural Heritage Agency](http://www.kulturradet.no/), and the [Brabant Heritage Agency](http://www.erfgoedbrabant.nl/). The Category collection feature was developed for the Dutch Cultural Heritaga Agency in connection with their "Heritage Monitor" project.
+## Docker development
+This assumes you have installed docker.
 
-Further development funding will be provided by the Swedish Arts Council and Länsstyrelsen in Västernorrland in the CultureBroker II project.
+To create a new local image: `sbt docker:publishLocal`
 
-## Delving deeper
+Run `docker images` and see that 'narthex' was added to your local images.
 
-* [Actor Hierarchy](docs/actor-hierarchy.md) - users
-* [Dataset Workflow](docs/dataset-workflow.md) - how a dataset progresses through the system
-* [SIP-Creator Integration](docs/sip-creator-integration.md) - how the tool integrates
-* [Terminology Mapping](docs/terminology-mapping.md) - terminology "skosification" and mapping to SKOS
-* [Vocabulary Mapping](docs/vocabulary-mapping.md) - building skos:exactMatch links between pairs of vocabularies
-* [Category Statistics](docs/category-statistics.md) - mapping terminology to categories and generating spreadsheets
-* [Development and Deployment](docs/development-deployment.md) - how to build and distribute
-* [Future Work](docs/future-work.md) - where to go from here
+## The "Nave" LoD server
+
+The public-facing server which is the counterpart to Narthex is referred to as "Nave" (yes, another part of the church).  It gets its data from the triple store, so the triple store is the point of transfer between the two systems.  Nave must periodically query for changes and then act on them.  It must be able to interpret the stored triples, and follow links created by the terminology mapping and vocabulary mapping to build its index and to display the results properly in good LoD tradition.
 
 ---
 
-Contact: info@delving.eu
+Contact: info@delving.eu;
