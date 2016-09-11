@@ -5,7 +5,7 @@ services:
   - docker
 
 script:
-  - sbt clean coverage test docker:publishLocal
+  - sbt clean coverage test coverageReport docker:publishLocal
 
 scala:
    - 2.11.6
