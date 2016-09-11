@@ -15,5 +15,8 @@ jdk:
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
-  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+    docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
     docker push delvingplatform/narthex;
+    fi
