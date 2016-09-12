@@ -46,7 +46,7 @@ class TestPocketParser extends FlatSpec with Matchers {
 
   behavior of "an object id containing a : character"
 
-  it should "replace the colon with a dash " in {
+  it should "replace the colon with a dash" in {
     val source = Source.fromString(getRecords("foo:bar"))
     val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter)
 
@@ -59,7 +59,7 @@ class TestPocketParser extends FlatSpec with Matchers {
     assert(outputCreated)
   }
 
-  it should "replace the space with a dash " in {
+  it should "replace the space with a dash" in {
     val source = Source.fromString(getRecords("foo bar"))
     val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter)
 
@@ -72,7 +72,7 @@ class TestPocketParser extends FlatSpec with Matchers {
     assert(outputCreated)
   }
 
-  it should "replace the plus with a dash " in {
+  it should "replace the plus with a dash" in {
     val source = Source.fromString(getRecords("foo+bar"))
     val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter)
 
@@ -85,7 +85,7 @@ class TestPocketParser extends FlatSpec with Matchers {
     assert(outputCreated)
   }
 
-  it should "replace multiple dash-chars with a single dash " in {
+  it should "replace multiple dash-chars with a single dash" in {
     val source = Source.fromString(getRecords("foo--------bar"))
     val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter)
 
