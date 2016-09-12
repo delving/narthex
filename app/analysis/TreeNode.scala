@@ -20,6 +20,7 @@ import analysis.TreeNode.LengthHistogram
 import dataset.DatasetContext
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils.writeStringToFile
+import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
@@ -76,7 +77,7 @@ object TreeNode {
           // do nothing
 
           case x =>
-            println("EVENT? " + x) // todo: record these in an error file for later
+            Logger.error("EVENT? " + x) // todo: record these in an error file for later
         }
       }
     }
