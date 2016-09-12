@@ -18,6 +18,7 @@ package record
 
 import java.io.{ByteArrayInputStream, Writer}
 import java.security.{MessageDigest, NoSuchAlgorithmException}
+import java.util.regex.Pattern
 
 import dataset.DsInfo
 import dataset.SourceRepo.{IdFilter, SourceFacts}
@@ -138,6 +139,8 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
     def cleanUpId(id: String) : String = {
         id.
           replaceAll("/", "-").
+          replaceAll(":", "-").
+          replaceAll(Pattern.quote("+"), "-").
           replaceAll("[-]{2,20}", "-")
     }
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
