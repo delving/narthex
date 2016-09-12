@@ -131,8 +131,10 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
     }
 
     def setUniqueId(id: String) = {
-      val clean_id = id.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
-      uniqueId = Some(idFilter.filter(clean_id))
+      val cleanId = id.
+        replaceAll("/", "-").
+        replaceAll("[-]{2,20}", "-")
+      uniqueId = Some(idFilter.filter(cleanId))
     }
 
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
