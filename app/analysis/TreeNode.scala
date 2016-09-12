@@ -26,7 +26,7 @@ import play.api.libs.json.Reads._
 import play.api.libs.json._
 import services.FileHandling.appender
 import services.StringHandling._
-import services.{NarthexEventReader, ProgressReporter}
+import services.ProgressReporter
 
 import scala.collection.mutable
 import scala.io.Source
@@ -39,7 +39,7 @@ object TreeNode {
   def apply(source: Source, processed: Boolean, datasetContext: DatasetContext, progressReporter: ProgressReporter): TreeNode = {
     val base = new TreeNode(datasetContext.treeRoot, null, null, null)
     var node = base
-    val events = new NarthexEventReader(source)
+    val events = new XMLEventReader(source)
     def getNamespace(pre: String, scope: NamespaceBinding) = {
       val uri = scope.getURI(pre)
       if (uri == null && pre != null) throw new Exception( s"""No namespace declared for "$pre" prefix!""")

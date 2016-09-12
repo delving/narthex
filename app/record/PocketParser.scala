@@ -106,7 +106,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
   var namespaceMap: Map[String, String] = Map.empty
 
   def parse(source: Source, avoid: Set[String], output: Pocket => Unit, progress: ProgressReporter): Int = {
-    val events = new NarthexEventReader(source)
+    val events = new XMLEventReader(source)
     var depth = 0
     var recordText = new mutable.StringBuilder()
     var uniqueId: Option[String] = None
