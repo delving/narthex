@@ -36,9 +36,15 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object PocketParser {
 
-  case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
+  def cleanUpId(id: String) : String = {
+    id.
+      replaceAll("/", "-").
+      replaceAll(":", "-").
+      replaceAll(Pattern.quote("+"), "-").
+      replaceAll("[-]{2,20}", "-")
+  }
 
-    def getId: String = id.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
+  case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
 
     val IdPattern = ".*?<pocket id=\"(.*?)\" .*".r
 
@@ -136,13 +142,6 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
       uniqueId = Some(idFilter.filter(cleanId))
     }
 
-    def cleanUpId(id: String) : String = {
-        id.
-          replaceAll("/", "-").
-          replaceAll(":", "-").
-          replaceAll(Pattern.quote("+"), "-").
-          replaceAll("[-]{2,20}", "-")
-    }
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
       def recordNamespace(binding: NamespaceBinding): Unit = {
         if (binding eq TopScope) return

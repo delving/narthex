@@ -216,7 +216,7 @@ class SourceRepo(home: File) {
     Logger.info(s"Processing source: $file")
     val idSet = new mutable.HashSet[String]()
     val parser = new PocketParser(sourceFacts, idFilter)
-    def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.getId)
+    def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.id)
 
     val (source, readProgress) = sourceFromFile(file)
     progress.setReadProgress(readProgress)
