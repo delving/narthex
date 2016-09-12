@@ -57,10 +57,6 @@ object PocketParser {
       val sha1: String = PocketParser.sha1(text)
       writer.write(text)
       writer.write(s"""<!--<${id}__$sha1>-->\n""")
-      // TODO: enable later when save button is removed.
-//      if (OrgContext.USE_BULK_API) {
-//        storeBulkAction(text, id, sha1)
-//      }
     }
 
     def storeBulkAction(triples: String, id: String, hash: String, orgContext: OrgContext) = {
