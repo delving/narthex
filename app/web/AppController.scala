@@ -16,7 +16,9 @@
 
 package web
 
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPOutputStream
 
 import akka.actor._
 import akka.util.Timeout
@@ -31,7 +33,7 @@ import mapping.VocabInfo._
 import org.OrgActor.DatasetMessage
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
-import org.{OrgActor, OrgContext}
+import org.OrgContext
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.CacheApi
@@ -69,8 +71,21 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implici
   }
 
   def listDatasets = SecureAsync() { session => request =>
-    listDsInfo(orgContext).map(list => Ok(Json.toJson(list)))
+    listDsInfo(orgContext).map(list => {
+      val jsonBytes: Array[Byte] = Json.toJson(list).toString().toCharArray.map(_.toByte)
+      val bos = new ByteArrayOutputStream(jsonBytes.length)
+      val gzip = new GZIPOutputStream(bos)
+      gzip.write(jsonBytes)
+      gzip.close()
+      val compressed = bos.toByteArray
+      bos.close()
+      Ok(compressed).withHeaders(
+        CONTENT_ENCODING -> "gzip",
+        CONTENT_TYPE -> "application/json"
+      )
+    })
   }
+
 
   def listPrefixes = Secure() { session => request =>
     val prefixes = orgContext.sipFactory.prefixRepos.map(_.prefix)
