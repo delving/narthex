@@ -56,18 +56,8 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext)
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
-  class DatasetSocketActor(out: ActorRef) extends Actor {
-    def receive = {
-      case politeMessage: String =>
-        Logger.info(s"WebSocket: $politeMessage")
-    }
-  }
 
   def sendRefresh(spec: String) = orgContext.orgActor ! DatasetMessage(spec, Command("refresh"))
-
-  def datasetSocket = WebSocket.accept[String, String] { request =>
-    ActorFlow.actorRef( out => Props(new DatasetSocketActor(out)) )
-  }
 
   def listDatasets = SecureAsync() { session => request =>
     listDsInfo(orgContext).map(list => {

@@ -41,7 +41,7 @@ define(["angular", "common"], function (angular) {
 
             return {
                 datasetSocket: function() {
-                    return new WebSocket(app.datasetSocket().webSocketUrl());
+                    return new WebSocket(playRoutes.web.WebSocketController.dataset().webSocketUrl());
                 },
                 create: function (spec, character, prefix) {
                     return app.createDataset(spec, character, prefix).get().then(
