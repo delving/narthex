@@ -79,9 +79,8 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext)
       val compressed = bos.toByteArray
       bos.close()
       Ok(compressed).withHeaders(
-        CONTENT_ENCODING -> "gzip",
-        CONTENT_TYPE -> "application/json"
-      )
+        CONTENT_ENCODING -> "gzip"
+      ).as("application/json")
     })
   }
 
