@@ -44,9 +44,8 @@ object TripleStore {
       case "literal" => QV_LITERAL
       case "uri" => QV_URI
       case x =>
-        println(s"Unhandled type $x !")
+        Logger.warn(s"Unhandled type $x !")
         QV_UNKNOWN
-      // there is type: uri, literal, bnode and also datatype and xml:lang
     }
   }
 

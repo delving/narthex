@@ -171,15 +171,15 @@ object Sparql {
     mapList.flatMap(resultMap => resultMap.get("email").map(_.text))
   }
 
-  def insertTopActorQ(actor: User, passwordHashString: String) = {
+  def insertTopActorQ(user: User, prefix: String, passwordHashString: String) = {
     val enabled = true
     val admin = true
     val query = s"""
        |INSERT DATA {
        |   GRAPH <$actorsGraph> {
-       |      <$actor>
+       |      <${user.uri(prefix)}>
        |         a <$actorEntity> ;
-       |         <$username> ${literalExpression(actor.actorName, None)} ;
+       |         <$username> ${literalExpression(user.actorName, None)} ;
        |         <$isAdmin> $admin;
        |         <$actorEnabled> $enabled;
        |         <$passwordHash> '$passwordHashString' .
@@ -190,30 +190,19 @@ object Sparql {
     Logger.info("Query will be " + query)
     query
   }
-
-  def insertOAuthActorQ(actor: User) =
-    s"""
-      |INSERT DATA {
-      |   GRAPH <$actorsGraph> {
-      |      <$actor>
-      |         a <$actorEntity> ;
-      |         <$username> ${literalExpression(actor.actorName, None)} .
-      |   }
-      |}
-     """.stripMargin
-
-  def insertSubActorQ(actor: User, passwordHashString: String, adminActor: User) = {
+  
+  def insertSubActorQ(user: User, prefix: String, passwordHashString: String, adminActor: User) = {
     val enabled = true
     val admin = false
     s"""
        |WITH <$actorsGraph>
        |DELETE {
-       |   <$actor> ?p ?o .
+       |   <${user.uri(prefix)}> ?p ?o .
        |}
        |INSERT {
-       |   <$actor>
+       |   <${user.uri(prefix)}>
        |      a <$actorEntity>;
-       |      <$username> ${literalExpression(actor.actorName, None)} ;
+       |      <$username> ${literalExpression(user.actorName, None)} ;
        |      <$actorOwner> <$adminActor> ;
        |      <$actorEnabled> $enabled ;
        |      <$isAdmin> $admin ;
@@ -221,14 +210,14 @@ object Sparql {
        |}
        |WHERE {
        |   OPTIONAL {
-       |      <$actor> ?p ?o .
+       |      <${user.uri(prefix)}> ?p ?o .
        |   }
        |}
      """.stripMargin
   }
 
 
-  def getSubActorList(actor: User) =
+  def getSubActorList(user: User) =
     // todo: add ^^xsd:boolean
     s"""
        |SELECT ?username ?isAdmin ?actorEnabled
@@ -247,23 +236,23 @@ object Sparql {
        |}
       """.stripMargin
 
-  def setActorProfileQ(actor: User, profile: Profile) =
+  def setActorProfileQ(user: User, prefix: String, profile: Profile) =
     s"""
       |WITH <$actorsGraph>
       |DELETE {
-      |   <$actor>
+      |   <${user.uri(prefix)}>
       |      <$userFirstName> ?firstName ;
       |      <$userLastName> ?lastName ;
       |      <$userEMail> ?email .
       |}
       |INSERT {
-      |   <$actor>
+      |   <${user.uri(prefix)}>
       |      <$userFirstName> ${literalExpression(profile.firstName, None)} ;
       |      <$userLastName> ${literalExpression(profile.lastName, None)} ;
       |      <$userEMail> ${literalExpression(profile.email, None)} .
       |}
       |WHERE {
-      |   Bind(<$actor> as ?actor)
+      |   Bind(<${user.uri(prefix)}> as ?actor)
       |   ?actor a  <$actorEntity> .
       |   OPTIONAL {?s <$userFirstName> ?firstName } .
       |   OPTIONAL {?s  <$userLastName> ?lastName  } .
@@ -271,54 +260,54 @@ object Sparql {
       |}
      """.stripMargin
 
-  def setActorPasswordQ(actor: User, passwordHashString: String) =
+  def setActorPasswordQ(user: User, prefix: String, passwordHashString: String) =
     s"""
       |WITH <$actorsGraph>
       |DELETE {
-      |   <$actor> <$passwordHash> ?oldPassword
+      |   <${user.uri(prefix)}> <$passwordHash> ?oldPassword
       |}
       |INSERT {
-      |   <$actor> <$passwordHash> '$passwordHashString'
+      |   <${user.uri(prefix)}> <$passwordHash> '$passwordHashString'
       |}
       |WHERE {
-      |   <$actor> <$passwordHash> ?oldPassword
+      |   <${user.uri(prefix)}> <$passwordHash> ?oldPassword
       |}
       """.stripMargin
 
-  def removeActorQ(actor: User) =
+  def removeActorQ(user: User, prefix: String) =
     s"""
        |WITH <$actorsGraph>
        |DELETE {
-       |   <$actor> ?p ?o .
+       |   <${user.uri(prefix)}> ?p ?o .
        |}""".stripMargin
 
-  def enableActorQ(actor: User, enabled: Boolean = true) =
+  def enableActorQ(user: User, prefix: String, enabled: Boolean = true) =
     s"""
        |WITH <$actorsGraph>
        |DELETE {
-       |   <$actor> <$actorEnabled> ?actorEnabled .
+       |   <${user.uri(prefix)}> <$actorEnabled> ?actorEnabled .
        |}
        |INSERT {
-       |   <$actor> <$actorEnabled> $enabled .
+       |   <${user.uri(prefix)}> <$actorEnabled> $enabled .
        |}
        |WHERE {
-       |   <$actor> a <$actorEntity> .
-       |   OPTIONAL { <$actor> <$actorEnabled> ?actorEnabled .}
+       |   <${user.uri(prefix)}> a <$actorEntity> .
+       |   OPTIONAL { <${user.uri(prefix)}> <$actorEnabled> ?actorEnabled .}
        |}""".stripMargin
 
-  def setActorAdminQ(actor: User, isAdminToggle: Boolean = true) =
+  def setActorAdminQ(user: User, prefix: String, isAdminToggle: Boolean = true) =
   // todo add ^^xsd:boolean
     s"""
        |WITH <$actorsGraph>
        |DELETE {
-       |   <$actor> <$isAdmin> ?oldBoolean .
+       |   <${user.uri(prefix)}> <$isAdmin> ?oldBoolean .
        |}
        |INSERT {
-       |   <$actor> <$isAdmin> $isAdminToggle .
+       |   <${user.uri(prefix)}> <$isAdmin> $isAdminToggle .
        |}
        |WHERE {
-       |   <$actor> a <$actorEntity> .
-       |   OPTIONAL { <$actor> <$isAdmin> ?oldBoolean .}
+       |   <${user.uri(prefix)}> a <$actorEntity> .
+       |   OPTIONAL { <${user.uri(prefix)}> <$isAdmin> ?oldBoolean .}
        |}
      """.stripMargin
 
@@ -403,11 +392,7 @@ object Sparql {
      """.stripMargin
 
   def deleteDatasetQ(datasetGraphName: String, uri: String, skosGraphName: String) =
-    //    INSERT DATA {
-    //      GRAPH <$datasetGraphName> {
-    //        <$uri> <$deleted> true .
-    //      }
-    //    };
+
     s"""
       |DROP SILENT GRAPH <$datasetGraphName>;
       |DROP SILENT GRAPH <$skosGraphName>;
@@ -592,7 +577,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def insertMappingQ(graphName:String, actor: User, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
+  def insertMappingQ(graphName:String, user: User, prefix: String, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
     val connection = if (skosB.spec == CATEGORIES_SPEC) belongsToCategory.uri else exactMatch
     s"""
       |INSERT DATA {
@@ -601,7 +586,7 @@ object Sparql {
       |    <$uri>
       |       a <$terminologyMapping>;
       |       <$synced> false;
-      |       <$belongsTo> <$actor> ;
+      |       <$belongsTo> <${user.uri(prefix)}> ;
       |       <$mappingTime> '''${Temporal.timeToString(new DateTime)}''' ;
       |       <$mappingConcept> <$uriA> ;
       |       <$mappingConcept> <$uriB> ;
@@ -695,40 +680,6 @@ object Sparql {
         |   }
         |};
        """.stripMargin
-
-// an attempt to also remove the associated mapping graphs
-//    val removeSkosEntries =
-//      s"""
-//        |PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-//        |DELETE {
-//        |   GRAPH <$skosGraph> {
-//        |      ?mintedUri ?p ?o .
-//        |   }
-//        |   GRAPH <?mappingGraph> {
-//        |      ?ms ?mp ?mo .
-//        |   }
-//        |}
-//        |WHERE {
-//        |   GRAPH <$skosGraph> {
-//        |      ?mintedUri
-//        |         a skos:Concept ;
-//        |         <$belongsTo> <$datasetUri> ;
-//        |         <$skosField> <$fieldPropertyUri> .
-//        |   }
-//        |   GRAPH <$skosGraph> {
-//        |      ?mintedUri ?p ?o .
-//        |   }
-//        |   OPTIONAL {
-//        |      GRAPH <?mappingGraph> {
-//        |         ?mintedUri ?connection ?targetUri .
-//        |         ?mappingUri a <$terminologyMapping> .
-//        |      }
-//        |      GRAPH <?mappingGraph> {
-//        |         ?ms ?mp ?mo .
-//        |      }
-//        |   }
-//        |};
-//       """.stripMargin
   }
 
   def skosifiedFieldFromResult(resultMap: Map[String, QueryValue]) = SkosifiedField(

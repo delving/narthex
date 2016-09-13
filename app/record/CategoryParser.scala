@@ -20,7 +20,7 @@ import mapping.CategoriesSpreadsheet.CategoryCount
 import play.Logger
 import record.CategoryParser.{CategoryMapping, Counter, NULL}
 import services.StringHandling._
-import services.{NarthexEventReader, ProgressReporter}
+import services.ProgressReporter
 
 import scala.collection.mutable
 import scala.io.Source
@@ -69,7 +69,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
 
   def parse(source: Source, avoidIds: Set[String], progressReporter: ProgressReporter): Unit = {
     val path = new mutable.Stack[(String, StringBuilder)]
-    val events = new NarthexEventReader(source)
+    val events = new XMLEventReader(source)
     var depth = 0
     var recordCategories = new mutable.TreeSet[String]()
     var startTag = false
