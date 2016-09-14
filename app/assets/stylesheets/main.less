@@ -408,19 +408,24 @@ code {
   width: 100%;
   tr, tbody {
     width: 100%;
-    display: block;
+    display: flex;
+    align-items: stretch;
   }
   td {
     padding: 0 0 0 0;
     border: none;
+    &:last-child {
+      flex: 1;
+    }
     &.name {
-      width: 50%
+      font-size: 1.25em;
+      width: 50%;
     }
     &.invalid {
-      width: 15%
+      width: 15%;
     }
     &.valid {
-      width: 15%
+      width: 15%;
     }
     &.state {
       width: auto;
@@ -428,7 +433,7 @@ code {
       .indicator {
         width: 200px;
         color: @white;
-        padding: 8px;
+        padding: 4px;
         text-align: center;
         float: right;
         &:hover {
@@ -478,18 +483,38 @@ code {
           background: @brand-primary
         }
       }
+      .state-name {
+        font-size: 1.25em;
+      }
     }
-
+    .widget-icon {
+      height: 50px;
+      width: 50px;
+      padding: 8px;
+      i {
+        color: @brand-primary;
+        font-size: 1.75em;
+        margin: 0px;
+        &.fa-folder {
+          padding-top: 2px;
+        }
+        &.fa-folder-open {
+          padding-top: 2px;
+          margin-left: 2px;
+        }
+      }
+    }
     .datetime {
       display: block;
-      font-size: .75em;
+      //font-size: .75em;
       letter-spacing: 1px;
-      margin-top: 4px;
+      //margin-top: 4px;
     }
     .btn-default {
       border: none;
       .border-radius(0px);
     }
+
   }
 }
 
