@@ -16,7 +16,9 @@
 
 package web
 
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPOutputStream
 
 import akka.actor._
 import akka.util.Timeout
@@ -31,7 +33,7 @@ import mapping.VocabInfo._
 import org.OrgActor.DatasetMessage
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
-import org.{OrgActor, OrgContext}
+import org.OrgContext
 import play.api.Logger
 import play.api.Play.current
 import play.api.cache.CacheApi
@@ -69,8 +71,21 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implici
   }
 
   def listDatasets = SecureAsync() { session => request =>
-    listDsInfo(orgContext).map(list => Ok(Json.toJson(list)))
+    listDsInfo(orgContext).map(list => {
+      val jsonBytes: Array[Byte] = Json.toJson(list).toString().toCharArray.map(_.toByte)
+      val bos = new ByteArrayOutputStream(jsonBytes.length)
+      val gzip = new GZIPOutputStream(bos)
+      gzip.write(jsonBytes)
+      gzip.close()
+      val compressed = bos.toByteArray
+      bos.close()
+      Ok(compressed).withHeaders(
+        CONTENT_ENCODING -> "gzip",
+        CONTENT_TYPE -> "application/json"
+      )
+    })
   }
+
 
   def listPrefixes = Secure() { session => request =>
     val prefixes = orgContext.sipFactory.prefixRepos.map(_.prefix)
@@ -82,7 +97,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implici
   }
 
   def createDataset(spec: String, character: String, mapToPrefix: String) = SecureAsync() { session => request =>
-    orgContext.createDsInfo(session.actor, spec, character, mapToPrefix).map(dsInfo =>
+    orgContext.createDsInfo(session.user, spec, character, mapToPrefix).map(dsInfo =>
       Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
     )
   }
@@ -218,7 +233,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implici
   }
 
   def createVocabulary(spec: String) = SecureAsync() { session => request =>
-    VocabInfo.createVocabInfo(session.actor, spec, orgContext).map(ok =>
+    VocabInfo.createVocabInfo(session.user, spec, orgContext).map(ok =>
       Ok(Json.obj("created" -> s"Skos $spec created"))
     )
   }
@@ -297,7 +312,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implici
     val uriA = (request.body \ "uriA").as[String]
     val uriB = (request.body \ "uriB").as[String]
     val store = orgContext.vocabMappingStore(specA, specB)
-    store.toggleMapping(SkosMapping(session.actor, uriA, uriB)).map { action =>
+    store.toggleMapping(SkosMapping(session.user, uriA, uriB)).map { action =>
       Ok(Json.obj("action" -> action))
     }
   }
@@ -334,7 +349,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext) (implici
     val uriB = (request.body \ "uriB").as[String]
     val store = orgContext.termMappingStore(dsSpec)
     withVocabInfo(vocabSpec, orgContext) { vocabInfo =>
-      store.toggleMapping(SkosMapping(session.actor, uriA, uriB), vocabInfo).map { action =>
+      store.toggleMapping(SkosMapping(session.user, uriA, uriB), vocabInfo).map { action =>
         Ok(Json.obj("action" -> action))
       }
     }

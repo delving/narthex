@@ -1,5 +1,7 @@
+import com.typesafe.sbt.packager.docker._
+
 //===========================================================================
-//    Copyright 2014 Delving B.V.
+//    Copyright 2014, 2015, 2016 Delving B.V.
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -17,6 +19,7 @@
 
 lazy val root = (project in file(".")).
   enablePlugins(play.sbt.PlayScala).
+  enablePlugins(DockerPlugin).
   enablePlugins(BuildInfoPlugin).
   settings(
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
@@ -24,7 +27,7 @@ lazy val root = (project in file(".")).
   )
 name := "narthex"
 
-version := "0.3.7-SNAPSHOT"
+version := "0.4.1-SNAPSHOT"
 
 scalaVersion := "2.11.6"
 
@@ -56,7 +59,8 @@ libraryDependencies ++= Seq(
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "4.0.0",
   "eu.delving" % "sip-core" % "1.0.9",
-  "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1"
+  "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1",
+  "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime"
 )
 
 libraryDependencies ~= {
@@ -100,3 +104,19 @@ javaOptions += "-Djava.awt.headless=true"
 PlayKeys.fileWatchService := play.runsupport.FileWatchService.sbt(pollInterval.value)
 
 routesGenerator := InjectedRoutesGenerator
+
+// sbt will generate a Dockerfile from the instructions below.
+packageName in Docker := "delvingplatform/narthex"
+
+dockerCommands := Seq(
+  Cmd("FROM", "frolvlad/alpine-oraclejdk8:slim"),
+  Cmd("MAINTAINER", "info@delving.eu"),
+  Cmd("RUN", "apk update && apk add bash"),
+  Cmd("WORKDIR", "/opt/docker"),
+  Cmd("ADD", "opt /opt"),
+  Cmd("RUN", "chown -R daemon:daemon ."),
+  Cmd("EXPOSE", "9000"),
+  Cmd("USER", "daemon"),
+  ExecCmd("ENTRYPOINT", "bin/narthex", "-Dconfig.file=/opt/docker/conf/overrides.conf", "-Dlogger.file=/opt/docker/conf/logback.xml")
+)
+

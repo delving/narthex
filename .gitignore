@@ -23,5 +23,6 @@ server.pid
 *.eml
 
 !.travis.yml
+!.editorconfig
 out
 fuseki_data

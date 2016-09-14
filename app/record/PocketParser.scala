@@ -57,10 +57,6 @@ object PocketParser {
       val sha1: String = PocketParser.sha1(text)
       writer.write(text)
       writer.write(s"""<!--<${id}__$sha1>-->\n""")
-      // TODO: enable later when save button is removed.
-//      if (OrgContext.USE_BULK_API) {
-//        storeBulkAction(text, id, sha1)
-//      }
     }
 
     def storeBulkAction(triples: String, id: String, hash: String, orgContext: OrgContext) = {
@@ -110,7 +106,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
   var namespaceMap: Map[String, String] = Map.empty
 
   def parse(source: Source, avoid: Set[String], output: Pocket => Unit, progress: ProgressReporter): Int = {
-    val events = new NarthexEventReader(source)
+    val events = new XMLEventReader(source)
     var depth = 0
     var recordText = new mutable.StringBuilder()
     var uniqueId: Option[String] = None
@@ -135,10 +131,15 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
     }
 
     def setUniqueId(id: String) = {
-      val clean_id = id.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
-      uniqueId = Some(idFilter.filter(clean_id))
+      val cleanId = cleanUpId(id)
+      uniqueId = Some(idFilter.filter(cleanId))
     }
 
+    def cleanUpId(id: String) : String = {
+        id.
+          replaceAll("/", "-").
+          replaceAll("[-]{2,20}", "-")
+    }
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
       def recordNamespace(binding: NamespaceBinding): Unit = {
         if (binding eq TopScope) return
@@ -199,18 +200,18 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
           recordText.append(s"</${if (introduceRecord) SIP_RECORD_TAG else tag}>\n")
           val record = uniqueId.map { id =>
             if (id.trim.isEmpty) throw new RuntimeException("Empty unique id!")
-            val clean_id = id.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
-            if (avoid.contains(clean_id)) None
+            val cleanId = cleanUpId(id)
+            if (avoid.contains(cleanId)) None
             else {
               val recordContent = recordText.toString()
               val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
               val scopedRecordContent = recordContent.replaceFirst(">", s" $scope>")
               if (pocketWrap) {
-                val wrapped = s"""<$POCKET id="$clean_id">\n$scopedRecordContent</$POCKET>\n"""
-                Some(Pocket(clean_id, wrapped, namespaceMap))
+                val wrapped = s"""<$POCKET id="$cleanId">\n$scopedRecordContent</$POCKET>\n"""
+                Some(Pocket(cleanId, wrapped, namespaceMap))
               }
               else {
-                Some(Pocket(clean_id, scopedRecordContent, namespaceMap))
+                Some(Pocket(cleanId, scopedRecordContent, namespaceMap))
               }
             }
           } getOrElse {

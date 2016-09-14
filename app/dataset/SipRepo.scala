@@ -103,8 +103,6 @@ object Sip {
   // Note: this is set in the OrgContext but we don't want a dependency from there (requires app for testing)
   val XSD_VALIDATION = System.getProperty("XSD_VALIDATION", "true") == "true"
 
-  println(s"XSD_VALIDATION=$XSD_VALIDATION")
-
   case class SipMapping(spec: String, prefix: String, version: String,
                         recDefTree: RecDefTree, validatorOpt: Option[Validator],
                         recMapping: RecMapping) {
@@ -288,20 +286,13 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
     val factory = new MetadataRecordFactory(namespaces)
 
-//    println(s"### CODE: \n${new CodeGenerator(sipMapping.recMapping).toRecordMappingCode}")
-
     val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
-
-
-    //    println(s"input paths:\n${sipMapping.recMapping.getNodeMappings.toList.map(nm => s"${nm.inputPath} -> ${nm.outputPath}").mkString("\n")}")
-    //    println(runner.getCode)
 
     override val datasetName = sipMapping.spec
 
     override val prefix: String = sipMapping.prefix
 
     override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
-      //        println(s"### BEGIN RecordXml ${"-" * 30}\n${pocket.getText}\n### END RecordXml ${"-" * 30}")
       val metadataRecord = factory.metadataRecordFrom(pocket.getText)
       val result = new MappingResult(serializer, pocket.getId, runner.runMapping(metadataRecord), runner.getRecDefTree)
       // check uri errors

@@ -97,8 +97,8 @@ class MainController(val userRepository: UserRepository,
       lastName = (request.body \ "lastName").as[String],
       email = (request.body \ "email").as[String]
     )
-    val setOp = userRepository.setProfile(session.actor, nxProfile).map { ok =>
-      val newSession = session.copy(user = session.actor.copy(profileOpt = Some(nxProfile)))
+    val setOp = userRepository.setProfile(session.user, nxProfile).map { ok =>
+      val newSession = session.copy(user = session.user.copy(profileOpt = Some(nxProfile)))
       Ok(Json.toJson(newSession)).withSession(newSession)
     }
     setOp.onFailure {
@@ -109,55 +109,55 @@ class MainController(val userRepository: UserRepository,
   }
 
   def listActors = Secure() { session => implicit request =>
-    Ok(Json.obj("actorList" -> userRepository.listSubActors(session.actor)))
+    Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
   }
 
   def createActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
-    userRepository.createSubActor(session.actor, username, password).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.actor)))
+    userRepository.createSubActor(session.user, username, password).map { actorOpt =>
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def deleteActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     userRepository.deleteActor(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.actor)))
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def disableActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     userRepository.disableActor(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.actor)))
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def enableActor() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     userRepository.enableActor(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.actor)))
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def makeAdmin() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     userRepository.makeAdmin(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.actor)))
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def removeAdmin() = SecureAsync(parse.json) { session => implicit request =>
     val username = (request.body \ "username").as[String]
     userRepository.removeAdmin(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.actor)))
+      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
     }
   }
 
   def setPassword() = SecureAsync(parse.json) { session => implicit request =>
     val newPassword = (request.body \ "newPassword").as[String]
-    userRepository.setPassword(session.actor, newPassword).map(alright => Ok)
+    userRepository.setPassword(session.user, newPassword).map(alright => Ok)
   }
 
   def OkFile(file: File, attempt: Int = 0): Result = Utils.okFile(file, attempt)

@@ -1,13 +1,22 @@
 language: scala
+sudo: required
+
+services:
+  - docker
 
 script:
-  - sbt clean coverage test
+  - sbt clean coverage test coverageReport docker:publishLocal
 
 scala:
-   - 2.10.4
+   - 2.11.6
 
 jdk:
   - oraclejdk8
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+    docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+    docker push delvingplatform/narthex;
+    fi

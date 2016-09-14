@@ -61,6 +61,7 @@ define(["angular"], function () {
 
         socket.onmessage = function (messageReturned) {
             var message = JSON.parse(messageReturned.data);
+            console.log("Received websocket msg: " + message)
             var callback = $scope.socketSubscribers[message.datasetSpec];
             if (callback) {
                 callback(message);

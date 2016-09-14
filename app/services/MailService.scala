@@ -3,9 +3,8 @@ package services
 import java.io.{PrintWriter, StringWriter}
 
 import org.UserRepository
-import play.api.Play.current
+import play.api.Logger
 import play.api.libs.mailer._
-import play.api.{Logger, Mode}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -59,12 +58,7 @@ class MailServiceImpl(val mailerClient: MailerClient, val userRepository: UserRe
         Logger.warn(s"EMail: '$subject' not sent because there is no recipient email address available.")
       } else {
         val email = Email(to = recipients, from = fromNarthex, subject = subject, bodyHtml = Some(html))
-        if (current.mode != Mode.Prod) {
-          Logger.info(s"Not production mode, so this was not sent:\n$email")
-        }
-        else {
-          mailerClient.send(email)
-        }
+        mailerClient.send(email)
       }
     }
   }
@@ -72,9 +66,8 @@ class MailServiceImpl(val mailerClient: MailerClient, val userRepository: UserRe
   private def prepareRecipients(overrideTo: Option[String]): Future[List[String]] = {
     overrideTo match {
       case Some(to) => Future.successful(List(to))
-      case None => {
+      case None =>
         userRepository.adminEmails
-      }
     }
   }
 

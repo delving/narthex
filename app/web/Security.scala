@@ -56,10 +56,7 @@ trait Security {
                          apiKey: String,
                          narthexDomain: String,
                          naveDomain: String,
-                         token: String = java.util.UUID.randomUUID().toString) {
-    @deprecated("use the 'user' property instead", "0.3.7")
-    val actor = user
-  }
+                         token: String = java.util.UUID.randomUUID().toString)
 
   /*
     To make this work seamlessly with Angular, you should read the token from a header called
