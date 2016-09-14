@@ -54,7 +54,7 @@ object PocketParser {
       IdPattern.findFirstMatchIn(text) match {
         case Some(pocketId) =>
                 val sourceId = pocketId.group(1)
-                val cleanId = sourceId.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
+                val cleanId = cleanUpId(sourceId)
                 text.replaceAll(sourceId, cleanId)
         case None => text
       }
