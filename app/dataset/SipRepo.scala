@@ -286,22 +286,15 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
     val factory = new MetadataRecordFactory(namespaces)
 
-//    println(s"### CODE: \n${new CodeGenerator(sipMapping.recMapping).toRecordMappingCode}")
-
     val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
-
-
-    //    println(s"input paths:\n${sipMapping.recMapping.getNodeMappings.toList.map(nm => s"${nm.inputPath} -> ${nm.outputPath}").mkString("\n")}")
-    //    println(runner.getCode)
 
     override val datasetName = sipMapping.spec
 
     override val prefix: String = sipMapping.prefix
 
     override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
-      //        println(s"### BEGIN RecordXml ${"-" * 30}\n${pocket.getText}\n### END RecordXml ${"-" * 30}")
       val metadataRecord = factory.metadataRecordFrom(pocket.getText)
-      val result = new MappingResult(serializer, pocket.getId, runner.runMapping(metadataRecord), runner.getRecDefTree)
+      val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree)
       // check uri errors
       val uriErrors = result.getUriErrors.toList
       if (uriErrors.nonEmpty) throw new URIErrorsException(uriErrors)
@@ -324,7 +317,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
         case _ =>
           val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-          val rdfAbout = s"$rdfBaseUrl/resource/graph/$datasetName/${urlEncodeValue(pocket.getId)}"
+          val rdfAbout = s"$rdfBaseUrl/resource/graph/$datasetName/${urlEncodeValue(pocket.id)}"
           rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
           kids.foreach(rdfElement.appendChild)
           val graphName = rdfAbout
