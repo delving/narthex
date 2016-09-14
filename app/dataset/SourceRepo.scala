@@ -27,6 +27,7 @@ import org.apache.commons.codec.binary.Base32
 import org.apache.commons.io.input.BOMInputStream
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
+import play.api.Logger
 import record.PocketParser
 import record.PocketParser._
 import services.FileHandling.{clearDir, createWriter, sourceFromFile}
@@ -105,9 +106,8 @@ object SourceRepo {
 
   def sourceFactsFile(home: File) = new File(home, SOURCE_FACTS_FILE)
 
-  def sourceFacts(home: File): SourceFacts = {
-    val file = sourceFactsFile(home)
-    val lines = Source.fromFile(file, "UTF-8").getLines()
+  def readSourceFacts(source: Source): SourceFacts = {
+    val lines = source.getLines()
     val map = lines.flatMap { line =>
       val equals = line.indexOf("=")
       if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
@@ -117,6 +117,12 @@ object SourceRepo {
     val uniqueId = map.getOrElse("uniqueId", throw new RuntimeException(s"Unique ID missing!"))
     val recordContainer = map.getOrElse("recordContainer", throw new RuntimeException(s"Record root missing!"))
     SourceFacts(sourceType, recordRoot, uniqueId, Option(recordContainer).find(_.nonEmpty))
+  }
+
+  def sourceFactsFromHomedir(home: File): SourceFacts = {
+    val file = sourceFactsFile(home)
+    val source = Source.fromFile(file, "UTF-8")
+    readSourceFacts(source)
   }
 
   def createClean(home: File, sourceFacts: SourceFacts): SourceRepo = {
@@ -198,6 +204,7 @@ class SourceRepo(home: File) {
   private def listZipFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".zip")).sortBy(_.getName)
 
   private def processFile(idFilter: IdFilter, progress: ProgressReporter, provideZipFile: File => File) = {
+
     def writeToFile(file: File, string: String): Unit = Some(new PrintWriter(file)).foreach { writer =>
       writer.println(string)
       writer.close()
@@ -206,9 +213,11 @@ class SourceRepo(home: File) {
     val fileNumber = zipFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = provideZipFile(createZipFile(fileNumber))
+    Logger.info(s"Processing source: $file")
     val idSet = new mutable.HashSet[String]()
     val parser = new PocketParser(sourceFacts, idFilter)
-    def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.getId)
+    def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.id)
+
     val (source, readProgress) = sourceFromFile(file)
     progress.setReadProgress(readProgress)
     try {
@@ -251,7 +260,7 @@ class SourceRepo(home: File) {
 
   // public things:
 
-  lazy val sourceFacts = SourceRepo.sourceFacts(home)
+  lazy val sourceFacts = SourceRepo.sourceFactsFromHomedir(home)
 
   def countFiles = fileList.size
 

@@ -27,7 +27,7 @@ lazy val root = (project in file(".")).
   )
 name := "narthex"
 
-version := "0.4.1-SNAPSHOT"
+version := "0.4.2-SNAPSHOT"
 
 scalaVersion := "2.11.6"
 
