@@ -79,7 +79,7 @@
 
 <script type="text/ng-template" id="dataset-entry.html">
     <a name="{{ dataset.datasetSpec }}" id="{{ dataset.datasetSpec }}"/>
-    <div data-ng-controller="DatasetEntryCtrl" class="widget">
+    <div data-ng-controller="DatasetEntryCtrl" class="widget widget-dataset-list">
 
         <div class="widget-header">
 
@@ -88,8 +88,9 @@
                     <td class="name">
                         <a href class="clickable" data-ng-click="expanded = !expanded">
                             <span class="widget-icon">
-                                <i  data-ng-show="datasetBusy" class="fa fa-cog fa-spin fa-fw"></i>
-                                <i data-ng-hide="datasetBusy" class="fa fa-fw" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i>
+                                <!--<i  class="fa fa-cog fa-spin"></i>-->
+                                <i  data-ng-show="datasetBusy" class="fa fa-cog fa-spin"></i>
+                                <i data-ng-hide="datasetBusy" class="fa" data-ng-class="{ 'fa-folder': !expanded, 'fa-folder-open': expanded }"></i>
                             </span>
                             <strong>{{ dataset.datasetSpec }}</strong>
                             <span data-ng-if="dataset.datasetName">: "{{ dataset.datasetName }}"</span>
@@ -120,7 +121,7 @@
                                         stateAnalyzed: 'analyzed',
                                         stateSaved:'saved',
                                         '':'default'}[dataset.stateCurrent.name]">
-                            <span ng-switch="dataset.stateCurrent.name">
+                            <span ng-switch="dataset.stateCurrent.name" class="state-name">
                                 <span ng-switch-when="stateRaw">Raw source</span>
                                 <span ng-switch-when="stateRawAnalyzed">Raw source analyzed</span>
                                 <span ng-switch-when="stateSourced">Sourced</span>
@@ -142,7 +143,7 @@
 
         <div class="widget-body" data-ng-if="expanded">
             <div class="row">
-                <div class="ds-states col-md-3">
+                <div class="ds-states col-md-2">
                     <ul class="list-group states">
                         <!--<li data-ng-show="dataset.empty" class="ds-state list-group-item"-->
                         <!--data-ng-class="{ 'later': isCurrent('stateEmpty') }">-->
