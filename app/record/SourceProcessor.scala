@@ -164,16 +164,16 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
             validRecords += 1
 
           case Failure(ue: URIErrorsException) =>
-            writeError("URI ERRORS", ue.uriErrors.mkString("\n"), rawPocket.getId)
+            writeError("URI ERRORS", ue.uriErrors.mkString("\n"), rawPocket.id)
 
           case Failure(disc: DiscardRecordException) =>
-            writeError("DISCARDED RECORD", disc.getMessage, rawPocket.getId)
+            writeError("DISCARDED RECORD", disc.getMessage, rawPocket.id)
 
           case Failure(sax: SAXException) =>
-            writeError("XSD ERROR", sax.getMessage, rawPocket.getId)
+            writeError("XSD ERROR", sax.getMessage, rawPocket.id)
 
           case Failure(unexpected: Throwable) =>
-            writeError("UNEXPECTED ERROR", unexpected.toString, rawPocket.getId)
+            writeError("UNEXPECTED ERROR", unexpected.toString, rawPocket.id)
         }
         val total = validRecords + invalidRecords
         if (total % 10000 == 0) {

@@ -18,6 +18,7 @@ package record
 
 import java.io.{ByteArrayInputStream, Writer}
 import java.security.{MessageDigest, NoSuchAlgorithmException}
+import java.util.regex.Pattern
 
 import dataset.DsInfo
 import dataset.SourceRepo.{IdFilter, SourceFacts}
@@ -35,9 +36,17 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object PocketParser {
 
-  case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
+  def cleanUpId(id: String) : String = {
+    id.
+      replace("/", "-").
+      replace(":", "-").
+      replace("+", "-").
+      replace("(", "-").
+      replace(")", "-").
+      replaceAll("[-]{2,20}", "-")
+  }
 
-    def getId: String = id.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
+  case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
 
     val IdPattern = ".*?<pocket id=\"(.*?)\" .*".r
 
@@ -45,8 +54,8 @@ object PocketParser {
       IdPattern.findFirstMatchIn(text) match {
         case Some(pocketId) =>
                 val sourceId = pocketId.group(1)
-                val cleanId = sourceId.replaceAll("/", "-").replaceAll("[-]{2,20}", "-")
-                text.replaceAll(sourceId, cleanId)
+                val cleanId = cleanUpId(sourceId)
+                text.replace(sourceId, cleanId)
         case None => text
       }
     }
@@ -135,11 +144,6 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
       uniqueId = Some(idFilter.filter(cleanId))
     }
 
-    def cleanUpId(id: String) : String = {
-        id.
-          replaceAll("/", "-").
-          replaceAll("[-]{2,20}", "-")
-    }
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
       def recordNamespace(binding: NamespaceBinding): Unit = {
         if (binding eq TopScope) return
