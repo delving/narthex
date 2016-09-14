@@ -41,6 +41,8 @@ object PocketParser {
       replaceAll("/", "-").
       replaceAll(":", "-").
       replaceAll(Pattern.quote("+"), "-").
+      replaceAll(Pattern.quote("("), "-").
+      replaceAll(Pattern.quote(")"), "-").
       replaceAll("[-]{2,20}", "-")
   }
 

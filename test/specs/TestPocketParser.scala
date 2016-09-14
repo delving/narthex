@@ -44,49 +44,31 @@ class TestPocketParser extends FlatSpec with Matchers {
 
 
 
-  behavior of "an object id containing a : character"
+  behavior of "an object id containing an illegal character"
 
   it should "replace the colon with a dash" in {
-    val source = Source.fromString(getRecords("foo:bar"))
-    val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter)
+    runTestFor(":")
+  }
 
-    var outputCreated = false
-    def outPut (pocket: Pocket): Unit = {
-      outputCreated = true
-      assert(pocket.id == "foo-bar")
-    }
-    pocketParser.parse(source, Set.empty, outPut, reporter)
-    assert(outputCreated)
+  it should "replace the ( and ) with a dash" in {
+    runTestFor("(")
+    runTestFor(")")
   }
 
   it should "replace the space with a dash" in {
-    val source = Source.fromString(getRecords("foo bar"))
-    val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter)
-
-    var outputCreated = false
-    def outPut (pocket: Pocket): Unit = {
-      outputCreated = true
-      assert(pocket.id == "foo-bar")
-    }
-    pocketParser.parse(source, Set.empty, outPut, reporter)
-    assert(outputCreated)
+    runTestFor(" ")
   }
 
   it should "replace the plus with a dash" in {
-    val source = Source.fromString(getRecords("foo+bar"))
-    val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter)
-
-    var outputCreated = false
-    def outPut (pocket: Pocket): Unit = {
-      outputCreated = true
-      assert(pocket.id == "foo-bar")
-    }
-    pocketParser.parse(source, Set.empty, outPut, reporter)
-    assert(outputCreated)
+    runTestFor("+")
   }
 
   it should "replace multiple dash-chars with a single dash" in {
-    val source = Source.fromString(getRecords("foo--------bar"))
+    runTestFor("------")
+  }
+
+  def runTestFor(illegalChar: String): Unit = {
+    val source = Source.fromString(getRecords(s"foo${illegalChar}bar"))
     val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter)
 
     var outputCreated = false
