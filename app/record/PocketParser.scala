@@ -38,11 +38,11 @@ object PocketParser {
 
   def cleanUpId(id: String) : String = {
     id.
-      replaceAll("/", "-").
-      replaceAll(":", "-").
-      replaceAll(Pattern.quote("+"), "-").
-      replaceAll(Pattern.quote("("), "-").
-      replaceAll(Pattern.quote(")"), "-").
+      replace("/", "-").
+      replace(":", "-").
+      replace("+", "-").
+      replace("(", "-").
+      replace(")", "-").
       replaceAll("[-]{2,20}", "-")
   }
 
@@ -55,7 +55,7 @@ object PocketParser {
         case Some(pocketId) =>
                 val sourceId = pocketId.group(1)
                 val cleanId = cleanUpId(sourceId)
-                text.replaceAll(sourceId, cleanId)
+                text.replace(sourceId, cleanId)
         case None => text
       }
     }
