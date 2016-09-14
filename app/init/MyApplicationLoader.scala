@@ -44,12 +44,16 @@ class MyApplicationLoader extends ApplicationLoader {
     userRepository.hasAdmin.
       filter( hasAdmin => !hasAdmin).
       map { hasAdmin =>
-        val topActorConfigProp = "topActor.initialPassword"
         userRepository.insertAdmin(initialPassword)
         Logger.info(s"Inserted initial admin user, details")
       }
     components.application
   }
+}
+
+object MyComponents {
+  val updateMonitorActorName = "datasetUpdates"
+  val updateMonitorActorPath = s"user/$updateMonitorActorName"
 }
 
 class MyComponents(context: Context, narthexDataDir: File) extends BuiltInComponentsFromContext(context)
@@ -84,7 +88,11 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
   lazy val appController = new AppController(defaultCacheApi, orgContext) (tripleStore, actorSystem, materializer)
   lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
 
-  lazy val webSocketController = new WebSocketController(defaultCacheApi, actorSystem, materializer)
+
+  lazy val datasetUpdateMonitorActor = actorSystem.actorOf(DatasetUpdateMonitorActor.props, MyComponents.updateMonitorActorName)
+  lazy val userParentActor = actorSystem.actorOf(Props(classOf[UserParentActor], datasetUpdateMonitorActor))
+  lazy val webSocketController =
+    new WebSocketController(defaultCacheApi, datasetUpdateMonitorActor, userParentActor)(actorSystem, materializer, defaultContext)
 
   lazy val assets = new controllers.Assets(httpErrorHandler)
   lazy val webJarAssets = new WebJarAssets(httpErrorHandler, configuration, environment)

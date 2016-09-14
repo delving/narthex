@@ -29,6 +29,7 @@ import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
 import harvest.Harvesting.HarvestType._
+import init.MyComponents
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import mapping.Skosifier.SkosificationComplete
 import mapping.{CategoryCounter, Skosifier}
@@ -85,7 +86,7 @@ object DatasetActor {
 
   case object Dormant extends DatasetActorData
 
-  case class Active(spec: String, childOpt: Option[ActorRef], 
+  case class Active(spec: String, childOpt: Option[ActorRef],
                     progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0,
                     interrupt: Boolean = false) extends DatasetActorData
 
@@ -139,10 +140,10 @@ object DatasetActor {
 
 }
 
-class DatasetActor(val datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext) extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
+class DatasetActor(val datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext)
+  extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
 
   import context.dispatcher
-
 
   override val supervisorStrategy = OneForOneStrategy() {
     case throwable: Throwable =>
@@ -154,11 +155,13 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
 
   val errorMessage = dsInfo.getLiteralProp(datasetErrorMessage).getOrElse("")
 
-  def broadcastRaw(message: String) = context.system.actorSelection("/system/websockets/*") ! message
+  private def broadcastMessage(message: Any) = {
+    context.system.actorSelection(MyComponents.updateMonitorActorPath) ! message
+  }
 
-  def broadcastIdleState() = broadcastRaw(Json.stringify(Json.toJson(datasetContext.dsInfo)))
+  def broadcastIdleState() = broadcastMessage(datasetContext.dsInfo)
 
-  def broadcastProgress(active: Active) = broadcastRaw(Json.stringify(Json.toJson(active)))
+  def broadcastProgress(active: Active) = broadcastMessage(active)
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
