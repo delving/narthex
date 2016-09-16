@@ -13,11 +13,11 @@ import org._
 import play.api._
 import play.api.ApplicationLoader.Context
 import play.api.cache.EhCacheComponents
-import play.api.libs.ws.ning.NingWSComponents
 import triplestore.Fuseki
 import web._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.mailer._
+import play.api.libs.ws.ahc.AhcWSComponents
 import services.{MailService, MailServiceImpl}
 
 import scala.concurrent.duration._
@@ -54,12 +54,17 @@ class MyApplicationLoader extends ApplicationLoader {
   }
 }
 
+object MyComponents {
+  val updateMonitorActorName = "datasetUpdates"
+  val updateMonitorActorPath = s"user/$updateMonitorActorName"
+}
+
 class MyComponents(context: Context, narthexDataDir: File) extends BuiltInComponentsFromContext(context)
-  with NingWSComponents
+  with AhcWSComponents
   with EhCacheComponents
   with MailerComponents {
 
-  Logger.configure(environment)
+  LoggerConfigurator(context.environment.classLoader).foreach { _.configure(context.environment) }
 
   val appConfig = initAppConfig(narthexDataDir)
 
@@ -67,25 +72,28 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
   lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsClient,
     mailService, authenticationService, userRepository, orgActorRef)
 
-  lazy val router = new Routes(httpErrorHandler, mainController, appController,
+  lazy val router = new Routes(httpErrorHandler, mainController, webSocketController, appController,
     sipAppController, apiController, webJarAssets, assets, metricsController, infoController)
 
   lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(new OrgActor(orgContext)), appConfig.orgId)
 
-  private lazy val metrics = new MetricsImpl(applicationLifecycle, configuration)
+  lazy val metrics = new MetricsImpl(applicationLifecycle, configuration)
 
-  private lazy val metricsFilter = new MetricsFilterImpl(metrics)
+  lazy val metricsFilter = new MetricsFilterImpl(metrics)
 
   override lazy val httpFilters = List(metricsFilter)
 
-  private lazy val metricsController = new MetricsController(metrics)
-  private lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext)
-  private lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
+  lazy val metricsController = new MetricsController(metrics)
+  lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext)
+  lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
     appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId
   )
-  private lazy val appController = new AppController(defaultCacheApi, orgContext)(tripleStore)
-  private lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
+  lazy val appController = new AppController(defaultCacheApi, orgContext) (tripleStore, actorSystem, materializer)
+  lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
   lazy val infoController = new InfoController
+
+  lazy val webSocketController = new WebSocketController(defaultCacheApi)(actorSystem, materializer, defaultContext)
+
   lazy val assets = new controllers.Assets(httpErrorHandler)
   lazy val webJarAssets = new WebJarAssets(httpErrorHandler, configuration, environment)
 

@@ -8,7 +8,7 @@ script:
   - sbt clean coverage test coverageReport docker:publishLocal
 
 scala:
-   - 2.11.6
+   - 2.11.8
 
 jdk:
   - oraclejdk8

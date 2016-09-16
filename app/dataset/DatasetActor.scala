@@ -24,7 +24,6 @@ import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DsInfo.DsState._
-import dataset.DsInfo._
 import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
@@ -85,7 +84,7 @@ object DatasetActor {
 
   case object Dormant extends DatasetActorData
 
-  case class Active(spec: String, childOpt: Option[ActorRef], 
+  case class Active(spec: String, childOpt: Option[ActorRef],
                     progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0,
                     interrupt: Boolean = false) extends DatasetActorData
 
@@ -154,11 +153,11 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
 
   val errorMessage = dsInfo.getLiteralProp(datasetErrorMessage).getOrElse("")
 
-  def broadcastRaw(message: String) = context.system.actorSelection("/system/websockets/*") ! message
+  def broadcastRaw(message: Any) = context.system.actorSelection("/user/*/flowActor") ! message
 
-  def broadcastIdleState() = broadcastRaw(Json.stringify(Json.toJson(datasetContext.dsInfo)))
+  def broadcastIdleState() = broadcastRaw(datasetContext.dsInfo)
 
-  def broadcastProgress(active: Active) = broadcastRaw(Json.stringify(Json.toJson(active)))
+  def broadcastProgress(active: Active) = broadcastRaw(active)
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 

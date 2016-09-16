@@ -17,9 +17,10 @@
 package triplestore
 
 import java.io.{File, StringReader, StringWriter}
+import java.nio.charset.StandardCharsets
 
 import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
-import com.ning.http.client.providers.netty.response.NettyResponse
+import org.asynchttpclient.netty.NettyResponse
 import play.api.Logger
 import play.api.libs.json.JsObject
 import play.api.libs.ws.{WSAPI, WSResponse}
@@ -139,7 +140,7 @@ class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val e
         throw new RuntimeException(s"Get response for $graphName not 2XX, but ${response.status}: ${response.statusText}")
       }
       val netty = response.underlying[NettyResponse]
-      val body = netty.getResponseBody("UTF-8")
+      val body = netty.getResponseBody(StandardCharsets.UTF_8)
       ModelFactory.createDefaultModel().read(new StringReader(body), null, "TURTLE")
     }
   }
