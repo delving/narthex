@@ -47,7 +47,6 @@ class MyApplicationLoader extends ApplicationLoader {
     userRepository.hasAdmin.
       filter( hasAdmin => !hasAdmin).
       map { hasAdmin =>
-        val topActorConfigProp = "topActor.initialPassword"
         userRepository.insertAdmin(initialPassword)
         Logger.info(s"Inserted initial admin user, details")
       }
