@@ -90,3 +90,4 @@ GET         /narthex/assets/*file                                            con
 
 # Monitoring
 GET         /non-public/monitoring/metrics                                   com.kenshoo.play.metrics.MetricsController.metrics
+GET         /non-public/monitoring/info                                      web.InfoController.info
