@@ -19,6 +19,7 @@ import com.typesafe.sbt.packager.docker._
 lazy val root = (project in file(".")).
   enablePlugins(play.sbt.PlayScala).
   enablePlugins(DockerPlugin).
+  enablePlugins(GitVersioning).
   enablePlugins(BuildInfoPlugin).
   settings(
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
@@ -31,7 +32,7 @@ scalaVersion := "2.11.6"
 buildInfoKeys ++= Seq[BuildInfoKey](
   resolvers,
   libraryDependencies in Test,
-  "gitCommitSha" -> Process("git rev-parse --short HEAD").lines.head
+  "gitCommitSha" -> git.gitHeadCommit.value.getOrElse("nogit").substring(0, 5)
 )
 
 libraryDependencies ++= Seq(
