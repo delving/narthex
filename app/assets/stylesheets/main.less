@@ -414,26 +414,47 @@ code {
   td {
     padding: 0 0 0 0;
     border: none;
-    &:last-child {
-      flex: 1;
-    }
     &.name {
       font-size: 1.25em;
-      width: 50%;
-    }
-    &.invalid {
-      width: 15%;
-    }
-    &.valid {
-      width: 15%;
-    }
-    &.state {
       width: auto;
+      flex: 1;
+    }
+  }
+  .count {
+    background: @white;
+    padding-top: 5px;
+    .total {
+      a {
+        color: @brand-info;
+      }
+      .badge {
+        background-color: @brand-info;
+      }
+    }
+    .invalid {
+      a {
+        color: @brand-danger;
+      }
+      .badge {
+        background-color: @brand-danger;
+      }
+    }
+    .valid {
+      a {
+        color: @brand-success;
+      }
+      .badge {
+        background-color: @brand-success;
+      }
+    }
+  }
+  .state {
+      width: 220px;
       text-align: right;
-      .indicator {
+      &.indicator {
         width: 200px;
         color: @white;
-        padding: 4px;
+        padding: 1px;
         text-align: center;
         float: right;
         &:hover {
@@ -505,17 +526,16 @@ code {
       }
     }
     .datetime {
+      //background: @white;
+      //color: @gray-light;
+      padding: 2px;
       display: block;
-      //font-size: .75em;
       letter-spacing: 1px;
-      //margin-top: 4px;
     }
     .btn-default {
       border: none;
       .border-radius(0px);
     }
-
-  }
 }
 
 .file-drop {
