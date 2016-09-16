@@ -176,7 +176,7 @@ define(["angular"], function () {
             $scope.thesaurus = spec;
             $scope.skosTab();
             termsService.getVocabularyLanguages(spec).then(function (data) {
-                //console.log("Languages", data.languages);
+                // console.log("Languages", data.languages);
                 $scope.languages = data.languages;
                 $scope.sought.language = $scope.languages[0];
                 // if lang 'nl' is available set for default;
@@ -189,9 +189,9 @@ define(["angular"], function () {
 
                 // little extra data for the frontend. used for the terms srollable div.
                 // if language radios, then add more offset to align the bottom of the div with the viewport.
-                $scope.termlistOffset = 295;
+                $scope.termlistOffset = 285;
                 if($scope.languages.length > 1 ) {
-                    $scope.termlistOffset = 330;
+                    $scope.termlistOffset = 315;
                 }
             });
         };
