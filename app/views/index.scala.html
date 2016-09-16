@@ -1,4 +1,4 @@
-@(orgId: String, sipCreatorLink: String, version: String)
+@(orgId: String, sipCreatorLink: String, version: String, commitSha: String)
 <!DOCTYPE html>
 <html>
     <head>
@@ -68,7 +68,7 @@
                 <div class="sidebar-footer">
                     <div class="col-xs-12">
                         <a href="https://github.com/delving/narthex" target="_blank">
-                            Narthex on Github, v @version
+                            v. @version, commit-id: @commitSha
                         </a>
                     </div>
                 </div>
