@@ -49,7 +49,7 @@ class MainController(val userRepository: UserRepository,
   }
 
   def index = Action { request =>
-    Ok(views.html.index(orgId, SIP_APP_URL, buildinfo.BuildInfo.version))
+    Ok(views.html.index(orgId, SIP_APP_URL, buildinfo.BuildInfo.version, buildinfo.BuildInfo.gitCommitSha))
   }
 
   def login = Action.async(parse.json) { implicit request =>

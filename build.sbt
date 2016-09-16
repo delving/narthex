@@ -16,7 +16,6 @@ import com.typesafe.sbt.packager.docker._
 //    limitations under the License.
 //===========================================================================
 
-
 lazy val root = (project in file(".")).
   enablePlugins(play.sbt.PlayScala).
   enablePlugins(DockerPlugin).
@@ -27,9 +26,13 @@ lazy val root = (project in file(".")).
   )
 name := "narthex"
 
-version := "0.4.2-SNAPSHOT"
-
 scalaVersion := "2.11.8"
+
+buildInfoKeys ++= Seq[BuildInfoKey](
+  resolvers,
+  libraryDependencies in Test,
+  "gitCommitSha" -> Process("git rev-parse --short HEAD").lines.head
+)
 
 libraryDependencies ++= Seq(
   "org.webjars" %% "webjars-play" % "2.4.0-2",

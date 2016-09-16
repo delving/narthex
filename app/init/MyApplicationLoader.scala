@@ -32,8 +32,11 @@ class MyApplicationLoader extends ApplicationLoader {
   def load(context: Context) = {
     Logger.info("Narthex starting up...")
 
-    val initialPassword: String = context.initialConfiguration.getString(topActorConfigProp).getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set"))
-    val homeDir: String = context.initialConfiguration.getString("narthexHome").getOrElse(System.getProperty("user.home") + "/NarthexFiles")
+    val initialPassword: String = context.initialConfiguration.getString(topActorConfigProp).
+      getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set"))
+    val homeDir: String = context.initialConfiguration.getString("narthexHome").
+      getOrElse(System.getProperty("user.home") + "/NarthexFiles")
+
     val narthexDataDir: File = new File(homeDir)
     if (! narthexDataDir.canWrite ) {
       throw new RuntimeException(s"Configured $narthexDataDir is not writeable")
@@ -70,7 +73,7 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
     mailService, authenticationService, userRepository, orgActorRef)
 
   lazy val router = new Routes(httpErrorHandler, mainController, webSocketController, appController,
-    sipAppController, apiController, webJarAssets, assets, metricsController)
+    sipAppController, apiController, webJarAssets, assets, metricsController, infoController)
 
   lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(new OrgActor(orgContext)), appConfig.orgId)
 
@@ -87,7 +90,7 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
   )
   lazy val appController = new AppController(defaultCacheApi, orgContext) (tripleStore, actorSystem, materializer)
   lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
-
+  lazy val infoController = new InfoController
 
   lazy val datasetUpdateMonitorActor = actorSystem.actorOf(DatasetUpdateMonitorActor.props, MyComponents.updateMonitorActorName)
   lazy val userParentActor = actorSystem.actorOf(Props(classOf[UserParentActor], datasetUpdateMonitorActor))
@@ -101,9 +104,10 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
   val tripleStoreLog = configFlag("triple-store-log")
   implicit val tripleStore = new Fuseki(tripleStoreUrl, tripleStoreLog, wsApi)
 
-  lazy val authenticationService = AuthenticationMode.fromConfigString(configuration.getString(AuthenticationMode.PROPERTY_NAME)) match {
-    case AuthenticationMode.MOCK => new MockAuthenticationService
-    case AuthenticationMode.TS => new TsBasedAuthenticationService
+  lazy val authenticationService = AuthenticationMode.
+    fromConfigString(configuration.getString(AuthenticationMode.PROPERTY_NAME)) match {
+      case AuthenticationMode.MOCK => new MockAuthenticationService
+      case AuthenticationMode.TS => new TsBasedAuthenticationService
   }
 
 
@@ -113,7 +117,6 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
       case UserRepository.Mode.TS => new ActorStore(authenticationService, appConfig.nxUriPrefix)
     }
   }
-
 
   val periodicHarvest = actorSystem.actorOf(PeriodicHarvest.props(orgContext), "PeriodicHarvest")
   val harvestTicker = actorSystem.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
@@ -141,7 +144,6 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
     val naveDomain = configStringNoSlash("domains.nave")
     val apiAccessKeys = secretList("api.accessKeys").toList
 
-
     AppConfig(
       harvestTimeout, configFlag("useBulkApi"), rdfBaseUrl,
       configStringNoSlash("naveApiUrl"), configStringNoSlash("naveAuthToken"),
@@ -151,11 +153,13 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
 
   private def configFlag(name: String): Boolean = configuration.getBoolean(name).getOrElse(false)
 
-  private def configString(name: String) = configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config string: $name"))
+  private def configString(name: String) = configuration.getString(name).
+    getOrElse(throw new RuntimeException(s"Missing config string: $name"))
 
   private def configStringNoSlash(name: String) = configString(name).replaceAll("\\/$", "")
 
-  private def configInt(name: String) = configuration.getInt(name).getOrElse(throw new RuntimeException(s"Missing config int: $name"))
+  private def configInt(name: String) = configuration.getInt(name).
+    getOrElse(throw new RuntimeException(s"Missing config int: $name"))
 
   private def secretList(name: String): util.List[String] = configuration.getStringList(name).getOrElse(List("secret"))
 }
