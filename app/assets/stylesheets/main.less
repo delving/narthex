@@ -69,6 +69,10 @@
 }
 
 /* global utilitly classes ********************************************/
+html, body {
+  height: 100%;
+  width: 100%;
+}
 
 .a-right {
   text-align: right;
@@ -253,6 +257,7 @@ code {
 /* vertical scroll directive styles ************************************/
 
 .vertical-scroll {
+  height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
@@ -408,27 +413,53 @@ code {
   width: 100%;
   tr, tbody {
     width: 100%;
-    display: block;
+    display: flex;
+    align-items: stretch;
   }
   td {
     padding: 0 0 0 0;
     border: none;
     &.name {
-      width: 50%
-    }
-    &.invalid {
-      width: 15%
-    }
-    &.valid {
-      width: 15%
-    }
-    &.state {
+      font-size: 1.25em;
       width: auto;
+      flex: 1;
+    }
+  }
+  .count {
+    background: @white;
+    padding-top: 5px;
+    .total {
+      a {
+        color: @brand-info;
+      }
+      .badge {
+        background-color: @brand-info;
+      }
+    }
+    .invalid {
+      a {
+        color: @brand-danger;
+      }
+      .badge {
+        background-color: @brand-danger;
+      }
+    }
+    .valid {
+      a {
+        color: @brand-success;
+      }
+      .badge {
+        background-color: @brand-success;
+      }
+    }
+  }
+  .state {
+      width: 220px;
       text-align: right;
-      .indicator {
+      &.indicator {
         width: 200px;
         color: @white;
-        padding: 8px;
+        padding: 1px;
         text-align: center;
         float: right;
         &:hover {
@@ -478,19 +509,38 @@ code {
           background: @brand-primary
         }
       }
+      .state-name {
+        font-size: 1.25em;
+      }
     }
-
+    .widget-icon {
+      height: 50px;
+      width: 50px;
+      padding: 8px;
+      i {
+        color: @brand-primary;
+        font-size: 1.75em;
+        margin: 0px;
+        &.fa-folder {
+          padding-top: 2px;
+        }
+        &.fa-folder-open {
+          padding-top: 2px;
+          margin-left: 2px;
+        }
+      }
+    }
     .datetime {
+      //background: @white;
+      //color: @gray-light;
+      padding: 2px;
       display: block;
-      font-size: .75em;
       letter-spacing: 1px;
-      margin-top: 4px;
     }
     .btn-default {
       border: none;
       .border-radius(0px);
     }
-  }
 }
 
 .file-drop {
@@ -635,10 +685,10 @@ code {
 }
 
 .terms-language-choice {
+  margin: 10px 0;
   .radio {
     display: inline-block;
     float: none;
-    margin-top: 20px;
   }
 }
 
@@ -689,7 +739,7 @@ code {
 ****************************/
 
 .input-group-skos-term {
-  //margin-bottom: 20px;
+  margin-bottom: 10px;
   .input-group-addon {
     background: @gray-lighter;
     color: @gray-darker;

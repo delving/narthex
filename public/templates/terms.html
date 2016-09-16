@@ -19,8 +19,8 @@
 </div>
 
 <div class="row">
-    <div class="col-xs-4">
-        <div class="widget" style="min-width: 380px">
+    <div class="col-xs-5">
+        <div class="widget">
             <div class="widget-header">
                 <ul class="nav nav-tabs widget-header-tabs" data-ng-init="show='all'">
                     <li data-ng-class="{ active: show === 'all' }" data-ng-model="show" data-ng-click="show='all'">
@@ -36,8 +36,8 @@
                     </li>
                 </ul>
             </div>
-            <ul class="list-group actionable vertical-scroll" data-scrollable id="histogram-list" data-offset="160"
-                data-ng-style="{ 'height': elHeight }">
+
+            <ul class="list-group actionable vertical-scroll" data-scrollable id="histogram-list" data-offset="160">
                 <li data-ng-repeat="term in termsVisible"
                     class="list-group-item clearfix"
                     data-ng-class="{ 'list-item-selected': term.uri == sourceTerm.uri, 'list-item-mapped' : mappings[term.uri] }"
@@ -52,7 +52,7 @@
             </ul>
         </div>
     </div>
-    <div class="col-xs-8">
+    <div class="col-xs-7">
 
         <div class="widget">
             <div class="widget-header">
@@ -88,7 +88,7 @@
                 </div>
 
                 <form data-ng-show="languages.length > 1" class="form-inline terms-language-choice">
-                    <div data-ng-if="languages.length < 10">
+                    <div data-ng-if="languages.length < 10" class="clearfix">
                         <div class="radio" data-ng-repeat="lang in languages">
                             <label class="btn btn-default">
                                 <input type="radio" ng-model="sought.language" data-ng-value="lang" name="radio-lang" id="radio-lang-{{$index}}" autocomplete="off"> {{lang}}
@@ -125,7 +125,7 @@
 
                 <!-- TERMS -->
 
-                <div data-ng-if="concepts.length" class="concepts-list vertical-scroll" id="skos-term-list" data-scrollable data-offset="{{ termlistOffset }}" data-ng-style="{ 'height': elHeight }">
+                <div data-ng-if="concepts.length" class="concepts-list vertical-scroll" id="skos-term-list" data-scrollable data-offset="{{ termlistOffset }}">
 
                     <div data-ng-repeat="concept in concepts" class="list-group concept-box" data-ng-class="{'concept-selected':mappings[sourceTerm.uri].uri == concept.uri }">
 
@@ -160,6 +160,7 @@
                         </div>
                     </div>
                 </div>
+
 
             </div>
 
