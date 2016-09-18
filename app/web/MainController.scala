@@ -20,13 +20,13 @@ import java.io.File
 
 import org.{AuthenticationService, Profile, User, UserRepository}
 import play.api._
-import play.api.cache.CacheApi
+import play.api.cache.{CacheApi, Cached}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
 import play.api.mvc._
-import play.api.routing.JavaScriptReverseRouter
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 
 class MainController(val userRepository: UserRepository,
@@ -34,6 +34,18 @@ class MainController(val userRepository: UserRepository,
                      val cacheApi: CacheApi,
                      val apiAccessKeys: List[String],
                      val narthexDomain: String, val naveDomain: String, val orgId: String) extends Controller with Security {
+
+  val cacheDuration = 1.day
+
+  /**
+    * Caching action that caches an OK response for the given amount of time with the key.
+    * NotFound will be cached for 5 mins. Any other status will not be cached.
+    */
+  def Caching(key: String, okDuration: Duration) = {
+    new Cached(cacheApi)
+      .status(_ => key, OK, okDuration.toSeconds.toInt)
+      .includeStatus(NOT_FOUND, 5.minutes.toSeconds.toInt)
+  }
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/${Utils.SIP_APP_VERSION}/sip-app-${Utils.SIP_APP_VERSION}-exejar.jar"
 
@@ -165,56 +177,31 @@ class MainController(val userRepository: UserRepository,
   def OkXml(xml: String): Result = Utils.okXml(xml)
 
   /**
-    * Returns the JavaScript router that the client can use for "type-safe" routes.
+    * Retrieves all routes via reflection.
+    * http://stackoverflow.com/questions/12012703/less-verbose-way-of-generating-play-2s-javascript-router
+    * @todo If you have controllers in multiple packages, you need to add each package here.
     */
-  def jsRoutes(varName: String = "jsRoutes") = Action { implicit request =>
-    Ok(
-      JavaScriptReverseRouter(varName)(
-        routes.javascript.MainController.login,
-        routes.javascript.MainController.checkLogin,
-        routes.javascript.MainController.logout,
-        routes.javascript.MainController.setProfile,
-        routes.javascript.MainController.setPassword,
-        routes.javascript.MainController.listActors,
-        routes.javascript.MainController.createActor,
-        routes.javascript.MainController.disableActor,
-        routes.javascript.MainController.enableActor,
-        routes.javascript.MainController.deleteActor,
-        routes.javascript.MainController.makeAdmin,
-        routes.javascript.MainController.removeAdmin,
-        routes.javascript.WebSocketController.dataset,
-        routes.javascript.AppController.listDatasets,
-        routes.javascript.AppController.listPrefixes,
-        routes.javascript.AppController.createDataset,
-        routes.javascript.AppController.setDatasetProperties,
-        routes.javascript.AppController.toggleSkosifiedField,
-        routes.javascript.AppController.datasetInfo,
-        routes.javascript.AppController.command,
-        routes.javascript.AppController.nodeStatus,
-        routes.javascript.AppController.index,
-        routes.javascript.AppController.sample,
-        routes.javascript.AppController.histogram,
-        routes.javascript.AppController.setRecordDelimiter,
-        routes.javascript.AppController.getTermVocabulary,
-        routes.javascript.AppController.getTermMappings,
-        routes.javascript.AppController.getCategoryMappings,
-        routes.javascript.AppController.toggleTermMapping,
-        routes.javascript.AppController.getCategoryList,
-        routes.javascript.AppController.listSheets,
-        routes.javascript.AppController.gatherCategoryCounts,
-        routes.javascript.AppController.listSipFiles,
-        routes.javascript.AppController.deleteLatestSipFile,
-        routes.javascript.AppController.listVocabularies,
-        routes.javascript.AppController.createVocabulary,
-        routes.javascript.AppController.deleteVocabulary,
-        routes.javascript.AppController.setVocabularyProperties,
-        routes.javascript.AppController.vocabularyInfo,
-        routes.javascript.AppController.vocabularyStatistics,
-        routes.javascript.AppController.getSkosMappings,
-        routes.javascript.AppController.toggleSkosMapping,
-        routes.javascript.AppController.searchVocabulary,
-        routes.javascript.AppController.getVocabularyLanguages
-      )
-    ).as(JAVASCRIPT)
+  val routeCache = {
+    val jsRoutesClasses = Seq(classOf[routes.javascript]) // TODO add your own packages
+    jsRoutesClasses.flatMap { jsRoutesClass =>
+      val controllers = jsRoutesClass.getFields.map(_.get(null))
+      controllers.flatMap { controller =>
+        controller.getClass.getDeclaredMethods.filter(_.getName != "_defaultPrefix").map { action =>
+          action.invoke(controller).asInstanceOf[play.api.routing.JavaScriptReverseRoute]
+        }
+      }
+    }
   }
+
+  /**
+    * Returns the JavaScript router that the client can use for "type-safe" routes.
+    * Uses browser caching; set duration (in seconds) according to your release cycle.
+    * @param varName The name of the global variable, defaults to `jsRoutes`
+    */
+  def jsRoutes(varName: String = "jsRoutes") = Caching("jsRoutes", cacheDuration) {
+    Action { implicit request =>
+      Ok(play.api.routing.JavaScriptReverseRouter(varName)(routeCache: _*)).as(JAVASCRIPT)
+    }
+  }
+
 }
