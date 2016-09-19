@@ -18,7 +18,7 @@ package mapping
 
 import java.io.StringWriter
 
-import com.hp.hpl.jena.rdf.model._
+import org.apache.jena.rdf.model._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import org.{OrgContext, User}

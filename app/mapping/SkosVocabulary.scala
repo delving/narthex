@@ -16,9 +16,9 @@
 
 package mapping
 
-import com.hp.hpl.jena.rdf.model.{Model, Resource}
 import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
 import mapping.SkosVocabulary._
+import org.apache.jena.rdf.model.{Model, Resource}
 import play.api.Logger
 import play.api.libs.json.{JsObject, Json, Writes}
 import triplestore.GraphProperties._

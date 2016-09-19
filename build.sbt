@@ -59,7 +59,7 @@ libraryDependencies ++= Seq(
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.4",
   "org.apache.poi" % "poi" % "3.10.1",
   "org.apache.poi" % "poi-ooxml" % "3.10.1",
-  "org.apache.jena" % "jena-arq" % "2.12.1" exclude("log4j", "log4j"),
+  "org.apache.jena" % "jena-arq" % "3.1.0" exclude("log4j", "log4j"),
   "org.slf4j" % "log4j-over-slf4j" % "1.7.21",
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "5.0.0",
