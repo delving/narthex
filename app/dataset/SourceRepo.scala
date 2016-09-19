@@ -196,7 +196,7 @@ class SourceRepo(home: File) {
   }
 
   private def avoidSet(zipFile: File): Set[String] = {
-    var idSet = new mutable.HashSet[String]()
+    val idSet = new mutable.HashSet[String]()
     avoidFiles(zipFile).foreach(Source.fromFile(_, "UTF-8").getLines().foreach(idSet.add))
     idSet.toSet
   }
@@ -306,11 +306,11 @@ class SourceRepo(home: File) {
     progress.setMaximum(totalActiveIds)
     listZipFiles.foreach { zipFile =>
       progress.checkInterrupt()
-      var idSet = avoidSet(zipFile)
-      val (source, readProgress) = sourceFromFile(zipFile)
+      val idSet = avoidSet(zipFile)
+      val (source, _) = sourceFromFile(zipFile)
       // ignore this read progress because it's one of many files
       try {
-        parser.parse(source, idSet.toSet, output, progress)
+        parser.parse(source, idSet, output, progress)
       }
       finally {
         source.close()

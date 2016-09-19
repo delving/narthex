@@ -199,13 +199,6 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
   lazy val schemaVersionOpt: Option[String] = schemaVersions.flatMap(commas => commas.split(" *,").headOption)
 
-  private def file(sipContentFileName: String): String = {
-    entries.get(sipContentFileName).map { entry =>
-      val inputStream = zipFile.getInputStream(entry)
-      Source.fromInputStream(inputStream, "UTF-8").mkString
-    } getOrElse (throw new RuntimeException(s"Unable to read file $sipContentFileName from $file"))
-  }
-
   private def recDefTree(sipContentFileName: String): RecDefTree = {
     entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
