@@ -108,7 +108,6 @@ object DsInfo {
     m.add(subject, m.getProperty(datasetCharacter.uri), m.createLiteral(character.name))
     m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.appConfig.nxUriPrefix)))
     val trueLiteral = m.createLiteral("true")
-    val falseLiteral = m.createLiteral("false")
     m.add(subject, m.getProperty(publishOAIPMH.uri), trueLiteral)
     m.add(subject, m.getProperty(publishIndex.uri), trueLiteral)
     m.add(subject, m.getProperty(publishLOD.uri), trueLiteral)
