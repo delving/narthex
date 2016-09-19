@@ -19,7 +19,7 @@ package triplestore
 import java.io.{File, StringReader, StringWriter}
 import java.nio.charset.StandardCharsets
 
-import com.hp.hpl.jena.rdf.model.{Model, ModelFactory}
+import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.asynchttpclient.netty.NettyResponse
 import play.api.Logger
 import play.api.libs.json.JsObject
