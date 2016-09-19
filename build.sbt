@@ -18,6 +18,7 @@ import com.typesafe.sbt.packager.docker._
 
 lazy val root = (project in file(".")).
   enablePlugins(play.sbt.PlayScala).
+  enablePlugins(SbtWeb).
   enablePlugins(DockerPlugin).
   enablePlugins(GitVersioning).
   enablePlugins(BuildInfoPlugin).
@@ -36,7 +37,7 @@ buildInfoKeys ++= Seq[BuildInfoKey](
 )
 
 libraryDependencies ++= Seq(
-  "org.webjars" %% "webjars-play" % "2.4.0-2",
+  "org.webjars" %% "webjars-play" % "2.5.0-3",
   "org.webjars" % "bootstrap" % "3.1.1-2",
   "org.webjars" % "underscorejs" % "1.8.3",
   "org.webjars" % "jquery" % "2.1.1",
@@ -44,7 +45,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "d3js" % "3.4.13",
   "org.webjars" % "nvd3" % "1.1.15-beta-2",
   "org.webjars" % "angularjs-nvd3-directives" % "0.0.7-1",
-  "org.webjars" % "angular-file-upload" % "1.6.12",
+  "org.webjars" % "angular-file-upload" % "2.0.5",
   "org.webjars" % "angular-ui-bootstrap" % "0.11.2",
   "org.webjars" % "ng-grid" % "2.0.13",
   "org.webjars" % "ngStorage" % "0.3.0",
@@ -66,6 +67,18 @@ libraryDependencies ++= Seq(
   "de.threedimensions" %% "metrics-play" % "2.5.13",
   "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime"
 )
+
+// Configure the steps of the asset pipeline (used in stage and dist tasks)
+// rjs = RequireJS, uglifies, shrinks to one file, replaces WebJars with CDN
+// digest = Adds hash to filename
+// gzip = Zips all assets, Asset controller serves them automatically when client accepts them
+pipelineStages := Seq(rjs, digest, gzip) // for processing static artifacts
+
+// RequireJS with sbt-rjs (https://github.com/sbt/sbt-rjs#sbt-rjs)
+// ~~~
+RjsKeys.paths += ("jsRoutes" -> ("/narthex/jsRoutes" -> "empty:"))
+
+RjsKeys.optimize := "none"
 
 libraryDependencies ~= {
   _.map(_.exclude("commons-logging", "commons-logging"))
@@ -126,3 +139,20 @@ dockerCommands := Seq(
   ExecCmd("ENTRYPOINT", "bin/narthex", "-Dconfig.file=/opt/docker/conf/overrides.conf", "-Dlogger.file=/opt/docker/conf/logback.xml")
 )
 
+// Scala Compiler Options
+scalacOptions in ThisBuild ++= Seq(
+  "-target:jvm-1.8",
+  "-encoding", "UTF-8",
+  "-deprecation", // warning and location for usages of deprecated APIs
+  "-feature", // warning and location for usages of features that should be imported explicitly
+  "-unchecked", // additional warnings where generated code depends on assumptions
+  "-Xlint", // recommended additional warnings
+  "-Xcheckinit", // runtime error when a val is not initialized due to trait hierarchies (instead of NPE somewhere else)
+  "-Ywarn-adapted-args", // Warn if an argument list is modified to match the receiver
+  //"-Yno-adapted-args", // Do not adapt an argument list (either by inserting () or creating a tuple) to match the receiver
+  "-Ywarn-value-discard", // Warn when non-Unit expression results are unused
+  "-Ywarn-inaccessible", // Warn about inaccessible types in method signatures
+  "-Ywarn-dead-code", // Warn when dead code is identified
+  "-Ywarn-unused", // Warn when local and private vals, vars, defs, and types are unused
+  "-Ywarn-numeric-widen" // Warn when numerics are widened
+)

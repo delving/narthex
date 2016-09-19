@@ -10,6 +10,7 @@ import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
 import mapping.PeriodicSkosifyCheck
 import org._
+import org.webjars.play.RequireJS
 import play.api._
 import play.api.ApplicationLoader.Context
 import play.api.cache.EhCacheComponents
@@ -54,11 +55,6 @@ class MyApplicationLoader extends ApplicationLoader {
   }
 }
 
-object MyComponents {
-  val updateMonitorActorName = "datasetUpdates"
-  val updateMonitorActorPath = s"user/$updateMonitorActorName"
-}
-
 class MyComponents(context: Context, narthexDataDir: File) extends BuiltInComponentsFromContext(context)
   with AhcWSComponents
   with EhCacheComponents
@@ -82,12 +78,12 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
   lazy val metricsFilter = new MetricsFilterImpl(metrics)
 
   override lazy val httpFilters = List(metricsFilter)
-
+  lazy val requireJs = new RequireJS(environment, webJarAssets)
   lazy val metricsController = new MetricsController(metrics)
   lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext)
   lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
-    appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId
-  )
+    appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId, webJarAssets, requireJs)
+
   lazy val appController = new AppController(defaultCacheApi, orgContext) (tripleStore, actorSystem, materializer)
   lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
   lazy val infoController = new InfoController
