@@ -130,7 +130,7 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
   }
 
   private def initAppConfig(narthexDataDir: File): AppConfig = {
-    val harvestTimeout = configuration.getInt("harvest.timeout").getOrElse(3 * 60 * 1000)
+    val harvestTimeout = configuration.getLong("harvest.timeout").getOrElse(3l * 60 * 1000)
     val rdfBaseUrl = configStringNoSlash("rdfBaseUrl")
     val narthexDomain = configStringNoSlash("domains.narthex")
     val naveDomain = configStringNoSlash("domains.nave")
