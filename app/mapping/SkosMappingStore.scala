@@ -19,9 +19,8 @@ package mapping
 import java.util.UUID
 
 import org.{OrgContext, User}
-import play.api.Logger
-import play.api.libs.json.{JsObject, Json}
-import play.api.libs.ws.{WSClient, WSResponse}
+import play.api.libs.json.Json
+import play.api.libs.ws.WSClient
 import services.StringHandling.createGraphName
 import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
@@ -80,12 +79,6 @@ class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext, wsClient: W
   import mapping.SkosMappingStore._
 
   def toggleNaveMapping(mapping: SkosMapping, delete: Boolean = false) = {
-    def checkUpdateResponse(response: WSResponse, logString: JsObject): Unit = {
-      if (response.status != 201) {
-        Logger.error(logString.toString())
-        throw new Exception(s"${response.statusText}: ${response.body}:")
-      }
-    }
 
     val skosMappingApi = s"${orgContext.appConfig.naveApiUrl}/api/index/narthex/toggle/proxymapping/"
     val request = wsClient.url(s"$skosMappingApi").withHeaders(
