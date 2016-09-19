@@ -64,7 +64,6 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
 
   val appConfig = initAppConfig(narthexDataDir)
 
-
   lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsClient,
     mailService, authenticationService, userRepository, orgActorRef)
 
@@ -150,9 +149,6 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
     getOrElse(throw new RuntimeException(s"Missing config string: $name"))
 
   private def configStringNoSlash(name: String) = configString(name).replaceAll("\\/$", "")
-
-  private def configInt(name: String) = configuration.getInt(name).
-    getOrElse(throw new RuntimeException(s"Missing config int: $name"))
 
   private def secretList(name: String): util.List[String] = configuration.getStringList(name).getOrElse(List("secret"))
 }
