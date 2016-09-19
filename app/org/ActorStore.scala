@@ -45,7 +45,7 @@ class ActorStore(val authenticationService: AuthenticationService, val uriPrefix
     * Retrieve a an actor known to exist
     * @param name the username
     * @return
-    * @throws IllegalArgumentException if the actor does not exist
+    * @throws java.lang.IllegalArgumentException if the actor does not exist
     */
   override def loadActor(name: String): Future[User] = {
     val result: Future[Option[User]] = ts.query(Sparql.getActor(name)).map(actorFromResult)
