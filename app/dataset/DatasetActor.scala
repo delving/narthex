@@ -362,7 +362,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
   when(Harvesting) {
 
     case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch), active: Active) =>
-      def processIncremental(fileOpt: Option[File], noRecordsMatch: Boolean=false, mod: Option[DateTime]) = {
+      def processIncremental(fileOpt: Option[File], noRecordsMatch: Boolean, mod: Option[DateTime]) = {
         noRecordsMatch match {
           case true =>
             Logger.info("NoRecordsMatch, so setting state to Incremental Saved")
