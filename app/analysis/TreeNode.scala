@@ -241,7 +241,7 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String, va
   }
 
   def end() = {
-    var value = crunchWhitespace(valueBuilder.toString())
+    val value = crunchWhitespace(valueBuilder.toString())
     if (!value.isEmpty) {
       lengths.record(value)
       valueList = value :: valueList
