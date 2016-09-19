@@ -130,7 +130,7 @@ trait Harvesting {
                      diagnosticOption: Option[AdLibDiagnostic] = None)
                     (implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
-    val requestUrl = wsClient.url(url).withRequestTimeout(timeOut milliseconds)
+    val requestUrl = wsClient.url(url).withRequestTimeout(timeOut.milliseconds)
     // UMU 2014-10-16T15:00
     val searchModified = strategy match {
       case ModifiedAfter(mod, _) =>
@@ -176,7 +176,7 @@ trait Harvesting {
 
     Logger.debug(s"start fetch PMH Page: $url, $resumption")
     val listRecords = wsClient.url(url)
-      .withRequestTimeout(timeOut milliseconds)
+      .withRequestTimeout(timeOut.milliseconds)
       .withQueryString("verb" -> "ListRecords")
     val request = resumption match {
       case None =>
