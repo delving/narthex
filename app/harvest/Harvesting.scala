@@ -201,9 +201,9 @@ trait Harvesting {
       }
       else {
         val netty = response.underlying[NettyResponse]
-        val body = netty.getResponseBodyAsStream
-        Logger.trace(s"OAI-PMH Response: \n ${netty.getResponseBody}")
-        val xml = XML.loadString(netty.getResponseBody) // reader old
+        val body = netty.getResponseBody
+        Logger.trace(s"OAI-PMH Response: \n ${body}")
+        val xml = XML.loadString(body) // reader old
         val errorNode = xml \ "error"
         val records = xml \ "ListRecords" \ "record"
         // todo: if there is a resumptionToken end the list size is greater than the cursor but zero records are returned through an error.
@@ -241,7 +241,6 @@ trait Harvesting {
       }
       else {
         val netty = response.underlying[NettyResponse]
-        val body = netty.getResponseBodyAsStream
         val xml = XML.loadString(netty.getResponseBody)
         val tokenNode = xml \ "ListRecords" \ "resumptionToken"
         val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
