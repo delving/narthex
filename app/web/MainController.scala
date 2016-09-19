@@ -18,6 +18,8 @@ package web
 
 import java.io.File
 
+import controllers.WebJarAssets
+import org.webjars.play.RequireJS
 import org.{AuthenticationService, Profile, User, UserRepository}
 import play.api._
 import play.api.cache.{CacheApi, Cached}
@@ -33,7 +35,9 @@ class MainController(val userRepository: UserRepository,
                      val authenticationService: AuthenticationService,
                      val cacheApi: CacheApi,
                      val apiAccessKeys: List[String],
-                     val narthexDomain: String, val naveDomain: String, val orgId: String) extends Controller with Security {
+                     val narthexDomain: String, val naveDomain: String, val orgId: String,
+                     val webJarAssets: WebJarAssets, val requireJS: RequireJS
+                    ) extends Controller with Security {
 
   val cacheDuration = 1.day
 
@@ -61,7 +65,7 @@ class MainController(val userRepository: UserRepository,
   }
 
   def index = Action { request =>
-    Ok(views.html.index(orgId, SIP_APP_URL, buildinfo.BuildInfo.version, buildinfo.BuildInfo.gitCommitSha))
+    Ok(views.html.index(orgId, SIP_APP_URL, buildinfo.BuildInfo.version, buildinfo.BuildInfo.gitCommitSha, webJarAssets, requireJS))
   }
 
   def login = Action.async(parse.json) { implicit request =>
