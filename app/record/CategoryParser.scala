@@ -71,10 +71,9 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
     val path = new mutable.Stack[(String, StringBuilder)]
     val events = new XMLEventReader(source)
     var depth = 0
-    var recordCategories = new mutable.TreeSet[String]()
+    val recordCategories = new mutable.TreeSet[String]()
     var startTag = false
     var uniqueId: Option[String] = None
-    var running = true
 
     def pathString = path.reverse.map(_._1).mkString("/", "/", "")
 
@@ -93,8 +92,6 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
       def categoriesFromAttrs() = {
         attrs.foreach { attr =>
           path.push((s"@${attr.prefixedKey}", new StringBuilder()))
-          val uri = generateUri(attr.value.toString())
-//          categoryMappings.get(uri).map(_.categories.foreach(recordCategories += _))
           path.pop()
         }
       }
