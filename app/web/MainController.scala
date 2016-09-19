@@ -36,7 +36,7 @@ class MainController(val userRepository: UserRepository,
                      val cacheApi: CacheApi,
                      val apiAccessKeys: List[String],
                      val narthexDomain: String, val naveDomain: String, val orgId: String,
-                     val webJarAssets: WebJarAssets, val requireJS: RequireJS
+                     val webJarAssets: WebJarAssets, val requireJS: RequireJS, val sessionTimeoutInSeconds: Int
                     ) extends Controller with Security {
 
   val cacheDuration = 1.day

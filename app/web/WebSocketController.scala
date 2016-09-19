@@ -14,7 +14,7 @@ import play.api.mvc.{Controller, WebSocket}
 
 import scala.concurrent.ExecutionContext
 
-class WebSocketController(val cacheApi: CacheApi)
+class WebSocketController(val cacheApi: CacheApi, val sessionTimeoutInSeconds: Int)
                          (implicit actorSystem: ActorSystem,
                           mat: Materializer,
                           ec: ExecutionContext)

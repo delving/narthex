@@ -76,18 +76,21 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
 
   lazy val metricsFilter = new MetricsFilterImpl(metrics)
 
+  val sessionTimeoutInSeconds: Int = configuration.getInt("sessionTimeoutInSeconds").getOrElse(60 * 60 * 4)
+
   override lazy val httpFilters = List(metricsFilter)
   lazy val requireJs = new RequireJS(environment, webJarAssets)
   lazy val metricsController = new MetricsController(metrics)
-  lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext)
+  lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds)
   lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
-    appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId, webJarAssets, requireJs)
+    appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
+    webJarAssets, requireJs, sessionTimeoutInSeconds)
 
-  lazy val appController = new AppController(defaultCacheApi, orgContext) (tripleStore, actorSystem, materializer)
+  lazy val appController = new AppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds) (tripleStore, actorSystem, materializer)
   lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
   lazy val infoController = new InfoController
 
-  lazy val webSocketController = new WebSocketController(defaultCacheApi)(actorSystem, materializer, defaultContext)
+  lazy val webSocketController = new WebSocketController(defaultCacheApi, sessionTimeoutInSeconds)(actorSystem, materializer, defaultContext)
 
   lazy val assets = new controllers.Assets(httpErrorHandler)
   lazy val webJarAssets = new WebJarAssets(httpErrorHandler, configuration, environment)

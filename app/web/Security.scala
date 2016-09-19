@@ -29,8 +29,8 @@ trait Security {
   this: Controller =>
   val TOKEN = "X-XSRF-TOKEN"
   val TOKEN_COOKIE_KEY = "XSRF-TOKEN"
-  lazy val CACHE_EXPIRATION = play.api.Play.current.configuration.getInt("cache.expiration").getOrElse(60 * 60 * 4)
 
+  val sessionTimeoutInSeconds: Int
   def cacheApi: CacheApi
 
   implicit val userSessionWrites = new Writes[UserSession] {
@@ -94,7 +94,7 @@ trait Security {
   implicit class ResultWithToken(result: Result) {
 
     def withSession(session: UserSession): Result = {
-      cacheApi.set(session.token, session, CACHE_EXPIRATION.seconds)
+      cacheApi.set(session.token, session, sessionTimeoutInSeconds.seconds)
       result.withCookies(Cookie(TOKEN_COOKIE_KEY, session.token, None, httpOnly = false))
     }
 
