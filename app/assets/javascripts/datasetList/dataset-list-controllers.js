@@ -248,14 +248,12 @@ define(["angular"], function () {
         };
 
         $scope.fetchDatasetList = function () {
-            //console.log('fetching list');
             $scope.specFilter = "";
             datasetListService.listDatasets().then(function (array) {
                 _.forEach(array, $scope.decorateDataset);
                 $scope.datasets = array;
                 $scope.updateDatasetStateCounter();
             });
-            console.log( $scope.datasets);
         };
 
         $scope.fetchDatasetList();
