@@ -236,6 +236,7 @@ define(["angular"], function () {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
             }
             //console.log(dataset, dataset.stateCurrent, dataset.states, dataset.datasetErrorMessage)
+            // showCounters removed from html: todo: remove?
             dataset.showCounters = _.some(dataset.states, function (state) {
                return state.name == 'stateProcessed' || state.name == 'stateIncrementalSaved';
             });
