@@ -82,7 +82,8 @@
         </tr>
         </thead>
     </table>
-    <div ng-repeat="dataset in datasets | filter: datasetVisibleFilter" class="" data-ng-include="'dataset-entry-row.html'">
+    <div class="vertical-scroll" data-scrollable id="dataset-list" data-offset="160">
+        <div ng-repeat="dataset in datasets | filter: datasetVisibleFilter" class="" data-ng-include="'dataset-entry-row.html'"></div>
     </div>
     <div data-ng-show="newFileOpen">
         <div data-ng-include="'new-dataset.html'">new dataset</div>
