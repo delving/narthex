@@ -21,17 +21,12 @@ import org.asynchttpclient.netty.NettyResponse
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.ws.WSClient
-import play.libs.Akka
 import services.Temporal._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.xml.{NodeSeq, XML}
 
-
-object Contexts {
-  implicit val harvestExecutionContext: ExecutionContext = Akka.system.dispatchers.lookup("dataset-harvesting-execution-context")
-}
 
 object Harvesting {
 
