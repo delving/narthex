@@ -7,7 +7,7 @@ This page is targeted at developers. If you like to know about the concepts behi
 
 ## Getting started
 
-Narthex is ann application based on Playframework, which uses [sbt](http://www.scala-sbt.org) as its build tool, so install it: `brew install sbt`
+Narthex is based on Playframework, which uses [sbt](http://www.scala-sbt.org) as its build tool, so install it: `brew install sbt`
 
 Convince yourself you can run tests and that sbt works: `sbt test`.
 
