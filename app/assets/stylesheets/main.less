@@ -212,10 +212,6 @@ code {
 
 /* custom button styles ************************************************/
 
-//.btn {
-//  margin-right: 8px;
-//}
-
 .btn-isolate {
   margin-left: 32px !important;
 }
@@ -244,15 +240,6 @@ code {
   color: @brand-primary;
 }
 
-/* custom fontawesome icon styles ****************************************/
-
-//.fa-analyzed {
-//  color: @green;
-//}
-//
-//.fa-empty {
-//  color: @brand-info;
-//}
 
 /* vertical scroll directive styles ************************************/
 
@@ -298,15 +285,137 @@ code {
   }
 }
 
-.datasets {
-  .widget-body {
-    //background:@pale-blue;
-    padding-bottom: 0px;
+.dataset-forms {
+  padding: 20px;
+}
+
+.dataset-list-table {
+  background: @white;
+  display: inline-block;
+  margin: 0 0 0 0;
+  border-top: none;
+  border-collapse: collapse;
+  width: 100%;
+  tr, thead, tbody {
+    width: 100%;
+    display: flex;
+    align-items: stretch;
+  }
+  tr:hover td {
+    background: @gray-lighter;
+  }
+  tr.open td {
+    background: @linnen;
+  }
+  th {
+    padding: 5px 10px;
+    border-bottom: 1px solid @gray;
+  }
+  td {
+    background: @white;
+    padding: 5px 10px;
+    //border: none;
+    border-bottom: 1px solid @gray-light;
+    text-align: left;
+  }
+  .spec {
+    width: 200px;
+    //flex: 1;
+  }
+  .name {
+    width: auto;
+    flex: 1;
+  }
+  .error {
+    text-align: center;
+    width: 100px;
+    a {
+      color: @brand-warning;
+    }
+  }
+  .valid {
+    text-align: center;
+    width: 100px;
+    a {
+      color: @brand-success;
+    }
+  }
+  .total {
+    text-align: center;
+    width: 100px;
+    a {
+      color: @brand-info;
+    }
+    //flex: 1;
+  }
+  .status {
+    text-align: center;
+    width: 100px;
+    //flex: 1;
+  }
+  .date-time {
+    text-align: center;
+    width: 150px;
+  }
+}
+.status {
+  .indicator {
+    color: @white;
+    display: inline-block;
+    padding: 2px 6px;
+    text-align: center;
+    width: 100px;
+    &:hover {
+      cursor: default;
+    }
+    &.empty {
+      background: @white;
+      color: @gray-light;
+    }
+    &.raw {
+      background: @brown;
+      color: @white;
+    }
+    &.raw-analyzed {
+      background: @light-brown;
+      color: @white;
+    }
+    &.sourced {
+      background: @light-brown;
+      color: @white;
+    }
+    &.mappable {
+      background: @orange;
+      color: @white;
+    }
+    &.processable {
+      background: @bright-blue-2;
+      color: @white;
+    }
+    &.processed {
+      background: @slate;
+      color: @white;
+    }
+    &.analyzed {
+      background: @cool-blue;
+    }
+    &.saved {
+      background: @brand-success;
+    }
+    &.incremental-saved {
+      background: @green;
+    }
+    &.error {
+      background: @brand-danger;
+    }
+    &.synced {
+      background: @brand-primary
+    }
   }
 }
 
-.ds-states {
-  //padding: 0 0 0 0;
+
+.dataset-states {
   padding-right: 0px;
   float: right;
   .btn-toolbar {
@@ -316,10 +425,9 @@ code {
     //first reset
     border: none;
     border-left: 1px solid @gray-lighter;
-    margin-top: -21px;
+    margin-top: 0px;
     margin-bottom: 0px;
     margin-right: -2px;
-    //border-bottom: none;
   }
   .list-group-item{
     padding: 10px 20px;
@@ -328,6 +436,9 @@ code {
     }
     &:last-child {
       border-bottom: none;
+    }
+    &:first-of-type {
+      border-top: none;
     }
   }
   .list-group-item-heading {
@@ -343,14 +454,9 @@ code {
   }
   .later {
     position:relative !important;
-    //background: @light-gray;
     .list-group-item-heading {;
       font-size: 1.5em;
     }
-    //.badge {
-    //  background: @gray-light;
-    //  color: @white;
-    //}
   }
   .later:before{
     content:"";
@@ -372,25 +478,6 @@ code {
   }
 }
 
-@media (max-width: @screen-md ){
-  .dataset-forms {
-    clear: both;
-    float: none;
-  }
-  .ds-states {
-    float: none;
-    display: block;
-    clear: both;
-    padding-right: 20px;
-    .list-group {
-      border-right: 1px solid @gray-lighter;
-      border-bottom: 1px solid @gray-lighter;
-      margin: 0 0 20px 0;
-    }
-  }
-}
-
-
 .ds-progress {
   margin-bottom: 10px;
 }
@@ -403,144 +490,6 @@ code {
     text-decoration: none;
     font-size: 1.5em;
   }
-}
-
-.state-table {
-  display: inline-block;
-  margin: 0 0 0 0;
-  border-top: none;
-  border-collapse: collapse;
-  width: 100%;
-  tr, tbody {
-    width: 100%;
-    display: flex;
-    align-items: stretch;
-  }
-  td {
-    padding: 0 0 0 0;
-    border: none;
-    &.name {
-      font-size: 1.25em;
-      width: auto;
-      flex: 1;
-    }
-  }
-  .count {
-    background: @white;
-    padding-top: 5px;
-    .total {
-      a {
-        color: @brand-info;
-      }
-      .badge {
-        background-color: @brand-info;
-      }
-    }
-    .invalid {
-      a {
-        color: @brand-danger;
-      }
-      .badge {
-        background-color: @brand-danger;
-      }
-    }
-    .valid {
-      a {
-        color: @brand-success;
-      }
-      .badge {
-        background-color: @brand-success;
-      }
-    }
-  }
-  .state {
-      width: 220px;
-      text-align: right;
-      &.indicator {
-        width: 200px;
-        color: @white;
-        padding: 1px;
-        text-align: center;
-        float: right;
-        &:hover {
-          cursor: default;
-        }
-        &.empty {
-          background: @white;
-          color: @gray-light;
-        }
-        &.raw {
-          background: @brown;
-          color: @white;
-        }
-        &.raw-analyzed {
-          background: @light-brown;
-          color: @white;
-        }
-        &.sourced {
-          background: @light-brown;
-          color: @white;
-        }
-        &.mappable {
-          background: @orange;
-          color: @white;
-        }
-        &.processable {
-          background: @bright-blue-2;
-          color: @white;
-        }
-        &.processed {
-          background: @slate;
-          color: @white;
-        }
-        &.analyzed {
-          background: @cool-blue;
-        }
-        &.saved {
-          background: @brand-success;
-        }
-        &.incremental-saved {
-          background: @green;
-        }
-        &.error {
-          background: @brand-danger;
-        }
-        &.synced {
-          background: @brand-primary
-        }
-      }
-      .state-name {
-        font-size: 1.25em;
-      }
-    }
-    .widget-icon {
-      height: 50px;
-      width: 50px;
-      padding: 8px;
-      i {
-        color: @brand-primary;
-        font-size: 1.75em;
-        margin: 0px;
-        &.fa-folder {
-          padding-top: 2px;
-        }
-        &.fa-folder-open {
-          padding-top: 2px;
-          margin-left: 2px;
-        }
-      }
-    }
-    .datetime {
-      //background: @white;
-      //color: @gray-light;
-      padding: 2px;
-      display: block;
-      letter-spacing: 1px;
-    }
-    .btn-default {
-      border: none;
-      .border-radius(0px);
-    }
 }
 
 .file-drop {
