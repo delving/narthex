@@ -70,8 +70,8 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
   lazy val router = new Routes(httpErrorHandler, mainController, webSocketController, appController,
     sipAppController, apiController, webJarAssets, assets, metricsController, infoController)
 
-  lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(new OrgActor(orgContext)), appConfig.orgId)
-
+  lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(new OrgActor(orgContext, harvestingExecutionContext)), appConfig.orgId)
+  val harvestingExecutionContext = actorSystem.dispatchers.lookup("contexts.dataset-harvesting-execution-context")
   lazy val metrics = new MetricsImpl(applicationLifecycle, configuration)
 
   lazy val metricsFilter = new MetricsFilterImpl(metrics)

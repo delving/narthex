@@ -41,14 +41,15 @@ object Harvester {
 
   case class HarvestPMH(strategy: HarvestStrategy, url: String, set: String, prefix: String)
 
-  case class HarvestComplete(strategy: HarvestStrategy, fileOpt: Option[File], noRecordsMatch: Boolean=false)
+  case class HarvestComplete(strategy: HarvestStrategy, fileOpt: Option[File], noRecordsMatch: Boolean = false)
 
-  def props(datasetContext: DatasetContext, timeOut: Long, wsClient : WSClient) = Props(new Harvester(timeOut, datasetContext, wsClient))
+  def props(datasetContext: DatasetContext, timeOut: Long, wsClient: WSClient,
+            harvestingExecutionContext: ExecutionContext) = Props(classOf[Harvester], timeOut, datasetContext,
+    wsClient, harvestingExecutionContext)
 }
 
-class Harvester(val timeout: Long, val datasetContext: DatasetContext, wsClient: WSClient) extends Actor with Harvesting {
-
-  import context.dispatcher
+class Harvester(timeout: Long, datasetContext: DatasetContext, wsClient: WSClient,
+                implicit val harvestingExecutionContext: ExecutionContext) extends Actor with Harvesting {
 
   val log = Logger
   var tempFileOpt: Option[File] = None

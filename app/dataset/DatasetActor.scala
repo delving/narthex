@@ -47,7 +47,7 @@ import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 import triplestore.Sparql.SkosifiedField
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -132,16 +132,16 @@ object DatasetActor {
 
   case class ProgressTick(reporterOpt: Option[ProgressReporter], progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0)
 
-  // create one
-
-  def props(datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext) = Props(new DatasetActor(datasetContext, mailService, orgContext))
-
+  def props(datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext,
+            harvestingExecutionContext: ExecutionContext) =
+    Props(classOf[DatasetActor], datasetContext, mailService, orgContext, harvestingExecutionContext)
 }
 
-class DatasetActor(val datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext) extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
+class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
+                   orgContext: OrgContext, harvestingExecutionContext: ExecutionContext)
+  extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
 
   import context.dispatcher
-
 
   override val supervisorStrategy = OneForOneStrategy() {
     case throwable: Throwable =>
@@ -300,7 +300,8 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           case PMH => HarvestPMH(strategy, url, ds, pre)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
-        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut, orgContext.wsClient), "harvester")
+        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut,
+          orgContext.wsClient, harvestingExecutionContext), "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
