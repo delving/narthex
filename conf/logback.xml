@@ -11,8 +11,7 @@
   <logger name="akka" level="debug" />
   <logger name="play" level="warn" />
   <logger name="application" level="info" />
-
-
+  <logger name="init" level="info" />
   <root level="warn">
     <appender-ref ref="STDOUT" />
   </root>
