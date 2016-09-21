@@ -303,17 +303,15 @@ code {
   }
   th {
     background: @gray-lighter;
-    //color: @white;
+    text-align: left !important;
+    padding: 5px 10px;
+    border-bottom: 1px solid @gray;
   }
   tr:hover td {
     background: @gray-lighter;
   }
   tr.open td {
     background: @linnen;
-  }
-  th {
-    padding: 5px 10px;
-    border-bottom: 1px solid @gray;
   }
   td {
     background: @white;
@@ -331,21 +329,18 @@ code {
     flex: 1;
   }
   .error {
-    text-align: center;
     width: 100px;
     a {
       color: @brand-warning;
     }
   }
   .valid {
-    text-align: center;
     width: 100px;
     a {
       color: @brand-success;
     }
   }
   .total {
-    text-align: center;
     width: 100px;
     a {
       color: @brand-info;
@@ -358,7 +353,6 @@ code {
     //flex: 1;
   }
   .date-time {
-    text-align: center;
     width: 150px;
   }
 }
