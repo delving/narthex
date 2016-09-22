@@ -322,11 +322,21 @@ code {
   }
   .spec {
     width: 200px;
-    //flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    .spec-field {
+      white-space: nowrap;
+      overflow: hidden;
+    }
   }
   .name {
-    width: auto;
     flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    .name-field {
+      white-space: nowrap;
+      overflow: hidden;
+    }
   }
   .error {
     width: 100px;
