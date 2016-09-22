@@ -65,7 +65,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-mailer" % "5.0.0",
   "eu.delving" % "sip-core" % "1.0.9",
   "de.threedimensions" %% "metrics-play" % "2.5.13",
-  "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime"
+  "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime",
+  "org.coursera" % "metrics-datadog" % "1.1.6"
 )
 
 // Configure the steps of the asset pipeline (used in stage and dist tasks)
