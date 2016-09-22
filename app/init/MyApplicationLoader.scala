@@ -173,10 +173,15 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
     configOpt match {
       case None => None
       case Some(config) => {
+
+        import scala.collection.JavaConverters._
+
+        val tags = List("narthex", s"v${buildinfo.BuildInfo.version}", s"sha-${buildinfo.BuildInfo.gitCommitSha}")
         val httpTransport = new HttpTransport.Builder().withApiKey(config.apiKey).build()
         val reporter = DatadogReporter.forRegistry(registry)
           .withTransport(httpTransport)
           .withHost(config.host)
+          .withTags(tags.asJava)
           .build()
         reporter.start(config.intervalInSeconds, TimeUnit.SECONDS)
         Logger.info(s"Started Datadog reporter, reporting interval: ${config.intervalInSeconds} seconds")
