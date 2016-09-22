@@ -33,9 +33,13 @@ define(
 
         narthexDataset.controller('TreeCtrl', controllers.TreeCtrl);
         narthexDataset.controller('NodeCtrl', controllers.NodeCtrl);
-        narthexDataset.config(function ($rootScopeProvider) {
+
+        var config = function config($rootScopeProvider) {
             $rootScopeProvider.digestTtl(15);
-        });
+        };
+        config.$inject = ['$rootScopeProvider'];
+        narthexDataset.config(config);
+
         return narthexDataset;
     });
 

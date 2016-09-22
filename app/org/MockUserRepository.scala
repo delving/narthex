@@ -96,9 +96,10 @@ class MockUserRepository(val uriPrefix: String)(implicit ec: ExecutionContext) e
 
   override def enableActor(userName: String) = loadActor(userName).map( u => Some(u))
 
-  override def setProfile(actor: User, profile: Profile) = {
-    val user = actor.copy(profileOpt = Some(profile))
-
+  override def setProfile(user: User, profile: Profile) = {
+    val newUser = user.copy(profileOpt = Some(profile))
+    users = users - user
+    users = users + newUser
     Future.successful((): Unit)
   }
 

@@ -16,10 +16,11 @@ import com.typesafe.sbt.packager.docker._
 //    limitations under the License.
 //===========================================================================
 
-
 lazy val root = (project in file(".")).
   enablePlugins(play.sbt.PlayScala).
+  enablePlugins(SbtWeb).
   enablePlugins(DockerPlugin).
+  enablePlugins(GitVersioning).
   enablePlugins(BuildInfoPlugin).
   settings(
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
@@ -27,12 +28,16 @@ lazy val root = (project in file(".")).
   )
 name := "narthex"
 
-version := "0.4.1"
+scalaVersion := "2.11.8"
 
-scalaVersion := "2.11.6"
+buildInfoKeys ++= Seq[BuildInfoKey](
+  resolvers,
+  libraryDependencies in Test,
+  "gitCommitSha" -> git.gitHeadCommit.value.getOrElse("nogit").substring(0, 5)
+)
 
 libraryDependencies ++= Seq(
-  "org.webjars" %% "webjars-play" % "2.4.0-2",
+  "org.webjars" %% "webjars-play" % "2.5.0-3",
   "org.webjars" % "bootstrap" % "3.1.1-2",
   "org.webjars" % "underscorejs" % "1.8.3",
   "org.webjars" % "jquery" % "2.1.1",
@@ -40,7 +45,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "d3js" % "3.4.13",
   "org.webjars" % "nvd3" % "1.1.15-beta-2",
   "org.webjars" % "angularjs-nvd3-directives" % "0.0.7-1",
-  "org.webjars" % "angular-file-upload" % "1.6.12",
+  "org.webjars" % "angular-file-upload" % "2.0.5",
   "org.webjars" % "angular-ui-bootstrap" % "0.11.2",
   "org.webjars" % "ng-grid" % "2.0.13",
   "org.webjars" % "ngStorage" % "0.3.0",
@@ -49,7 +54,7 @@ libraryDependencies ++= Seq(
   "de.leanovate.play-mockws" %% "play-mockws" % "2.4.2" % "test",
   "org.scalautils" % "scalautils_2.11" % "2.1.3",
   "com.typesafe.akka" % "akka-testkit_2.11" % "2.4.8" % "test",
-  "org.scalatestplus" %% "play" % "1.4.0" % "test",
+  "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % "test",
   "commons-io" % "commons-io" % "2.4",
   "com.rockymadden.stringmetric" %% "stringmetric-core" % "0.27.4",
   "org.apache.poi" % "poi" % "3.10.1",
@@ -57,11 +62,24 @@ libraryDependencies ++= Seq(
   "org.apache.jena" % "jena-arq" % "2.12.1" exclude("log4j", "log4j"),
   "org.slf4j" % "log4j-over-slf4j" % "1.7.21",
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
-  "com.typesafe.play" %% "play-mailer" % "4.0.0",
+  "com.typesafe.play" %% "play-mailer" % "5.0.0",
   "eu.delving" % "sip-core" % "1.0.9",
-  "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1",
-  "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime"
+  "de.threedimensions" %% "metrics-play" % "2.5.13",
+  "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime",
+  "org.coursera" % "metrics-datadog" % "1.1.6"
 )
+
+// Configure the steps of the asset pipeline (used in stage and dist tasks)
+// rjs = RequireJS, uglifies, shrinks to one file, replaces WebJars with CDN
+// digest = Adds hash to filename
+// gzip = Zips all assets, Asset controller serves them automatically when client accepts them
+pipelineStages := Seq(rjs, digest, gzip) // for processing static artifacts
+
+// RequireJS with sbt-rjs (https://github.com/sbt/sbt-rjs#sbt-rjs)
+// ~~~
+RjsKeys.paths += ("jsRoutes" -> ("/narthex/jsRoutes" -> "empty:"))
+
+RjsKeys.optimize := "none"
 
 libraryDependencies ~= {
   _.map(_.exclude("commons-logging", "commons-logging"))
@@ -78,6 +96,8 @@ libraryDependencies += ws
 resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
+
+resolvers += Resolver.jcenterRepo
 
 resolvers += "Delving" at "http://artifactory.delving.org:8081/artifactory/delving"
 
@@ -120,3 +140,20 @@ dockerCommands := Seq(
   ExecCmd("ENTRYPOINT", "bin/narthex", "-Dconfig.file=/opt/docker/conf/overrides.conf", "-Dlogger.file=/opt/docker/conf/logback.xml")
 )
 
+// Scala Compiler Options
+scalacOptions in ThisBuild ++= Seq(
+  "-target:jvm-1.8",
+  "-encoding", "UTF-8",
+  "-deprecation", // warning and location for usages of deprecated APIs
+  "-feature", // warning and location for usages of features that should be imported explicitly
+  "-unchecked", // additional warnings where generated code depends on assumptions
+  "-Xlint", // recommended additional warnings
+  "-Xcheckinit", // runtime error when a val is not initialized due to trait hierarchies (instead of NPE somewhere else)
+  "-Ywarn-adapted-args", // Warn if an argument list is modified to match the receiver
+  //"-Yno-adapted-args", // Do not adapt an argument list (either by inserting () or creating a tuple) to match the receiver
+  "-Ywarn-value-discard", // Warn when non-Unit expression results are unused
+  "-Ywarn-inaccessible", // Warn about inaccessible types in method signatures
+  "-Ywarn-dead-code", // Warn when dead code is identified
+  "-Ywarn-unused", // Warn when local and private vals, vars, defs, and types are unused
+  "-Ywarn-numeric-widen" // Warn when numerics are widened
+)

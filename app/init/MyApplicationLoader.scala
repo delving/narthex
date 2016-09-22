@@ -2,49 +2,87 @@ package init
 
 import java.io.File
 import java.util
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Props}
+import com.codahale.metrics.MetricRegistry
 import com.kenshoo.play.metrics.{MetricsController, MetricsFilterImpl, MetricsImpl}
 import controllers.WebJarAssets
 import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
+import init.MyApplicationLoader.DatadogReportingConfig
 import mapping.PeriodicSkosifyCheck
 import org._
+import org.coursera.metrics.datadog.DatadogReporter
+import org.coursera.metrics.datadog.transport.HttpTransport
+import org.webjars.play.RequireJS
 import play.api._
 import play.api.ApplicationLoader.Context
 import play.api.cache.EhCacheComponents
-import play.api.libs.ws.ning.NingWSComponents
 import triplestore.Fuseki
-import web.{APIController, AppController, MainController, SipAppController}
+import web._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.mailer._
+import play.api.libs.ws.ahc.AhcWSComponents
 import services.{MailService, MailServiceImpl}
 
 import scala.concurrent.duration._
 import collection.JavaConversions._
-import scala.concurrent.Future
+import scala.concurrent.Future // this is the class that Play generates based on the contents of the Routes file
 import router.Routes // this is the class that Play generates based on the contents of the Routes file
+
+object MyApplicationLoader {
+  val topActorConfigProp = "topActor.initialPassword"
+  val datadogEnabledConfigProp = "datadog.enabled"
+  val datadogApiKeyConfigProp = "datadog.apiKey"
+  val datadogIntervalConfigProp = "datadog.reportingIntervalInSeconds"
+  val datadogHostConfigProp = "datadog.host"
+
+  case class DatadogReportingConfig(apiKey: String, host: String, intervalInSeconds: Long)
+}
+
 
 class MyApplicationLoader extends ApplicationLoader {
 
-  val topActorConfigProp = "topActor.initialPassword"
+  import MyApplicationLoader._
 
   def load(context: Context) = {
     Logger.info("Narthex starting up...")
 
-    val initialPassword: String = context.initialConfiguration.getString(topActorConfigProp).getOrElse(throw new RuntimeException(s"${topActorConfigProp} not set"))
-    val homeDir: String = context.initialConfiguration.getString("narthexHome").getOrElse(System.getProperty("user.home") + "/NarthexFiles")
+    val initialPassword: String = context.initialConfiguration.getString(MyApplicationLoader.topActorConfigProp).
+      getOrElse(throw new RuntimeException(s"${MyApplicationLoader.topActorConfigProp} not set"))
+    val homeDir: String = context.initialConfiguration.getString("narthexHome").
+      getOrElse(System.getProperty("user.home") + "/NarthexFiles")
+
     val narthexDataDir: File = new File(homeDir)
     if (! narthexDataDir.canWrite ) {
       throw new RuntimeException(s"Configured $narthexDataDir is not writeable")
     }
-    val components = new MyComponents(context, narthexDataDir)
+
+    val datadogEnabled = context.initialConfiguration.getBoolean(MyApplicationLoader.datadogEnabledConfigProp)
+      .getOrElse(throw new RuntimeException(s"Mandatory configprop ${MyApplicationLoader.datadogEnabledConfigProp} not set"))
+
+    val datadogConfigOpt: Option[DatadogReportingConfig] =
+      if (datadogEnabled) {
+        val apiKey = context.initialConfiguration.getString(MyApplicationLoader.datadogApiKeyConfigProp).getOrElse(
+          throw new RuntimeException(s"Mandatory configprop ${MyApplicationLoader.datadogApiKeyConfigProp} not set"))
+
+        val host = context.initialConfiguration.getString(MyApplicationLoader.datadogHostConfigProp).getOrElse(
+          throw new RuntimeException(s"Mandatory configprop ${MyApplicationLoader.datadogHostConfigProp} not set"))
+
+        val interval = context.initialConfiguration.getLong(MyApplicationLoader.datadogIntervalConfigProp).getOrElse(
+          throw new RuntimeException(s"Mandatory configprop ${MyApplicationLoader.datadogIntervalConfigProp} not set"))
+        Some(DatadogReportingConfig(apiKey, host, interval))
+      } else {
+        None
+      }
+
+    val components = new MyComponents(context, narthexDataDir, datadogConfigOpt)
 
     val userRepository: UserRepository = components.userRepository
     userRepository.hasAdmin.
       filter( hasAdmin => !hasAdmin).
       map { hasAdmin =>
-        val topActorConfigProp = "topActor.initialPassword"
         userRepository.insertAdmin(initialPassword)
         Logger.info(s"Inserted initial admin user, details")
       }
@@ -52,37 +90,44 @@ class MyApplicationLoader extends ApplicationLoader {
   }
 }
 
-class MyComponents(context: Context, narthexDataDir: File) extends BuiltInComponentsFromContext(context)
-  with NingWSComponents
+class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option[DatadogReportingConfig])
+  extends BuiltInComponentsFromContext(context)
+  with AhcWSComponents
   with EhCacheComponents
   with MailerComponents {
 
-  Logger.configure(environment)
+  LoggerConfigurator(context.environment.classLoader).foreach { _.configure(context.environment) }
 
   val appConfig = initAppConfig(narthexDataDir)
-
 
   lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsClient,
     mailService, authenticationService, userRepository, orgActorRef)
 
-  lazy val router = new Routes(httpErrorHandler, mainController, appController,
-    sipAppController, apiController, webJarAssets, assets, metricsController)
+  lazy val router = new Routes(httpErrorHandler, mainController, webSocketController, appController,
+    sipAppController, apiController, webJarAssets, assets, metricsController, infoController)
 
-  lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(new OrgActor(orgContext)), appConfig.orgId)
+  lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(new OrgActor(orgContext, harvestingExecutionContext)), appConfig.orgId)
+  val harvestingExecutionContext = actorSystem.dispatchers.lookup("contexts.dataset-harvesting-execution-context")
+  val metrics = new MetricsImpl(applicationLifecycle, configuration)
 
-  private lazy val metrics = new MetricsImpl(applicationLifecycle, configuration)
+  val reporterOpt = initReporter(datadogConfig, metrics.defaultRegistry)
+  lazy val metricsFilter = new MetricsFilterImpl(metrics)
 
-  private lazy val metricsFilter = new MetricsFilterImpl(metrics)
+  val sessionTimeoutInSeconds: Int = configuration.getInt("sessionTimeoutInSeconds").getOrElse(60 * 60 * 4)
 
   override lazy val httpFilters = List(metricsFilter)
+  lazy val requireJs = new RequireJS(environment, webJarAssets)
+  lazy val metricsController = new MetricsController(metrics)
+  lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds)
+  lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
+    appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
+    webJarAssets, requireJs, sessionTimeoutInSeconds)
 
-  private lazy val metricsController = new MetricsController(metrics)
-  private lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext)
-  private lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
-    appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId
-  )
-  private lazy val appController = new AppController(defaultCacheApi, orgContext)(tripleStore)
-  private lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
+  lazy val appController = new AppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds) (tripleStore, actorSystem, materializer)
+  lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
+  lazy val infoController = new InfoController
+
+  lazy val webSocketController = new WebSocketController(defaultCacheApi, sessionTimeoutInSeconds)(actorSystem, materializer, defaultContext)
 
   lazy val assets = new controllers.Assets(httpErrorHandler)
   lazy val webJarAssets = new WebJarAssets(httpErrorHandler, configuration, environment)
@@ -91,9 +136,10 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
   val tripleStoreLog = configFlag("triple-store-log")
   implicit val tripleStore = new Fuseki(tripleStoreUrl, tripleStoreLog, wsApi)
 
-  lazy val authenticationService = AuthenticationMode.fromConfigString(configuration.getString(AuthenticationMode.PROPERTY_NAME)) match {
-    case AuthenticationMode.MOCK => new MockAuthenticationService
-    case AuthenticationMode.TS => new TsBasedAuthenticationService
+  lazy val authenticationService = AuthenticationMode.
+    fromConfigString(configuration.getString(AuthenticationMode.PROPERTY_NAME)) match {
+      case AuthenticationMode.MOCK => new MockAuthenticationService
+      case AuthenticationMode.TS => new TsBasedAuthenticationService
   }
 
 
@@ -103,7 +149,6 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
       case UserRepository.Mode.TS => new ActorStore(authenticationService, appConfig.nxUriPrefix)
     }
   }
-
 
   val periodicHarvest = actorSystem.actorOf(PeriodicHarvest.props(orgContext), "PeriodicHarvest")
   val harvestTicker = actorSystem.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
@@ -124,13 +169,34 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
     })
   }
 
+  private def initReporter(configOpt: Option[DatadogReportingConfig], registry: MetricRegistry): Option[DatadogReporter] = {
+    configOpt match {
+      case None => None
+      case Some(config) => {
+
+        import scala.collection.JavaConverters._
+
+        val tags = List("narthex", s"v${buildinfo.BuildInfo.version}", s"sha-${buildinfo.BuildInfo.gitCommitSha}")
+        val httpTransport = new HttpTransport.Builder().withApiKey(config.apiKey).build()
+        val reporter = DatadogReporter.forRegistry(registry)
+          .withTransport(httpTransport)
+          .withHost(config.host)
+          .withTags(tags.asJava)
+          .build()
+        reporter.start(config.intervalInSeconds, TimeUnit.SECONDS)
+        Logger.info(s"Started Datadog reporter, reporting interval: ${config.intervalInSeconds} seconds")
+        Some(reporter)
+      }
+    }
+
+  }
+
   private def initAppConfig(narthexDataDir: File): AppConfig = {
-    val harvestTimeout = configuration.getInt("harvest.timeout").getOrElse(3 * 60 * 1000)
+    val harvestTimeout = configuration.getLong("harvest.timeout").getOrElse(3l * 60 * 1000)
     val rdfBaseUrl = configStringNoSlash("rdfBaseUrl")
     val narthexDomain = configStringNoSlash("domains.narthex")
     val naveDomain = configStringNoSlash("domains.nave")
     val apiAccessKeys = secretList("api.accessKeys").toList
-
 
     AppConfig(
       harvestTimeout, configFlag("useBulkApi"), rdfBaseUrl,
@@ -141,11 +207,10 @@ class MyComponents(context: Context, narthexDataDir: File) extends BuiltInCompon
 
   private def configFlag(name: String): Boolean = configuration.getBoolean(name).getOrElse(false)
 
-  private def configString(name: String) = configuration.getString(name).getOrElse(throw new RuntimeException(s"Missing config string: $name"))
+  private def configString(name: String) = configuration.getString(name).
+    getOrElse(throw new RuntimeException(s"Missing config string: $name"))
 
   private def configStringNoSlash(name: String) = configString(name).replaceAll("\\/$", "")
-
-  private def configInt(name: String) = configuration.getInt(name).getOrElse(throw new RuntimeException(s"Missing config int: $name"))
 
   private def secretList(name: String): util.List[String] = configuration.getStringList(name).getOrElse(List("secret"))
 }

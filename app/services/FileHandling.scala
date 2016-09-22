@@ -93,14 +93,6 @@ object FileHandling {
     size
   }
 
-  //  def createDigest = MessageDigest.getInstance("SHA1")
-  //  def hex(digest: MessageDigest) = digest.digest().map("%02X" format _).mkString
-
-  private def unzipXML(file: File, inputStream: InputStream) = {
-    val stream = if (file.getName.endsWith(".gz")) new GZIPInputStream(inputStream) else inputStream
-    new BOMInputStream(stream)
-  }
-
   class ZipConcatXML(val file: ZipFile) extends Source {
     var entries = file.entries()
     var entry: Option[ZipEntry] = None
@@ -215,11 +207,14 @@ object FileHandling {
     val home = file.getParentFile.getAbsolutePath
     val name = file.getName
     val addCommand = Process(Seq("git", "-C", home, "add", name))
-    Logger.info(s"git add: $addCommand")
-    val add = addCommand.!!
+    Logger.debug(s"git add: $addCommand")
+    val addResult = addCommand.!!
+    Logger.debug(s"addResult: $addResult")
     val commitCommand = Process(Seq("git", "-C", home, "commit", "-m", comment, name))
     Logger.info(s"git commit: $commitCommand")
-    val commit = commitCommand.!!
+    val commitResult = commitCommand.!!
+    Logger.debug(s"commitResult: $commitResult")
+
     true
   }
 

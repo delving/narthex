@@ -32,9 +32,13 @@ define(
         ]);
 
         narthexDatasetList.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);
-        narthexDatasetList.config(function ($rootScopeProvider) {
+
+        var config = function config($rootScopeProvider) {
             $rootScopeProvider.digestTtl(15);
-        });
+        };
+
+        config.$inject = ['$rootScopeProvider'];
+        narthexDatasetList.config(config);
         return narthexDatasetList;
     });
 

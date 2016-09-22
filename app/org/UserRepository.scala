@@ -33,7 +33,7 @@ trait UserRepository {
   /**
     * Retrieve a an actor known to exist
     *
-    * @throws IllegalArgumentException if the actor does not exist
+    * @throws java.lang.IllegalArgumentException if the actor does not exist
     */
   def loadActor(name: String): Future[User]
 

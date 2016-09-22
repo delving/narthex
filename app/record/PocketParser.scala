@@ -18,7 +18,6 @@ package record
 
 import java.io.{ByteArrayInputStream, Writer}
 import java.security.{MessageDigest, NoSuchAlgorithmException}
-import java.util.regex.Pattern
 
 import dataset.DsInfo
 import dataset.SourceRepo.{IdFilter, SourceFacts}
@@ -70,7 +69,7 @@ object PocketParser {
 
     def storeBulkAction(triples: String, id: String, hash: String, orgContext: OrgContext) = {
       val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
-      val SpecIdExtractor(spec, localId) = id
+      val SpecIdExtractor(spec) = id
       implicit val ts = orgContext.ts
       val dsInfo = DsInfo.getDsInfo(spec, orgContext)
       val bulkAction = dsInfo.createBulkAction(triples, id, hash)
@@ -117,10 +116,9 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
   def parse(source: Source, avoid: Set[String], output: Pocket => Unit, progress: ProgressReporter): Int = {
     val events = new XMLEventReader(source)
     var depth = 0
-    var recordText = new mutable.StringBuilder()
+    val recordText = new mutable.StringBuilder()
     var uniqueId: Option[String] = None
     var startElement: Option[String] = None
-    var running = true
 
     def indent() = {
       var countdown = depth

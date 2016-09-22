@@ -23,26 +23,28 @@ define(["angular"], function (angular) {
         return {
             restrict: 'E,A',
             replace: false,
-            scope: true,
+            scope: false,
             link: function($scope, $element, $attrs){
-                $timeout(function(){
                     var offset = $attrs.offset,
-                        height = $attrs.fixedHeight;
-                    $scope.elHeight = null;
+                        attr_fixed_height = $attrs.fixedHeight,
+                        container_height = null;
                     function initialize () {
-                        if(!height){
-                            $scope.elHeight = $window.innerHeight - offset;
+                        if(!attr_fixed_height){
+                          container_height = $window.innerHeight - offset;
                         }
                         else {
-                            $scope.elHeight = height;
+                          container_height = attr_fixed_height;
                         }
+                        // set element height
+                        $element.css({
+                          height: container_height + "px"
+                        });
                     }
                     initialize();
                     return angular.element($window).bind('resize', function() {
                         initialize();
                         return $scope.$apply();
                     });
-                },500,true);
             }
         }
     }]);

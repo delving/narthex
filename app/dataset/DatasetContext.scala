@@ -208,7 +208,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     deleteQuietly(treeDir)
     dsInfo.removeState(RAW_ANALYZED)
     dsInfo.removeState(ANALYZED)
-    Logger.debug("Dropping Analyses Tree")
+    Logger.debug("Dropping analysis tree")
   }
 
   def dropRecords = {

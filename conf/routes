@@ -7,7 +7,7 @@ GET         /                                                                web
 GET         /narthex/                                                        web.MainController.index
 
 # JavaScript routes object
-GET         /narthex/jsroutes.js                                             web.MainController.jsRoutes()
+GET         /narthex/jsRoutes.js                                             web.MainController.jsRoutes()
 
 # Routes used by Angular
 # ~~~~
@@ -29,7 +29,7 @@ POST        /narthex/remove-admin                                            web
 POST        /narthex/set-password                                            web.MainController.setPassword
 
 # File Handling
-GET         /narthex/app/dataset-socket                                      web.AppController.datasetSocket
+GET         /narthex/socket/dataset                                          web.WebSocketController.dataset
 GET         /narthex/app/dataset-list                                        web.AppController.listDatasets
 GET         /narthex/app/prefixes                                            web.AppController.listPrefixes
 GET         /narthex/app/dataset/:spec/create/:character/:prefix             web.AppController.createDataset(spec, character, prefix)
@@ -86,7 +86,8 @@ GET         /narthex/api/:apiKey/:spec/histogram/*path                       web
 
 # Static
 GET         /narthex/webjars/*file                                           controllers.WebJarAssets.at(file)
-GET         /narthex/assets/*file                                            controllers.Assets.at(path="/public", file)
+GET         /narthex/assets/*file                                            controllers.Assets.versioned(path="/public", file: Asset)
 
 # Monitoring
 GET         /non-public/monitoring/metrics                                   com.kenshoo.play.metrics.MetricsController.metrics
+GET         /non-public/monitoring/info                                      web.InfoController.info

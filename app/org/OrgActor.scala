@@ -22,6 +22,7 @@ import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.CategoryCountComplete
 import org.OrgActor._
 
+import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
 /*
@@ -37,7 +38,7 @@ object OrgActor {
 }
 
 
-class OrgActor(val orgContext: OrgContext) extends Actor with ActorLogging {
+class OrgActor(val orgContext: OrgContext, harvestingExecutionContext: ExecutionContext) extends Actor with ActorLogging {
 
   var results = Map.empty[String, Option[List[CategoryCount]]]
 
@@ -46,7 +47,7 @@ class OrgActor(val orgContext: OrgContext) extends Actor with ActorLogging {
     case DatasetMessage(spec, message) =>
       val actor: ActorRef = context.child(spec).getOrElse {
         val datasetContext = orgContext.datasetContext(spec)
-        val datasetActor = context.actorOf(props(datasetContext, orgContext.mailService, orgContext), spec)
+        val datasetActor = context.actorOf(props(datasetContext, orgContext.mailService, orgContext, harvestingExecutionContext), spec)
         log.info(s"Created dataset actor $datasetActor")
         context.watch(datasetActor)
         datasetActor

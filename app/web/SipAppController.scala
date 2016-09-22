@@ -24,7 +24,7 @@ import play.api.mvc._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class SipAppController(val cacheApi: CacheApi, val orgContext: OrgContext) extends Controller with Security {
+class SipAppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sessionTimeoutInSeconds: Int) extends Controller with Security {
 
   def listSipZips() = SecureAsync() { profile => implicit request =>
     val availableSips: Seq[AvailableSip] = orgContext.availableSips

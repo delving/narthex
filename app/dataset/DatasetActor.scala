@@ -24,7 +24,6 @@ import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
 import dataset.DsInfo.DsState._
-import dataset.DsInfo._
 import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
@@ -48,7 +47,7 @@ import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 import triplestore.Sparql.SkosifiedField
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -85,7 +84,7 @@ object DatasetActor {
 
   case object Dormant extends DatasetActorData
 
-  case class Active(spec: String, childOpt: Option[ActorRef], 
+  case class Active(spec: String, childOpt: Option[ActorRef],
                     progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0,
                     interrupt: Boolean = false) extends DatasetActorData
 
@@ -133,16 +132,16 @@ object DatasetActor {
 
   case class ProgressTick(reporterOpt: Option[ProgressReporter], progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0)
 
-  // create one
-
-  def props(datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext) = Props(new DatasetActor(datasetContext, mailService, orgContext))
-
+  def props(datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext,
+            harvestingExecutionContext: ExecutionContext) =
+    Props(classOf[DatasetActor], datasetContext, mailService, orgContext, harvestingExecutionContext)
 }
 
-class DatasetActor(val datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext) extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
+class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
+                   orgContext: OrgContext, harvestingExecutionContext: ExecutionContext)
+  extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
 
   import context.dispatcher
-
 
   override val supervisorStrategy = OneForOneStrategy() {
     case throwable: Throwable =>
@@ -154,11 +153,11 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
 
   val errorMessage = dsInfo.getLiteralProp(datasetErrorMessage).getOrElse("")
 
-  def broadcastRaw(message: String) = context.system.actorSelection("/system/websockets/*") ! message
+  def broadcastRaw(message: Any) = context.system.actorSelection("/user/*/flowActor") ! message
 
-  def broadcastIdleState() = broadcastRaw(Json.stringify(Json.toJson(datasetContext.dsInfo)))
+  def broadcastIdleState() = broadcastRaw(datasetContext.dsInfo)
 
-  def broadcastProgress(active: Active) = broadcastRaw(Json.stringify(Json.toJson(active)))
+  def broadcastProgress(active: Active) = broadcastRaw(active)
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
@@ -301,7 +300,8 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           case PMH => HarvestPMH(strategy, url, ds, pre)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
-        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut, orgContext.wsClient), "harvester")
+        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut,
+          orgContext.wsClient, harvestingExecutionContext), "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
@@ -363,7 +363,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
   when(Harvesting) {
 
     case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch), active: Active) =>
-      def processIncremental(fileOpt: Option[File], noRecordsMatch: Boolean=false, mod: Option[DateTime]) = {
+      def processIncremental(fileOpt: Option[File], noRecordsMatch: Boolean, mod: Option[DateTime]) = {
         noRecordsMatch match {
           case true =>
             Logger.info("NoRecordsMatch, so setting state to Incremental Saved")

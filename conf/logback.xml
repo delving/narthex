@@ -1,19 +1,18 @@
 <configuration>
 
-  <conversionRule conversionWord="coloredLevel" converterClass="play.api.Logger$ColoredLevel" />
+  <conversionRule conversionWord="coloredLevel" converterClass="play.api.libs.logback.ColoredLevel" />
 
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
-      <pattern>%date - %coloredLevel %X{akkaSource}  %class:%line- %message%n%xException{5}</pattern>
+      <pattern>%date - %coloredLevel %X{akkaSource} %file:%line - %message%n%xException{5}</pattern>
     </encoder>
   </appender>
 
-  <logger name="akka" level="INFO" />
-  <logger name="play" level="INFO" />
-  <logger name="application" level="INFO" />
-
-
-  <root level="ERROR">
+  <logger name="akka" level="debug" />
+  <logger name="play" level="warn" />
+  <logger name="application" level="info" />
+  <logger name="init" level="info" />
+  <root level="warn">
     <appender-ref ref="STDOUT" />
   </root>
 
