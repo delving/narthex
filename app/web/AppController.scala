@@ -100,7 +100,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     request.body.file("file").map { file =>
       val error = datasetContext.acceptUpload(file.filename, { target =>
         file.ref.moveTo(target, replace = true)
-        Logger.info(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
+        Logger.debug(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
         target
       })
       error.map {
@@ -119,7 +119,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
-      Logger.info(s"setDatasetProperties $propsValues")
+      Logger.debug(s"setDatasetProperties $propsValues")
       dsInfo.setSingularLiteralProps(propsValues: _*)
       sendRefresh(spec)
       Ok
@@ -172,7 +172,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
       val skosFieldUri = (request.body \ "skosFieldUri").as[String]
       val skosFieldValue = s"$skosFieldTag=$skosFieldUri"
       val included = (request.body \ "included").as[Boolean]
-      Logger.info(s"set skos field $skosFieldValue: $included")
+      Logger.debug(s"set skos field $skosFieldValue: $included")
       val currentSkosFields = dsInfo.getLiteralPropList(skosField)
       val action: String = if (included) {
         if (currentSkosFields.contains(skosFieldValue)) {
@@ -267,7 +267,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
   def setVocabularyProperties(spec: String) = Secure(parse.json) { session => request =>
     withVocabInfo(spec, orgContext) { vocabInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
-      Logger.info(s"setVocabularyProperties $propertyList")
+      Logger.debug(s"setVocabularyProperties $propertyList")
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
@@ -284,7 +284,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
 
   def searchVocabulary(spec: String, sought: String, language: String) = Secure() { session => request =>
     val languageOpt = Option(language).find(lang => lang.trim.nonEmpty && lang != "-")
-    Logger.info(s"Search $spec/$language: $sought")
+    Logger.debug(s"Search $spec/$language: $sought")
     withVocabInfo(spec, orgContext) { vocabInfo =>
       val labelSearch: LabelSearch = vocabInfo.vocabulary.search(sought, 25, languageOpt)
       Ok(Json.obj("search" -> labelSearch))

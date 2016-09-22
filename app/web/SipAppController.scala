@@ -55,7 +55,7 @@ class SipAppController(val cacheApi: CacheApi, val orgContext: OrgContext, val s
   }
 
   def downloadSipZip(spec: String) = Secure() { profile => implicit request =>
-    Logger.info(s"Download sip-zip $spec")
+    Logger.debug(s"Download sip-zip $spec")
     val sipFileOpt = orgContext.datasetContext(spec).sipFiles.headOption
     sipFileOpt.map(Utils.okFile(_)).getOrElse(NotFound(s"No sip-zip for $spec"))
   }

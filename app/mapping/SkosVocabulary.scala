@@ -149,7 +149,7 @@ case class SkosVocabulary(spec: String, graphName: String)(implicit ec: Executio
     case e: Throwable => Logger.warn(s"No data found for skos vocabulary $graphName", e)
   }
   futureModel.onSuccess {
-    case x => Logger.info(s"Loaded $graphName")
+    case x => Logger.debug(s"Loaded $graphName")
   }
   lazy val m: Model = Await.result(futureModel, 60.seconds)
 

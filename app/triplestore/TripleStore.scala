@@ -44,7 +44,7 @@ object TripleStore {
       case "literal" => QV_LITERAL
       case "uri" => QV_URI
       case x =>
-        Logger.warn(s"Unhandled type $x !")
+        Logger.error(s"Unhandled type $x !")
         QV_UNKNOWN
     }
   }
@@ -92,7 +92,7 @@ class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val e
     divider + numbered
   }
 
-  private def logSparql(sparql: String): Unit = if (logQueries) Logger.info(toLog(sparql))
+  private def logSparql(sparql: String): Unit = if (logQueries) Logger.debug(toLog(sparql))
 
   override def ask(sparqlQuery: String): Future[Boolean] = {
     logSparql(sparqlQuery)
@@ -173,7 +173,7 @@ class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val e
     }
 
     override def dataPutXMLFile(graphUri: String, file: File) = {
-      Logger.info(s"Putting $graphUri")
+      Logger.debug(s"Putting $graphUri")
       dataRequest(graphUri).withHeaders(
         "Content-Type" -> "application/rdf+xml; charset=utf-8"
       ).put(file).map(checkUpdateResponse(_, graphUri))
@@ -183,7 +183,7 @@ class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val e
       val sw = new StringWriter()
       model.write(sw, "TURTLE")
       val turtle = sw.toString
-      Logger.info(s"Putting $graphUri")
+      Logger.debug(s"Putting $graphUri")
       dataRequest(graphUri).withHeaders(
         "Content-Type" -> "text/turtle; charset=utf-8"
       ).put(turtle).map(checkUpdateResponse(_, turtle))

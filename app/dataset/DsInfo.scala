@@ -383,12 +383,6 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
   )
 
   def toggleNaveSkosField(datasetUri: String, propertyUri: String, delete: Boolean = false) = {
-    def checkUpdateResponse(response: WSResponse, logString: JsObject): Unit = {
-      if (response.status != 201) {
-        Logger.error(logString.toString())
-        throw new Exception(s"${response.statusText}: ${response.body}:")
-      }
-    }
 
     val skosFieldApi = s"${naveApiUrl}/api/index/narthex/toggle/proxyfield/"
     val request = orgContext.wsClient.url(s"$skosFieldApi").withHeaders(

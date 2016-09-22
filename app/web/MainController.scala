@@ -71,7 +71,7 @@ class MainController(val userRepository: UserRepository,
   def login = Action.async(parse.json) { implicit request =>
     val username = (request.body \ "username").as[String]
     val password = (request.body \ "password").as[String]
-    Logger.info(s"Login $username")
+    Logger.debug(s"Login $username")
 
     val authenticated: Future[Boolean] = authenticationService.authenticate(username, password)
 
@@ -98,7 +98,7 @@ class MainController(val userRepository: UserRepository,
 
   /** Logs the user out, i.e. invalidated the token. */
   def logout = Action { implicit request =>
-    Logger.info(s"Logout")
+    Logger.debug(s"Logout")
     request.headers.get(TOKEN) match {
       case Some(token) =>
         Ok.discardingToken(token)

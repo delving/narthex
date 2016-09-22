@@ -44,7 +44,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
   var lastProgress = 0l
   var recordCount = 0
 
-  Logger.info(s"category mappings $categoryMappings")
+  Logger.debug(s"category mappings $categoryMappings")
 
   def increment(key: String): Unit = countMap.getOrElseUpdate(key, new Counter(1)).count += 1
 

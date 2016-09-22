@@ -191,7 +191,7 @@ trait Harvesting {
     request.get().map { response =>
       Logger.debug(s"start get for: \n ${response.underlying[NettyResponse].getUri}")
       val error: Option[HarvestError] = if (response.status != 200) {
-        Logger.info(s"error response: ${response.underlying[NettyResponse].getResponseBody}")
+        Logger.debug(s"error response: ${response.underlying[NettyResponse].getResponseBody}")
         Some(HarvestError(s"HTTP Response: ${response.statusText}", strategy))
       }
       else {
@@ -216,7 +216,7 @@ trait Harvesting {
             Some(HarvestError(faultyEmptyResponse, strategy))
           }
           else if ("noRecordsMatch" == errorCode) {
-            Logger.info("No PMH Records returned")
+            Logger.debug("No PMH Records returned")
              Some(HarvestError("noRecordsMatch", strategy))
           }
           else {

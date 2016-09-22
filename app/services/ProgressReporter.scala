@@ -190,7 +190,7 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetActor: Actor
               running
             }
           case None =>
-            Logger.warn("Expecting readProgress or maximum")
+            Logger.error("Expecting readProgress or maximum")
         }
     }
   }
