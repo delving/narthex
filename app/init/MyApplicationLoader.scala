@@ -14,7 +14,7 @@ import init.MyApplicationLoader.DatadogReportingConfig
 import mapping.PeriodicSkosifyCheck
 import org._
 import org.coursera.metrics.datadog.DatadogReporter
-import org.coursera.metrics.datadog.transport.HttpTransport
+import org.coursera.metrics.datadog.transport.UdpTransport
 import org.webjars.play.RequireJS
 import play.api._
 import play.api.ApplicationLoader.Context
@@ -34,11 +34,11 @@ import router.Routes // this is the class that Play generates based on the conte
 object MyApplicationLoader {
   val topActorConfigProp = "topActor.initialPassword"
   val datadogEnabledConfigProp = "datadog.enabled"
-  val datadogApiKeyConfigProp = "datadog.apiKey"
+  val datadogStatsdPortConfigProp = "datadog.statsdPort"
+  val datadogStatsDHostConfigProp = "datadog.statsdHost"
   val datadogIntervalConfigProp = "datadog.reportingIntervalInSeconds"
-  val datadogHostConfigProp = "datadog.host"
 
-  case class DatadogReportingConfig(apiKey: String, host: String, intervalInSeconds: Long)
+  case class DatadogReportingConfig(intervalInSeconds: Long, statsdHost: String, statsdPort: Int)
 }
 
 
@@ -64,15 +64,13 @@ class MyApplicationLoader extends ApplicationLoader {
 
     val datadogConfigOpt: Option[DatadogReportingConfig] =
       if (datadogEnabled) {
-        val apiKey = context.initialConfiguration.getString(MyApplicationLoader.datadogApiKeyConfigProp).getOrElse(
-          throw new RuntimeException(s"Mandatory configprop ${MyApplicationLoader.datadogApiKeyConfigProp} not set"))
-
-        val host = context.initialConfiguration.getString(MyApplicationLoader.datadogHostConfigProp).getOrElse(
-          throw new RuntimeException(s"Mandatory configprop ${MyApplicationLoader.datadogHostConfigProp} not set"))
-
         val interval = context.initialConfiguration.getLong(MyApplicationLoader.datadogIntervalConfigProp).getOrElse(
           throw new RuntimeException(s"Mandatory configprop ${MyApplicationLoader.datadogIntervalConfigProp} not set"))
-        Some(DatadogReportingConfig(apiKey, host, interval))
+
+        val host = context.initialConfiguration.getString(MyApplicationLoader.datadogStatsDHostConfigProp)
+          .getOrElse("localhost")
+        val port = context.initialConfiguration.getInt(MyApplicationLoader.datadogStatsdPortConfigProp).getOrElse(8125)
+        Some(DatadogReportingConfig(interval, host,  port))
       } else {
         None
       }
@@ -177,10 +175,14 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
         import scala.collection.JavaConverters._
 
         val tags = List("narthex", s"v${buildinfo.BuildInfo.version}", s"sha-${buildinfo.BuildInfo.gitCommitSha}")
-        val httpTransport = new HttpTransport.Builder().withApiKey(config.apiKey).build()
+
+        val transport = new UdpTransport.Builder()
+          .withPort(config.statsdPort)
+          .withStatsdHost(config.statsdHost)
+          .build()
+
         val reporter = DatadogReporter.forRegistry(registry)
-          .withTransport(httpTransport)
-          .withHost(config.host)
+          .withTransport(transport)
           .withTags(tags.asJava)
           .build()
         reporter.start(config.intervalInSeconds, TimeUnit.SECONDS)
