@@ -55,7 +55,7 @@ class MailServiceImpl(val mailerClient: MailerClient, val userRepository: UserRe
 
     emailList.map { recipients =>
       if (recipients.isEmpty) {
-        Logger.warn(s"EMail: '$subject' not sent because there is no recipient email address available.")
+        Logger.debug(s"EMail: '$subject' not sent because there is no recipient email address available.")
       } else {
         val email = Email(to = recipients, from = fromNarthex, subject = subject, bodyHtml = Some(html))
         mailerClient.send(email)

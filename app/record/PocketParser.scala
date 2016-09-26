@@ -267,7 +267,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
 
   def pathContainer(string: String) = string.substring(0, string.lastIndexOf("/"))
 
-  def showPath() = Logger.info(pathString)
+  def showPath() = Logger.debug(pathString)
 
   def startElementString(tag: String, attrs: MetaData, replaceId: Boolean) = {
     val attrString = new mutable.StringBuilder()

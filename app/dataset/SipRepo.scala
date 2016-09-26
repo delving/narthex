@@ -355,7 +355,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       entry.getName match {
 
         case MappingPattern() =>
-          Logger.info(s"Mapping: ${entry.getName}")
+          Logger.debug(s"Mapping: ${entry.getName}")
           sipMappingOpt.foreach { sipMapping =>
             zos.putNextEntry(new ZipEntry(sipMapping.fileName))
             // if there is a new schema version, set it
@@ -365,20 +365,20 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           }
 
         case RecordDefinitionPattern() =>
-          Logger.info(s"Record definition: ${entry.getName}")
+          Logger.debug(s"Record definition: ${entry.getName}")
           sipPrefixRepoOpt.map(_.recordDefinition).map(rd => copyFileIn(rd, rd.getName, gzip = false)).getOrElse(copyEntry())
 
         case ValidationPattern() =>
-          Logger.info(s"Validation: ${entry.getName}")
+          Logger.debug(s"Validation: ${entry.getName}")
           sipPrefixRepoOpt.map(_.validation).map(va => copyFileIn(va, va.getName, gzip = false)).getOrElse(copyEntry())
 
         case SourcePattern() =>
-          Logger.info(s"Source: ${entry.getName}")
+          Logger.debug(s"Source: ${entry.getName}")
           sourceFound = true
           copyFileIn(sourceXmlFile, entry.getName, gzip = true)
 
         case FACTS_FILE =>
-          Logger.info(s"Facts: ${entry.getName}")
+          Logger.debug(s"Facts: ${entry.getName}")
           sipPrefixRepoOpt.map(_.schemaVersions).map { schemaVersions =>
             val in = zipFile.getInputStream(entry)
             val lines = Source.fromInputStream(in, "UTF-8").getLines()
@@ -392,13 +392,13 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           }.getOrElse(copyEntry())
 
         case entryName =>
-          Logger.info(s"Verbatim: ${entry.getName}")
+          Logger.debug(s"Verbatim: ${entry.getName}")
           copyEntry()
       }
     }
 
     if (!sourceFound) {
-      Logger.info(s"Source added afterwards")
+      Logger.debug(s"Source added afterwards")
       copyFileIn(sourceXmlFile, SOURCE_FILE, gzip = true)
     }
 

@@ -187,7 +187,7 @@ object Sparql {
        |}
      """.stripMargin
 
-    Logger.info("Query will be " + query)
+    Logger.debug("Query will be " + query)
     query
   }
   

@@ -366,7 +366,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       def processIncremental(fileOpt: Option[File], noRecordsMatch: Boolean, mod: Option[DateTime]) = {
         noRecordsMatch match {
           case true =>
-            Logger.info("NoRecordsMatch, so setting state to Incremental Saved")
+            Logger.debug("NoRecordsMatch, so setting state to Incremental Saved")
             dsInfo.setState(INCREMENTAL_SAVED)
             if (dsInfo.getLiteralProp(harvestIncrementalMode).getOrElse("false") != "true") {
               dsInfo.setHarvestIncrementalMode(true)

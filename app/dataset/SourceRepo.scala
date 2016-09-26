@@ -213,7 +213,7 @@ class SourceRepo(home: File) {
     val fileNumber = zipFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = provideZipFile(createZipFile(fileNumber))
-    Logger.info(s"Processing source: $file")
+    Logger.debug(s"Processing source: $file")
     val idSet = new mutable.HashSet[String]()
     val parser = new PocketParser(sourceFacts, idFilter)
     def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.id)

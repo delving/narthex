@@ -197,7 +197,7 @@ object FileHandling {
     val hiddenGit = new File(directory, ".git")
     if (!hiddenGit.exists()) {
       val init = s"git init ${directory.getAbsolutePath}".!!
-      Logger.info(s"git init: $init")
+      Logger.debug(s"git init: $init")
     }
     hiddenGit.exists()
   }
@@ -211,7 +211,7 @@ object FileHandling {
     val addResult = addCommand.!!
     Logger.debug(s"addResult: $addResult")
     val commitCommand = Process(Seq("git", "-C", home, "commit", "-m", comment, name))
-    Logger.info(s"git commit: $commitCommand")
+    Logger.debug(s"git commit: $commitCommand")
     val commitResult = commitCommand.!!
     Logger.debug(s"commitResult: $commitResult")
 
