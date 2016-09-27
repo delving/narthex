@@ -190,7 +190,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
     override def isActive = readerOpt.isDefined
 
     override def readChunkOpt: Option[GraphChunk] = {
-      val dataset = DatasetFactory.createMem()
+      val dataset = DatasetFactory.createGeneral()
       val recordText = new StringBuilder
       var graphCount = 0
       var chunkComplete = false
