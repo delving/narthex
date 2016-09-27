@@ -11,7 +11,7 @@ class InfoController extends Controller {
   def info = Action {  request =>
     val result = Map(
       "version" -> BuildInfo.version,
-      "scalaVersion" -> BuildInfo.version,
+      "scalaVersion" -> BuildInfo.scalaVersion,
       "sbtVersion" -> BuildInfo.sbtVersion,
       "gitCommitSha" -> BuildInfo.gitCommitSha
     )
