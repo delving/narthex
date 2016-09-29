@@ -66,6 +66,7 @@ libraryDependencies ++= Seq(
   "eu.delving" % "sip-core" % "1.0.9",
   "de.threedimensions" %% "metrics-play" % "2.5.13",
   "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime",
+  "nl.grons" %% "metrics-scala" % "3.5.5_a2.3",
   "org.coursera" % "metrics-datadog" % "1.1.6"
 )
 
