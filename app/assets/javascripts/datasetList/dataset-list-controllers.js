@@ -99,15 +99,10 @@ define(["angular"], function () {
         /********************************************************************/
         /* dataset filtering                                                */
         /********************************************************************/
-        $scope.showToolbar = false;
-        $scope.toggleToolbar = function () {
-            $scope.showToolbar = !$scope.showToolbar;
-        }
-
 
         function filterDatasetBySpec(ds) {
             var filter = $scope.specFilter.trim();
-            ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
+            ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0 || ds.datasetName.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
         }
 
         function filterDatasetByState(ds) {
