@@ -359,7 +359,7 @@ code {
   }
   .status {
     text-align: center;
-    width: 100px;
+    width: 180px;
     //flex: 1;
   }
   .date-time {
@@ -372,11 +372,12 @@ code {
     display: inline-block;
     padding: 2px 6px;
     text-align: center;
-    width: 100px;
+    width: 100%;
     &:hover {
       cursor: default;
     }
     &.empty {
+      border: 1px solid @gray-light;
       background: @white;
       color: @gray-light;
     }
@@ -505,6 +506,11 @@ code {
   height: 280px;
   margin-bottom: 0px !important;
   padding-top: 90px;
+  //disabled state
+  &.disabled {
+    background: @white;
+    cursor: no-drop;
+  }
 }
 
 .file-drop-over {
