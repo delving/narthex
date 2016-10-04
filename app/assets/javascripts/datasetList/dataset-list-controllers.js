@@ -49,7 +49,7 @@ define(["angular"], function () {
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
         $scope.newDataset = {};
-        $scope.specFilter = "";
+        $scope.specOrNameFilter = "";
         $scope.stateFilter = "";
         $scope.socketSubscribers = {};
 
@@ -99,15 +99,14 @@ define(["angular"], function () {
         /********************************************************************/
         /* dataset filtering                                                */
         /********************************************************************/
-        $scope.showToolbar = false;
-        $scope.toggleToolbar = function () {
-            $scope.showToolbar = !$scope.showToolbar;
-        }
-
 
         function filterDatasetBySpec(ds) {
-            var filter = $scope.specFilter.trim();
+            console.log(ds);
+            var filter = $scope.specOrNameFilter.trim();
             ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
+            if (ds.datasetName != null){
+                ds.visible = !filter || ds.datasetName.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
+            }
         }
 
         function filterDatasetByState(ds) {
@@ -147,7 +146,7 @@ define(["angular"], function () {
             return ds.visible;
         };
 
-        $scope.$watch("specFilter", function () {
+        $scope.$watch("specOrNameFilter", function () {
             _.each($scope.datasets, filterDatasetBySpec);
         });
 
@@ -248,7 +247,7 @@ define(["angular"], function () {
         };
 
         $scope.fetchDatasetList = function () {
-            $scope.specFilter = "";
+            $scope.specOrNameFilter = "";
             datasetListService.listDatasets().then(function (array) {
                 _.forEach(array, $scope.decorateDataset);
                 $scope.datasets = array;
