@@ -101,7 +101,6 @@ define(["angular"], function () {
         /********************************************************************/
 
         function filterDatasetBySpec(ds) {
-            console.log(ds);
             var filter = $scope.specOrNameFilter.trim();
             ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
             if (ds.datasetName != null){
