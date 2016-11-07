@@ -33,7 +33,7 @@ import services.StringHandling.{createGraphName, urlEncodeValue}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.Sparql._
-import triplestore.{SkosGraph, TripleStore}
+import triplestore.{GraphProperties, SkosGraph, TripleStore}
 
 import scala.collection.JavaConversions._
 import scala.concurrent._
@@ -56,17 +56,20 @@ object DsInfo {
     override def toString = prop.name
   }
 
-  object DsState {
-    val RAW = DsState(stateRaw)
-    val RAW_ANALYZED = DsState(stateRawAnalyzed)
-    val SOURCED = DsState(stateSourced)
-    val MAPPABLE = DsState(stateMappable)
-    val PROCESSABLE = DsState(stateProcessable)
-    val PROCESSED = DsState(stateProcessed)
-    val ANALYZED = DsState(stateAnalyzed)
-    val SAVED = DsState(stateSaved)
-    val INCREMENTAL_SAVED = DsState(stateIncrementalSaved)
-    val SYNCED = DsState(stateSynced)
+  object DsState extends Enumeration {
+
+    type DsState = Value
+
+    val RAW = Value("stateRaw")
+    val RAW_ANALYZED = Value("stateRawAnalyzed")
+    val SOURCED = Value("stateSourced")
+    val MAPPABLE = Value("stateMappable")
+    val PROCESSABLE = Value("stateProcessable")
+    val PROCESSED = Value("stateProcessed")
+    val ANALYZED = Value("stateAnalyzed")
+    val SAVED = Value("stateSaved")
+    val INCREMENTAL_SAVED = Value("stateIncrementalSaved")
+    val SYNCED = Value("stateSynced")
   }
 
   case class DsMetadata(name: String,
@@ -235,7 +238,22 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
     }
   }
 
-  def setState(state: DsState) = setSingularLiteralProps(state.prop -> now)
+  def getState(): DsState.Value = {
+
+    def max(lh: (DsState.Value, DateTime), rh: (DsState.Value, DateTime)) = if (lh._2.isAfter(rh._2)) lh else rh
+
+    val latestStateAndTimeStamp = DsState.values.
+      map( state => (state, getTimeProp(NXProp(state.toString, GraphProperties.timeProp)))).
+      filter(stateAndTimeStampOpt => stateAndTimeStampOpt._2.isDefined).
+      map(stateAndTimestamp => (stateAndTimestamp._1, stateAndTimestamp._2.get)).
+      reduceLeft(max)
+    DsState.withName(latestStateAndTimeStamp._1.toString)
+
+  }
+
+  def setState(state: DsState.Value) = {
+    setSingularLiteralProps(NXProp(state.toString, GraphProperties.timeProp) -> now)
+  }
 
   def setHarvestIncrementalMode(enabled: Boolean = false) = {
     val mode = if (enabled) "true" else "false"
@@ -273,7 +291,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
     setSingularLiteralProps(datasetResourcePropertiesInSync -> syncState)
   }
 
-  def removeState(state: DsState) = removeLiteralProp(state.prop)
+  def removeState(state: DsState.Value) = removeLiteralProp(NXProp(state.toString, GraphProperties.timeProp))
 
   def setError(message: String) = {
     if (message.isEmpty) {
