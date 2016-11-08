@@ -3,7 +3,7 @@ package specs
 import java.io.InputStream
 import java.util
 
-import com.hp.hpl.jena.rdf.model._
+import org.apache.jena.rdf.model._
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.collection.JavaConversions._

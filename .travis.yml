@@ -13,6 +13,12 @@ scala:
 jdk:
   - oraclejdk8
 
+cache:
+  directories:
+  - $HOME/.m2
+  - $HOME/.ivy2/cache
+  - $HOME/.sbt/boot/scala-$TRAVIS_SCALA_VERSION
+
 after_success:
   - bash <(curl -s https://codecov.io/bash)
 

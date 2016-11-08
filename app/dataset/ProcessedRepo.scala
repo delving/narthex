@@ -19,8 +19,8 @@ package dataset
 import java.io._
 import java.lang.Boolean.FALSE
 
-import com.hp.hpl.jena.query.{Dataset, DatasetFactory}
 import org.apache.commons.io.input.CountingInputStream
+import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -190,7 +190,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
     override def isActive = readerOpt.isDefined
 
     override def readChunkOpt: Option[GraphChunk] = {
-      val dataset = DatasetFactory.createMem()
+      val dataset = DatasetFactory.createGeneral()
       val recordText = new StringBuilder
       var graphCount = 0
       var chunkComplete = false
