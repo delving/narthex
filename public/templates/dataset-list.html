@@ -103,19 +103,13 @@
                     <span data-ng-show="dataset.datasetName" class="name-field">{{ dataset.datasetName }}</span>
                 </td>
                 <td class="error">
-                    <a href class="" data-ng-click="showInvalidRecordsPage()" data-ng-show="dataset.showCounters" data-ng-class="{'disabled': dataset.processedInvalid <= 0 }">
-                        {{ dataset.processedInvalid }}
-                    </a>
+                    {{ dataset.processedInvalid }}
                 </td>
                 <td class="valid">
-                    <a href class="" data-ng-click="goToDataset()" data-ng-show="dataset.showCounters">
-                        {{ dataset.processedValid }}
-                    </a>
+                    {{ dataset.processedValid }}
                 </td>
                 <td class="total">
-                    <a href class="disabled" data-ng-show="dataset.showCounters">
-                        {{ dataset.datasetRecordCount }}
-                    </a>
+                    {{ dataset.datasetRecordCount }}
                 </td>
                 <td class="status">
                             <span ng-switch="dataset.stateCurrent.name" class="indicator" data-ng-class="{stateEmpty:'empty',
