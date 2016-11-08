@@ -118,11 +118,11 @@ object DatasetActor {
 
   case class StartAnalysis(processed: Boolean)
 
-  case class Incremental(modifiedAfter: Option[DateTime], file: File)
+  case class Scheduled(modifiedAfter: Option[DateTime], file: File)
 
-  case class StartProcessing(incrementalOpt: Option[Incremental])
+  case class StartProcessing(scheduledOpt: Option[Scheduled])
 
-  case class StartSaving(incrementalOpt: Option[Incremental])
+  case class StartSaving(scheduledOpt: Option[Scheduled])
 
   case class StartSkosification(skosifiedField: SkosifiedField)
 
@@ -332,14 +332,14 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       }
 
-    case Event(StartProcessing(incrementalOpt), Dormant) =>
+    case Event(StartProcessing(scheduledOpt), Dormant) =>
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext, orgContext), "source-processor")
-      sourceProcessor ! Process(incrementalOpt)
+      sourceProcessor ! Process(scheduledOpt)
       goto(Processing) using Active(dsInfo.spec, Some(sourceProcessor), PROCESSING)
 
-    case Event(StartSaving(incrementalOpt), Dormant) =>
+    case Event(StartSaving(scheduledOpt), Dormant) =>
       val graphSaver = context.actorOf(GraphSaver.props(datasetContext, orgContext), "graph-saver")
-      graphSaver ! SaveGraphs(incrementalOpt)
+      graphSaver ! SaveGraphs(scheduledOpt)
       goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
@@ -386,7 +386,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           case Some(file) =>
             if (datasetContext.sipMapperOpt.isDefined) {
               log.info(s"There is a mapper, so trigger processing")
-              self ! StartProcessing(Some(Incremental(mod, file)))
+              self ! StartProcessing(Some(Scheduled(mod, file)))
             }
             else {
               log.info("No mapper, so generating sip zip only")
@@ -471,14 +471,14 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
 
   when(Processing) {
 
-    case Event(ProcessingComplete(validRecords, invalidRecords, incrementalOpt), active: Active) =>
+    case Event(ProcessingComplete(validRecords, invalidRecords, scheduledOpt), active: Active) =>
       dsInfo.setState(PROCESSED)
-      if (incrementalOpt.isDefined) {
+      if (scheduledOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
         dsInfo.setState(PROCESSABLE)
         dsInfo.setState(INCREMENTAL_SAVED)
         val graphSaver = context.actorOf(GraphSaver.props(datasetContext, orgContext), "graph-saver")
-        graphSaver ! SaveGraphs(incrementalOpt)
+        graphSaver ! SaveGraphs(scheduledOpt)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
       }
