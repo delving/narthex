@@ -19,7 +19,7 @@ package record
 import java.io.{File, FileOutputStream}
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{Incremental, WorkFailure}
+import dataset.DatasetActor.{Scheduled, WorkFailure}
 import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
 import dataset.SipRepo.URIErrorsException
@@ -49,9 +49,9 @@ object SourceProcessor {
 
   case class SipZipGenerationComplete(recordCount: Int)
 
-  case class Process(incrementalOpt: Option[Incremental])
+  case class Process(scheduledOpt: Option[Scheduled])
 
-  case class ProcessingComplete(validRecords: Int, invalidRecords: Int, incrementalOpt: Option[Incremental])
+  case class ProcessingComplete(validRecords: Int, invalidRecords: Int, scheduledOpt: Option[Scheduled])
 
   def props(datasetContext: DatasetContext, orgContext: OrgContext) = Props(new SourceProcessor(datasetContext, orgContext))
 
@@ -126,11 +126,11 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
       }
     }
 
-    case Process(incrementalOpt) => actorWork(context) {
+    case Process(scheduledOpt) => actorWork(context) {
       val sourceFacts = datasetContext.sourceRepoOpt.map(_.sourceFacts).getOrElse(throw new RuntimeException(s"No source facts for $datasetContext"))
       val sipMapper = datasetContext.sipMapperOpt.getOrElse(throw new RuntimeException(s"No sip mapper for $datasetContext"))
 
-      if (incrementalOpt.isEmpty) datasetContext.processedRepo.clear()
+      if (scheduledOpt.isEmpty) datasetContext.processedRepo.clear()
 
       val processedOutput = datasetContext.processedRepo.createOutput
       val xmlOutput = createWriter(processedOutput.xmlFile)
@@ -147,7 +147,7 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
                          |===== $invalidRecords: $heading === ( $id )=====
                          |$error
              """.stripMargin.trim
-        if (!incrementalOpt.isEmpty) {
+        if (!scheduledOpt.isEmpty) {
           harvestingLogger.write(errorString)
           harvestingLogger.newLine()
         }
@@ -185,7 +185,7 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
 
       val idFilter = dsInfo.getIdFilter
 
-      incrementalOpt.map { incremental =>
+      scheduledOpt.map { incremental =>
         log.info(s"Processing incremental $sourceFacts")
         val (source, readProgress) = FileHandling.sourceFromFile(incremental.file)
         try {
@@ -212,11 +212,15 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
       xmlOutput.close()
       errorOutput.close()
       if (invalidRecords == 0) deleteQuietly(processedOutput.errorFile)
-      val incrementalOptOutput = if (!incrementalOpt.isEmpty) Some(incrementalOpt.get.copy(file=processedOutput.xmlFile)) else incrementalOpt
-      harvestingLogger.write(s"Processed Source Records - ${LocalDateTime.now()} - valid records: $validRecords - invalid records: $invalidRecords - incremental: ${!incrementalOpt.isEmpty}")
+      val scheduledOptOutput = if (!scheduledOpt.isEmpty) {
+        Some(scheduledOpt.get.copy(file=processedOutput.xmlFile))
+      } else {
+        scheduledOpt
+      }
+      harvestingLogger.write(s"Processed Source Records - ${LocalDateTime.now()} - valid records: $validRecords - invalid records: $invalidRecords - scheduled: ${!scheduledOpt.isEmpty}")
       harvestingLogger.newLine()
       harvestingLogger.close()
-      context.parent ! ProcessingComplete(validRecords, invalidRecords, incrementalOptOutput)
+      context.parent ! ProcessingComplete(validRecords, invalidRecords, scheduledOptOutput)
     }
   }
 

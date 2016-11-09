@@ -16,7 +16,7 @@
 
 package triplestore
 
-import com.hp.hpl.jena.rdf.model.{Model, Property}
+import org.apache.jena.rdf.model.{Model, Property}
 import services.StringHandling.createGraphName
 
 object GraphProperties {

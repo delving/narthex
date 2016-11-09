@@ -49,7 +49,7 @@ define(["angular"], function () {
         $scope.dropSupported = false;
         $scope.newFileOpen = false;
         $scope.newDataset = {};
-        $scope.specFilter = "";
+        $scope.specOrNameFilter = "";
         $scope.stateFilter = "";
         $scope.socketSubscribers = {};
 
@@ -99,15 +99,13 @@ define(["angular"], function () {
         /********************************************************************/
         /* dataset filtering                                                */
         /********************************************************************/
-        $scope.showToolbar = false;
-        $scope.toggleToolbar = function () {
-            $scope.showToolbar = !$scope.showToolbar;
-        }
-
 
         function filterDatasetBySpec(ds) {
-            var filter = $scope.specFilter.trim();
+            var filter = $scope.specOrNameFilter.trim();
             ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
+            if (ds.datasetName != null){
+                ds.visible = !filter || ds.datasetName.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
+            }
         }
 
         function filterDatasetByState(ds) {
@@ -147,7 +145,7 @@ define(["angular"], function () {
             return ds.visible;
         };
 
-        $scope.$watch("specFilter", function () {
+        $scope.$watch("specOrNameFilter", function () {
             _.each($scope.datasets, filterDatasetBySpec);
         });
 
@@ -248,7 +246,7 @@ define(["angular"], function () {
         };
 
         $scope.fetchDatasetList = function () {
-            $scope.specFilter = "";
+            $scope.specOrNameFilter = "";
             datasetListService.listDatasets().then(function (array) {
                 _.forEach(array, $scope.decorateDataset);
                 $scope.datasets = array;
@@ -410,11 +408,20 @@ define(["angular"], function () {
         $scope.apiDownloadSipZip = "/narthex/sip-app/" + $scope.dataset.datasetSpec;
         $scope.apiWebResourcePath = "/data/webresource/" + $scope.dataset.orgId + "/" + $scope.dataset.datasetSpec + "/source/";
         $scope.sparqlPath = $scope.user.naveDomain + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
-        if($scope.dataset.harvestURL){
+        if($scope.dataset.harvestURL && $scope.dataset.harvestType == 'pmh') {
             $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
+            if ($scope.dataset.harvestDataset) {
+                $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&set=" + $scope.dataset.harvestDataset;
+            }
         }
-        if ($scope.dataset.harvestDataset) {
-            $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&set=" + $scope.dataset.harvestDataset;
+        if ($scope.dataset.harvestType == 'adlib' && $scope.dataset.harvestURL) {
+            $scope.adlibPreviewBase = $scope.dataset.harvestURL.replace('?', '')
+            if ($scope.dataset.harvestDataset) {
+                $scope.adlibPreviewBase = $scope.adlibPreviewBase + "?dataset=" +$scope.dataset.harvestDataset;
+            }
+            var connector = $scope.dataset.harvestDataset ? "&" : "?";
+            var searchValue = $scope.dataset.harvestSearch ? $scope.dataset.harvestSearch : "all";
+            $scope.adlibPreviewBase = $scope.adlibPreviewBase + connector + "search=" + searchValue ;
         }
         function setUnchanged() {
             function unchanged(fieldNameList) {

@@ -17,7 +17,7 @@
 package triplestore
 
 import akka.actor.{Actor, ActorLogging, Props}
-import dataset.DatasetActor.{Incremental, WorkFailure}
+import dataset.DatasetActor.{Scheduled, WorkFailure}
 import dataset.DatasetContext
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import org.OrgContext
@@ -30,7 +30,7 @@ object GraphSaver {
 
   case object GraphSaveComplete
 
-  case class SaveGraphs(incrementalOpt: Option[Incremental])
+  case class SaveGraphs(scheduledOpt: Option[Scheduled])
 
   def props(datasetContext: DatasetContext, orgContext: OrgContext) = Props(new GraphSaver(datasetContext, orgContext))
 
@@ -65,11 +65,11 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
 
   override def receive = {
 
-    case SaveGraphs(incrementalOpt) => actorWork(context) {
+    case SaveGraphs(scheduledOpt) => actorWork(context) {
       log.info("Save graphs")
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
-      reader = Some(datasetContext.processedRepo.createGraphReader(incrementalOpt.map(_.file), saveTime, progressReporter))
+      reader = Some(datasetContext.processedRepo.createGraphReader(scheduledOpt.map(_.file), saveTime, progressReporter))
       sendGraphChunkOpt()
     }
 

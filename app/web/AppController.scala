@@ -31,15 +31,15 @@ import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
 import mapping.VocabInfo
 import mapping.VocabInfo._
+import nl.grons.metrics.scala.DefaultInstrumented
 import org.OrgActor.DatasetMessage
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.OrgContext
-import play.api.{Logger}
+import play.api.Logger
 import play.api.cache.CacheApi
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json._
-import play.api.libs.streams.ActorFlow
 import play.api.mvc._
 import services.Temporal._
 import triplestore.GraphProperties._
@@ -52,15 +52,24 @@ import scala.concurrent.{Await, Future}
 class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sessionTimeoutInSeconds: Int)
                    (implicit val ts: TripleStore, implicit val actorSystem: ActorSystem,
                     implicit val materializer: Materializer)
-  extends Controller with Security {
+  extends Controller with Security with DefaultInstrumented {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
+  val getListDsTimer = metrics.timer("list.datasets")
+
+
+  metrics.cachedGauge("datasets.num.total", 1.minute) {
+    val eventualList = listDsInfo(orgContext)
+    val list: List[DsInfo] = Await.result(eventualList, 50.seconds)
+    list.size
+  }
 
   def sendRefresh(spec: String) = orgContext.orgActor ! DatasetMessage(spec, Command("refresh"))
 
   def listDatasets = SecureAsync() { session => request =>
-    listDsInfo(orgContext).map(list => {
+    getListDsTimer.timeFuture(listDsInfo(orgContext)).map(list => {
+
       val jsonBytes: Array[Byte] = Json.toJson(list).toString().toCharArray.map(_.toByte)
       val bos = new ByteArrayOutputStream(jsonBytes.length)
       val gzip = new GZIPOutputStream(bos)
