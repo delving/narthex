@@ -60,6 +60,7 @@ object DsInfo {
 
     type DsState = Value
 
+    val EMPTY = Value("stateEmpty")
     val RAW = Value("stateRaw")
     val RAW_ANALYZED = Value("stateRawAnalyzed")
     val SOURCED = Value("stateSourced")
@@ -242,12 +243,14 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
 
     def max(lh: (DsState.Value, DateTime), rh: (DsState.Value, DateTime)) = if (lh._2.isAfter(rh._2)) lh else rh
 
-    val latestStateAndTimeStamp = DsState.values.
-      map( state => (state, getTimeProp(NXProp(state.toString, GraphProperties.timeProp)))).
+    val statesAndTimestamps = DsState.values.
+      map(state => (state, getTimeProp(NXProp(state.toString, GraphProperties.timeProp)))).
       filter(stateAndTimeStampOpt => stateAndTimeStampOpt._2.isDefined).
-      map(stateAndTimestamp => (stateAndTimestamp._1, stateAndTimestamp._2.get)).
-      reduceLeft(max)
-    DsState.withName(latestStateAndTimeStamp._1.toString)
+      map(stateAndTimestamp => (stateAndTimestamp._1, stateAndTimestamp._2.get))
+
+    val actualState = if (statesAndTimestamps.isEmpty) DsState.EMPTY else statesAndTimestamps.reduceLeft(max)._1
+
+    DsState.withName(actualState.toString)
 
   }
 
