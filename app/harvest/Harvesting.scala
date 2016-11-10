@@ -117,7 +117,7 @@ trait Harvesting {
   }
   catch {
     case e: Exception =>
-      Logger.warn(s"$tag: $e")
+      Logger.info(s"$tag: $e")
       default
   }
 

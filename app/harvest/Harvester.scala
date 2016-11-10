@@ -109,7 +109,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsClient: WSClien
   def handleFailure(future: Future[Any], strategy: HarvestStrategy, message: String) = {
     future.onFailure {
       case e: Exception =>
-        log.warn(s"Harvest failure", e)
+        log.info(s"Harvest failure", e)
         finish(strategy, Some(e.toString))
     }
   }
