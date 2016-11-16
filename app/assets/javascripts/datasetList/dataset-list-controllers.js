@@ -314,15 +314,12 @@ define(["angular"], function () {
                         count: parseInt(message.count)
                     });
                     $scope.datasetBusy = true;
-                    //console.log("PROGRESS: " + message.datasetSpec, $scope.dataset.progress);
                 }
                 else {
                     console.log($scope.dataset);
                     $scope.dataset = $scope.decorateDataset(message);
                     $scope.updateDatasetList(message);
                     $scope.updateDatasetStateCounter();
-                    $scope.datasetListOrder($scope.currentSortOrder);
-                    //console.log("IDLE: " + message.datasetSpec, message);
                     $scope.datasetBusy = false;
                 }
             });
