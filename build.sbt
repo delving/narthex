@@ -63,7 +63,7 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "log4j-over-slf4j" % "1.7.21",
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "5.0.0",
-  "eu.delving" % "sip-core" % "1.0.9",
+  "eu.delving" % "sip-core" % "1.0.11",
   "de.threedimensions" %% "metrics-play" % "2.5.13",
   "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime",
   "nl.grons" %% "metrics-scala" % "3.5.5_a2.3",
@@ -94,7 +94,7 @@ libraryDependencies += cache
 
 libraryDependencies += ws
 
-resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
+resolvers += Resolver.mavenLocal
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 

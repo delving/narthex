@@ -134,18 +134,6 @@ object Sip {
 
   val INPUT_METADATA = "/input/metadata/"
 
-  //  val NAMESPACES = Map(
-  //    "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-  //    "geo" -> "http://www.w3.org/2003/01/geo/wgs84_pos#",
-  //    "skos" -> "http://www.w3.org/2004/02/skos/core#",
-  //    "rdfs" -> "http://www.w3.org/2000/01/rdf-schema#",
-  //    "cc" -> "http://creativecommons.org/ns#",
-  //    "owl" -> "http://www.w3.org/2002/07/owl#",
-  //    "foaf" -> "http://xmlns.com/foaf/0.1/",
-  //    "dbpedia-owl" -> "http://dbpedia.org/ontology/",
-  //    "dbprop" -> "http://dbpedia.org/property/"
-  //  )
-
 }
 
 class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
@@ -274,12 +262,11 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
   class MappingEngine(sipMapping: SipMapping) extends SipMapper {
     val now = new DateTime
-    val groovy = new GroovyCodeResource(getClass.getClassLoader)
     val serializer = new XmlSerializer
     val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
     val factory = new MetadataRecordFactory(namespaces)
 
-    val runner = new MappingRunner(groovy, sipMapping.recMapping, null, false)
+
 
     override val datasetName = sipMapping.spec
 
@@ -287,7 +274,12 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
     override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
       val metadataRecord = factory.metadataRecordFrom(pocket.getText)
-      val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord), runner.getRecDefTree)
+
+      val codeGenerator = new CodeGenerator(sipMapping.recMapping).withTrace(false)
+
+      val runner = new BulkMappingRunner(sipMapping.recMapping, codeGenerator.toRecordMappingCode)
+      val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord),
+        sipMapping.recMapping.getRecDefTree)
       // check uri errors
       val uriErrors = result.getUriErrors.toList
       if (uriErrors.nonEmpty) throw new URIErrorsException(uriErrors)

@@ -95,64 +95,6 @@ define(["angular"], function () {
         $scope.$watch("newDataset.specTyped", checkNewEnabled);
         $scope.$watch("newDataset.character", checkNewEnabled);
 
-
-        /********************************************************************/
-        /* dataset filtering                                                */
-        /********************************************************************/
-
-        function filterDatasetBySpec(ds) {
-            var filter = $scope.specOrNameFilter.trim();
-            ds.visible = !filter || ds.datasetSpec.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
-            if (ds.datasetName != null){
-                ds.visible = !filter || ds.datasetName.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
-            }
-        }
-
-        function filterDatasetByState(ds) {
-            var filter = $scope.stateFilter;
-            if (filter != 'stateEmpty') {
-                ds.visible = !filter || ds.stateCurrent.name === filter;
-            }
-            else {
-                ds.visible = !filter || ds.empty;
-            }
-        }
-
-        $scope.datasetListOrder = function (orderBy) {
-            switch (orderBy) {
-                case "state":
-                    $scope.datasets = _.sortBy($scope.datasets, function (ds) {return ds.stateCurrent.name});
-                    $scope.currentSortOrder = orderBy;
-                    break;
-                case "lastmodified":
-                    $scope.datasets = _.sortBy($scope.datasets, function (ds) {return ds.stateCurrent.date}).reverse();
-                    $scope.currentSortOrder = orderBy;
-                    break;
-                default:
-                    $scope.datasets = _.sortBy($scope.datasets, 'datasetSpec');
-                    $scope.currentSortOrder = 'spec';
-                    break;
-            }
-            //console.log($scope.datasets)
-        };
-
-        $scope.setStateFilter = function(state){
-            $scope.stateFilter = state;
-            //filterDatasetByState(ds)
-        };
-
-        $scope.datasetVisibleFilter = function (ds) {
-            return ds.visible;
-        };
-
-        $scope.$watch("specOrNameFilter", function () {
-            _.each($scope.datasets, filterDatasetBySpec);
-        });
-
-        $scope.$watch("stateFilter", function () {
-            _.each($scope.datasets, filterDatasetByState);
-        });
-
         datasetListService.listPrefixes().then(function (prefixes) {
             $scope.characters = _.map(prefixes, function (prefix) {
                 // for each prefix we should be able to accept a pre-mapped file
@@ -241,12 +183,10 @@ define(["angular"], function () {
             dataset.showMapTerms = _.some(dataset.states, function (state) {
                 return state.name == 'stateProcessed' || state.name == 'stateIncrementalSaved';
             });
-            filterDatasetBySpec(dataset);
             return dataset;
         };
 
         $scope.fetchDatasetList = function () {
-            $scope.specOrNameFilter = "";
             datasetListService.listDatasets().then(function (array) {
                 _.forEach(array, $scope.decorateDataset);
                 $scope.datasets = array;
@@ -374,15 +314,12 @@ define(["angular"], function () {
                         count: parseInt(message.count)
                     });
                     $scope.datasetBusy = true;
-                    //console.log("PROGRESS: " + message.datasetSpec, $scope.dataset.progress);
                 }
                 else {
                     console.log($scope.dataset);
                     $scope.dataset = $scope.decorateDataset(message);
                     $scope.updateDatasetList(message);
                     $scope.updateDatasetStateCounter();
-                    $scope.datasetListOrder($scope.currentSortOrder);
-                    //console.log("IDLE: " + message.datasetSpec, message);
                     $scope.datasetBusy = false;
                 }
             });
