@@ -157,7 +157,10 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
 
       def catchPocket(rawPocket: Pocket): Unit = {
         progress.get.checkInterrupt()
+        val startAll = System.currentTimeMillis()
         val pocketTry = sipMapper.executeMapping(rawPocket)
+        val processing = System.currentTimeMillis() - startAll
+        val startWrite = System.currentTimeMillis()
         pocketTry match {
           case Success(pocket) =>
             pocket.writeTo(xmlOutput)
@@ -178,9 +181,12 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
         val total = validRecords + invalidRecords
         if (total % 10000 == 0) {
           val now = System.currentTimeMillis()
-          log.info(s"Processing $total: ${now - time}ms")
+          log.debug(s"Processing $total: ${now - time}ms")
           time = now
         }
+        val writing = System.currentTimeMillis() - startWrite
+        val totalTime = System.currentTimeMillis() - startAll
+        log.debug(s"Total: ${totalTime}. Processing: ${processing}, writing: $writing")
       }
 
       val idFilter = dsInfo.getIdFilter
