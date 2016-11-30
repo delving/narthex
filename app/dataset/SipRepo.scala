@@ -266,7 +266,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
     val factory = new MetadataRecordFactory(namespaces)
 
-
+    val runner = new BulkMappingRunner(sipMapping.recMapping, new CodeGenerator(sipMapping.recMapping).withTrace(false).toRecordMappingCode)
 
     override val datasetName = sipMapping.spec
 
@@ -274,10 +274,6 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
     override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
       val metadataRecord = factory.metadataRecordFrom(pocket.getText)
-
-      val codeGenerator = new CodeGenerator(sipMapping.recMapping).withTrace(false)
-
-      val runner = new BulkMappingRunner(sipMapping.recMapping, codeGenerator.toRecordMappingCode)
       val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord),
         sipMapping.recMapping.getRecDefTree)
       // check uri errors
