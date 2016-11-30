@@ -493,7 +493,11 @@
                     <i class="fa fa-binoculars"></i>
                     <span>Sample</span>
                 </button>
-                <a href="{{ adlibPreviewBase }}" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                <a href="{{ pmhPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'pmh'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                    <i class="fa fa-binoculars"></i>
+                    <span>Preview</span>
+                </a>
+                <a href="{{ adlibPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
