@@ -184,6 +184,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
         val reporter = DatadogReporter.forRegistry(registry)
           .withTransport(transport)
           .withTags(tags.asJava)
+          .withPrefix("narthex")
           .build()
         reporter.start(config.intervalInSeconds, TimeUnit.SECONDS)
         Logger.info(s"Started Datadog reporter, reporting interval: ${config.intervalInSeconds} seconds")
