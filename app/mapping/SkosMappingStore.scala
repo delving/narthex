@@ -20,7 +20,7 @@ import java.util.UUID
 
 import org.{OrgContext, User}
 import play.api.libs.json.Json
-import play.api.libs.ws.WSClient
+import play.api.libs.ws.WSAPI
 import services.StringHandling.createGraphName
 import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
@@ -74,14 +74,14 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, orgContext: OrgConte
 
 }
 
-class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext, wsClient: WSClient)(implicit ec: ExecutionContext, ts: TripleStore) {
+class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext, wsApi: WSAPI)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
 
   def toggleNaveMapping(mapping: SkosMapping, delete: Boolean = false) = {
 
     val skosMappingApi = s"${orgContext.appConfig.naveApiUrl}/api/index/narthex/toggle/proxymapping/"
-    val request = wsClient.url(s"$skosMappingApi").withHeaders(
+    val request = wsApi.url(s"$skosMappingApi").withHeaders(
       "Content-Type" -> "application/json; charset=utf-8",
       "Accept" -> "application/json",
       "Authorization" -> s"Token ${orgContext.appConfig.naveApiAuthToken}"

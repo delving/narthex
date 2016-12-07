@@ -38,17 +38,17 @@ import play.api.Logger
 import play.api.libs.json.{Json, Writes}
 import record.SourceProcessor
 import record.SourceProcessor._
-import services.{MailService, ProgressReporter}
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
+import services.{MailService, ProgressReporter}
 import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 import triplestore.Sparql.SkosifiedField
 
-import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -301,7 +301,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
         val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut,
-          orgContext.wsClient, harvestingExecutionContext), "harvester")
+          orgContext.wsApi, harvestingExecutionContext), "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {

@@ -406,7 +406,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
   def toggleNaveSkosField(datasetUri: String, propertyUri: String, delete: Boolean = false) = {
 
     val skosFieldApi = s"${naveApiUrl}/api/index/narthex/toggle/proxyfield/"
-    val request = orgContext.wsClient.url(s"$skosFieldApi").withHeaders(
+    val request = orgContext.wsApi.url(s"$skosFieldApi").withHeaders(
       "Content-Type" -> "application/json; charset=utf-8",
       "Accept" -> "application/json",
       "Authorization" -> s"Token ${naveApiAuthToken}"
@@ -451,7 +451,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
   }
 
   def termCategoryMap(categoryVocabularyInfo: VocabInfo): Map[String, List[String]] = {
-    val mappingStore = new TermMappingStore(this, orgContext, orgContext.wsClient)
+    val mappingStore = new TermMappingStore(this, orgContext, orgContext.wsApi)
     val mappings = Await.result(mappingStore.getMappings(categories = true), 1.minute)
     val uriLabelMap = categoryVocabularyInfo.vocabulary.uriLabelMap
     val termUriLabels = mappings.flatMap { mapping =>
@@ -503,7 +503,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
 
   def bulkApiUpdate(bulkActions: String) = {
     Logger.debug(bulkActions)
-    val request = orgContext.wsClient.url(s"$bulkApi").withHeaders(
+    val request = orgContext.wsApi.url(s"$bulkApi").withHeaders(
       "Content-Type" -> "text/plain; charset=utf-8",
       "Accept" -> "application/json",
       "Authorization" -> s"Token ${naveApiAuthToken}"

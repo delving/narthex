@@ -98,7 +98,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   val appConfig = initAppConfig(narthexDataDir)
 
-  lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsClient,
+  lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsApi,
     mailService, authenticationService, userRepository, orgActorRef)
 
   lazy val router = new Routes(httpErrorHandler, mainController, webSocketController, appController,

@@ -21,7 +21,7 @@ import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 import dataset.SipRepo.FACTS_FILE
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.Logger
-import play.api.libs.ws.WSClient
+import play.api.libs.ws.WSAPI
 import triplestore.GraphProperties._
 
 import scala.concurrent.duration._
@@ -76,15 +76,15 @@ object SipFactory {
 
 }
 
-class SipFactory(home: File, rdfBaseUrl: String, wsClient: WSClient)(implicit ec: ExecutionContext) {
+class SipFactory(home: File, rdfBaseUrl: String, wsApi: WSAPI)(implicit ec: ExecutionContext) {
 
-  lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map( home => new SipPrefixRepo(home, rdfBaseUrl, wsClient))
+  lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map( home => new SipPrefixRepo(home, rdfBaseUrl, wsApi))
 
   def prefixRepo(prefix: String) = prefixRepos.find(_.prefix == prefix)
 
 }
 
-class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient)(implicit ec: ExecutionContext) {
+class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: ExecutionContext) {
 
   import dataset.SipFactory._
 
