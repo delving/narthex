@@ -139,7 +139,7 @@ object DatasetActor {
 
 class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
                    orgContext: OrgContext, harvestingExecutionContext: ExecutionContext)
-  extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
+  extends LoggingFSM[DatasetActorState, DatasetActorData] with ActorLogging {
 
   import context.dispatcher
 
@@ -407,7 +407,6 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           dsInfo.setState(SOURCED)
           dsInfo.setLastHarvestTime(incremental = false)
 
-
         case ModifiedAfter(mod, _) =>
           processIncremental(fileOpt, noRecordsMatch, Some(mod))
 
@@ -591,9 +590,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
   }
 
   onTransition {
-    case fromState -> Idle =>
-      log.info(s"State to Idle from $fromState")
-      broadcastIdleState()
+    case _ -> Idle => broadcastIdleState()
   }
 
 }
