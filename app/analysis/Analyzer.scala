@@ -37,10 +37,6 @@ import services._
 
 import scala.concurrent._
 
-/*
- * @author Gerald de Jong <gerald@delving.eu>
- */
-
 object Analyzer {
 
   case class AnalyzeFile(file: File, processed: Boolean)
