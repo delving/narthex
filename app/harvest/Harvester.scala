@@ -19,7 +19,7 @@ package harvest
 import java.io.{File, FileOutputStream}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.pipe
 import dataset.DatasetActor._
 import dataset.DatasetContext
@@ -49,9 +49,10 @@ object Harvester {
 }
 
 class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
-                implicit val harvestingExecutionContext: ExecutionContext) extends Actor with Harvesting {
+                implicit val harvestingExecutionContext: ExecutionContext) extends Actor
+  with Harvesting
+  with ActorLogging {
 
-  val log = Logger
   var tempFileOpt: Option[File] = None
   var zipOutputOpt: Option[ZipOutputStream] = None
   var pageCount = 0
