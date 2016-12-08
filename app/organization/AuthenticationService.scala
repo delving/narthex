@@ -1,4 +1,4 @@
-package org
+package organization
 
 import nxutil.Utils
 import triplestore.Sparql._

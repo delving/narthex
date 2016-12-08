@@ -18,7 +18,7 @@ package mapping
 
 import java.util.UUID
 
-import org.{OrgContext, User}
+import organization.{OrgContext, User}
 import play.api.libs.json.Json
 import play.api.libs.ws.WSAPI
 import services.StringHandling.createGraphName

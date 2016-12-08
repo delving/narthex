@@ -21,7 +21,7 @@ import java.io.FileInputStream
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
 import dataset.SipRepo.AvailableSip
-import org.OrgContext
+import organization.OrgContext
 import org.apache.commons.io.IOUtils
 import play.api.http.ContentTypes
 import play.api.libs.json.Json

@@ -31,7 +31,7 @@ import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import mapping.Skosifier.SkosificationComplete
 import mapping.{CategoryCounter, Skosifier}
-import org.OrgContext
+import organization.OrgContext
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import play.api.Logger

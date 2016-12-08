@@ -19,8 +19,8 @@ package triplestore
 import dataset.DsInfo
 import dataset.DsInfo._
 import mapping.VocabInfo.CATEGORIES_SPEC
-import org.{Profile, User}
 import org.joda.time.DateTime
+import organization.{Profile, User}
 import play.api.Logger
 import play.api.libs.json.JsValue
 import services.StringHandling._

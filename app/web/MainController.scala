@@ -20,7 +20,7 @@ import java.io.File
 
 import controllers.WebJarAssets
 import org.webjars.play.RequireJS
-import org.{AuthenticationService, Profile, User, UserRepository}
+import organization.{AuthenticationService, Profile, User, UserRepository}
 import play.api._
 import play.api.cache.{CacheApi, Cached}
 import play.api.libs.concurrent.Execution.Implicits._

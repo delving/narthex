@@ -14,7 +14,7 @@
 //    limitations under the License.
 //===========================================================================
 
-package org
+package organization
 
 import nxutil.Utils
 import play.api.Logger

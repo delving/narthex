@@ -2,7 +2,7 @@ package services
 
 import java.io.{PrintWriter, StringWriter}
 
-import org.UserRepository
+import organization.UserRepository
 import play.api.Logger
 import play.api.libs.mailer._
 

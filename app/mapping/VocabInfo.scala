@@ -21,7 +21,7 @@ import java.io.StringWriter
 import org.apache.jena.rdf.model._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
-import org.{OrgContext, User}
+import organization.{OrgContext, User}
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.{createGraphName, urlEncodeValue}

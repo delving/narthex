@@ -20,7 +20,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Scheduled, WorkFailure}
 import dataset.DatasetContext
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
-import org.OrgContext
+import organization.OrgContext
 import nxutil.Utils._
 import org.joda.time.DateTime
 import services.ProgressReporter

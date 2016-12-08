@@ -17,7 +17,7 @@
 package web
 
 import dataset.SipRepo.AvailableSip
-import org.OrgContext
+import organization.OrgContext
 import play.api.Logger
 import play.api.cache.CacheApi
 import play.api.mvc._

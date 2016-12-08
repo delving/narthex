@@ -12,24 +12,24 @@ import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
 import init.MyApplicationLoader.DatadogReportingConfig
 import mapping.PeriodicSkosifyCheck
-import org._
 import org.coursera.metrics.datadog.DatadogReporter
 import org.coursera.metrics.datadog.transport.UdpTransport
 import org.webjars.play.RequireJS
-import play.api._
+import organization._
 import play.api.ApplicationLoader.Context
+import play.api._
 import play.api.cache.EhCacheComponents
-import triplestore.Fuseki
-import web._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.mailer._
 import play.api.libs.ws.ahc.AhcWSComponents
+import router.Routes
 import services.{MailService, MailServiceImpl}
+import triplestore.Fuseki
+import web._
 
-import scala.concurrent.duration._
-import collection.JavaConversions._
-import scala.concurrent.Future // this is the class that Play generates based on the contents of the Routes file
-import router.Routes // this is the class that Play generates based on the contents of the Routes file
+import scala.collection.JavaConversions._
+import scala.concurrent.Future
+import scala.concurrent.duration._ // this is the class that Play generates based on the contents of the Routes file
 
 object MyApplicationLoader {
   val topActorConfigProp = "topActor.initialPassword"

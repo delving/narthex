@@ -16,7 +16,7 @@
 
 package web
 
-import org.User
+import organization.User
 import play.Logger
 import play.api.cache.CacheApi
 import play.api.libs.json._

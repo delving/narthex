@@ -11,10 +11,14 @@
   <logger name="play" level="INFO" />
   <logger name="application" level="DEBUG" />
 
-  <!-- Set logging for all Akka library classes to INFO -->
+  <!-- Set logging for all Akka library classes to WARN -->
   <logger name="akka" level="WARN" />
-  <!-- Set a specific actor to DEBUG -->
-  <logger name="actors" level="DEBUG" />
+
+  <logger name="dataset" level="DEBUG" />
+  <logger name="analysis" level="DEBUG" />
+  <logger name="organization" level="DEBUG" />
+  <logger name="mapping" level="DEBUG" />
+
 
   <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF" />
 

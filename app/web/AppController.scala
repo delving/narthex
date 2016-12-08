@@ -32,10 +32,10 @@ import mapping.SkosVocabulary._
 import mapping.VocabInfo
 import mapping.VocabInfo._
 import nl.grons.metrics.scala.DefaultInstrumented
-import org.OrgActor.DatasetMessage
+import organization.OrgActor.DatasetMessage
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
-import org.OrgContext
+import organization.OrgContext
 import play.api.Logger
 import play.api.cache.CacheApi
 import play.api.libs.concurrent.Execution.Implicits._

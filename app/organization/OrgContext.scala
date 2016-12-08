@@ -14,7 +14,7 @@
 //    limitations under the License.
 //===========================================================================
 
-package org
+package organization
 
 import java.io.File
 
@@ -24,7 +24,7 @@ import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
 import init.AppConfig
 import mapping._
-import org.OrgActor.DatasetsCountCategories
+import organization.OrgActor.DatasetsCountCategories
 import play.api.cache.CacheApi
 import play.api.libs.ws.WSAPI
 import services.MailService
