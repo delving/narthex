@@ -52,10 +52,6 @@ import scala.concurrent.{Await, ExecutionContext}
 import scala.language.postfixOps
 import scala.util.Try
 
-/*
- * @author Gerald de Jong <gerald@delving.eu>
- */
-
 object DatasetActor {
 
   // state machine
