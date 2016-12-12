@@ -82,7 +82,7 @@ class MyApplicationLoader extends ApplicationLoader {
       filter( hasAdmin => !hasAdmin).
       map { hasAdmin =>
         userRepository.insertAdmin(initialPassword)
-        Logger.info(s"Inserted initial admin user, details")
+        Logger.info(s"Inserted initial admin user")
       }
     components.application
   }
