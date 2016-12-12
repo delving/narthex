@@ -6,11 +6,13 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Props}
 import com.codahale.metrics.MetricRegistry
+import com.codahale.metrics.health.HealthCheckRegistry
 import com.kenshoo.play.metrics.{MetricsController, MetricsFilterImpl, MetricsImpl}
 import controllers.WebJarAssets
 import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
 import init.MyApplicationLoader.DatadogReportingConfig
+import init.healthchecks.{AdminUserHealthCheck, FusekiHealthCheck}
 import mapping.PeriodicSkosifyCheck
 import org.coursera.metrics.datadog.DatadogReporter
 import org.coursera.metrics.datadog.transport.UdpTransport
@@ -108,6 +110,8 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   val harvestingExecutionContext = actorSystem.dispatchers.lookup("contexts.dataset-harvesting-execution-context")
   val metrics = new MetricsImpl(applicationLifecycle, configuration)
 
+  lazy val healthCheckRegistry = new HealthCheckRegistry
+
   val reporterOpt = initReporter(datadogConfig, metrics.defaultRegistry)
   lazy val metricsFilter = new MetricsFilterImpl(metrics)
 
@@ -123,7 +127,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   lazy val appController = new AppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds) (tripleStore, actorSystem, materializer)
   lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
-  lazy val infoController = new InfoController
+  lazy val infoController = new InfoController(healthCheckRegistry)
 
   lazy val webSocketController = new WebSocketController(defaultCacheApi, sessionTimeoutInSeconds)(actorSystem, materializer, defaultContext)
 
@@ -160,11 +164,16 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   lazy val mailService: MailService = new MailServiceImpl(mailerClient, userRepository, true)
 
+  private val fusekiTimeoutMillis = configLong("healthchecks.fuseki.timeoutMillis")
+  healthCheckRegistry.register("admin-user-exists", new AdminUserHealthCheck(userRepository, fusekiTimeoutMillis))
+  healthCheckRegistry.register("fuseki", new FusekiHealthCheck(tripleStore, fusekiTimeoutMillis))
+
   applicationLifecycle.addStopHook { () =>
     Future.successful({
       Logger.info("Narthex shutting down, cleaning up active threads...")
       harvestTicker.cancel()
     })
+
   }
 
   private def initReporter(configOpt: Option[DatadogReportingConfig], registry: MetricRegistry): Option[DatadogReporter] = {
@@ -212,6 +221,9 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   private def configString(name: String) = configuration.getString(name).
     getOrElse(throw new RuntimeException(s"Missing config string: $name"))
+
+  private def configLong(name: String) = configuration.getLong(name).
+    getOrElse(throw new RuntimeException(s"Missing/invalid config string: $name"))
 
   private def configStringNoSlash(name: String) = configString(name).replaceAll("\\/$", "")
 
