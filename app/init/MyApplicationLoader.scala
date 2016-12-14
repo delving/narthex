@@ -213,6 +213,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
     AppConfig(
       harvestTimeout, true, rdfBaseUrl,
       configStringNoSlash("naveApiUrl"), configStringNoSlash("naveAuthToken"),
+      configuration.getBoolean("mockBulkApi").getOrElse(false),
       narthexDataDir, configString("orgId"), narthexDomain, naveDomain,
       apiAccessKeys)
   }
@@ -235,7 +236,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   * by various components
   */
 case class AppConfig(harvestTimeOut: Long, useBulkApi: Boolean, rdfBaseUrl: String,
-                     naveApiUrl: String, naveApiAuthToken: String,
+                     naveApiUrl: String, naveApiAuthToken: String, mockBulkApi: Boolean,
                      narthexDataDir: File, orgId: String,
                      narthexDomain: String, naveDomain: String, apiAccessKeys: List[String]) {
 

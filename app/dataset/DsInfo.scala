@@ -92,7 +92,7 @@ object DsInfo {
     ts.query(selectDatasetSpecsQ).map { list =>
       list.map { entry =>
         val spec = entry("spec").text
-        new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)
+        new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext, orgContext.appConfig.mockBulkApi)
       }
     }
   }
@@ -118,7 +118,7 @@ object DsInfo {
     if (mapToPrefix != "-") m.add(subject, m.getProperty(datasetMapToPrefix.uri), m.createLiteral(mapToPrefix))
     ts.up.dataPost(getGraphName(spec, orgContext.appConfig.nxUriPrefix), m).map { ok =>
       val cacheName = getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)
-      val dsInfo = new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)
+      val dsInfo = new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext, orgContext.appConfig.mockBulkApi)
       orgContext.cacheApi.set(cacheName, dsInfo, cacheTime)
       dsInfo
     }
@@ -126,7 +126,7 @@ object DsInfo {
 
   def freshDsInfo(spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[Option[DsInfo]] = {
     ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix))).map(answer =>
-      if (answer) Some(new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)) else None
+      if (answer) Some(new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext, orgContext.appConfig.mockBulkApi)) else None
     )
   }
 
@@ -143,12 +143,13 @@ object DsInfo {
     }
   }
   def getDsInfo(spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore) = {
-    new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken, orgContext.appConfig.naveApiUrl, orgContext)
+    new DsInfo(spec, orgContext.appConfig.nxUriPrefix, orgContext.appConfig.naveApiAuthToken,
+      orgContext.appConfig.naveApiUrl, orgContext, orgContext.appConfig.mockBulkApi)
   }
 }
 
 class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: String,
-             val naveApiUrl: String, val orgContext: OrgContext)
+             val naveApiUrl: String, val orgContext: OrgContext, val mockBulkApi: Boolean)
             (implicit ec: ExecutionContext, ts: TripleStore) extends SkosGraph {
 
   import dataset.DsInfo._
@@ -508,7 +509,12 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
       "Accept" -> "application/json",
       "Authorization" -> s"Token ${naveApiAuthToken}"
     )
-    request.post(bulkActions).map(checkUpdateResponse(_, bulkActions))
+    if (mockBulkApi){
+      Logger.debug(s"Mocked $request")
+      Future.successful(true)
+    } else {
+      request.post(bulkActions).map(checkUpdateResponse(_, bulkActions))
+    }
   }
 
   def extractSpecIdFromGraphName(id: String): (String, String) = {
