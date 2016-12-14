@@ -18,7 +18,7 @@ class WebSocketController(val cacheApi: CacheApi, val sessionTimeoutInSeconds: I
                          (implicit actorSystem: ActorSystem,
                           mat: Materializer,
                           ec: ExecutionContext)
-  extends Controller with Security {
+  extends Controller {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 

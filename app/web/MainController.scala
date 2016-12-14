@@ -36,8 +36,8 @@ class MainController(val userRepository: UserRepository,
                      val cacheApi: CacheApi,
                      val apiAccessKeys: List[String],
                      val narthexDomain: String, val naveDomain: String, val orgId: String,
-                     val webJarAssets: WebJarAssets, val requireJS: RequireJS, val sessionTimeoutInSeconds: Int
-                    ) extends Controller with Security {
+                     val webJarAssets: WebJarAssets, val requireJS: RequireJS, val sessionTimeoutInSeconds: Int)
+  extends Controller {
 
   val cacheDuration = 1.day
 
@@ -53,13 +53,6 @@ class MainController(val userRepository: UserRepository,
 
   val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/${Utils.SIP_APP_VERSION}/sip-app-${Utils.SIP_APP_VERSION}-exejar.jar"
 
-  def userSession(user: User) = UserSession(
-    user,
-    apiKey = this.apiAccessKeys.head,  // this is weird but let's not yak-shave too much
-    narthexDomain = this.narthexDomain,
-    naveDomain = this.naveDomain
-  )
-
   def root = Action { request =>
     Redirect("/narthex/")
   }
@@ -68,114 +61,6 @@ class MainController(val userRepository: UserRepository,
     Ok(views.html.index(orgId, SIP_APP_URL, buildinfo.BuildInfo.version,
       buildinfo.BuildInfo.gitCommitSha, webJarAssets, requireJS)).withHeaders(
       CACHE_CONTROL -> "no-cache")
-  }
-
-  def login = Action.async(parse.json) { implicit request =>
-    val username = (request.body \ "username").as[String]
-    val password = (request.body \ "password").as[String]
-    Logger.debug(s"Login $username")
-
-    val authenticated: Future[Boolean] = authenticationService.authenticate(username, password)
-
-    authenticated.flatMap {
-      case false => Future.successful(Unauthorized("Username/password not found"))
-      case true => {
-        userRepository.loadActor(username).map { actor =>
-          val session = userSession(actor)
-          Ok(Json.toJson(session)).withSession(session)
-        }
-      }
-    }
-  }
-
-  def checkLogin = Action { implicit request =>
-    val maybeToken = request.headers.get(TOKEN)
-    maybeToken flatMap {
-      token =>
-        cacheApi.get[UserSession](token) map { session =>
-          Ok(Json.toJson(session)).withSession(session)
-        }
-    } getOrElse Unauthorized(Json.obj("err" -> "Check login failed")).discardingToken(TOKEN)
-  }
-
-  /** Logs the user out, i.e. invalidated the token. */
-  def logout = Action { implicit request =>
-    Logger.debug(s"Logout")
-    request.headers.get(TOKEN) match {
-      case Some(token) =>
-        Ok.discardingToken(token)
-      case None =>
-        Unauthorized(Json.obj("err" -> "Logout failed"))
-    }
-  }
-
-  def setProfile() = SecureAsync(parse.json) { session => implicit request =>
-    val nxProfile = Profile(
-      firstName = (request.body \ "firstName").as[String],
-      lastName = (request.body \ "lastName").as[String],
-      email = (request.body \ "email").as[String]
-    )
-    val setOp = userRepository.setProfile(session.user, nxProfile).map { ok =>
-      val newSession = session.copy(user = session.user.copy(profileOpt = Some(nxProfile)))
-      Ok(Json.toJson(newSession)).withSession(newSession)
-    }
-    setOp.onFailure {
-      case e: Throwable =>
-        Logger.error("Problem setting profile", e)
-    }
-    setOp
-  }
-
-  def listActors = Secure() { session => implicit request =>
-    Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
-  }
-
-  def createActor() = SecureAsync(parse.json) { session => implicit request =>
-    val username = (request.body \ "username").as[String]
-    val password = (request.body \ "password").as[String]
-    userRepository.createSubActor(session.user, username, password).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
-    }
-  }
-
-  def deleteActor() = SecureAsync(parse.json) { session => implicit request =>
-    val username = (request.body \ "username").as[String]
-    userRepository.deleteActor(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
-    }
-  }
-
-  def disableActor() = SecureAsync(parse.json) { session => implicit request =>
-    val username = (request.body \ "username").as[String]
-    userRepository.disableActor(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
-    }
-  }
-
-  def enableActor() = SecureAsync(parse.json) { session => implicit request =>
-    val username = (request.body \ "username").as[String]
-    userRepository.enableActor(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
-    }
-  }
-
-  def makeAdmin() = SecureAsync(parse.json) { session => implicit request =>
-    val username = (request.body \ "username").as[String]
-    userRepository.makeAdmin(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
-    }
-  }
-
-  def removeAdmin() = SecureAsync(parse.json) { session => implicit request =>
-    val username = (request.body \ "username").as[String]
-    userRepository.removeAdmin(username).map { actorOpt =>
-      Ok(Json.obj("actorList" -> userRepository.listSubActors(session.user)))
-    }
-  }
-
-  def setPassword() = SecureAsync(parse.json) { session => implicit request =>
-    val newPassword = (request.body \ "newPassword").as[String]
-    userRepository.setPassword(session.user, newPassword).map(alright => Ok)
   }
 
   def OkFile(file: File, attempt: Int = 0): Result = Utils.okFile(file, attempt)

@@ -24,43 +24,48 @@ import play.api.mvc._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class SipAppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sessionTimeoutInSeconds: Int) extends Controller with Security {
+class SipAppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sessionTimeoutInSeconds: Int)
+  extends Controller {
 
-  def listSipZips() = SecureAsync() { profile => implicit request =>
+  def listSipZips() = Action.async { request =>
     val availableSips: Seq[AvailableSip] = orgContext.availableSips
     orgContext.uploadedSips.map { uploadedSips =>
       val xml =
-      <sip-zips sipAppVersion={Utils.SIP_APP_VERSION}>
-        <available>
-          {
-            for (availableSip <- availableSips) yield
+        <sip-zips sipAppVersion={Utils.SIP_APP_VERSION}>
+          <available>
+            {for (availableSip <- availableSips) yield
             <sip-zip>
-              <dataset>{ availableSip.datasetName }</dataset>
-              <file>{ availableSip.file.getName }</file>
-            </sip-zip>
-          }
-        </available>
-        <uploaded>
-          {
-            for (sip <- uploadedSips) yield
+              <dataset>
+                {availableSip.datasetName}
+              </dataset>
+              <file>
+                {availableSip.file.getName}
+              </file>
+            </sip-zip>}
+          </available>
+          <uploaded>
+            {for (sip <- uploadedSips) yield
             <sip-zip>
-              <dataset>{ sip.dsInfoSpec }</dataset>
-              <file>{ sip.file.getName }</file>
-            </sip-zip>
-          }
-        </uploaded>
-      </sip-zips>
+              <dataset>
+                {sip.dsInfoSpec}
+              </dataset>
+              <file>
+                {sip.file.getName}
+              </file>
+            </sip-zip>}
+          </uploaded>
+        </sip-zips>
       Ok(xml)
     }
   }
 
-  def downloadSipZip(spec: String) = Secure() { profile => implicit request =>
+  def downloadSipZip(spec: String) = Action { request =>
     Logger.debug(s"Download sip-zip $spec")
     val sipFileOpt = orgContext.datasetContext(spec).sipFiles.headOption
     sipFileOpt.map(Utils.okFile(_)).getOrElse(NotFound(s"No sip-zip for $spec"))
   }
 
-  def uploadSipZip(spec: String, zipFileName: String) = Secure(parse.temporaryFile) { profile => implicit request =>
+  def uploadSipZip(spec: String, zipFileName: String) = Action(parse.temporaryFile) { request =>
     val datasetContext = orgContext.datasetContext(spec)
     request.body.moveTo(datasetContext.sipRepo.createSipZipFile(zipFileName))
     datasetContext.startSipZipGeneration()

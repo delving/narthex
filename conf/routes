@@ -9,25 +9,6 @@ GET         /narthex/                                                        web
 # JavaScript routes object
 GET         /narthex/jsRoutes.js                                             web.MainController.jsRoutes()
 
-# Routes used by Angular
-# ~~~~
-
-# Authentication
-POST        /narthex/login                                                   web.MainController.login
-GET         /narthex/checkLogin                                              web.MainController.checkLogin
-GET         /narthex/logout                                                  web.MainController.logout
-
-# Users
-POST        /narthex/set-profile                                             web.MainController.setProfile
-GET         /narthex/list-actors                                             web.MainController.listActors
-POST        /narthex/create-actor                                            web.MainController.createActor
-POST        /narthex/delete-actor                                            web.MainController.deleteActor
-POST        /narthex/disable-actor                                           web.MainController.disableActor
-POST        /narthex/enable-actor                                            web.MainController.enableActor
-POST        /narthex/make-admin                                              web.MainController.makeAdmin
-POST        /narthex/remove-admin                                            web.MainController.removeAdmin
-POST        /narthex/set-password                                            web.MainController.setPassword
-
 # File Handling
 GET         /narthex/socket/dataset                                          web.WebSocketController.dataset
 GET         /narthex/app/dataset-list                                        web.AppController.listDatasets
