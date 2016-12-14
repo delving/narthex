@@ -211,7 +211,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
     val apiAccessKeys = secretList("api.accessKeys").toList
 
     AppConfig(
-      harvestTimeout, configFlag("useBulkApi"), rdfBaseUrl,
+      harvestTimeout, true, rdfBaseUrl,
       configStringNoSlash("naveApiUrl"), configStringNoSlash("naveAuthToken"),
       narthexDataDir, configString("orgId"), narthexDomain, naveDomain,
       apiAccessKeys)

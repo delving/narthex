@@ -32,10 +32,6 @@ import triplestore.GraphProperties._
 
 import scala.collection.JavaConversions._
 
-/**
- * @author Gerald de Jong <gerald@delving.eu>
- */
-
 object ProcessedRepo {
 
   val XML_SUFFIX = ".xml"
@@ -43,22 +39,6 @@ object ProcessedRepo {
   val chunkSize = 100
 
   case class GraphChunk(dataset: Dataset, dsInfo: DsInfo) {
-
-    def sparqlUpdateQ: String = {
-
-      def singleGraphUpdate(dataset: Dataset, graphUri: String) = {
-        val model = dataset.getNamedModel(graphUri)
-        val triples = new StringWriter()
-        RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
-        s"""
-        |DROP SILENT GRAPH <$graphUri>;
-        |INSERT DATA { GRAPH <$graphUri> {
-        |$triples}};
-       """.stripMargin.trim
-      }
-
-      dataset.listNames().toList.map(g => singleGraphUpdate(dataset, g)).mkString("\n")
-    }
 
     def bulkAPIQ(orgId: String): String = {
 
@@ -69,7 +49,6 @@ object ProcessedRepo {
         val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/(.+)/graph".r
         val SpecIdExtractor(spec, localId) = graphUri
         val hubId = s"${orgId}_${spec}_$localId"
-        val currentSkosFields = dsInfo.getLiteralPropList(skosField)
         val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
         val actionMap = Json.obj(
             "hubId" -> hubId,
