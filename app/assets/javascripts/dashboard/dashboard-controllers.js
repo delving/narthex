@@ -104,15 +104,6 @@ define(["angular"], function (angular) {
             true
         );
 
-        $scope.logout = function () {
-            userService.logout().then(function () {
-                $scope.user = undefined;
-                $scope.sidebarNav("homepage");
-            }, function (why) {
-                console.log("unable to logout", why);
-            });
-        };
-
     };
 
     IndexCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];

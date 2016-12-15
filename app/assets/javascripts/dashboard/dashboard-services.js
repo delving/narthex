@@ -30,13 +30,6 @@ define(["angular", "common"], function (angular) {
                 var user;
                 var main = playRoutes.web.MainController;
                 return {
-                    logout: function () {
-                        console.log("Attempt logout");
-                        return main.logout().get().then(function (response) {
-                            user = undefined;
-                            return "logged out"
-                        });
-                    },
                     checkLogin: function () {
                         console.log("Check login");
                         return $q.when(true).then(
