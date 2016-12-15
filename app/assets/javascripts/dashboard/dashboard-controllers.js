@@ -35,18 +35,9 @@ define(["angular"], function (angular) {
             });
         }
 
-        function listActors() {
-            if (userService.getUser()) {
-                userService.listActors().then(function (actorList) {
-                    $scope.actorList = actorList;
-                });
-            }
-        }
-
         $scope.login = function () {
             $scope.errorMessage = undefined;
             $cookies[USERNAME_COOKIE] = $scope.credentials.username;
-            listActors();
         };
 
         checkLogin();
