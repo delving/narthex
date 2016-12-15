@@ -480,8 +480,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       else {
         dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
-        val ownerEmailOpt = Await.result(dsInfo.ownerEmailOpt, 2.seconds)
-        mailService.sendProcessingCompleteMessage(dsInfo.spec, ownerEmailOpt, dsInfo.processedValidVal, dsInfo.processedInvalidVal)
+        mailService.sendProcessingCompleteMessage(dsInfo.spec, dsInfo.processedValidVal, dsInfo.processedInvalidVal)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Idle) using Dormant
       }
@@ -566,8 +565,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
         case Some(exception) => log.error(exception, message)
         case None => log.error(message)
       }
-      val ownerEmail: Option[String] = Await.result(dsInfo.ownerEmailOpt, 2.seconds)
-      mailService.sendProcessingErrorMessage(dsInfo.spec, ownerEmail, message, exceptionOpt)
+      mailService.sendProcessingErrorMessage(dsInfo.spec, message, exceptionOpt)
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using InError(message)
 

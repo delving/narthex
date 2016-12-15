@@ -20,20 +20,13 @@ import java.io.File
 
 import controllers.WebJarAssets
 import org.webjars.play.RequireJS
-import organization.{AuthenticationService, Profile, User, UserRepository}
-import play.api._
 import play.api.cache.{CacheApi, Cached}
-import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.json._
 import play.api.mvc._
 
-import scala.concurrent.Future
 import scala.concurrent.duration._
 
 
-class MainController(val userRepository: UserRepository,
-                     val authenticationService: AuthenticationService,
-                     val cacheApi: CacheApi,
+class MainController(val cacheApi: CacheApi,
                      val narthexDomain: String, val naveDomain: String, val orgId: String,
                      val webJarAssets: WebJarAssets, val requireJS: RequireJS, val sessionTimeoutInSeconds: Int)
   extends Controller {

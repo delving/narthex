@@ -39,11 +39,10 @@ import scala.language.postfixOps
 /**
   * Best way to describe this class is that it has functioned as some means of passing around globals.
   * It is obvious that we need to remove this class and only DI the specific values that a component requires,
-  * allowing this class to be deleted, which I vow to do.
+  * allowing this class to be deleted
   */
 class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsApi: WSAPI, val mailService: MailService,
-                 val authenticationService: AuthenticationService, val us: UserRepository, val orgActor: ActorRef)
-                (implicit ec: ExecutionContext, val ts: TripleStore) {
+                 val orgActor: ActorRef) (implicit ec: ExecutionContext, val ts: TripleStore) {
 
   val root = appConfig.narthexDataDir
   val orgRoot = new File(root, appConfig.orgId)

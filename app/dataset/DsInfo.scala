@@ -475,16 +475,6 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
 
   lazy val vocabulary = new SkosVocabulary(spec, skosGraphName)
 
-  def ownerEmailOpt: Future[Option[String]] = {
-    val uriOpt: Option[String] = getUriProp(actorOwner)
-    uriOpt match {
-      case None => Future.successful(None)
-      case Some(uri) => {
-        orgContext.us.emailFromUri(uri)
-      }
-    }
-  }
-
   def orUnknown(nxProp: NXProp) = getLiteralProp(nxProp).getOrElse("Unknown")
 
   def processedValidVal = orUnknown(processedValid)
