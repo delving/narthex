@@ -63,14 +63,11 @@ define(["angular"], function (angular) {
             console.log(page);
             switch (page) {
                 case 'homepage':
-                    $location.path('/');
-                    break;
-                case 'dataset-list':
                     if(dataset){
-                        $location.search('dataset', dataset).hash(dataset).path('/dataset-list');
+                        $location.search('dataset', dataset).hash(dataset).path('/');
                     }
                     else {
-                        $location.path('/dataset-list');
+                        $location.path('/');
                     }
                     break;
                 case 'skos':

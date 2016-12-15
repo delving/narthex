@@ -13,7 +13,7 @@ define(
                 "$routeProvider", "userResolve",
                 function ($routeProvider, userResolve) {
                     $routeProvider.when(
-                        "/dataset-list", {
+                        "/", {
                             templateUrl: "/narthex/assets/templates/dataset-list.html",
                             controller: controllers.DatasetListCtrl,
                             resolve: userResolve,
