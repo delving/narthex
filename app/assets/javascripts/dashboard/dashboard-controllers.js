@@ -57,68 +57,8 @@ define(["angular"], function (angular) {
 
         $scope.$watch("editedUser", compareUserToEdited, true);
 
-        $scope.setProfile = function (editedUser) {
-            userService.setProfile(editedUser).then(function (user) {
-                $scope.user = user;
-                compareUserToEdited()
-            });
-        };
 
-        $scope.addActor = function (newActor) {
-            userService.createActor(newActor).then(function (actorList) {
-                $scope.actorList = actorList;
-                $scope.newActor = {};
-            });
-        };
 
-        $scope.removeActor = function (actor) {
-            userService.deleteActor(actor).then(function (actorList) {
-                $scope.actorList = actorList;
-                $scope.newActor = {};
-            });
-        };
-
-        $scope.disableActor = function (actor) {
-            userService.disableActor(actor).then(function (actorList) {
-                $scope.actorList = actorList;
-                $scope.newActor = {};
-            });
-        };
-
-        $scope.enableActor = function (actor) {
-            userService.enableActor(actor).then(function (actorList) {
-                $scope.actorList = actorList;
-                $scope.newActor = {};
-            });
-        };
-        
-        $scope.makeAdmin = function (actor) {
-            userService.makeAdmin(actor).then(function (actorList) {
-                $scope.actorList = actorList;
-                $scope.newActor = {};
-            });
-        };
-        
-        $scope.removeAdmin = function (actor) {
-            userService.removeAdmin(actor).then(function (actorList) {
-                $scope.actorList = actorList;
-                $scope.newActor = {};
-            });
-        };
-
-        function comparePasswords(newValue, oldValue) {
-            var c = $scope.change;
-            $scope.changeDisabled = !(c.a && c.b) || c.a != c.b || !c.a.length;
-        }
-
-        $scope.$watch("change", comparePasswords, true);
-
-        $scope.changePassword = function () {
-            if ($scope.change.a != $scope.change.b) return;
-            userService.setPassword($scope.change.a).then(function () {
-                $scope.change = {};
-            });
-        };
     };
     DashboardCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$window", "userService", "$timeout"];
 
