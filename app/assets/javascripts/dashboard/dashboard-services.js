@@ -30,20 +30,6 @@ define(["angular", "common"], function (angular) {
                 var user;
                 var main = playRoutes.web.MainController;
                 return {
-                    loginUser: function (credentials) {
-                        console.log("Attempt login");
-                        return main.login().post(credentials).then(
-                            function (response) {
-                                user = response.data;
-                                buildUrls(user);
-                                return { profile: user };
-                            },
-                            function (response) {
-                                user = null;
-                                return { problem: response.data };
-                            }
-                        );
-                    },
                     logout: function () {
                         console.log("Attempt logout");
                         return main.logout().get().then(function (response) {
@@ -53,16 +39,14 @@ define(["angular", "common"], function (angular) {
                     },
                     checkLogin: function () {
                         console.log("Check login");
-                        return main.checkLogin().get().then(
+                        return main.jsRoutes().get().then(
                             function (response) {
-                                user = response.data;
+                                user = {
+                                    username: "admin",
+                                    apiKey: "foo"
+                                };
                                 buildUrls(user);
                                 return user;
-                            },
-                            function (problem) {
-                                console.log('check login failed', problem);
-                                user = null;
-                                return null;
                             });
                     },
                     setProfile: function (profile) {

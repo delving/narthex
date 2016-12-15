@@ -18,7 +18,6 @@ define(["angular"], function (angular) {
     "use strict";
 
     var USERNAME_COOKIE = "NARTHEX-User";
-    var OAUTH_COOKIE = "NARTHEX-OAuth";
 
     /** Controls the index page */
     var DashboardCtrl = function ($scope, $rootScope, $cookies, $window, userService, $timeout) {
@@ -46,24 +45,11 @@ define(["angular"], function (angular) {
 
         $scope.login = function () {
             $scope.errorMessage = undefined;
-            userService.loginUser($scope.credentials).then(
-                function (response) {
-                    if (response.profile) {
-                        checkLogin();
-                        $cookies[USERNAME_COOKIE] = $scope.credentials.username;
-                        listActors();
-                    }
-                    else {
-                        $scope.credentials.password = "";
-                        $scope.errorMessage = response.problem;
-                    }
-                }
-            );
+            $cookies[USERNAME_COOKIE] = $scope.credentials.username;
+            listActors();
         };
 
         checkLogin();
-
-        listActors();
 
         function compareUserToEdited() {
             return $scope.unchangedUser = angular.equals($scope.user, $scope.editedUser);
