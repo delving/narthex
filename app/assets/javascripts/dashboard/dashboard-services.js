@@ -87,11 +87,6 @@ define(["angular", "common"], function (angular) {
         }
     });
 
-//    todo: the user function above is not injected properly, maybe do something like this:
-//     DashboardCtrl.$inject = [
-//        "$scope", "userResolve", "dashboardService", "fileUpload", "$location", "$upload", "$timeout"
-//    ];
-
     /**
      * If the current route does not resolve, go back to the start page.
      */
