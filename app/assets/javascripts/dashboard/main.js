@@ -16,7 +16,7 @@ define(
         loginRoutes.config(["$routeProvider", function ($routeProvider) {
             $routeProvider
                 .when(
-                "/",
+                "/foo",
                 {
                     templateUrl: "/narthex/assets/templates/dashboard.html",
                     controller: controllers.DashboardCtrl
