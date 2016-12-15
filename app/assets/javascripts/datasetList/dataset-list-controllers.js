@@ -583,7 +583,56 @@ define(["angular"], function () {
 
     DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams"];
 
+    /** Controls the sidebar and headers */
+    var IndexCtrl = function ($rootScope, $scope, $location) {
+
+        $scope.initialize = function (orgId, sipCreatorLink) {
+            //console.log("Initializing index");
+            $rootScope.orgId = orgId;
+            $rootScope.sipCreatorLink = sipCreatorLink;
+            $scope.toggleBar = true;
+        };
+
+        $rootScope.sidebarNav = function (page, dataset) {
+
+            var navlist = $('#sidebar-nav a');
+            navlist.removeClass('active');
+            console.log(page);
+            switch (page) {
+                case 'homepage':
+                    if(dataset){
+                        $location.search('dataset', dataset).hash(dataset).path('/');
+                    }
+                    else {
+                        $location.path('/');
+                    }
+                    break;
+                case 'skos':
+                    $location.path('/skos');
+                    break;
+                case 'categories':
+                    $location.path('/categories');
+                    break;
+                case 'thesaurus':
+                    $location.path('/thesaurus');
+                    break;
+                default:
+                    $location.path('/');
+            }
+            $('#nav-' + page).addClass('active');
+
+        };
+
+        $scope.toggleSidebar = function () {
+            $scope.toggleBar = !$scope.toggleBar;
+        };
+
+    };
+
+    IndexCtrl.$inject = ["$rootScope", "$scope", "$location"];
+
     return {
+        IndexCtrl: IndexCtrl,
         DatasetListCtrl: DatasetListCtrl,
         DatasetEntryCtrl: DatasetEntryCtrl
     };

@@ -38,7 +38,6 @@ define(
                 "dashboard.services"
             ]
         );
-        narthexLogin.controller("IndexCtrl", controllers.IndexCtrl);
         return narthexLogin;
     }
 );

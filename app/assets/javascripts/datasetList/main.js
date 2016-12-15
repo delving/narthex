@@ -32,7 +32,7 @@ define(
         ]);
 
         narthexDatasetList.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);
-
+        narthexDatasetList.controller("IndexCtrl", controllers.IndexCtrl);
         var config = function config($rootScopeProvider) {
             $rootScopeProvider.digestTtl(15);
         };
