@@ -10,13 +10,12 @@ define(
         var datasetListRoutes = angular.module("datasetList.routes", ["narthex.common"]);
         datasetListRoutes.config(
             [
-                "$routeProvider", "userResolve",
-                function ($routeProvider, userResolve) {
+                "$routeProvider",
+                function ($routeProvider) {
                     $routeProvider.when(
                         "/", {
                             templateUrl: "/narthex/assets/templates/dataset-list.html",
                             controller: controllers.DatasetListCtrl,
-                            resolve: userResolve,
                             reloadOnSearch: false
                         }
                     );

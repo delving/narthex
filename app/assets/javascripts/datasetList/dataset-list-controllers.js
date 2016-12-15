@@ -40,9 +40,9 @@ define(["angular"], function () {
     /**
      * user is not a service, but stems from userResolve (Check ../user/dataset-list-services.js) object used by dashboard.routes.
      */
-    var DatasetListCtrl = function ($rootScope, $scope, user, datasetListService, $location, pageScroll) {
-        if (user == null) $location.path("/");
-        $scope.user = user;
+    var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll) {
+
+        $scope.apiPrefix = "/narthex/api/"
         $scope.uploading = false;
         $scope.datasets = [];
         $scope.percent = null;
@@ -56,7 +56,7 @@ define(["angular"], function () {
         var socket = datasetListService.datasetSocket();
 
         socket.onopen = function () {
-            socket.send(user.username + " arrived on datasets page");
+            socket.send("user arrived on datasets page");
         };
 
         socket.onmessage = function (messageReturned) {
@@ -72,7 +72,7 @@ define(["angular"], function () {
         };
 
         $scope.$on('$destroy', function () {
-            socket.send(user.username + " left datasets page");
+            socket.send("user left datasets page");
             socket.close();
         });
 
@@ -141,7 +141,7 @@ define(["angular"], function () {
 
         $scope.decorateDataset = function (dataset) {
             dataset.edit = angular.copy(dataset);
-            dataset.apiMappings = user.narthexAPI + '/' + dataset.datasetSpec + '/mappings';
+            dataset.apiMappings = $scope.apiPrefix + dataset.datasetSpec + '/mappings';
             dataset.states = [];
 //            if (dataset.character) dataset.prefix = info.character.prefix;
 //            split the states into date and time
@@ -243,7 +243,7 @@ define(["angular"], function () {
     };
 
     DatasetListCtrl.$inject = [
-        "$rootScope", "$scope", "user", "datasetListService", "$location", "pageScroll"
+        "$rootScope", "$scope", "datasetListService", "$location", "pageScroll"
     ];
 
     // these lists must match with DsInfo.scala
@@ -338,13 +338,13 @@ define(["angular"], function () {
         $scope.apiLink = baseUrl + "/api/search/v1/?q=delving_spec:" + $scope.dataset.datasetSpec;
         // todo: note that edm is hardcoded here:
         $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + $scope.dataset.datasetSpec;
-        $scope.apiPathErrors = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/errors";
-        $scope.apiPathSourced = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/sourced";
-        $scope.apiPathProcessed = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/processed";
-        $scope.apiPathHarvestLog = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/log";
+        $scope.apiPathErrors = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/errors";
+        $scope.apiPathSourced = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/sourced";
+        $scope.apiPathProcessed = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/processed";
+        $scope.apiPathHarvestLog = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/log";
         $scope.apiDownloadSipZip = "/narthex/sip-app/" + $scope.dataset.datasetSpec;
         $scope.apiWebResourcePath = "/data/webresource/" + $scope.dataset.orgId + "/" + $scope.dataset.datasetSpec + "/source/";
-        $scope.sparqlPath = $scope.user.naveDomain + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
+        $scope.sparqlPath = "fix-this/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
         if($scope.dataset.harvestURL && $scope.dataset.harvestType == 'pmh') {
             $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
             if ($scope.dataset.harvestDataset) {
