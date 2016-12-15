@@ -47,7 +47,7 @@ define(["angular"], function (angular) {
     DashboardCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$window", "userService", "$timeout"];
 
     /** Controls the sidebar and headers */
-    var IndexCtrl = function ($rootScope, $scope, userService, $location) {
+    var IndexCtrl = function ($rootScope, $scope, $location) {
 
         $scope.initialize = function (orgId, sipCreatorLink) {
             //console.log("Initializing index");
@@ -90,20 +90,9 @@ define(["angular"], function (angular) {
             $scope.toggleBar = !$scope.toggleBar;
         };
 
-        // Wrap the current user from the service in a watch expression
-        $scope.$watch(
-            function () {
-                return userService.getUser();
-            },
-            function (user) {
-                $scope.user = user;
-            },
-            true
-        );
-
     };
 
-    IndexCtrl.$inject = ["$rootScope", "$scope", "userService", "$location"];
+    IndexCtrl.$inject = ["$rootScope", "$scope", "$location"];
 
     return {
         IndexCtrl: IndexCtrl,
