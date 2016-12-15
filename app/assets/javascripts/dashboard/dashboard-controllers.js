@@ -136,6 +136,7 @@ define(["angular"], function (angular) {
 
             var navlist = $('#sidebar-nav a');
             navlist.removeClass('active');
+            console.log(page);
             switch (page) {
                 case 'homepage':
                     $location.path('/');
