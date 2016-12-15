@@ -37,9 +37,6 @@ define(["angular"], function () {
         'state-error': "Error"
     };
 
-    /**
-     * user is not a service, but stems from userResolve (Check ../user/dataset-list-services.js) object used by dashboard.routes.
-     */
     var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll) {
 
         $scope.apiPrefix = "/narthex/api/"

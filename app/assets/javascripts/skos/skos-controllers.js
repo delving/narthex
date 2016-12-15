@@ -17,8 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var SkosListCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, user) {
-        if (user == null) $location.path("/");
+    var SkosListCtrl = function ($rootScope, $scope, $location, $routeParams, skosService) {
 
         $scope.newDataset = {};
 
@@ -69,7 +68,7 @@ define(["angular"], function (angular) {
         };
     };
 
-    SkosListCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService", "user"];
+    SkosListCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService"];
 
     var metadataFields = [
         "skosName", "skosOwner"

@@ -21,7 +21,7 @@
   requirejs.config({
     // Packages = top-level folders; loads a contained file named "main.js"
     packages: [
-      "common", "dashboard", "datasetList", "dataset", "skos", "terms", "categories"
+      "common", "datasetList", "dataset", "skos", "terms", "categories"
     ],
     shim: {
       "jsRoutes": {
