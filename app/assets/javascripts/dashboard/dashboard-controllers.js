@@ -42,13 +42,6 @@ define(["angular"], function (angular) {
 
         checkLogin();
 
-        function compareUserToEdited() {
-            return $scope.unchangedUser = angular.equals($scope.user, $scope.editedUser);
-        }
-
-        $scope.$watch("editedUser", compareUserToEdited, true);
-
-
 
     };
     DashboardCtrl.$inject = ["$scope", "$rootScope", "$cookies", "$window", "userService", "$timeout"];
