@@ -39,7 +39,7 @@ define(["angular", "common"], function (angular) {
                     },
                     checkLogin: function () {
                         console.log("Check login");
-                        return main.jsRoutes().get().then(
+                        return $q.when(true).then(
                             function (response) {
                                 user = {
                                     username: "admin",
