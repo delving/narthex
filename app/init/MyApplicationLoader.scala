@@ -122,11 +122,11 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   lazy val metricsController = new MetricsController(metrics)
   lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds)
   lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
-    appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
+    appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
     webJarAssets, requireJs, sessionTimeoutInSeconds)
 
   lazy val appController = new AppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds) (tripleStore, actorSystem, materializer)
-  lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
+  lazy val apiController = new APIController(orgContext)
   lazy val infoController = new InfoController(healthCheckRegistry)
 
   lazy val webSocketController = new WebSocketController(defaultCacheApi, sessionTimeoutInSeconds)(actorSystem, materializer, defaultContext)
@@ -214,8 +214,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
       harvestTimeout, true, rdfBaseUrl,
       configStringNoSlash("naveApiUrl"), configStringNoSlash("naveAuthToken"),
       configuration.getBoolean("mockBulkApi").getOrElse(false),
-      narthexDataDir, configString("orgId"), narthexDomain, naveDomain,
-      apiAccessKeys)
+      narthexDataDir, configString("orgId"), narthexDomain, naveDomain)
   }
 
   private def configFlag(name: String): Boolean = configuration.getBoolean(name).getOrElse(false)
@@ -238,7 +237,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 case class AppConfig(harvestTimeOut: Long, useBulkApi: Boolean, rdfBaseUrl: String,
                      naveApiUrl: String, naveApiAuthToken: String, mockBulkApi: Boolean,
                      narthexDataDir: File, orgId: String,
-                     narthexDomain: String, naveDomain: String, apiAccessKeys: List[String]) {
+                     narthexDomain: String, naveDomain: String) {
 
   def nxUriPrefix: String = s"$rdfBaseUrl/resource"
 }

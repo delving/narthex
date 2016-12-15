@@ -34,7 +34,6 @@ import scala.concurrent.duration._
 class MainController(val userRepository: UserRepository,
                      val authenticationService: AuthenticationService,
                      val cacheApi: CacheApi,
-                     val apiAccessKeys: List[String],
                      val narthexDomain: String, val naveDomain: String, val orgId: String,
                      val webJarAssets: WebJarAssets, val requireJS: RequireJS, val sessionTimeoutInSeconds: Int)
   extends Controller {

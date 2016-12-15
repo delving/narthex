@@ -30,32 +30,32 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 import scala.concurrent.Future
 
-class APIController(val apiKeys: List[String], val orgContext: OrgContext) extends Controller {
+class APIController(val orgContext: OrgContext) extends Controller {
 
-  def processingErrorsText(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+  def processingErrorsText(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestErrorFile = datasetContext.processedRepo.getLatestErrors
     latestErrorFile.map(Utils.okFile(_)).getOrElse(NotFound(s"No errors found for $spec"))
   }
 
-  def processingSourcedText(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+  def processingSourcedText(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestSourcedFile = datasetContext.processedRepo.getLatestSourced
     latestSourcedFile.map(Utils.okFile(_)).getOrElse(NotFound(s"No sourced files found for $spec"))
   }
 
-  def processingProcessedText(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+  def processingProcessedText(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestProcessedFiles = datasetContext.processedRepo.getLatestProcessed
     latestProcessedFiles.map(Utils.okFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
   }
 
-  def processingHarvestingLog(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+  def processingHarvestingLog(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     Some(datasetContext.harvestLogger).map(Utils.okFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
   }
 
-  def pathsJSON(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+  def pathsJSON(apiKey: String, spec: String) =  Action(parse.anyContent) { implicit request =>
     val treeFile = orgContext.datasetContext(spec).index
     if (treeFile.exists()) {
       val string = IOUtils.toString(new FileInputStream(treeFile))
@@ -70,11 +70,11 @@ class APIController(val apiKeys: List[String], val orgContext: OrgContext) exten
     }
   }
 
-  def indexJSON(apiKey: String, spec: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+  def indexJSON(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
     Utils.okFile(orgContext.datasetContext(spec).index)
   }
 
-  def uniqueText(apiKey: String, spec: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+  def uniqueText(apiKey: String, spec: String, path: String) = Action(parse.anyContent) { implicit request =>
     orgContext.datasetContext(spec).uniqueText(path) match {
       case None =>
         NotFound(s"No list found for $path")
@@ -83,7 +83,7 @@ class APIController(val apiKeys: List[String], val orgContext: OrgContext) exten
     }
   }
 
-  def histogramText(apiKey: String, spec: String, path: String) = KeyFits(apiKey, parse.anyContent) { implicit request =>
+  def histogramText(apiKey: String, spec: String, path: String) = Action(parse.anyContent) { implicit request =>
     orgContext.datasetContext(spec).histogramText(path) match {
       case None =>
         NotFound(s"No list found for $path")
@@ -92,7 +92,7 @@ class APIController(val apiKeys: List[String], val orgContext: OrgContext) exten
     }
   }
 
-  def listSipZips(apiKey: String) = KeyFitsAsync(apiKey, parse.anyContent) { implicit request =>
+  def listSipZips(apiKey: String) = Action.async(parse.anyContent) { implicit request =>
     val availableSips: Seq[AvailableSip] = orgContext.availableSips
     orgContext.uploadedSips.map { uploadedSips =>
       val xml =
@@ -120,21 +120,4 @@ class APIController(val apiKeys: List[String], val orgContext: OrgContext) exten
     }
   }
 
-  def KeyFits[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Result): Action[A] = Action(p) { implicit request =>
-    if (apiKeys.contains(apiKey)) {
-      block(request)
-    }
-    else {
-      Unauthorized(Json.obj("err" -> "Invalid API Access key"))
-    }
-  }
-
-  def KeyFitsAsync[A](apiKey: String, p: BodyParser[A] = parse.anyContent)(block: Request[A] => Future[Result]): Action[A] = Action.async(p) { implicit request =>
-    if (apiKeys.contains(apiKey)) {
-      block(request)
-    }
-    else {
-      Future(Unauthorized(Json.obj("err" -> "Invalid API Access key")))
-    }
-  }
 }
