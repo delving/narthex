@@ -63,18 +63,10 @@
 
             <!-- User dropdown -->
 
-            <div class="user-actions" data-ng-if="user">
-
-                <div class="btn-group pull-right clearfix">
-                    <button class="btn btn-default"><i class="fa fa-user fa-fw"></i> {{user.username}}</button>
-                    <a class="btn btn-default dropdown-toggle" data-toggle="dropdown" href="#">
-                        <i class="fa fa-caret-down"></i>&nbsp;
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a href data-ng-click="logout()"><i class="fa fa-lock fa-fw"></i> Logout</a></li>
-                    </ul>
-                </div>
-
+            <div class="user-actions">
+                <span>
+                    <a href data-ng-click="logout()"><i class="fa fa-lock fa-fw"></i> Logout</a>
+                </span>
             </div>
 
             <!-- Main Views -->
