@@ -52,7 +52,8 @@ class MailServiceImpl(val mailerClient: MailerClient, adminEmails: List[String],
       Logger.warn(s"No emailReportsTo configured, not sending")
     } else {
       val email = Email(to = adminEmails, from = fromNarthex, subject = subject, bodyHtml = Some(html))
-      mailerClient.send(email)
+      val messageId = mailerClient.send(email)
+      Logger.debug(s"Sent email $messageId")
     }
   }
 
