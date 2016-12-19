@@ -20,6 +20,7 @@ import java.io.File
 
 import controllers.WebJarAssets
 import org.webjars.play.RequireJS
+import play.api.Logger
 import play.api.cache.{CacheApi, Cached}
 import play.api.mvc._
 
@@ -50,8 +51,9 @@ class MainController(val cacheApi: CacheApi,
   }
 
   def index = Action { request =>
+    Logger.info(s"$naveDomain")
     Ok(views.html.index(orgId, SIP_APP_URL, buildinfo.BuildInfo.version,
-      buildinfo.BuildInfo.gitCommitSha, webJarAssets, requireJS)).withHeaders(
+      buildinfo.BuildInfo.gitCommitSha, webJarAssets, requireJS, naveDomain)).withHeaders(
       CACHE_CONTROL -> "no-cache")
   }
 

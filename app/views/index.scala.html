@@ -1,5 +1,5 @@
 @(orgId: String, sipCreatorLink: String, version: String, commitSha: String,
-  webJarAssets: WebJarAssets, requireJS: org.webjars.play.RequireJS)
+  webJarAssets: WebJarAssets, requireJS: org.webjars.play.RequireJS, naveDomain: String)
 <!DOCTYPE html>
 <html>
     <head>
@@ -71,7 +71,7 @@
 
             <!-- Main Views -->
 
-            <div id="content-wrapper">
+            <div id="content-wrapper" data-nave-url="@naveDomain">
                 <div class="container-fluid">
                     <div data-ng-view></div>
                 </div>
