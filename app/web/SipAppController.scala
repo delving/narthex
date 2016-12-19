@@ -35,23 +35,15 @@ class SipAppController(val cacheApi: CacheApi, val orgContext: OrgContext, val s
           <available>
             {for (availableSip <- availableSips) yield
             <sip-zip>
-              <dataset>
-                {availableSip.datasetName}
-              </dataset>
-              <file>
-                {availableSip.file.getName}
-              </file>
+              <dataset>{availableSip.datasetName}</dataset>
+              <file>{availableSip.file.getName}</file>
             </sip-zip>}
           </available>
           <uploaded>
             {for (sip <- uploadedSips) yield
             <sip-zip>
-              <dataset>
-                {sip.dsInfoSpec}
-              </dataset>
-              <file>
-                {sip.file.getName}
-              </file>
+              <dataset>{sip.dsInfoSpec}</dataset>
+              <file>{sip.file.getName}</file>
             </sip-zip>}
           </uploaded>
         </sip-zips>
