@@ -94,7 +94,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
   }
 
   def createDataset(spec: String, character: String, mapToPrefix: String) = Action.async { request =>
-    orgContext.createDsInfo(Utils.adminUser, spec, character, mapToPrefix).map(dsInfo =>
+    orgContext.createDsInfo(spec, character, mapToPrefix).map(dsInfo =>
       Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
     )
   }
@@ -230,7 +230,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
   }
 
   def createVocabulary(spec: String) = Action.async { request =>
-    VocabInfo.createVocabInfo(Utils.adminUser, spec, orgContext).map(ok =>
+    VocabInfo.createVocabInfo(spec, orgContext).map(ok =>
       Ok(Json.obj("created" -> s"Skos $spec created"))
     )
   }
@@ -309,7 +309,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     val uriA = (request.body \ "uriA").as[String]
     val uriB = (request.body \ "uriB").as[String]
     val store = orgContext.vocabMappingStore(specA, specB)
-    store.toggleMapping(SkosMapping(Utils.adminUser, uriA, uriB)).map { action =>
+    store.toggleMapping(SkosMapping(uriA, uriB)).map { action =>
       Ok(Json.obj("action" -> action))
     }
   }
@@ -346,7 +346,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     val uriB = (request.body \ "uriB").as[String]
     val store = orgContext.termMappingStore(dsSpec)
     withVocabInfo(vocabSpec, orgContext) { vocabInfo =>
-      store.toggleMapping(SkosMapping(Utils.adminUser, uriA, uriB), vocabInfo).map { action =>
+      store.toggleMapping(SkosMapping(uriA, uriB), vocabInfo).map { action =>
         Ok(Json.obj("action" -> action))
       }
     }

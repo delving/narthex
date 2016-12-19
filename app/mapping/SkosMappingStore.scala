@@ -18,7 +18,7 @@ package mapping
 
 import java.util.UUID
 
-import organization.{OrgContext, User}
+import organization.OrgContext
 import play.api.libs.json.Json
 import play.api.libs.ws.WSAPI
 import services.StringHandling.createGraphName
@@ -29,7 +29,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object SkosMappingStore {
 
-  case class SkosMapping(actor: User, uriA: String, uriB: String) {
+  case class SkosMapping(uriA: String, uriB: String) {
 
     val existenceQ = doesMappingExistQ(uriA, uriB)
 
@@ -38,12 +38,11 @@ object SkosMappingStore {
     def insertQ(skosA: SkosGraph, skosB: SkosGraph, nxUriPrefix: String) = {
 
       val uuid = UUID.randomUUID().toString
-
-      val uri = s"${actor.uri(nxUriPrefix)}/mapping/$uuid"
+      val uri = s"$nxUriPrefix/actor/admin/mapping/$uuid"
 
       val graphName = createGraphName(uri)
 
-      insertMappingQ(graphName, actor, nxUriPrefix, uri, uriA, uriB, skosA, skosB)
+      insertMappingQ(graphName, nxUriPrefix, uri, uriA, uriB, skosA, skosB)
     }
 
     override def toString = s"SkosMapping($uriA, $uriB)"
@@ -89,7 +88,7 @@ class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext, wsApi: WSAP
     val json = Json.obj(
       "proxy_resource_uri" -> mapping.uriA,
       "skos_concept_uri" -> mapping.uriB,
-      "user_uri" -> mapping.actor.uri(orgContext.appConfig.nxUriPrefix),
+      "user_uri" -> s"${orgContext.appConfig.nxUriPrefix}/actor/admin", // preserve for compatibility purposes
       "delete" -> delete
     )
 

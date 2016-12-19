@@ -20,7 +20,6 @@ import dataset.DsInfo
 import dataset.DsInfo._
 import mapping.VocabInfo.CATEGORIES_SPEC
 import org.joda.time.DateTime
-import organization.User
 import play.api.libs.json.JsValue
 import services.StringHandling._
 import services.Temporal
@@ -335,7 +334,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def insertMappingQ(graphName:String, user: User, prefix: String, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
+  def insertMappingQ(graphName:String, prefix: String, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
     val connection = if (skosB.spec == CATEGORIES_SPEC) belongsToCategory.uri else exactMatch
     s"""
       |INSERT DATA {
@@ -344,7 +343,6 @@ object Sparql {
       |    <$uri>
       |       a <$terminologyMapping>;
       |       <$synced> false;
-      |       <$belongsTo> <${user.uri(prefix)}> ;
       |       <$mappingTime> '''${Temporal.timeToString(new DateTime)}''' ;
       |       <$mappingConcept> <$uriA> ;
       |       <$mappingConcept> <$uriB> ;

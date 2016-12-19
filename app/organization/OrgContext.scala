@@ -61,9 +61,9 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsApi: WS
   rawDir.mkdirs()
   sipsDir.mkdirs()
 
-  def createDsInfo(owner: User, spec: String, characterString: String, prefix: String) = {
+  def createDsInfo(spec: String, characterString: String, prefix: String) = {
     val character = DsInfo.getCharacter(characterString).get
-    DsInfo.createDsInfo(owner, spec, character, prefix, this)
+    DsInfo.createDsInfo(spec, character, prefix, this)
   }
 
   def datasetContext(spec: String): DatasetContext = withDsInfo(spec, this)(dsInfo => new DatasetContext(this, dsInfo))

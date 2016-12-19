@@ -5,7 +5,6 @@ import java.io.{File, FileInputStream, FileNotFoundException}
 import akka.stream.IOResult
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
-import organization.{Profile, User}
 import play.api.http._
 import play.api.libs.json.Json
 import play.api.mvc.{ResponseHeader, Result, _}
@@ -13,9 +12,6 @@ import play.api.mvc.{ResponseHeader, Result, _}
 import scala.concurrent.Future
 
 object Utils {
-
-  @deprecated(message = "intermediairy user object, to be removed in next refactor pass.", since = "0.5.0")
-  val adminUser = User("admin", None, Some(Profile("admin", "admin", "admin@foo.bar")))
 
   val SIP_APP_VERSION = "1.0.9"
   def okFile(file: File, attempt: Int = 0): Result = {
