@@ -5,6 +5,7 @@
 # Home page
 GET         /                                                                web.MainController.root
 GET         /narthex/                                                        web.MainController.index
+GET         /narthex/logout                                                  web.MainController.logout
 
 # JavaScript routes object
 GET         /narthex/jsRoutes.js                                             web.MainController.jsRoutes()

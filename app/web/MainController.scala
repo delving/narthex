@@ -20,7 +20,6 @@ import java.io.File
 
 import controllers.WebJarAssets
 import org.webjars.play.RequireJS
-import play.api.Logger
 import play.api.cache.{CacheApi, Cached}
 import play.api.mvc._
 
@@ -53,6 +52,10 @@ class MainController(val cacheApi: CacheApi,
     Ok(views.html.index(orgId, sipAppDownloadUrl, buildinfo.BuildInfo.version,
       buildinfo.BuildInfo.gitCommitSha, webJarAssets, requireJS, naveDomain)).withHeaders(
       CACHE_CONTROL -> "no-cache")
+  }
+
+  def logout = Action { request =>
+    Results.Unauthorized
   }
 
   def OkFile(file: File, attempt: Int = 0): Result = Utils.okFile(file, attempt)
