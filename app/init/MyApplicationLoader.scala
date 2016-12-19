@@ -116,7 +116,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds)
   lazy val mainController = new MainController(defaultCacheApi,
     appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
-    webJarAssets, requireJs, sessionTimeoutInSeconds)
+    webJarAssets, requireJs, sessionTimeoutInSeconds, configString("sipAppDownloadUrl"))
 
   lazy val appController = new AppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds) (tripleStore, actorSystem, materializer)
   lazy val apiController = new APIController(orgContext)

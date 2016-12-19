@@ -29,7 +29,8 @@ import scala.concurrent.duration._
 
 class MainController(val cacheApi: CacheApi,
                      val narthexDomain: String, val naveDomain: String, val orgId: String,
-                     val webJarAssets: WebJarAssets, val requireJS: RequireJS, val sessionTimeoutInSeconds: Int)
+                     val webJarAssets: WebJarAssets, val requireJS: RequireJS,
+                     val sessionTimeoutInSeconds: Int, val sipAppDownloadUrl: String)
   extends Controller {
 
   val cacheDuration = 1.day
@@ -44,15 +45,13 @@ class MainController(val cacheApi: CacheApi,
       .includeStatus(NOT_FOUND, 5.minutes.toSeconds.toInt)
   }
 
-  val SIP_APP_URL = s"http://artifactory.delving.org/artifactory/delving/eu/delving/sip-app/${Utils.SIP_APP_VERSION}/sip-app-${Utils.SIP_APP_VERSION}-exejar.jar"
-
   def root = Action { request =>
     Redirect("/narthex/")
   }
 
   def index = Action { request =>
     Logger.info(s"$naveDomain")
-    Ok(views.html.index(orgId, SIP_APP_URL, buildinfo.BuildInfo.version,
+    Ok(views.html.index(orgId, sipAppDownloadUrl, buildinfo.BuildInfo.version,
       buildinfo.BuildInfo.gitCommitSha, webJarAssets, requireJS, naveDomain)).withHeaders(
       CACHE_CONTROL -> "no-cache")
   }
