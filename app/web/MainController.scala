@@ -50,7 +50,6 @@ class MainController(val cacheApi: CacheApi,
   }
 
   def index = Action { request =>
-    Logger.info(s"$naveDomain")
     Ok(views.html.index(orgId, sipAppDownloadUrl, buildinfo.BuildInfo.version,
       buildinfo.BuildInfo.gitCommitSha, webJarAssets, requireJS, naveDomain)).withHeaders(
       CACHE_CONTROL -> "no-cache")
