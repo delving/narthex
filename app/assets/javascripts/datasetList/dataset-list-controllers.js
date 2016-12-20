@@ -329,7 +329,7 @@ define(["angular"], function () {
         $scope.rightTabOpen = $scope.dataset.harvestURL ? "harvest" : "drop";
         $scope.expanded = $routeParams.dataset == $scope.dataset.datasetSpec;
         $scope.idFilter = {};
-        var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
+        var baseUrl = angular.element("#content-wrapper").data("nave-url");
         $scope.searchLink = baseUrl + "/search?q=delving_spec:" + "\"" + $scope.dataset.datasetSpec + "\"";
 
         $scope.apiLink = baseUrl + "/api/search/v1/?q=delving_spec:" + $scope.dataset.datasetSpec;
@@ -341,8 +341,8 @@ define(["angular"], function () {
         $scope.apiPathHarvestLog = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/log";
         $scope.apiDownloadSipZip = "/narthex/sip-app/" + $scope.dataset.datasetSpec;
         $scope.apiWebResourcePath = "/data/webresource/" + $scope.dataset.orgId + "/" + $scope.dataset.datasetSpec + "/source/";
-        var naveUrl = angular.element("#content-wrapper").data("nave-url");
-        $scope.sparqlPath = naveUrl + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
+
+        $scope.sparqlPath = baseUrl + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
         if($scope.dataset.harvestURL && $scope.dataset.harvestType == 'pmh') {
             $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
             if ($scope.dataset.harvestDataset) {
