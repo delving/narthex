@@ -24,7 +24,7 @@ import play.api.mvc._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class SipAppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sessionTimeoutInSeconds: Int)
+class SipAppController(val orgContext: OrgContext)
   extends Controller {
 
   def listSipZips() = Action.async { request =>

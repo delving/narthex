@@ -49,7 +49,7 @@ import triplestore.Sparql.SkosifiedField
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sessionTimeoutInSeconds: Int)
+class AppController(val orgContext: OrgContext)
                    (implicit val ts: TripleStore, implicit val actorSystem: ActorSystem,
                     implicit val materializer: Materializer)
   extends Controller with DefaultInstrumented {

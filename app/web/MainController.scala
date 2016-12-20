@@ -29,7 +29,7 @@ import scala.concurrent.duration._
 class MainController(val cacheApi: CacheApi,
                      val narthexDomain: String, val naveDomain: String, val orgId: String,
                      val webJarAssets: WebJarAssets, val requireJS: RequireJS,
-                     val sessionTimeoutInSeconds: Int, val sipAppDownloadUrl: String)
+                     val sipAppDownloadUrl: String)
   extends Controller {
 
   val cacheDuration = 1.day

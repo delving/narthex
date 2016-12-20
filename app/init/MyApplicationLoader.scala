@@ -113,16 +113,16 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   override lazy val httpFilters = List(metricsFilter)
   lazy val requireJs = new RequireJS(environment, webJarAssets)
   lazy val metricsController = new MetricsController(metrics)
-  lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds)
+  lazy val sipAppController: SipAppController = new SipAppController(orgContext)
   lazy val mainController = new MainController(defaultCacheApi,
     appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
-    webJarAssets, requireJs, sessionTimeoutInSeconds, configString("sipAppDownloadUrl"))
+    webJarAssets, requireJs, configString("sipAppDownloadUrl"))
 
-  lazy val appController = new AppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds) (tripleStore, actorSystem, materializer)
+  lazy val appController = new AppController(orgContext) (tripleStore, actorSystem, materializer)
   lazy val apiController = new APIController(orgContext)
   lazy val infoController = new InfoController(healthCheckRegistry)
 
-  lazy val webSocketController = new WebSocketController(defaultCacheApi, sessionTimeoutInSeconds)(actorSystem, materializer, defaultContext)
+  lazy val webSocketController = new WebSocketController() (actorSystem, materializer, defaultContext)
 
   lazy val assets = new controllers.Assets(httpErrorHandler)
   lazy val webJarAssets = new WebJarAssets(httpErrorHandler, configuration, environment)
