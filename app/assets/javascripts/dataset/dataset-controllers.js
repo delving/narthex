@@ -17,11 +17,11 @@
 define(["angular"], function () {
     "use strict";
 
-    var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll, user) {
+    var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll) {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.spec = $routeParams.spec;
 
-        $scope.apiPrefix = user.narthexAPI;
+        $scope.apiPrefix = "/narthex/api/";
 
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
@@ -141,8 +141,8 @@ define(["angular"], function () {
             datasetService.nodeStatus($scope.spec, node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
-                $scope.apiPathUnique = user.narthexAPI + "/" + $scope.spec + "/unique" + filePath;
-                $scope.apiPathHistogram = user.narthexAPI + "/" + $scope.spec + "/histogram" + filePath;
+                $scope.apiPathUnique = $scope.apiPrefix + "/" + $scope.spec + "/unique" + filePath;
+                $scope.apiPathHistogram =  $scope.apiPrefix + "/" + $scope.spec + "/histogram" + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
                 switch ($routeParams.view) {
@@ -302,7 +302,7 @@ define(["angular"], function () {
 
     };
 
-    DatasetCtrl.$inject = ["$rootScope", "$scope", "$routeParams", "$timeout", "$location", "datasetService", "pageScroll", "user"];
+    DatasetCtrl.$inject = ["$rootScope", "$scope", "$routeParams", "$timeout", "$location", "datasetService", "pageScroll"];
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree) {
