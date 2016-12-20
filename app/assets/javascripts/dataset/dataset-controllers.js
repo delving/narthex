@@ -186,7 +186,7 @@ define(["angular"], function () {
             };
             datasetService.setRecordDelimiter($scope.spec, body).then(function () {
                 console.log("Record delimiter set, moving to dataset list page");
-                $location.path("/dataset-list");
+                $location.path("/");
             });
         };
 
