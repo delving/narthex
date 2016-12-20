@@ -26,4 +26,17 @@ class MainControllerSpec extends PlaySpec
       contentAsString(result) mustBe ""
     }
   }
+
+  "all deployments and nginx-configs out there assume that we run on /narthex so /" should {
+    "redirect us to /narthex/" in {
+
+      val controller = new MainController(mock[CacheApi], "foo", "foo", "foo",
+        mock[controllers.WebJarAssets], mock[RequireJS], "bar")
+
+      val result: Future[Result] = controller.root.apply(FakeRequest())
+
+      status(result) mustBe 303
+      header("Location", result) mustBe Some("/narthex/")
+    }
+  }
 }
