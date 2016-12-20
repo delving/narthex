@@ -57,14 +57,14 @@ GET         /narthex/sip-app                                                 web
 GET         /narthex/sip-app/:spec                                           web.SipAppController.downloadSipZip(spec)
 POST        /narthex/sip-app/:spec/:zipFileName                              web.SipAppController.uploadSipZip(spec, zipFileName)
 
-GET         /narthex/api/:apiKey/:spec                                       web.APIController.pathsJSON(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/errors                                web.APIController.processingErrorsText(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/sourced                               web.APIController.processingSourcedText(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/processed                             web.APIController.processingProcessedText(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/log                                   web.APIController.processingHarvestingLog(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/tree                                  web.APIController.indexJSON(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/unique/*path                          web.APIController.uniqueText(apiKey, spec, path)
-GET         /narthex/api/:apiKey/:spec/histogram/*path                       web.APIController.histogramText(apiKey, spec, path)
+GET         /narthex/api/:spec                                       web.APIController.pathsJSON(spec)
+GET         /narthex/api/:spec/errors                                web.APIController.processingErrorsText(spec)
+GET         /narthex/api/:spec/sourced                               web.APIController.processingSourcedText(spec)
+GET         /narthex/api/:spec/processed                             web.APIController.processingProcessedText(spec)
+GET         /narthex/api/:spec/log                                   web.APIController.processingHarvestingLog(spec)
+GET         /narthex/api/:spec/tree                                  web.APIController.indexJSON(spec)
+GET         /narthex/api/:spec/unique/*path                          web.APIController.uniqueText(spec, path)
+GET         /narthex/api/:spec/histogram/*path                       web.APIController.histogramText(spec, path)
 
 # Static
 GET         /narthex/webjars/*file                                           controllers.WebJarAssets.at(file)

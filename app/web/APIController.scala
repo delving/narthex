@@ -32,30 +32,30 @@ import scala.concurrent.Future
 
 class APIController(val orgContext: OrgContext) extends Controller {
 
-  def processingErrorsText(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
+  def processingErrorsText(spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestErrorFile = datasetContext.processedRepo.getLatestErrors
     latestErrorFile.map(Utils.okFile(_)).getOrElse(NotFound(s"No errors found for $spec"))
   }
 
-  def processingSourcedText(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
+  def processingSourcedText(spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestSourcedFile = datasetContext.processedRepo.getLatestSourced
     latestSourcedFile.map(Utils.okFile(_)).getOrElse(NotFound(s"No sourced files found for $spec"))
   }
 
-  def processingProcessedText(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
+  def processingProcessedText(spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestProcessedFiles = datasetContext.processedRepo.getLatestProcessed
     latestProcessedFiles.map(Utils.okFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
   }
 
-  def processingHarvestingLog(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
+  def processingHarvestingLog(spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     Some(datasetContext.harvestLogger).map(Utils.okFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
   }
 
-  def pathsJSON(apiKey: String, spec: String) =  Action(parse.anyContent) { implicit request =>
+  def pathsJSON(spec: String) =  Action(parse.anyContent) { implicit request =>
     val treeFile = orgContext.datasetContext(spec).index
     if (treeFile.exists()) {
       val string = IOUtils.toString(new FileInputStream(treeFile))
@@ -70,11 +70,11 @@ class APIController(val orgContext: OrgContext) extends Controller {
     }
   }
 
-  def indexJSON(apiKey: String, spec: String) = Action(parse.anyContent) { implicit request =>
+  def indexJSON(spec: String) = Action(parse.anyContent) { implicit request =>
     Utils.okFile(orgContext.datasetContext(spec).index)
   }
 
-  def uniqueText(apiKey: String, spec: String, path: String) = Action(parse.anyContent) { implicit request =>
+  def uniqueText(spec: String, path: String) = Action(parse.anyContent) { implicit request =>
     orgContext.datasetContext(spec).uniqueText(path) match {
       case None =>
         NotFound(s"No list found for $path")
@@ -83,7 +83,7 @@ class APIController(val orgContext: OrgContext) extends Controller {
     }
   }
 
-  def histogramText(apiKey: String, spec: String, path: String) = Action(parse.anyContent) { implicit request =>
+  def histogramText(spec: String, path: String) = Action(parse.anyContent) { implicit request =>
     orgContext.datasetContext(spec).histogramText(path) match {
       case None =>
         NotFound(s"No list found for $path")
@@ -92,7 +92,7 @@ class APIController(val orgContext: OrgContext) extends Controller {
     }
   }
 
-  def listSipZips(apiKey: String) = Action.async(parse.anyContent) { implicit request =>
+  def listSipZips() = Action.async(parse.anyContent) { implicit request =>
     val availableSips: Seq[AvailableSip] = orgContext.availableSips
     orgContext.uploadedSips.map { uploadedSips =>
       val xml =
