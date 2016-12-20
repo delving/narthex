@@ -595,9 +595,13 @@ define(["angular"], function () {
 
             var navlist = $('#sidebar-nav a');
             navlist.removeClass('active');
+
+            if (page == '') {
+                page = 'dataset-list'
+            }
             console.log(page);
             switch (page) {
-                case 'homepage':
+                case 'dataset-list':
                     if(dataset){
                         $location.search('dataset', dataset).hash(dataset).path('/');
                     }
@@ -614,8 +618,6 @@ define(["angular"], function () {
                 case 'thesaurus':
                     $location.path('/thesaurus');
                     break;
-                default:
-                    $location.path('/');
             }
             $('#nav-' + page).addClass('active');
 
