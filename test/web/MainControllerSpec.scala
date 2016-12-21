@@ -23,7 +23,6 @@ class MainControllerSpec extends PlaySpec
       val result: Future[Result] = controller.logout.apply(FakeRequest())
 
       status(result) mustBe 401
-      contentAsString(result) mustBe ""
     }
   }
 

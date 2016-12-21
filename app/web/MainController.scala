@@ -54,8 +54,12 @@ class MainController(val cacheApi: CacheApi,
       CACHE_CONTROL -> "no-cache")
   }
 
-  def logout = Action { request =>
-    Results.Unauthorized
+  /**
+    * In actual deployment scenarios this will result in a view on the page that provides links to Nave,
+    * nave-search and narthex itself.
+    */
+  def logout = Action {
+    Unauthorized(views.html.logout())
   }
 
   def OkFile(file: File, attempt: Int = 0): Result = Utils.okFile(file, attempt)
