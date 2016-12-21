@@ -17,7 +17,6 @@
 package triplestore
 
 import org.apache.jena.rdf.model.{Model, Property}
-import services.StringHandling.createGraphName
 
 object GraphProperties {
 
@@ -46,14 +45,6 @@ object GraphProperties {
     override def toString = uri
   }
 
-  val username = NXProp("username")
-  val passwordHash = NXProp("passwordHash")
-  val userEMail = NXProp("userEMail")
-  val userFirstName = NXProp("userFirstName")
-  val userLastName = NXProp("userLastName")
-  val actorOwner = NXProp("actorOwner")
-  val isAdmin = NXProp("isAdmin", booleanProp)
-  val actorEnabled = NXProp("actorEnabled", booleanProp)
 
   val belongsTo = NXProp("belongsTo")
   val synced = NXProp("synced")
@@ -155,11 +146,8 @@ object GraphProperties {
   val recordEntity = s"${NX_NAMESPACE}Record"
   val terminologyMapping = s"${NX_NAMESPACE}TerminologyMapping"
   val instanceMapping = s"${NX_NAMESPACE}InstanceMapping"
-  val actorEntity = s"${NX_NAMESPACE}Actor"
   val proxyResource = s"${NX_NAMESPACE}ProxyResource"
   val skosCollection = s"${SKOS}Collection"
-  val actorsGraph = createGraphName(s"${NX_NAMESPACE}Actors")
-
 
   def nxProp(m: Model, localName: String): Property = {
     m.setNsPrefix("nx", NX_NAMESPACE)

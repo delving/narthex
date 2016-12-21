@@ -1,9 +1,9 @@
 @(orgId: String, sipCreatorLink: String, version: String, commitSha: String,
-  webJarAssets: WebJarAssets, requireJS: org.webjars.play.RequireJS)
+  webJarAssets: WebJarAssets, requireJS: org.webjars.play.RequireJS, naveDomain: String)
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Narthex-@orgId</title>
+        <title>Narthex - @orgId</title>
         <link rel='shortcut icon' type='image/png' href='@routes.Assets.versioned("images/favicon.png")'>
         <link rel='stylesheet' media='screen' href='@routes.Assets.versioned("lib/bootstrap/css/bootstrap.min.css")'>
         <link rel='stylesheet' media='screen' href='@routes.Assets.versioned("css/font-awesome.min.css")'>
@@ -26,19 +26,14 @@
                         </a>
                     </div>
 
-                    <div data-ng-if="user">
+                    <div>
 
                         <ul class="sidebar-nav" id="sidebar-nav">
                             <li class="sidebar-title">
                                 <span>NAVIGATION</span>
                             </li>
                             <li class="sidebar-list">
-                                <a href id="nav-homepage" data-ng-click="sidebarNav('homepage')" class="active">
-                                    User dashboard <span class="menu-icon fa fa-user"></span>
-                                </a>
-                            </li>
-                            <li class="sidebar-list">
-                                <a href id="nav-dataset-list" data-ng-click="sidebarNav('dataset-list')">
+                                <a href id="nav-dataset-list" class="active" data-ng-click="sidebarNav('dataset-list')">
                                     Datasets <span class="menu-icon fa fa-folder"></span>
                                 </a>
                             </li>
@@ -68,23 +63,15 @@
 
             <!-- User dropdown -->
 
-            <div class="user-actions" data-ng-if="user">
-
-                <div class="btn-group pull-right clearfix">
-                    <button class="btn btn-default"><i class="fa fa-user fa-fw"></i> {{user.username}}</button>
-                    <a class="btn btn-default dropdown-toggle" data-toggle="dropdown" href="#">
-                        <i class="fa fa-caret-down"></i>&nbsp;
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a href data-ng-click="logout()"><i class="fa fa-lock fa-fw"></i> Logout</a></li>
-                    </ul>
-                </div>
-
+            <div class="user-actions">
+                <span>
+                    <a href="/narthex/logout"><i class="fa fa-lock fa-fw"></i> Logout</a>
+                </span>
             </div>
 
             <!-- Main Views -->
 
-            <div id="content-wrapper">
+            <div id="content-wrapper" data-nave-url="@naveDomain">
                 <div class="container-fluid">
                     <div data-ng-view></div>
                 </div>

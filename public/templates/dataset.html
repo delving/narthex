@@ -86,13 +86,6 @@
                 </ul>
             </div>
 
-            <div data-ng-show="selectedNode && !(sample || histogram)" data-scrollable id="graph-list" data-offset="200" >
-                <nvd3-pie-chart data="selectedNode.lengths" id="exampleId" width="500" height="500" x="getX()"
-                                y="getY()" color="getColor()" showLabels="true">
-                    <svg></svg>
-                </nvd3-pie-chart>
-            </div>
-
             <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="200" ng-show="sample">
                 <ul class="list-group">
                     <li data-ng-repeat="value in sample.sample | filter:filterText" class="list-group-item">

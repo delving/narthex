@@ -7,18 +7,16 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import dataset.DatasetActor.Active
 import dataset.DsInfo
-import play.api.cache.CacheApi
 import play.api.libs.json.Json
 import play.api.libs.streams.ActorFlow
 import play.api.mvc.{Controller, WebSocket}
 
 import scala.concurrent.ExecutionContext
 
-class WebSocketController(val cacheApi: CacheApi, val sessionTimeoutInSeconds: Int)
-                         (implicit actorSystem: ActorSystem,
+class WebSocketController(implicit actorSystem: ActorSystem,
                           mat: Materializer,
                           ec: ExecutionContext)
-  extends Controller with Security {
+  extends Controller {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 

@@ -5,28 +5,10 @@
 # Home page
 GET         /                                                                web.MainController.root
 GET         /narthex/                                                        web.MainController.index
+GET         /narthex/logout                                                  web.MainController.logout
 
 # JavaScript routes object
 GET         /narthex/jsRoutes.js                                             web.MainController.jsRoutes()
-
-# Routes used by Angular
-# ~~~~
-
-# Authentication
-POST        /narthex/login                                                   web.MainController.login
-GET         /narthex/checkLogin                                              web.MainController.checkLogin
-GET         /narthex/logout                                                  web.MainController.logout
-
-# Users
-POST        /narthex/set-profile                                             web.MainController.setProfile
-GET         /narthex/list-actors                                             web.MainController.listActors
-POST        /narthex/create-actor                                            web.MainController.createActor
-POST        /narthex/delete-actor                                            web.MainController.deleteActor
-POST        /narthex/disable-actor                                           web.MainController.disableActor
-POST        /narthex/enable-actor                                            web.MainController.enableActor
-POST        /narthex/make-admin                                              web.MainController.makeAdmin
-POST        /narthex/remove-admin                                            web.MainController.removeAdmin
-POST        /narthex/set-password                                            web.MainController.setPassword
 
 # File Handling
 GET         /narthex/socket/dataset                                          web.WebSocketController.dataset
@@ -75,14 +57,14 @@ GET         /narthex/sip-app                                                 web
 GET         /narthex/sip-app/:spec                                           web.SipAppController.downloadSipZip(spec)
 POST        /narthex/sip-app/:spec/:zipFileName                              web.SipAppController.uploadSipZip(spec, zipFileName)
 
-GET         /narthex/api/:apiKey/:spec                                       web.APIController.pathsJSON(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/errors                                web.APIController.processingErrorsText(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/sourced                               web.APIController.processingSourcedText(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/processed                             web.APIController.processingProcessedText(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/log                                   web.APIController.processingHarvestingLog(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/tree                                  web.APIController.indexJSON(apiKey, spec)
-GET         /narthex/api/:apiKey/:spec/unique/*path                          web.APIController.uniqueText(apiKey, spec, path)
-GET         /narthex/api/:apiKey/:spec/histogram/*path                       web.APIController.histogramText(apiKey, spec, path)
+GET         /narthex/api/:spec                                       web.APIController.pathsJSON(spec)
+GET         /narthex/api/:spec/errors                                web.APIController.processingErrorsText(spec)
+GET         /narthex/api/:spec/sourced                               web.APIController.processingSourcedText(spec)
+GET         /narthex/api/:spec/processed                             web.APIController.processingProcessedText(spec)
+GET         /narthex/api/:spec/log                                   web.APIController.processingHarvestingLog(spec)
+GET         /narthex/api/:spec/tree                                  web.APIController.indexJSON(spec)
+GET         /narthex/api/:spec/unique/*path                          web.APIController.uniqueText(spec, path)
+GET         /narthex/api/:spec/histogram/*path                       web.APIController.histogramText(spec, path)
 
 # Static
 GET         /narthex/webjars/*file                                           controllers.WebJarAssets.at(file)

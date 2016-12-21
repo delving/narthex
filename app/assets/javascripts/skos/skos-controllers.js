@@ -17,8 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var SkosListCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, user) {
-        if (user == null) $location.path("/");
+    var SkosListCtrl = function ($rootScope, $scope, $location, $routeParams, skosService) {
 
         $scope.newDataset = {};
 
@@ -69,7 +68,7 @@ define(["angular"], function (angular) {
         };
     };
 
-    SkosListCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService", "user"];
+    SkosListCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService"];
 
     var metadataFields = [
         "skosName", "skosOwner"
@@ -190,8 +189,7 @@ define(["angular"], function (angular) {
 
     SkosListEntryCtrl.$inject = ["$scope", "skosService", "$location", "$timeout", "$upload"];
 
-    var SkosMapCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, $timeout, pageScroll, user) {
-        if (user == null) $location.path("/");
+    var SkosMapCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, $timeout, pageScroll) {
         $scope.show = "all";
 
         $scope.mappingsAB = {};
@@ -414,7 +412,7 @@ define(["angular"], function (angular) {
 
     };
 
-    SkosMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService", "$timeout", "pageScroll", "user"];
+    SkosMapCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService", "$timeout", "pageScroll"];
 
     return {
         SkosListCtrl: SkosListCtrl,

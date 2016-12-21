@@ -37,12 +37,9 @@ define(["angular"], function () {
         'state-error': "Error"
     };
 
-    /**
-     * user is not a service, but stems from userResolve (Check ../user/dataset-list-services.js) object used by dashboard.routes.
-     */
-    var DatasetListCtrl = function ($rootScope, $scope, user, datasetListService, $location, pageScroll) {
-        if (user == null) $location.path("/");
-        $scope.user = user;
+    var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll) {
+
+        $scope.apiPrefix = "/narthex/api/"
         $scope.uploading = false;
         $scope.datasets = [];
         $scope.percent = null;
@@ -56,7 +53,7 @@ define(["angular"], function () {
         var socket = datasetListService.datasetSocket();
 
         socket.onopen = function () {
-            socket.send(user.username + " arrived on datasets page");
+            socket.send("user arrived on datasets page");
         };
 
         socket.onmessage = function (messageReturned) {
@@ -72,7 +69,7 @@ define(["angular"], function () {
         };
 
         $scope.$on('$destroy', function () {
-            socket.send(user.username + " left datasets page");
+            socket.send("user left datasets page");
             socket.close();
         });
 
@@ -141,7 +138,7 @@ define(["angular"], function () {
 
         $scope.decorateDataset = function (dataset) {
             dataset.edit = angular.copy(dataset);
-            dataset.apiMappings = user.narthexAPI + '/' + dataset.datasetSpec + '/mappings';
+            dataset.apiMappings = $scope.apiPrefix + dataset.datasetSpec + '/mappings';
             dataset.states = [];
 //            if (dataset.character) dataset.prefix = info.character.prefix;
 //            split the states into date and time
@@ -243,7 +240,7 @@ define(["angular"], function () {
     };
 
     DatasetListCtrl.$inject = [
-        "$rootScope", "$scope", "user", "datasetListService", "$location", "pageScroll"
+        "$rootScope", "$scope", "datasetListService", "$location", "pageScroll"
     ];
 
     // these lists must match with DsInfo.scala
@@ -332,19 +329,20 @@ define(["angular"], function () {
         $scope.rightTabOpen = $scope.dataset.harvestURL ? "harvest" : "drop";
         $scope.expanded = $routeParams.dataset == $scope.dataset.datasetSpec;
         $scope.idFilter = {};
-        var baseUrl = $scope.user ? $scope.user.naveDomain : "http://unknown-nave-domain";
+        var baseUrl = angular.element("#content-wrapper").data("nave-url");
         $scope.searchLink = baseUrl + "/search?q=delving_spec:" + "\"" + $scope.dataset.datasetSpec + "\"";
 
         $scope.apiLink = baseUrl + "/api/search/v1/?q=delving_spec:" + $scope.dataset.datasetSpec;
         // todo: note that edm is hardcoded here:
         $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + $scope.dataset.datasetSpec;
-        $scope.apiPathErrors = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/errors";
-        $scope.apiPathSourced = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/sourced";
-        $scope.apiPathProcessed = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/processed";
-        $scope.apiPathHarvestLog = $scope.user.narthexAPI + "/" + $scope.dataset.datasetSpec + "/log";
+        $scope.apiPathErrors = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/errors";
+        $scope.apiPathSourced = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/sourced";
+        $scope.apiPathProcessed = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/processed";
+        $scope.apiPathHarvestLog = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/log";
         $scope.apiDownloadSipZip = "/narthex/sip-app/" + $scope.dataset.datasetSpec;
         $scope.apiWebResourcePath = "/data/webresource/" + $scope.dataset.orgId + "/" + $scope.dataset.datasetSpec + "/source/";
-        $scope.sparqlPath = $scope.user.naveDomain + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
+
+        $scope.sparqlPath = baseUrl + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
         if($scope.dataset.harvestURL && $scope.dataset.harvestType == 'pmh') {
             $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
             if ($scope.dataset.harvestDataset) {
@@ -583,7 +581,58 @@ define(["angular"], function () {
 
     DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams"];
 
+    /** Controls the sidebar and headers */
+    var IndexCtrl = function ($rootScope, $scope, $location) {
+
+        $scope.initialize = function (orgId, sipCreatorLink) {
+            //console.log("Initializing index");
+            $rootScope.orgId = orgId;
+            $rootScope.sipCreatorLink = sipCreatorLink;
+            $scope.toggleBar = true;
+        };
+
+        $rootScope.sidebarNav = function (page, dataset) {
+
+            var navlist = $('#sidebar-nav a');
+            navlist.removeClass('active');
+
+            if (page == '') {
+                page = 'dataset-list'
+            }
+            console.log(page);
+            switch (page) {
+                case 'dataset-list':
+                    if(dataset){
+                        $location.search('dataset', dataset).hash(dataset).path('/');
+                    }
+                    else {
+                        $location.path('/');
+                    }
+                    break;
+                case 'skos':
+                    $location.path('/skos');
+                    break;
+                case 'categories':
+                    $location.path('/categories');
+                    break;
+                case 'thesaurus':
+                    $location.path('/thesaurus');
+                    break;
+            }
+            $('#nav-' + page).addClass('active');
+
+        };
+
+        $scope.toggleSidebar = function () {
+            $scope.toggleBar = !$scope.toggleBar;
+        };
+
+    };
+
+    IndexCtrl.$inject = ["$rootScope", "$scope", "$location"];
+
     return {
+        IndexCtrl: IndexCtrl,
         DatasetListCtrl: DatasetListCtrl,
         DatasetEntryCtrl: DatasetEntryCtrl
     };

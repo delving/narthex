@@ -7,16 +7,15 @@ define(
     function (angular, controllers) {
         "use strict";
 
-        var datasetListRoutes = angular.module("datasetList.routes", ["narthex.common", "dashboard.services"]);
+        var datasetListRoutes = angular.module("datasetList.routes", ["narthex.common"]);
         datasetListRoutes.config(
             [
-                "$routeProvider", "userResolve",
-                function ($routeProvider, userResolve) {
+                "$routeProvider",
+                function ($routeProvider) {
                     $routeProvider.when(
-                        "/dataset-list", {
+                        "/", {
                             templateUrl: "/narthex/assets/templates/dataset-list.html",
                             controller: controllers.DatasetListCtrl,
-                            resolve: userResolve,
                             reloadOnSearch: false
                         }
                     );
@@ -32,7 +31,7 @@ define(
         ]);
 
         narthexDatasetList.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);
-
+        narthexDatasetList.controller("IndexCtrl", controllers.IndexCtrl);
         var config = function config($rootScopeProvider) {
             $rootScopeProvider.digestTtl(15);
         };

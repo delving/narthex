@@ -7,22 +7,20 @@ define(
     [
         "angular",
         "./skos-services",
-        "./skos-controllers",
-        "../dashboard/dashboard-services"
+        "./skos-controllers"
     ],
     function (angular, services, controllers) {
         "use strict";
 
-        var skosRoutes = angular.module("skos.routes", ["narthex.common", "dashboard.services"]);
+        var skosRoutes = angular.module("skos.routes", ["narthex.common"]);
         skosRoutes.config([
-            "$routeProvider", "userResolve",
-            function ($routeProvider, userResolve) {
+            "$routeProvider",
+            function ($routeProvider) {
                 $routeProvider.when(
                     "/skos",
                     {
                         templateUrl: "/narthex/assets/templates/skos-list.html",
                         controller: controllers.SkosListCtrl,
-                        resolve: userResolve,
                         reloadOnSearch: false
                     }
                 ).when(
@@ -30,7 +28,6 @@ define(
                     {
                         templateUrl: "/narthex/assets/templates/skos-map.html",
                         controller: controllers.SkosMapCtrl,
-                        resolve: userResolve,
                         reloadOnSearch: false
                     }
                 )

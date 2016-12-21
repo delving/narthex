@@ -20,8 +20,6 @@ import dataset.DsInfo
 import dataset.DsInfo._
 import mapping.VocabInfo.CATEGORIES_SPEC
 import org.joda.time.DateTime
-import organization.{Profile, User}
-import play.api.Logger
 import play.api.libs.json.JsValue
 import services.StringHandling._
 import services.Temporal
@@ -66,249 +64,6 @@ object Sparql {
       |ASK {
       |   GRAPH <$graphName> { ?s ?p ?o }
       |}
-     """.stripMargin
-
-  def getActor(actorName: String) =
-    s"""
-       |SELECT ?username ?firstName ?lastName ?email ?maker
-       |WHERE {
-       |   GRAPH <$actorsGraph> {
-       |      ?actor
-       |          a <$actorEntity> ;
-       |          <$username> ${literalExpression(actorName, None)} ;
-       |          <$username> ?username .
-       |   }
-       |   OPTIONAL {
-       |      GRAPH <$actorsGraph> {
-       |         ?actor <$actorOwner> ?maker .
-       |      }
-       |   }
-       |   OPTIONAL {
-       |      GRAPH <$actorsGraph> {
-       |         ?actor
-       |            <$userFirstName> ?firstName ;
-       |            <$userLastName> ?lastName ;
-       |            <$userEMail> ?email .
-       |      }
-       |   }
-       |}
-     """.stripMargin
-
-  def getActorWithPassword(actorName: String, passwordHashString: String) =
-    s"""
-       |SELECT ?username ?firstName ?lastName ?email ?maker
-       |WHERE {
-       |   GRAPH <$actorsGraph> {
-       |      ?actor
-       |          a <$actorEntity> ;
-       |          <$username> ${literalExpression(actorName, None)} ;
-       |          <$username> ?username ;
-       |          <$actorEnabled> true ;
-       |          <$passwordHash> '$passwordHashString' .
-       |   }
-       |   OPTIONAL {
-       |      GRAPH <$actorsGraph> {
-       |         ?actor <$actorOwner> ?maker .
-       |      }
-       |   }
-       |   OPTIONAL {
-       |      GRAPH <$actorsGraph> {
-       |         ?actor
-       |            <$userFirstName> ?firstName ;
-       |            <$userLastName> ?lastName ;
-       |            <$userEMail> ?email .
-       |      }
-       |   }
-       |}
-     """.stripMargin
-
-  def actorFromResult(mapList: List[Map[String, QueryValue]]): Option[User] = {
-    mapList.headOption.map { resultMap =>
-      val username = resultMap.get("username").map(_.text).get
-      def text(fieldName: String) = resultMap.get(fieldName).map(_.text).getOrElse("")
-      val makerOpt = resultMap.get("maker").map(_.text)
-      val firstName = text("firstName")
-      val lastName = text("lastName")
-      val email = text("email")
-      val profileOpt = if (firstName.nonEmpty || lastName.nonEmpty || email.nonEmpty)
-          Some(Profile(firstName, lastName, email))
-      else
-          None
-      User(username, makerOpt, profileOpt)
-    }
-  }
-
-  def getAdminEMailQ() =
-    s"""
-       |SELECT ?email
-       |WHERE {
-       |   GRAPH <$actorsGraph> {
-       |      ?s
-       |         a <$actorEntity> ;
-       |         <$isAdmin> true;
-       |         <$userEMail> ?email .
-       |   }
-       |}
-     """.stripMargin
-
-  def getEMailOfActor(actorUri: String) =
-    s"""
-      |SELECT ?email
-      |WHERE {
-      |   GRAPH <$actorsGraph> {
-      |      <$actorUri>
-      |         a <$actorEntity> ;
-      |         <$userEMail> ?email .
-      |   }
-      |}
-     """.stripMargin
-
-  def emailFromResult(mapList: List[Map[String, QueryValue]]): Option[String] = {
-    mapList.headOption.flatMap(resultMap => resultMap.get("email").map(_.text))
-  }
-
-  def emailsFromResult(mapList: List[Map[String, QueryValue]]): List[String] = {
-    mapList.flatMap(resultMap => resultMap.get("email").map(_.text))
-  }
-
-  def insertTopActorQ(user: User, prefix: String, passwordHashString: String) = {
-    val enabled = true
-    val admin = true
-    val query = s"""
-       |INSERT DATA {
-       |   GRAPH <$actorsGraph> {
-       |      <${user.uri(prefix)}>
-       |         a <$actorEntity> ;
-       |         <$username> ${literalExpression(user.actorName, None)} ;
-       |         <$isAdmin> $admin;
-       |         <$actorEnabled> $enabled;
-       |         <$passwordHash> '$passwordHashString' .
-       |   }
-       |}
-     """.stripMargin
-
-    Logger.debug("Query will be " + query)
-    query
-  }
-  
-  def insertSubActorQ(user: User, prefix: String, passwordHashString: String, adminActor: User) = {
-    val enabled = true
-    val admin = false
-    s"""
-       |WITH <$actorsGraph>
-       |DELETE {
-       |   <${user.uri(prefix)}> ?p ?o .
-       |}
-       |INSERT {
-       |   <${user.uri(prefix)}>
-       |      a <$actorEntity>;
-       |      <$username> ${literalExpression(user.actorName, None)} ;
-       |      <$actorOwner> <$adminActor> ;
-       |      <$actorEnabled> $enabled ;
-       |      <$isAdmin> $admin ;
-       |      <$passwordHash> '$passwordHashString' .
-       |}
-       |WHERE {
-       |   OPTIONAL {
-       |      <${user.uri(prefix)}> ?p ?o .
-       |   }
-       |}
-     """.stripMargin
-  }
-
-
-  def getSubActorList(user: User) =
-    // todo: add ^^xsd:boolean
-    s"""
-       |SELECT ?username ?isAdmin ?actorEnabled
-       |WHERE {
-       | GRAPH <$actorsGraph> {
-       |   ?actor
-       |     a <$actorEntity> ;
-       |     <$username> ?username .
-       |     OPTIONAL {
-       |      ?actor <$isAdmin> ?isAdmin .
-       |      }
-       |     OPTIONAL {
-       |      ?actor <$actorEnabled> ?actorEnabled .
-       |      }
-       |   }
-       |}
-      """.stripMargin
-
-  def setActorProfileQ(user: User, prefix: String, profile: Profile) =
-    s"""
-      |WITH <$actorsGraph>
-      |DELETE {
-      |   <${user.uri(prefix)}>
-      |      <$userFirstName> ?firstName ;
-      |      <$userLastName> ?lastName ;
-      |      <$userEMail> ?email .
-      |}
-      |INSERT {
-      |   <${user.uri(prefix)}>
-      |      <$userFirstName> ${literalExpression(profile.firstName, None)} ;
-      |      <$userLastName> ${literalExpression(profile.lastName, None)} ;
-      |      <$userEMail> ${literalExpression(profile.email, None)} .
-      |}
-      |WHERE {
-      |   Bind(<${user.uri(prefix)}> as ?actor)
-      |   ?actor a  <$actorEntity> .
-      |   OPTIONAL {?s <$userFirstName> ?firstName } .
-      |   OPTIONAL {?s  <$userLastName> ?lastName  } .
-      |   OPTIONAL {?s  <$userEMail> ?email  } .
-      |}
-     """.stripMargin
-
-  def setActorPasswordQ(user: User, prefix: String, passwordHashString: String) =
-    s"""
-      |WITH <$actorsGraph>
-      |DELETE {
-      |   <${user.uri(prefix)}> <$passwordHash> ?oldPassword
-      |}
-      |INSERT {
-      |   <${user.uri(prefix)}> <$passwordHash> '$passwordHashString'
-      |}
-      |WHERE {
-      |   <${user.uri(prefix)}> <$passwordHash> ?oldPassword
-      |}
-      """.stripMargin
-
-  def removeActorQ(user: User, prefix: String) =
-    s"""
-       |WITH <$actorsGraph>
-       |DELETE {
-       |   <${user.uri(prefix)}> ?p ?o .
-       |}""".stripMargin
-
-  def enableActorQ(user: User, prefix: String, enabled: Boolean = true) =
-    s"""
-       |WITH <$actorsGraph>
-       |DELETE {
-       |   <${user.uri(prefix)}> <$actorEnabled> ?actorEnabled .
-       |}
-       |INSERT {
-       |   <${user.uri(prefix)}> <$actorEnabled> $enabled .
-       |}
-       |WHERE {
-       |   <${user.uri(prefix)}> a <$actorEntity> .
-       |   OPTIONAL { <${user.uri(prefix)}> <$actorEnabled> ?actorEnabled .}
-       |}""".stripMargin
-
-  def setActorAdminQ(user: User, prefix: String, isAdminToggle: Boolean = true) =
-  // todo add ^^xsd:boolean
-    s"""
-       |WITH <$actorsGraph>
-       |DELETE {
-       |   <${user.uri(prefix)}> <$isAdmin> ?oldBoolean .
-       |}
-       |INSERT {
-       |   <${user.uri(prefix)}> <$isAdmin> $isAdminToggle .
-       |}
-       |WHERE {
-       |   <${user.uri(prefix)}> a <$actorEntity> .
-       |   OPTIONAL { <${user.uri(prefix)}> <$isAdmin> ?oldBoolean .}
-       |}
      """.stripMargin
 
   // === dataset info ===
@@ -579,7 +334,7 @@ object Sparql {
       |}
      """.stripMargin
 
-  def insertMappingQ(graphName:String, user: User, prefix: String, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
+  def insertMappingQ(graphName:String, prefix: String, uri: String, uriA: String, uriB: String, skosA: SkosGraph, skosB: SkosGraph) = {
     val connection = if (skosB.spec == CATEGORIES_SPEC) belongsToCategory.uri else exactMatch
     s"""
       |INSERT DATA {
@@ -588,7 +343,6 @@ object Sparql {
       |    <$uri>
       |       a <$terminologyMapping>;
       |       <$synced> false;
-      |       <$belongsTo> <${user.uri(prefix)}> ;
       |       <$mappingTime> '''${Temporal.timeToString(new DateTime)}''' ;
       |       <$mappingConcept> <$uriA> ;
       |       <$mappingConcept> <$uriB> ;

@@ -12,7 +12,7 @@ import controllers.WebJarAssets
 import harvest.PeriodicHarvest
 import harvest.PeriodicHarvest.ScanForHarvests
 import init.MyApplicationLoader.DatadogReportingConfig
-import init.healthchecks.{AdminUserHealthCheck, FusekiHealthCheck}
+import init.healthchecks.FusekiHealthCheck
 import mapping.PeriodicSkosifyCheck
 import org.coursera.metrics.datadog.DatadogReporter
 import org.coursera.metrics.datadog.transport.UdpTransport
@@ -25,11 +25,11 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.mailer._
 import play.api.libs.ws.ahc.AhcWSComponents
 import router.Routes
-import services.{MailService, MailServiceImpl}
+import services.{MailService, PlayMailService}
 import triplestore.Fuseki
 import web._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import scala.concurrent.duration._ // this is the class that Play generates based on the contents of the Routes file
 
@@ -51,8 +51,6 @@ class MyApplicationLoader extends ApplicationLoader {
   def load(context: Context) = {
     Logger.info("Narthex starting up...")
 
-    val initialPassword: String = context.initialConfiguration.getString(MyApplicationLoader.topActorConfigProp).
-      getOrElse(throw new RuntimeException(s"${MyApplicationLoader.topActorConfigProp} not set"))
     val homeDir: String = context.initialConfiguration.getString("narthexHome").
       getOrElse(System.getProperty("user.home") + "/NarthexFiles")
 
@@ -78,14 +76,6 @@ class MyApplicationLoader extends ApplicationLoader {
       }
 
     val components = new MyComponents(context, narthexDataDir, datadogConfigOpt)
-
-    val userRepository: UserRepository = components.userRepository
-    userRepository.hasAdmin.
-      filter( hasAdmin => !hasAdmin).
-      map { hasAdmin =>
-        userRepository.insertAdmin(initialPassword)
-        Logger.info(s"Inserted initial admin user")
-      }
     components.application
   }
 }
@@ -100,8 +90,11 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   val appConfig = initAppConfig(narthexDataDir)
 
-  lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsApi,
-    mailService, authenticationService, userRepository, orgActorRef)
+  val tripleStoreUrl = configString("triple-store")
+  val tripleStoreLog = configFlag("triple-store-log")
+  implicit val tripleStore = new Fuseki(tripleStoreUrl, tripleStoreLog, wsApi)
+
+  lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsApi, mailService, orgActorRef)
 
   lazy val router = new Routes(httpErrorHandler, mainController, webSocketController, appController,
     sipAppController, apiController, webJarAssets, assets, metricsController, infoController)
@@ -120,37 +113,19 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   override lazy val httpFilters = List(metricsFilter)
   lazy val requireJs = new RequireJS(environment, webJarAssets)
   lazy val metricsController = new MetricsController(metrics)
-  lazy val sipAppController: SipAppController = new SipAppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds)
-  lazy val mainController = new MainController(userRepository, authenticationService, defaultCacheApi,
-    appConfig.apiAccessKeys, appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
-    webJarAssets, requireJs, sessionTimeoutInSeconds)
+  lazy val sipAppController: SipAppController = new SipAppController(orgContext)
+  lazy val mainController = new MainController(defaultCacheApi,
+    appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
+    webJarAssets, requireJs, configString("sipAppDownloadUrl"))
 
-  lazy val appController = new AppController(defaultCacheApi, orgContext, sessionTimeoutInSeconds) (tripleStore, actorSystem, materializer)
-  lazy val apiController = new APIController(appConfig.apiAccessKeys, orgContext)
+  lazy val appController = new AppController(orgContext) (tripleStore, actorSystem, materializer)
+  lazy val apiController = new APIController(orgContext)
   lazy val infoController = new InfoController(healthCheckRegistry)
 
-  lazy val webSocketController = new WebSocketController(defaultCacheApi, sessionTimeoutInSeconds)(actorSystem, materializer, defaultContext)
+  lazy val webSocketController = new WebSocketController() (actorSystem, materializer, defaultContext)
 
   lazy val assets = new controllers.Assets(httpErrorHandler)
   lazy val webJarAssets = new WebJarAssets(httpErrorHandler, configuration, environment)
-
-  val tripleStoreUrl = configString("triple-store")
-  val tripleStoreLog = configFlag("triple-store-log")
-  implicit val tripleStore = new Fuseki(tripleStoreUrl, tripleStoreLog, wsApi)
-
-  lazy val authenticationService = AuthenticationMode.
-    fromConfigString(configuration.getString(AuthenticationMode.PROPERTY_NAME)) match {
-      case AuthenticationMode.MOCK => new MockAuthenticationService
-      case AuthenticationMode.TS => new TsBasedAuthenticationService
-  }
-
-
-  lazy val userRepository: UserRepository = {
-    UserRepository.Mode.fromConfigString(configuration.getString(UserRepository.Mode.PROPERTY_NAME)) match {
-      case UserRepository.Mode.MOCK => new MockUserRepository(appConfig.nxUriPrefix)
-      case UserRepository.Mode.TS => new ActorStore(authenticationService, appConfig.nxUriPrefix)
-    }
-  }
 
   val periodicHarvest = actorSystem.actorOf(PeriodicHarvest.props(orgContext), "PeriodicHarvest")
   val harvestTicker = actorSystem.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
@@ -162,11 +137,12 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   val xsdValidation = configFlag("xsd-validation")
   System.setProperty("XSD_VALIDATION", xsdValidation.toString)
 
-  lazy val mailService: MailService = new MailServiceImpl(mailerClient, userRepository, true)
+  lazy val emailReportsTo: List[String] = configuration.getStringList("emailReportsTo")
+    .map(_.asScala.toList).getOrElse(List())
 
-  private val fusekiTimeoutMillis = configLong("healthchecks.fuseki.timeoutMillis")
-  healthCheckRegistry.register("admin-user-exists", new AdminUserHealthCheck(userRepository, fusekiTimeoutMillis))
-  healthCheckRegistry.register("fuseki", new FusekiHealthCheck(tripleStore, fusekiTimeoutMillis))
+  lazy val mailService: MailService = new PlayMailService(mailerClient, emailReportsTo)
+
+  healthCheckRegistry.register("fuseki", new FusekiHealthCheck(tripleStore, configLong("healthchecks.fuseki.timeoutMillis")))
 
   applicationLifecycle.addStopHook { () =>
     Future.successful({
@@ -180,9 +156,6 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
     configOpt match {
       case None => None
       case Some(config) => {
-
-        import scala.collection.JavaConverters._
-
         val tags = List("narthex", s"v${buildinfo.BuildInfo.version}", s"sha-${buildinfo.BuildInfo.gitCommitSha}")
 
         val transport = new UdpTransport.Builder()
@@ -208,14 +181,12 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
     val rdfBaseUrl = configStringNoSlash("rdfBaseUrl")
     val narthexDomain = configStringNoSlash("domains.narthex")
     val naveDomain = configStringNoSlash("domains.nave")
-    val apiAccessKeys = secretList("api.accessKeys").toList
 
     AppConfig(
       harvestTimeout, true, rdfBaseUrl,
       configStringNoSlash("naveApiUrl"), configStringNoSlash("naveAuthToken"),
       configuration.getBoolean("mockBulkApi").getOrElse(false),
-      narthexDataDir, configString("orgId"), narthexDomain, naveDomain,
-      apiAccessKeys)
+      narthexDataDir, configString("orgId"), narthexDomain, naveDomain)
   }
 
   private def configFlag(name: String): Boolean = configuration.getBoolean(name).getOrElse(false)
@@ -228,7 +199,6 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   private def configStringNoSlash(name: String) = configString(name).replaceAll("\\/$", "")
 
-  private def secretList(name: String): util.List[String] = configuration.getStringList(name).getOrElse(List("secret"))
 }
 
 /**
@@ -238,7 +208,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 case class AppConfig(harvestTimeOut: Long, useBulkApi: Boolean, rdfBaseUrl: String,
                      naveApiUrl: String, naveApiAuthToken: String, mockBulkApi: Boolean,
                      narthexDataDir: File, orgId: String,
-                     narthexDomain: String, naveDomain: String, apiAccessKeys: List[String]) {
+                     narthexDomain: String, naveDomain: String) {
 
   def nxUriPrefix: String = s"$rdfBaseUrl/resource"
 }
