@@ -11,8 +11,6 @@ import play.api.mvc.{ResponseHeader, Result, _}
 
 import scala.concurrent.Future
 
-
-
 object Utils {
 
   val SIP_APP_VERSION = "1.0.9"

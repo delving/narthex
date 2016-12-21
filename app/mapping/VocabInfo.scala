@@ -21,7 +21,7 @@ import java.io.StringWriter
 import org.apache.jena.rdf.model._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
-import org.{OrgContext, User}
+import organization.OrgContext
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.{createGraphName, urlEncodeValue}
@@ -67,12 +67,11 @@ object VocabInfo {
 
   def getVocabGraphName(spec: String, orgContext: OrgContext) = createGraphName(s"${orgContext.appConfig.nxUriPrefix}/skos/${urlEncodeValue(spec)}")
 
-  def createVocabInfo(owner: User, spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[VocabInfo] = {
+  def createVocabInfo(spec: String, orgContext: OrgContext)(implicit ec: ExecutionContext, ts: TripleStore): Future[VocabInfo] = {
     val m = ModelFactory.createDefaultModel()
     val subject = m.getResource(getVocabInfoUri(spec, orgContext))
     m.add(subject, m.getProperty(rdfType), m.getResource(skosCollection))
     m.add(subject, m.getProperty(skosSpec.uri), m.createLiteral(spec))
-    m.add(subject, m.getProperty(actorOwner.uri), m.createResource(owner.uri(orgContext.appConfig.nxUriPrefix)))
     ts.up.dataPost(getGraphName(spec, orgContext), m).map(ok => new VocabInfo(spec, orgContext))
   }
 

@@ -14,7 +14,7 @@
 //    limitations under the License.
 //===========================================================================
 
-package org
+package organization
 
 import java.io.File
 
@@ -24,9 +24,9 @@ import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
 import init.AppConfig
 import mapping._
-import org.OrgActor.DatasetsCountCategories
+import organization.OrgActor.DatasetsCountCategories
 import play.api.cache.CacheApi
-import play.api.libs.ws.WSClient
+import play.api.libs.ws.WSAPI
 import services.MailService
 import triplestore.GraphProperties.categoriesInclude
 import triplestore.TripleStore
@@ -39,11 +39,10 @@ import scala.language.postfixOps
 /**
   * Best way to describe this class is that it has functioned as some means of passing around globals.
   * It is obvious that we need to remove this class and only DI the specific values that a component requires,
-  * allowing this class to be deleted, which I vow to do.
+  * allowing this class to be deleted
   */
-class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsClient: WSClient, val mailService: MailService,
-                 val authenticationService: AuthenticationService, val us: UserRepository, val orgActor: ActorRef)
-                (implicit ec: ExecutionContext, val ts: TripleStore) {
+class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsApi: WSAPI, val mailService: MailService,
+                 val orgActor: ActorRef) (implicit ec: ExecutionContext, val ts: TripleStore) {
 
   val root = appConfig.narthexDataDir
   val orgRoot = new File(root, appConfig.orgId)
@@ -54,7 +53,7 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsClient:
   val sipsDir = new File(orgRoot, "sips")
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir, appConfig.orgId)
-  lazy val sipFactory = new SipFactory(factoryDir, appConfig.rdfBaseUrl, wsClient)
+  lazy val sipFactory = new SipFactory(factoryDir, appConfig.rdfBaseUrl, wsApi)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
@@ -62,9 +61,9 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsClient:
   rawDir.mkdirs()
   sipsDir.mkdirs()
 
-  def createDsInfo(owner: User, spec: String, characterString: String, prefix: String) = {
+  def createDsInfo(spec: String, characterString: String, prefix: String) = {
     val character = DsInfo.getCharacter(characterString).get
-    DsInfo.createDsInfo(owner, spec, character, prefix, this)
+    DsInfo.createDsInfo(spec, character, prefix, this)
   }
 
   def datasetContext(spec: String): DatasetContext = withDsInfo(spec, this)(dsInfo => new DatasetContext(this, dsInfo))
@@ -81,7 +80,7 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsClient:
   }
 
   def termMappingStore(spec: String): TermMappingStore = {
-    withDsInfo(spec, this)(dsInfo => new TermMappingStore(dsInfo, this, this.wsClient))
+    withDsInfo(spec, this)(dsInfo => new TermMappingStore(dsInfo, this, this.wsApi))
   }
 
   def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(

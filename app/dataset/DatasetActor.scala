@@ -31,30 +31,26 @@ import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import mapping.Skosifier.SkosificationComplete
 import mapping.{CategoryCounter, Skosifier}
-import org.OrgContext
+import organization.OrgContext
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json.{Json, Writes}
 import record.SourceProcessor
 import record.SourceProcessor._
-import services.{MailService, ProgressReporter}
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
+import services.{MailService, ProgressReporter}
 import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 import triplestore.Sparql.SkosifiedField
 
-import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 import scala.language.postfixOps
 import scala.util.Try
-
-/*
- * @author Gerald de Jong <gerald@delving.eu>
- */
 
 object DatasetActor {
 
@@ -139,7 +135,7 @@ object DatasetActor {
 
 class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
                    orgContext: OrgContext, harvestingExecutionContext: ExecutionContext)
-  extends FSM[DatasetActorState, DatasetActorData] with ActorLogging {
+  extends LoggingFSM[DatasetActorState, DatasetActorData] with ActorLogging {
 
   import context.dispatcher
 
@@ -301,7 +297,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
         val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut,
-          orgContext.wsClient, harvestingExecutionContext), "harvester")
+          orgContext.wsApi, harvestingExecutionContext), "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
@@ -407,7 +403,6 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
           dsInfo.setState(SOURCED)
           dsInfo.setLastHarvestTime(incremental = false)
 
-
         case ModifiedAfter(mod, _) =>
           processIncremental(fileOpt, noRecordsMatch, Some(mod))
 
@@ -485,8 +480,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       else {
         dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
-        val ownerEmailOpt = Await.result(dsInfo.ownerEmailOpt, 2.seconds)
-        mailService.sendProcessingCompleteMessage(dsInfo.spec, ownerEmailOpt, dsInfo.processedValidVal, dsInfo.processedInvalidVal)
+        mailService.sendProcessingCompleteMessage(dsInfo.spec, dsInfo.processedValidVal, dsInfo.processedInvalidVal)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Idle) using Dormant
       }
@@ -571,8 +565,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
         case Some(exception) => log.error(exception, message)
         case None => log.error(message)
       }
-      val ownerEmail: Option[String] = Await.result(dsInfo.ownerEmailOpt, 2.seconds)
-      mailService.sendProcessingErrorMessage(dsInfo.spec, ownerEmail, message, exceptionOpt)
+      mailService.sendProcessingErrorMessage(dsInfo.spec, message, exceptionOpt)
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using InError(message)
 
@@ -591,9 +584,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
   }
 
   onTransition {
-    case fromState -> Idle =>
-      log.info(s"State to Idle from $fromState")
-      broadcastIdleState()
+    case _ -> Idle => broadcastIdleState()
   }
 
 }

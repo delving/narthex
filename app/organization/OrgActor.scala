@@ -14,13 +14,13 @@
 //    limitations under the License.
 //===========================================================================
 
-package org
+package organization
 
 import akka.actor._
 import dataset.DatasetActor._
 import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.CategoryCountComplete
-import org.OrgActor._
+import organization.OrgActor._
 
 import scala.concurrent.ExecutionContext
 import scala.language.postfixOps

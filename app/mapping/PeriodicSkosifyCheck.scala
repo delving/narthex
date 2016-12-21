@@ -4,7 +4,7 @@ import akka.actor.{Actor, Props}
 import dataset.DatasetActor.StartSkosification
 import dataset.DsInfo
 import mapping.PeriodicSkosifyCheck.ScanForWork
-import org.OrgContext
+import organization.OrgContext
 import play.api.Logger
 import triplestore.Sparql._
 

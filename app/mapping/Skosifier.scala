@@ -18,7 +18,7 @@ package mapping
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.WorkFailure
 import dataset.DsInfo
-import org.OrgContext
+import organization.OrgContext
 import nxutil.Utils._
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState

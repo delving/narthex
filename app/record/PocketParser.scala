@@ -21,7 +21,7 @@ import java.security.{MessageDigest, NoSuchAlgorithmException}
 
 import dataset.DsInfo
 import dataset.SourceRepo.{IdFilter, SourceFacts}
-import org.OrgContext
+import organization.OrgContext
 import play.api.Logger
 import services.StringHandling._
 import services._

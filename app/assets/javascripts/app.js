@@ -25,7 +25,6 @@
 define(
     [
         "angular",
-        "dashboard",
         "datasetList",
         "dataset",
         "skos",
@@ -40,7 +39,6 @@ define(
         return angular.module(
             "app",
             [
-                "narthex.dashboard",
                 "narthex.datasetList",
                 "narthex.dataset",
                 "narthex.skos",
@@ -50,8 +48,7 @@ define(
                 "ngSanitize",
                 "ui.bootstrap.tpls",
                 "ui.bootstrap",
-                "ngGrid",
-                "nvd3ChartDirectives"
+                "ngGrid"
             ]
         );
     }

@@ -2,39 +2,36 @@ package services
 
 import java.io.{PrintWriter, StringWriter}
 
-import org.UserRepository
 import play.api.Logger
 import play.api.libs.mailer._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 
 trait MailService {
 
   def sendProcessingCompleteMessage(spec: String,
-                              ownerEmailOpt: Option[String],
                               validString: String,
                               invalidString: String): Unit
 
   def sendProcessingErrorMessage(spec: String,
-                                 ownerEmailOpt: Option[String],
                                  message: String,
                                  throwableOpt: Option[Throwable]): Unit
 }
 
-class MailServiceImpl(val mailerClient: MailerClient, val userRepository: UserRepository, isProduction: Boolean)
+class PlayMailService(val mailerClient: MailerClient, adminEmails: List[String])
                      (implicit val ec: ExecutionContext)
   extends MailService {
 
   val fromNarthex = "Narthex <narthex@delving.eu>"
 
-  override def sendProcessingCompleteMessage(spec: String, ownerEmailOpt: Option[String], validString: String, invalidString: String) = {
+  override def sendProcessingCompleteMessage(spec: String, validString: String, invalidString: String) = {
     val subject = s"Processing Complete: $spec"
     val html = views.html.email.processingComplete.render(spec, validString, invalidString).body
-    sendMail(ownerEmailOpt, subject, html)
+    sendMail(subject, html)
   }
 
-  override def sendProcessingErrorMessage(spec: String, ownerEmailOpt: Option[String], message: String, throwableOpt: Option[Throwable]) = {
+  override def sendProcessingErrorMessage(spec: String, message: String, throwableOpt: Option[Throwable]) = {
     def exceptionString = throwableOpt.map { throwable =>
       val sw = new StringWriter()
       val out = new PrintWriter(sw)
@@ -46,29 +43,19 @@ class MailServiceImpl(val mailerClient: MailerClient, val userRepository: UserRe
 
     val subject = s"Failure in dataset: $spec"
     val html = views.html.email.datasetError.render(spec, message, exceptionString).body
-    sendMail(ownerEmailOpt, subject, html)
+    sendMail(subject, html)
   }
 
 
-  private def sendMail(toOpt: Option[String], subject: String, html: String): Unit = {
-    val emailList = prepareRecipients(toOpt)
-
-    emailList.map { recipients =>
-      if (recipients.isEmpty) {
-        Logger.debug(s"EMail: '$subject' not sent because there is no recipient email address available.")
-      } else {
-        val email = Email(to = recipients, from = fromNarthex, subject = subject, bodyHtml = Some(html))
-        mailerClient.send(email)
-      }
+  private def sendMail(subject: String, html: String): Unit = {
+    if (adminEmails.isEmpty) {
+      Logger.warn(s"No emailReportsTo configured, not sending")
+    } else {
+      val email = Email(to = adminEmails, from = fromNarthex, subject = subject, bodyHtml = Some(html))
+      val messageId = mailerClient.send(email)
+      Logger.debug(s"Sent email $messageId")
     }
   }
 
-  private def prepareRecipients(overrideTo: Option[String]): Future[List[String]] = {
-    overrideTo match {
-      case Some(to) => Future.successful(List(to))
-      case None =>
-        userRepository.adminEmails
-    }
-  }
 
 }

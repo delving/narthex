@@ -21,7 +21,7 @@ import dataset.DatasetActor.{FromScratchIncremental, ModifiedAfter, StartHarvest
 import dataset.DsInfo
 import dataset.DsInfo.{DsState, withDsInfo}
 import harvest.PeriodicHarvest.ScanForHarvests
-import org.OrgContext
+import organization.OrgContext
 import play.api.Logger
 import services.Temporal.DelayUnit
 

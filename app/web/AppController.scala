@@ -32,10 +32,10 @@ import mapping.SkosVocabulary._
 import mapping.VocabInfo
 import mapping.VocabInfo._
 import nl.grons.metrics.scala.DefaultInstrumented
-import org.OrgActor.DatasetMessage
+import organization.OrgActor.DatasetMessage
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
-import org.OrgContext
+import organization.OrgContext
 import play.api.Logger
 import play.api.cache.CacheApi
 import play.api.libs.concurrent.Execution.Implicits._
@@ -49,10 +49,10 @@ import triplestore.Sparql.SkosifiedField
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sessionTimeoutInSeconds: Int)
+class AppController(val orgContext: OrgContext)
                    (implicit val ts: TripleStore, implicit val actorSystem: ActorSystem,
                     implicit val materializer: Materializer)
-  extends Controller with Security with DefaultInstrumented {
+  extends Controller with DefaultInstrumented {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
@@ -67,7 +67,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
 
   def sendRefresh(spec: String) = orgContext.orgActor ! DatasetMessage(spec, Command("refresh"))
 
-  def listDatasets = SecureAsync() { session => request =>
+  def listDatasets = Action.async { request =>
     getListDsTimer.timeFuture(listDsInfo(orgContext)).map(list => {
 
       val jsonBytes: Array[Byte] = Json.toJson(list).toString().toCharArray.map(_.toByte)
@@ -84,27 +84,27 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
   }
 
 
-  def listPrefixes = Secure() { session => request =>
+  def listPrefixes = Action { request =>
     val prefixes = orgContext.sipFactory.prefixRepos.map(_.prefix)
     Ok(Json.toJson(prefixes))
   }
 
-  def datasetInfo(spec: String) = Secure() { session => request =>
+  def datasetInfo(spec: String) = Action { request =>
     withDsInfo(spec, orgContext)(dsInfo => Ok(Json.toJson(dsInfo)))
   }
 
-  def createDataset(spec: String, character: String, mapToPrefix: String) = SecureAsync() { session => request =>
-    orgContext.createDsInfo(session.user, spec, character, mapToPrefix).map(dsInfo =>
+  def createDataset(spec: String, character: String, mapToPrefix: String) = Action.async { request =>
+    orgContext.createDsInfo(spec, character, mapToPrefix).map(dsInfo =>
       Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
     )
   }
 
-  def command(spec: String, command: String) = Secure() { session => request =>
+  def command(spec: String, command: String) = Action { request =>
     orgContext.orgActor ! DatasetMessage(spec, Command(command))
     Ok
   }
 
-  def uploadDataset(spec: String) = Secure(parse.multipartFormData) { session => request =>
+  def uploadDataset(spec: String) = Action(parse.multipartFormData) { request =>
     val datasetContext = orgContext.datasetContext(spec).mkdirs
     request.body.file("file").map { file =>
       val error = datasetContext.acceptUpload(file.filename, { target =>
@@ -122,7 +122,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     }
   }
 
-  def setDatasetProperties(spec: String) = Secure(parse.json) { session => request =>
+  def setDatasetProperties(spec: String) = Action(parse.json) { request =>
     withDsInfo(spec, orgContext) { dsInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
@@ -137,32 +137,32 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
 
   // ====== stats files =====
 
-  def index(spec: String) = Secure() { session => request =>
+  def index(spec: String) = Action { request =>
     Utils.okFile(orgContext.datasetContext(spec).index)
   }
 
-  def nodeStatus(spec: String, path: String) = Secure() { session => request =>
+  def nodeStatus(spec: String, path: String) = Action { request =>
     orgContext.datasetContext(spec).status(path) match {
       case None => NotFound(Json.obj("path" -> path))
       case Some(file) => Utils.okFile(file)
     }
   }
 
-  def sample(spec: String, path: String, size: Int) = Secure() { session => request =>
+  def sample(spec: String, path: String, size: Int) = Action { request =>
     orgContext.datasetContext(spec).sample(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
       case Some(file) => Utils.okFile(file)
     }
   }
 
-  def histogram(spec: String, path: String, size: Int) = Secure() { session => request =>
+  def histogram(spec: String, path: String, size: Int) = Action { request =>
     orgContext.datasetContext(spec).histogram(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
       case Some(file) => Utils.okFile(file)
     }
   }
 
-  def setRecordDelimiter(spec: String) = Secure(parse.json) { session => request =>
+  def setRecordDelimiter(spec: String) = Action(parse.json) { request =>
     val datasetContext = orgContext.datasetContext(spec)
     // todo: recordContainer instead perhaps
     val recordRoot = (request.body \ "recordRoot").as[String]
@@ -174,7 +174,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
 
   // ====== vocabularies =====
 
-  def toggleSkosifiedField(spec: String) = Secure(parse.json) { session => request =>
+  def toggleSkosifiedField(spec: String) = Action(parse.json) { request =>
     withDsInfo(spec, orgContext) { dsInfo: DsInfo =>
       val histogramPathOpt = (request.body \ "histogramPath").asOpt[String]
       val skosFieldTag = (request.body \ "skosFieldTag").as[String]
@@ -225,17 +225,17 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     }
   }
 
-  def listVocabularies = SecureAsync() { session => request =>
+  def listVocabularies = Action.async { request =>
     listVocabInfo(orgContext).map(list => Ok(Json.toJson(list)))
   }
 
-  def createVocabulary(spec: String) = SecureAsync() { session => request =>
-    VocabInfo.createVocabInfo(session.user, spec, orgContext).map(ok =>
+  def createVocabulary(spec: String) = Action.async { request =>
+    VocabInfo.createVocabInfo(spec, orgContext).map(ok =>
       Ok(Json.obj("created" -> s"Skos $spec created"))
     )
   }
 
-  def deleteVocabulary(spec: String) = SecureAsync() { session => request =>
+  def deleteVocabulary(spec: String) = Action.async { request =>
     VocabInfo.freshVocabInfo(spec, orgContext).map { vocabInfoOpt =>
       vocabInfoOpt.map { vocabInfo =>
         vocabInfo.dropVocabulary
@@ -246,7 +246,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     }
   }
 
-  def uploadVocabulary(spec: String) = SecureAsync(parse.multipartFormData) { session => request =>
+  def uploadVocabulary(spec: String) = Action.async(parse.multipartFormData) { request =>
     withVocabInfo(spec, orgContext) { vocabInfo =>
       request.body.file("file").map { bodyFile =>
         val file = bodyFile.ref.file
@@ -263,17 +263,17 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     }
   }
 
-  def vocabularyInfo(spec: String) = Secure() { session => request =>
+  def vocabularyInfo(spec: String) = Action { request =>
     withVocabInfo(spec, orgContext)(vocabInfo => Ok(Json.toJson(vocabInfo)))
   }
 
-  def vocabularyStatistics(spec: String) = SecureAsync() { session => request =>
+  def vocabularyStatistics(spec: String) = Action.async { request =>
     withVocabInfo(spec, orgContext) { vocabInfo =>
       vocabInfo.conceptCount.map(stats => Ok(Json.toJson(stats)))
     }
   }
 
-  def setVocabularyProperties(spec: String) = Secure(parse.json) { session => request =>
+  def setVocabularyProperties(spec: String) = Action(parse.json) { request =>
     withVocabInfo(spec, orgContext) { vocabInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
       Logger.debug(s"setVocabularyProperties $propertyList")
@@ -285,13 +285,13 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     }
   }
 
-  def getVocabularyLanguages(spec: String) = Secure() { session => request =>
+  def getVocabularyLanguages(spec: String) = Action { request =>
     withVocabInfo(spec, orgContext) { vocabInfo =>
       Ok(Json.obj("languages" -> vocabInfo.vocabulary.languages))
     }
   }
 
-  def searchVocabulary(spec: String, sought: String, language: String) = Secure() { session => request =>
+  def searchVocabulary(spec: String, sought: String, language: String) = Action { request =>
     val languageOpt = Option(language).find(lang => lang.trim.nonEmpty && lang != "-")
     Logger.debug(s"Search $spec/$language: $sought")
     withVocabInfo(spec, orgContext) { vocabInfo =>
@@ -300,21 +300,21 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     }
   }
 
-  def getSkosMappings(specA: String, specB: String) = SecureAsync() { session => request =>
+  def getSkosMappings(specA: String, specB: String) = Action.async { request =>
     val store = orgContext.vocabMappingStore(specA, specB)
     store.getMappings.map(tuples => Ok(Json.toJson(tuples.map(t => List(t._1, t._2)))))
   }
 
-  def toggleSkosMapping(specA: String, specB: String) = SecureAsync(parse.json) { session => request =>
+  def toggleSkosMapping(specA: String, specB: String) = Action.async(parse.json) { request =>
     val uriA = (request.body \ "uriA").as[String]
     val uriB = (request.body \ "uriB").as[String]
     val store = orgContext.vocabMappingStore(specA, specB)
-    store.toggleMapping(SkosMapping(session.user, uriA, uriB)).map { action =>
+    store.toggleMapping(SkosMapping(uriA, uriB)).map { action =>
       Ok(Json.obj("action" -> action))
     }
   }
 
-  def getTermVocabulary(spec: String) = Secure() { session => request =>
+  def getTermVocabulary(spec: String) = Action { request => 
     withDsInfo(spec, orgContext) { dsInfo =>
       val results = dsInfo.vocabulary.concepts.map(concept => {
         //          val freq: Int = concept.frequency.getOrElse(0)
@@ -331,34 +331,34 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     }
   }
 
-  def getTermMappings(dsSpec: String) = SecureAsync() { session => request =>
+  def getTermMappings(dsSpec: String) = Action.async { request =>
     val store = orgContext.termMappingStore(dsSpec)
     store.getMappings(categories = false).map(entries => Ok(Json.toJson(entries)))
   }
 
-  def getCategoryMappings(dsSpec: String) = SecureAsync() { session => request =>
+  def getCategoryMappings(dsSpec: String) = Action.async { request =>
     val store = orgContext.termMappingStore(dsSpec)
     store.getMappings(categories = true).map(entries => Ok(Json.toJson(entries)))
   }
 
-  def toggleTermMapping(dsSpec: String, vocabSpec: String) = SecureAsync(parse.json) { session => request =>
+  def toggleTermMapping(dsSpec: String, vocabSpec: String) = Action.async(parse.json) { request =>
     val uriA = (request.body \ "uriA").as[String]
     val uriB = (request.body \ "uriB").as[String]
     val store = orgContext.termMappingStore(dsSpec)
     withVocabInfo(vocabSpec, orgContext) { vocabInfo =>
-      store.toggleMapping(SkosMapping(session.user, uriA, uriB), vocabInfo).map { action =>
+      store.toggleMapping(SkosMapping(uriA, uriB), vocabInfo).map { action =>
         Ok(Json.obj("action" -> action))
       }
     }
   }
 
-  def listSipFiles(spec: String) = Secure() { session => request =>
+  def listSipFiles(spec: String) = Action { request => 
     val datasetContext = orgContext.datasetContext(spec)
     val fileNames = datasetContext.sipRepo.listSips.map(_.file.getName)
     Ok(Json.obj("list" -> fileNames))
   }
 
-  def deleteLatestSipFile(spec: String) = Secure() { session => request =>
+  def deleteLatestSipFile(spec: String) = Action { request => 
     val datasetContext = orgContext.datasetContext(spec)
     val sips = datasetContext.sipRepo.listSips
     if (sips.size < 2) {
@@ -370,7 +370,7 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     }
   }
 
-  def getCategoryList = SecureAsync() { session => request =>
+  def getCategoryList = Action.async{ request =>
     val map: Future[Option[VocabInfo]] = listVocabInfo(orgContext).map(list => list.find(_.spec == CATEGORIES_SPEC))
     map.map { catVocabInfoOpt =>
       catVocabInfoOpt.map { catVocabInfo =>
@@ -395,12 +395,12 @@ class AppController(val cacheApi: CacheApi, val orgContext: OrgContext, val sess
     }
   }
 
-  def gatherCategoryCounts = Secure() { session => request =>
+  def gatherCategoryCounts = Action { request => 
     orgContext.startCategoryCounts()
     Ok
   }
 
-  def listSheets = Secure() { session => request =>
+  def listSheets = Action { request => 
     Ok(Json.obj("sheets" -> orgContext.categoriesRepo.listSheets))
   }
 

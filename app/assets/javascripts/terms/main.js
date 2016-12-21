@@ -12,16 +12,15 @@ define(
     function (angular, services, controllers) {
         "use strict";
 
-        var termsRoutes = angular.module("terms.routes", ["narthex.common", "dashboard.services"]);
+        var termsRoutes = angular.module("terms.routes", ["narthex.common"]);
         termsRoutes.config([
-            "$routeProvider", "userResolve",
-            function ($routeProvider, userResolve) {
+            "$routeProvider",
+            function ($routeProvider) {
                 $routeProvider.when(
                     "/terms/:spec",
                     {
                         templateUrl: "/narthex/assets/templates/terms.html",
                         controller: controllers.TermsCtrl,
-                        resolve: userResolve,
                         reloadOnSearch: false
                     }
                 )

@@ -24,7 +24,7 @@ import dataset.DatasetContext
 import dataset.SipFactory.SipGenerationFacts
 import dataset.SipRepo.URIErrorsException
 import eu.delving.groovy.DiscardRecordException
-import org.OrgContext
+import organization.OrgContext
 import nxutil.Utils.actorWork
 import org.apache.commons.io.FileUtils.deleteQuietly
 import org.joda.time.{DateTime, LocalDateTime}

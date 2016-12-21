@@ -20,7 +20,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Scheduled, WorkFailure}
 import dataset.DatasetContext
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
-import org.OrgContext
+import organization.OrgContext
 import nxutil.Utils._
 import org.joda.time.DateTime
 import services.ProgressReporter
@@ -74,11 +74,9 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
     }
 
     case Some(chunk: GraphChunk) => actorWork(context) {
-      log.info(s"Save a chunk of graphs (bulk-api: ${orgContext.appConfig.useBulkApi})")
-      val update = if (orgContext.appConfig.useBulkApi)
-        chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
-      else
-        ts.up.sparqlUpdate(chunk.sparqlUpdateQ)
+      log.info(s"Save a chunk of graphs")
+      val update = chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
+
       update.map(ok => sendGraphChunkOpt())
       update.onFailure {
         case ex: Throwable => failure(ex)

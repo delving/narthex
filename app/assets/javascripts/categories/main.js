@@ -12,16 +12,15 @@ define(
     function (angular, services, controllers) {
         "use strict";
 
-        var categoriesRoutes = angular.module("categories.routes", ["narthex.common", "dashboard.services"]);
+        var categoriesRoutes = angular.module("categories.routes", ["narthex.common"]);
         categoriesRoutes.config([
-            "$routeProvider", "userResolve",
-            function ($routeProvider, userResolve) {
+            "$routeProvider",
+            function ($routeProvider) {
                 $routeProvider.when(
                     "/categories/:spec",
                     {
                         templateUrl: "/narthex/assets/templates/category-set.html",
                         controller: controllers.CategorySetCtrl,
-                        resolve: userResolve,
                         reloadOnSearch: false
                     }
                 ).when(
@@ -29,7 +28,6 @@ define(
                     {
                         templateUrl: "/narthex/assets/templates/category-monitor.html",
                         controller: controllers.CategoryMonitorCtrl,
-                        resolve: userResolve
                     }
                 )
             }

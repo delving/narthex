@@ -23,7 +23,7 @@ import dataset.{DsInfo, ProcessedRepo}
 import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories, Counter}
 import mapping.VocabInfo._
-import org.OrgContext
+import organization.OrgContext
 import nxutil.Utils.actorWork
 import org.joda.time.DateTime
 import services.ProgressReporter

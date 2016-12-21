@@ -20,22 +20,17 @@ define(["angular", "common"], function (angular) {
     var mod = angular.module("dataset.services", ["narthex.common"]);
 
     mod.service("datasetService", [
-        "$http", "$q", "playRoutes", "$location",
-        function ($http, $q, playRoutes, $location) {
+        "$http", "$q", "playRoutes",
+        function ($http, $q, playRoutes) {
             var app = playRoutes.web.AppController;
 
             var rejection = function (reply) {
-                if (reply.status == 401) { // unauthorized
-                    $location.path('/');
+                console.log('why', reply);
+                if (reply.data.problem) {
+                    alert("Processing problem " + reply.status + " (" + reply.data.problem + ")");
                 }
                 else {
-                    console.log('why', reply);
-                    if (reply.data.problem) {
-                        alert("Processing problem " + reply.status + " (" + reply.data.problem + ")");
-                    }
-                    else {
-                        alert("Network problem " + reply.statusText);
-                    }
+                    alert("Network problem " + reply.statusText);
                 }
             };
 
@@ -108,7 +103,7 @@ define(["angular", "common"], function (angular) {
             $location.path("/");
         });
     };
-    handleRouteError.$inject = ["$rootScope", "$location"];
+    handleRouteError.$inject = ["$rootScope"];
     mod.run(handleRouteError);
     return mod;
 });

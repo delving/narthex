@@ -63,9 +63,6 @@
                     <li data-ng-class="{ active: activeView == 'sample' }">
                         <a href="" data-ng-click="fetchSample()">Samples</a>
                     </li>
-                    <li data-ng-class="{ active: activeView == 'lengths' }">
-                        <a href="" data-ng-click="fetchLengths()">Lengths</a>
-                    </li>
                 </ul>
                 <ul class="list-inline pull-right">
                     <li data-ng-show="rawAnalyzedState && activeView == 'histogram' && histogramUniqueEnough">
@@ -84,13 +81,6 @@
                         </ul>
                     </li>
                 </ul>
-            </div>
-
-            <div data-ng-show="selectedNode && !(sample || histogram)" data-scrollable id="graph-list" data-offset="200" >
-                <nvd3-pie-chart data="selectedNode.lengths" id="exampleId" width="500" height="500" x="getX()"
-                                y="getY()" color="getColor()" showLabels="true">
-                    <svg></svg>
-                </nvd3-pie-chart>
             </div>
 
             <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="200" ng-show="sample">

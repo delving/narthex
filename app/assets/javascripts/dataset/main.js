@@ -7,16 +7,15 @@ define(
     function (angular, controllers) {
         "use strict";
 
-        var datasetRoutes = angular.module("dataset.routes", ["narthex.common", "dashboard.services"]);
+        var datasetRoutes = angular.module("dataset.routes", ["narthex.common"]);
         datasetRoutes.config(
             [
-                "$routeProvider", "userResolve",
-                function ($routeProvider, userResolve) {
+                "$routeProvider",
+                function ($routeProvider) {
                     $routeProvider.when(
                         "/dataset/:spec", {
                             templateUrl: "/narthex/assets/templates/dataset.html",
                             controller: controllers.DatasetCtrl,
-                            resolve: userResolve,
                             reloadOnSearch: false
                         }
                     );

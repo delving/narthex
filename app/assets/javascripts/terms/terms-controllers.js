@@ -17,7 +17,7 @@
 define(["angular"], function () {
     "use strict";
 
-    var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, termsService, $timeout, pageScroll, user) {
+    var TermsCtrl = function ($rootScope, $scope, $location, $routeParams, termsService, $timeout, pageScroll) {
 
         function getSearchParams() {
             $scope.spec = $routeParams.spec;
@@ -236,7 +236,7 @@ define(["angular"], function () {
         };
     };
 
-    TermsCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "termsService", "$timeout", "pageScroll", "user"];
+    TermsCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "termsService", "$timeout", "pageScroll"];
 
     return {
         TermsCtrl: TermsCtrl

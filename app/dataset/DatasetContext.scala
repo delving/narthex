@@ -26,7 +26,7 @@ import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
 import harvest.Harvesting.HarvestType
-import org.OrgContext
+import organization.OrgContext
 import org.apache.commons.io.FileUtils.deleteQuietly
 import play.api.Logger
 import record.PocketParser
