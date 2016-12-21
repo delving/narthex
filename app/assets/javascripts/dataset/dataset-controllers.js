@@ -149,9 +149,6 @@ define(["angular"], function () {
                     case 'sample':
                         $scope.fetchSample();
                         break;
-                    case 'lengths':
-                        $scope.fetchLengths();
-                        break;
                     default:
                         $scope.fetchHistogram();
                         break;
@@ -188,12 +185,6 @@ define(["angular"], function () {
                 console.log("Record delimiter set, moving to dataset list page");
                 $location.path("/");
             });
-        };
-
-        $scope.fetchLengths = function () {
-            $scope.sample = undefined;
-            $scope.histogram = undefined;
-            setActiveView("lengths");
         };
 
         $scope.fetchSample = function () {

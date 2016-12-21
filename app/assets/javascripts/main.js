@@ -38,7 +38,6 @@
       'angular-cookies': ['angular'],
       'angular-file-upload': ['angular'],
       'angular-sanitize': ['angular'],
-      'angularjs-nvd3-directives': ['angular'],
       'ngStorage': ['angular'],
       'ng-grid': ['angular'],
       'bootstrap': ['jquery'],
@@ -55,7 +54,6 @@
       'angular-route': ['../lib/angularjs/angular-route'],
       'angular-cookies': ['../lib/angularjs/angular-cookies'],
       'angular-file-upload': ['../lib/angular-file-upload/angular-file-upload'],
-      'angularjs-nvd3-directives': ['../lib/angularjs-nvd3-directives/angularjs-nvd3-directives'],
       'bootstrap': ['../lib/bootstrap/js/bootstrap'],
       'ui-bootstrap': ['../lib/angular-ui-bootstrap/ui-bootstrap'],
       'ui-bootstrap-tpls': ['../lib/angular-ui-bootstrap/ui-bootstrap-tpls'],
@@ -70,7 +68,7 @@
 
   require(
     ['angular', 'angular-cookies', 'angular-route', 'angular-file-upload',
-      'angularjs-nvd3-directives', 'angular-sanitize', 'ngStorage', 'jquery',
+      'angular-sanitize', 'ngStorage', 'jquery',
       'underscorejs', 'bootstrap', 'ui-bootstrap-tpls', 'ui-bootstrap', 'ng-grid', './app'],
     function (angular) {
       angular.bootstrap(document, ['app']);

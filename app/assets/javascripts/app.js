@@ -48,8 +48,7 @@ define(
                 "ngSanitize",
                 "ui.bootstrap.tpls",
                 "ui.bootstrap",
-                "ngGrid",
-                "nvd3ChartDirectives"
+                "ngGrid"
             ]
         );
     }
