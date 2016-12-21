@@ -25,7 +25,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.mailer._
 import play.api.libs.ws.ahc.AhcWSComponents
 import router.Routes
-import services.{MailService, MailServiceImpl}
+import services.{MailService, PlayMailService}
 import triplestore.Fuseki
 import web._
 
@@ -140,10 +140,9 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   lazy val emailReportsTo: List[String] = configuration.getStringList("emailReportsTo")
     .map(_.asScala.toList).getOrElse(List())
 
-  lazy val mailService: MailService = new MailServiceImpl(mailerClient, emailReportsTo, true)
+  lazy val mailService: MailService = new PlayMailService(mailerClient, emailReportsTo)
 
-  private val fusekiTimeoutMillis = configLong("healthchecks.fuseki.timeoutMillis")
-  healthCheckRegistry.register("fuseki", new FusekiHealthCheck(tripleStore, fusekiTimeoutMillis))
+  healthCheckRegistry.register("fuseki", new FusekiHealthCheck(tripleStore, configLong("healthchecks.fuseki.timeoutMillis")))
 
   applicationLifecycle.addStopHook { () =>
     Future.successful({

@@ -19,7 +19,7 @@ trait MailService {
                                  throwableOpt: Option[Throwable]): Unit
 }
 
-class MailServiceImpl(val mailerClient: MailerClient, adminEmails: List[String], isProduction: Boolean)
+class PlayMailService(val mailerClient: MailerClient, adminEmails: List[String])
                      (implicit val ec: ExecutionContext)
   extends MailService {
 
