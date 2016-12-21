@@ -34,7 +34,7 @@ cp docs/files/edm* ~/NarthexFiles/devorg/factory/edm
 ```
     
  - Start the Play app: `sbt run` and go to the [app-homepage](http://localhost:9000)
- - Login with `admin`/`admin`, click on 'Datasets' => 'New dataset', enter 'first' and drag [docs/files/myfirst.sip.zip](docs/files/myfirst.sip.zip) to see Narthex in action.
+ - Click on 'New dataset', enter 'first' and drag [docs/files/myfirst.sip.zip](docs/files/myfirst.sip.zip) to see Narthex in action.
  
 That's all.
 
