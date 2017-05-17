@@ -131,7 +131,8 @@ trait Harvesting {
       case ModifiedAfter(mod, _) =>
         s"modification greater '${timeToLocalString(mod)}'"
       case _ =>
-        if (search.isEmpty) "all" else search
+        val cleanSearch = if (search.isEmpty) "all" else search
+        if (cleanSearch contains "%20") cleanSearch.replace("%20", "") else cleanSearch
     }
     val request = requestUrl.withQueryString(
       "database" -> database,
@@ -197,8 +198,8 @@ trait Harvesting {
       else {
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBody
-        Logger.trace(s"OAI-PMH Response: \n ${body}")
-        val xml = XML.loadString(body) // reader old
+        Logger.trace(s"OAI-PMH Response: \n ''''${body}''''")
+        val xml = XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", "")) // reader old
         val errorNode = xml \ "error"
         val records = xml \ "ListRecords" \ "record"
         // todo: if there is a resumptionToken end the list size is greater than the cursor but zero records are returned through an error.
@@ -236,7 +237,7 @@ trait Harvesting {
       }
       else {
         val netty = response.underlying[NettyResponse]
-        val xml = XML.loadString(netty.getResponseBody)
+        val xml = XML.loadString(netty.getResponseBody.replace("ï»¿", "").replace("\u0239\u0187\u0191", ""))
         val tokenNode = xml \ "ListRecords" \ "resumptionToken"
         val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
