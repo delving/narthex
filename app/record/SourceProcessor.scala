@@ -212,7 +212,6 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
           progress = Some(progressReporter)
           sourceRepo.parsePockets(catchPocket, idFilter, progressReporter)
         }
-        dsInfo.removeNaveOrphans(start)
       }
 
       xmlOutput.close()

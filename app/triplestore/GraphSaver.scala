@@ -19,12 +19,14 @@ package triplestore
 import akka.actor.{Actor, ActorLogging, Props}
 import dataset.DatasetActor.{Scheduled, WorkFailure}
 import dataset.DatasetContext
+import dataset.DsInfo
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import organization.OrgContext
 import nxutil.Utils._
 import org.joda.time.DateTime
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
+import services.Temporal._
 
 object GraphSaver {
 
@@ -44,6 +46,9 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
   implicit val ts = orgContext.ts
 
   val saveTime = new DateTime()
+  val startSave = timeToString(new DateTime())
+  var isScheduled = false 
+
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
 
@@ -69,6 +74,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
       log.info("Save graphs")
       val progressReporter = ProgressReporter(SAVING, context.parent)
       progressOpt = Some(progressReporter)
+      isScheduled = !scheduledOpt.isEmpty
       reader = Some(datasetContext.processedRepo.createGraphReader(scheduledOpt.map(_.file), saveTime, progressReporter))
       sendGraphChunkOpt()
     }
@@ -86,6 +92,8 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
     case None => actorWork(context) {
       reader.foreach(_.close())
       reader = None
+      // todo make sure to not run this on incremental mode, hint use isScheduled
+      datasetContext.dsInfo.removeNaveOrphans(startSave) 
       log.info("All graphs saved")
       context.parent ! GraphSaveComplete
     }

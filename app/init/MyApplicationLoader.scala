@@ -142,7 +142,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   lazy val mailService: MailService = new PlayMailService(mailerClient, emailReportsTo)
 
-  healthCheckRegistry.register("fuseki", new FusekiHealthCheck(tripleStore, configLong("healthchecks.fuseki.timeoutMillis")))
+  //healthCheckRegistry.register("fuseki", new FusekiHealthCheck(tripleStore, configLong("healthchecks.fuseki.timeoutMillis")))
 
   applicationLifecycle.addStopHook { () =>
     Future.successful({
