@@ -352,7 +352,7 @@ define(["angular"], function () {
         if ($scope.dataset.harvestType == 'adlib' && $scope.dataset.harvestURL) {
             $scope.adlibPreviewBase = $scope.dataset.harvestURL.replace('?', '')
             if ($scope.dataset.harvestDataset) {
-                $scope.adlibPreviewBase = $scope.adlibPreviewBase + "?dataset=" +$scope.dataset.harvestDataset;
+                $scope.adlibPreviewBase = $scope.adlibPreviewBase + "?database=" +$scope.dataset.harvestDataset;
             }
             var connector = $scope.dataset.harvestDataset ? "&" : "?";
             var searchValue = $scope.dataset.harvestSearch ? $scope.dataset.harvestSearch : "all";
