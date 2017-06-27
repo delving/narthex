@@ -335,10 +335,10 @@ define(["angular"], function () {
         $scope.apiLink = baseUrl + "/api/search/v1/?q=delving_spec:" + $scope.dataset.datasetSpec;
         // todo: note that edm is hardcoded here:
         $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + $scope.dataset.datasetSpec;
-        $scope.apiPathErrors = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/errors";
-        $scope.apiPathSourced = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/sourced";
-        $scope.apiPathProcessed = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/processed";
-        $scope.apiPathHarvestLog = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/log";
+        $scope.apiPathErrors = $scope.apiPrefix + $scope.dataset.datasetSpec + "/errors";
+        $scope.apiPathSourced = $scope.apiPrefix + $scope.dataset.datasetSpec + "/sourced";
+        $scope.apiPathProcessed = $scope.apiPrefix + $scope.dataset.datasetSpec + "/processed";
+        $scope.apiPathHarvestLog = $scope.apiPrefix + $scope.dataset.datasetSpec + "/log";
         $scope.apiDownloadSipZip = "/narthex/sip-app/" + $scope.dataset.datasetSpec;
         $scope.apiWebResourcePath = "/data/webresource/" + $scope.dataset.orgId + "/" + $scope.dataset.datasetSpec + "/source/";
 
