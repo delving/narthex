@@ -40,6 +40,7 @@ define(["angular"], function () {
     var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll) {
 
         $scope.apiPrefix = "/narthex/api/"
+        $scope.enableIncrementalHarvest = $rootScope.enableIncrementalHarvest;
         $scope.uploading = false;
         $scope.datasets = [];
         $scope.percent = null;
@@ -584,10 +585,11 @@ define(["angular"], function () {
     /** Controls the sidebar and headers */
     var IndexCtrl = function ($rootScope, $scope, $location) {
 
-        $scope.initialize = function (orgId, sipCreatorLink) {
+        $scope.initialize = function (orgId, sipCreatorLink, enableIncrementalHarvest) {
             //console.log("Initializing index");
             $rootScope.orgId = orgId;
             $rootScope.sipCreatorLink = sipCreatorLink;
+            $rootScope.enableIncrementalHarvest = enableIncrementalHarvest;
             $scope.toggleBar = true;
         };
 

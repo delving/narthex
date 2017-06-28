@@ -551,8 +551,10 @@
                         <input type="radio" ng-model="dataset.edit.harvestIncremental" value="false">
                         <span>Full harvest</span>
                         <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                        <!--<input type="radio" ng-model="dataset.edit.harvestIncremental" value="true">-->
-                        <!--<span>Incremental harvest</span>-->
+                        <span data-ng-show={{enableIncrementalHarvest}}>
+                            <input type="radio" ng-model="dataset.edit.harvestIncremental" value="true">
+                            <span>Incremental harvest</span>
+                        </span>
                     </div>
                 </div>
             </div>

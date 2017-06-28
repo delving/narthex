@@ -116,7 +116,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   lazy val sipAppController: SipAppController = new SipAppController(orgContext)
   lazy val mainController = new MainController(defaultCacheApi,
     appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
-    webJarAssets, requireJs, configString("sipAppDownloadUrl"))
+    webJarAssets, requireJs, configString("sipAppDownloadUrl"), configFlag("enableIncrementalHarvest"))
 
   lazy val appController = new AppController(orgContext) (tripleStore, actorSystem, materializer)
   lazy val apiController = new APIController(orgContext)
@@ -181,12 +181,13 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
     val rdfBaseUrl = configStringNoSlash("rdfBaseUrl")
     val narthexDomain = configStringNoSlash("domains.narthex")
     val naveDomain = configStringNoSlash("domains.nave")
+    val enableIncrementalHarvest = configuration.getBoolean("enableIncrementalHarvest").getOrElse(false)
 
     AppConfig(
       harvestTimeout, true, rdfBaseUrl,
       configStringNoSlash("naveApiUrl"), configStringNoSlash("naveAuthToken"),
       configuration.getBoolean("mockBulkApi").getOrElse(false),
-      narthexDataDir, configString("orgId"), narthexDomain, naveDomain)
+      narthexDataDir, configString("orgId"), narthexDomain, naveDomain, enableIncrementalHarvest)
   }
 
   private def configFlag(name: String): Boolean = configuration.getBoolean(name).getOrElse(false)
@@ -208,7 +209,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 case class AppConfig(harvestTimeOut: Long, useBulkApi: Boolean, rdfBaseUrl: String,
                      naveApiUrl: String, naveApiAuthToken: String, mockBulkApi: Boolean,
                      narthexDataDir: File, orgId: String,
-                     narthexDomain: String, naveDomain: String) {
+                     narthexDomain: String, naveDomain: String, enableIncrementalHarvest: Boolean) {
 
   def nxUriPrefix: String = s"$rdfBaseUrl/resource"
 }
