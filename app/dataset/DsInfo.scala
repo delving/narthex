@@ -512,6 +512,14 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
     (spec, localId)
   }
 
+  def updateDatasetRevision() = {
+    val actionMap = Json.obj(
+      "dataset" -> spec,
+      "action" -> "increment_revision"
+      )
+    bulkApiUpdate(s"${actionMap.toString()}\n")
+  }
+
   def removeNaveOrphans(timeStamp: String) = {
     val actionMap = Json.obj(
       "dataset" -> spec,
