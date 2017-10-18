@@ -397,8 +397,13 @@
                     <!--<input id="meta_rights" class="form-control" data-ng-model="dataset.edit.datasetRights"/>-->
                     <select name="singleSelect" id="meta_rights" data-ng-model="dataset.edit.datasetRights" class="form-control">
                         <option value="">---Please select---</option> <!-- not selected / blank option -->
+
+                        <option value="http://rightsstatements.org/vocab/InC/1.0/">IN COPYRIGHT</option>
+                        <option value="http://rightsstatements.org/vocab/InC-OW-EU/1.0/">IN COPYRIGHT - EU ORPHAN WORK</option>
+                        <option value="http://rightsstatements.org/vocab/InC-EDU/1.0/">IN COPYRIGHT - EDUCATIONAL USE PERMITTED</option>
+                        <option value="http://rightsstatements.org/vocab/InC-NC/1.0/">IN COPYRIGHT - NON-COMMERCIAL USE PERMITTED</option>
+                        <option value="http://rightsstatements.org/vocab/InC-RUU/1.0/">IN COPYRIGHT - RIGHTS-HOLDER(S) UNLOCATABLE OR UNIDENTIFIABLE</option>
                         <option value="http://creativecommons.org/publicdomain/mark/1.0/">Public Domain Mark (PDM)</option>
-                        <option value="http://www.europeana.eu/rights/out-of-copyright-non-commercial/">Out of copyright - non commercial re-use (OOC-NC)</option>
                         <option value="http://creativecommons.org/publicdomain/zero/1.0/">The Creative Commons CC0 1.0 Universal Public Domain Dedication (CC0)</option>
                         <option value="http://creativecommons.org/licenses/by/4.0/">Creative Commons - Attribution (BY)</option>
                         <option value="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons - Attribution, ShareAlike (BY-SA)</option>
@@ -406,10 +411,6 @@
                         <option value="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons - Attribution, Non-Commercial (BY-NC)</option>
                         <option value="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons - Attribution, Non-Commercial, ShareAlike (BY-NC-SA)</option>
                         <option value="http://creativecommons.org/licenses/by-nc-nd/4.0/">Creative Commons - Attribution, Non-Commercial, No Derivatives (BY-NC-ND)</option>
-                        <option value="http://www.europeana.eu/rights/rr-f/">Rights Reserved - Free Access</option>
-                        <option value="http://www.europeana.eu/rights/rr-p/">Rights Reserved - Paid Access</option>
-                        <option value="http://www.europeana.eu/rights/orphan-work-eu/">Orphan work</option>
-                        <option value="http://www.europeana.eu/rights/unknown/">Unknown</option>
                     </select>
                 </div>
             </div>
