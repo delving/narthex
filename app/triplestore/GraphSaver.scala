@@ -76,6 +76,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
       progressOpt = Some(progressReporter)
       isScheduled = !scheduledOpt.isEmpty
       reader = Some(datasetContext.processedRepo.createGraphReader(scheduledOpt.map(_.file), saveTime, progressReporter))
+      datasetContext.dsInfo.updateDatasetRevision()
       sendGraphChunkOpt()
     }
 
