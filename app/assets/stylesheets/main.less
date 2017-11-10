@@ -108,6 +108,7 @@ html, body {
   background-color: @white;
   border-color: @gray-lighter;
 }
+
 /* html element styles **************************************************/
 
 body {
@@ -122,8 +123,6 @@ code {
   color: @gray;
   background: @gray-lighter;
 }
-
-
 
 /* login & user-dashboard ************************************************/
 
@@ -194,7 +193,7 @@ code {
   height: 60px;
   margin-bottom: 15px;
   .meta {
-    .column(12,12);
+    .column(12, 12);
   }
   .page {
     font-size: 1.25em;
@@ -240,7 +239,6 @@ code {
   color: @brand-primary;
 }
 
-
 /* vertical scroll directive styles ************************************/
 
 .vertical-scroll {
@@ -267,8 +265,6 @@ code {
     border: none;
   }
 }
-
-
 
 /* dataset-list *********************************************************/
 
@@ -360,6 +356,17 @@ code {
     width: 150px;
   }
 }
+
+.dataset-metadata {
+  background-color: green;
+  &.closed {
+    height: 0px;
+    overflow-y: hidden;
+  }
+}
+
+
+
 .status {
   .indicator {
     color: @white;
@@ -417,7 +424,6 @@ code {
   }
 }
 
-
 .dataset-states {
   padding-right: 0px;
   float: right;
@@ -432,10 +438,10 @@ code {
     margin-bottom: 0px;
     margin-right: -2px;
   }
-  .list-group-item{
+  .list-group-item {
     padding: 10px 20px;
     &:first-child {
-      border-top:none;
+      border-top: none;
     }
     &:last-child {
       border-bottom: none;
@@ -456,28 +462,28 @@ code {
     }
   }
   .later {
-    position:relative !important;
+    position: relative !important;
     .list-group-item-heading {;
       font-size: 1.5em;
     }
   }
-  .later:before{
-    content:"";
-    display:inline-block;
-    position:absolute;
-    border:20px solid @gray-lighter;
-    border-color:transparent transparent transparent @gray-lighter;
-    top:15px;
+  .later:before {
+    content: "";
+    display: inline-block;
+    position: absolute;
+    border: 20px solid @gray-lighter;
+    border-color: transparent transparent transparent @gray-lighter;
+    top: 15px;
     left: 0px;
   }
-  .later:after{
-    content:"";
-    display:inline-block;
-    position:absolute;
-    border:19px solid @gray-lighter;
-    border-color:transparent transparent transparent @gray-lighter;
-    top:16px;
-    left:-1px;
+  .later:after {
+    content: "";
+    display: inline-block;
+    position: absolute;
+    border: 19px solid @gray-lighter;
+    border-color: transparent transparent transparent @gray-lighter;
+    top: 16px;
+    left: -1px;
   }
 }
 
@@ -520,11 +526,11 @@ code {
 /* nav-tabs ************************************************************/
 
 .nav-tabs,
-.nav-pills{
+.nav-pills {
   .bg-danger {
     background: lighten(@brand-danger, 15%);
     color: @white;
-    &:hover{
+    &:hover {
       background: @brand-danger;
     }
   }
@@ -548,7 +554,6 @@ code {
   background: @silver;
 }
 
-
 /* file-block tabs sip files list *************************************/
 
 .sip-files {
@@ -563,7 +568,7 @@ code {
 
 .file-path-info {
   background: transparent;
-  direction:rtl;
+  direction: rtl;
   font-family: @font-family-monospace;
   //font-size: .85em;
   font-weight: normal;
@@ -577,8 +582,6 @@ code {
     color: @green;
   }
 }
-
-
 
 .widget-schema {
   .node {
@@ -902,6 +905,7 @@ label.norm {
     -webkit-transform: translateX(0);
   }
 }
+
 @keyframes fadeInRightBig {
   0% {
     opacity: 0;
@@ -912,6 +916,7 @@ label.norm {
     transform: translateX(0);
   }
 }
+
 .fadeInRightBig {
   -webkit-animation-name: fadeInRightBig;
   animation-name: fadeInRightBig;

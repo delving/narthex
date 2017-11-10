@@ -17,6 +17,9 @@
                 <a href class="btn btn-default" data-ng-click="newFileOpen = true">
                     <i class="fa fa-star"></i> New Dataset
                 </a>
+                <a href class="btn btn-info" data-ng-click="openAllDatasets = !openAllDatasets">
+                    <i class="fa fa-bars"></i> Open/Close All
+                </a>
             </div>
         </form>
 
@@ -105,7 +108,7 @@
         </table>
 
 
-        <div class="" data-ng-if="expanded" data-ng-class="{ 'closed': !expanded, 'expanded': expanded }">
+        <div class="dataset-metadata" data-ng-class="{ 'closed': !expanded, 'expanded': expanded }">
                 <div class="dataset-states col-md-3">
                     <ul class="list-group states">
                         <li data-ng-show="dataset.stateRaw" class="ds-state list-group-item"

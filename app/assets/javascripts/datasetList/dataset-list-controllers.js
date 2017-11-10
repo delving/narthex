@@ -237,6 +237,22 @@ define(["angular"], function () {
             });
         };
 
+        $scope.openAllDatasets = false;
+        $scope.$watch('openAllDatasets', function(newValue, oldValue, scope){
+            var listRowHeaders = angular.element(document.getElementsByClassName("clickable"));
+            var listRowItems = angular.element(document.getElementsByClassName("dataset-metadata"));
+            if($scope.openAllDatasets == true) {
+                listRowHeaders.removeClass('closed');
+                listRowHeaders.addClass('open');
+                listRowItems.removeClass('closed');
+                listRowItems.addClass('expanded');
+            } else {
+                listRowHeaders.addClass('closed');
+                listRowHeaders.removeClass('open');
+                listRowItems.addClass('closed');
+                listRowItems.removeClass('expanded');
+            }
+        });
     };
 
     DatasetListCtrl.$inject = [
