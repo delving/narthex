@@ -39,7 +39,8 @@ object StringHandling {
   }
 
   // do not crunch newLines
-  def crunchWhitespace(text: String) = text.replaceAll("\n", "<br/> ").replaceAll("[ |\t]+", " ").trim
+
+  def crunchWhitespace(text: String) = text.replaceAll("\n", " --- ").replaceAll("[ |\t]+", " ").trim
 
   def translateEntity(text: String) = text match {
     case "amp" => "&"
