@@ -6,6 +6,8 @@ DESCRIPTION:="Narthex Aggregation and mapping platform."
 FUSEKI:=apache-fuseki
 #FUSEKI_VERSION:=3.4.0
 FUSEKI_VERSION:=2.4.1
+FUSEKI_VERSION_RPM:=2.4.1-3
+
 
 # var print rule
 print-%  : ; @echo $* = $($*)
@@ -60,8 +62,8 @@ fpm-rpm-fuseki:
 
 
 fpm-build-fuseki-rpm:
-	fpm -s dir -t rpm -n ${FUSEKI} -v $(FUSEKI_VERSION) \
-		--package $(FUSEKI)-$(FUSEKI_VERSION).$(FILE_ARCH).rpm \
+	fpm -s dir -t rpm -n ${FUSEKI} -v $(FUSEKI_VERSION_RPM) \
+		--package $(FUSEKI)-$(FUSEKI_VERSION_RPM).$(FILE_ARCH).rpm \
 		--force \
 		--depends java-1.8.0-openjdk \
 		--rpm-compression bzip2 --rpm-os linux \
@@ -76,3 +78,5 @@ fpm-build-fuseki-rpm:
 		--after-upgrade deploy/fuseki/after_install_fuseki.sh \
 		target/apache-jena-fuseki-${FUSEKI_VERSION}/=/opt/hub3/narthex/fuseki/ \
 		deploy/fuseki/fuseki.service=/lib/systemd/system/fuseki.service \
+		deploy/fuseki/fuseki.conf=/etc/rsyslog.d/ \
+		deploy/fuseki/log4j.properties=/opt/hub3/narthex/fuseki/run/ \
