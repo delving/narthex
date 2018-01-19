@@ -189,6 +189,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               }
               val StringHandling.SubjectOfGraph(subject) = graphName
               val subjectResource = m.getResource(subject)
+               //todo remove this later. This type of syncing is no longer required.
               m.add(subjectResource, m.getProperty(rdfType), m.getResource(recordEntity))
               val foafAbout = m.getResource(createFOAFAbout(subject))
               m.add(foafAbout, m.getProperty(rdfType), m.getResource(foafDocument))

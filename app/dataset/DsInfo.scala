@@ -518,6 +518,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
       "action" -> "increment_revision"
       )
     bulkApiUpdate(s"${actionMap.toString()}\n")
+    Thread.sleep(333)
   }
 
   def removeNaveOrphans(timeStamp: String) = {
