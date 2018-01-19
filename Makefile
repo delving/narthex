@@ -6,7 +6,7 @@ DESCRIPTION:="Narthex Aggregation and mapping platform."
 FUSEKI:=apache-fuseki
 #FUSEKI_VERSION:=3.4.0
 FUSEKI_VERSION:=2.4.1
-FUSEKI_VERSION_RPM:=2.4.1-3
+FUSEKI_VERSION_RPM:=2.4.1-4
 
 
 # var print rule
