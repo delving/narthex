@@ -51,13 +51,13 @@ object ProcessedRepo {
         val hubId = s"${orgId}_${spec}_$localId"
         val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
         val actionMap = Json.obj(
-            "hubId" -> hubId,
-            "dataset" -> spec,
-            "graphUri" -> graphUri,
-            "type" -> "void_EDMRecord",
-            "action" -> "index",
-            "contentHash" -> localHash.toString,
-            "graph" -> s"$triples".stripMargin.trim
+          "hubId" -> hubId,
+          "dataset" -> spec,
+          "graphUri" -> graphUri,
+          "type" -> "void_EDMRecord",
+          "action" -> "index",
+          "contentHash" -> localHash.toString,
+          "graph" -> s"$triples".stripMargin.trim
         )
         actionMap.toString()
       }
@@ -156,15 +156,15 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
       if (activeReader.isDefined) {
         activeReader
       }
-      else {
-        files.headOption.map { file =>
-          files = files.tail
-          val (reader, counter) = FileHandling.readerCounting(file)
-          activeReader = Some(reader)
-          activeCounter = Some(counter)
-          activeReader.get
-        }
+    else {
+      files.headOption.map { file =>
+        files = files.tail
+        val (reader, counter) = FileHandling.readerCounting(file)
+        activeReader = Some(reader)
+        activeCounter = Some(counter)
+        activeReader.get
       }
+    }
 
     override def isActive = readerOpt.isDefined
 
@@ -189,7 +189,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               }
               val StringHandling.SubjectOfGraph(subject) = graphName
               val subjectResource = m.getResource(subject)
-               //todo remove this later. This type of syncing is no longer required.
+              //todo remove this later. This type of syncing is no longer required.
               m.add(subjectResource, m.getProperty(rdfType), m.getResource(recordEntity))
               val foafAbout = m.getResource(createFOAFAbout(subject))
               m.add(foafAbout, m.getProperty(rdfType), m.getResource(foafDocument))
@@ -198,21 +198,26 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               m.add(foafAbout, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
               m.add(foafAbout, m.getProperty(contentHash.uri), m.createLiteral(currentHash))
               m.add(foafAbout, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
+              // todo insert hubId
+              val (spec, recordId) = dsInfo.extractSpecIdFromGraphName(graphName)
+              //val hubId = s"${dsInfo.getOrgId()}_${spec}_$localId"
+              //m.add(foafAbout, m.getProperty(hubId.uri), m.getResource(hubId))
+              m.add(foafAbout, m.getProperty(localId.uri), m.createLiteral(recordId))
               m.add(foafAbout, m.getProperty(saveTime.uri), m.createLiteral(timeString))
               graphCount += 1
               recordText.clear()
               if (graphCount >= chunkSize) chunkComplete = true
-            case x: String =>
-              recordText.append(x).append("\n")
-          } getOrElse {
-            reader.close()
-            previousBytesRead += activeCount
-            activeReader = None
-            activeCounter = None
-          }
-        } getOrElse {
-          chunkComplete = true
-        }
+                case x: String =>
+                  recordText.append(x).append("\n")
+                  } getOrElse {
+                    reader.close()
+                    previousBytesRead += activeCount
+                    activeReader = None
+                    activeCounter = None
+                  }
+                  } getOrElse {
+                    chunkComplete = true
+                  }
       }
       if (graphCount > 0) Some(GraphChunk(dataset, dsInfo)) else None
     }

@@ -139,7 +139,6 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
       var validRecords = 0
       var invalidRecords = 0
       var time = System.currentTimeMillis()
-      val start = timeToString(new DateTime())
 
       def writeError(heading: String, error: String, id: String) = {
         invalidRecords += 1

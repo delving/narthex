@@ -47,6 +47,8 @@ object GraphProperties {
 
 
   val belongsTo = NXProp("belongsTo")
+  val hubId = NXProp("hubId")
+  val localId = NXProp("localId")
   val synced = NXProp("synced")
   val deleted = NXProp("deleted")
   val saveTime = NXProp("saveTime")
