@@ -272,9 +272,9 @@
                                 <li ng-class="{'active':leftTabOpen === 'metadata'}">
                                     <a href role="tab" data-ng-click="leftTabOpen = 'metadata'">Metadata</a>
                                 </li>
-                                <li ng-class="{'active':leftTabOpen === 'publication'}">
+                                <!-- <li ng-class="{'active':leftTabOpen === 'publication'}">
                                     <a href role="tab" data-ng-click="leftTabOpen = 'publication'">Publication</a>
-                                </li>
+                                </li> -->
                                 <!--<li ng-class="{'active':leftTabOpen === 'categories'}">-->
                                 <!--<a href role="tab" data-ng-click="leftTabOpen ='categories'">Categories</a>-->
                                 <!--</li>-->
@@ -294,9 +294,9 @@
                                     <div ng-switch-when="metadata">
                                         <div data-ng-include="'dataset-metadata-form.html'">metadata form</div>
                                     </div>
-                                    <div ng-switch-when="publication">
+                                    <!-- <div ng-switch-when="publication">
                                         <div data-ng-include="'publication-form.html'">publication form</div>
-                                    </div>
+                                    </div> -->
                                     <!--<div ng-switch-when="categories">-->
                                     <!--<div data-ng-include="'categories-form.html'">categories form</div>-->
                                     <!--</div>-->
@@ -711,37 +711,27 @@
 
 <script type="text/ng-template" id="harvesting-info.html">
     <!-- TODO: hide if no data available -->
-
-    <!-- If last full harvest date -->
-    Last full harvest date: {{ dataset.lastFullHarvestTime }}
-    <br/>
-    Valid records: {{ dataset.processedValid }}
-    <br/>
-    Invalid records: {{ dataset.processedInvalid }}
-    <br/>
-    <br/>
-
-    <!-- If last incremental harvest date -->
-    In scheduled mode: {{ dataset.harvestIncrementalMode }}
-    <br/>
-    Last scheduled harvest date: {{ dataset.lastIncrementalHarvestTime }}
-    <br/>
-    Valid records: {{ dataset.processedIncrementalValid }}
-    <br/>
-    Invalid records: {{ dataset.processedIncrementalInvalid }}
-    <br/>
-    <br/>
-
-
-    <a ng-href="" data-ng-click="showLastSourcedPage()">Last harvested records</a>
-    <br/>
-    <a ng-href="" data-ng-click="showHarvestingLog()">Harvesting log</a>
-    <br/>
-    <a ng-href="" data-ng-click="showLastProcessedPage()">Last processed records</a>
-    <br/>
-    <a ng-href="" data-ng-click="showInvalidRecordsPage()">Last processing errors</a>
-    <br/>
-
+  <ul  class="list-group">
+    <li class="list-group-item">
+      <!-- If last full harvest date -->
+      Last full harvest date: {{ dataset.lastFullHarvestTime }}
+    </li>
+    <li class="list-group-item">Valid records: {{ dataset.processedValid }}</li>
+    <li class="list-group-item">Invalid records: {{ dataset.processedInvalid }}</li>
+  </ul>
+  <ul  class="list-group">
+    <li class="list-group-item">  <!-- If last incremental harvest date -->
+      In scheduled mode: {{ dataset.harvestIncrementalMode }}</li>
+    <li class="list-group-item">Last scheduled harvest date: {{ dataset.lastIncrementalHarvestTime }}</li>
+    <li class="list-group-item">Valid records: {{ dataset.processedIncrementalValid }}</li>
+    <li class="list-group-item">Invalid records: {{ dataset.processedIncrementalInvalid }}</li>
+  </ul>
+  <ul  class="list-group">
+    <li class="list-group-item">  <a ng-href="" data-ng-click="showLastSourcedPage()">Last harvested records</a></li>
+    <li class="list-group-item"><a ng-href="" data-ng-click="showHarvestingLog()">Harvesting log</a></li>
+    <li class="list-group-item"><a ng-href="" data-ng-click="showLastProcessedPage()">Last processed records</a></li>
+    <li class="list-group-item"><a ng-href="" data-ng-click="showInvalidRecordsPage()">Last processing errors</a></li>
+  </ul>
 </script>
 
 <script type="text/ng-template" id="dataset-delete.html">
