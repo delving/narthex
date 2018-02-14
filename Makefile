@@ -13,7 +13,7 @@ FUSEKI_VERSION_RPM:=2.4.1-4
 print-%  : ; @echo $* = $($*)
 
 package:
-	sbt package 
+	sbt package
 
 dist:
 	sbt clean dist
