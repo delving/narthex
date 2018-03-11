@@ -70,7 +70,7 @@ class AppController(val orgContext: OrgContext)
   def listDatasets = Action.async { request =>
     getListDsTimer.timeFuture(listDsInfo(orgContext)).map(list => {
 
-      val jsonBytes: Array[Byte] = Json.toJson(list).toString().toCharArray.map(_.toByte)
+      val jsonBytes: Array[Byte] = Json.toJson(list).toString().getBytes("UTF-8")
       val bos = new ByteArrayOutputStream(jsonBytes.length)
       val gzip = new GZIPOutputStream(bos)
       gzip.write(jsonBytes)
@@ -79,7 +79,7 @@ class AppController(val orgContext: OrgContext)
       bos.close()
       Ok(compressed).withHeaders(
         CONTENT_ENCODING -> "gzip"
-      ).as("application/json")
+      ).as("application/json; charset=utf-8")
     })
   }
 

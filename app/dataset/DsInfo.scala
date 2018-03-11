@@ -494,7 +494,7 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
   }
 
   def bulkApiUpdate(bulkActions: String) = {
-    //Logger.debug(bulkActions)
+    // Logger.debug(bulkActions)
     val request = orgContext.wsApi.url(s"$bulkApi").withHeaders(
       "Content-Type" -> "text/plain; charset=utf-8",
       "Accept" -> "application/json",

@@ -110,10 +110,15 @@ class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val e
 
   override def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = {
     logSparql(sparqlQuery)
-    val request = wsApi.url(s"$storeURL/query").withQueryString(
-      "query" -> sparqlQuery,
-      "output" -> "json"
-    )
+    val request = wsApi.url(s"$storeURL/query")
+      .withQueryString(
+        "query" -> sparqlQuery,
+        "output" -> "json"
+      )
+      .withHeaders(
+        "Accept-Charset" -> "utf-8",
+        "Accept-Encoding" -> "utf-8"
+      )
     request.get().map { response =>
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Query response not 2XX, but ${response.status}: ${response.statusText}\n${toLog(sparqlQuery)}")
