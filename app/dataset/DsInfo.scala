@@ -505,7 +505,14 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
       Logger.debug(s"Mocked $request")
       Future.successful(true)
     } else {
-      request.post(bulkActions).map(checkUpdateResponse(_, bulkActions))
+    // define your success condition
+    implicit val success = new retry.Success[WSResponse](r => !((500 to 599)  contains r.status))
+    // retry 4 times with a delay of 1 second which will be multipled
+    // by 2 on every attempt
+    val wsResponseFuture = retry.Backoff(6, 1.seconds).apply { () =>
+      request.post(bulkActions)
+    }  
+    wsResponseFuture.map(checkUpdateResponse(_, bulkActions))
     }
   }
 
