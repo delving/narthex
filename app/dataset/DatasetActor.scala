@@ -304,9 +304,9 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
         stay() using InError("Unable to determine harvest type")
       }
 
-    case Event(AdoptSource(file), Dormant) =>
+    case Event(AdoptSource(file, orgContext), Dormant) =>
       val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext, orgContext), "source-adopter")
-      sourceProcessor ! AdoptSource(file)
+      sourceProcessor ! AdoptSource(file, orgContext)
       goto(Adopting) using Active(dsInfo.spec, Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>

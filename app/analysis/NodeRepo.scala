@@ -127,6 +127,7 @@ class NodeRepo(val parent: DatasetContext, val dir: File) {
       line = lineOption
       count += 1
     }
+    input.close()
     activeCounters.foreach(triple => createFile(triple._1, triple._2, triple._3))
     counters.map(triple => triple._1)
 

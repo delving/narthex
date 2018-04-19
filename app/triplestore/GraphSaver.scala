@@ -53,7 +53,9 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
   var progressOpt: Option[ProgressReporter] = None
 
   def failure(ex: Throwable) = {
+    log.info(ex.getMessage)
     reader.foreach(_.close())
+
     reader = None
     context.parent ! WorkFailure(ex.getMessage, Some(ex))
   }

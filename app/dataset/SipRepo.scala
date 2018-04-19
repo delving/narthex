@@ -105,11 +105,13 @@ object Sip {
 
   case class SipMapping(spec: String, prefix: String, version: String,
                         recDefTree: RecDefTree, validatorOpt: Option[Validator],
-                        recMapping: RecMapping) {
+                        recMapping: RecMapping, sip: Sip) {
 
     def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
 
     def fileName = s"mapping_$prefix.xml"
+
+    def close() = sip.close()
   }
 
   trait SipMapper {
@@ -119,6 +121,7 @@ object Sip {
     val prefix: String
 
     def executeMapping(pocket: Pocket): Try[Pocket]
+
   }
 
   val PrefixVersion = "(.*)_(.*)".r
@@ -145,14 +148,20 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
   lazy val entries = zipFile.entries().map(entry => entry.getName -> entry).toMap
 
+  def close() = {
+    zipFile.close()
+  }
+
   def readMap(propertyFileName: String): Map[String, String] = {
     entries.get(propertyFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val lines = Source.fromInputStream(inputStream, "UTF-8").getLines()
-      lines.flatMap { line =>
+      val propertyMap = lines.flatMap { line =>
         val equals = line.indexOf("=")
         if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
       }.toMap
+      inputStream.close()
+    return propertyMap
     } getOrElse (throw new RuntimeException(s"No entry for $propertyFileName"))
   }
 
@@ -191,14 +200,19 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
       val recDef = RecDef.read(inputStream)
-      RecDefTree.create(recDef)
+      val tree = RecDefTree.create(recDef)
+      inputStream.close()
+      return tree
+
     } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from $file"))
   }
 
   private def recMapping(sipContentFileName: String, recDefTree: RecDefTree) = {
     entries.get(sipContentFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
-      RecMapping.read(inputStream, recDefTree)
+      val mapping = RecMapping.read(inputStream, recDefTree)
+      inputStream.close()
+      mapping
     } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from $file"))
   }
 
@@ -230,7 +244,9 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       schemaFactory.setResourceResolver(resolver)
       val source: StreamSource = new StreamSource(inputStream)
       val schema = schemaFactory.newSchema(source)
-      schema.newValidator()
+      val newValidator = schema.newValidator()
+      inputStream.close()
+      return Some(newValidator)
     }
   }
 
@@ -244,7 +260,8 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       version = version,
       recDefTree = tree,
       recMapping = mapping,
-      validatorOpt = if (XSD_VALIDATION) validator(s"${schemaVersion}_validation.xsd", prefix) else None
+      validatorOpt = if (XSD_VALIDATION) validator(s"${schemaVersion}_validation.xsd", prefix) else None,
+      sip = this
     )
   }
 
@@ -338,6 +355,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
         val is = zipFile.getInputStream(entry)
         IOUtils.copy(is, zos)
         zos.closeEntry()
+        is.close()
       }
 
       entry.getName match {

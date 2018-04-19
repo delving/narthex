@@ -38,9 +38,15 @@ object StringHandling {
     }
   }
 
-  // TODO implement this with respect of newlines
-  //def crunchWhitespace(text: String) = text.replaceAll("\n", " &#13;&#10;").replaceAll("[ |\t]+", " ").trim
-  def crunchWhitespace(text: String) = text.replaceAll("\n", " ").replaceAll("[ |\t]+", " ").trim
+  def crunchWhitespace(text: String, crunchWhitespace: Option[Boolean]) = {
+    if (crunchWhitespace.getOrElse(true)) {
+      text.replaceAll("\n", " ").replaceAll("[ |\t]+", " ").trim
+    }
+    else {
+      text.replaceAll("\n", " --- ").replaceAll("[ |\t]+", " ").trim
+    }
+  }
+    
 
   def translateEntity(text: String) = text match {
     case "amp" => "&"

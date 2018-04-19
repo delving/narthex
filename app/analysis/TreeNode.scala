@@ -243,7 +243,8 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String, va
   }
 
   def end() = {
-    val value = crunchWhitespace(valueBuilder.toString())
+    val value = crunchWhitespace(valueBuilder.toString(), None)
+    // todo add fix in here for linefeed replacing 
     if (!value.isEmpty) {
       lengths.record(value)
       valueList = value :: valueList

@@ -101,7 +101,7 @@ object PocketParser {
 
 }
 
-class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
+class PocketParser(facts: SourceFacts, idFilter: IdFilter, orgContext: OrgContext) {
 
   import record.PocketParser._
 
@@ -183,7 +183,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter) {
     def pop(tag: String) = {
       val string = pathString
       val fieldText = path.head._2
-      val text = crunchWhitespace(fieldText.toString())
+      val text = crunchWhitespace(fieldText.toString(), Some(orgContext.crunchWhiteSpace))
       fieldText.clear()
       path.pop()
       if (depth > 0) {

@@ -41,7 +41,7 @@ import scala.util.{Failure, Success}
 
 object SourceProcessor {
 
-  case class AdoptSource(file: File)
+  case class AdoptSource(file: File, orgContext: OrgContext)
 
   case class SourceAdoptionComplete(file: File)
 
@@ -64,7 +64,7 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
 
   def receive = {
 
-    case AdoptSource(file) => actorWork(context) {
+    case AdoptSource(file, orgContext) => actorWork(context) {
       log.info(s"Adopt source ${file.getAbsolutePath}")
       datasetContext.sourceRepoOpt match {
         case Some(sourceRepo) =>
@@ -187,7 +187,7 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
         val totalTime = System.currentTimeMillis() - startAll
         log.debug(s"Total: ${totalTime}. Processing: ${processing}, writing: $writing")
       }
-
+      
       val idFilter = dsInfo.getIdFilter
 
       scheduledOpt.map { incremental =>
@@ -198,7 +198,7 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
           val progressReporter = ProgressReporter(PROCESSING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
-          val parser = new PocketParser(sourceFacts, idFilter)
+          val parser = new PocketParser(sourceFacts, idFilter, orgContext)
           parser.parse(source, Set.empty[String], catchPocket, progressReporter)
         }
         finally {

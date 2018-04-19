@@ -182,12 +182,14 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
     val narthexDomain = configStringNoSlash("domains.narthex")
     val naveDomain = configStringNoSlash("domains.nave")
     val enableIncrementalHarvest = configuration.getBoolean("enableIncrementalHarvest").getOrElse(false)
+    val crunchWhiteSpace = configuration.getBoolean("crunchWhiteSpace").getOrElse(true)
 
     AppConfig(
       harvestTimeout, true, rdfBaseUrl,
       configStringNoSlash("naveApiUrl"), configStringNoSlash("naveAuthToken"),
       configuration.getBoolean("mockBulkApi").getOrElse(false),
-      narthexDataDir, configString("orgId"), narthexDomain, naveDomain, enableIncrementalHarvest)
+      narthexDataDir, configString("orgId"), narthexDomain, naveDomain, enableIncrementalHarvest,
+      crunchWhiteSpace)
   }
 
   private def configFlag(name: String): Boolean = configuration.getBoolean(name).getOrElse(false)
@@ -209,7 +211,8 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 case class AppConfig(harvestTimeOut: Long, useBulkApi: Boolean, rdfBaseUrl: String,
                      naveApiUrl: String, naveApiAuthToken: String, mockBulkApi: Boolean,
                      narthexDataDir: File, orgId: String,
-                     narthexDomain: String, naveDomain: String, enableIncrementalHarvest: Boolean) {
+                     narthexDomain: String, naveDomain: String, enableIncrementalHarvest: Boolean,
+                     crunchWhiteSpace: Boolean) {
 
   def nxUriPrefix: String = s"$rdfBaseUrl/resource"
 }

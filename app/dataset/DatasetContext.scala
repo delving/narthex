@@ -81,13 +81,13 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       case None =>
         dropTree()
         createSourceRepo(SourceFacts("raw", recordRoot, uniqueId, None))
-        orgContext.orgActor ! dsInfo.createMessage(AdoptSource(raw))
+        orgContext.orgActor ! dsInfo.createMessage(AdoptSource(raw, orgContext))
     }
   }
 
-  def createSourceRepo(sourceFacts: SourceFacts): SourceRepo = SourceRepo.createClean(sourceDir, sourceFacts)
+  def createSourceRepo(sourceFacts: SourceFacts): SourceRepo = SourceRepo.createClean(sourceDir, sourceFacts, orgContext)
 
-  def sourceRepoOpt: Option[SourceRepo] = if (sourceDir.exists()) Some(new SourceRepo(sourceDir)) else None
+  def sourceRepoOpt: Option[SourceRepo] = if (sourceDir.exists()) Some(new SourceRepo(sourceDir, orgContext)) else None
 
   def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
 
@@ -144,7 +144,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
           if (sip.containsSource) {
             createSourceRepo(PocketParser.POCKET_SOURCE_FACTS)
             sip.copySourceToTempFile.map { sourceFile =>
-              orgContext.orgActor ! dsInfo.createMessage(AdoptSource(sourceFile))
+              orgContext.orgActor ! dsInfo.createMessage(AdoptSource(sourceFile, orgContext))
               sendRefresh()
               None
             } getOrElse {

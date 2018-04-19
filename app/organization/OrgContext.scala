@@ -51,6 +51,7 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsApi: WS
   val datasetsDir = new File(orgRoot, "datasets")
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
+  val crunchWhiteSpace = appConfig.crunchWhiteSpace
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir, appConfig.orgId)
   lazy val sipFactory = new SipFactory(factoryDir, appConfig.rdfBaseUrl, wsApi)

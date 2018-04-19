@@ -132,7 +132,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
     def pop(tag: String) = {
       val string = pathString
       val fieldText = path.head._2
-      val text = crunchWhitespace(fieldText.toString())
+      val text = crunchWhitespace(fieldText.toString(), None)
       fieldText.clear()
       if (depth > 0) {
         // deep record means check container instead

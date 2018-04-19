@@ -21,6 +21,7 @@ import java.security.MessageDigest
 import java.util.regex.Pattern
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
 
+import organization.OrgContext
 import eu.delving.metadata.StringUtil
 import harvest.Harvesting.HarvestType
 import org.apache.commons.codec.binary.Base32
@@ -122,10 +123,12 @@ object SourceRepo {
   def sourceFactsFromHomedir(home: File): SourceFacts = {
     val file = sourceFactsFile(home)
     val source = Source.fromFile(file, "UTF-8")
-    readSourceFacts(source)
+    val facts = readSourceFacts(source)
+    source.close()
+    facts
   }
 
-  def createClean(home: File, sourceFacts: SourceFacts): SourceRepo = {
+  def createClean(home: File, sourceFacts: SourceFacts, orgContext: OrgContext): SourceRepo = {
     clearDir(home)
     val file = sourceFactsFile(home)
     val facts =
@@ -136,12 +139,12 @@ object SourceRepo {
          |recordContainer=${sourceFacts.recordContainer.getOrElse("")}
        """.stripMargin
     FileUtils.write(file, facts)
-    new SourceRepo(home)
+    new SourceRepo(home, orgContext)
   }
 
 }
 
-class SourceRepo(home: File) {
+class SourceRepo(home: File, orgContext: OrgContext) {
 
   import dataset.SourceRepo._
 
@@ -215,7 +218,7 @@ class SourceRepo(home: File) {
     val file = provideZipFile(createZipFile(fileNumber))
     Logger.debug(s"Processing source: $file")
     val idSet = new mutable.HashSet[String]()
-    val parser = new PocketParser(sourceFacts, idFilter)
+    val parser = new PocketParser(sourceFacts, idFilter, orgContext)
     def receiveRecord(pocket: Pocket): Unit = idSet.add(pocket.id)
 
     val (source, readProgress) = sourceFromFile(file)
@@ -299,7 +302,7 @@ class SourceRepo(home: File) {
   })
 
   def parsePockets(output: Pocket => Unit, idFilter: IdFilter, progress: ProgressReporter): Int = {
-    val parser = new PocketParser(sourceFacts, idFilter)
+    val parser = new PocketParser(sourceFacts, idFilter, orgContext)
     val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.sum

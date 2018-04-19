@@ -127,6 +127,7 @@ object FileHandling {
               hasNext
             }
             else {
+              file.close()
               false
             }
         }

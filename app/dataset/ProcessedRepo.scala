@@ -45,16 +45,17 @@ object ProcessedRepo {
       def createBulkAction(dataset: Dataset, graphUri: String): String = {
         val model = dataset.getNamedModel(graphUri)
         val triples = new StringWriter()
-        RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
+        RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
         val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/(.+)/graph".r
         val SpecIdExtractor(spec, localId) = graphUri
         val hubId = s"${orgId}_${spec}_$localId"
         val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
         val actionMap = Json.obj(
           "hubId" -> hubId,
+          //"orgId" -> dsInfo.getOrgId,
           "dataset" -> spec,
           "graphUri" -> graphUri,
-          "type" -> "void_EDMRecord",
+          "type" -> "narthex_record",
           "action" -> "index",
           "contentHash" -> localHash.toString,
           "graph" -> s"$triples".stripMargin.trim
@@ -173,11 +174,13 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
       val recordText = new StringBuilder
       var graphCount = 0
       var chunkComplete = false
+      //Logger.info("Start reading files.")
       while (!chunkComplete) {
         progressReporter.checkInterrupt()
         readerOpt.map { reader =>
           Option(reader.readLine()).map {
             case LineId(graphName, currentHash) =>
+              //Logger.info(s"$graphCount => $graphName")
               val m = dataset.getNamedModel(graphName)
               try {
                 m.read(new StringReader(recordText.toString()), null, "RDF/XML")
@@ -219,6 +222,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
                     chunkComplete = true
                   }
       }
+      //Logger.info(s"Graphcount is: $graphCount.")
       if (graphCount > 0) Some(GraphChunk(dataset, dsInfo)) else None
     }
 
