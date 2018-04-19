@@ -20,7 +20,7 @@ import dataset.DatasetActor._
 import org.asynchttpclient.netty.NettyResponse
 import org.joda.time.DateTime
 import play.api.Logger
-import play.api.libs.ws.WSAPI
+import play.api.libs.ws.{WSAPI, WSResponse}
 import services.Temporal._
 
 import scala.concurrent.duration._
@@ -141,7 +141,15 @@ trait Harvesting {
       "limit" -> "50",
       "startFrom" -> startFrom.toString
     )
-    request.get().map { response =>
+    // define your success condition
+    implicit val success = new retry.Success[WSResponse](r => !((500 to 599)  contains r.status))
+    // retry 4 times with a delay of 1 second which will be multipled
+    // by 2 on every attempt
+    val wsResponseFuture = retry.Backoff(6, 1.seconds).apply { () =>
+      request.get()
+    }  
+      
+    wsResponseFuture.map { response =>
       val diagnostic = response.xml \ "diagnostic"
       val errorNode = diagnostic \ "error"
       val error: Option[HarvestError] = if (errorNode.isEmpty) None
@@ -189,7 +197,16 @@ trait Harvesting {
       case Some(token) =>
         listRecords.withQueryString("resumptionToken" -> token.value)
     }
-    request.get().map { response =>
+    
+    // define your success condition
+    implicit val success = new retry.Success[WSResponse](r => !((500 to 599)  contains r.status))
+    // retry 4 times with a delay of 1 second which will be multipled
+    // by 2 on every attempt
+    val wsResponseFuture = retry.Backoff(6, 1.seconds).apply { () =>
+      request.get()
+    }  
+      
+      wsResponseFuture.map { response =>
       Logger.debug(s"start get for: \n ${response.underlying[NettyResponse].getUri}")
       val error: Option[HarvestError] = if (response.status != 200) {
         Logger.debug(s"error response: ${response.underlying[NettyResponse].getResponseBody}")
