@@ -141,8 +141,8 @@ define(["angular"], function () {
             datasetService.nodeStatus($scope.spec, node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
-                $scope.apiPathUnique = $scope.apiPrefix + "/" + $scope.spec + "/unique" + filePath;
-                $scope.apiPathHistogram =  $scope.apiPrefix + "/" + $scope.spec + "/histogram" + filePath;
+                $scope.apiPathUnique = $scope.apiPrefix + $scope.spec + "/unique" + filePath;
+                $scope.apiPathHistogram =  $scope.apiPrefix +  $scope.spec + "/histogram" + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
                 switch ($routeParams.view) {
