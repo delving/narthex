@@ -291,6 +291,26 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       datasetContext.dropTree()
       def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
       harvestTypeFromString(prop(harvestType)).map { harvestType =>
+            log.info(s"Starting harvest $strategy with type $harvestType")
+            strategy match {
+              case FromScratch =>
+                datasetContext.sourceRepoOpt match {
+                  case Some(sourceRepo) =>
+                    sourceRepo.clearData()
+                  case None =>
+                    // no source repo, use the default for the harvest type
+                    datasetContext.createSourceRepo(SourceFacts(harvestType))
+                }
+              case FromScratchIncremental =>
+                datasetContext.sourceRepoOpt match {
+                  case Some(sourceRepo) =>
+                    sourceRepo.clearData()
+                  case None =>
+                    // no source repo, use the default for the harvest type
+                    datasetContext.createSourceRepo(SourceFacts(harvestType))
+                }
+              case _ =>
+            }
         val (url, ds, pre, se) = (prop(harvestURL), prop(harvestDataset), prop(harvestPrefix), prop(harvestSearch))
         val kickoff = harvestType match {
           case PMH => HarvestPMH(strategy, url, ds, pre)
