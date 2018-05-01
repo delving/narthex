@@ -252,7 +252,7 @@
                         <div class="alert alert-danger" role="alert">
                             <button type="button" class="close" data-dismiss="alert" data-ng-click="clearError()" aria-label="Close">
                                 <span aria-hidden="true">&times;</span></button>
-                            <i class="fa fa-exclamation-circle"></i> <span ng-bind-html="dataset.datasetErrorMessage"></span>
+                            <i class="fa fa-exclamation-circle"></i> <span>{{dataset.datasetErrorMessage | unsafe }}</span>
                             <hr/>
                             You must
                             <a href data-dismiss="alert" data-ng-click="clearError()" class="alert-link">close/clear</a>

@@ -72,7 +72,8 @@ class OrgActor(val orgContext: OrgContext, harvestingExecutionContext: Execution
       log.info(s"Children: ${context.children}")
 
     case spurious =>
-      log.warning(s"Spurious message $spurious")
+      log.error(s"Spurious message $spurious")
+
   }
 }
 
