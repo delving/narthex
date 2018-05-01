@@ -51,7 +51,12 @@ define(["angular"], function () {
         $scope.stateFilter = "";
         $scope.socketSubscribers = {};
 
-        var socket = datasetListService.datasetSocket();
+        function createWebSocket(path) {
+            var protocolPrefix = ($location.$$protocol === 'https') ? 'wss:' : 'ws:';
+            return new WebSocket(protocolPrefix + '//' + location.host + path);
+        }
+
+        var socket = createWebSocket('/narthex/socket/dataset')
 
         socket.onopen = function () {
             socket.send("user arrived on datasets page");
