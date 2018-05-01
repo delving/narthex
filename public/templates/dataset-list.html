@@ -26,6 +26,47 @@
     </div>
 </div>
 
+<div class="toolbar">	
+    <form class="form-inline">	
+        <div class="form-group">	
+            <span class="dropdown">	
+                <button id="order-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">	
+                    Order by <span class="caret"></span>	
+                </button>	
+                <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">	
+                    <li role="menuitem">	
+                        <a href data-ng-click="datasetListOrder('spec')">Spec</a>	
+                    </li>	
+                    <li role="menuitem">	
+                        <a href data-ng-click="datasetListOrder('state')">State</a>	
+                    </li>	
+                    <li role="menuitem">	
+                        <a href data-ng-click="datasetListOrder('lastmodified')">Date last modified</a>	
+                    </li>	
+                </ul>	
+            </span>	
+        </div>	
+        <div class="form-group">	
+            <div class="dropdown">	
+                <button id="state-filter-button" type="button" class="btn btn-default" dropdown-toggle ng-disabled="disabled">	
+                    Filter by state <span class="caret"></span>	
+                </button>	
+                <ul class="dropdown-menu" role="menu" aria-labelledby="single-button">	
+                    <li data-ng-repeat="state in datasetStates" role="menuitem">	
+                        <a href data-ng-click="setStateFilter(state.name)">{{ state.label }} ({{ state.count }})</a>	
+                    </li>	
+                    <li role="menuitem">	
+                        <a href data-ng-click="stateFilter = ''">Reset</a>	
+                    </li>	
+                </ul>	
+            </div>	
+        </div>	
+        <div class="form-group">	
+            <input type="text" class="form-control" data-ng-model="specOrNameFilter" placeholder="Filter by Spec or Name"/>	
+        </div>	
+    </form>	
+</div>
+
 <div class="file-list datasets">
 
     <div data-ng-if="!datasets.length" class="col-md-12">
@@ -45,7 +86,7 @@
         </thead>
     </table>
     <div class="vertical-scroll" data-scrollable id="dataset-list" data-offset="160">
-        <div ng-repeat="dataset in datasets" class="" data-ng-include="'dataset-entry-row.html'"></div>
+        <div ng-repeat="dataset in datasets | filter: datasetVisibleFilter" class="" data-ng-include="'dataset-entry-row.html'"></div>
     </div>
     <div data-ng-show="newFileOpen">
         <div data-ng-include="'new-dataset.html'">new dataset</div>
