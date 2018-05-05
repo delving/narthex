@@ -130,7 +130,9 @@ class SourceProcessor(val datasetContext: DatasetContext, orgContext: OrgContext
       val sourceFacts = datasetContext.sourceRepoOpt.map(_.sourceFacts).getOrElse(throw new RuntimeException(s"No source facts for $datasetContext"))
       val sipMapper = datasetContext.sipMapperOpt.getOrElse(throw new RuntimeException(s"No sip mapper for $datasetContext"))
 
-      if (scheduledOpt.isEmpty) datasetContext.processedRepo.clear()
+      // TODO: enable again when incremental harvesting is supported
+      //if (scheduledOpt.isEmpty) datasetContext.processedRepo.clear()
+      datasetContext.processedRepo.clear()
 
       val processedOutput = datasetContext.processedRepo.createOutput
       val xmlOutput = createWriter(processedOutput.xmlFile)
