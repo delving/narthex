@@ -222,6 +222,12 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     dsInfo.dropDatasetRecords
   }
 
+  def disableDataSet = {
+    dsInfo.setState(DISABLED)
+    dsInfo.dropDatasetIndex
+    dsInfo.dropDatasetRecords
+  }
+
   def startSipZipGeneration() = orgContext.orgActor ! dsInfo.createMessage(GenerateSipZip)
 
   // ==================================================

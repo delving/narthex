@@ -62,6 +62,7 @@ object DsInfo {
     type DsState = Value
 
     val EMPTY = Value("stateEmpty")
+    val DISABLED = Value("stateDisabled")
     val RAW = Value("stateRaw")
     val RAW_ANALYZED = Value("stateRawAnalyzed")
     val SOURCED = Value("stateSourced")

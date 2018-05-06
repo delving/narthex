@@ -188,6 +188,7 @@ define(["angular"], function () {
 
         $scope.datasetStates = [
             {name: 'stateEmpty', label: 'Empty', count: 0},
+            {name: 'stateDisabled', label: 'Disabled', count: 0},
             {name: 'stateRaw', label: 'Raw', count: 0},
             {name: 'stateRawAnalyzed', label: 'Raw analyzed', count: 0},
             {name: 'stateSourced', label: 'Sourced', count: 0},

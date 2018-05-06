@@ -214,6 +214,11 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
             broadcastIdleState()
             "deleted index"
 
+          case "disable dataset" =>
+            Await.ready(datasetContext.disableDataSet, 2.minutes)
+            broadcastIdleState()
+            "disabled dataset"
+
           case "remove raw" =>
             datasetContext.dropRaw()
             broadcastIdleState()

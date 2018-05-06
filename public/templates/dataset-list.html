@@ -126,6 +126,7 @@
                                             stateProcessed: 'processed',
                                             stateAnalyzed: 'analyzed',
                                             stateSaved:'saved',
+                                            stateDisabled:'disabled',
                                             '':'default'}[dataset.stateCurrent.name]">
                                 <span ng-switch-when="stateRaw">Raw source</span>
                                 <span ng-switch-when="stateRawAnalyzed">Raw source analyzed</span>
@@ -137,6 +138,7 @@
                                 <span ng-switch-when="stateProcessed">Processed</span>
                                 <span ng-switch-when="stateAnalyzed">Analyzed</span>
                                 <span ng-switch-when="stateSaved">Saved</span>
+                                <span ng-switch-when="stateDisabled">Disabled</span>
                                 <span ng-switch-default>Empty</span>
                             </span>
 
@@ -813,6 +815,9 @@
     </div>
     <form name="form" class="form">
         <fieldset>
+            <button class="btn btn-warning" data-ng-click="remove('disable dataset', 'Disable dataset?')">
+                <i class="fa fa-trash"></i> Disable Dataset
+            </button>
             <button class="btn btn-danger" data-ng-click="deleteDataset(dataset)">
                 <i class="fa fa-trash"></i> Delete Dataset
             </button>
