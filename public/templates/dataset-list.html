@@ -106,10 +106,12 @@
                     <span data-ng-show="dataset.datasetName" class="name-field">{{ dataset.datasetName }}</span>
                 </td>
                 <td class="error">
-                    {{ dataset.processedInvalid }}
+                    <span data-ng-if="dataset.harvestIncrementalMode">{{ dataset.processedIncrementalInvalid }} </span>
+                    <span data-ng-if="!dataset.harvestIncrementalMode">{{ dataset.processedInvalid }}</span>
                 </td>
                 <td class="valid">
-                    {{ dataset.processedValid }}
+                    <span data-ng-if="dataset.harvestIncrementalMode">{{ dataset.processedIncrementalValid }}</span>
+                    <span data-ng-if="!dataset.harvestIncrementalMode">{{ dataset.processedValid }}</span>
                 </td>
                 <td class="total">
                     {{ dataset.datasetRecordCount }}
