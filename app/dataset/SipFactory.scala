@@ -39,12 +39,14 @@ object SipFactory {
 
   case class SipGenerationFacts
   (spec: String,
-   prefix: String,
-   name: String,
-   provider: String,
-   dataProvider: String,
-   language: String,
-   rights: String)
+    prefix: String,
+    name: String,
+    provider: String,
+    dataProvider: String,
+    language: String,
+    rights: String,
+    orgId: String
+    )
 
   object SipGenerationFacts {
     def apply(info: NodeSeq) = {
@@ -56,7 +58,8 @@ object SipFactory {
         provider = (meta \ "provider").text,
         dataProvider = (meta \ "dataProvider").text,
         language = (meta \ "language").text,
-        rights = (meta \ "rights").text
+        rights = (meta \ "rights").text,
+        orgId = (meta \ "orgId").text
       )
     }
 
@@ -69,7 +72,8 @@ object SipFactory {
         provider = info(datasetAggregator),
         dataProvider = info(datasetOwner),
         language = info(datasetLanguage),
-        rights = info(datasetRights)
+        rights = info(datasetRights),
+        orgId =info(orgId) 
       )
     }
   }
@@ -118,7 +122,7 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: Exec
         }
       }
     }
-    Await.result(fo, 30.seconds)
+  Await.result(fo, 30.seconds)
   }
 
   def compareWithSchemasDelvingEu() = {
@@ -133,14 +137,15 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: Exec
     zos.putNextEntry(new ZipEntry(FACTS_FILE))
     val factsString =
       s"""spec=${facts.spec}
-         |name=${facts.name}
-         |provider=${facts.provider}
-         |dataProvider=${facts.dataProvider}
-         |language=${facts.language}
-         |schemaVersions=$schemaVersions
-         |rights=${facts.rights}
-         |baseUrl=${rdfBaseUrl}
-         |""".stripMargin
+    |name=${facts.name}
+    |provider=${facts.provider}
+    |dataProvider=${facts.dataProvider}
+    |language=${facts.language}
+    |schemaVersions=$schemaVersions
+    |rights=${facts.rights}
+    |baseUrl=${rdfBaseUrl}
+    |orgId=${facts.orgId}
+    |""".stripMargin
     zos.write(factsString.getBytes("UTF-8"))
     zos.closeEntry()
 
