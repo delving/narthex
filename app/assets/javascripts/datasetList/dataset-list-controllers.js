@@ -596,7 +596,11 @@ define(["angular"], function () {
         function command(command, areYouSure, after) {
             if (areYouSure && !confirm(areYouSure)) return;
             datasetListService.command($scope.dataset.datasetSpec, command).then(function (reply) {
-                console.log(reply);
+                console.log("command: " + command + " has reply: " + reply + " (" + $scope.dataset.datasetSpec + ")");
+                if (reply == "") {
+                    console.log("Set dataset busy to false.")
+                    $scope.datasetBusy = false;
+                }
             }).then(function () {
                 if (after) after();
             });
