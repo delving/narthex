@@ -495,10 +495,10 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       dsInfo.setState(PROCESSED)
       if (scheduledOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
-        dsInfo.setState(PROCESSABLE)
-        dsInfo.setState(INCREMENTAL_SAVED)
+        //dsInfo.setState(PROCESSABLE)
         val graphSaver = context.actorOf(GraphSaver.props(datasetContext, orgContext), "graph-saver")
         graphSaver ! SaveGraphs(scheduledOpt)
+        dsInfo.setState(INCREMENTAL_SAVED)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
       }

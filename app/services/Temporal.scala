@@ -22,11 +22,11 @@ import scala.xml.NodeSeq
 
 object Temporal {
 
-  def timeToString(dateTime: DateTime) = ISODateTimeFormat.dateTimeNoMillis().print(dateTime)
+  def timeToString(dateTime: DateTime) = ISODateTimeFormat.dateTime().print(dateTime)
 
   def timeToUTCString(dateTime: DateTime) = timeToString(dateTime.withZone(DateTimeZone.UTC))
 
-  def timeToLocalString(dateTime: DateTime) = ISODateTimeFormat.dateTimeNoMillis().print(dateTime.toLocalDateTime)
+  def timeToLocalString(dateTime: DateTime) = ISODateTimeFormat.dateTime().print(dateTime.toLocalDateTime)
 
   def stringToTime(dateString: String) = ISODateTimeFormat.dateOptionalTimeParser().parseDateTime(dateString)
 
