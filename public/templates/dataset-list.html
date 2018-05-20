@@ -814,6 +814,16 @@
         </div>
         <hr/>
     </div>
+    <div class="alert alert-warning">
+        Only reset a dataset after the buttons of the workflow become unresponsive. To make sure that it is not a websockets issue
+        make sure you do a hard refresh of the page first, i.e. Ctrl-F5.
+    </div>
+    <form name="form" class="form">
+        <fieldset>
+            <button class="btn btn-warning" data-ng-click="resetDatasetState()">reset dataset state</button>
+        </fieldset>
+        <hr/>
+    </form>
     <div class="alert alert-danger">
         By clicking the 'Delete' button below you will remove the entire dataset and all its accompanying information.
         <strong>This process is <em>not</em> reversible so proceed with caution!</strong>

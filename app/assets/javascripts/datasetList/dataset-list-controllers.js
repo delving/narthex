@@ -569,6 +569,11 @@ define(["angular"], function () {
             window.open($scope.apiPathProcessed, "_blank")
         };
 
+        $scope.resetDatasetState = function () {
+            console.log("Resetting the dataset state.")
+            $scope.datasetBusy = false;
+        };
+
         $scope.showInvalidRecordsPage = function () {
             window.open($scope.apiPathErrors, "_blank")
         };
@@ -597,10 +602,6 @@ define(["angular"], function () {
             if (areYouSure && !confirm(areYouSure)) return;
             datasetListService.command($scope.dataset.datasetSpec, command).then(function (reply) {
                 console.log("command: " + command + " has reply: " + reply + " (" + $scope.dataset.datasetSpec + ")");
-                if (reply == "") {
-                    console.log("Set dataset busy to false.")
-                    $scope.datasetBusy = false;
-                }
             }).then(function () {
                 if (after) after();
             });
