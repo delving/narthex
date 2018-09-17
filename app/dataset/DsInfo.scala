@@ -518,6 +518,10 @@ class DsInfo(val spec: String, val nxUriPrefix: String, val naveApiAuthToken: St
   }
 
   def extractSpecIdFromGraphName(id: String): (String, String) = {
+    if (id contains "/doc/") {
+      val localId = id.split("/doc/").last
+      return (toString, localId)
+    }
     val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
     val SpecIdExtractor(spec, localId) = id
     (spec, localId)

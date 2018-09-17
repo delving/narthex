@@ -308,14 +308,14 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
         case "edm" =>
           val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
           kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "Aggregation").getOrElse(throw new RuntimeException(s"No aggregation found!"))
+          val aggregation = kids.find(node => node.getLocalName == "Aggregation").getOrElse(throw new RuntimeException(s"No ore:aggregation found!"))
           val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
           val aggregationUri = about.getTextContent
           (rdfWrapper, StringHandling.createGraphName(aggregationUri))
         case "naa" =>
           val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
           kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "RecordAggregation").getOrElse(throw new RuntimeException(s"No aggregation found!"))
+          val aggregation = kids.find(node => node.getLocalName == "RecordAggregation").getOrElse(throw new RuntimeException(s"No record:aggregation found! $kids"))
           val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
           val aggregationUri = about.getTextContent
           (rdfWrapper, StringHandling.createGraphName(aggregationUri))

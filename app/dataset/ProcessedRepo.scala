@@ -46,8 +46,8 @@ object ProcessedRepo {
         val model = dataset.getNamedModel(graphUri)
         val triples = new StringWriter()
         RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
-        val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/(.+)/graph".r
-        val SpecIdExtractor(spec, localId) = graphUri
+        val (spec, localId) = dsInfo.extractSpecIdFromGraphName(graphUri)
+        
         val hubId = s"${orgId}_${spec}_$localId"
         val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
         val actionMap = Json.obj(
