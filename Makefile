@@ -25,6 +25,7 @@ fpm-rpm:
 	make dist
 	unzip -d target/universal target/universal/narthex-$(VERSION).zip
 	make fpm-build-rpm ARCH=amd64 FILE_ARCH=x86_64
+	rpm --addsign *.rpm
 
 fpm-build-rpm:
 	fpm -s dir -t rpm -n $(NAME) -v $(VERSION) \
@@ -59,6 +60,7 @@ fpm-rpm-fuseki:
 	mkdir -p target/apache-jena-fuseki-${FUSEKI_VERSION}/run/configuration
 	cp deploy/fuseki/narthex.ttl target/apache-jena-fuseki-${FUSEKI_VERSION}/run/configuration
 	make fpm-build-fuseki-rpm ARCH=amd64 FILE_ARCH=x86_64
+	rpm --addsign *.rpm
 
 
 fpm-build-fuseki-rpm:
