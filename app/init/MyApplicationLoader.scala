@@ -131,8 +131,8 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   val harvestTicker = actorSystem.scheduler.schedule(1.minute, 1.minute, periodicHarvest, ScanForHarvests)
   val periodicSkosifyCheck = actorSystem.actorOf(PeriodicSkosifyCheck.props(orgContext), "PeriodicSkosifyCheck")
 
-  val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
-  check.onFailure { case e: Exception => throw new RuntimeException(e) }
+  //val check = Future(orgContext.sipFactory.prefixRepos.map(repo => repo.compareWithSchemasDelvingEu()))
+  //check.onFailure { case e: Exception => throw new RuntimeException(e) }
 
   val xsdValidation = configFlag("xsd-validation")
   System.setProperty("XSD_VALIDATION", xsdValidation.toString)
