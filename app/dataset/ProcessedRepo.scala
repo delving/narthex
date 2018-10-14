@@ -49,7 +49,7 @@ object ProcessedRepo {
         val (spec, localId) = dsInfo.extractSpecIdFromGraphName(graphUri)
         
         val hubId = s"${orgId}_${spec}_$localId"
-        val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
+        //val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
         val actionMap = Json.obj(
           "hubId" -> hubId,
           //"orgId" -> dsInfo.getOrgId,
@@ -57,7 +57,7 @@ object ProcessedRepo {
           "graphUri" -> graphUri,
           "type" -> "narthex_record",
           "action" -> "index",
-          "contentHash" -> localHash.toString,
+          //"contentHash" -> localHash.toString,
           "graph" -> s"$triples".stripMargin.trim
         )
         actionMap.toString()
@@ -190,23 +190,23 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
                   Logger.error(recordText.toString())
                   throw e
               }
-              val StringHandling.SubjectOfGraph(subject) = graphName
-              val subjectResource = m.getResource(subject)
+              //val StringHandling.SubjectOfGraph(subject) = graphName
+              //val subjectResource = m.getResource(subject)
               //todo remove this later. This type of syncing is no longer required.
-              m.add(subjectResource, m.getProperty(rdfType), m.getResource(recordEntity))
-              val foafAbout = m.getResource(createFOAFAbout(subject))
-              m.add(foafAbout, m.getProperty(rdfType), m.getResource(foafDocument))
-              m.add(foafAbout, m.getProperty(ccAttributionName), m.createLiteral(dsInfo.spec))
-              m.add(foafAbout, m.getProperty(foafPrimaryTopic), subjectResource)
-              m.add(foafAbout, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
-              m.add(foafAbout, m.getProperty(contentHash.uri), m.createLiteral(currentHash))
-              m.add(foafAbout, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
+              //m.add(subjectResource, m.getProperty(rdfType), m.getResource(recordEntity))
+              //val foafAbout = m.getResource(createFOAFAbout(subject))
+              //m.add(foafAbout, m.getProperty(rdfType), m.getResource(foafDocument))
+              //m.add(foafAbout, m.getProperty(ccAttributionName), m.createLiteral(dsInfo.spec))
+              //m.add(foafAbout, m.getProperty(foafPrimaryTopic), subjectResource)
+              //m.add(foafAbout, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
+              //m.add(foafAbout, m.getProperty(contentHash.uri), m.createLiteral(currentHash))
+              //m.add(foafAbout, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
               // todo insert hubId
-              val (spec, recordId) = dsInfo.extractSpecIdFromGraphName(graphName)
+              //val (spec, recordId) = dsInfo.extractSpecIdFromGraphName(graphName)
               //val hubId = s"${dsInfo.getOrgId()}_${spec}_$localId"
               //m.add(foafAbout, m.getProperty(hubId.uri), m.getResource(hubId))
-              m.add(foafAbout, m.getProperty(localId.uri), m.createLiteral(recordId))
-              m.add(foafAbout, m.getProperty(saveTime.uri), m.createLiteral(timeString))
+              //m.add(foafAbout, m.getProperty(localId.uri), m.createLiteral(recordId))
+              //m.add(foafAbout, m.getProperty(saveTime.uri), m.createLiteral(timeString))
               graphCount += 1
               recordText.clear()
               if (graphCount >= chunkSize) chunkComplete = true
