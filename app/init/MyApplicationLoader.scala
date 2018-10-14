@@ -90,9 +90,14 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   val appConfig = initAppConfig(narthexDataDir)
 
-  val tripleStoreUrl = configString("triple-store")
+  val tripleStoreUrl = configStringNoSlash("triple-store")
   val tripleStoreLog = configFlag("triple-store-log")
-  implicit val tripleStore = new Fuseki(tripleStoreUrl, tripleStoreLog, wsApi)
+  val sparqlQueryPath = configStringNoSlash("sparql-query-path")
+  val sparqlUpdatePath = configStringNoSlash("sparql-update-path")
+  val graphStorePath = configStringNoSlash("graph-store-path")
+  val graphStoreParam = configStringNoSlash("graph-store-param")
+
+  implicit val tripleStore = new Fuseki(tripleStoreUrl, appConfig.orgId, sparqlQueryPath, sparqlUpdatePath, graphStorePath, graphStoreParam, tripleStoreLog, wsApi)
 
   lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsApi, mailService, orgActorRef)
 

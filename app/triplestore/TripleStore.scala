@@ -80,10 +80,10 @@ trait TripleStore {
 
 
 
-class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val executionContext: ExecutionContext) extends TripleStore {
+class Fuseki(storeURL: String, orgID: String, sparqlQueryPath: String, sparqlUpdatePath: String, graphStorePath: String, graphStoreParam: String, logQueries: Boolean, wsApi: WSAPI)(implicit val executionContext: ExecutionContext) extends TripleStore {
   var queryIndex = 0
 
-  private def dataRequest(graphUri: String) = wsApi.url(s"$storeURL/data").withQueryString("graph" -> graphUri)
+  private def dataRequest(graphUri: String) = wsApi.url(s"$storeURL/$orgID$graphStorePath").withQueryString(s"$graphStoreParam" -> graphUri)
 
   private def toLog(sparql: String): String = {
     queryIndex += 1
@@ -96,10 +96,15 @@ class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val e
 
   override def ask(sparqlQuery: String): Future[Boolean] = {
     logSparql(sparqlQuery)
-    val request = wsApi.url(s"$storeURL/query").withQueryString(
-      "query" -> sparqlQuery,
-      "output" -> "json"
-    )
+    val request = wsApi.url(s"$storeURL/$orgID$sparqlQueryPath").withQueryString(
+      "query" -> sparqlQuery
+      //"output" -> "json"
+    ).withHeaders(
+        "Accept-Charset" -> "utf-8",
+        "Accept-Encoding" -> "utf-8",
+        "ACCEPT" -> "application/sparql-results+json",
+        "CONTENT_TYPE" -> "application/x-www-form-urlencoded"
+      )
     request.get().map { response =>
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Ask response not 2XX, but ${response.status}: ${response.statusText}\n${toLog(sparqlQuery)}")
@@ -110,16 +115,18 @@ class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val e
 
   override def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = {
     logSparql(sparqlQuery)
-    val request = wsApi.url(s"$storeURL/query")
+    val request = wsApi.url(s"$storeURL/$orgID$sparqlQueryPath")
       .withQueryString(
-        "query" -> sparqlQuery,
-        "output" -> "json"
+        "query" -> sparqlQuery
+        //"output" -> "json"
       )
       .withHeaders(
         "Accept-Charset" -> "utf-8",
-        "Accept-Encoding" -> "utf-8"
+        "Accept-Encoding" -> "utf-8",
+        "ACCEPT" -> "application/sparql-results+json",
+        "CONTENT_TYPE" -> "application/x-www-form-urlencoded"
       )
-    request.get().map { response =>
+      request.get().map { response =>
       if (response.status / 100 != 2) {
         throw new RuntimeException(s"Query response not 2XX, but ${response.status}: ${response.statusText}\n${toLog(sparqlQuery)}")
       }
@@ -161,7 +168,7 @@ class Fuseki(storeURL: String, logQueries: Boolean, wsApi: WSAPI)(implicit val e
 
     override def sparqlUpdate(sparqlUpdate: String) = {
       logSparql(sparqlUpdate)
-      val request = wsApi.url(s"$storeURL/update").withHeaders(
+      val request = wsApi.url(s"$storeURL/$orgID$sparqlUpdatePath").withHeaders(
         "Content-Type" -> "application/sparql-update; charset=utf-8"
       )
       request.post(sparqlUpdate).map(checkUpdateResponse(_, sparqlUpdate))
