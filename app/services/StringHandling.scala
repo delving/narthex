@@ -40,10 +40,10 @@ object StringHandling {
 
   def crunchWhitespace(text: String, crunchWhitespace: Option[Boolean]) = {
     if (crunchWhitespace.getOrElse(true)) {
-      text.replaceAll("\n", " ").replaceAll("[ |\t]+", " ").trim
+      text.replaceAll("\n", " ").replaceAll("[ \t]+", " ").trim
     }
     else {
-      text.replaceAll("\n", " --- ").replaceAll("[ |\t]+", " ").trim
+      text.replaceAll("\n", " --- ").replaceAll("[ \t]+", " ").trim
     }
   }
     
