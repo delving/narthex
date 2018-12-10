@@ -59,6 +59,7 @@ POST        /narthex/sip-app/:spec/:zipFileName                              web
 
 GET         /narthex/api/:spec                                       web.APIController.pathsJSON(spec)
 GET         /narthex/api/:spec/errors                                web.APIController.processingErrorsText(spec)
+GET         /narthex/api/:spec/bulkactions                           web.APIController.processingBulkActionText(spec)
 GET         /narthex/api/:spec/sourced                               web.APIController.processingSourcedText(spec)
 GET         /narthex/api/:spec/processed                             web.APIController.processingProcessedText(spec)
 GET         /narthex/api/:spec/log                                   web.APIController.processingHarvestingLog(spec)

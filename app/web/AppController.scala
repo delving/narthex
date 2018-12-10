@@ -50,9 +50,9 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 class AppController(val orgContext: OrgContext)
-                   (implicit val ts: TripleStore, implicit val actorSystem: ActorSystem,
-                    implicit val materializer: Materializer)
-  extends Controller with DefaultInstrumented {
+(implicit val ts: TripleStore, implicit val actorSystem: ActorSystem,
+  implicit val materializer: Materializer)
+extends Controller with DefaultInstrumented {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
@@ -95,8 +95,8 @@ class AppController(val orgContext: OrgContext)
 
   def createDataset(spec: String, character: String, mapToPrefix: String) = Action.async { request =>
     orgContext.createDsInfo(spec, character, mapToPrefix).map(dsInfo =>
-      Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
-    )
+        Ok(Json.obj("created" -> s"Dataset $spec with character $character and mapToPrefix $mapToPrefix"))
+        )
   }
 
   def command(spec: String, command: String) = Action { request =>
@@ -114,12 +114,12 @@ class AppController(val orgContext: OrgContext)
       })
       error.map {
         message => NotAcceptable(Json.obj("problem" -> message))
-      } getOrElse {
-        Ok
-      }
-    } getOrElse {
-      NotAcceptable(Json.obj("problem" -> "Cannot find file in upload"))
-    }
+        } getOrElse {
+          Ok
+        }
+        } getOrElse {
+          NotAcceptable(Json.obj("problem" -> "Cannot find file in upload"))
+        }
   }
 
   def setDatasetProperties(spec: String) = Action(parse.json) { request =>
@@ -231,8 +231,8 @@ class AppController(val orgContext: OrgContext)
 
   def createVocabulary(spec: String) = Action.async { request =>
     VocabInfo.createVocabInfo(spec, orgContext).map(ok =>
-      Ok(Json.obj("created" -> s"Skos $spec created"))
-    )
+        Ok(Json.obj("created" -> s"Skos $spec created"))
+        )
   }
 
   def deleteVocabulary(spec: String) = Action.async { request =>
@@ -240,9 +240,9 @@ class AppController(val orgContext: OrgContext)
       vocabInfoOpt.map { vocabInfo =>
         vocabInfo.dropVocabulary
         Ok(Json.obj("created" -> s"Vocabulary $spec deleted"))
-      } getOrElse {
-        NotAcceptable(Json.obj("problem" -> s"Cannot find vocabulary $spec to delete"))
-      }
+        } getOrElse {
+          NotAcceptable(Json.obj("problem" -> s"Cannot find vocabulary $spec to delete"))
+        }
     }
   }
 
@@ -257,9 +257,9 @@ class AppController(val orgContext: OrgContext)
           vocabInfo.setSingularLiteralProps(skosUploadTime -> now)
           Ok
         }
-      } getOrElse {
-        Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
-      }
+        } getOrElse {
+          Future(NotAcceptable(Json.obj("problem" -> "Cannot find file in upload")))
+        }
     }
   }
 
@@ -314,7 +314,7 @@ class AppController(val orgContext: OrgContext)
     }
   }
 
-  def getTermVocabulary(spec: String) = Action { request => 
+  def getTermVocabulary(spec: String) = Action { request =>
     withDsInfo(spec, orgContext) { dsInfo =>
       val results = dsInfo.vocabulary.concepts.map(concept => {
         //          val freq: Int = concept.frequency.getOrElse(0)
@@ -352,13 +352,13 @@ class AppController(val orgContext: OrgContext)
     }
   }
 
-  def listSipFiles(spec: String) = Action { request => 
+  def listSipFiles(spec: String) = Action { request =>
     val datasetContext = orgContext.datasetContext(spec)
     val fileNames = datasetContext.sipRepo.listSips.map(_.file.getName)
     Ok(Json.obj("list" -> fileNames))
   }
 
-  def deleteLatestSipFile(spec: String) = Action { request => 
+  def deleteLatestSipFile(spec: String) = Action { request =>
     val datasetContext = orgContext.datasetContext(spec)
     val sips = datasetContext.sipRepo.listSips
     if (sips.size < 2) {
@@ -389,18 +389,18 @@ class AppController(val orgContext: OrgContext)
         else {
           Ok(Json.obj("noCategories" -> s"Concept count not within range (5 - 30): $count"))
         }
-      } getOrElse {
-        Ok(Json.obj("noCategories" -> s"No SKOS vocabulary named '$CATEGORIES_SPEC'"))
-      }
+        } getOrElse {
+          Ok(Json.obj("noCategories" -> s"No SKOS vocabulary named '$CATEGORIES_SPEC'"))
+        }
     }
   }
 
-  def gatherCategoryCounts = Action { request => 
+  def gatherCategoryCounts = Action { request =>
     orgContext.startCategoryCounts()
     Ok
   }
 
-  def listSheets = Action { request => 
+  def listSheets = Action { request =>
     Ok(Json.obj("sheets" -> orgContext.categoriesRepo.listSheets))
   }
 

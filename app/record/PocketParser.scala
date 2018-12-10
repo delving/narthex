@@ -32,17 +32,15 @@ import scala.io.Source
 import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
-
 object PocketParser {
 
-  def cleanUpId(id: String) : String = {
-    id.
-      replace("/", "-").
-      replace(":", "-").
-      replace("+", "-").
-      replace("(", "-").
-      replace(")", "-").
-      replaceAll("[-]{2,20}", "-")
+  def cleanUpId(id: String): String = {
+    id.replace("/", "-")
+      .replace(":", "-")
+      .replace("+", "-")
+      .replace("(", "-")
+      .replace(")", "-")
+      .replaceAll("[-]{2,20}", "-")
   }
 
   case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
@@ -52,14 +50,15 @@ object PocketParser {
     def getText: String = {
       IdPattern.findFirstMatchIn(text) match {
         case Some(pocketId) =>
-                val sourceId = pocketId.group(1)
-                val cleanId = cleanUpId(sourceId)
-                text.replace(sourceId, cleanId)
+          val sourceId = pocketId.group(1)
+          val cleanId = cleanUpId(sourceId)
+          text.replace(sourceId, cleanId)
         case None => text
       }
     }
 
-    def textBytes: ByteArrayInputStream = new ByteArrayInputStream(text.getBytes("UTF-8"))
+    def textBytes: ByteArrayInputStream =
+      new ByteArrayInputStream(text.getBytes("UTF-8"))
 
     def writeTo(writer: Writer) = {
       val sha1: String = PocketParser.sha1(text)
@@ -67,8 +66,12 @@ object PocketParser {
       writer.write(s"""<!--<${id}__$sha1>-->\n""")
     }
 
-    def storeBulkAction(triples: String, id: String, hash: String, orgContext: OrgContext) = {
-      val SpecIdExtractor = "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
+    def storeBulkAction(triples: String,
+                        id: String,
+                        hash: String,
+                        orgContext: OrgContext) = {
+      val SpecIdExtractor =
+        "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
       val SpecIdExtractor(spec) = id
       implicit val ts = orgContext.ts
       val dsInfo = DsInfo.getDsInfo(spec, orgContext)
@@ -95,13 +98,18 @@ object PocketParser {
   val POCKET_UNIQUE_ID = s"$POCKET_RECORD_ROOT/$POCKET_ID"
   val POCKET_RECORD_CONTAINER = Some(POCKET_RECORD_ROOT)
 
-  val POCKET_SOURCE_FACTS = SourceFacts("delving-pocket-source", POCKET_RECORD_ROOT, POCKET_UNIQUE_ID, POCKET_RECORD_CONTAINER)
+  val POCKET_SOURCE_FACTS = SourceFacts("delving-pocket-source",
+                                        POCKET_RECORD_ROOT,
+                                        POCKET_UNIQUE_ID,
+                                        POCKET_RECORD_CONTAINER)
 
   val SIP_RECORD_TAG = "sip-record"
 
 }
 
-class PocketParser(facts: SourceFacts, idFilter: IdFilter, orgContext: OrgContext) {
+class PocketParser(facts: SourceFacts,
+                   idFilter: IdFilter,
+                   orgContext: OrgContext) {
 
   import record.PocketParser._
 
@@ -113,7 +121,10 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter, orgContext: OrgContex
   var recordCount = 0
   var namespaceMap: Map[String, String] = Map.empty
 
-  def parse(source: Source, avoid: Set[String], output: Pocket => Unit, progress: ProgressReporter): Int = {
+  def parse(source: Source,
+            avoid: Set[String],
+            output: Pocket => Unit,
+            progress: ProgressReporter): Int = {
     val events = new XMLEventReader(source)
     var depth = 0
     val recordText = new mutable.StringBuilder()
@@ -162,15 +173,17 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter, orgContext: OrgContex
         depth += 1
         startElement = Some(startElementString(tag, attrs, replaceId = false))
         findUniqueId(attrs.toList)
-      }
-      else if (string == facts.recordRoot) {
-        if (facts.recordContainer.isEmpty || facts.recordContainer.get.equals(facts.recordRoot)) {
+      } else if (string == facts.recordRoot) {
+        if (facts.recordContainer.isEmpty || facts.recordContainer.get.equals(
+              facts.recordRoot)) {
           depth = 1
-          startElement = Some(startElementString(if (introduceRecord) SIP_RECORD_TAG else tag, attrs, replaceId = true))
+          startElement = Some(
+            startElementString(if (introduceRecord) SIP_RECORD_TAG else tag,
+                               attrs,
+                               replaceId = true))
         }
         findUniqueId(attrs.toList)
-      }
-      else if (!introduceRecord) facts.recordContainer.foreach { container =>
+      } else if (!introduceRecord) facts.recordContainer.foreach { container =>
         if (pathContainer(string) == container) {
           depth = 1
           startElement = Some(startElementString(tag, attrs, replaceId = true))
@@ -183,36 +196,44 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter, orgContext: OrgContex
     def pop(tag: String) = {
       val string = pathString
       val fieldText = path.head._2
-      val text = crunchWhitespace(fieldText.toString(), Some(orgContext.crunchWhiteSpace))
+      val text = crunchWhitespace(fieldText.toString(),
+                                  Some(orgContext.crunchWhiteSpace))
       fieldText.clear()
       path.pop()
       if (depth > 0) {
         // deep record means check container instead
-        val hitRecordRoot = facts.recordContainer.map { container =>
-          if (container == facts.recordRoot) {
-            string == facts.recordRoot
+        val hitRecordRoot = facts.recordContainer
+          .map { container =>
+            if (container == facts.recordRoot) {
+              string == facts.recordRoot
+            } else {
+              pathContainer(string) == container
+            }
           }
-          else {
-            pathContainer(string) == container
-          }
-        }.getOrElse(string == facts.recordRoot)
+          .getOrElse(string == facts.recordRoot)
         if (hitRecordRoot) {
           flushStartElement()
           indent()
-          recordText.append(s"</${if (introduceRecord) SIP_RECORD_TAG else tag}>\n")
+          recordText.append(
+            s"</${if (introduceRecord) SIP_RECORD_TAG else tag}>\n")
           val record = uniqueId.map { id =>
             if (id.trim.isEmpty) throw new RuntimeException("Empty unique id!")
             val cleanId = cleanUpId(id)
             if (avoid.contains(cleanId)) None
             else {
               val recordContent = recordText.toString()
-              val scope = namespaceMap.view.filter(_._1 != null).map(kv => s"""xmlns:${kv._1}="${kv._2}" """).mkString.trim
-              val scopedRecordContent = recordContent.replaceFirst(">", s" $scope>")
+              val scope = namespaceMap.view
+                .filter(_._1 != null)
+                .map(kv => s"""xmlns:${kv._1}="${kv._2}" """)
+                .mkString
+                .trim
+              val scopedRecordContent =
+                recordContent.replaceFirst(">", s" $scope>")
               if (pocketWrap) {
-                val wrapped = s"""<$POCKET id="$cleanId">\n$scopedRecordContent</$POCKET>\n"""
+                val wrapped =
+                  s"""<$POCKET id="$cleanId">\n$scopedRecordContent</$POCKET>\n"""
                 Some(Pocket(cleanId, wrapped, namespaceMap))
-              }
-              else {
+              } else {
                 Some(Pocket(cleanId, scopedRecordContent, namespaceMap))
               }
             }
@@ -226,8 +247,7 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter, orgContext: OrgContex
           }
           recordText.clear()
           depth = 0
-        }
-        else {
+        } else {
           if (string == facts.uniqueId) setUniqueId(text)
           indent()
           depth -= 1
@@ -235,14 +255,12 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter, orgContext: OrgContex
             val start = startElement.get
             startElement = None
             recordText.append(s"$start$text")
-          }
-          else if (!text.isEmpty) {
+          } else if (!text.isEmpty) {
             Logger.warn(s"Mixed content text of <$tag> ignored: [$text]")
           }
           recordText.append(s"</$tag>\n")
         }
-      }
-      else if (facts.recordContainer.isDefined && string == facts.uniqueId) {
+      } else if (facts.recordContainer.isDefined && string == facts.uniqueId) {
         // if there is a deep record, we find the unique idea outside of it
         setUniqueId(text)
       }
@@ -251,13 +269,15 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter, orgContext: OrgContex
     while (events.hasNext) {
       progress.sendValue(Some(recordCount))
       events.next() match {
-        case EvElemStart(pre, label, attrs, scope) => push(tag(pre, label), attrs, scope)
-        case EvText(text) => addFieldText(text)
-        case EvEntityRef(entity) => addFieldText(s"&$entity;")
+        case EvElemStart(pre, label, attrs, scope) =>
+          push(tag(pre, label), attrs, scope)
+        case EvText(text)          => addFieldText(text)
+        case EvEntityRef(entity)   => addFieldText(s"&$entity;")
         case EvElemEnd(pre, label) => pop(tag(pre, label))
-        case EvComment(text) => stupidParser(text, entity => addFieldText(s"&$entity;"))
+        case EvComment(text) =>
+          stupidParser(text, entity => addFieldText(s"&$entity;"))
         case EvProcInstr(target, text) =>
-        case x => Logger.error("EVENT? " + x)
+        case x                         => Logger.error("EVENT? " + x)
       }
     }
     recordCount
@@ -265,22 +285,22 @@ class PocketParser(facts: SourceFacts, idFilter: IdFilter, orgContext: OrgContex
 
   def pathString = path.reverse.map(_._1).mkString("/", "/", "")
 
-  def pathContainer(string: String) = string.substring(0, string.lastIndexOf("/"))
+  def pathContainer(string: String) =
+    string.substring(0, string.lastIndexOf("/"))
 
   def showPath() = Logger.debug(pathString)
 
   def startElementString(tag: String, attrs: MetaData, replaceId: Boolean) = {
     val attrString = new mutable.StringBuilder()
     attrs.foreach { attr =>
-      val valueString = if (replaceId && attr.key == "id") idFilter.filter(attr.value.toString()) else attr.value.toString()
+      val valueString =
+        if (replaceId && attr.key == "id")
+          idFilter.filter(attr.value.toString())
+        else attr.value.toString()
       val value = "\"" + valueString + "\""
       attrString.append(s" ${attr.prefixedKey}=$value")
     }
     s"<$tag$attrString>"
   }
 
-
 }
-
-
-

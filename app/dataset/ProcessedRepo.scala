@@ -36,6 +36,7 @@ object ProcessedRepo {
 
   val XML_SUFFIX = ".xml"
   val ERROR_SUFFIX = ".txt"
+  val BULK_ACTION_SUFFIX = "_actions.txt"
   val chunkSize = 100
 
   case class GraphChunk(dataset: Dataset, dsInfo: DsInfo) {
@@ -80,11 +81,14 @@ object ProcessedRepo {
 
   private def errorFileName(number: Int) = s"${numberString(number)}$ERROR_SUFFIX"
 
+  private def bulkActionFileName(number: Int) = s"${numberString(number)}$BULK_ACTION_SUFFIX"
+
   private def getFileNumber(file: File): Int = file.getName.substring(0, file.getName.indexOf('.')).toInt
 
   case class ProcessedOutput(home: File, number: Int) {
     val xmlFile = new File(home, xmlFileName(number))
     val errorFile = new File(home, errorFileName(number))
+    val bulkActionFile = new File(home, bulkActionFileName(number))
   }
 
 }
@@ -103,6 +107,8 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   def listXmlFiles: List[File] = home.listFiles().filter(f => f.getName.endsWith(XML_SUFFIX)).sortBy(_.getName).toList
 
+  def listBulkActionFiles: List[File] = home.listFiles().filter(f => f.getName.endsWith(BULK_ACTION_SUFFIX)).sortBy(_.getName).toList
+
   def listOutputs: List[ProcessedOutput] = {
     listXmlFiles.map(file => ProcessedOutput(home, getFileNumber(file))).toList
   }
@@ -119,6 +125,10 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   def getLatestErrors: Option[File] = {
     listOutputs.filter(_.errorFile.exists()).map(_.errorFile).lastOption
+  }
+
+  def getLatestBulkActions: Option[File] = {
+    listOutputs.filter(_.bulkActionFile.exists()).map(_.bulkActionFile).lastOption
   }
 
   def getLatestProcessed: Option[File] = {

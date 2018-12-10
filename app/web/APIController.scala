@@ -38,6 +38,12 @@ class APIController(val orgContext: OrgContext) extends Controller {
     latestErrorFile.map(Utils.okFile(_)).getOrElse(NotFound(s"No errors found for $spec"))
   }
 
+  def processingBulkActionText(spec: String) = Action(parse.anyContent) { implicit request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val latestBulkActionFile = datasetContext.processedRepo.getLatestBulkActions
+    latestBulkActionFile.map(Utils.okFile(_)).getOrElse(NotFound(s"No actions found for $spec"))
+  }
+
   def processingSourcedText(spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestSourcedFile = datasetContext.processedRepo.getLatestSourced
