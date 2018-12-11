@@ -34,11 +34,14 @@ object GraphSaver {
 
   case class SaveGraphs(scheduledOpt: Option[Scheduled])
 
-  def props(datasetContext: DatasetContext, orgContext: OrgContext) = Props(new GraphSaver(datasetContext, orgContext))
+  def props(datasetContext: DatasetContext, orgContext: OrgContext) =
+    Props(new GraphSaver(datasetContext, orgContext))
 
 }
 
-class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) extends Actor with ActorLogging {
+class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
+    extends Actor
+    with ActorLogging {
 
   import context.dispatcher
   import triplestore.GraphSaver._
@@ -47,7 +50,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
 
   val saveTime = new DateTime()
   val startSave = timeToString(new DateTime())
-  var isScheduled = false 
+  var isScheduled = false
 
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
@@ -64,41 +67,49 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext) ext
     try {
       progressOpt.get.sendValue()
       self ! reader.get.readChunkOpt
-    }
-    catch {
+    } catch {
       case ex: Throwable => failure(ex)
     }
   }
 
   override def receive = {
 
-    case SaveGraphs(scheduledOpt) => actorWork(context) {
-      log.info("Save graphs")
-      val progressReporter = ProgressReporter(SAVING, context.parent)
-      progressOpt = Some(progressReporter)
-      isScheduled = !scheduledOpt.isEmpty
-      reader = Some(datasetContext.processedRepo.createGraphReader(scheduledOpt.map(_.file), saveTime, progressReporter))
-      datasetContext.dsInfo.updateDatasetRevision()
-      sendGraphChunkOpt()
-    }
-
-    case Some(chunk: GraphChunk) => actorWork(context) {
-      log.info(s"Save a chunk of graphs")
-      val update = chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
-
-      update.map(ok => sendGraphChunkOpt())
-      update.onFailure {
-        case ex: Throwable => failure(ex)
+    case SaveGraphs(scheduledOpt) =>
+      actorWork(context) {
+        log.info("Save graphs")
+        val progressReporter = ProgressReporter(SAVING, context.parent)
+        progressOpt = Some(progressReporter)
+        isScheduled = !scheduledOpt.isEmpty
+        reader = Some(
+          datasetContext.processedRepo.createGraphReader(
+            scheduledOpt.map(_.file),
+            saveTime,
+            progressReporter))
+        datasetContext.dsInfo.updateDatasetRevision()
+        sendGraphChunkOpt()
       }
-    }
 
-    case None => actorWork(context) {
-      reader.foreach(_.close())
-      reader = None
-      // todo make sure to not run this on incremental mode, hint use isScheduled
-      datasetContext.dsInfo.removeNaveOrphans(startSave) 
-      log.info("All graphs saved")
-      context.parent ! GraphSaveComplete
-    }
+    case Some(chunk: GraphChunk) =>
+      actorWork(context) {
+        log.info(s"Save a chunk of graphs")
+        //log.info(s"chunk: ${chunk}")
+        val update =
+          chunk.dsInfo.bulkApiUpdate(chunk.bulkActions)
+
+        update.map(ok => sendGraphChunkOpt())
+        update.onFailure {
+          case ex: Throwable => failure(ex)
+        }
+      }
+
+    case None =>
+      actorWork(context) {
+        reader.foreach(_.close())
+        reader = None
+        // todo make sure to not run this on incremental mode, hint use isScheduled
+        datasetContext.dsInfo.removeNaveOrphans(startSave)
+        log.info("All graphs saved")
+        context.parent ! GraphSaveComplete
+      }
   }
 }

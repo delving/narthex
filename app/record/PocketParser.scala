@@ -65,19 +65,6 @@ object PocketParser {
       writer.write(text)
       writer.write(s"""<!--<${id}__$sha1>-->\n""")
     }
-
-    def storeBulkAction(triples: String,
-                        id: String,
-                        hash: String,
-                        orgContext: OrgContext) = {
-      val SpecIdExtractor =
-        "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
-      val SpecIdExtractor(spec) = id
-      implicit val ts = orgContext.ts
-      val dsInfo = DsInfo.getDsInfo(spec, orgContext)
-      val bulkAction = dsInfo.createBulkAction(triples, id, hash)
-      dsInfo.bulkApiUpdate(bulkAction)
-    }
   }
 
   @throws(classOf[NoSuchAlgorithmException])

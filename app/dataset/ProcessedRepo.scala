@@ -37,35 +37,9 @@ object ProcessedRepo {
   val XML_SUFFIX = ".xml"
   val ERROR_SUFFIX = ".txt"
   val BULK_ACTION_SUFFIX = "_actions.txt"
-  val chunkSize = 100
+  val chunkSize = 200
 
-  case class GraphChunk(dataset: Dataset, dsInfo: DsInfo) {
-
-    def bulkAPIQ(orgId: String): String = {
-
-      def createBulkAction(dataset: Dataset, graphUri: String): String = {
-        val model = dataset.getNamedModel(graphUri)
-        val triples = new StringWriter()
-        RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
-        val (spec, localId) = dsInfo.extractSpecIdFromGraphName(graphUri)
-        
-        val hubId = s"${orgId}_${spec}_$localId"
-        //val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
-        val actionMap = Json.obj(
-          "hubId" -> hubId,
-          //"orgId" -> dsInfo.getOrgId,
-          "dataset" -> spec,
-          "graphUri" -> graphUri,
-          "type" -> "narthex_record",
-          "action" -> "index",
-          //"contentHash" -> localHash.toString,
-          "graph" -> s"$triples".stripMargin.trim
-        )
-        actionMap.toString()
-      }
-      dataset.listNames().toList.map(g => createBulkAction(dataset, g)).mkString("\n")
-    }
-  }
+  case class GraphChunk(dataset: Dataset, dsInfo: DsInfo, bulkActions: String) {}
 
   trait GraphReader {
     def isActive: Boolean
@@ -79,11 +53,14 @@ object ProcessedRepo {
 
   private def xmlFileName(number: Int) = s"${numberString(number)}$XML_SUFFIX"
 
-  private def errorFileName(number: Int) = s"${numberString(number)}$ERROR_SUFFIX"
+  private def errorFileName(number: Int) =
+    s"${numberString(number)}$ERROR_SUFFIX"
 
-  private def bulkActionFileName(number: Int) = s"${numberString(number)}$BULK_ACTION_SUFFIX"
+  private def bulkActionFileName(number: Int) =
+    s"${numberString(number)}$BULK_ACTION_SUFFIX"
 
-  private def getFileNumber(file: File): Int = file.getName.substring(0, file.getName.indexOf('.')).toInt
+  private def getFileNumber(file: File): Int =
+    file.getName.substring(0, file.getName.indexOf('.')).toInt
 
   case class ProcessedOutput(home: File, number: Int) {
     val xmlFile = new File(home, xmlFileName(number))
@@ -105,9 +82,19 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   def nonEmpty: Boolean = baseOutput.xmlFile.exists()
 
-  def listXmlFiles: List[File] = home.listFiles().filter(f => f.getName.endsWith(XML_SUFFIX)).sortBy(_.getName).toList
+  def listXmlFiles: List[File] =
+    home
+      .listFiles()
+      .filter(f => f.getName.endsWith(XML_SUFFIX))
+      .sortBy(_.getName)
+      .toList
 
-  def listBulkActionFiles: List[File] = home.listFiles().filter(f => f.getName.endsWith(BULK_ACTION_SUFFIX)).sortBy(_.getName).toList
+  def listBulkActionFiles: List[File] =
+    home
+      .listFiles()
+      .filter(f => f.getName.endsWith(BULK_ACTION_SUFFIX))
+      .sortBy(_.getName)
+      .toList
 
   def listOutputs: List[ProcessedOutput] = {
     listXmlFiles.map(file => ProcessedOutput(home, getFileNumber(file))).toList
@@ -115,7 +102,11 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   def listSourceFiles: List[File] = {
     val sourceHome = new File(home.getParentFile, "/source")
-    sourceHome.listFiles().filter(f => f.getName.endsWith(".zip")).sortBy(_.getName).toList
+    sourceHome
+      .listFiles()
+      .filter(f => f.getName.endsWith(".zip"))
+      .sortBy(_.getName)
+      .toList
   }
 
   def createOutput: ProcessedOutput = {
@@ -128,7 +119,10 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
   }
 
   def getLatestBulkActions: Option[File] = {
-    listOutputs.filter(_.bulkActionFile.exists()).map(_.bulkActionFile).lastOption
+    listOutputs
+      .filter(_.bulkActionFile.exists())
+      .map(_.bulkActionFile)
+      .lastOption
   }
 
   def getLatestProcessed: Option[File] = {
@@ -143,9 +137,11 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   def clear() = clearDir(home)
 
-  def createGraphReader(fileOpt: Option[File], timeStamp: DateTime, progressReporter: ProgressReporter) = new GraphReader {
-    val LineId = "<!--<([^>]+)__([^>]+)>-->".r
-    var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listXmlFiles)
+  def createGraphReader(fileOpt: Option[File],
+                        timeStamp: DateTime,
+                        progressReporter: ProgressReporter) = new GraphReader {
+    var files: Seq[File] =
+      fileOpt.map(file => Seq(file)).getOrElse(listBulkActionFiles)
     val totalLength = (0L /: files.map(_.length()))(_ + _)
     var activeReader: Option[BufferedReader] = None
     var previousBytesRead = 0L
@@ -166,16 +162,15 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
     def readerOpt: Option[BufferedReader] =
       if (activeReader.isDefined) {
         activeReader
+      } else {
+        files.headOption.map { file =>
+          files = files.tail
+          val (reader, counter) = FileHandling.readerCounting(file)
+          activeReader = Some(reader)
+          activeCounter = Some(counter)
+          activeReader.get
+        }
       }
-    else {
-      files.headOption.map { file =>
-        files = files.tail
-        val (reader, counter) = FileHandling.readerCounting(file)
-        activeReader = Some(reader)
-        activeCounter = Some(counter)
-        activeReader.get
-      }
-    }
 
     override def isActive = readerOpt.isDefined
 
@@ -189,51 +184,24 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
         progressReporter.checkInterrupt()
         readerOpt.map { reader =>
           Option(reader.readLine()).map {
-            case LineId(graphName, currentHash) =>
-              //Logger.info(s"$graphCount => $graphName")
-              val m = dataset.getNamedModel(graphName)
-              try {
-                m.read(new StringReader(recordText.toString()), null, "RDF/XML")
+            case x: String =>
+              if (!x.isEmpty) {
+                graphCount += 1
+                recordText.append(x).append("\n")
+                if (graphCount >= chunkSize) chunkComplete = true
               }
-              catch {
-                case e: Throwable =>
-                  Logger.error(recordText.toString())
-                  throw e
-              }
-              //val StringHandling.SubjectOfGraph(subject) = graphName
-              //val subjectResource = m.getResource(subject)
-              //todo remove this later. This type of syncing is no longer required.
-              //m.add(subjectResource, m.getProperty(rdfType), m.getResource(recordEntity))
-              //val foafAbout = m.getResource(createFOAFAbout(subject))
-              //m.add(foafAbout, m.getProperty(rdfType), m.getResource(foafDocument))
-              //m.add(foafAbout, m.getProperty(ccAttributionName), m.createLiteral(dsInfo.spec))
-              //m.add(foafAbout, m.getProperty(foafPrimaryTopic), subjectResource)
-              //m.add(foafAbout, m.getProperty(synced.uri), m.createTypedLiteral(FALSE))
-              //m.add(foafAbout, m.getProperty(contentHash.uri), m.createLiteral(currentHash))
-              //m.add(foafAbout, m.getProperty(belongsTo.uri), m.getResource(dsInfo.uri))
-              // todo insert hubId
-              //val (spec, recordId) = dsInfo.extractSpecIdFromGraphName(graphName)
-              //val hubId = s"${dsInfo.getOrgId()}_${spec}_$localId"
-              //m.add(foafAbout, m.getProperty(hubId.uri), m.getResource(hubId))
-              //m.add(foafAbout, m.getProperty(localId.uri), m.createLiteral(recordId))
-              //m.add(foafAbout, m.getProperty(saveTime.uri), m.createLiteral(timeString))
-              graphCount += 1
-              recordText.clear()
-              if (graphCount >= chunkSize) chunkComplete = true
-                case x: String =>
-                  recordText.append(x).append("\n")
-                  } getOrElse {
-                    reader.close()
-                    previousBytesRead += activeCount
-                    activeReader = None
-                    activeCounter = None
-                  }
-                  } getOrElse {
-                    chunkComplete = true
-                  }
+          } getOrElse {
+            reader.close()
+            previousBytesRead += activeCount
+            activeReader = None
+            activeCounter = None
+          }
+        } getOrElse {
+          chunkComplete = true
+        }
       }
       //Logger.info(s"Graphcount is: $graphCount.")
-      if (graphCount > 0) Some(GraphChunk(dataset, dsInfo)) else None
+      if (graphCount > 0) Some(GraphChunk(dataset, dsInfo, recordText.toString())) else None
     }
 
     override def close(): Unit = {
