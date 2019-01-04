@@ -641,6 +641,7 @@ class DsInfo(
   def updateDatasetRevision() = {
     val actionMap = Json.obj(
       "dataset" -> spec,
+      "orgId" -> orgContext.appConfig.orgId,
       "action" -> "increment_revision"
     )
     bulkApiUpdate(s"${actionMap.toString()}\n")
@@ -650,6 +651,7 @@ class DsInfo(
   def removeNaveOrphans(timeStamp: String) = {
     val actionMap = Json.obj(
       "dataset" -> spec,
+      "orgId" -> orgContext.appConfig.orgId,
       "action" -> "clear_orphans",
       "modification_date" -> timeStamp
     )
@@ -659,6 +661,7 @@ class DsInfo(
   def disableInNaveIndex() = {
     val actionMap = Json.obj(
       "dataset" -> spec,
+      "orgId" -> orgContext.appConfig.orgId,
       "action" -> "disable_index"
     )
     bulkApiUpdate(s"${actionMap.toString()}\n")
@@ -667,6 +670,7 @@ class DsInfo(
   def removeNaveDataSet() = {
     val actionMap = Json.obj(
       "dataset" -> spec,
+      "orgId" -> orgContext.appConfig.orgId,
       "action" -> "drop_dataset"
     )
     bulkApiUpdate(s"${actionMap.toString()}\n")
@@ -677,6 +681,7 @@ class DsInfo(
     val hubId = s"${orgContext.appConfig.orgId}_${spec}_$localId"
     val actionMap = Json.obj(
       "hubId" -> hubId,
+      "orgId" -> orgContext.appConfig.orgId,
       "dataset" -> spec,
       "graphUri" -> id,
       "type" -> "void_EDMRecord",
