@@ -626,18 +626,6 @@ class DsInfo(
     }
   }
 
-  def extractSpecIdFromGraphName(id: String): (String, String) = {
-    if (id contains "/doc/") {
-      val localId = id.split("/doc/").last.stripSuffix("/graph").trim
-      //Logger.info(s"localID: $localId")
-      return (toString, localId)
-    }
-    val SpecIdExtractor =
-      "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
-    val SpecIdExtractor(spec, localId) = id
-    (spec, localId)
-  }
-
   def updateDatasetRevision() = {
     val actionMap = Json.obj(
       "dataset" -> spec,
@@ -674,22 +662,6 @@ class DsInfo(
       "action" -> "drop_dataset"
     )
     bulkApiUpdate(s"${actionMap.toString()}\n")
-  }
-
-  def createBulkAction(triples: String, id: String, hash: String) = {
-    val (spec, localId) = extractSpecIdFromGraphName(id)
-    val hubId = s"${orgContext.appConfig.orgId}_${spec}_$localId"
-    val actionMap = Json.obj(
-      "hubId" -> hubId,
-      "orgId" -> orgContext.appConfig.orgId,
-      "dataset" -> spec,
-      "graphUri" -> id,
-      "type" -> "void_EDMRecord",
-      "action" -> "index",
-      "contentHash" -> hash,
-      "graph" -> s"$triples".stripMargin.trim
-    )
-    s"${actionMap.toString()}\n"
   }
 
 }

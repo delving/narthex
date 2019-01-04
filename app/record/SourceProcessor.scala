@@ -179,7 +179,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
           errorOutput.write("\n")
         }
 
-        def writeBulkAction(rdf: String, graphUri: String) = {
+        def writeBulkAction(rdf: String, graphUri: String, localId: String) = {
           val model = dataset.getNamedModel(graphUri)
           try {
             model.read(new StringReader(rdf), null, "RDF/XML")
@@ -192,14 +192,15 @@ class SourceProcessor(val datasetContext: DatasetContext,
           //val model = dataset.getNamedModel(graphUri)
           val triples = new StringWriter()
           RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
-          val (spec, localId) = dsInfo.extractSpecIdFromGraphName(graphUri)
 
           val orgId = dsInfo.orgId
+          val spec = dsInfo.spec
           val hubId = s"${orgId}_${spec}_$localId"
           //val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
           val actionMap = Json.obj(
             "hubId" -> hubId,
             "orgId" -> orgId,
+            "localId" -> localId,
             "dataset" -> spec,
             "graphUri" -> graphUri,
             "type" -> "narthex_record",
@@ -221,7 +222,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
             case Success(pocket) =>
               pocket.writeTo(xmlOutput)
               // insert RDF graph into bulk actions
-              writeBulkAction(pocket.text, pocket.id)
+              writeBulkAction(pocket.text, pocket.id, rawPocket.id)
               validRecords += 1
 
             case Failure(ue: URIErrorsException) =>
