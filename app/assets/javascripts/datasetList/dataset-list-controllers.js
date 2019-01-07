@@ -420,6 +420,7 @@ define(["angular"], function () {
         $scope.oaiPmhLink = baseUrl + "/api/oai-pmh?verb=ListRecords&metadataPrefix=edm&set=" + $scope.dataset.datasetSpec;
         $scope.apiPathErrors = $scope.apiPrefix + $scope.dataset.datasetSpec + "/errors";
         $scope.apiPathBulkActions = $scope.apiPrefix + $scope.dataset.datasetSpec + "/bulkactions";
+        $scope.apiPathNquads = $scope.apiPrefix + $scope.dataset.datasetSpec + "/nquads";
         $scope.apiPathSourced = $scope.apiPrefix + $scope.dataset.datasetSpec + "/sourced";
         $scope.apiPathProcessed = $scope.apiPrefix + $scope.dataset.datasetSpec + "/processed";
         $scope.apiPathHarvestLog = $scope.apiPrefix + $scope.dataset.datasetSpec + "/log";
@@ -582,6 +583,10 @@ define(["angular"], function () {
 
         $scope.showsBulkActionsPage = function () {
             window.open($scope.apiPathBulkActions, "_blank")
+        };
+
+        $scope.showsNquadsPage = function () {
+            window.open($scope.apiPathNquads, "_blank")
         };
 
         $scope.showHarvestingLog = function () {

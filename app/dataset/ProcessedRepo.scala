@@ -37,6 +37,7 @@ object ProcessedRepo {
   val XML_SUFFIX = ".xml"
   val ERROR_SUFFIX = ".txt"
   val BULK_ACTION_SUFFIX = "_actions.txt"
+  val NQUAD_SUFFIX = ".nq"
   val chunkSize = 200
 
   case class GraphChunk(dataset: Dataset, dsInfo: DsInfo, bulkActions: String) {}
@@ -59,6 +60,9 @@ object ProcessedRepo {
   private def bulkActionFileName(number: Int) =
     s"${numberString(number)}$BULK_ACTION_SUFFIX"
 
+  private def nquadFileName(number: Int) =
+    s"${numberString(number)}$NQUAD_SUFFIX"
+
   private def getFileNumber(file: File): Int =
     file.getName.substring(0, file.getName.indexOf('.')).toInt
 
@@ -66,6 +70,7 @@ object ProcessedRepo {
     val xmlFile = new File(home, xmlFileName(number))
     val errorFile = new File(home, errorFileName(number))
     val bulkActionFile = new File(home, bulkActionFileName(number))
+    val nquadFile = new File(home, nquadFileName(number))
   }
 
 }
@@ -122,6 +127,13 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
     listOutputs
       .filter(_.bulkActionFile.exists())
       .map(_.bulkActionFile)
+      .lastOption
+  }
+
+  def getLatestNquads: Option[File] = {
+    listOutputs
+      .filter(_.nquadFile.exists())
+      .map(_.nquadFile)
       .lastOption
   }
 

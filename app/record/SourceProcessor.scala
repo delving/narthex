@@ -159,6 +159,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         val xmlOutput = createWriter(processedOutput.xmlFile)
         val errorOutput = createWriter(processedOutput.errorFile)
         val bulkActionOutput = createWriter(processedOutput.bulkActionFile)
+        val nquadOutput = createWriter(processedOutput.nquadFile)
         val harvestingLogger = appender(datasetContext.harvestLogger)
         var validRecords = 0
         var invalidRecords = 0
@@ -210,6 +211,11 @@ class SourceProcessor(val datasetContext: DatasetContext,
           )
           bulkActionOutput.write(actionMap.toString())
           bulkActionOutput.write("\n")
+          // TODO make sure the named graph is part of the model
+          var nquads = new StringWriter()
+          RDFDataMgr.write(nquads, model, RDFFormat.NQUADS)
+          nquadOutput.write(s"$nquads".stripMargin.trim)
+          nquadOutput.write("\n")
         }
 
         def catchPocket(rawPocket: Pocket): Unit = {
@@ -282,6 +288,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         xmlOutput.close()
         errorOutput.close()
         bulkActionOutput.close()
+        nquadOutput.close()
         if (invalidRecords == 0) deleteQuietly(processedOutput.errorFile)
         val scheduledOptOutput = if (!scheduledOpt.isEmpty) {
           Some(scheduledOpt.get.copy(file = processedOutput.xmlFile))
