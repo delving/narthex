@@ -45,9 +45,9 @@ fpm-build-rpm:
 		--after-upgrade deploy/after_install.sh \
 		target/universal/narthex-$(VERSION)/=/opt/hub3/narthex/NarthexVersion/ \
 		deploy/$(NAME).service=/lib/systemd/system/$(NAME).service \
-		deploy/$(NAME).conf=/opt/hub3/narthex/NarthexFiles/narthex.conf \
-		deploy/environment.conf=/opt/hub3/narthex/NarthexFiles/environment.conf \
-		deploy/logger.xml=/opt/hub3/narthex/NarthexFiles/logger.xml \
+		deploy/$(NAME).conf=/opt/hub3/narthex/NarthexFiles/narthex.conf.tmpl \
+		deploy/environment.conf=/opt/hub3/narthex/NarthexFiles/environment.conf.tmpl \
+		deploy/logger.xml=/opt/hub3/narthex/NarthexFiles/logger.xml.tmpl \
 		deploy/$(NAME).logrotate=/etc/logrotate.d/$(NAME) \
 		deploy/edm_5.2.6_record-definition.xml=/opt/hub3/narthex/NarthexFiles/default/factory/edm/edm_5.2.6_record-definition.xml \
 		deploy/edm_5.2.6_validation.xsd=/opt/hub3/narthex/NarthexFiles/default/factory/edm/edm_5.2.6_validation.xsd
