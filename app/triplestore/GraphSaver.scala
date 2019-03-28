@@ -85,13 +85,16 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
             scheduledOpt.map(_.file),
             saveTime,
             progressReporter))
-        datasetContext.dsInfo.updateDatasetRevision()
+        if (!isScheduled || scheduledOpt.head.modifiedAfter.isEmpty) {
+          log.info(s"Only increment dataset revision when not in incremental mode")
+          datasetContext.dsInfo.updateDatasetRevision()
+        }
         sendGraphChunkOpt()
       }
 
     case Some(chunk: GraphChunk) =>
       actorWork(context) {
-        log.info(s"Save a chunk of graphs")
+        //log.info(s"Save a chunk of graphs")
         //log.info(s"chunk: ${chunk}")
         val update =
           chunk.dsInfo.bulkApiUpdate(chunk.bulkActions)
