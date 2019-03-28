@@ -288,7 +288,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         xmlOutput.close()
         errorOutput.close()
         bulkActionOutput.close()
-        nquadOutput.close()
+        //nquadOutput.close()
         if (invalidRecords == 0) deleteQuietly(processedOutput.errorFile)
         val scheduledOptOutput = if (!scheduledOpt.isEmpty) {
           Some(scheduledOpt.get.copy(file = processedOutput.xmlFile))
