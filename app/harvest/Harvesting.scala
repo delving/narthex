@@ -190,7 +190,7 @@ trait Harvesting {
           case ModifiedAfter(mod, justDate) =>
             withSet.withQueryString("from" -> {
               val dateTime = timeToUTCString(mod)
-              if (justDate) dateTime.substring(0, dateTime.indexOf('T')) else dateTime.replaceAll("\\.[0-9]{3}[Z]{0,1}$", "")
+              if (justDate) dateTime.substring(0, dateTime.indexOf('T')) else dateTime.replaceAll("\\.[0-9]{3}[Z]{0,1}$", "Z")
             })
           case _ => withSet
         }
