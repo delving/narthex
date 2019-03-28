@@ -152,8 +152,8 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
   def createGraphReader(fileOpt: Option[File],
                         timeStamp: DateTime,
                         progressReporter: ProgressReporter) = new GraphReader {
-    var files: Seq[File] =
-      fileOpt.map(file => Seq(file)).getOrElse(listBulkActionFiles)
+    //var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listBulkActionFiles)
+    var files: Seq[File] = listBulkActionFiles
     val totalLength = (0L /: files.map(_.length()))(_ + _)
     var activeReader: Option[BufferedReader] = None
     var previousBytesRead = 0L
