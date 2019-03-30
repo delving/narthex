@@ -1,0 +1,17 @@
+[Unit]
+Description=Narthex Server
+After=network.target
+ 
+[Service]
+EnvironmentFile=/opt/hub3/narthex/NarthexFiles/environment.conf
+PIDFile=/opt/hub3/narthex/narthex.pid
+ExecStart=/bin/sh /opt/hub3/narthex/NarthexVersion/bin/narthex -Dhttp.address=${ADDRESS} -Dhttp.port=${PORT} ${CMD_PARAMS} -Dpidfile.path=${PID_FILE} -Dconfig.file=${CONFIG_FILE} -Dlogger.file=${LOGGER_FILE}
+Restart=on-failure 
+User=narthex
+Group=narthex
+
+# See http://serverfault.com/a/695863
+SuccessExitStatus=143
+ 
+[Install]
+WantedBy=multi-user.target

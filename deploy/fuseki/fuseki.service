@@ -1,0 +1,21 @@
+[Unit]
+Description=Apache Fuseki Server
+After=network.target
+ 
+[Service]
+# EnvironmentFile=/opt/hub3/narthex/NarthexFiles/environment.conf
+WorkingDirectory=/opt/hub3/narthex/fuseki
+PIDFile=/opt/hub3/narthex/fuseki/fuseki.pid
+ExecStart=/bin/sh /opt/hub3/narthex/fuseki/fuseki-server
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=fuseki
+Restart=on-failure 
+User=narthex
+Group=narthex
+
+# See http://serverfault.com/a/695863
+SuccessExitStatus=143
+ 
+[Install]
+WantedBy=multi-user.target

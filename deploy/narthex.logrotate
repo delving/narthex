@@ -1,0 +1,9 @@
+/opt/hub3/narthex/NarthexFiles/logs/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create
+}
