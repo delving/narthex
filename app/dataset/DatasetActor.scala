@@ -80,9 +80,13 @@ object DatasetActor {
 
   case object Dormant extends DatasetActorData
 
-  case class Active(spec: String, childOpt: Option[ActorRef],
-                    progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0,
-                    interrupt: Boolean = false) extends DatasetActorData
+  case class Active(spec: String,
+                    childOpt: Option[ActorRef],
+                    progressState: ProgressState,
+                    progressType: ProgressType = TYPE_IDLE,
+                    count: Int = 0,
+                    interrupt: Boolean = false)
+      extends DatasetActorData
 
   implicit val activeWrites = new Writes[Active] {
     def writes(active: Active) = Json.obj(
@@ -95,12 +99,12 @@ object DatasetActor {
 
   case class InError(error: String) extends DatasetActorData
 
-
   // messages to receive
 
   trait HarvestStrategy
 
-  case class ModifiedAfter(mod: DateTime, justDate: Boolean) extends HarvestStrategy
+  case class ModifiedAfter(mod: DateTime, justDate: Boolean)
+      extends HarvestStrategy
 
   case object Sample extends HarvestStrategy
 
@@ -124,18 +128,31 @@ object DatasetActor {
 
   case object StartCategoryCounting
 
-  case class WorkFailure(message: String, exceptionOpt: Option[Throwable] = None)
+  case class WorkFailure(message: String,
+                         exceptionOpt: Option[Throwable] = None)
 
-  case class ProgressTick(reporterOpt: Option[ProgressReporter], progressState: ProgressState, progressType: ProgressType = TYPE_IDLE, count: Int = 0)
+  case class ProgressTick(reporterOpt: Option[ProgressReporter],
+                          progressState: ProgressState,
+                          progressType: ProgressType = TYPE_IDLE,
+                          count: Int = 0)
 
-  def props(datasetContext: DatasetContext, mailService: MailService, orgContext: OrgContext,
+  def props(datasetContext: DatasetContext,
+            mailService: MailService,
+            orgContext: OrgContext,
             harvestingExecutionContext: ExecutionContext) =
-    Props(classOf[DatasetActor], datasetContext, mailService, orgContext, harvestingExecutionContext)
+    Props(classOf[DatasetActor],
+          datasetContext,
+          mailService,
+          orgContext,
+          harvestingExecutionContext)
 }
 
-class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
-                   orgContext: OrgContext, harvestingExecutionContext: ExecutionContext)
-  extends LoggingFSM[DatasetActorState, DatasetActorData] with ActorLogging {
+class DatasetActor(val datasetContext: DatasetContext,
+                   mailService: MailService,
+                   orgContext: OrgContext,
+                   harvestingExecutionContext: ExecutionContext)
+    extends LoggingFSM[DatasetActorState, DatasetActorData]
+    with ActorLogging {
 
   import context.dispatcher
 
@@ -149,7 +166,8 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
 
   val errorMessage = dsInfo.getLiteralProp(datasetErrorMessage).getOrElse("")
 
-  def broadcastRaw(message: Any) = context.system.actorSelection("/user/*/flowActor") ! message
+  def broadcastRaw(message: Any) =
+    context.system.actorSelection("/user/*/flowActor") ! message
 
   def broadcastIdleState() = broadcastRaw(datasetContext.dsInfo)
 
@@ -165,7 +183,8 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
         def startHarvest(strategy: HarvestStrategy) = {
           val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
           log.info(s"Start harvest $strategy, type is $harvestTypeStringOpt")
-          val harvestTypeOpt = harvestTypeStringOpt.flatMap(harvestTypeFromString)
+          val harvestTypeOpt =
+            harvestTypeStringOpt.flatMap(harvestTypeFromString)
           harvestTypeOpt.map { harvestType =>
             log.info(s"Starting harvest $strategy with type $harvestType")
             strategy match {
@@ -190,7 +209,8 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
             self ! StartHarvest(strategy)
             "harvest started"
           } getOrElse {
-            val message = s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
+            val message =
+              s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
             self ! WorkFailure(message, None)
             message
           }
@@ -296,33 +316,40 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       datasetContext.dropTree()
       def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
       harvestTypeFromString(prop(harvestType)).map { harvestType =>
-            log.info(s"Starting harvest $strategy with type $harvestType")
-            strategy match {
-              case FromScratch =>
-                datasetContext.sourceRepoOpt match {
-                  case Some(sourceRepo) =>
-                    sourceRepo.clearData()
-                  case None =>
-                    // no source repo, use the default for the harvest type
-                    datasetContext.createSourceRepo(SourceFacts(harvestType))
-                }
-              case FromScratchIncremental =>
-                datasetContext.sourceRepoOpt match {
-                  case Some(sourceRepo) =>
-                    sourceRepo.clearData()
-                  case None =>
-                    // no source repo, use the default for the harvest type
-                    datasetContext.createSourceRepo(SourceFacts(harvestType))
-                }
-              case _ =>
+        log.info(s"Starting harvest $strategy with type $harvestType")
+        strategy match {
+          case FromScratch =>
+            datasetContext.sourceRepoOpt match {
+              case Some(sourceRepo) =>
+                sourceRepo.clearData()
+              case None =>
+                // no source repo, use the default for the harvest type
+                datasetContext.createSourceRepo(SourceFacts(harvestType))
             }
-        val (url, ds, pre, se) = (prop(harvestURL), prop(harvestDataset), prop(harvestPrefix), prop(harvestSearch))
+          case FromScratchIncremental =>
+            datasetContext.sourceRepoOpt match {
+              case Some(sourceRepo) =>
+                sourceRepo.clearData()
+              case None =>
+                // no source repo, use the default for the harvest type
+                datasetContext.createSourceRepo(SourceFacts(harvestType))
+            }
+          case _ =>
+        }
+        val (url, ds, pre, se) = (prop(harvestURL),
+                                  prop(harvestDataset),
+                                  prop(harvestPrefix),
+                                  prop(harvestSearch))
         val kickoff = harvestType match {
-          case PMH => HarvestPMH(strategy, url, ds, pre)
+          case PMH   => HarvestPMH(strategy, url, ds, pre)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
-        val harvester = context.actorOf(Harvester.props(datasetContext, orgContext.appConfig.harvestTimeOut,
-          orgContext.wsApi, harvestingExecutionContext), "harvester")
+        val harvester =
+          context.actorOf(Harvester.props(datasetContext,
+                                          orgContext.appConfig.harvestTimeOut,
+                                          orgContext.wsApi,
+                                          harvestingExecutionContext),
+                          "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
@@ -330,52 +357,73 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       }
 
     case Event(AdoptSource(file, orgContext), Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext, orgContext), "source-adopter")
+      val sourceProcessor =
+        context.actorOf(SourceProcessor.props(datasetContext, orgContext),
+                        "source-adopter")
       sourceProcessor ! AdoptSource(file, orgContext)
       goto(Adopting) using Active(dsInfo.spec, Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext, orgContext), "source-generator")
+      val sourceProcessor =
+        context.actorOf(SourceProcessor.props(datasetContext, orgContext),
+                        "source-generator")
       sourceProcessor ! GenerateSipZip
-      goto(Generating) using Active(dsInfo.spec, Some(sourceProcessor), GENERATING)
+      goto(Generating) using Active(dsInfo.spec,
+                                    Some(sourceProcessor),
+                                    GENERATING)
 
     case Event(StartAnalysis(processed), Dormant) =>
       log.info(s"Start analysis processed=$processed")
       if (processed) {
-        val analyzer = context.actorOf(Analyzer.props(datasetContext), "analyzer-processed")
-        analyzer ! AnalyzeFile(datasetContext.processedRepo.baseOutput.xmlFile, processed)
+        val analyzer =
+          context.actorOf(Analyzer.props(datasetContext), "analyzer-processed")
+        analyzer ! AnalyzeFile(datasetContext.processedRepo.baseOutput.xmlFile,
+                               processed)
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
-      }
-      else {
-        val rawFile = datasetContext.rawXmlFile.getOrElse(throw new Exception(s"Unable to find 'raw' file to analyze"))
-        val analyzer = context.actorOf(Analyzer.props(datasetContext), "analyzer-raw")
+      } else {
+        val rawFile = datasetContext.rawXmlFile.getOrElse(
+          throw new Exception(s"Unable to find 'raw' file to analyze"))
+        val analyzer =
+          context.actorOf(Analyzer.props(datasetContext), "analyzer-raw")
         analyzer ! AnalyzeFile(rawFile, processed = false)
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       }
 
     case Event(StartProcessing(scheduledOpt), Dormant) =>
-      val sourceProcessor = context.actorOf(SourceProcessor.props(datasetContext, orgContext), "source-processor")
+      val sourceProcessor =
+        context.actorOf(SourceProcessor.props(datasetContext, orgContext),
+                        "source-processor")
       sourceProcessor ! Process(scheduledOpt)
-      goto(Processing) using Active(dsInfo.spec, Some(sourceProcessor), PROCESSING)
+      goto(Processing) using Active(dsInfo.spec,
+                                    Some(sourceProcessor),
+                                    PROCESSING)
 
     case Event(StartSaving(scheduledOpt), Dormant) =>
-      val graphSaver = context.actorOf(GraphSaver.props(datasetContext, orgContext), "graph-saver")
+      val graphSaver =
+        context.actorOf(GraphSaver.props(datasetContext, orgContext),
+                        "graph-saver")
       graphSaver ! SaveGraphs(scheduledOpt)
       goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
-      val skosifier = context.actorOf(Skosifier.props(dsInfo, orgContext), "skosifier")
+      val skosifier =
+        context.actorOf(Skosifier.props(dsInfo, orgContext), "skosifier")
       skosifier ! skosifiedField
       goto(Skosifying) using Active(dsInfo.spec, Some(skosifier), SKOSIFYING)
 
     case Event(StartCategoryCounting, Dormant) =>
       if (datasetContext.processedRepo.nonEmpty) {
         implicit val ts = orgContext.ts
-        val categoryCounter = context.actorOf(CategoryCounter.props(dsInfo, datasetContext.processedRepo, orgContext), "category-counter")
+        val categoryCounter =
+          context.actorOf(CategoryCounter.props(dsInfo,
+                                                datasetContext.processedRepo,
+                                                orgContext),
+                          "category-counter")
         categoryCounter ! CountCategories
-        goto(Categorizing) using Active(dsInfo.spec, Some(categoryCounter), CATEGORIZING)
-      }
-      else {
+        goto(Categorizing) using Active(dsInfo.spec,
+                                        Some(categoryCounter),
+                                        CATEGORIZING)
+      } else {
         stay() using InError(s"No source file for categorizing $datasetContext")
       }
 
@@ -383,13 +431,19 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
 
   when(Harvesting) {
 
-    case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch), active: Active) =>
-      def processIncremental(fileOpt: Option[File], noRecordsMatch: Boolean, mod: Option[DateTime]) = {
+    case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch),
+               active: Active) =>
+      def processIncremental(fileOpt: Option[File],
+                             noRecordsMatch: Boolean,
+                             mod: Option[DateTime]) = {
         noRecordsMatch match {
           case true =>
-            Logger.debug("NoRecordsMatch, so setting state to Incremental Saved")
+            Logger.debug(
+              "NoRecordsMatch, so setting state to Incremental Saved")
             dsInfo.setState(INCREMENTAL_SAVED)
-            if (dsInfo.getLiteralProp(harvestIncrementalMode).getOrElse("false") != "true") {
+            if (dsInfo
+                  .getLiteralProp(harvestIncrementalMode)
+                  .getOrElse("false") != "true") {
               dsInfo.setHarvestIncrementalMode(true)
             }
           case _ =>
@@ -402,14 +456,13 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
             dsInfo.setLastHarvestTime(incremental = true)
         }
         dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
-        dsInfo.updatedSpecCountFromFile(dsInfo.spec, orgContext.appConfig.narthexDataDir, orgContext.appConfig.orgId)
+
         fileOpt match {
           case Some(file) =>
             if (datasetContext.sipMapperOpt.isDefined) {
               log.info(s"There is a mapper, so trigger processing")
               self ! StartProcessing(Some(Scheduled(mod, file)))
-            }
-            else {
+            } else {
               log.info("No mapper, so generating sip zip only")
               self ! GenerateSipZip
             }
@@ -433,6 +486,9 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
 
         case FromScratchIncremental =>
           processIncremental(fileOpt, noRecordsMatch, None)
+          dsInfo.updatedSpecCountFromFile(dsInfo.spec,
+                                        orgContext.appConfig.narthexDataDir,
+                                        orgContext.appConfig.orgId)
       }
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
@@ -442,7 +498,8 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
 
     case Event(SourceAdoptionComplete(file), active: Active) =>
       dsInfo.setState(SOURCED)
-      if (datasetContext.sipRepo.latestSipOpt.isDefined) dsInfo.setState(PROCESSABLE)
+      if (datasetContext.sipRepo.latestSipOpt.isDefined)
+        dsInfo.setState(PROCESSABLE)
       datasetContext.dropTree()
       active.childOpt.foreach(_ ! PoisonPill)
       self ! GenerateSipZip
@@ -459,8 +516,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       if (datasetContext.sipMapperOpt.isDefined) {
         log.info(s"There is a mapper, so setting to processable")
         dsInfo.setState(PROCESSABLE)
-      }
-      else {
+      } else {
         log.info("No mapper, not processing")
       }
 
@@ -480,8 +536,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       if (errorOption.isDefined) {
         dsInfo.removeState(dsState)
         datasetContext.dropTree()
-      }
-      else {
+      } else {
         dsInfo.setState(dsState)
       }
       active.childOpt.foreach(_ ! PoisonPill)
@@ -491,21 +546,25 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
 
   when(Processing) {
 
-    case Event(ProcessingComplete(validRecords, invalidRecords, scheduledOpt), active: Active) =>
+    case Event(ProcessingComplete(validRecords, invalidRecords, scheduledOpt),
+               active: Active) =>
       dsInfo.setState(PROCESSED)
       if (scheduledOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
         //dsInfo.setState(PROCESSABLE)
-        val graphSaver = context.actorOf(GraphSaver.props(datasetContext, orgContext), "graph-saver")
+        val graphSaver =
+          context.actorOf(GraphSaver.props(datasetContext, orgContext),
+                          "graph-saver")
         graphSaver ! SaveGraphs(scheduledOpt)
         dsInfo.setState(INCREMENTAL_SAVED)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
-      }
-      else {
+      } else {
         dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
-        mailService.sendProcessingCompleteMessage(dsInfo.spec, dsInfo.processedValidVal, dsInfo.processedInvalidVal)
+        mailService.sendProcessingCompleteMessage(dsInfo.spec,
+                                                  dsInfo.processedValidVal,
+                                                  dsInfo.processedInvalidVal)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Idle) using Dormant
       }
@@ -553,9 +612,10 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       if (active.interrupt) {
         tick.reporterOpt.foreach(_.interrupt())
         stay() using active
-      }
-      else {
-        val nextActive = active.copy(progressState = tick.progressState, progressType = tick.progressType, count = tick.count)
+      } else {
+        val nextActive = active.copy(progressState = tick.progressState,
+                                     progressType = tick.progressType,
+                                     count = tick.count)
         broadcastProgress(nextActive)
         stay() using nextActive
       }
@@ -565,8 +625,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       if (commandName == "clear error") {
         dsInfo.removeLiteralProp(datasetErrorMessage)
         goto(Idle) using Dormant
-      }
-      else {
+      } else {
         stay()
       }
 
@@ -578,8 +637,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       log.info(s"Active. Command name: $commandName")
       if (commandName == "interrupt") {
         stay() using active.copy(interrupt = true)
-      }
-      else {
+      } else {
         stay()
       }
 
@@ -588,7 +646,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       dsInfo.setError(s"While $stateName, failure: $message")
       exceptionOpt match {
         case Some(exception) => log.error(exception, message)
-        case None => log.error(message)
+        case None            => log.error(message)
       }
       mailService.sendProcessingErrorMessage(dsInfo.spec, message, exceptionOpt)
       active.childOpt.foreach(_ ! PoisonPill)
@@ -598,7 +656,7 @@ class DatasetActor(val datasetContext: DatasetContext, mailService: MailService,
       log.warning(s"Work failure $message while dormant")
       exceptionOpt match {
         case Some(exception) => log.error(exception, message)
-        case None => log.error(message)
+        case None            => log.error(message)
       }
       dsInfo.setError(s"While not active, failure: $message")
       goto(Idle) using InError(message)
