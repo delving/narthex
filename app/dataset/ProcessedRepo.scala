@@ -38,7 +38,7 @@ object ProcessedRepo {
   val ERROR_SUFFIX = ".txt"
   val BULK_ACTION_SUFFIX = "_actions.txt"
   val NQUAD_SUFFIX = ".nq"
-  val chunkSize = 200
+  val chunkSize = 100
 
   case class GraphChunk(dataset: Dataset, dsInfo: DsInfo, bulkActions: String) {}
 
