@@ -51,6 +51,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
   val saveTime = new DateTime()
   val startSave = timeToString(new DateTime())
   var isScheduled = false
+  var isIncremental = false
 
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
@@ -80,12 +81,13 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         val progressReporter = ProgressReporter(SAVING, context.parent)
         progressOpt = Some(progressReporter)
         isScheduled = !scheduledOpt.isEmpty
+        isIncremental = isScheduled && !scheduledOpt.head.modifiedAfter.isEmpty
         reader = Some(
           datasetContext.processedRepo.createGraphReader(
             scheduledOpt.map(_.file),
             saveTime,
             progressReporter))
-        if (!isScheduled || scheduledOpt.head.modifiedAfter.isEmpty) {
+        if (!isIncremental) {
           log.info(s"Only increment dataset revision when not in incremental mode")
           datasetContext.dsInfo.updateDatasetRevision()
         }
@@ -109,8 +111,10 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
       actorWork(context) {
         reader.foreach(_.close())
         reader = None
-        // todo make sure to not run this on incremental mode, hint use isScheduled
-        datasetContext.dsInfo.removeNaveOrphans(startSave)
+        if (!isIncremental){
+          datasetContext.dsInfo.removeNaveOrphans(startSave)
+          log.info(s"Only drop orphans when not in incremental mode")
+        }
         log.info("All graphs saved")
         context.parent ! GraphSaveComplete
       }
