@@ -98,6 +98,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
                   context.parent ! HarvestComplete(strategy, fileOption)
                 } onFailure {
                   case e: Exception =>
+                    log.info(s"error on accepting sip-file: ${e}")
                     context.parent ! WorkFailure(e.getMessage)
                 }
               case None =>
@@ -148,7 +149,10 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
           progressOpt.get.sendPercent(diagnostic.percentComplete)
       }
       log.info(s"Harvest Page: $pageNumber - $url $database to $datasetContext: $diagnostic")
-      if (diagnostic.isLast) {
+      if (diagnostic.totalItems == 0) {
+        finish(strategy, Some("noRecordsMatch"))
+      }
+      else if (diagnostic.isLast) {
         finish(strategy, None)
       }
       else {

@@ -125,7 +125,8 @@ trait Harvesting {
                      diagnosticOption: Option[AdLibDiagnostic] = None)
                     (implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
-    val requestUrl = wsApi.url(url).withRequestTimeout(timeOut.milliseconds)
+    val cleanUrl = url.stripSuffix("?")
+    val requestUrl = wsApi.url(cleanUrl).withRequestTimeout(timeOut.milliseconds)
     // UMU 2014-10-16T15:00
     val searchModified = strategy match {
       case ModifiedAfter(mod, _) =>
@@ -141,6 +142,7 @@ trait Harvesting {
       "limit" -> "50",
       "startFrom" -> startFrom.toString
     )
+    Logger.info(s"harvest url: ${request.uri}")
     // define your success condition
     implicit val success = new retry.Success[WSResponse](r => !((500 to 599)  contains r.status))
     // retry 4 times with a delay of 1 second which will be multipled
@@ -161,7 +163,7 @@ trait Harvesting {
       error getOrElse {
         AdLibHarvestPage(
           response.xml.toString(),
-          url,
+          cleanUrl,
           database,
           search,
           strategy,
