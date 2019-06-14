@@ -196,7 +196,8 @@ class DatasetActor(val datasetContext: DatasetContext,
                     // no source repo, use the default for the harvest type
                     datasetContext.createSourceRepo(SourceFacts(harvestType))
                 }
-              case FromScratchIncremental =>
+              case _ =>
+              //case FromScratchIncremental =>
                 datasetContext.sourceRepoOpt match {
                   case Some(sourceRepo) =>
                     sourceRepo.clearData()
@@ -204,7 +205,7 @@ class DatasetActor(val datasetContext: DatasetContext,
                     // no source repo, use the default for the harvest type
                     datasetContext.createSourceRepo(SourceFacts(harvestType))
                 }
-              case _ =>
+              //case _ =>
             }
             self ! StartHarvest(strategy)
             "harvest started"
@@ -326,7 +327,8 @@ class DatasetActor(val datasetContext: DatasetContext,
                 // no source repo, use the default for the harvest type
                 datasetContext.createSourceRepo(SourceFacts(harvestType))
             }
-          case FromScratchIncremental =>
+          //case FromScratchIncremental =>
+          case _ =>
             datasetContext.sourceRepoOpt match {
               case Some(sourceRepo) =>
                 sourceRepo.clearData()
@@ -334,7 +336,7 @@ class DatasetActor(val datasetContext: DatasetContext,
                 // no source repo, use the default for the harvest type
                 datasetContext.createSourceRepo(SourceFacts(harvestType))
             }
-          case _ =>
+          //case _ =>
         }
         val (url, ds, pre, se) = (prop(harvestURL),
                                   prop(harvestDataset),
