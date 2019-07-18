@@ -228,7 +228,8 @@ class SourceProcessor(val datasetContext: DatasetContext,
             case Success(pocket) =>
               pocket.writeTo(xmlOutput)
               // insert RDF graph into bulk actions
-              writeBulkAction(pocket.text, pocket.id, rawPocket.id)
+              // TODO make bulk action switchable
+              //writeBulkAction(pocket.text, pocket.id, rawPocket.id)
               validRecords += 1
 
             case Failure(ue: URIErrorsException) =>

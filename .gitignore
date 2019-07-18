@@ -26,3 +26,5 @@ server.pid
 !.editorconfig
 out
 fuseki_data
+_rpms
+tags

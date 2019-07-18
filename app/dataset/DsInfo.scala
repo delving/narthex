@@ -592,6 +592,7 @@ class DsInfo(
   override def toString = spec
 
   val bulkApi = s"${naveApiUrl}/api/index/bulk/"
+  //val bulkApi = "https://europe-west1-prod-hubs-delving-io.cloudfunctions.net/bulkingestion"
 
   private def checkUpdateResponse(response: WSResponse,
                                   logString: String): Unit = {
@@ -625,6 +626,20 @@ class DsInfo(
       wsResponseFuture.map(checkUpdateResponse(_, bulkActions))
     }
   }
+
+  def extractSpecIdFromGraphName(id: String): (String, String) = {
+    if (id contains "/doc/") {
+	  val localId = id.split("/doc/").last.stripSuffix("/graph").trim
+	  //Logger.info(s"localID: $localId")
+	  return (toString, localId)
+    }
+	val SpecIdExtractor =
+	  "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
+	val SpecIdExtractor(spec, localId) = id
+	(spec, localId)
+  }
+
+
 
   def updateDatasetRevision() = {
     val actionMap = Json.obj(

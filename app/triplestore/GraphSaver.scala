@@ -83,7 +83,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         isScheduled = !scheduledOpt.isEmpty
         isIncremental = isScheduled && !scheduledOpt.head.modifiedAfter.isEmpty
         reader = Some(
-          datasetContext.processedRepo.createGraphReader(
+          datasetContext.processedRepo.createGraphReaderXML(
             scheduledOpt.map(_.file),
             saveTime,
             progressReporter))
@@ -98,13 +98,23 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
       actorWork(context) {
         //log.info(s"Save a chunk of graphs")
         //log.info(s"chunk: ${chunk}")
-        val update =
-          chunk.dsInfo.bulkApiUpdate(chunk.bulkActions)
+        if (!chunk.bulkActions.isEmpty) {
+          val update =
+            chunk.dsInfo.bulkApiUpdate(chunk.bulkActions)
 
-        update.map(ok => sendGraphChunkOpt())
-        update.onFailure {
-          case ex: Throwable => failure(ex)
-        }
+          update.map(ok => sendGraphChunkOpt())
+          update.onFailure {
+            case ex: Throwable => failure(ex)
+          }
+        } else {
+		  log.info(s"Save a chunk of graphs")
+		  val update = chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
+
+		  update.map(ok => sendGraphChunkOpt())
+		  update.onFailure {
+			case ex: Throwable => failure(ex)
+		  }
+		}
       }
 
     case None =>
