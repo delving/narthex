@@ -137,6 +137,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
           harvestTypeEnum = sip.harvestType.flatMap(HarvestType.harvestTypeFromString).getOrElse(HarvestType.PMH),
           url = sip.harvestUrl.getOrElse(""),
           dataset = sip.harvestSpec.getOrElse(""),
+          recordId = sip.harvestSpec.getOrElse(""),
           prefix = sip.harvestPrefix.getOrElse("")
         )
         // todo: should probably wait for the above future

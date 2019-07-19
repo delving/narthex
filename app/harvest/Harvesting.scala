@@ -178,16 +178,18 @@ trait Harvesting {
   }
 
   def fetchPMHPage(timeOut: Long, wsApi: WSAPI, strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
-                   resumption: Option[PMHResumptionToken] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
+                   resumption: Option[PMHResumptionToken] = None, recordId: Option[String] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
 
     Logger.debug(s"start fetch PMH Page: $url, $resumption")
+    val verb = if (recordId != None) "GetRecord" else "ListRecords"
     val listRecords = wsApi.url(url)
       .withRequestTimeout(timeOut.milliseconds)
-      .withQueryString("verb" -> "ListRecords")
+      .withQueryString("verb" -> verb)
     val request = resumption match {
       case None =>
         val withPrefix = listRecords.withQueryString("metadataPrefix" -> metadataPrefix)
-        val withSet = if (set.isEmpty) withPrefix else withPrefix.withQueryString("set" -> set)
+        val withRecord = if (recordId.isEmpty) withPrefix else withPrefix.withQueryString("identifier" -> recordId.get)
+        val withSet = if (set.isEmpty) withRecord else withRecord.withQueryString("set" -> set)
         strategy match {
           case ModifiedAfter(mod, justDate) =>
             withSet.withQueryString("from" -> {
@@ -220,9 +222,10 @@ trait Harvesting {
         Logger.trace(s"OAI-PMH Response: \n ''''${body}''''")
         val xml = XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", "")) // reader old
         val errorNode = xml \ "error"
-        val records = xml \ "ListRecords" \ "record"
+
+        val records = xml \ verb \ "record"
         // todo: if there is a resumptionToken end the list size is greater than the cursor but zero records are returned through an error.
-        val tokenNode = xml \ "ListRecords" \ "resumptionToken"
+        val tokenNode = xml \ verb \ "resumptionToken"
         val faultyEmptyResponse: String = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
           val cursor = tagToInt(tokenNode, "@cursor", 1)

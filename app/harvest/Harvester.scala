@@ -39,7 +39,7 @@ object Harvester {
 
   case class HarvestAdLib(strategy: HarvestStrategy, url: String, database: String, search: String)
 
-  case class HarvestPMH(strategy: HarvestStrategy, url: String, set: String, prefix: String)
+  case class HarvestPMH(strategy: HarvestStrategy, url: String, set: String, prefix: String, recordId: String)
 
   case class HarvestComplete(strategy: HarvestStrategy, fileOpt: Option[File], noRecordsMatch: Boolean = false)
 
@@ -162,10 +162,11 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
       }
     }
 
-    case HarvestPMH(strategy: HarvestStrategy, raw_url, set, prefix) => actorWork(context) {
+    case HarvestPMH(strategy: HarvestStrategy, raw_url, set, prefix, recordId) => actorWork(context) {
       val url = s"${raw_url.stripSuffix("?")}?"
       log.info(s"Harvesting $strategy: $url $set $prefix to $datasetContext")
-      val futurePage = fetchPMHPage(timeout, wsApi, strategy, url, set, prefix)
+      val harvestRecord = if (!recordId.isEmpty) Option(recordId) else None
+      val futurePage = fetchPMHPage(timeout, wsApi, strategy, url, set, prefix, None, harvestRecord)
       handleFailure(futurePage, strategy, "pmh harvest")
       strategy match {
         case Sample =>

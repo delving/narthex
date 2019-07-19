@@ -478,10 +478,12 @@ class DsInfo(
   def setHarvestInfo(harvestTypeEnum: HarvestType,
                      url: String,
                      dataset: String,
-                     prefix: String) = setSingularLiteralProps(
+                     prefix: String,
+                     recordId: String) = setSingularLiteralProps(
     harvestType -> harvestTypeEnum.name,
     harvestURL -> url,
     harvestDataset -> dataset,
+    harvestRecord -> recordId,
     harvestPrefix -> prefix
   )
 

@@ -333,7 +333,7 @@ define(["angular"], function () {
     ];
 
     var harvestFields = [
-        "harvestType", "harvestURL", "harvestDataset", "harvestPrefix", "harvestSearch"
+        "harvestType", "harvestURL", "harvestDataset", "harvestPrefix", "harvestSearch", "harvestRecord"
     ];
 
     var harvestCronFields = [
@@ -429,8 +429,11 @@ define(["angular"], function () {
 
         $scope.sparqlPath = baseUrl + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
         if($scope.dataset.harvestURL && $scope.dataset.harvestType == 'pmh') {
-            $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
-            if ($scope.dataset.harvestDataset) {
+            if ($scope.dataset.harvestRecord) {
+                $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=GetRecord&metadataPrefix=" + $scope.dataset.harvestPrefix;
+                $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&identifier=" + $scope.dataset.harvestRecord;
+            } else if ($scope.dataset.harvestDataset) {
+                $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
                 $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&set=" + $scope.dataset.harvestDataset;
             }
         }
@@ -586,7 +589,7 @@ define(["angular"], function () {
         };
 
         $scope.showsNquadsPage = function () {
-            window.open($scope.apiPathNquads, "_blank")
+            window.open($scope.apiPath, "_blank")
         };
 
         $scope.showHarvestingLog = function () {

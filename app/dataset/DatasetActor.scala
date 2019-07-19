@@ -338,12 +338,13 @@ class DatasetActor(val datasetContext: DatasetContext,
             }
           //case _ =>
         }
-        val (url, ds, pre, se) = (prop(harvestURL),
+        val (url, ds, pre, se, recordId) = (prop(harvestURL),
                                   prop(harvestDataset),
                                   prop(harvestPrefix),
-                                  prop(harvestSearch))
+                                  prop(harvestSearch),
+                                  prop(harvestRecord))
         val kickoff = harvestType match {
-          case PMH   => HarvestPMH(strategy, url, ds, pre)
+          case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
         val harvester =
