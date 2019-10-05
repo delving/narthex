@@ -182,6 +182,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
         def startHarvest(strategy: HarvestStrategy) = {
           val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
+
           log.info(s"Start harvest $strategy, type is $harvestTypeStringOpt")
           val harvestTypeOpt =
             harvestTypeStringOpt.flatMap(harvestTypeFromString)
@@ -197,7 +198,7 @@ class DatasetActor(val datasetContext: DatasetContext,
                     datasetContext.createSourceRepo(SourceFacts(harvestType))
                 }
               case _ =>
-              //case FromScratchIncremental =>
+                //case FromScratchIncremental =>
                 datasetContext.sourceRepoOpt match {
                   case Some(sourceRepo) =>
                     sourceRepo.clearData()
@@ -207,14 +208,18 @@ class DatasetActor(val datasetContext: DatasetContext,
                 }
               //case _ =>
             }
+
             self ! StartHarvest(strategy)
             "harvest started"
+
+
           } getOrElse {
             val message =
               s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
             self ! WorkFailure(message, None)
             message
           }
+
         }
 
         commandName match {
@@ -629,6 +634,8 @@ class DatasetActor(val datasetContext: DatasetContext,
         dsInfo.removeLiteralProp(datasetErrorMessage)
         goto(Idle) using Dormant
       } else {
+        log.info(s"in error so releasing semaphore if set")
+        orgContext.semaphore.release(dsInfo.spec)
         stay()
       }
 

@@ -51,27 +51,37 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
         case list: List[DsInfo] =>
           list.
             filter(info => PeriodicHarvest.harvestingAllowed.contains(info.getState())).
+            sortWith((s, t) => s.getPreviousHarvestTime().isBefore(t.getPreviousHarvestTime())).
             foreach { listedInfo =>
               val harvestCron = listedInfo.currentHarvestCron
+              log.info(s"scheduled ds: ${listedInfo.spec} ${listedInfo.currentHarvestCron.previous.toString()}")
               if (harvestCron.timeToWork) withDsInfo(listedInfo.spec, orgContext) { info => // the cached version
-                log.info(s"Time to work on $info: $harvestCron")
-                val proposedNext = harvestCron.next
-                val next = if (proposedNext.timeToWork) {
-                  val revised = harvestCron.now
-                  log.info(s"$info next harvest $proposedNext is already due so adjusting to 'now': $revised")
-                  revised
+                if (orgContext.semaphore.tryAcquire(info.spec)) {
+                  log.info(s"Time to work on $info: $harvestCron")
+                  val proposedNext = harvestCron.next
+                  val next = if (proposedNext.timeToWork) {
+                    val revised = harvestCron.now
+                    log.info(s"$info next harvest $proposedNext is already due so adjusting to 'now': $revised")
+                    revised
+                  }
+                  else {
+                    log.info(s"$info next harvest : $proposedNext")
+                    proposedNext
+                  }
+                  log.info(s"Set harvest cron: $next")
+                  info.setHarvestCron(next)
+                  val justDate = harvestCron.unit == DelayUnit.WEEKS
+                  val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, justDate) else FromScratchIncremental
+                  val startHarvest = StartHarvest(strategy)
+
+                  log.info(s"$info acquired semaphore. permits available ${orgContext.semaphore.availablePermits()}")
+                  log.info(s"$info incremental harvest kickoff $startHarvest")
+                  orgContext.orgActor ! info.createMessage(startHarvest)
+                } else {
+                  val sem = orgContext.semaphore
+                  log.info(
+                    s"$info skipping, no semaphore available: ${sem.availablePermits()}; ${sem.activeSpecs().toString()}")
                 }
-                else {
-                  log.info(s"$info next harvest : $proposedNext")
-                  proposedNext
-                }
-                log.info(s"Set harvest cron: $next")
-                info.setHarvestCron(next)
-                val justDate = harvestCron.unit == DelayUnit.WEEKS
-                val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, justDate) else FromScratchIncremental
-                val startHarvest = StartHarvest(strategy)
-                log.info(s"$info incremental harvest kickoff $startHarvest")
-                orgContext.orgActor ! info.createMessage(startHarvest)
             }
           }
 

@@ -125,6 +125,12 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           datasetContext.dsInfo.removeNaveOrphans(startSave)
           log.info(s"Only drop orphans when not in incremental mode")
         }
+        if (isScheduled) {
+          orgContext.semaphore.release(datasetContext.dsInfo.spec)
+          log.info(
+            s"${datasetContext.dsInfo.spec} is scheduled so semaphore should be released: ${orgContext.semaphore.activeSpecs().toString()}"
+          )
+        }
         log.info("All graphs saved")
         context.parent ! GraphSaveComplete
       }

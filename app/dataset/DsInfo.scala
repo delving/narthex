@@ -523,6 +523,8 @@ class DsInfo(
     request.post(json) // .map(checkUpdateResponse(_, json))
   }
 
+  def getPreviousHarvestTime() = stringToTime(getLiteralProp(harvestPreviousTime).getOrElse(""))
+
   def currentHarvestCron = {
     (getLiteralProp(harvestPreviousTime),
      getLiteralProp(harvestDelay),

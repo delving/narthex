@@ -52,6 +52,7 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsApi: WS
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
   val crunchWhiteSpace = appConfig.crunchWhiteSpace
+  val semaphore = new Semaphore(appConfig.concurrencyLimit)
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir, appConfig.orgId)
   lazy val sipFactory = new SipFactory(factoryDir, appConfig.rdfBaseUrl, wsApi)
