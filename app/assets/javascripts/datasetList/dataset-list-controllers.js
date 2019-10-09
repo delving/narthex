@@ -435,6 +435,8 @@ define(["angular"], function () {
             } else if ($scope.dataset.harvestDataset) {
                 $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
                 $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&set=" + $scope.dataset.harvestDataset;
+            } else {
+                $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
             }
         }
         if ($scope.dataset.harvestType == 'adlib' && $scope.dataset.harvestURL) {
