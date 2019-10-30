@@ -51,7 +51,7 @@ object ProcessedRepo {
 		val (spec, localId) = dsInfo.extractSpecIdFromGraphName(graphUri)
                                                 
 		val hubId = s"${orgId}_${spec}_$localId"
-		//val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
+		val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
 		val actionMap = Json.obj(
 		  "hubId" -> hubId,
 		  //"orgId" -> dsInfo.getOrgId,
@@ -59,7 +59,7 @@ object ProcessedRepo {
 		  "graphUri" -> graphUri,
 		  "type" -> "narthex_record",
 		  "action" -> "index",
-		  //"contentHash" -> localHash.toString,
+		  "contentHash" -> localHash.toString,
 		  "graph" -> s"$triples".stripMargin.trim
 		)
 		actionMap.toString()
