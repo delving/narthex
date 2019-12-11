@@ -523,7 +523,16 @@ class DsInfo(
     request.post(json) // .map(checkUpdateResponse(_, json))
   }
 
-  def getPreviousHarvestTime() = stringToTime(getLiteralProp(harvestPreviousTime).getOrElse(""))
+  def hasPreviousTime() = getLiteralProp(harvestPreviousTime).getOrElse("") != ""
+
+  def getPreviousHarvestTime() = {
+    try {
+      stringToTime(getLiteralProp(harvestPreviousTime).getOrElse("2100-01-01"))
+    } catch {
+      case iae: IllegalArgumentException =>
+        stringToTime("2100-01-01")
+    }
+  }
 
   def currentHarvestCron = {
     (getLiteralProp(harvestPreviousTime),

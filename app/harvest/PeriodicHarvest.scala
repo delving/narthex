@@ -50,7 +50,7 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
       futureList.onSuccess {
         case list: List[DsInfo] =>
           list.
-            filter(info => PeriodicHarvest.harvestingAllowed.contains(info.getState())).
+            filter(info => PeriodicHarvest.harvestingAllowed.contains(info.getState()) && info.hasPreviousTime()).
             sortWith((s, t) => s.getPreviousHarvestTime().isBefore(t.getPreviousHarvestTime())).
             foreach { listedInfo =>
               val harvestCron = listedInfo.currentHarvestCron
