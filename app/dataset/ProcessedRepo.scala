@@ -39,6 +39,7 @@ object ProcessedRepo {
   val BULK_ACTION_SUFFIX = "_actions.txt"
   val NQUAD_SUFFIX = ".nq"
   val chunkSize = 100
+  val chunkMaxBytes = 6388608
 
   case class GraphChunk(dataset: Dataset, dsInfo: DsInfo, bulkActions: String) {
 
@@ -51,7 +52,7 @@ object ProcessedRepo {
 		val (spec, localId) = dsInfo.extractSpecIdFromGraphName(graphUri)
                                                 
 		val hubId = s"${orgId}_${spec}_$localId"
-		val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
+		//val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
 		val actionMap = Json.obj(
 		  "hubId" -> hubId,
 		  //"orgId" -> dsInfo.getOrgId,
@@ -59,7 +60,7 @@ object ProcessedRepo {
 		  "graphUri" -> graphUri,
 		  "type" -> "narthex_record",
 		  "action" -> "index",
-		  "contentHash" -> localHash.toString,
+		  //"contentHash" -> localHash.toString,
 		  "graph" -> s"$triples".stripMargin.trim
 		)
 		actionMap.toString()
@@ -292,6 +293,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
       val recordText = new StringBuilder
       var graphCount = 0
       var chunkComplete = false
+      var bytesProcessed = 0
       //Logger.info("Start reading files.")
       while (!chunkComplete) {
         progressReporter.checkInterrupt()
@@ -326,19 +328,23 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               //m.add(foafAbout, m.getProperty(localId.uri), m.createLiteral(recordId))
               //m.add(foafAbout, m.getProperty(saveTime.uri), m.createLiteral(timeString))
               graphCount += 1
+              bytesProcessed += recordText.length
               recordText.clear()
-              if (graphCount >= chunkSize) chunkComplete = true
-                case x: String =>
-                  recordText.append(x).append("\n")
-                  } getOrElse {
-                    reader.close()
-                    previousBytesRead += activeCount
-                    activeReader = None
-                    activeCounter = None
-                  }
-                  } getOrElse {
-                    chunkComplete = true
-                  }
+              if (graphCount >= chunkSize || bytesProcessed >= chunkMaxBytes) {
+                chunkComplete = true
+                bytesProcessed = 0
+              }
+            case x: String =>
+              recordText.append(x).append("\n")
+              } getOrElse {
+                reader.close()
+                previousBytesRead += activeCount
+                activeReader = None
+                activeCounter = None
+              }
+              } getOrElse {
+                chunkComplete = true
+              }
       }
       //Logger.info(s"Graphcount is: $graphCount.")
       if (graphCount > 0) Some(GraphChunk(dataset, dsInfo, "")) else None
