@@ -319,6 +319,13 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
           val aggregationUri = about.getTextContent
           (rdfWrapper, StringHandling.createGraphName(aggregationUri))
+        case "nao" =>
+          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
+          kids.foreach(rdfWrapper.appendChild)
+          val aggregation = kids.find(node => node.getLocalName == "Recordaggregatie").getOrElse(kids.head)
+          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
+          val aggregationUri = about.getTextContent
+          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
 
         case _ =>
           val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
