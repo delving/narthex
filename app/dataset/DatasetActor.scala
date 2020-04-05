@@ -632,6 +632,8 @@ class DatasetActor(val datasetContext: DatasetContext,
       log.info(s"In error. Command name: $commandName")
       if (commandName == "clear error") {
         dsInfo.removeLiteralProp(datasetErrorMessage)
+        log.info(s"clear error so releasing semaphore if set")
+        orgContext.semaphore.release(dsInfo.spec)
         goto(Idle) using Dormant
       } else {
         log.info(s"in error so releasing semaphore if set")
@@ -641,6 +643,8 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(whatever, InError(_)) =>
       log.info(s"Not interested in: $whatever")
+        log.info(s"in error so releasing semaphore if set")
+        orgContext.semaphore.release(dsInfo.spec)
       stay()
 
     case Event(Command(commandName), active: Active) =>
