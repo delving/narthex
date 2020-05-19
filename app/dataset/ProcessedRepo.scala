@@ -38,7 +38,7 @@ object ProcessedRepo {
   val ERROR_SUFFIX = ".txt"
   val BULK_ACTION_SUFFIX = "_actions.txt"
   val NQUAD_SUFFIX = ".nq"
-  val chunkSize = 100
+  val chunkSize = 250
   val chunkMaxBytes = 6388608
 
   case class GraphChunk(dataset: Dataset, dsInfo: DsInfo, bulkActions: String) {
@@ -55,11 +55,12 @@ object ProcessedRepo {
 		//val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
 		val actionMap = Json.obj(
 		  "hubId" -> hubId,
-		  //"orgId" -> dsInfo.getOrgId,
+          "orgId" -> orgId,
 		  "dataset" -> spec,
 		  "graphUri" -> graphUri,
 		  "type" -> "narthex_record",
 		  "action" -> "index",
+          "graphMimeType" -> "application/ld+json",
 		  //"contentHash" -> localHash.toString,
 		  "graph" -> s"$triples".stripMargin.trim
 		)

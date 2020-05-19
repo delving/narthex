@@ -661,7 +661,7 @@ class DsInfo(
       "action" -> "increment_revision"
     )
     bulkApiUpdate(s"${actionMap.toString()}\n")
-    Thread.sleep(333)
+    // Thread.sleep(333)
   }
 
   def removeNaveOrphans(timeStamp: String) = {

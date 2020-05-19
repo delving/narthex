@@ -206,6 +206,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
             "graphUri" -> graphUri,
             "type" -> "narthex_record",
             "action" -> "index",
+            "graphMimeType" -> "application/ld+json",
             //"contentHash" -> localHash.toString,
             "graph" -> s"$triples".stripMargin.trim
           )
