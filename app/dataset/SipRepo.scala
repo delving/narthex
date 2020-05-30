@@ -162,7 +162,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       }.toMap
       inputStream.close()
     return propertyMap
-    } getOrElse (throw new RuntimeException(s"No entry for $propertyFileName"))
+    } getOrElse (throw new RuntimeException(s"No entry for $propertyFileName of $dsInfoSpec"))
   }
 
   lazy val facts = readMap(FACTS_FILE)
