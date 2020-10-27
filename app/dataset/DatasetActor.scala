@@ -648,12 +648,12 @@ class DatasetActor(val datasetContext: DatasetContext,
       stay()
 
     case Event(Command(commandName), active: Active) =>
-      log.info(s"Active. Command name: $commandName")
-      if (commandName == "interrupt") {
-        stay() using active.copy(interrupt = true)
-      } else {
-        stay()
-      }
+      log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
+      // kill active actors
+      active.childOpt.foreach(_ ! PoisonPill)
+      goto(Idle) using Dormant
+
+
 
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Work failure [$message] while in [$active]")
