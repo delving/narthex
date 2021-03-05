@@ -648,10 +648,15 @@ class DatasetActor(val datasetContext: DatasetContext,
       stay()
 
     case Event(Command(commandName), active: Active) =>
-      log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
-      // kill active actors
-      active.childOpt.foreach(_ ! PoisonPill)
-      goto(Idle) using Dormant
+      if (commandName == "refresh") {
+        log.warning("refresh unhandled command")
+        stay()
+      } else {
+        log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
+        // kill active actors
+        active.childOpt.foreach(_ ! PoisonPill)
+        goto(Idle) using Dormant
+      }
 
 
 

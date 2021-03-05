@@ -61,7 +61,7 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "log4j-over-slf4j" % "1.7.21",
   "org.easybatch" % "easybatch-apache-commons-csv" % "3.0.0",
   "com.typesafe.play" %% "play-mailer" % "5.0.0",
-  "eu.delving" % "sip-core" % "1.1.4",
+  "eu.delving" % "sip-core" % "1.1.5",
   "de.threedimensions" %% "metrics-play" % "2.5.13",
   "com.getsentry.raven" % "raven-logback" % "7.6.0" % "runtime",
   "nl.grons" %% "metrics-scala" % "3.5.5_a2.3",
@@ -99,11 +99,7 @@ resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/repo"
 
 resolvers += Resolver.jcenterRepo
 
-resolvers += "Delving" at "http://artifactory.delving.org:8081/artifactory/delving"
-
-resolvers += "Release" at "http://artifactory.delving.org:8081/artifactory/libs-release"
-
-resolvers += "Snapshot" at "http://artifactory.delving.org:8081/artifactory/libs-snapshot"
+resolvers += "Delving" at "https://maven.pkg.github.com/delving/sip-creator"
 
 resolvers += Resolver.file("local-ivy-repo", file(Path.userHome + "/.ivy2/local"))(Resolver.ivyStylePatterns)
 
@@ -115,7 +111,7 @@ publishArtifact in(Compile, packageDoc) := false
 
 publishArtifact in(Compile, packageSrc) := false
 
-publishTo := Some("DelvingPublish" at "http://artifactory.delving.org/artifactory/delving")
+/* publishTo := Some("DelvingPublish" at "http://artifactory.delving.org/artifactory/delving") */
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 

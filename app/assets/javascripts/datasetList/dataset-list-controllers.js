@@ -578,7 +578,7 @@ define(["angular"], function () {
 
         $scope.resetDatasetState = function () {
             console.log("Resetting the dataset state.");
-            command("interrupt", "Interrupt state?");
+            command("resetToDormant", "reset state?");
         };
 
         $scope.showInvalidRecordsPage = function () {
