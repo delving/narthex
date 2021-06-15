@@ -177,7 +177,7 @@ define(["angular"], function () {
         };
 
         $scope.selectPMHRecordRoot = function() {
-            for (let entry of $scope.recordRootNode.kids) {
+            $scope.recordRootNode.kids.forEach(function(entry) {
                 if (entry.tag === 'metadata') {
                     if (entry.length != 0) {
                         $scope.recordRootNode = entry.kids[0];
@@ -185,7 +185,7 @@ define(["angular"], function () {
                         alert("PMH metadata root is empty. Leaving old root in place");
                     }
                 };
-            };
+            });
         };
 
         $scope.confirmUniqueId = function() {
