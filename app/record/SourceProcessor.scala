@@ -111,7 +111,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
               datasetContext.sipFiles.foreach(_.delete())
               val sipFile = datasetContext.createSipFile
               pocketOutput.close()
-              latestSip.copyWithSourceTo(sipFile, pocketFile, prefixRepoOpt)
+              latestSip.copyWithSourceTo(sipFile, pocketFile, prefixRepoOpt, SipGenerationFacts(dsInfo))
               Some(sipFile)
             } getOrElse {
             val facts = SipGenerationFacts(dsInfo)
