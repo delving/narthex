@@ -19,6 +19,7 @@ import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import dataset.SipRepo.FACTS_FILE
+import java.util.HashMap
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.Logger
 import play.api.libs.ws.WSAPI
@@ -104,6 +105,37 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: Exec
 
   lazy val schemaVersions = recordDefinition.getName.substring(0, recordDefinition.getName.length - RECORD_DEFINITION_SUFFIX.length)
 
+  def addFactsEntry(facts: SipGenerationFacts, zos: ZipOutputStream) {
+    zos.putNextEntry(new ZipEntry(FACTS_FILE))
+    val factsString =
+      s"""spec=${facts.spec}
+         |name=${facts.name}
+         |provider=${facts.provider}
+         |dataProvider=${facts.dataProvider}
+         |language=${facts.language}
+         |schemaVersions=$schemaVersions
+         |rights=${facts.rights}
+         |baseUrl=${rdfBaseUrl}
+         |orgId=${facts.orgId}
+         |""".stripMargin
+    zos.write(factsString.getBytes("UTF-8"))
+    zos.closeEntry()
+  }
+
+  def toMap(facts: SipGenerationFacts): HashMap[String,String] = {
+    val map = new HashMap[String, String]()
+    map.put("spec", facts.spec)
+    map.put("name", facts.name)
+    map.put("provider", facts.provider)
+    map.put("dataProvider", facts.dataProvider)
+    map.put("language", facts.language)
+    map.put("schemaVersions", schemaVersions)
+    map.put("rights", facts.rights)
+    map.put("baseUrl", rdfBaseUrl)
+    map.put("orgId", facts.orgId)
+    map
+  }
+
   private def differenceWithSchemasDelvingEu(file: File): Option[String] = {
     val fo :Future[Option[String]] = ws.url(s"http://schemas.delving.eu/$prefix/${file.getName}").get().map { response =>
       val fileLines = FileUtils.readFileToString(file).trim.split("\n")
@@ -133,21 +165,7 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: Exec
   def initiateSipZip(sipFile: File, sourceXmlFile: File, facts: SipGenerationFacts) = {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
 
-    // facts
-    zos.putNextEntry(new ZipEntry(FACTS_FILE))
-    val factsString =
-      s"""spec=${facts.spec}
-    |name=${facts.name}
-    |provider=${facts.provider}
-    |dataProvider=${facts.dataProvider}
-    |language=${facts.language}
-    |schemaVersions=$schemaVersions
-    |rights=${facts.rights}
-    |baseUrl=${rdfBaseUrl}
-    |orgId=${facts.orgId}
-    |""".stripMargin
-    zos.write(factsString.getBytes("UTF-8"))
-    zos.closeEntry()
+    addFactsEntry(facts, zos)
 
     // record definition and validation
     def copyIn(fileToCopy: File) = {
