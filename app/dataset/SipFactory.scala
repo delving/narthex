@@ -44,8 +44,10 @@ object SipFactory {
     name: String,
     provider: String,
     dataProvider: String,
+    dataProviderURL: String,
     language: String,
     rights: String,
+    dataType: String,
     orgId: String
     )
 
@@ -58,8 +60,10 @@ object SipFactory {
         name = (meta \ "name").text,
         provider = (meta \ "provider").text,
         dataProvider = (meta \ "dataProvider").text,
+        dataProviderURL = (meta \ "dataProviderURL").text,
         language = (meta \ "language").text,
         rights = (meta \ "rights").text,
+        dataType = (meta \ "type").text,
         orgId = (meta \ "orgId").text
       )
     }
@@ -72,8 +76,10 @@ object SipFactory {
         name = info(datasetName),
         provider = info(datasetAggregator),
         dataProvider = info(datasetOwner),
+        dataProviderURL = info(datasetDataProviderURL),
         language = info(datasetLanguage),
         rights = info(datasetRights),
+        dataType = info(datasetType),
         orgId =info(orgId) 
       )
     }
@@ -112,9 +118,11 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: Exec
          |name=${facts.name}
          |provider=${facts.provider}
          |dataProvider=${facts.dataProvider}
+         |dataProviderURL=${facts.dataProviderURL}
          |language=${facts.language}
          |schemaVersions=$schemaVersions
          |rights=${facts.rights}
+         |type=${facts.dataType}
          |baseUrl=${rdfBaseUrl}
          |orgId=${facts.orgId}
          |""".stripMargin
