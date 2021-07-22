@@ -25,6 +25,7 @@ import javax.xml.validation.Validator
 import eu.delving.XMLToolFactory
 import eu.delving.groovy._
 import eu.delving.metadata._
+import dataset.SipFactory.SipGenerationFacts
 import eu.delving.schema.SchemaVersion
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
@@ -174,9 +175,11 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
   lazy val orgId = fact("orgId")
   lazy val provider = fact("provider")
   lazy val dataProvider = fact("dataProvider")
+  lazy val dataProviderURL = fact("dataProviderURL")
   lazy val country = fact("country")
   lazy val language = fact("language")
   lazy val rights = fact("rights")
+  lazy val dataType = fact("type")
   lazy val schemaVersions = fact("schemaVersions")
 
   lazy val hints = readMap(HINTS_FILE)
@@ -343,7 +346,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
   def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
 
-  def copyWithSourceTo(sipFile: File, sourceXmlFile: File, sipPrefixRepoOpt: Option[SipPrefixRepo]) = {
+  def copyWithSourceTo(sipFile: File, sourceXmlFile: File, sipPrefixRepoOpt: Option[SipPrefixRepo], facts: SipGenerationFacts) = {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
     var sourceFound = false
 
@@ -360,6 +363,10 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       }
       in.close()
       zos.closeEntry()
+    }
+
+    sipPrefixRepoOpt.map { prefixRepo =>
+      prefixRepo.addFactsEntry(facts, zos)
     }
 
     zipFile.entries.foreach { entry =>
@@ -380,6 +387,13 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
             zos.putNextEntry(new ZipEntry(sipMapping.fileName))
             // if there is a new schema version, set it
             sipPrefixRepoOpt.foreach(sipPrefix => sipMapping.recMapping.setSchemaVersion(new SchemaVersion(sipPrefix.schemaVersions)))
+
+            sipPrefixRepoOpt.map { prefixRepo =>
+              val factsMap = prefixRepo.toMap(facts)
+              for(factEntry <- factsMap.entrySet()) {
+                sipMapping.recMapping.setFact(factEntry.getKey(), factEntry.getValue())
+              }
+            }
             RecMapping.write(zos, sipMapping.recMapping)
             zos.closeEntry()
           }
@@ -398,18 +412,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           copyFileIn(sourceXmlFile, entry.getName, gzip = true)
 
         case FACTS_FILE =>
-          Logger.debug(s"Facts: ${entry.getName}")
-          sipPrefixRepoOpt.map(_.schemaVersions).map { schemaVersions =>
-            val in = zipFile.getInputStream(entry)
-            val lines = Source.fromInputStream(in, "UTF-8").getLines()
-            val replaced = lines.map {
-              case SchemaVersionsPattern(value) => s"schemaVersions=$schemaVersions"
-              case other => other
-            }
-            zos.putNextEntry(new ZipEntry(FACTS_FILE))
-            replaced.foreach(line => zos.write(s"$line\n".getBytes("UTF-8")))
-            zos.closeEntry()
-          }.getOrElse(copyEntry())
+          // Do not copy
 
         case entryName =>
           Logger.debug(s"Verbatim: ${entry.getName}")
