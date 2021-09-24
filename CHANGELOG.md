@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Added 
+
+- Support for harvesting Anet.be/Brocade OAI-PMH targets [[GH-153]](https://github.com/delving/narthex/pull/153)
+
 ## v0.6.0 (2020-07-22)
 
 ### Added 
