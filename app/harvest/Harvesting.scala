@@ -199,7 +199,13 @@ trait Harvesting {
           case _ => withSet
         }
       case Some(token) =>
-        listRecords.withQueryString("resumptionToken" -> token.value)
+        if (url.contains("anet.be")) {
+          listRecords
+            .withQueryString("resumptionToken" -> token.value)
+            .withQueryString("metadataPrefix" -> metadataPrefix) 
+        } else {
+          listRecords.withQueryString("resumptionToken" -> token.value)
+        }
     }
     
     // define your success condition
