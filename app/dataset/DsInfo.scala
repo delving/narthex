@@ -651,7 +651,7 @@ class DsInfo(
 	  return (toString, localId)
     }
 	val SpecIdExtractor =
-	  "http://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
+	  "http[s]{0,1}://.*?/resource/aggregation/([^/]+)/([^/]+)/graph".r
 	val SpecIdExtractor(spec, localId) = id
 	(spec, localId)
   }
