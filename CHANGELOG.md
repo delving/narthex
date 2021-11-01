@@ -6,13 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## v0.6.1 (2020-09-29)
+## v0.6.2 (2021-11-01)
+
+## Fixed
+
+* localID was not correctly extracted for NA /doc based URIS [[GH-154]](https://github.com/delving/narthex/pull/154)
+
+## v0.6.1 (2021-09-29)
 
 ### Added 
 
 * Support for harvesting Anet.be/Brocade OAI-PMH endpoints [[GH-153]](https://github.com/delving/narthex/pull/153)
 
-## v0.6.0 (2020-07-22)
+## v0.6.0 (2021-07-22)
 
 ### Added 
 
