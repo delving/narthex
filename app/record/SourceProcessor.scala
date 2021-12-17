@@ -156,8 +156,9 @@ class SourceProcessor(val datasetContext: DatasetContext,
         //if (scheduledOpt.isEmpty) datasetContext.processedRepo.clear()
         datasetContext.processedRepo.clear()
 
-        val processedOutput = datasetContext.processedRepo.createOutput
-        val xmlOutput = createWriter(processedOutput.xmlFile)
+        datasetContext.processedRepo.createPocketsDirectory()
+        val processedOutput = datasetContext.processedRepo.createOutput()
+        println(processedOutput.xmlFile)
         val errorOutput = createWriter(processedOutput.errorFile)
         val bulkActionOutput = createWriter(processedOutput.bulkActionFile)
         //val nquadOutput = createWriter(processedOutput.nquadFile)
@@ -220,6 +221,14 @@ class SourceProcessor(val datasetContext: DatasetContext,
           //nquadOutput.write("\n")
         }
 
+        def cathPockAsync(rawPocket: Pocket): Unit = {
+          mapping.ThreadPool.execute(new Runnable {
+            override def run(): Unit = {
+              catchPocket(rawPocket)
+            }
+          })
+        }
+
         def catchPocket(rawPocket: Pocket): Unit = {
           progress.get.checkInterrupt()
           val startAll = System.currentTimeMillis()
@@ -228,7 +237,12 @@ class SourceProcessor(val datasetContext: DatasetContext,
           val startWrite = System.currentTimeMillis()
           pocketTry match {
             case Success(pocket) =>
+              val file = datasetContext.processedRepo.getPocketFile(rawPocket.id)
+              val xmlOutput = createWriter(file)
               pocket.writeTo(xmlOutput)
+              xmlOutput.flush()
+              xmlOutput.close()
+
               // insert RDF graph into bulk actions
               // TODO make bulk action switchable
               //writeBulkAction(pocket.text, pocket.id, rawPocket.id)
@@ -273,9 +287,9 @@ class SourceProcessor(val datasetContext: DatasetContext,
             progress = Some(progressReporter)
             val parser = new PocketParser(sourceFacts, idFilter, orgContext)
             parser.parse(source,
-                         Set.empty[String],
-                         catchPocket,
-                         progressReporter)
+              Set.empty[String],
+              cathPockAsync,
+              progressReporter)
           } finally {
             source.close()
           }
@@ -284,11 +298,10 @@ class SourceProcessor(val datasetContext: DatasetContext,
           datasetContext.sourceRepoOpt.map { sourceRepo =>
             val progressReporter = ProgressReporter(PROCESSING, context.parent)
             progress = Some(progressReporter)
-            sourceRepo.parsePockets(catchPocket, idFilter, progressReporter)
+            sourceRepo.parsePockets(cathPockAsync, idFilter, progressReporter)
           }
         }
 
-        xmlOutput.close()
         errorOutput.close()
         bulkActionOutput.close()
         //nquadOutput.close()

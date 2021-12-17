@@ -29,6 +29,8 @@ import services.FileHandling.{ReadProgress, clearDir}
 import services.StringHandling.createFOAFAbout
 import services.{FileHandling, ProgressReporter, StringHandling, Temporal}
 import triplestore.GraphProperties._
+import dataset.SourceRepo.{SourceFacts}
+import java.nio.file.Files
 
 import scala.collection.JavaConversions._
 
@@ -142,7 +144,22 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
       .toList
   }
 
-  def createOutput: ProcessedOutput = {
+  def getProcessedPocketsDirectory(): File = {
+    return new File(home, "pockets")
+  }
+
+  def createPocketsDirectory(): Unit = {
+    val directory = getProcessedPocketsDirectory()
+    if (!Files.isDirectory(directory.toPath) && !directory.mkdir()) {
+      throw new IllegalStateException("Failed to create directory: " + directory)
+    }
+  }
+
+  def getPocketFile(id: String): File = {
+    return new File(getProcessedPocketsDirectory(), id + ".xml")
+  }
+
+  def createOutput(): ProcessedOutput = {
     val number = listOutputs.lastOption.map(_.number + 1).getOrElse(0)
     ProcessedOutput(home, number)
   }

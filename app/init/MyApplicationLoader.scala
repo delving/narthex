@@ -154,6 +154,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   applicationLifecycle.addStopHook { () =>
     Future.successful({
       Logger.info("Narthex shutting down, cleaning up active threads...")
+      mapping.ThreadPool.shutdown()
       harvestTicker.cancel()
     })
 
