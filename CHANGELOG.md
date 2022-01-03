@@ -6,11 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.3...master
+
+## v0.6.3 (2022-01-03)
+
+## Added
+
+* Support for nant record definition [[GH-155]](https://github.com/delving/narthex/pull/155)
+
 ## v0.6.2 (2021-11-01)
 
 ## Fixed
 
 * localID was not correctly extracted for NA /doc based URIS [[GH-154]](https://github.com/delving/narthex/pull/154)
+ 
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.1...v0.6.2
 
 ## v0.6.1 (2021-09-29)
 
