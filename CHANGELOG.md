@@ -6,7 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- history of changes: see https://github.com/delving/narthex/compare/v0.6.3...master
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.4...master
+
+## v0.6.4 (2022-01-06)
+
+## Added
+
+* bump version of sip-core [[GH-156]](https://github.com/delving/narthex/pull/156)
 
 ## v0.6.3 (2022-01-03)
 
