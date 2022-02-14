@@ -160,7 +160,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         val xmlOutput = createWriter(processedOutput.xmlFile)
         val errorOutput = createWriter(processedOutput.errorFile)
         val bulkActionOutput = createWriter(processedOutput.bulkActionFile)
-        //val nquadOutput = createWriter(processedOutput.nquadFile)
+        val nquadOutput = createWriter(processedOutput.nquadFile)
         val harvestingLogger = appender(datasetContext.harvestLogger)
         var validRecords = 0
         var invalidRecords = 0
@@ -191,33 +191,42 @@ class SourceProcessor(val datasetContext: DatasetContext,
               errorOutput.write("\n")
               throw e
           }
-          //val model = dataset.getNamedModel(graphUri)
-          val triples = new StringWriter()
-          RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
+          // val model = dataset.getNamedModel(graphUri)
+          // val triples = new StringWriter()
+          // RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
 
-          val orgId = dsInfo.orgId
-          val spec = dsInfo.spec
-          val hubId = s"${orgId}_${spec}_$localId"
-          //val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
-          val actionMap = Json.obj(
-            "hubId" -> hubId,
-            "orgId" -> orgId,
-            "localId" -> localId,
-            "dataset" -> spec,
-            "graphUri" -> graphUri,
-            "type" -> dsInfo.getLiteralProp(datasetType).getOrElse("narthex_record").toString(),
-            "action" -> "index",
-            "graphMimeType" -> "application/ld+json",
-            //"contentHash" -> localHash.toString,
-            "graph" -> s"$triples".stripMargin.trim
+          // val orgId = dsInfo.orgId
+          // val spec = dsInfo.spec
+          // val hubId = s"${orgId}_${spec}_$localId"
+          // //val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
+          // val actionMap = Json.obj(
+            // "hubId" -> hubId,
+            // "orgId" -> orgId,
+            // "localId" -> localId,
+            // "dataset" -> spec,
+            // "graphUri" -> graphUri,
+            // "type" -> dsInfo.getLiteralProp(datasetType).getOrElse("narthex_record").toString(),
+            // "action" -> "index",
+            // "graphMimeType" -> "application/ld+json",
+            // //"contentHash" -> localHash.toString,
+            // "graph" -> s"$triples".stripMargin.trim
+          // )
+          // bulkActionOutput.write(actionMap.toString())
+          // bulkActionOutput.write("\n")
+          var nquads = new StringWriter()
+          RDFDataMgr.write(nquads, model, RDFFormat.NQUADS)
+          nquadOutput.write(s"$nquads".stripMargin.trim)
+          nquadOutput.write("\n")
+          var currentHash = PocketParser.sha1(s"$nquads".stripMargin.trim)
+          val quadMap = Json.obj(
+            "hubID" -> hubId,
+            "orgID" -> orgId,
+            "localID" -> localId,
+            "graphURI" -> graphUri,
+            "datasetID" -> spec,
+            "contentHash" -> currentHash
           )
-          bulkActionOutput.write(actionMap.toString())
-          bulkActionOutput.write("\n")
-          // TODO make sure the named graph is part of the model
-          //var nquads = new StringWriter()
-          //RDFDataMgr.write(nquads, model, RDFFormat.NQUADS)
-          //nquadOutput.write(s"$nquads".stripMargin.trim)
-          //nquadOutput.write("\n")
+          nquadOutput.write(s"# !${quadMap.toString()}\n")
         }
 
         def catchPocket(rawPocket: Pocket): Unit = {
@@ -231,7 +240,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
               pocket.writeTo(xmlOutput)
               // insert RDF graph into bulk actions
               // TODO make bulk action switchable
-              //writeBulkAction(pocket.text, pocket.id, rawPocket.id)
+              writeBulkAction(pocket.text, pocket.id, rawPocket.id)
               validRecords += 1
 
             case Failure(ue: URIErrorsException) =>
@@ -291,7 +300,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         xmlOutput.close()
         errorOutput.close()
         bulkActionOutput.close()
-        //nquadOutput.close()
+        nquadOutput.close()
         if (invalidRecords == 0) deleteQuietly(processedOutput.errorFile)
         val scheduledOptOutput = if (!scheduledOpt.isEmpty) {
           Some(scheduledOpt.get.copy(file = processedOutput.xmlFile))
