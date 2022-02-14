@@ -34,10 +34,10 @@ import scala.collection.JavaConversions._
 
 object ProcessedRepo {
 
-  val XML_SUFFIX = ".xml"
+  val XML_SUFFIX = ".xml.gz"
   val ERROR_SUFFIX = ".txt"
   val BULK_ACTION_SUFFIX = "_actions.txt"
-  val NQUAD_SUFFIX = ".nq"
+  val NQUAD_SUFFIX = ".nq.gz"
   val chunkSize = 250
   val chunkMaxBytes = 6388608
 

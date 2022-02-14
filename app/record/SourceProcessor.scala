@@ -157,10 +157,10 @@ class SourceProcessor(val datasetContext: DatasetContext,
         datasetContext.processedRepo.clear()
 
         val processedOutput = datasetContext.processedRepo.createOutput
-        val xmlOutput = createWriter(processedOutput.xmlFile)
+        val xmlOutput = createGZIPWriter(processedOutput.xmlFile)
         val errorOutput = createWriter(processedOutput.errorFile)
         val bulkActionOutput = createWriter(processedOutput.bulkActionFile)
-        val nquadOutput = createWriter(processedOutput.nquadFile)
+        val nquadOutput = createGZIPWriter(processedOutput.nquadFile)
         val harvestingLogger = appender(datasetContext.harvestLogger)
         var validRecords = 0
         var invalidRecords = 0
@@ -195,10 +195,10 @@ class SourceProcessor(val datasetContext: DatasetContext,
           // val triples = new StringWriter()
           // RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
 
-          // val orgId = dsInfo.orgId
-          // val spec = dsInfo.spec
-          // val hubId = s"${orgId}_${spec}_$localId"
-          // //val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
+           val orgId = dsInfo.orgId
+           val spec = dsInfo.spec
+           val hubId = s"${orgId}_${spec}_$localId"
+           //val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
           // val actionMap = Json.obj(
             // "hubId" -> hubId,
             // "orgId" -> orgId,

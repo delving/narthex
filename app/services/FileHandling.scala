@@ -17,8 +17,7 @@
 package services
 
 import java.io._
-import java.util.zip.{GZIPInputStream, ZipEntry, ZipFile}
-
+import java.util.zip.{GZIPInputStream, GZIPOutputStream, ZipEntry, ZipFile}
 import org.apache.commons.io.FileUtils._
 import org.apache.commons.io.input.{BOMInputStream, CountingInputStream}
 import play.api.Logger
@@ -40,12 +39,14 @@ object FileHandling {
   def createReader(file: File): BufferedReader = createReader(new FileInputStream(file))
 
   def readerCounting(file: File): (BufferedReader, CountingInputStream) = {
-    val fis: FileInputStream = new FileInputStream(file)
+    val fis = new GZIPInputStream(new FileInputStream(file))
     val cis = new CountingInputStream(fis)
     val is = new InputStreamReader(cis, "UTF-8")
     val br = new BufferedReader(is)
     (br, cis)
   }
+
+  def createGZIPWriter(file: File) = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(file)), "UTF-8"))
 
   def createWriter(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))
 
