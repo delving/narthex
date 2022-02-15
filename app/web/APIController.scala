@@ -47,7 +47,7 @@ class APIController(val orgContext: OrgContext) extends Controller {
   def processingNquads(spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
     val latestNquadFile = datasetContext.processedRepo.getLatestNquads
-    latestNquadFile.map(Utils.okFile(_)).getOrElse(NotFound(s"No nquads found for $spec"))
+    latestNquadFile.map(Utils.okFile(_).withHeaders(s"Content-Disposition" -> s"attachment; filename=$spec.nq.gz")).getOrElse(NotFound(s"No nquads found for $spec"))
   }
 
   def processingSourcedText(spec: String) = Action(parse.anyContent) { implicit request =>
