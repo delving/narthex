@@ -215,7 +215,7 @@ class PocketParser(facts: SourceFacts,
                 .mkString
                 .trim
               val scopedRecordContent =
-                recordContent.replaceFirst(">", s" $scope>")
+                recordContent.replaceFirst(">", s" $scope>").replaceAll("oai_dc:dc", "record")
               if (pocketWrap) {
                 val wrapped =
                   s"""<$POCKET id="$cleanId">\n$scopedRecordContent</$POCKET>\n"""
