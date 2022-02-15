@@ -52,9 +52,9 @@ class SipAppController(val orgContext: OrgContext)
   }
 
   def downloadSipZip(spec: String) = Action { request =>
-    Logger.debug(s"Download sip-zip $spec")
+    Logger.debug(s"Download sip-zip '$spec'")
     val sipFileOpt = orgContext.datasetContext(spec).sipFiles.headOption
-    sipFileOpt.map(Utils.okFile(_)).getOrElse(NotFound(s"No sip-zip for $spec"))
+    sipFileOpt.map(Utils.okFile(_).withHeaders(s"Content-Disposition" -> s"attachment; filename=$spec.sip.zip")).getOrElse(NotFound(s"No sip-zip for $spec"))
   }
 
   def uploadSipZip(spec: String, zipFileName: String) = Action(parse.temporaryFile) { request =>
