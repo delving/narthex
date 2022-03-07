@@ -6,11 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- history of changes: see https://github.com/delving/narthex/compare/v0.6.4...master
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.5...master
 
-## [Unreleased]
-
-- history of changes: see https://github.com/delving/narthex/compare/v0.6.4...master
 
 ## v0.6.5 (2022-03-07)
 
@@ -21,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Fixed
 
 * upgrade build dependency for bootstrap webjars
+ 
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.4...v0.6.5
 
 ## v0.6.3 (2022-01-03)
 
