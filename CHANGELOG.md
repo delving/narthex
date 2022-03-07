@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Fixed
 
-* upgrade build dependency for bootstrap webjars
+* upgrade build dependency for bootstrap webjars [[GH127]](https://github.com/delving/narthex/pull/157)
  
 - history of changes: see https://github.com/delving/narthex/compare/v0.6.4...v0.6.5
 
