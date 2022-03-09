@@ -3,6 +3,20 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <script type="text/javascript">
+            (function () {
+                const head = document.head
+                const append = head.appendChild
+                head.appendChild = child => {
+                    if (child && child.src && child.src.indexOf('//cdn.jsdelivr.net/webjars/bootstrap/3.1.1-2/js/bootstrap.min.js') >= 0) {
+                        child.src = '//cdn.jsdelivr.net/webjars/bootstrap/3.1.1/js/bootstrap.min.js'
+                        console.log('patched bootstrap')
+                    }
+                    append.call(head, child)
+                }
+            }());
+        </script>
+
         <title>Narthex - @orgId </title>
         <link rel='shortcut icon' type='image/png' href='@routes.Assets.versioned("images/favicon.png")'>
         <link rel='stylesheet' media='screen' href='@routes.Assets.versioned("lib/bootstrap/css/bootstrap.min.css")'>
@@ -80,6 +94,6 @@
         </div>
 
 
-
+        <script data-main="@routes.Assets.versioned("javascripts/lib/bootstrap.js")" type="text/javascript" src="@routes.Assets.versioned("lib/requirejs/require.js")"></script>
     </body>
 </html>
