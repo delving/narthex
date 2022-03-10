@@ -8,7 +8,7 @@
                 const head = document.head
                 const append = head.appendChild
                 head.appendChild = child => {
-                    if (child && child.src && child.src.indexOf('//cdn.jsdelivr.net/webjars/bootstrap/3.1.1-2/js/bootstrap.min.js') >= 0) {
+                    if (child && child.src && child.src.indexOf('//cdn.jsdelivr.net/webjars/bootstrap/3.1.1-1/js/bootstrap.min.js') >= 0) {
                         child.src = '//cdn.jsdelivr.net/webjars/bootstrap/3.1.1/js/bootstrap.min.js'
                         console.log('patched bootstrap')
                     }

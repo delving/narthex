@@ -38,7 +38,7 @@ buildInfoKeys ++= Seq[BuildInfoKey](
 
 libraryDependencies ++= Seq(
   "org.webjars" %% "webjars-play" % "2.5.0-3",
-  "org.webjars" % "bootstrap" % "3.2.0",
+  "org.webjars" % "bootstrap" % "3.1.1",
   "org.webjars" % "underscorejs" % "1.8.3",
   "org.webjars" % "jquery" % "2.1.1",
   "org.webjars" % "angularjs" % "1.3.17",
