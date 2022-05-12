@@ -208,7 +208,11 @@ class PocketParser(facts: SourceFacts,
             val cleanId = cleanUpId(id)
             if (avoid.contains(cleanId)) None
             else {
-              val recordContent = recordText.toString()
+              var recordContent = recordText.toString()
+              // only replace for NAA data
+              if (recordContent.contains("identifier.hyph-guid")) {
+                recordContent = recordContent.replaceAll("oai_dc:dc", "record")
+              }
               val scope = namespaceMap.view
                 .filter(_._1 != null)
                 .map(kv => s"""xmlns:${kv._1}="${kv._2}" """)
