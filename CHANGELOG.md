@@ -6,7 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- history of changes: see https://github.com/delving/narthex/compare/v0.6.5...master
+
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.6...master
+
+## v0.6.6 (2022-05-12)
+
+## Added
+
+- replace `oai_dc:dc` metadata root with `record` for specific datasets [[GH-158]](https://github.com/delving/narthex/pull/158)
+
+## Changed
+
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.5...v0.6.6
 
 ## v0.6.5 (2022-03-07)
 
