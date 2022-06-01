@@ -212,16 +212,16 @@ define(["angular"], function () {
                 $scope.datasetStates,
                 function (state) {
                     var time = dataset[state.name];
-                    if (time) {
-                        stateVisible = true;
-                        var dt = time.split('T');
-                        dataset.states.push({"name": state.name, "date": Date.parse(time)});
-                        dataset[state.name] = {
-                            d: dt[0],
-                            t: dt[1].split('+')[0],
-                            dt: dt
-                        };
-                    }
+                    // if (time) {
+                    //     stateVisible = true;
+                    //     var dt = time.split('T');
+                    //     dataset.states.push({"name": state.name, "date": Date.parse(time)});
+                    //     dataset[state.name] = {
+                    //         d: dt[0],
+                    //         t: dt[1].split('+')[0],
+                    //         dt: dt
+                    //     };
+                    // }
                 }
             );
             if (!stateVisible) {

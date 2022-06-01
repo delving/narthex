@@ -23,6 +23,7 @@ import play.api.Logger
 import play.api.libs.ws.{WSAPI, WSResponse}
 import services.Temporal._
 
+import java.nio.charset.StandardCharsets
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.xml.{NodeSeq, XML}
@@ -224,7 +225,11 @@ trait Harvesting {
       }
       else {
         val netty = response.underlying[NettyResponse]
-        val body = netty.getResponseBody
+        var body = netty.getResponseBody(StandardCharsets.UTF_8)
+        if(body.indexOf('\uFEFF') == 0) {
+          body = body.substring(1)
+        }
+
         Logger.trace(s"OAI-PMH Response: \n ''''${body}''''")
         val xml = XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", "")) // reader old
         val errorNode = xml \ "error"
@@ -265,7 +270,11 @@ trait Harvesting {
       }
       else {
         val netty = response.underlying[NettyResponse]
-        val xml = XML.loadString(netty.getResponseBody.replace("ï»¿", "").replace("\u0239\u0187\u0191", ""))
+        var body = netty.getResponseBody(StandardCharsets.UTF_8)
+        if(body.indexOf('\uFEFF') == 0) {
+          body = body.substring(1)
+        }
+        val xml = XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", ""))
         val tokenNode = xml \ "ListRecords" \ "resumptionToken"
         val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
           val completeListSize = tagToInt(tokenNode, "@completeListSize")
