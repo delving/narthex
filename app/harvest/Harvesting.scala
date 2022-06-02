@@ -178,7 +178,7 @@ trait Harvesting {
     }
   }
 
-  def fetchPMHPage(timeOut: Long, wsApi: WSAPI, strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
+  def fetchPMHPage(pageNumber: Int, timeOut: Long, wsApi: WSAPI, strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
                    resumption: Option[PMHResumptionToken] = None, recordId: Option[String] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
 
     Logger.debug(s"start fetch PMH Page: $url, $resumption")
@@ -251,7 +251,11 @@ trait Harvesting {
           }
           else if ("noRecordsMatch" == errorCode) {
             Logger.debug("No PMH Records returned")
-             Some(HarvestError("noRecordsMatch", strategy))
+            if(pageNumber > 1) {
+              Some(HarvestError("noRecordsMatchRecoverable", strategy))
+            } else {
+              Some(HarvestError("noRecordsMatch", strategy))
+            }
           }
           else {
             Some(HarvestError(errorNode.text, strategy))
