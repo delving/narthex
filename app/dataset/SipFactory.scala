@@ -47,6 +47,7 @@ object SipFactory {
     dataProviderURL: String,
     language: String,
     rights: String,
+    edmType: String,
     dataType: String,
     orgId: String
     )
@@ -63,6 +64,7 @@ object SipFactory {
         dataProviderURL = (meta \ "dataProviderURL").text,
         language = (meta \ "language").text,
         rights = (meta \ "rights").text,
+        edmType = (meta \ "edmType").text,
         dataType = (meta \ "type").text,
         orgId = (meta \ "orgId").text
       )
@@ -74,7 +76,8 @@ object SipFactory {
            |dataProviderURL=${facts.dataProviderURL}
            |language=${facts.language}
            |rights=${facts.rights}
-           |type=${facts.dataType}}
+           |type=${facts.edmType}
+           |dataType=${facts.dataType}}
            |orgId=${facts.orgId}
            |""".stripMargin
       System.out.println(factsString)
@@ -92,6 +95,7 @@ object SipFactory {
         dataProviderURL = info(datasetDataProviderURL),
         language = info(datasetLanguage),
         rights = info(datasetRights),
+        edmType = info(edmType),
         dataType = info(datasetType),
         orgId =info(orgId) 
       )
@@ -103,7 +107,8 @@ object SipFactory {
            |dataProviderURL=${facts.dataProviderURL}
            |language=${facts.language}
            |rights=${facts.rights}
-           |type=${facts.dataType}
+           |type=${facts.edmType}
+           |dataType=${facts.dataType}
            |orgId=${facts.orgId}
            |""".stripMargin
       System.out.println(factsString)
@@ -148,7 +153,8 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: Exec
          |language=${facts.language}
          |schemaVersions=$schemaVersions
          |rights=${facts.rights}
-         |type=${facts.dataType}
+         |type=${facts.edmType}
+         |dataType=${facts.dataType}
          |baseUrl=${rdfBaseUrl}
          |orgId=${facts.orgId}
          |""".stripMargin
@@ -168,7 +174,8 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: Exec
     map.put("rights", facts.rights)
     map.put("baseUrl", rdfBaseUrl)
     map.put("orgId", facts.orgId)
-    map.put("type", facts.dataType)
+    map.put("type", facts.edmType)
+    map.put("dataType", facts.dataType)
     map
   }
 
