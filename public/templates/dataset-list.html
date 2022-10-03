@@ -442,6 +442,12 @@
                     <input id="meta_language" name="meta_language" required class="form-control" data-ng-model="dataset.edit.datasetLanguage"/>
                 </div>
             </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label" for="meta_edm_type">Type</label>
+                <div class="col-sm-9">
+                    <input id="meta_edm_type" name="meta_edm_type" required class="form-control" data-ng-model="dataset.edit.edmType"/>
+                </div>
+            </div>
             <div class="form-group" ng-class="{'has-error' : metadataform.meta_rights.$invalid, 'has-success' : metadataform.meta_rights.$valid && !metadataform.meta_rights.$pristine }">
                 <label class="col-sm-3 control-label" for="meta_rights">Rights</label>
                 <div class="col-sm-9">
@@ -466,9 +472,9 @@
                 </div>
             </div>
             <div ng-if="supportedDatasetTypes.length !== 0" class="form-group" ng-class="{'has-error' : metadataform.meta_type.$invalid, 'has-success' : metadataform.meta_type.$valid && !metadataform.meta_type.$pristine }">
-                <label class="col-sm-3 control-label" for="meta_type">Type</label>
+                <label class="col-sm-3 control-label" for="meta_dataset_type">Data Type</label>
                 <div class="col-sm-9">
-                    <select name="singleSelect" id="meta_type" data-ng-model="dataset.edit.datasetType" class="form-control">
+                    <select name="singleSelect" id="meta_dataset_type" data-ng-model="dataset.edit.datasetType" class="form-control">
                         <option ng-repeat="supportedDatasetType in supportedDatasetTypes"
                                 ng-selected="{{supportedDatasetType === dataset.edit.datasetType}}"
                                 value="{{supportedDatasetType}}">
