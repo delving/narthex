@@ -82,9 +82,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
       case Some("noRecordsMatch") =>
         log.info(s"Finished incremental harvest with noRecordsMatch")
         context.parent ! HarvestComplete(strategy, None, true)
-      case Some(message) =>
-        context.parent ! WorkFailure(message)
-      case None =>
+      case None | Some("noRecordsMatchRecoverable") =>
         strategy match {
           case Sample =>
             context.parent ! HarvestComplete(strategy, None)
@@ -105,6 +103,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
                 context.parent ! WorkFailure(s"No source repo for $datasetContext")
             }
         }
+        case Some(message) =>
+          context.parent ! WorkFailure(message)
     }
   }
 
@@ -166,7 +166,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
       val url = s"${raw_url.stripSuffix("?")}?"
       log.info(s"Harvesting $strategy: $url $set $prefix to $datasetContext")
       val harvestRecord = if (!recordId.isEmpty) Option(recordId) else None
-      val futurePage = fetchPMHPage(timeout, wsApi, strategy, url, set, prefix, None, harvestRecord)
+      val futurePage = fetchPMHPage(1, timeout, wsApi, strategy, url, set, prefix, None, harvestRecord)
       handleFailure(futurePage, strategy, "pmh harvest")
       strategy match {
         case Sample =>
@@ -194,7 +194,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
         else {
           progressOpt.get.sendPage(pageCount)
         }
-        val futurePage = fetchPMHPage(timeout, wsApi, strategy, url, set, prefix, resumptionToken)
+        val futurePage = fetchPMHPage(pageNumber, timeout, wsApi, strategy, url, set, prefix, resumptionToken)
         handleFailure(futurePage, strategy, "pmh harvest page")
         futurePage pipeTo self
       } getOrElse {

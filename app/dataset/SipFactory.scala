@@ -75,7 +75,6 @@ object SipFactory {
            |dataProvider=${facts.dataProvider}
            |dataProviderURL=${facts.dataProviderURL}
            |language=${facts.language}
-           |rights=${facts.rights}
            |type=${facts.edmType}
            |dataType=${facts.dataType}}
            |orgId=${facts.orgId}
@@ -118,15 +117,15 @@ object SipFactory {
 
 }
 
-class SipFactory(home: File, rdfBaseUrl: String, wsApi: WSAPI)(implicit ec: ExecutionContext) {
+class SipFactory(home: File, rdfBaseUrl: String, wsApi: WSAPI, orgId: String)(implicit ec: ExecutionContext) {
 
-  lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map( home => new SipPrefixRepo(home, rdfBaseUrl, wsApi))
+  lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map( home => new SipPrefixRepo(home, rdfBaseUrl, wsApi, orgId))
 
   def prefixRepo(prefix: String) = prefixRepos.find(_.prefix == prefix)
 
 }
 
-class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: ExecutionContext) {
+class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI, orgId: String)(implicit ec: ExecutionContext) {
 
   import dataset.SipFactory._
 
@@ -156,7 +155,7 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI)(implicit ec: Exec
          |type=${facts.edmType}
          |dataType=${facts.dataType}
          |baseUrl=${rdfBaseUrl}
-         |orgId=${facts.orgId}
+         |orgId=${orgId}
          |""".stripMargin
     zos.write(factsString.getBytes("UTF-8"))
     zos.closeEntry()
