@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Added
+
+## Changed
+
+- always include `orgID` in the facts file [[GH-160]](https://github.com/delving/narthex/pull/160)
+- include `type` next to `dataType` in the datasets interface [[GH-161]](https://github.com/delving/narthex/pull/161)
+
+## Fixed
+
+- fixed bug in OAI-PMH utf-8 harvesting encoding [[GH-159]](https://github.com/delving/narthex/pull/159)
+
 
 - history of changes: see https://github.com/delving/narthex/compare/v0.6.6...master
 
