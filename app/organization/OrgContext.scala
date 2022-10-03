@@ -55,7 +55,7 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsApi: WS
   val semaphore = new Semaphore(appConfig.concurrencyLimit)
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir, appConfig.orgId)
-  lazy val sipFactory = new SipFactory(factoryDir, appConfig.rdfBaseUrl, wsApi)
+  lazy val sipFactory = new SipFactory(factoryDir, appConfig.rdfBaseUrl, wsApi, appConfig.orgId)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
