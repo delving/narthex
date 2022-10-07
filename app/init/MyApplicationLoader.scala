@@ -88,7 +88,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   LoggerConfigurator(context.environment.classLoader).foreach { _.configure(context.environment) }
 
-  val allSupportedDatasetTypes = Set("narthex","rdf","nt","photo","ead")
+  val allSupportedDatasetTypes = Set("narthex","rdf","nt","photo","ead", "fragmentsOnly")
   val appConfig = initAppConfig(narthexDataDir)
 
   val tripleStoreUrl = configStringNoSlash("triple-store")
