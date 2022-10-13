@@ -1,50 +1,88 @@
 <div class="page-header">
     <!-- page location, org -->
     <div class="meta">
-        <div class="page">
-            Dataset: {{spec}}
-        </div>
+        <div class="page">Dataset: {{ spec }}</div>
         <div class="organization">
             <span class="fa fa-institution"></span>
             <span>{{ orgId }}</span>
             <span class="file-path-info">
-                <span class="file-name">{{spec}}</span><span class="file-path">{{activePath}}</span>
+                <span class="file-name">{{ spec }}</span
+                ><span class="file-path">{{ activePath }}</span>
             </span>
         </div>
-
     </div>
     <!-- page specifiction actions/tools -->
     <div class="actions">
-        <button ng-click="sidebarNav('dataset-list', spec)" class="btn btn-default">
+        <button
+            ng-click="sidebarNav('dataset-list', spec)"
+            class="btn btn-default"
+        >
             <i class="fa fa-cog"></i> go back to dataset
         </button>
     </div>
-
 </div>
 
 <div class="row" ng-show="tree">
-
     <div class="col-sm-5">
         <div class="widget widget-schema">
             <div class="widget-header">
                 <span>Schema</span>
                 <span class="dropdown pull-right">
-                    <a href class="btn btn-success btn-sm" data-ng-click="confirmUniqueId()" data-ng-show="uniqueIdChosen">
-                        <i class="fa fa-check-circle"></i> <span> Confirm Unique Id</span>
+                    <a
+                        href
+                        class="btn btn-success btn-sm"
+                        data-ng-click="confirmUniqueId()"
+                        data-ng-show="uniqueIdChosen"
+                    >
+                        <i class="fa fa-check-circle"></i>
+                        <span> Confirm Unique Id</span>
                     </a>
-                    <a href class="btn btn-warning btn-sm" data-ng-click="selectPMHRecordRoot()" data-ng-show="uniqueIdChosen">
-                        <i class="fa fa-check-circle"></i> <span> Set Metadata Root</span>
+                    <a
+                        href
+                        class="btn btn-warning btn-sm"
+                        data-ng-click="selectPMHRecordRoot()"
+                        data-ng-show="uniqueIdChosen"
+                    >
+                        <i class="fa fa-check-circle"></i>
+                        <span> Set Metadata Root</span>
                     </a>
-                    <a href class="btn btn-default btn-sm" data-toggle="dropdown">
-                        <i class="fa fa-eye"></i>&nbsp;<span class="caret"></span>
+                    <a
+                        href
+                        class="btn btn-default btn-sm"
+                        data-toggle="dropdown"
+                    >
+                        <i class="fa fa-eye"></i>&nbsp;<span
+                            class="caret"
+                        ></span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-right" role="menu">
-                        <li><a data-ng-href="{{ apiPrefix }}/{{ spec }}/tree" target="_blank">Tree</a></li>
-                        <li><a data-ng-href="{{ apiPrefix }}/{{ spec }}" target="_blank">Paths</a></li>
+                        <li>
+                            <a
+                                data-ng-href="{{ apiPrefix }}/{{ spec }}/tree"
+                                target="_blank"
+                                >Tree</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                data-ng-href="{{ apiPrefix }}/{{ spec }}"
+                                target="_blank"
+                                >Paths</a
+                            >
+                        </li>
                     </ul>
                 </span>
             </div>
-            <div class="vertical-scroll list-group" data-scrollable id="schema-tree" data-offset="160" data-ng-controller="TreeCtrl" data-ng-include="'node.html'">Node list</div>
+            <div
+                class="vertical-scroll list-group"
+                data-scrollable
+                id="schema-tree"
+                data-offset="160"
+                data-ng-controller="TreeCtrl"
+                data-ng-include="'node.html'"
+            >
+                Node list
+            </div>
         </div>
     </div>
 
@@ -55,62 +93,125 @@
     </div>
 
     <div class="col-sm-7" data-ng-if="selectedNode">
-
         <div class="widget">
             <div class="widget-header clearfix">
-
                 <ul class="nav nav-tabs pull-left">
                     <li data-ng-class="{ active: activeView == 'histogram' }">
-                        <a href="" data-ng-click="fetchHistogram()">Histogram</a>
+                        <a href="" data-ng-click="fetchHistogram()"
+                            >Histogram</a
+                        >
                     </li>
                     <li data-ng-class="{ active: activeView == 'sample' }">
                         <a href="" data-ng-click="fetchSample()">Samples</a>
                     </li>
                 </ul>
                 <ul class="list-inline pull-right">
-                    <li data-ng-show="rawAnalyzedState && activeView == 'histogram' && histogramUniqueEnough">
-                        <a href class="btn btn-warning btn-sm" data-ng-click="proposeUniqueIdNode(selectedNode)" data-ng-disabled="uniqueIdNode == selectedNode">
-                            <i class="fa fa-check-circle"></i> <span> Use as Unique Element</span>
+                    <li
+                        data-ng-show="rawAnalyzedState && activeView == 'histogram' && histogramUniqueEnough"
+                    >
+                        <a
+                            href
+                            class="btn btn-warning btn-sm"
+                            data-ng-click="proposeUniqueIdNode(selectedNode)"
+                            data-ng-disabled="uniqueIdNode == selectedNode"
+                        >
+                            <i class="fa fa-check-circle"></i>
+                            <span> Use as Unique Element</span>
                         </a>
                     </li>
 
                     <li>
-                        <a href class="btn btn-default btn-sm" data-toggle="dropdown">
-                            <i class="fa fa-eye"></i>&nbsp;<span class="caret"></span>
+                        <a
+                            href
+                            class="btn btn-default btn-sm"
+                            data-toggle="dropdown"
+                        >
+                            <i class="fa fa-eye"></i>&nbsp;<span
+                                class="caret"
+                            ></span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-right" role="menu">
-                            <li><a ng-href="{{apiPathUnique}}" target="_blank">All Values</a></li>
-                            <li><a ng-href="{{apiPathHistogram}}" target="_blank">Full Histogram</a></li>
+                        <ul
+                            class="dropdown-menu dropdown-menu-right"
+                            role="menu"
+                        >
+                            <li>
+                                <a ng-href="{{ apiPathUnique }}" target="_blank"
+                                    >All Values</a
+                                >
+                            </li>
+                            <li>
+                                <a
+                                    ng-href="{{ apiPathHistogram }}"
+                                    target="_blank"
+                                    >Full Histogram</a
+                                >
+                            </li>
                         </ul>
                     </li>
                 </ul>
             </div>
 
-            <div class="vertical-scroll" data-scrollable id="sample-list" data-offset="200" ng-show="sample">
+            <div
+                class="vertical-scroll"
+                data-scrollable
+                id="sample-list"
+                data-offset="200"
+                ng-show="sample"
+            >
                 <ul class="list-group">
-                    <li data-ng-repeat="value in sample.sample | filter:filterText" class="list-group-item">
+                    <li
+                        data-ng-repeat="value in sample.sample | filter:filterText"
+                        class="list-group-item"
+                    >
                         {{ value }}
                     </li>
                 </ul>
             </div>
 
-            <div class="vertical-scroll" data-scrollable id="histogram-list" data-offset="210" ng-show="histogram">
+            <div
+                class="vertical-scroll"
+                data-scrollable
+                id="histogram-list"
+                data-offset="210"
+                ng-show="histogram"
+            >
                 <ul class="list-group">
-                    <li data-ng-show="!histogramSkosField" class="list-group-item">
+                    <li
+                        data-ng-show="!histogramSkosField"
+                        class="list-group-item"
+                    >
                         <!-- Skosify button -->
-                        <a href data-ng-click="toggleSkosifiedField(histogram.uri, histogram.tag, true)" class="btn btn-success btn-block btn-xs">
+                        <a
+                            href
+                            data-ng-click="toggleSkosifiedField(histogram.uri, histogram.tag, true)"
+                            class="btn btn-success btn-block btn-xs"
+                        >
                             Skosify ({{ histogram.tag }})
                         </a>
                     </li>
-                    <li data-ng-show="analyzedState && histogramSkosField && activeView == 'histogram'" class="list-group-item">
-                        <div href data-ng-click="toggleSkosifiedField(histogram.uri, histogram.tag, false)" class="btn btn-success btn-block btn-xs">
+                    <li
+                        data-ng-show="analyzedState && histogramSkosField && activeView == 'histogram'"
+                        class="list-group-item"
+                    >
+                        <div
+                            href
+                            data-ng-click="toggleSkosifiedField(histogram.uri, histogram.tag, false)"
+                            class="btn btn-success btn-block btn-xs"
+                        >
                             Skosified ({{ histogram.tag }}) Press to revert.
                         </div>
                     </li>
-                    <li data-ng-repeat="count in histogram.histogram | filter:filterText"
-                        class="list-group-item clearfix">
+                    <li
+                        data-ng-repeat="count in histogram.histogram | filter:filterText"
+                        class="list-group-item clearfix"
+                    >
                         <span class="node-content">{{ count[1] }}</span>
-                        <span class="node-stats badge">{{ count[0] }} <span class="small">({{ count[2] | number:0 }}%)</span></span>
+                        <span class="node-stats badge"
+                            >{{ count[0] }}
+                            <span class="small"
+                                >({{ count[2] | number: 0 }}%)</span
+                            ></span
+                        >
                     </li>
                 </ul>
             </div>
@@ -118,64 +219,75 @@
             <div class="widget-footer">
                 <div class="sub-controls">
                     <span data-ng-if="histogram">
-                        <span class="btn count-btn">( {{histogram.entries}} / {{histogram.uniqueCount}} )</span>
-                        <button class="btn btn-default" data-ng-class="{ disabled: !isMoreHistogram() }"
-                            data-ng-click="moreHistogram();scrollTo({element: '#histogram-list', direction: 'down'})">
+                        <span class="btn count-btn"
+                            >( {{ histogram.entries }} /
+                            {{ histogram.uniqueCount }} )</span
+                        >
+                        <button
+                            class="btn btn-default"
+                            data-ng-class="{ disabled: !isMoreHistogram() }"
+                            data-ng-click="moreHistogram();scrollTo({element: '#histogram-list', direction: 'down'})"
+                        >
                             More histogram entries
                         </button>
                         <span data-ng-if="histogram.uniqueCount > 30">
-                            <button class="btn btn-default"
-                                data-ng-click="scrollTo({element: '#histogram-list', direction: 'up'})">
+                            <button
+                                class="btn btn-default"
+                                data-ng-click="scrollTo({element: '#histogram-list', direction: 'up'})"
+                            >
                                 <i class="fa fa-hand-o-up"></i>&#160;
                             </button>
-                            <button class="btn btn-default"
-                                data-ng-click="scrollTo({element: '#histogram-list', direction: 'down'})">
+                            <button
+                                class="btn btn-default"
+                                data-ng-click="scrollTo({element: '#histogram-list', direction: 'down'})"
+                            >
                                 <i class="fa fa-hand-o-down"></i>&nbsp;
                             </button>
                         </span>
                     </span>
                     <span data-ng-if="sample">
-                        <button class="btn btn-primary btn-sm" data-ng-show="isMoreSample()"
-                            data-ng-click="moreSample();scrollTo({element: '#sample-list', direction: 'down'})">
+                        <button
+                            class="btn btn-primary btn-sm"
+                            data-ng-show="isMoreSample()"
+                            data-ng-click="moreSample();scrollTo({element: '#sample-list', direction: 'down'})"
+                        >
                             <i class="fa fa-plus-circle"></i> More samples
                         </button>
                     </span>
                 </div>
             </div>
         </div>
-
     </div>
 </div>
 
 <script type="text/ng-template" id="node.html">
-        <div class="node" data-ng-class="{ 'chosen': node == selectedNode, 'active': node.lengths.length != 0 }" data-ng-click="selectNode(node, $event)" class="outer-node">
-            <span data-ng-show="!node.lengths.length > 0" data-ng-click="node.collapsed = !node.collapsed">
-                <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}" class="fa pointer"></i>
+    <div class="node" data-ng-class="{ 'chosen': node == selectedNode, 'active': node.lengths.length != 0 }" data-ng-click="selectNode(node, $event)" class="outer-node">
+        <span data-ng-show="!node.lengths.length > 0" data-ng-click="node.collapsed = !node.collapsed">
+            <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}" class="fa pointer"></i>
+        </span>
+        <span>{{ node.tag }}</span>
+        <span class="pull-right">
+            <span data-ng-if="node == recordRootNode" class="badge badge-record-root">
+                Record Root
             </span>
-            <span>{{ node.tag }}</span>
-            <span class="pull-right">
-                <span data-ng-if="node == recordRootNode" class="badge badge-record-root">
-                    Record Root
-                </span>
-                <span data-ng-if="node == uniqueIdNode" class="badge badge-unique">
-                    Unique Id
-                </span>
-
-                <!--todo: find a way to show which fields are skosified-->
-                <!--<span data-ng-show="analyzedState">-->
-                    <!--<div class="badge badge-warning">{{ node.tag }}</div>-->
-                <!--</span>-->
-
-                <span class="badge badge-info">
-                    {{ node.count }}
-                </span>
+            <span data-ng-if="node == uniqueIdNode" class="badge badge-unique">
+                Unique Id
             </span>
-        </div>
 
-        <div data-ng-if="node.kids && !node.collapsed" class="inner-node">
-            <div data-ng-repeat="(nodeIndex, node) in node.kids">
-                <div data-ng-include="'node.html'" class="inner-node">node</div>
-            </div>
-        </div>
+            <!--todo: find a way to show which fields are skosified-->
+            <!--<span data-ng-show="analyzedState">-->
+                <!--<div class="badge badge-warning">{{ node.tag }}</div>-->
+            <!--</span>-->
 
+            <span class="badge badge-info">
+                {{ node.count }}
+            </span>
+        </span>
+    </div>
+
+    <div data-ng-if="node.kids && !node.collapsed" class="inner-node">
+        <div data-ng-repeat="(nodeIndex, node) in node.kids">
+            <div data-ng-include="'node.html'" class="inner-node">node</div>
+        </div>
+    </div>
 </script>

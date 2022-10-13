@@ -337,14 +337,13 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
           val aggregationUri = about.getTextContent
           (rdfWrapper, StringHandling.createGraphName(aggregationUri))
-
         case _ =>
-          val rdfElement = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_RECORD_TAG")
-          val rdfAbout = s"$rdfBaseUrl/resource/graph/$datasetName/${urlEncodeValue(pocket.id)}"
-          rdfElement.setAttributeNS(RDF_URI, s"$RDF_PREFIX:$RDF_ABOUT_ATTRIBUTE", rdfAbout)
-          kids.foreach(rdfElement.appendChild)
-          val graphName = rdfAbout
-          (rdfElement, graphName)
+          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
+          kids.foreach(rdfWrapper.appendChild)
+          val aggregation = kids.head
+          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
+          val aggregationUri = about.getTextContent
+          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
       }
       // deliver the pocket
       val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")

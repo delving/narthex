@@ -59,6 +59,7 @@ object ProcessedRepo {
 		  "dataset" -> spec,
 		  "graphUri" -> graphUri,
 		  "type" -> dsInfo.getLiteralProp(datasetType).getOrElse("narthex_record").toString(),
+		  "tags" -> dsInfo.getLiteralProp(datasetTags).getOrElse("").toString(),
 		  "action" -> "index",
           "graphMimeType" -> "application/ld+json",
 		  //"contentHash" -> localHash.toString,
