@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+ 
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.8...master
+
+## v0.6.8 (2022-10-13)
+
+## Changed
+
+- Add support for index tags to the narthex dataset [[GH-162]](https://github.com/delving/narthex/pull/162)
+- update sip-core and version number [[GH-163]](https://github.com/delving/narthex/pull/163)
+ 
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.7...v0.6.8
 
 ## v0.6.7 (2022-10-03)
 
@@ -18,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fixed bug in OAI-PMH utf-8 harvesting encoding [[GH-159]](https://github.com/delving/narthex/pull/159)
 
 
-- history of changes: see https://github.com/delving/narthex/compare/v0.6.6...master
+- history of changes: see https://github.com/delving/narthex/compare/v0.6.6...v0.6.7
 
 ## v0.6.6 (2022-05-12)
 
