@@ -646,6 +646,11 @@ class DsInfo(
   }
 
   def extractSpecIdFromGraphName(id: String): (String, String) = {
+    if (id contains "/doc/") {
+	  val localId = id.stripSuffix("/graph").split("/doc/").last.split("/").last.trim
+      // Logger.info(s"localID: $localId")
+	  return (toString, localId)
+    }
 	val SpecIdExtractor =
 	  "http[s]{0,1}://.*?/([^/]+)/([^/]+)/graph".r
 	val SpecIdExtractor(spec, localId) = id
