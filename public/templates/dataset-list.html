@@ -743,7 +743,7 @@
             <div class="form-group" ng-class="{'has-error' : metadataform.meta_description.$invalid, 'has-success' : metadataform.meta_description.$valid && !metadataform.meta_description.$pristine }">
                 <label class="col-sm-3 control-label" for="meta_description">Description</label>
                 <div class="col-sm-9">
-                    <input id="meta_description" name="meta_description" required class="form-control" data-ng-model="dataset.edit.datasetDescription"/>
+                    <input id="meta_description" name="meta_description" class="form-control" data-ng-model="dataset.edit.datasetDescription"/>
                 </div>
             </div>
             <div class="form-group" ng-class="{'has-error' : metadataform.meta_aggr.$invalid, 'has-success' : metadataform.meta_aggr.$valid && !metadataform.meta_aggr.$pristine }">
@@ -773,13 +773,13 @@
             <div class="form-group">
                 <label class="col-sm-3 control-label" for="meta_edm_type">Type</label>
                 <div class="col-sm-9">
-                <input id="meta_edm_type" name="meta_edm_type" required class="form-control" data-ng-model="dataset.edit.edmType"/>
+                <input id="meta_edm_type" name="meta_edm_type" class="form-control" data-ng-model="dataset.edit.edmType"/>
             </div>
         </div>
         <div class="form-group">
             <label class="col-sm-3 control-label" for="meta_dataset_tags">Tags</label>
             <div class="col-sm-9">
-                <input id="meta_dataset_tags" name="meta_dataset_tags" required class="form-control" data-ng-model="dataset.edit.datasetTags"/>
+                <input id="meta_dataset_tags" name="meta_dataset_tags" class="form-control" data-ng-model="dataset.edit.datasetTags"/>
                 </div>
             </div>
             <div class="form-group" ng-class="{'has-error' : metadataform.meta_rights.$invalid, 'has-success' : metadataform.meta_rights.$valid && !metadataform.meta_rights.$pristine }">
