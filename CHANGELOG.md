@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add support for index tags to the narthex dataset [[GH-162]](https://github.com/delving/narthex/pull/162)
 - update sip-core and version number [[GH-163]](https://github.com/delving/narthex/pull/163)
+- Dataset metadata reduce required fields in the interface [[GH-164]](https://github.com/delving/narthex/pull/164)
  
 - history of changes: see https://github.com/delving/narthex/compare/v0.6.7...v0.6.8
 
