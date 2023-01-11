@@ -23,11 +23,11 @@ import play.api.Logger
 import play.api.libs.ws.{WSAPI, WSResponse}
 import services.Temporal._
 
+import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.xml.{NodeSeq, XML}
-
 
 object Harvesting {
 
@@ -50,8 +50,14 @@ object Harvesting {
       uniqueId = "/adlibXML/recordList/record/@priref",
       recordContainer = None
     )
+    val DOWNLOAD = HarvestType(
+      name = "download",
+      recordRoot = "/adlibXML/recordList/record",
+      uniqueId = "/adlibXML/recordList/record/@priref",
+      recordContainer = None
+    )
 
-    val ALL_TYPES = List(PMH, ADLIB)
+    val ALL_TYPES = List(PMH, ADLIB, DOWNLOAD)
 
     def harvestTypeFromString(string: String): Option[HarvestType] = ALL_TYPES.find(s => s.matches(string))
   }
@@ -145,13 +151,13 @@ trait Harvesting {
     )
     Logger.info(s"harvest url: ${request.uri}")
     // define your success condition
-    implicit val success = new retry.Success[WSResponse](r => !((500 to 599)  contains r.status))
+    implicit val success = new retry.Success[WSResponse](r => !((500 to 599) contains r.status))
     // retry 4 times with a delay of 1 second which will be multipled
     // by 2 on every attempt
     val wsResponseFuture = retry.Backoff(6, 1.seconds).apply { () =>
       request.get()
-    }  
-      
+    }
+
     wsResponseFuture.map { response =>
       val diagnostic = response.xml \ "diagnostic"
       val errorNode = diagnostic \ "error"
@@ -203,21 +209,21 @@ trait Harvesting {
         if (url.contains("anet.be")) {
           listRecords
             .withQueryString("resumptionToken" -> token.value)
-            .withQueryString("metadataPrefix" -> metadataPrefix) 
+            .withQueryString("metadataPrefix" -> metadataPrefix)
         } else {
           listRecords.withQueryString("resumptionToken" -> token.value)
         }
     }
-    
+
     // define your success condition
-    implicit val success = new retry.Success[WSResponse](r => !((500 to 599)  contains r.status))
+    implicit val success = new retry.Success[WSResponse](r => !((500 to 599) contains r.status))
     // retry 4 times with a delay of 1 second which will be multipled
     // by 2 on every attempt
     val wsResponseFuture = retry.Backoff(6, 1.seconds).apply { () =>
       request.get()
-    }  
-      
-      wsResponseFuture.map { response =>
+    }
+
+    wsResponseFuture.map { response =>
       Logger.debug(s"start get for: \n ${response.underlying[NettyResponse].getUri}")
       val error: Option[HarvestError] = if (response.status != 200) {
         Logger.debug(s"error response: ${response.underlying[NettyResponse].getResponseBody}")
@@ -226,7 +232,7 @@ trait Harvesting {
       else {
         val netty = response.underlying[NettyResponse]
         var body = netty.getResponseBody(StandardCharsets.UTF_8)
-        if(body.indexOf('\uFEFF') == 0) {
+        if (body.indexOf('\uFEFF') == 0) {
           body = body.substring(1)
         }
 
@@ -245,13 +251,13 @@ trait Harvesting {
           } else ""
         } else ""
         if (errorNode.nonEmpty || records.isEmpty || faultyEmptyResponse.nonEmpty) {
-          val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text  else "noRecordsMatch"
-          if (faultyEmptyResponse.nonEmpty){
+          val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text else "noRecordsMatch"
+          if (faultyEmptyResponse.nonEmpty) {
             Some(HarvestError(faultyEmptyResponse, strategy))
           }
           else if ("noRecordsMatch" == errorCode) {
             Logger.debug("No PMH Records returned")
-            if(pageNumber > 1) {
+            if (pageNumber > 1) {
               Some(HarvestError("noRecordsMatchRecoverable", strategy))
             } else {
               Some(HarvestError("noRecordsMatch", strategy))
@@ -262,8 +268,8 @@ trait Harvesting {
           }
         }
         else {
-        None
-      }
+          None
+        }
       }
       if (!error.isEmpty) {
         Logger.debug(s"HarvestState in error: $error")
@@ -275,7 +281,7 @@ trait Harvesting {
       else {
         val netty = response.underlying[NettyResponse]
         var body = netty.getResponseBody(StandardCharsets.UTF_8)
-        if(body.indexOf('\uFEFF') == 0) {
+        if (body.indexOf('\uFEFF') == 0) {
           body = body.substring(1)
         }
         val xml = XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", ""))

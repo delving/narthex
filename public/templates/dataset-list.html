@@ -861,37 +861,46 @@
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
                     <input type="radio" ng-model="dataset.edit.harvestType" value="adlib">
                     <span>AdLib API</span>
+                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    <input type="radio" ng-model="dataset.edit.harvestType" value="download">
+                    <span>Download</span>
                 </div>
 
             </div>
-            <div class="form-group">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'download'">
                 <label class="col-sm-3" for="harv_url">Server URL</label>
                 <div class="col-sm-9">
                     <input id="harv_url" class="form-control" data-ng-model="dataset.edit.harvestURL" placeholder="http://...?" required/>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'download'">
                 <label class="col-sm-3" for="harv_set">Server Dataset</label>
                 <div class="col-sm-9">
                     <input id="harv_set" class="form-control" data-ng-model="dataset.edit.harvestDataset" placeholder="dataset"/>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'download'">
                 <label class="col-sm-3" for="harv_record">Record identifier</label>
                 <div class="col-sm-9">
                     <input id="harv_record" class="form-control" data-ng-model="dataset.edit.harvestRecord" placeholder="record identifier"/>
                 </div>
             </div>
-            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'adlib'">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'adlib' && dataset.edit.harvestType != 'download'">
                 <label class="col-sm-3" for="harv_prefix">Metadata Prefix</label>
                 <div class="col-sm-9">
                     <input id="harv_prefix" class="form-control" data-ng-model="dataset.edit.harvestPrefix" placeholder="prefix" required/>
                 </div>
             </div>
-            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'adlib'">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'adlib' && dataset.edit.harvestType != 'download'">
                 <label class="col-sm-3" for="harv_search">Search</label>
                 <div class="col-sm-9">
                     <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
+                </div>
+            </div>
+            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'download'">
+                <label class="col-sm-3" for="download_url">Download URL</label>
+                <div class="col-sm-9">
+                    <input id="download_url" class="form-control" data-ng-model="dataset.edit.harvestDownloadURL" placeholder="http://...?" required/>
                 </div>
             </div>
             <div class="btn-group  pull-right" role="group">
@@ -908,6 +917,10 @@
                     <span>Preview</span>
                 </a>
                 <a href="{{ adlibPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                    <i class="fa fa-binoculars"></i>
+                    <span>Preview</span>
+                </a>
+                <a href="{{ dataset.edit.harvestDownloadURL }}" data-ng-show="dataset.edit.harvestType == 'download'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!dataset.edit.harvestDownloadURL">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>

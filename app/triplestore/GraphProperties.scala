@@ -101,6 +101,7 @@ object GraphProperties {
   val harvestRecord = NXProp("harvestRecord")
   val harvestPrefix = NXProp("harvestPrefix")
   val harvestSearch = NXProp("harvestSearch")
+  val harvestDownloadURL = NXProp("harvestDownloadURL")
   val harvestPreviousTime = NXProp("harvestPreviousTime", timeProp)
   val lastFullHarvestTime = NXProp("lastFullHarvestTime", timeProp)
   val lastIncrementalHarvestTime = NXProp("lastIncrementalHarvestTime", timeProp)

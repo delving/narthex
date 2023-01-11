@@ -333,7 +333,7 @@ define(["angular"], function () {
     ];
 
     var harvestFields = [
-        "harvestType", "harvestURL", "harvestDataset", "harvestPrefix", "harvestSearch", "harvestRecord"
+        "harvestType", "harvestURL", "harvestDataset", "harvestPrefix", "harvestSearch", "harvestRecord", "harvestDownloadURL"
     ];
 
     var harvestCronFields = [
