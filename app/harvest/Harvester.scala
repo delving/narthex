@@ -16,6 +16,8 @@
 
 package harvest
 
+import dataset.DsInfo
+import dataset.DsInfo.DsState._
 import java.io.{BufferedReader, BufferedWriter, File, FileOutputStream, InputStreamReader, OutputStreamWriter}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
@@ -37,7 +39,7 @@ import scala.language.postfixOps
 
 object Harvester {
 
-  case class HarvestDownloadLink(strategy: HarvestStrategy, downloadLink: String)
+  case class HarvestDownloadLink(strategy: HarvestStrategy, downloadLink: String, dsInfo: DsInfo)
 
   case class HarvestAdLib(strategy: HarvestStrategy, url: String, database: String, search: String)
 
@@ -186,7 +188,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
       }
     }
 
-    case HarvestDownloadLink(strategy: HarvestStrategy, downloadLink: String) => actorWork(context) {
+    case HarvestDownloadLink(strategy: HarvestStrategy, downloadLink: String, dsInfo: DsInfo) => actorWork(context) {
 
       def writeFile(reader: java.io.InputStream, writer: java.io.OutputStream): Unit = {
         val readBuffer = Array.fill[Byte](2048)(0)
@@ -215,6 +217,13 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
         writer = new FileOutputStream(file)
         writeFile(reader, writer)
         log.info(s"Written download to ${file.toString()}")
+
+        dsInfo.removeState(SAVED)
+        dsInfo.removeState(ANALYZED)
+        dsInfo.removeState(INCREMENTAL_SAVED)
+        dsInfo.removeState(PROCESSED)
+        dsInfo.removeState(PROCESSABLE)
+        dsInfo.setState(SOURCED)
       } catch {
         case e: Throwable => {
           e.printStackTrace()

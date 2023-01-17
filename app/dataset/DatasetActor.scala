@@ -351,7 +351,7 @@ class DatasetActor(val datasetContext: DatasetContext,
           prop(harvestDownloadURL))
 
         val kickoff = harvestType match {
-          case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink)
+          case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
           case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
