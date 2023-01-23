@@ -195,7 +195,8 @@ trait Harvesting {
           case ModifiedAfter(mod, justDate) =>
             withSet.withQueryString("from" -> {
               val dateTime = timeToUTCString(mod)
-              if (justDate) dateTime.substring(0, dateTime.indexOf('T')) else dateTime.replaceAll("\\.[0-9]{3}[Z]{0,1}$", "Z")
+              val withoutMillis = dateTime.replaceAll("\\.[0-9]+", "")
+              if (justDate) withoutMillis.substring(0, withoutMillis.indexOf('T')) else withoutMillis.replaceAll("\\.[0-9]{3}[Z]{0,1}$", "Z")
             })
           case _ => withSet
         }
@@ -208,7 +209,7 @@ trait Harvesting {
           listRecords.withQueryString("resumptionToken" -> token.value)
         }
     }
-    
+
     // define your success condition
     implicit val success = new retry.Success[WSResponse](r => !((500 to 599)  contains r.status))
     // retry 4 times with a delay of 1 second which will be multipled
