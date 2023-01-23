@@ -4,9 +4,8 @@ VERSION:=$(shell sh -c 'grep "version in" version.sbt  | cut -d\" -f2')
 MAINTAINER:="Sjoerd Siebinga <sjoerd@delving.eu>"
 DESCRIPTION:="Narthex Aggregation and mapping platform."
 FUSEKI:=apache-fuseki
-#FUSEKI_VERSION:=3.4.0
-FUSEKI_VERSION:=3.10.0
-FUSEKI_VERSION_RPM:=3.10.1
+FUSEKI_VERSION:=4.7.0
+FUSEKI_VERSION_RPM:=4.7.0
 
 
 # var print rule
