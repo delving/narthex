@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## Changed
+
+- Remove millis from timestamp during incremental harvesting [[GH-165]](https://github.com/delving/narthex/pull/165)
  
 - history of changes: see https://github.com/delving/narthex/compare/v0.6.8...master
 
