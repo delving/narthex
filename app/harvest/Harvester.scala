@@ -190,6 +190,9 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
 
     case HarvestDownloadLink(strategy: HarvestStrategy, downloadLink: String, dsInfo: DsInfo) => actorWork(context) {
 
+      // create ProgresReporter and loop to sendValue while downloading. This should provide  feedback to the interface.
+      // There might be an issue how and when it updates
+
       def writeFile(reader: java.io.InputStream, writer: java.io.OutputStream): Unit = {
         val readBuffer = Array.fill[Byte](2048)(0)
         while (true) {
@@ -218,12 +221,6 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
         writeFile(reader, writer)
         log.info(s"Written download to ${file.toString()}")
 
-        dsInfo.removeState(SAVED)
-        dsInfo.removeState(ANALYZED)
-        dsInfo.removeState(INCREMENTAL_SAVED)
-        dsInfo.removeState(PROCESSED)
-        dsInfo.removeState(PROCESSABLE)
-        dsInfo.setState(SOURCED)
       } catch {
         case e: Throwable => {
           e.printStackTrace()
@@ -236,6 +233,17 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
         if (writer != null) {
           writer.close()
         }
+      }
+
+      // TODO: finish the progress bar
+
+      // file is already downloaded
+      strategy match {
+        case Sample =>
+          finish(strategy, None)
+        case _ =>
+          log.info(s"finished download with strategy: ${strategy}")
+          finish(strategy, None)
       }
     }
 
