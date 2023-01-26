@@ -236,14 +236,12 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
       }
 
       // TODO: finish the progress bar
-      // TODO add to tempFileOpt variable; see implementation of addPage function
-
-      // file is already downloaded
       strategy match {
         case Sample =>
           finish(strategy, None)
         case _ =>
           log.info(s"finished download with strategy: ${strategy}")
+          tempFileOpt = Some(file)
           finish(strategy, None)
       }
     }
