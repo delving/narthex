@@ -236,6 +236,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
       }
 
       // TODO: finish the progress bar
+      // TODO add to tempFileOpt variable; see implementation of addPage function
 
       // file is already downloaded
       strategy match {
