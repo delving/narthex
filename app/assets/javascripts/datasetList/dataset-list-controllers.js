@@ -554,6 +554,15 @@ define(["angular"], function () {
             setProperties(harvestCronFields);
         };
 
+        $scope.trimMillis = function (time) {
+            if (!time) {
+                return time
+            }
+            var replacement = time.replace(/\.[0-9]+/, '')
+            console.log(time, replacement)
+            return replacement
+        };
+
         $scope.setIdFilter = function () {
             setProperties(idFilterFields);
         };

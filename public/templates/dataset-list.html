@@ -990,7 +990,7 @@
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
-            <a href="{{ pmhPreviewBase }}&from={{dataset.edit.harvestPreviousTime.replace('Z', '')}}Z" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!incrementalPreview">
+            <a href="{{ pmhPreviewBase }}&from={{trimMillis(dataset.edit.harvestPreviousTime)}}Z" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!incrementalPreview">
                 <i class="fa fa-binoculars"></i>
                 <span>Preview</span>
             </a>
