@@ -407,11 +407,22 @@ class DatasetActor(val datasetContext: DatasetContext,
                                     PROCESSING)
 
     case Event(StartSaving(scheduledOpt), Dormant) =>
-      val graphSaver =
-        context.actorOf(GraphSaver.props(datasetContext, orgContext),
-                        "graph-saver")
-      graphSaver ! SaveGraphs(scheduledOpt)
-      goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
+      if(orgContext.saveSemaphore.tryAcquire(dsInfo.spec)) {
+        try {
+          println("acquired lock")
+          val graphSaver =
+            context.actorOf(GraphSaver.props(datasetContext, orgContext),
+              "graph-saver")
+          graphSaver ! SaveGraphs(scheduledOpt)
+          goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
+        } finally {
+          println("released lock")
+          orgContext.saveSemaphore.release(dsInfo.spec)
+        }
+      } else {
+        println("unable to acquire lock")
+        stay() using InError(s"Concurrency limit has been reached for ${dsInfo.spec}")
+      }
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
       val skosifier =
