@@ -412,19 +412,18 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(StartSaving(scheduledOpt), Dormant) =>
       if(orgContext.saveSemaphore.tryAcquire(dsInfo.spec)) {
         try {
-          println("acquired lock")
+
+          log.info(s"save lock acquired for $dsInfo.spec")
           val graphSaver =
             context.actorOf(GraphSaver.props(datasetContext, orgContext),
               "graph-saver")
           graphSaver ! SaveGraphs(scheduledOpt)
           goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
-        } finally {
-          println("released lock")
-          orgContext.saveSemaphore.release(dsInfo.spec)
         }
       } else {
-        println("unable to acquire lock")
-        stay() using InError(s"Concurrency limit has been reached for ${dsInfo.spec}")
+          log.info(s"unable to acquire lock for $dsInfo.spec")
+          dsInfo.setError(s"Concurrency limit has been reached for ${dsInfo.spec}; Try saving later. \n")
+          goto(Idle) using InError(s"Concurrency limit has been reached for ${dsInfo.spec}")
       }
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
@@ -595,6 +594,8 @@ class DatasetActor(val datasetContext: DatasetContext,
   when(Saving) {
 
     case Event(GraphSaveComplete, active: Active) =>
+      log.info(s"released save lock for $dsInfo.spec")
+      orgContext.saveSemaphore.release(dsInfo.spec)
       dsInfo.setState(SAVED)
       dsInfo.setRecordsSync(false)
       active.childOpt.foreach(_ ! PoisonPill)
@@ -648,10 +649,12 @@ class DatasetActor(val datasetContext: DatasetContext,
         dsInfo.removeLiteralProp(datasetErrorMessage)
         log.info(s"clear error so releasing semaphore if set")
         orgContext.semaphore.release(dsInfo.spec)
+        orgContext.saveSemaphore.release(dsInfo.spec)
         goto(Idle) using Dormant
       } else {
         log.info(s"in error so releasing semaphore if set")
         orgContext.semaphore.release(dsInfo.spec)
+        orgContext.saveSemaphore.release(dsInfo.spec)
         stay()
       }
 
@@ -659,6 +662,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       log.info(s"Not interested in: $whatever")
         log.info(s"in error so releasing semaphore if set")
         orgContext.semaphore.release(dsInfo.spec)
+        orgContext.saveSemaphore.release(dsInfo.spec)
       stay()
 
     case Event(Command(commandName), active: Active) =>
