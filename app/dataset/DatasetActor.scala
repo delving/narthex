@@ -26,7 +26,7 @@ import dataset.DatasetActor._
 import dataset.DsInfo.DsState._
 import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink}
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import mapping.Skosifier.SkosificationComplete
@@ -343,12 +343,15 @@ class DatasetActor(val datasetContext: DatasetContext,
             }
           //case _ =>
         }
-        val (url, ds, pre, se, recordId) = (prop(harvestURL),
-                                  prop(harvestDataset),
-                                  prop(harvestPrefix),
-                                  prop(harvestSearch),
-                                  prop(harvestRecord))
+        val (url, ds, pre, se, recordId, downloadLink) = (prop(harvestURL),
+          prop(harvestDataset),
+          prop(harvestPrefix),
+          prop(harvestSearch),
+          prop(harvestRecord),
+          prop(harvestDownloadURL))
+
         val kickoff = harvestType match {
+          case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
           case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }

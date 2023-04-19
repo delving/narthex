@@ -16,14 +16,16 @@
 
 package harvest
 
-import java.io.{File, FileOutputStream}
+import dataset.DsInfo
+import dataset.DsInfo.DsState._
+import java.io.{BufferedReader, BufferedWriter, File, FileOutputStream, InputStreamReader, OutputStreamWriter}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.pipe
 import dataset.DatasetActor._
 import dataset.DatasetContext
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, NoRecordsMatch, PMHHarvestPage}
 import nxutil.Utils.actorWork
 import org.apache.commons.io.FileUtils
@@ -36,6 +38,8 @@ import scala.concurrent._
 import scala.language.postfixOps
 
 object Harvester {
+
+  case class HarvestDownloadLink(strategy: HarvestStrategy, downloadLink: String, dsInfo: DsInfo)
 
   case class HarvestAdLib(strategy: HarvestStrategy, url: String, database: String, search: String)
 
@@ -181,6 +185,64 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
           progressOpt = Some(ProgressReporter(HARVESTING, context.parent))
           // todo: if None comes back there's something wrong
           futurePage pipeTo self
+      }
+    }
+
+    case HarvestDownloadLink(strategy: HarvestStrategy, downloadLink: String, dsInfo: DsInfo) => actorWork(context) {
+
+      // create ProgresReporter and loop to sendValue while downloading. This should provide  feedback to the interface.
+      // There might be an issue how and when it updates
+
+      def writeFile(reader: java.io.InputStream, writer: java.io.OutputStream): Unit = {
+        val readBuffer = Array.fill[Byte](2048)(0)
+        while (true) {
+          val bytesRead = reader.read(readBuffer)
+          if (bytesRead == -1) {
+            return
+          }
+          writer.write(readBuffer, 0, bytesRead)
+          writer.flush()
+        }
+      }
+
+      log.info(s"Harvesting download link $downloadLink")
+      val parts = downloadLink.split('/')
+      val tail = parts(parts.length - 1)
+      val tailSplit = tail.split('?')
+      val filename = tailSplit(0)
+      val file = datasetContext.createRawFile(filename)
+
+      val url = new java.net.URL(downloadLink)
+      var reader: java.io.InputStream = null
+      var writer: java.io.OutputStream = null
+      try {
+        reader = url.openStream()
+        writer = new FileOutputStream(file)
+        writeFile(reader, writer)
+        log.info(s"Written download to ${file.toString()}")
+
+      } catch {
+        case e: Throwable => {
+          e.printStackTrace()
+          finish(strategy, Some(e.toString()))
+        }
+      } finally {
+        if (reader != null) {
+          reader.close()
+        }
+        if (writer != null) {
+          writer.close()
+        }
+      }
+
+      // TODO: finish the progress bar
+      strategy match {
+        case Sample =>
+          finish(strategy, None)
+        case _ =>
+          log.info(s"finished download with strategy: ${strategy}")
+          tempFileOpt = Some(file)
+          finish(strategy, None)
       }
     }
 

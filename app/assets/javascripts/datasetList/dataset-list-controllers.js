@@ -333,7 +333,7 @@ define(["angular"], function () {
     ];
 
     var harvestFields = [
-        "harvestType", "harvestURL", "harvestDataset", "harvestPrefix", "harvestSearch", "harvestRecord"
+        "harvestType", "harvestURL", "harvestDataset", "harvestPrefix", "harvestSearch", "harvestRecord", "harvestDownloadURL"
     ];
 
     var harvestCronFields = [
@@ -552,6 +552,15 @@ define(["angular"], function () {
 
         $scope.setHarvestCron = function () {
             setProperties(harvestCronFields);
+        };
+
+        $scope.trimMillis = function (time) {
+            if (!time) {
+                return time
+            }
+            var replacement = time.replace(/\.[0-9]+/, '')
+            console.log(time, replacement)
+            return replacement
         };
 
         $scope.setIdFilter = function () {
