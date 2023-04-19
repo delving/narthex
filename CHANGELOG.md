@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Changed
 
 - Remove millis from timestamp during incremental harvesting [[GH-165]](https://github.com/delving/narthex/pull/165)
+- Add support for Dataset direct download for remote sync [[GH-166]](https://github.com/delving/narthex/pull/166)
 - Add support for saving semaphore with maximum concurrency
 
 - history of changes: see https://github.com/delving/narthex/compare/v0.6.8...master
