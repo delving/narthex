@@ -16,20 +16,22 @@
 
 package harvest
 
-import dataset.DatasetActor._
-import org.asynchttpclient.netty.NettyResponse
-import org.joda.time.DateTime
-import play.api.Logger
-import play.api.libs.ws.{WSAPI, WSResponse}
-import services.Temporal._
-
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.xml.{NodeSeq, XML}
+import play.api.Logger
+import play.api.libs.ws.{WSClient, WSResponse}
+import play.shaded.ahc.org.asynchttpclient.netty.NettyResponse
+import org.joda.time.DateTime
+
+import dataset.DatasetActor._
+import services.Temporal._
 
 object Harvesting {
+
+  private val logger = Logger(getClass)
 
   case class HarvestType(name: String, recordRoot: String, uniqueId: String, recordContainer: Option[String] = None) {
     override def toString = name
@@ -124,11 +126,11 @@ trait Harvesting {
   }
   catch {
     case e: Exception =>
-      Logger.info(s"$tag: $e")
+      logger.info(s"$tag: $e")
       default
   }
 
-  def fetchAdLibPage(timeOut: Long, wsApi: WSAPI, strategy: HarvestStrategy, url: String, database: String, search: String,
+  def fetchAdLibPage(timeOut: Long, wsApi: WSClient, strategy: HarvestStrategy, url: String, database: String, search: String,
                      diagnosticOption: Option[AdLibDiagnostic] = None)
                     (implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
     val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
@@ -149,7 +151,7 @@ trait Harvesting {
       "limit" -> "50",
       "startFrom" -> startFrom.toString
     )
-    Logger.info(s"harvest url: ${request.uri}")
+    logger.info(s"harvest url: ${request.uri}")
     // define your success condition
     implicit val success = new retry.Success[WSResponse](r => !((500 to 599) contains r.status))
     // retry 4 times with a delay of 1 second which will be multipled
@@ -184,10 +186,10 @@ trait Harvesting {
     }
   }
 
-  def fetchPMHPage(pageNumber: Int, timeOut: Long, wsApi: WSAPI, strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
+  def fetchPMHPage(pageNumber: Int, timeOut: Long, wsApi: WSClient, strategy: HarvestStrategy, url: String, set: String, metadataPrefix: String,
                    resumption: Option[PMHResumptionToken] = None, recordId: Option[String] = None)(implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
 
-    Logger.debug(s"start fetch PMH Page: $url, $resumption")
+    logger.debug(s"start fetch PMH Page: $url, $resumption")
     val verb = if (recordId != None) "GetRecord" else "ListRecords"
     val listRecords = wsApi.url(url)
       .withRequestTimeout(timeOut.milliseconds)
@@ -225,9 +227,9 @@ trait Harvesting {
     }
 
     wsResponseFuture.map { response =>
-      Logger.debug(s"start get for: \n ${response.underlying[NettyResponse].getUri}")
+      logger.debug(s"start get for: \n ${response.underlying[NettyResponse].getUri}")
       val error: Option[HarvestError] = if (response.status != 200) {
-        Logger.debug(s"error response: ${response.underlying[NettyResponse].getResponseBody}")
+        logger.debug(s"error response: ${response.underlying[NettyResponse].getResponseBody}")
         Some(HarvestError(s"HTTP Response: ${response.statusText}", strategy))
       }
       else {
@@ -237,7 +239,7 @@ trait Harvesting {
           body = body.substring(1)
         }
 
-        Logger.trace(s"OAI-PMH Response: \n ''''${body}''''")
+        logger.trace(s"OAI-PMH Response: \n ''''${body}''''")
         val xml = XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", "")) // reader old
         val errorNode = xml \ "error"
 
@@ -257,7 +259,7 @@ trait Harvesting {
             Some(HarvestError(faultyEmptyResponse, strategy))
           }
           else if ("noRecordsMatch" == errorCode) {
-            Logger.debug("No PMH Records returned")
+            logger.debug("No PMH Records returned")
             if (pageNumber > 1) {
               Some(HarvestError("noRecordsMatchRecoverable", strategy))
             } else {
@@ -273,7 +275,7 @@ trait Harvesting {
         }
       }
       if (!error.isEmpty) {
-        Logger.debug(s"HarvestState in error: $error")
+        logger.debug(s"HarvestState in error: $error")
         error.get match {
           case HarvestError("noRecordsMatch", strategy) => NoRecordsMatch("noRecordsMatch", strategy)
           case _ => error.get
@@ -313,7 +315,7 @@ trait Harvesting {
           strategy,
           resumptionToken = newToken
         )
-        Logger.debug(s"Return PMHHarvestPage: $newToken, ${netty.getUri}")
+        logger.debug(s"Return PMHHarvestPage: $newToken, ${netty.getUri}")
         harvestPage
       }
     }

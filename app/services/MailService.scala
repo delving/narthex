@@ -1,11 +1,14 @@
 package services
 
+import javax.inject._
 import java.io.{PrintWriter, StringWriter}
 
 import play.api.Logger
 import play.api.libs.mailer._
 
 import scala.concurrent.ExecutionContext
+
+import init.NarthexConfig
 
 
 trait MailService {
@@ -19,9 +22,13 @@ trait MailService {
                                  throwableOpt: Option[Throwable]): Unit
 }
 
-class PlayMailService(val mailerClient: MailerClient, adminEmails: List[String])
+class PlayMailService @Inject() (val mailerClient: MailerClient, narthexConfig: NarthexConfig)
                      (implicit val ec: ExecutionContext)
   extends MailService {
+
+  private val logger = Logger(getClass)
+
+  val adminEmails: List[String] = narthexConfig.emailReportsTo
 
   val fromNarthex = "Narthex <narthex@delving.eu>"
 
@@ -49,11 +56,11 @@ class PlayMailService(val mailerClient: MailerClient, adminEmails: List[String])
 
   private def sendMail(subject: String, html: String): Unit = {
     if (adminEmails.isEmpty) {
-      Logger.warn(s"No emailReportsTo configured, not sending")
+      logger.warn(s"No emailReportsTo configured, not sending")
     } else {
       val email = Email(to = adminEmails, from = fromNarthex, subject = subject, bodyHtml = Some(html))
       val messageId = mailerClient.send(email)
-      Logger.debug(s"Sent email $messageId")
+      logger.debug(s"Sent email $messageId")
     }
   }
 

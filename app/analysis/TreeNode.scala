@@ -36,6 +36,8 @@ import scala.xml.{MetaData, NamespaceBinding}
 
 object TreeNode {
 
+  private val logger = Logger(getClass)
+
   def apply(source: Source, processed: Boolean,
             datasetContext: DatasetContext,
             progressReporter: ProgressReporter): TreeNode = {
@@ -79,7 +81,7 @@ object TreeNode {
           // do nothing
 
           case x =>
-            Logger.error("EVENT? " + x) // todo: record these in an error file for later
+            logger.error("EVENT? " + x) // todo: record these in an error file for later
         }
       }
     }

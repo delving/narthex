@@ -1,24 +1,28 @@
-package web
+package controllers
 
-import buildinfo.BuildInfo
-import com.codahale.metrics.health.{HealthCheck, HealthCheckRegistry}
+import javax.inject._
+import scala.jdk.CollectionConverters._
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsNull, Json, Writes}
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.InjectedController
+import com.codahale.metrics.health.{HealthCheck, HealthCheckRegistry}
 
-import scala.collection.JavaConverters._
+import buildinfo.BuildInfo
 
 /**
   * Endpoint for monitoring tools to read some basic info about this instance of the app
   */
-class InfoController(healthCheckRegistry: HealthCheckRegistry) extends Controller {
+@Singleton
+class InfoController @Inject() ( // order of these explicit parameters does not matter
+  healthCheckRegistry: HealthCheckRegistry
+) extends InjectedController {
 
   def info = Action { request =>
     val result = Map(
       "version" -> BuildInfo.version,
       "scalaVersion" -> BuildInfo.scalaVersion,
       "sbtVersion" -> BuildInfo.sbtVersion,
-      "gitCommitSha" -> BuildInfo.gitCommitSha
+      "gitCommitSha" -> "TODO" //BuildInfo.gitCommitSha
     )
     Ok(Json.toJson(result))
   }
@@ -35,4 +39,5 @@ class InfoController(healthCheckRegistry: HealthCheckRegistry) extends Controlle
     val results = healthCheckRegistry.runHealthChecks().asScala
     Ok(Json.prettyPrint(Json.toJson(results))).as(ContentTypes.JSON)
   }
+
 }

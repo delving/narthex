@@ -17,16 +17,19 @@
 package organization
 
 import java.io.File
+import javax.inject._
 
 import akka.actor.ActorRef
+import akka.actor.ActorSystem
+import akka.actor.Props
 import dataset.DsInfo.withDsInfo
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
-import init.AppConfig
+import init.NarthexConfig
 import mapping._
 import organization.OrgActor.DatasetsCountCategories
-import play.api.cache.CacheApi
-import play.api.libs.ws.WSAPI
+import play.api.cache.SyncCacheApi
+import play.api.libs.ws.WSClient
 import services.MailService
 import triplestore.GraphProperties.categoriesInclude
 import triplestore.TripleStore
@@ -41,22 +44,27 @@ import scala.language.postfixOps
   * It is obvious that we need to remove this class and only DI the specific values that a component requires,
   * allowing this class to be deleted
   */
-class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsApi: WSAPI, val mailService: MailService,
-                 val orgActor: ActorRef) (implicit ec: ExecutionContext, val ts: TripleStore) {
+class OrgContext @Inject() (
+  val narthexConfig: NarthexConfig,
+  val cacheApi: SyncCacheApi,
+  val wsApi: WSClient,
+  val mailService: MailService,
+  val actorSystem: ActorSystem
+) (ec: ExecutionContext, implicit val ts: TripleStore) {
 
-  val root = appConfig.narthexDataDir
-  val orgRoot = new File(root, appConfig.orgId)
+  val root = narthexConfig.narthexDataDir
+  val orgRoot = new File(root, narthexConfig.orgId)
   val factoryDir = new File(orgRoot, "factory")
   val categoriesDir = new File(orgRoot, "categories")
   val datasetsDir = new File(orgRoot, "datasets")
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
-  val crunchWhiteSpace = appConfig.crunchWhiteSpace
-  val semaphore = new Semaphore(appConfig.concurrencyLimit)
-  val saveSemaphore = new Semaphore(appConfig.concurrencyLimit)
+  val crunchWhiteSpace = narthexConfig.crunchWhiteSpace
+  val semaphore = new Semaphore(narthexConfig.concurrencyLimit)
+  val saveSemaphore = new Semaphore(narthexConfig.concurrencyLimit)
 
-  lazy val categoriesRepo = new CategoriesRepo(categoriesDir, appConfig.orgId)
-  lazy val sipFactory = new SipFactory(factoryDir, appConfig.rdfBaseUrl, wsApi, appConfig.orgId)
+  lazy val categoriesRepo = new CategoriesRepo(categoriesDir, narthexConfig.orgId)
+  lazy val sipFactory = new SipFactory(factoryDir, narthexConfig.rdfBaseUrl, wsApi, narthexConfig.orgId)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()
@@ -99,11 +107,19 @@ class OrgContext(val appConfig: AppConfig, val cacheApi: CacheApi, val wsApi: WS
     }
   }
 
+  lazy val orgActorInst = new OrgActor(this, actorSystem)
+
+  lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(orgActorInst), narthexConfig.orgId)
+
+  def orgActor: ActorRef = orgActorRef
+
   def startCategoryCounts() = {
     val catDatasets = DsInfo.listDsInfo(this).map(_.filter(_.getBooleanProp(categoriesInclude)))
     catDatasets.map { dsList =>
-      orgActor ! DatasetsCountCategories(dsList.map(_.spec))
+      orgActorRef ! DatasetsCountCategories(dsList.map(_.spec))
     }
   }
+
+  def appConfig: NarthexConfig = narthexConfig
 
 }

@@ -21,7 +21,7 @@ import java.net.URLEncoder
 
 import org.apache.commons.csv.CSVFormat
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.xml.NodeSeq
 
@@ -97,12 +97,12 @@ object StringHandling {
   def csvToXML(reader: Reader, writer: Writer): Unit = {
     var fieldNamesOpt: Option[List[String]] = None
     writer.write("<csv-records>\n")
-    CSVFormat.RFC4180.parse(reader).toSeq.foreach { record =>
+    CSVFormat.RFC4180.parse(reader).asScala.toSeq.foreach { record =>
       if (fieldNamesOpt.isEmpty) {
-        fieldNamesOpt = Some(record.toList)
+        fieldNamesOpt = Some(record.asScala.toList)
       }
       else {
-        val tagValue = fieldNamesOpt.get.zip(record.toList).flatMap { n =>
+        val tagValue = fieldNamesOpt.get.zip(record.asScala.toList).flatMap { n =>
           val tag = slugify(n._1)
           if (tag.isEmpty) None else {
             val value = sanitizeXml(n._2.trim)

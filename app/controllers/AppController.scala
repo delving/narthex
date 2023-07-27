@@ -14,15 +14,33 @@
 //    limitations under the License.
 //===========================================================================
 
-package web
+package controllers
 
+import javax.inject._
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPOutputStream
-
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.util.{Success, Failure}
+import play.api.Logging
+import play.api.cache.AsyncCacheApi
+import play.api.libs.json._
+import play.api.mvc._
+import play.api.mvc.BaseController
 import akka.actor._
 import akka.stream.Materializer
 import akka.util.Timeout
+import nl.grons.metrics4.scala.DefaultInstrumented
+import org.apache.commons.io.FileUtils
+import org.joda.time.DateTime
+
+import organization.OrgContext
+import services.Temporal._
+import triplestore.GraphProperties._
+import triplestore.{Sparql, TripleStore}
+import triplestore.Sparql.SkosifiedField
 import dataset.DatasetActor._
 import dataset.DsInfo
 import dataset.DsInfo._
@@ -31,33 +49,20 @@ import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
 import mapping.VocabInfo
 import mapping.VocabInfo._
-import nl.grons.metrics.scala.DefaultInstrumented
 import organization.OrgActor.DatasetMessage
-import org.apache.commons.io.FileUtils
-import org.joda.time.DateTime
-import organization.OrgContext
-import play.api.Logger
-import play.api.cache.CacheApi
-import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.json._
-import play.api.mvc._
-import services.Temporal._
-import triplestore.GraphProperties._
-import triplestore.{Sparql, TripleStore}
-import triplestore.Sparql.SkosifiedField
+import web.Utils
 
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+@Singleton
+class AppController @Inject() (
+   orgContext: OrgContext
+)(implicit
+   ec: ExecutionContext,
+   ts: TripleStore
+) extends InjectedController with Logging with DefaultInstrumented {
 
-class AppController(val orgContext: OrgContext)
-(implicit val ts: TripleStore, implicit val actorSystem: ActorSystem,
-  implicit val materializer: Materializer)
-extends Controller with DefaultInstrumented {
-
-  implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
+  implicit val timeout: Timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
   val getListDsTimer = metrics.timer("list.datasets")
-
 
   metrics.cachedGauge("datasets.num.total", 1.minute) {
     val eventualList = listDsInfo(orgContext)
@@ -82,7 +87,6 @@ extends Controller with DefaultInstrumented {
       ).as("application/json; charset=utf-8")
     })
   }
-
 
   def listPrefixes = Action { request =>
     val prefixes = orgContext.sipFactory.prefixRepos.map(_.prefix)
@@ -109,7 +113,7 @@ extends Controller with DefaultInstrumented {
     request.body.file("file").map { file =>
       val error = datasetContext.acceptUpload(file.filename, { target =>
         file.ref.moveTo(target, replace = true)
-        Logger.debug(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
+        logger.debug(s"Dropped file ${file.filename} on $spec: ${target.getAbsolutePath}")
         target
       })
       error.map {
@@ -128,7 +132,7 @@ extends Controller with DefaultInstrumented {
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
-      Logger.debug(s"setDatasetProperties $propsValues")
+      logger.debug(s"setDatasetProperties $propsValues")
       dsInfo.setSingularLiteralProps(propsValues: _*)
       sendRefresh(spec)
       Ok
@@ -181,7 +185,7 @@ extends Controller with DefaultInstrumented {
       val skosFieldUri = (request.body \ "skosFieldUri").as[String]
       val skosFieldValue = s"$skosFieldTag=$skosFieldUri"
       val included = (request.body \ "included").as[Boolean]
-      Logger.debug(s"set skos field $skosFieldValue: $included")
+      logger.debug(s"set skos field $skosFieldValue: $included")
       val currentSkosFields = dsInfo.getLiteralPropList(skosField)
       val action: String = if (included) {
         if (currentSkosFields.contains(skosFieldValue)) {
@@ -249,9 +253,12 @@ extends Controller with DefaultInstrumented {
   def uploadVocabulary(spec: String) = Action.async(parse.multipartFormData) { request =>
     withVocabInfo(spec, orgContext) { vocabInfo =>
       request.body.file("file").map { bodyFile =>
-        val file = bodyFile.ref.file
+        val file = bodyFile.ref.path.toFile
         val putFile = ts.up.dataPutXMLFile(vocabInfo.skosGraphName, file)
-        putFile.onFailure { case e: Throwable => Logger.error(s"Problem uploading vocabulary $spec", e) }
+        putFile.onComplete {
+          case Success(_) => ()
+          case Failure(e) => logger.error(s"Problem uploading vocabulary $spec", e)
+        }
         putFile.map { ok =>
           val now: String = timeToString(new DateTime())
           vocabInfo.setSingularLiteralProps(skosUploadTime -> now)
@@ -276,7 +283,7 @@ extends Controller with DefaultInstrumented {
   def setVocabularyProperties(spec: String) = Action(parse.json) { request =>
     withVocabInfo(spec, orgContext) { vocabInfo =>
       val propertyList = (request.body \ "propertyList").as[List[String]]
-      Logger.debug(s"setVocabularyProperties $propertyList")
+      logger.debug(s"setVocabularyProperties $propertyList")
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
@@ -293,7 +300,7 @@ extends Controller with DefaultInstrumented {
 
   def searchVocabulary(spec: String, sought: String, language: String) = Action { request =>
     val languageOpt = Option(language).find(lang => lang.trim.nonEmpty && lang != "-")
-    Logger.debug(s"Search $spec/$language: $sought")
+    logger.debug(s"Search $spec/$language: $sought")
     withVocabInfo(spec, orgContext) { vocabInfo =>
       val labelSearch: LabelSearch = vocabInfo.vocabulary.search(sought, 25, languageOpt)
       Ok(Json.obj("search" -> labelSearch))

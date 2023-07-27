@@ -52,6 +52,8 @@ import scala.io.Source
 
 object SourceRepo {
 
+  private val logger = Logger(getClass)
+
   val MAX_FILES = 100
   val SOURCE_FACTS_FILE = "source_facts.txt"
 
@@ -216,7 +218,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
     val fileNumber = zipFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
     val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
     val file = provideZipFile(createZipFile(fileNumber))
-    Logger.debug(s"Processing source: $file")
+    logger.debug(s"Processing source: $file")
     val idSet = new mutable.HashSet[String]()
     val parser = new PocketParser(sourceFacts, idFilter, orgContext)
     def receiveRecord(pocket: Pocket): Unit = {
@@ -229,7 +231,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
       parser.parse(source, Set.empty, receiveRecord, progress)
     }
     catch {
-      case unknown => Logger.error(s"got an error during parsing of source data: ${unknown}")
+      case unknown => logger.error(s"got an error during parsing of source data: ${unknown}")
     }
     finally {
       source.close()

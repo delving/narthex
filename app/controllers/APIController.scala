@@ -14,23 +14,31 @@
 //    limitations under the License.
 //===========================================================================
 
-package web
+package controllers
 
+import javax.inject._
 import java.io.FileInputStream
+import java.nio.charset.Charset
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext
+import play.api._
+import play.api.mvc._
+import play.api.http.ContentTypes
+import play.api.libs.json.Json
+import org.apache.commons.io.IOUtils
 
 import analysis.TreeNode
 import analysis.TreeNode.ReadTreeNode
 import dataset.SipRepo.AvailableSip
 import organization.OrgContext
-import org.apache.commons.io.IOUtils
-import play.api.http.ContentTypes
-import play.api.libs.json.Json
-import play.api.mvc._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import web.Utils
 
-import scala.concurrent.Future
-
-class APIController(val orgContext: OrgContext) extends Controller {
+@Singleton
+class APIController @Inject() (
+   orgContext: OrgContext
+)(implicit
+   ec: ExecutionContext
+) extends InjectedController with Logging {
 
   def processingErrorsText(spec: String) = Action(parse.anyContent) { implicit request =>
     val datasetContext = orgContext.datasetContext(spec)
@@ -70,7 +78,7 @@ class APIController(val orgContext: OrgContext) extends Controller {
   def pathsJSON(spec: String) =  Action(parse.anyContent) { implicit request =>
     val treeFile = orgContext.datasetContext(spec).index
     if (treeFile.exists()) {
-      val string = IOUtils.toString(new FileInputStream(treeFile))
+      val string = IOUtils.toString(new FileInputStream(treeFile), Charset.forName("UTF-8"))
       val json = Json.parse(string)
       val tree = json.as[ReadTreeNode]
       val paths = TreeNode.gatherPaths(tree, new Call(request.method, request.path).absoluteURL())

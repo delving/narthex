@@ -1,15 +1,18 @@
 package specs
 
+import org.scalatest.flatspec._
+import org.scalatest.matchers._
+import org.scalatestplus.mockito.MockitoSugar
 import dataset.SourceRepo
 import dataset.SourceRepo.{IdFilter, SourceFacts}
-import org.scalatest.{FlatSpec, Matchers}
+import organization.OrgContext
 import record.PocketParser
 import record.PocketParser.Pocket
 import services.FakeProgressReporter
 
 import scala.io.Source
 
-class TestPocketParser extends FlatSpec with Matchers {
+class TestPocketParser extends AnyFlatSpec with should.Matchers with MockitoSugar {
   val idFilter = IdFilter("verbatim", None)
   val reporter = new FakeProgressReporter
   val validId = "foo-bar"
@@ -69,7 +72,7 @@ class TestPocketParser extends FlatSpec with Matchers {
 
   def runTestFor(illegalChar: String): Unit = {
     val source = Source.fromString(getRecords(s"foo${illegalChar}bar"))
-    val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter)
+    val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter, mock[OrgContext])
 
     var outputCreated = false
     def outPut (pocket: Pocket): Unit = {
@@ -79,4 +82,5 @@ class TestPocketParser extends FlatSpec with Matchers {
     pocketParser.parse(source, Set.empty, outPut, reporter)
     assert(outputCreated)
   }
+
 }

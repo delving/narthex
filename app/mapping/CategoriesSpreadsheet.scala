@@ -19,8 +19,8 @@ package mapping
 import java.util.Date
 
 import mapping.CategoriesSpreadsheet.CategoryCount
-import org.apache.poi.hssf.util.HSSFColor
-import org.apache.poi.ss.usermodel.{CellStyle, FontFamily}
+import org.apache.poi.hssf.util.HSSFColor.HSSFColorPredefined
+import org.apache.poi.ss.usermodel.{FillPatternType, BorderStyle, FontFamily, HorizontalAlignment}
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import play.api.libs.json.{Json, Writes}
 
@@ -50,20 +50,20 @@ class CategoriesSpreadsheet(list: List[CategoryCount]) {
 
   val workbook = new XSSFWorkbook
   val helper = workbook.getCreationHelper
-  val boldColor = HSSFColor.GREY_25_PERCENT.index
-  val extraBoldColor = HSSFColor.GREY_40_PERCENT.index
-  val fillPattern = CellStyle.SOLID_FOREGROUND
-  val borderMedium = CellStyle.BORDER_MEDIUM
-  val borderThin = CellStyle.BORDER_THIN
+  val boldColor = HSSFColorPredefined.GREY_25_PERCENT.getIndex()
+  val extraBoldColor = HSSFColorPredefined.GREY_40_PERCENT.getIndex()
+  val fillPattern = FillPatternType.SOLID_FOREGROUND
+  val borderMedium = BorderStyle.MEDIUM
+  val borderThin = BorderStyle.THIN
 
   val titleFont = workbook.createFont()
   titleFont.setFamily(FontFamily.MODERN)
   titleFont.setBold(true)
-  titleFont.setColor(HSSFColor.DARK_BLUE.index)
+  titleFont.setColor(HSSFColorPredefined.DARK_BLUE.getIndex())
 
   val cornerStyle = workbook.createCellStyle()
   cornerStyle.setFont(titleFont)
-  cornerStyle.setAlignment(CellStyle.ALIGN_LEFT)
+  cornerStyle.setAlignment(HorizontalAlignment.LEFT)
   cornerStyle.setFillForegroundColor(extraBoldColor)
   cornerStyle.setFillPattern(fillPattern)
   cornerStyle.setBorderBottom(borderMedium)
@@ -72,7 +72,7 @@ class CategoriesSpreadsheet(list: List[CategoryCount]) {
   cornerStyle.setDataFormat(helper.createDataFormat().getFormat("yyyy-mm-dd hh:mm:ss"))
 
   val categoryStyle = workbook.createCellStyle()
-  categoryStyle.setAlignment(CellStyle.ALIGN_CENTER)
+  categoryStyle.setAlignment(HorizontalAlignment.CENTER)
   categoryStyle.setFillForegroundColor(boldColor)
   categoryStyle.setFillPattern(fillPattern)
   categoryStyle.setBorderBottom(borderMedium)
@@ -83,7 +83,7 @@ class CategoriesSpreadsheet(list: List[CategoryCount]) {
   val totalStyle = workbook.createCellStyle()
   totalStyle.setFillForegroundColor(extraBoldColor)
   totalStyle.setFillPattern(fillPattern)
-  totalStyle.setAlignment(CellStyle.ALIGN_RIGHT)
+  totalStyle.setAlignment(HorizontalAlignment.RIGHT)
   totalStyle.setBorderTop(borderMedium)
   totalStyle.setBorderRight(borderMedium)
   totalStyle.setBorderBottom(borderMedium)
@@ -92,19 +92,19 @@ class CategoriesSpreadsheet(list: List[CategoryCount]) {
   val datasetStyle = workbook.createCellStyle()
   datasetStyle.setFillForegroundColor(boldColor)
   datasetStyle.setFillPattern(fillPattern)
-  datasetStyle.setAlignment(CellStyle.ALIGN_RIGHT)
+  datasetStyle.setAlignment(HorizontalAlignment.RIGHT)
   datasetStyle.setBorderRight(borderMedium)
   datasetStyle.setFont(titleFont)
 
   val countStyle = workbook.createCellStyle()
-  countStyle.setAlignment(CellStyle.ALIGN_CENTER)
+  countStyle.setAlignment(HorizontalAlignment.CENTER)
 
   val countPercentStyle = workbook.createCellStyle()
-  countPercentStyle.setAlignment(CellStyle.ALIGN_CENTER)
+  countPercentStyle.setAlignment(HorizontalAlignment.CENTER)
   countPercentStyle.setDataFormat(workbook.createDataFormat().getFormat("0.00%"))
 
   val countSumStyle = workbook.createCellStyle()
-  countSumStyle.setAlignment(CellStyle.ALIGN_CENTER)
+  countSumStyle.setAlignment(HorizontalAlignment.CENTER)
   countSumStyle.setFillForegroundColor(boldColor)
   countSumStyle.setFillPattern(fillPattern)
   countSumStyle.setBorderTop(borderMedium)

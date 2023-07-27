@@ -1,23 +1,6 @@
-// The Typesafe repository
-resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
-
-resolvers += Resolver.sonatypeRepo("public")
-
-// Use the Play sbt plugin for Play projects
-addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.5.10")
-
-addSbtPlugin("com.typesafe.sbt" %% "sbt-web" % "1.3.0")
-
-addSbtPlugin("com.typesafe.sbt" % "sbt-less" % "1.0.6")
-
-addSbtPlugin("com.typesafe.sbt" % "sbt-rjs" % "1.0.7")
-
-addSbtPlugin("com.typesafe.sbt" % "sbt-digest" % "1.1.1")
-
-addSbtPlugin("com.typesafe.sbt" % "sbt-gzip" % "1.0.0")
-
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.3.5")
-
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.2")
-
-/*addSbtPlugin("com.geirsson" % "sbt-scalafmt" % "1.5.1")*/
+addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.8.20")
+addSbtPlugin("org.foundweekends.giter8" % "sbt-giter8-scaffold" % "0.13.1")
+addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.11.0")
+addSbtPlugin("com.typesafe.sbt"  % "sbt-less" % "1.1.2")
+addSbtPlugin("com.typesafe.sbt"  % "sbt-rjs" % "1.0.10")
+addSbtPlugin("com.typesafe.sbt" % "sbt-digest" % "1.1.4")

@@ -43,8 +43,10 @@ trait PrepareEDM {
     new SipRepo(sipsDir, dirName, rdfBaseUrl)
   }
 
-  def createSourceRepo: SourceRepo = {
+  // Seems never used
+  /*def createSourceRepo: SourceRepo = {
     val sourceRepoDir = FileHandling.clearDir(new File(s"/tmp/narthex-test/source-repo"))
     SourceRepo.createClean(sourceRepoDir, PocketParser.POCKET_SOURCE_FACTS)
-  }
+  }*/
+
 }

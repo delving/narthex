@@ -30,7 +30,7 @@ import services.StringHandling.createFOAFAbout
 import services.{FileHandling, ProgressReporter, StringHandling, Temporal}
 import triplestore.GraphProperties._
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 
 object ProcessedRepo {
 
@@ -67,7 +67,7 @@ object ProcessedRepo {
 		)
 		actionMap.toString()
 	  }
-	  dataset.listNames().toList.map(g => createBulkAction(dataset, g)).mkString("\n")
+	  dataset.listNames().asScala.toList.map(g => createBulkAction(dataset, g)).mkString("\n")
 	}
   }
 
@@ -105,6 +105,8 @@ object ProcessedRepo {
 }
 
 class ProcessedRepo(val home: File, dsInfo: DsInfo) {
+
+  private val logger = Logger(getClass)
 
   import dataset.ProcessedRepo._
 
@@ -220,7 +222,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
       val recordText = new StringBuilder
       var graphCount = 0
       var chunkComplete = false
-      //Logger.info("Start reading files.")
+      //logger.info("Start reading files.")
       while (!chunkComplete) {
         progressReporter.checkInterrupt()
         readerOpt.map { reader =>
@@ -241,7 +243,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
           chunkComplete = true
         }
       }
-      //Logger.info(s"Graphcount is: $graphCount.")
+      //logger.info(s"Graphcount is: $graphCount.")
       if (graphCount > 0) Some(GraphChunk(dataset, dsInfo, recordText.toString())) else None
     }
 
@@ -296,20 +298,20 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
       var graphCount = 0
       var chunkComplete = false
       var bytesProcessed = 0
-      //Logger.info("Start reading files.")
+      //logger.info("Start reading files.")
       while (!chunkComplete) {
         progressReporter.checkInterrupt()
         readerOpt.map { reader =>
           Option(reader.readLine()).map {
             case LineId(graphName, currentHash) =>
-              //Logger.info(s"$graphCount => $graphName")
+              //logger.info(s"$graphCount => $graphName")
               val m = dataset.getNamedModel(graphName)
               try {
                 m.read(new StringReader(recordText.toString()), null, "RDF/XML")
               }
               catch {
                 case e: Throwable =>
-                  Logger.error(recordText.toString())
+                  logger.error(recordText.toString())
                   throw e
               }
               //val StringHandling.SubjectOfGraph(subject) = graphName

@@ -2,77 +2,91 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
+#->          /webjars                                                         webjars.Routes
+->          /narthex/webjars                                                 webjars.Routes
+
+#GET         /assets/*file                                controllers.Assets.at(file)
+#GET         /narthex/assets/*file                                            controllers.Assets.versioned(path="/public", file: Asset)
+#GET         /assets/*file                                                    controllers.Assets.at(file)
+#GET         /assets/*file                                                    controllers.Assets.versioned(path="/public", file: Asset)
+#GET         /assets/javascripts/*file                                        controllers.Assets.versioned(path="/public", file: Asset)
+#GET         /narthex/assets/*file                                            controllers.Assets.versioned(file)
+#GET         /webjars/*file                                                   org.webjars.play.WebJarAssets.at(file)
+#GET     /narthex/assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
+
 # Home page
-GET         /                                                                web.MainController.root
-GET         /narthex/                                                        web.MainController.index
-GET         /narthex/logout                                                  web.MainController.logout
+GET         /                                                                controllers.MainController.root
+GET         /narthex/                                                        controllers.MainController.index
+GET         /narthex/logout                                                  controllers.MainController.logout
 
 # JavaScript routes object
-GET         /narthex/jsRoutes.js                                             web.MainController.jsRoutes()
+GET         /narthex/jsRoutes.js                                             controllers.MainController.jsRoutes()
 
 # File Handling
-GET         /narthex/socket/dataset                                          web.WebSocketController.dataset
-GET         /narthex/app/dataset-list                                        web.AppController.listDatasets
-GET         /narthex/app/prefixes                                            web.AppController.listPrefixes
-GET         /narthex/app/dataset/:spec/create/:character/:prefix             web.AppController.createDataset(spec, character, prefix)
-POST        /narthex/app/dataset/:spec/upload                                web.AppController.uploadDataset(spec)
-POST        /narthex/app/dataset/:spec/set-properties                        web.AppController.setDatasetProperties(spec)
-POST        /narthex/app/dataset/:spec/toggle-skos                           web.AppController.toggleSkosifiedField(spec)
-POST        /narthex/app/dataset/:spec/set-delimiter                         web.AppController.setRecordDelimiter(spec)
-GET         /narthex/app/dataset/:spec/index                                 web.AppController.index(spec)
-GET         /narthex/app/dataset/:spec/info                                  web.AppController.datasetInfo(spec)
-GET         /narthex/app/dataset/:spec/command/:command                      web.AppController.command(spec, command)
-GET         /narthex/app/dataset/:spec/status/*path                          web.AppController.nodeStatus(spec, path)
-GET         /narthex/app/dataset/:spec/sample/:size/*path                    web.AppController.sample(spec, path, size:Int)
-GET         /narthex/app/dataset/:spec/histogram/:size/*path                 web.AppController.histogram(spec, path, size:Int)
+GET         /narthex/socket/dataset                                          controllers.WebSocketController.dataset
+GET         /narthex/app/dataset-list                                        controllers.AppController.listDatasets
+GET         /narthex/app/prefixes                                            controllers.AppController.listPrefixes
+GET         /narthex/app/dataset/:spec/create/:character/:prefix             controllers.AppController.createDataset(spec, character, prefix)
+POST        /narthex/app/dataset/:spec/upload                                controllers.AppController.uploadDataset(spec)
+POST        /narthex/app/dataset/:spec/set-properties                        controllers.AppController.setDatasetProperties(spec)
+POST        /narthex/app/dataset/:spec/toggle-skos                           controllers.AppController.toggleSkosifiedField(spec)
+POST        /narthex/app/dataset/:spec/set-delimiter                         controllers.AppController.setRecordDelimiter(spec)
+GET         /narthex/app/dataset/:spec/index                                 controllers.AppController.index(spec)
+GET         /narthex/app/dataset/:spec/info                                  controllers.AppController.datasetInfo(spec)
+GET         /narthex/app/dataset/:spec/command/:command                      controllers.AppController.command(spec, command)
+GET         /narthex/app/dataset/:spec/status/*path                          controllers.AppController.nodeStatus(spec, path)
+GET         /narthex/app/dataset/:spec/sample/:size/*path                    controllers.AppController.sample(spec, path, size:Int)
+GET         /narthex/app/dataset/:spec/histogram/:size/*path                 controllers.AppController.histogram(spec, path, size:Int)
 
-GET         /narthex/app/dataset/:spec/term/vocab                            web.AppController.getTermVocabulary(spec)
-GET         /narthex/app/dataset/:spec/term/get-mappings                     web.AppController.getTermMappings(spec)
-POST        /narthex/app/dataset/:spec/term/:vocabSpec/toggle-mapping        web.AppController.toggleTermMapping(spec, vocabSpec)
-GET         /narthex/app/dataset/:spec/category/get-mappings                 web.AppController.getCategoryMappings(spec)
+GET         /narthex/app/dataset/:spec/term/vocab                            controllers.AppController.getTermVocabulary(spec)
+GET         /narthex/app/dataset/:spec/term/get-mappings                     controllers.AppController.getTermMappings(spec)
+POST        /narthex/app/dataset/:spec/term/:vocabSpec/toggle-mapping        controllers.AppController.toggleTermMapping(spec, vocabSpec)
+GET         /narthex/app/dataset/:spec/category/get-mappings                 controllers.AppController.getCategoryMappings(spec)
 
-GET         /narthex/app/skos/list                                           web.AppController.listVocabularies
-GET         /narthex/app/skos/:spec/create                                   web.AppController.createVocabulary(spec)
-GET         /narthex/app/skos/:spec/delete                                   web.AppController.deleteVocabulary(spec)
-POST        /narthex/app/skos/:spec/upload                                   web.AppController.uploadVocabulary(spec)
-POST        /narthex/app/skos/:spec/set-properties                           web.AppController.setVocabularyProperties(spec)
-GET         /narthex/app/skos/:spec/info                                     web.AppController.vocabularyInfo(spec)
-GET         /narthex/app/skos/:spec/statistics                               web.AppController.vocabularyStatistics(spec)
-GET         /narthex/app/skos/:spec/languages                                web.AppController.getVocabularyLanguages(spec)
-GET         /narthex/app/skos/:spec/search/:sought/:language                 web.AppController.searchVocabulary(spec, sought, language)
-GET         /narthex/app/skos/:specA/:specB/get-mappings                     web.AppController.getSkosMappings(specA, specB)
-POST        /narthex/app/skos/:specA/:specB/toggle-mapping                   web.AppController.toggleSkosMapping(specA, specB)
+GET         /narthex/app/skos/list                                           controllers.AppController.listVocabularies
+GET         /narthex/app/skos/:spec/create                                   controllers.AppController.createVocabulary(spec)
+GET         /narthex/app/skos/:spec/delete                                   controllers.AppController.deleteVocabulary(spec)
+POST        /narthex/app/skos/:spec/upload                                   controllers.AppController.uploadVocabulary(spec)
+POST        /narthex/app/skos/:spec/set-properties                           controllers.AppController.setVocabularyProperties(spec)
+GET         /narthex/app/skos/:spec/info                                     controllers.AppController.vocabularyInfo(spec)
+GET         /narthex/app/skos/:spec/statistics                               controllers.AppController.vocabularyStatistics(spec)
+GET         /narthex/app/skos/:spec/languages                                controllers.AppController.getVocabularyLanguages(spec)
+GET         /narthex/app/skos/:spec/search/:sought/:language                 controllers.AppController.searchVocabulary(spec, sought, language)
+GET         /narthex/app/skos/:specA/:specB/get-mappings                     controllers.AppController.getSkosMappings(specA, specB)
+POST        /narthex/app/skos/:specA/:specB/toggle-mapping                   controllers.AppController.toggleSkosMapping(specA, specB)
 
 
-GET         /narthex/app/category-list                                       web.AppController.getCategoryList
-GET         /narthex/app/sheets-list                                         web.AppController.listSheets
-GET         /narthex/app/sheet/:spec                                         web.AppController.sheet(spec)
-GET         /narthex/app/categories/gather-counts                            web.AppController.gatherCategoryCounts
+GET         /narthex/app/category-list                                       controllers.AppController.getCategoryList
+GET         /narthex/app/sheets-list                                         controllers.AppController.listSheets
+GET         /narthex/app/sheet/:spec                                         controllers.AppController.sheet(spec)
+GET         /narthex/app/categories/gather-counts                            controllers.AppController.gatherCategoryCounts
 
-GET         /narthex/app/dataset/:spec/sip-list                              web.AppController.listSipFiles(spec)
-GET         /narthex/app/dataset/:spec/delete-latest                         web.AppController.deleteLatestSipFile(spec)
+GET         /narthex/app/dataset/:spec/sip-list                              controllers.AppController.listSipFiles(spec)
+GET         /narthex/app/dataset/:spec/delete-latest                         controllers.AppController.deleteLatestSipFile(spec)
 
 # sip-app
-GET         /narthex/sip-app                                                 web.SipAppController.listSipZips()
-GET         /narthex/sip-app/:spec                                           web.SipAppController.downloadSipZip(spec)
-POST        /narthex/sip-app/:spec/:zipFileName                              web.SipAppController.uploadSipZip(spec, zipFileName)
+GET         /narthex/sip-app                                                 controllers.SipAppController.listSipZips()
+GET         /narthex/sip-app/:spec                                           controllers.SipAppController.downloadSipZip(spec)
+POST        /narthex/sip-app/:spec/:zipFileName                              controllers.SipAppController.uploadSipZip(spec, zipFileName)
 
-GET         /narthex/api/:spec                                       web.APIController.pathsJSON(spec)
-GET         /narthex/api/:spec/errors                                web.APIController.processingErrorsText(spec)
-GET         /narthex/api/:spec/bulkactions                           web.APIController.processingBulkActionText(spec)
-GET         /narthex/api/:spec/nquads                                web.APIController.processingNquads(spec)
-GET         /narthex/api/:spec/sourced                               web.APIController.processingSourcedText(spec)
-GET         /narthex/api/:spec/processed                             web.APIController.processingProcessedText(spec)
-GET         /narthex/api/:spec/log                                   web.APIController.processingHarvestingLog(spec)
-GET         /narthex/api/:spec/tree                                  web.APIController.indexJSON(spec)
-GET         /narthex/api/:spec/unique/*path                          web.APIController.uniqueText(spec, path)
-GET         /narthex/api/:spec/histogram/*path                       web.APIController.histogramText(spec, path)
+GET         /narthex/api/:spec                                               controllers.APIController.pathsJSON(spec)
+GET         /narthex/api/:spec/errors                                        controllers.APIController.processingErrorsText(spec)
+GET         /narthex/api/:spec/bulkactions                                   controllers.APIController.processingBulkActionText(spec)
+GET         /narthex/api/:spec/nquads                                        controllers.APIController.processingNquads(spec)
+GET         /narthex/api/:spec/sourced                                       controllers.APIController.processingSourcedText(spec)
+GET         /narthex/api/:spec/processed                                     controllers.APIController.processingProcessedText(spec)
+GET         /narthex/api/:spec/log                                           controllers.APIController.processingHarvestingLog(spec)
+GET         /narthex/api/:spec/tree                                          controllers.APIController.indexJSON(spec)
+GET         /narthex/api/:spec/unique/*path                                  controllers.APIController.uniqueText(spec, path)
+GET         /narthex/api/:spec/histogram/*path                               controllers.APIController.histogramText(spec, path)
 
 # Static
-GET         /narthex/webjars/*file                                           controllers.WebJarAssets.at(file)
+#GET         /narthex/webjars/*file                                           controllers.WebJarAssets.at(file)
+#GET         /narthex/assets/*file                                            controllers.Assets.versioned(path="/public", file: Asset)
+GET         /narthex/webjars/*file                                           org.webjars.play.WebJarAssets.at(file)
 GET         /narthex/assets/*file                                            controllers.Assets.versioned(path="/public", file: Asset)
 
 # Monitoring
 GET         /non-public/monitoring/metrics                                   com.kenshoo.play.metrics.MetricsController.metrics
-GET         /non-public/monitoring/info                                      web.InfoController.info
-GET         /non-public/monitoring/health                                    web.InfoController.health
+GET         /non-public/monitoring/info                                      controllers.InfoController.info
+GET         /non-public/monitoring/health                                    controllers.InfoController.health

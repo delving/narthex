@@ -32,7 +32,7 @@ import services.StringHandling._
 import triplestore.GraphProperties._
 import triplestore.TripleStore
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 
 object CategoryCounter {
@@ -111,7 +111,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo, orgContext: OrgContex
     case Some(chunk: GraphChunk) => actorWork(context) {
       log.info("Category count of graphs")
       val termCat = termCatMapOpt.get
-      chunk.dataset.listNames().toList.foreach { recordGraph =>
+      chunk.dataset.listNames().asScala.toList.foreach { recordGraph =>
         val model = chunk.dataset.getNamedModel(recordGraph)
         var categoryLabels = Set.empty[String]
         skosFieldValues.foreach { skosFieldValue =>
@@ -119,7 +119,7 @@ class CategoryCounter(dsInfo: DsInfo, repo: ProcessedRepo, orgContext: OrgContex
           val propertyTag = parts(0)
           val propertyUri = parts(1)
           val property = model.getProperty(propertyUri)
-          model.listObjectsOfProperty(property).map(_.asLiteral().getString).toList.foreach { literalValueText =>
+          model.listObjectsOfProperty(property).asScala.map(_.asLiteral().getString).toList.foreach { literalValueText =>
             val mintedUri = s"${dsInfo.uri}/$propertyTag/${slugify(literalValueText)}"
             termCat.get(mintedUri).foreach(newLabels => categoryLabels ++= newLabels)
           }

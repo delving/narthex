@@ -22,7 +22,7 @@ define(["angular", "common"], function (angular) {
     mod.service("datasetListService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
-            var app = playRoutes.web.AppController;
+            var app = playRoutes.controllers.AppController;
 
             var rejection = function (reply) {
                 if (reply.status == 401) { // unauthorized
@@ -41,7 +41,7 @@ define(["angular", "common"], function (angular) {
 
             return {
                 datasetSocket: function() {
-                    return new WebSocket(playRoutes.web.WebSocketController.dataset().webSocketUrl());
+                    return new WebSocket(playRoutes.controllers.WebSocketController.dataset().webSocketUrl());
                 },
                 create: function (spec, character, prefix) {
                     return app.createDataset(spec, character, prefix).get().then(

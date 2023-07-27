@@ -1,12 +1,13 @@
 package specs
 
 import java.io.{File, FileOutputStream}
+import org.scalatest.flatspec._
+import org.scalatest.matchers._
 
 import dataset.SourceRepo
 import dataset.SourceRepo._
 import harvest.Harvesting._
 import org.apache.commons.io.FileUtils
-import org.scalatest.{FlatSpec, Matchers}
 import record.PocketParser._
 import services.{FileHandling, ProgressReporter}
 
@@ -14,7 +15,7 @@ import scala.collection.mutable
 import scala.xml.XML
 
 
-class TestSourceRepo extends FlatSpec with Matchers {
+class TestSourceRepo extends AnyFlatSpec with should.Matchers {
 
   def fresh(dir: String): File = {
     val file = new File(dir)

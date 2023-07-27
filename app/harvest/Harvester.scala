@@ -30,11 +30,12 @@ import harvest.Harvesting.{AdLibHarvestPage, HarvestError, NoRecordsMatch, PMHHa
 import nxutil.Utils.actorWork
 import org.apache.commons.io.FileUtils
 import play.api.Logger
-import play.api.libs.ws.WSAPI
+import play.api.libs.ws.WSClient
 import services.ProgressReporter.ProgressState._
 import services.{ProgressReporter, StringHandling}
 
 import scala.concurrent._
+import scala.util.{Failure, Success}
 import scala.language.postfixOps
 
 object Harvester {
@@ -47,15 +48,17 @@ object Harvester {
 
   case class HarvestComplete(strategy: HarvestStrategy, fileOpt: Option[File], noRecordsMatch: Boolean = false)
 
-  def props(datasetContext: DatasetContext, timeOut: Long, wsApi: WSAPI,
+  def props(datasetContext: DatasetContext, timeOut: Long, wsApi: WSClient,
             harvestingExecutionContext: ExecutionContext) = Props(classOf[Harvester], timeOut, datasetContext,
     wsApi, harvestingExecutionContext)
 }
 
-class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
+class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                 implicit val harvestingExecutionContext: ExecutionContext) extends Actor
   with Harvesting
   with ActorLogging {
+
+  private val logger = Logger(getClass)
 
   var tempFileOpt: Option[File] = None
   var zipOutputOpt: Option[ZipOutputStream] = None
@@ -98,8 +101,9 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
                   val fileOption = sourceRepo.acceptFile(tempFileOpt.get, acceptZipReporter)
                   log.info(s"Zip file accepted: $fileOption")
                   context.parent ! HarvestComplete(strategy, fileOption)
-                } onFailure {
-                  case e: Exception =>
+                } onComplete {
+                  case Success(v) => v
+                  case Failure(e) =>
                     log.info(s"error on accepting sip-file: ${e}")
                     context.parent ! WorkFailure(e.getMessage)
                 }
@@ -113,8 +117,9 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
   }
 
   def handleFailure(future: Future[Any], strategy: HarvestStrategy, message: String) = {
-    future.onFailure {
-      case e: Exception =>
+    future.onComplete {
+      case Success(_) => ()
+      case Failure(e) =>
         log.info(s"Harvest failure", e)
         finish(strategy, Some(e.toString))
     }
@@ -268,7 +273,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSAPI,
       finish(strategy, Some(error))
 
     case NoRecordsMatch(message, strategy) =>
-      Logger.debug("noRecordsMatch (pre-finish)")
+      logger.debug("noRecordsMatch (pre-finish)")
       finish(strategy, Some(message))
   }
+
 }
