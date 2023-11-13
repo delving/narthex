@@ -457,6 +457,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       def processIncremental(fileOpt: Option[File],
                              noRecordsMatch: Boolean,
                              mod: Option[DateTime]) = {
+        orgContext.semaphore.release(dsInfo.spec)
         noRecordsMatch match {
           case true =>
             Logger.debug(
