@@ -57,7 +57,7 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
             sortWith((s, t) => s.getPreviousHarvestTime().isBefore(t.getPreviousHarvestTime())).
             foreach { listedInfo =>
               val harvestCron = listedInfo.currentHarvestCron
-              logger.info(s"scheduled ds: ${listedInfo.spec} ${listedInfo.currentHarvestCron.previous.toString()}")
+              logger.info(s"scheduled ds: ${listedInfo.spec} ${listedInfo.currentHarvestCron.previous.toString()} (time to work: ${harvestCron.timeToWork})")
               if (harvestCron.timeToWork) withDsInfo(listedInfo.spec, orgContext) { info => // the cached version
                 if (orgContext.semaphore.tryAcquire(info.spec)) {
                   logger.info(s"Time to work on $info: $harvestCron")

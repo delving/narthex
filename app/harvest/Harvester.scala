@@ -83,8 +83,9 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   }
 
   def finish(strategy: HarvestStrategy, errorOpt: Option[String]) = {
+
     zipOutputOpt.foreach(_.close())
-    log.info(s"Finished $strategy harvest error=$errorOpt")
+    log.info(s"Finished $strategy harvest error=$errorOpt for dataset $datasetContext")
     errorOpt match {
       case Some("noRecordsMatch") =>
         log.info(s"Finished incremental harvest with noRecordsMatch")
