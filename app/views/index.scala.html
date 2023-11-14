@@ -1,29 +1,20 @@
+@import org.webjars.play.WebJarsUtil
+@import routes.Assets
 @(orgId: String, sipCreatorLink: String, version: String, supportedDatasetTypes: String, commitSha: String,
-  webJarAssets: WebJarAssets, requireJS: org.webjars.play.RequireJS, naveDomain: String, enableIncrementalHarvest: Boolean)
+  naveDomain: String, enableIncrementalHarvest: Boolean)(implicit
+  assets: AssetsFinder, webJarsUtil: WebJarsUtil, req: play.api.mvc.RequestHeader)
 <!DOCTYPE html>
 <html>
     <head>
-        <script type="text/javascript">
-            (function () {
-                const head = document.head
-                const append = head.appendChild
-                head.appendChild = child => {
-                    if (child && child.src && child.src.indexOf('//cdn.jsdelivr.net/webjars/bootstrap/3.1.1-1/js/bootstrap.min.js') >= 0) {
-                        child.src = '//cdn.jsdelivr.net/webjars/bootstrap/3.1.1/js/bootstrap.min.js'
-                        console.log('patched bootstrap')
-                    }
-                    append.call(head, child)
-                }
-            }());
-        </script>
-
         <title>Narthex - @orgId </title>
-        <link rel='shortcut icon' type='image/png' href='@routes.Assets.versioned("images/favicon.png")'>
-        <link rel='stylesheet' media='screen' href='@routes.Assets.versioned("lib/bootstrap/css/bootstrap.min.css")'>
-        <link rel='stylesheet' media='screen' href='@routes.Assets.versioned("css/font-awesome.min.css")'>
-        <link rel='stylesheet' media='screen' href='@routes.Assets.versioned("stylesheets/main.css")'>
-        <link rel="stylesheet" media='screen' href='@routes.Assets.versioned("lib/ng-grid/ng-grid.css")' />
-        <script data-main="@routes.Assets.versioned("javascripts/main.js")" type="text/javascript" src="@routes.Assets.versioned("lib/requirejs/require.js")"></script>
+        <link rel="shortcut icon" type="image/png" href="@Assets.versioned("images/favicon.png")">
+        <link rel="stylesheet" media="screen" href="@Assets.versioned("css/font-awesome.min.css")">
+        @webJarsUtil.locate("/bootstrap.min.css").css()
+        @webJarsUtil.locate("/jquery.min.js").script()
+        @webJarsUtil.locate("/bootstrap.min.js").script()
+        <link rel="stylesheet" media="screen" href="@Assets.versioned("stylesheets/main.css")">
+        <link rel="stylesheet" media="screen" href="@Assets.versioned("lib/ng-grid/ng-grid.css")" />
+        @webJarsUtil.requireJs(routes.Assets.versioned("javascripts/main.js"))
     </head>
     <body>
         <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="IndexCtrl" data-ng-init="initialize('@orgId', '@sipCreatorLink', '@enableIncrementalHarvest', '@supportedDatasetTypes')">
@@ -35,7 +26,7 @@
 
                     <div class="sidebar-header">
                         <a href="" class="">
-                            <img src='@routes.Assets.versioned("images/delving-logo.png")' width="32"/> NARTHEX
+                            <img src="@Assets.versioned("images/delving-logo.png")" width="32"/> NARTHEX
                             <span ng-click="toggleSidebar()" class="menu-icon glyphicon glyphicon-transfer"></span>
                         </a>
                     </div>
@@ -69,7 +60,7 @@
                 <div class="sidebar-footer">
                     <div class="col-xs-12">
                         <a href="https://github.com/delving/narthex" target="_blank">
-                          v. @version / @commitSha
+                          v. @version <!--/ @commitSha-->
                         </a>
                     </div>
                 </div>
@@ -93,7 +84,5 @@
 
         </div>
 
-
-        <script data-main="@routes.Assets.versioned("javascripts/lib/bootstrap.js")" type="text/javascript" src="@routes.Assets.versioned("lib/requirejs/require.js")"></script>
     </body>
 </html>

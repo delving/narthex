@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Changed
 
+- Upgrade to Scala 2.13, Play 2.8, and sbt 1.7 with support for JDK 8 and 11 as well as experimental support for JDK 17
+- Include sip-core with Groovy upgraded to 4.0 and support for JDK 8, 11 and 17 (for JDK 11+ run java with "--add-opens java.base/java.util=ALL-UNNAMED") 
+- Replace library for calculating string similarity with an equivalent maintained library
+- Don't display Narthex build's Git commit SHA as the plugin that provided this does not support current sbt versions  
+
 - Remove millis from timestamp during incremental harvesting [[GH-165]](https://github.com/delving/narthex/pull/165)
 - Add support for Dataset direct download for remote sync [[GH-166]](https://github.com/delving/narthex/pull/166)
 - Add support for saving semaphore with maximum concurrency

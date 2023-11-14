@@ -36,12 +36,15 @@ import triplestore.GraphProperties._
 import triplestore.Sparql._
 import triplestore.{GraphProperties, SkosGraph, TripleStore}
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import scala.concurrent._
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 import scala.io.Source
 
 object DsInfo {
+
+  private val logger = Logger(getClass)
 
   val patience = 1.minute
 
@@ -86,7 +89,7 @@ object DsInfo {
                         dataType: String,
                         edmType: String)
 
-  implicit val dsInfoWrites = new Writes[DsInfo] {
+  implicit val dsInfoWrites: Writes[DsInfo] = new Writes[DsInfo] {
     def writes(dsInfo: DsInfo): JsValue = {
       val out = new StringWriter()
       RDFDataMgr.write(out, dsInfo.getModel, RDFFormat.JSONLD_FLAT)
@@ -237,8 +240,9 @@ class DsInfo(
   // could cache as well so that the get happens less
   def futureModel = ts.dataGet(graphName)
 
-  futureModel.onFailure {
-    case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
+  futureModel.onComplete {
+    case Success(_) => ()
+    case Failure(e) => logger.warn(s"No data found for dataset $spec", e)
   }
 
   def getModel = Await.result(futureModel, patience)
@@ -273,7 +277,7 @@ class DsInfo(
 
   def getLiteralPropList(prop: NXProp): List[String] = {
     val m = getModel
-    m.listObjectsOfProperty(m.getResource(uri), m.getProperty(prop.uri))
+    m.listObjectsOfProperty(m.getResource(uri), m.getProperty(prop.uri)).asScala
       .map(_.asLiteral().toString)
       .toList
   }
@@ -293,7 +297,7 @@ class DsInfo(
   def getUriProp(prop: NXProp): Option[String] = {
     val m = getModel
     m.listObjectsOfProperty(m.getResource(uri), m.getProperty(prop.uri))
-      .toList
+      .toList.asScala
       .headOption
       .map(_.asResource().toString)
   }
@@ -408,7 +412,7 @@ class DsInfo(
     }
     sourceFiles.listFiles
       .filter(_.getName.endsWith(".ids"))
-      .flatMap(Source.fromFile(_).getLines)
+      .flatMap(Source.fromFile(_).getLines())
       .foldLeft(Map.empty[String, Int]) { (count, keyword) =>
         {
           count + (keyword -> (count.getOrElse(keyword, 0) + 1))
@@ -428,7 +432,7 @@ class DsInfo(
         {
           Source
             .fromFile(fname)
-            .getLines
+            .getLines()
             .filter { line =>
               line match {
                 case LineId(graphName, currentHash) => true
@@ -516,7 +520,7 @@ class DsInfo(
     val skosFieldApi = s"${naveApiUrl}/api/index/narthex/toggle/proxyfield/"
     val request = orgContext.wsApi
       .url(s"$skosFieldApi")
-      .withHeaders(
+      .withHttpHeaders(
         "Content-Type" -> "application/json; charset=utf-8",
         "Accept" -> "application/json",
         "Authorization" -> s"Token ${naveApiAuthToken}"
@@ -615,22 +619,22 @@ class DsInfo(
   private def checkUpdateResponse(response: WSResponse,
                                   logString: String): Unit = {
     if (response.status != 201) {
-      Logger.error(logString)
+      logger.error(logString)
       throw new Exception(s"${response.statusText}: ${response.body}:")
     }
   }
 
   def bulkApiUpdate(bulkActions: String) = {
-    // Logger.debug(bulkActions)
+    // logger.debug(bulkActions)
     val request = orgContext.wsApi
       .url(s"$bulkApi")
-      .withHeaders(
+      .withHttpHeaders(
         "Content-Type" -> "text/plain; charset=utf-8",
         "Accept" -> "application/json",
         "Authorization" -> s"Token ${naveApiAuthToken}"
       )
     if (mockBulkApi) {
-      Logger.debug(s"Mocked $request")
+      logger.debug(s"Mocked $request")
       Future.successful(true)
     } else {
       // define your success condition
@@ -648,7 +652,7 @@ class DsInfo(
   def extractSpecIdFromGraphName(id: String): (String, String) = {
     if (id contains "/doc/") {
 	  val localId = id.stripSuffix("/graph").split("/doc/").last.split("/").last.trim
-      // Logger.info(s"localID: $localId")
+      // logger.info(s"localID: $localId")
 	  return (toString, localId)
     }
 	val SpecIdExtractor =

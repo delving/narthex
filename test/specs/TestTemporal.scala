@@ -1,16 +1,18 @@
 package specs
 
+import org.scalatest.flatspec._
+import org.scalatest.matchers._
 import org.joda.time.{DateTime, DateTimeZone, LocalDateTime}
-import org.scalatest.{FlatSpec, Matchers}
+
 import services.Temporal._
 
-class TestTemporal extends FlatSpec with Matchers{
+class TestTemporal extends AnyFlatSpec with should.Matchers{
 
   "date parsing" should "be tolerant" in {
 
     DateTimeZone.setDefault(DateTimeZone.forID("Europe/Amsterdam"))
 
-    def xform(string: String) = {
+    def xform(string: String): String = {
       val t = stringToTime(string)
       val s = timeToString(t)
       s

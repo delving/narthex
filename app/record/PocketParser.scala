@@ -34,6 +34,8 @@ import scala.xml.{MetaData, NamespaceBinding, TopScope}
 
 object PocketParser {
 
+  private val logger = Logger(getClass)
+
   def cleanUpId(id: String): String = {
     id.replace("/", "-")
       .replace(":", "-")
@@ -104,7 +106,7 @@ class PocketParser(facts: SourceFacts,
   val introduceRecord = false // todo: still useful? was deepRecordContainer.exists(_ == recordRootPath)
   val pocketWrap = facts != POCKET_SOURCE_FACTS
   var percentWas = -1
-  var lastProgress = 0l
+  var lastProgress = 0L
   var recordCount = 0
   var namespaceMap: Map[String, String] = Map.empty
 
@@ -229,7 +231,7 @@ class PocketParser(facts: SourceFacts,
               }
             }
           } getOrElse {
-            Logger.error("MISSING ID!")
+            logger.error("MISSING ID!")
             throw new RuntimeException("Missing id!")
           }
           record.foreach { r =>
@@ -247,7 +249,7 @@ class PocketParser(facts: SourceFacts,
             startElement = None
             recordText.append(s"$start$text")
           } else if (!text.isEmpty) {
-            Logger.warn(s"Mixed content text of <$tag> ignored: [$text]")
+            logger.warn(s"Mixed content text of <$tag> ignored: [$text]")
           }
           recordText.append(s"</$tag>\n")
         }
@@ -268,7 +270,7 @@ class PocketParser(facts: SourceFacts,
         case EvComment(text) =>
           stupidParser(text, entity => addFieldText(s"&$entity;"))
         case EvProcInstr(target, text) =>
-        case x                         => Logger.error("EVENT? " + x)
+        case x                         => logger.error("EVENT? " + x)
       }
     }
     recordCount
@@ -279,7 +281,7 @@ class PocketParser(facts: SourceFacts,
   def pathContainer(string: String) =
     string.substring(0, string.lastIndexOf("/"))
 
-  def showPath() = Logger.debug(pathString)
+  def showPath() = logger.debug(pathString)
 
   def startElementString(tag: String, attrs: MetaData, replaceId: Boolean) = {
     val attrString = new mutable.StringBuilder()

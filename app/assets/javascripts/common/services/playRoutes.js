@@ -6,7 +6,7 @@
  * // For `POST /login controller.Application.login()` Play generates:
  * jsRoutes.controllers.Application.login()
  * // With playRoutes, this can be used like this:
- * playRoutes.web.Application.login().post({user:"username", password:"secret"}).then(function(response) {
+ * playRoutes.controllers.Application.login().post({user:"username", password:"secret"}).then(function(response) {
  *   ...
  * )};
  * }}}

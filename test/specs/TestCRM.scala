@@ -2,11 +2,11 @@ package specs
 
 import java.io.InputStream
 import java.util
-
+import scala.jdk.CollectionConverters._
+import org.scalatest.flatspec._
+import org.scalatest.matchers._
 import org.apache.jena.rdf.model._
-import org.scalatest.{FlatSpec, Matchers}
 
-import scala.collection.JavaConversions._
 
 class CRM(is: InputStream) {
   val RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -44,13 +44,13 @@ class CRM(is: InputStream) {
   }
 
   def subjects(p: Property, o: Resource): List[Resource] =
-    list(None, Some(p), Some(o)).map(_.getSubject).toList
+    list(None, Some(p), Some(o)).asScala.map(_.getSubject).toList
 
   def objects(s: Resource, p: Property): List[Resource] =
-    list(Some(s), Some(p), None).map(_.getObject.asResource()).toList
+    list(Some(s), Some(p), None).asScala.map(_.getObject.asResource()).toList
 
   def literal(s: Resource, p: Property, l: String = "en"): String =
-    list(Some(s), Some(p), None)
+    list(Some(s), Some(p), None).asScala
       .map(_.getObject.asLiteral())
       .find(_.getLanguage == l)
       .map(_.getString)
@@ -89,7 +89,7 @@ class CRM(is: InputStream) {
   def findProperty(localName: String) = properties.find(_.resource.getLocalName == localName).get
 }
 
-class TestCRM extends FlatSpec with Matchers {
+class TestCRM extends AnyFlatSpec with should.Matchers {
 
   "The CRM" should "appear in JSON" in {
 

@@ -1,12 +1,14 @@
 package specs
 
+import org.scalatest.flatspec._
+import org.scalatest.matchers._
+
 import analysis.TreeNode
 import analysis.TreeNode.{PathNode, ReadTreeNode}
 import org.apache.commons.io.IOUtils
-import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.Json
 
-class TestTreeReading extends FlatSpec with Matchers  {
+class TestTreeReading extends AnyFlatSpec with should.Matchers  {
 
 
   "tree handling" should "read in a tree" in {

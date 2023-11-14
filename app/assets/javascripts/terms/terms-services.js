@@ -22,7 +22,7 @@ define(["angular", "common"], function (angular) {
     mod.service("termsService", [
         "$http", "$q", "playRoutes",
         function ($http, $q, playRoutes) {
-            var app = playRoutes.web.AppController;
+            var app = playRoutes.controllers.AppController;
 
             var rejection = function (reply) {
                 console.log('why', reply);

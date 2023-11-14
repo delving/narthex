@@ -17,9 +17,11 @@
 package analysis
 
 import java.io._
-
+import play.api.libs.json._
 import akka.actor.SupervisorStrategy.Escalate
 import akka.actor._
+import org.apache.commons.io.FileUtils.deleteQuietly
+
 import analysis.Analyzer._
 import analysis.Collator._
 import analysis.Merger._
@@ -29,13 +31,12 @@ import analysis.TreeNode.RandomSample
 import dataset.DatasetActor.WorkFailure
 import dataset.DatasetContext
 import nxutil.Utils.actorWork
-import org.apache.commons.io.FileUtils.deleteQuietly
-import play.api.libs.json._
 import services.FileHandling.{createReader, createWriter, sourceFromFile}
 import services.ProgressReporter.ProgressState._
 import services._
 
 import scala.concurrent._
+import scala.util.{Failure, Success}
 
 object Analyzer {
 
@@ -96,8 +97,9 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
         finally {
           source.close()
         }
-      } onFailure {
-        case e: Throwable =>
+      } onComplete {
+        case Success(_) => ()
+        case Failure(e) =>
           context.parent ! WorkFailure(e.getMessage, Some(e))
       }
     }
@@ -111,7 +113,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
 
     case Counted(nodeRepo, uniqueCount, sampleSizes) => actorWork(context) {
       progress.get.checkInterrupt()
-      collators = collators.filter(collator => collator != sender)
+      collators = collators.filter(collator => collator != sender())
       deleteQuietly(nodeRepo.sorted)
       nodeRepo.setStatus(Json.obj(
         "uniqueCount" -> uniqueCount,
@@ -124,7 +126,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
 
     case Sorted(nodeRepo, sortedFile, sortType) => actorWork(context) {
       progress.get.checkInterrupt()
-      sorters = sorters.filter(sorter => sender != sorter)
+      sorters = sorters.filter(sorter => sender() != sorter)
       sortType match {
         case SortType.VALUE_SORT =>
           deleteQuietly(nodeRepo.values)
@@ -223,7 +225,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       val bigEnoughSamples = samples.filter(pair => uniqueCount > pair._1.size * 2)
       val usefulSamples = if (bigEnoughSamples.isEmpty) List(samples.head) else bigEnoughSamples
       usefulSamples.foreach(pair => createSampleFile(pair._1, pair._2))
-      sender ! Counted(nodeRepo, uniqueCount, usefulSamples.map(pair => pair._1.size))
+      sender() ! Counted(nodeRepo, uniqueCount, usefulSamples.map(pair => pair._1.size))
   }
 }
 
@@ -384,6 +386,6 @@ class Merger(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       inputB.close()
       deleteQuietly(inFileA)
       deleteQuietly(inFileB)
-      sender ! Merged(Merge(inFileA, inFileB, mergeResultFile, sortType), outputFile, sortType)
+      sender() ! Merged(Merge(inFileA, inFileB, mergeResultFile, sortType), outputFile, sortType)
   }
 }

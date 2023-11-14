@@ -20,7 +20,7 @@ import java.util.UUID
 
 import organization.OrgContext
 import play.api.libs.json.Json
-import play.api.libs.ws.WSAPI
+import play.api.libs.ws.WSClient
 import services.StringHandling.createGraphName
 import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
@@ -73,7 +73,7 @@ class VocabMappingStore(skosA: SkosGraph, skosB: SkosGraph, orgContext: OrgConte
 
 }
 
-class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext, wsApi: WSAPI)(implicit ec: ExecutionContext, ts: TripleStore) {
+class TermMappingStore(termGraph: SkosGraph, orgContext: OrgContext, wsApi: WSClient)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import mapping.SkosMappingStore._
 

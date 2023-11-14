@@ -28,6 +28,8 @@ import scala.sys.process._
 
 object FileHandling {
 
+  private val logger = Logger(getClass)
+
   def clearDir(dir: File) = {
     deleteQuietly(dir)
     dir.getParentFile.mkdirs()
@@ -198,7 +200,7 @@ object FileHandling {
     val hiddenGit = new File(directory, ".git")
     if (!hiddenGit.exists()) {
       val init = s"git init ${directory.getAbsolutePath}".!!
-      Logger.debug(s"git init: $init")
+      logger.debug(s"git init: $init")
     }
     hiddenGit.exists()
   }
@@ -208,13 +210,13 @@ object FileHandling {
     val home = file.getParentFile.getAbsolutePath
     val name = file.getName
     val addCommand = Process(Seq("git", "-C", home, "add", name))
-    Logger.debug(s"git add: $addCommand")
+    logger.debug(s"git add: $addCommand")
     val addResult = addCommand.!!
-    Logger.debug(s"addResult: $addResult")
+    logger.debug(s"addResult: $addResult")
     val commitCommand = Process(Seq("git", "-C", home, "commit", "-m", comment, name))
-    Logger.debug(s"git commit: $commitCommand")
+    logger.debug(s"git commit: $commitCommand")
     val commitResult = commitCommand.!!
-    Logger.debug(s"commitResult: $commitResult")
+    logger.debug(s"commitResult: $commitResult")
 
     true
   }

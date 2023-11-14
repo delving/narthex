@@ -22,7 +22,7 @@ define(["angular", "common"], function (angular) {
     mod.service("skosService", [
         "$http", "$q", "playRoutes", "$location",
         function ($http, $q, playRoutes, $location) {
-            var app = playRoutes.web.AppController;
+            var app = playRoutes.controllers.AppController;
 
             var rejection = function (reply) {
                 if (reply.status == 401) { // unauthorized

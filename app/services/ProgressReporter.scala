@@ -124,12 +124,15 @@ class FakeProgressReporter extends ProgressReporter {
 }
 
 class UpdatingProgressReporter(progressState: ProgressState, datasetActor: ActorRef) extends ProgressReporter {
+
+  private val logger = Logger(getClass)
+
   val PATIENCE_MILLIS = 100
   var interrupted = false
   var readProgressOption: Option[ReadProgress] = None
   var maximumOption: Option[Int] = None
   var percentWas = -1
-  var lastProgress = 0l
+  var lastProgress = 0L
 
   override def interrupt() = interrupted = true
 
@@ -190,7 +193,7 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetActor: Actor
               running
             }
           case None =>
-            Logger.error("Expecting readProgress or maximum")
+            logger.error("Expecting readProgress or maximum")
         }
     }
   }

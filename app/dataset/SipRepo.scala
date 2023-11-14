@@ -35,7 +35,7 @@ import record.PocketParser._
 import services.StringHandling
 import services.StringHandling.urlEncodeValue
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import scala.io.Source
 import scala.util.Try
 
@@ -48,6 +48,8 @@ import scala.util.Try
  */
 
 object SipRepo {
+
+  private val logger = Logger(getClass)
 
   val SOURCE_FILE = "source.xml.gz"
   val FACTS_FILE = "narthex_facts.txt"
@@ -108,7 +110,7 @@ object Sip {
                         recDefTree: RecDefTree, validatorOpt: Option[Validator],
                         recMapping: RecMapping, sip: Sip) {
 
-    def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
+    def namespaces: Map[String, String] = recDefTree.getRecDef.namespaces.asScala.map(ns => ns.prefix -> ns.uri).toMap
 
     def fileName = s"mapping_$prefix.xml"
 
@@ -142,12 +144,14 @@ object Sip {
 
 class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
+  private val logger = Logger(getClass)
+
   import dataset.Sip._
   import dataset.SipRepo._
 
   lazy val zipFile = new ZipFile(file)
 
-  lazy val entries = zipFile.entries().map(entry => entry.getName -> entry).toMap
+  lazy val entries = zipFile.entries().asScala.map(entry => entry.getName -> entry).toMap
 
   def close() = {
     zipFile.close()
@@ -196,7 +200,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
   lazy val uniqueElementPath = hint("uniqueElementPath")
   lazy val pocketsHint = hint("pockets")
 
-  if (pocketsHint.isEmpty) Logger.warn(s"Narthex hints did not define pockets")
+  if (pocketsHint.isEmpty) logger.warn(s"Narthex hints did not define pockets")
 
   lazy val schemaVersionOpt: Option[String] = schemaVersions.flatMap(commas => commas.split(" *,").headOption)
 
@@ -269,7 +273,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     )
   }
 
-  def containsSource = entries.containsKey("source.xml.gz")
+  def containsSource = entries.asJava.containsKey("source.xml.gz")
 
   def copySourceToTempFile: Option[File] = {
     entries.get("source.xml.gz").map { sourceXmlGz =>
@@ -284,8 +288,8 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
   class MappingEngine(sipMapping: SipMapping) extends SipMapper {
     val now = new DateTime
     val serializer = new XmlSerializer
-    val namespaces = sipMapping.recDefTree.getRecDef.namespaces.map(ns => ns.prefix -> ns.uri).toMap
-    val factory = new MetadataRecordFactory(namespaces)
+    val namespaces = sipMapping.recDefTree.getRecDef.namespaces.asScala.map(ns => ns.prefix -> ns.uri).toMap
+    val factory = new MetadataRecordFactory(namespaces.asJava)
 
     val runner = new BulkMappingRunner(sipMapping.recMapping, new CodeGenerator(sipMapping.recMapping).withTrace(false).toRecordMappingCode)
 
@@ -298,7 +302,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord),
         sipMapping.recMapping.getRecDefTree)
       // check uri errors
-      val uriErrors = result.getUriErrors.toList
+      val uriErrors = result.getUriErrors.asScala.toList
       if (uriErrors.nonEmpty) throw new URIErrorsException(uriErrors)
       // validate using XSD
       sipMapping.validatorOpt.foreach(_.validate(new DOMSource(result.root())))
@@ -376,7 +380,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       prefixRepo.addFactsEntry(facts, zos)
     }
 
-    zipFile.entries.foreach { entry =>
+    zipFile.entries.asScala.foreach { entry =>
 
       def copyEntry(): Unit = {
         zos.putNextEntry(new ZipEntry(entry.getName))
@@ -389,7 +393,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       entry.getName match {
 
         case MappingPattern() =>
-          Logger.debug(s"Mapping: ${entry.getName}")
+          logger.debug(s"Mapping: ${entry.getName}")
           sipMappingOpt.foreach { sipMapping =>
             zos.putNextEntry(new ZipEntry(sipMapping.fileName))
             // if there is a new schema version, set it
@@ -397,7 +401,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
             sipPrefixRepoOpt.map { prefixRepo =>
               val factsMap = prefixRepo.toMap(facts)
-              for(factEntry <- factsMap.entrySet()) {
+              for(factEntry <- factsMap.entrySet().asScala) {
                 sipMapping.recMapping.setFact(factEntry.getKey(), factEntry.getValue())
               }
             }
@@ -406,15 +410,15 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           }
 
         case RecordDefinitionPattern() =>
-          Logger.debug(s"Record definition: ${entry.getName}")
+          logger.debug(s"Record definition: ${entry.getName}")
           sipPrefixRepoOpt.map(_.recordDefinition).map(rd => copyFileIn(rd, rd.getName, gzip = false)).getOrElse(copyEntry())
 
         case ValidationPattern() =>
-          Logger.debug(s"Validation: ${entry.getName}")
+          logger.debug(s"Validation: ${entry.getName}")
           sipPrefixRepoOpt.map(_.validation).map(va => copyFileIn(va, va.getName, gzip = false)).getOrElse(copyEntry())
 
         case SourcePattern() =>
-          Logger.debug(s"Source: ${entry.getName}")
+          logger.debug(s"Source: ${entry.getName}")
           sourceFound = true
           copyFileIn(sourceXmlFile, entry.getName, gzip = true)
 
@@ -422,13 +426,13 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           // Do not copy
 
         case entryName =>
-          Logger.debug(s"Verbatim: ${entry.getName}")
+          logger.debug(s"Verbatim: ${entry.getName}")
           copyEntry()
       }
     }
 
     if (!sourceFound) {
-      Logger.debug(s"Source added afterwards")
+      logger.debug(s"Source added afterwards")
       copyFileIn(sourceXmlFile, SOURCE_FILE, gzip = true)
     }
 

@@ -16,16 +16,18 @@
 
 package harvest
 
+import scala.util.{Failure, Success}
+import scala.language.postfixOps
+import play.api.Logger
 import akka.actor.{Actor, Props}
+
 import dataset.DatasetActor.{FromScratchIncremental, ModifiedAfter, StartHarvest}
 import dataset.DsInfo
 import dataset.DsInfo.{DsState, withDsInfo}
 import harvest.PeriodicHarvest.ScanForHarvests
 import organization.OrgContext
-import play.api.Logger
 import services.Temporal.DelayUnit
-
-import scala.language.postfixOps
+import triplestore.TripleStore
 
 object PeriodicHarvest {
 
@@ -38,53 +40,54 @@ object PeriodicHarvest {
 
 class PeriodicHarvest(orgContext: OrgContext) extends Actor {
 
-  val log = Logger.logger
+  private val logger = Logger(getClass)
+
   import context.dispatcher
-  implicit val ts = orgContext.ts
+  implicit val ts: TripleStore = orgContext.ts
 
 
   def receive = {
 
     case ScanForHarvests =>
       val futureList = DsInfo.listDsInfo(orgContext)
-      futureList.onSuccess {
-        case list: List[DsInfo] =>
+      futureList.onComplete {
+        case Success(list) =>
           list.
             filter(info => PeriodicHarvest.harvestingAllowed.contains(info.getState()) && info.hasPreviousTime()).
             sortWith((s, t) => s.getPreviousHarvestTime().isBefore(t.getPreviousHarvestTime())).
             foreach { listedInfo =>
               val harvestCron = listedInfo.currentHarvestCron
-              log.info(s"scheduled ds: ${listedInfo.spec} ${listedInfo.currentHarvestCron.previous.toString()} (time to work: ${harvestCron.timeToWork})")
+              logger.info(s"scheduled ds: ${listedInfo.spec} ${listedInfo.currentHarvestCron.previous.toString()} (time to work: ${harvestCron.timeToWork})")
               if (harvestCron.timeToWork) withDsInfo(listedInfo.spec, orgContext) { info => // the cached version
                 if (orgContext.semaphore.tryAcquire(info.spec)) {
-                  log.info(s"Time to work on $info: $harvestCron")
+                  logger.info(s"Time to work on $info: $harvestCron")
                   val proposedNext = harvestCron.next
                   val next = if (proposedNext.timeToWork) {
                     val revised = harvestCron.now
-                    log.info(s"$info next harvest $proposedNext is already due so adjusting to 'now': $revised")
+                    logger.info(s"$info next harvest $proposedNext is already due so adjusting to 'now': $revised")
                     revised
                   }
                   else {
-                    log.info(s"$info next harvest : $proposedNext")
+                    logger.info(s"$info next harvest : $proposedNext")
                     proposedNext
                   }
-                  log.info(s"Set harvest cron: $next")
+                  logger.info(s"Set harvest cron: $next")
                   info.setHarvestCron(next)
                   val justDate = harvestCron.unit == DelayUnit.WEEKS
                   val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, justDate) else FromScratchIncremental
                   val startHarvest = StartHarvest(strategy)
 
-                  log.info(s"$info acquired semaphore. permits available ${orgContext.semaphore.availablePermits()}")
-                  log.info(s"$info incremental harvest kickoff $startHarvest")
+                  logger.info(s"$info acquired semaphore. permits available ${orgContext.semaphore.availablePermits()}")
+                  logger.info(s"$info incremental harvest kickoff $startHarvest")
                   orgContext.orgActor ! info.createMessage(startHarvest)
                 } else {
                   val sem = orgContext.semaphore
-                  log.info(
+                  logger.info(
                     s"$info skipping, no semaphore available: ${sem.availablePermits()}; ${sem.activeSpecs().toString()}")
                 }
             }
           }
-
+        case Failure(_) => ()
       }
   }
 }

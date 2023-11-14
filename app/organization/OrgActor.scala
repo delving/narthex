@@ -37,8 +37,12 @@ object OrgActor {
 
 }
 
+class OrgActor (
+  orgContext: OrgContext,
+  actorSystem: ActorSystem
+) extends Actor with ActorLogging {
 
-class OrgActor(val orgContext: OrgContext, harvestingExecutionContext: ExecutionContext) extends Actor with ActorLogging {
+  val harvestingExecutionContext = actorSystem.dispatchers.lookup("contexts.dataset-harvesting-execution-context")
 
   var results = Map.empty[String, Option[List[CategoryCount]]]
 

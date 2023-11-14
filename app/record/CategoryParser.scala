@@ -16,16 +16,15 @@
 
 package record
 
-import mapping.CategoriesSpreadsheet.CategoryCount
-import play.Logger
-import record.CategoryParser.{CategoryMapping, Counter, NULL}
-import services.StringHandling._
-import services.ProgressReporter
-
 import scala.collection.mutable
 import scala.io.Source
 import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding}
+import play.api.Logger
+import mapping.CategoriesSpreadsheet.CategoryCount
+import record.CategoryParser.{CategoryMapping, Counter, NULL}
+import services.StringHandling._
+import services.ProgressReporter
 
 object CategoryParser {
 
@@ -39,12 +38,14 @@ object CategoryParser {
 
 class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: String, recordContainer: Option[String] = None, categoryMappings: Map[String, CategoryMapping]) {
 
+  private val logger = Logger(getClass)
+
   var countMap = new collection.mutable.HashMap[String, Counter]()
   var percentWas = -1
-  var lastProgress = 0l
+  var lastProgress = 0L
   var recordCount = 0
 
-  Logger.debug(s"category mappings $categoryMappings")
+  logger.debug(s"category mappings $categoryMappings")
 
   def increment(key: String): Unit = countMap.getOrElseUpdate(key, new Counter(1)).count += 1
 
@@ -178,7 +179,7 @@ class CategoryParser(pathPrefix: String, recordRootPath: String, uniqueIdPath: S
         case EvComment(text) => stupidParser(text, entity => addFieldText(s"&$entity;"))
         case EvProcInstr(target, text) =>
         case x =>
-          Logger.error("EVENT? " + x)
+          logger.error("EVENT? " + x)
       }
     }
   }

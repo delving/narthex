@@ -16,7 +16,8 @@
 
 package mapping
 
-import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
+//import com.rockymadden.stringmetric.similarity.RatcliffObershelpMetric
+import info.debatty.java.stringsimilarity.RatcliffObershelp
 import mapping.SkosVocabulary._
 import org.apache.jena.rdf.model.{Model, Resource}
 import play.api.Logger
@@ -24,10 +25,11 @@ import play.api.libs.json.{JsObject, Json, Writes}
 import triplestore.GraphProperties._
 import triplestore.{GraphProperties, TripleStore}
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 object SkosVocabulary {
 
@@ -40,7 +42,7 @@ object SkosVocabulary {
 
   def getLabels(resource: Resource, propertyName: String, preferred: Boolean, model: Model): List[Label] = {
     val property = model.getProperty(GraphProperties.SKOS, propertyName)
-    model.listStatements(resource, property, null).map(_.getObject.asLiteral()).map(
+    model.listStatements(resource, property, null).asScala.map(_.getObject.asLiteral()).map(
       literal => Label(preferred = preferred, literal.getLanguage, literal.getString)
     ).toList
   }
@@ -95,7 +97,7 @@ object SkosVocabulary {
   case class Concept(vocabulary: SkosVocabulary, resource: Resource, conceptMap: mutable.HashMap[String, Concept], model: Model) {
     def getRelated(resource: Resource, propertyName: String, model: Model): Seq[Resource] = {
       val property = model.getProperty(GraphProperties.SKOS, propertyName)
-      model.listStatements(resource, property, null).map(_.getObject.asResource()).toSeq
+      model.listStatements(resource, property, null).asScala.map(_.getObject.asResource()).toSeq
     }
 
     conceptMap.put(resource.getURI, this)
@@ -105,15 +107,15 @@ object SkosVocabulary {
     lazy val narrower: Seq[Concept] = getRelated(resource, "narrower", model).flatMap(resource => conceptMap.get(resource.getURI))
     lazy val broader: Seq[Concept] = getRelated(resource, "broader", model).flatMap(resource => conceptMap.get(resource.getURI))
     lazy val frequency: Option[Int] = {
-      val frequencyValue = model.listObjectsOfProperty(resource, model.getProperty(skosFrequency)).toList.headOption
+      val frequencyValue = model.listObjectsOfProperty(resource, model.getProperty(skosFrequency)).asScala.toList.headOption
       frequencyValue.map(_.asLiteral().getInt)
     }
     lazy val fieldProperty: Option[String] = {
-      val fieldPropertyValue = model.listObjectsOfProperty(resource, model.getProperty(skosField.uri)).toList.headOption
+      val fieldPropertyValue = model.listObjectsOfProperty(resource, model.getProperty(skosField.uri)).asScala.toList.headOption
       fieldPropertyValue.map(_.asResource().toString)
     }
     lazy val fieldPropertyTag: Option[String] = {
-      val fieldPropertyTagValue = model.listObjectsOfProperty(resource, model.getProperty(skosFieldTag.uri)).toList.headOption
+      val fieldPropertyTagValue = model.listObjectsOfProperty(resource, model.getProperty(skosFieldTag.uri)).asScala.toList.headOption
       fieldPropertyTagValue.map(_.asLiteral().toString)
     }
 
@@ -121,14 +123,18 @@ object SkosVocabulary {
 
     def getAltLabel(languageOpt: Option[String]) = getLanguageLabel(altLabels, languageOpt)
 
+    private lazy val ro = new RatcliffObershelp
+
     def search(sought: String, languageOpt: Option[String]): Option[ProximityResult] = {
       val toSearch: List[Label] = languageOpt.map(lang => labels.filter(_.language == lang)).getOrElse(labels)
       val judged = toSearch.map { label =>
         val text = IGNORE_BRACKET.replaceFirstIn(label.text.toLowerCase, "")
-        (RatcliffObershelpMetric.compare(sought, text), label)
+        //(RatcliffObershelpMetric.compare(sought, text), label)
+        (ro.similarity(sought, text), label)
       }
       val prefLabel = getPrefLabel(languageOpt).getOrElse(Label(preferred = true, "??", "No prefLabel!"))
-      val searchResults = judged.filter(_._1.isDefined).map(p => ProximityResult(p._2, prefLabel, p._1.get, this))
+      //val searchResults = judged.filter(_._1.isDefined).map(p => ProximityResult(p._2, prefLabel, p._1.get, this))
+      val searchResults = judged.map(p => ProximityResult(p._2, prefLabel, p._1, this))
       searchResults.sortBy(-1 * _.proximity).headOption
     }
 
@@ -144,12 +150,12 @@ object SkosVocabulary {
 
 case class SkosVocabulary(spec: String, graphName: String)(implicit ec: ExecutionContext, ts: TripleStore) {
 
-  lazy val futureModel = ts.dataGet(graphName)
-  futureModel.onFailure {
-    case e: Throwable => Logger.warn(s"No data found for skos vocabulary $graphName", e)
-  }
-  futureModel.onSuccess {
-    case x => Logger.debug(s"Loaded $graphName")
+  private val logger = Logger(getClass)
+
+  lazy val futureModel: Future[Model] = ts.dataGet(graphName)
+  futureModel.onComplete {
+    case Failure(e) => logger.warn(s"No data found for skos vocabulary $graphName", e)
+    case Success(x) => logger.debug(s"Loaded $graphName")
   }
   lazy val m: Model = Await.result(futureModel, 60.seconds)
 
@@ -158,7 +164,7 @@ case class SkosVocabulary(spec: String, graphName: String)(implicit ec: Executio
   lazy val concepts: List[Concept] = {
     val typeProperty = m.getProperty(rdfType)
     val conceptResource = m.getResource(s"${SKOS}Concept")
-    val subjects = m.listSubjectsWithProperty(typeProperty, conceptResource).toSeq
+    val subjects = m.listSubjectsWithProperty(typeProperty, conceptResource).asScala.toSeq
     subjects.map(statement => Concept(this, statement, conceptMap, m))
   }.toList
 

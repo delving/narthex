@@ -40,6 +40,8 @@ import scala.util.{Failure, Success, Try}
 
 class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
+  private val logger = Logger(getClass)
+
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
   val rootDir = new File(orgContext.datasetsDir, dsInfo.spec)
 
@@ -212,7 +214,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     deleteQuietly(treeDir)
     dsInfo.removeState(RAW_ANALYZED)
     dsInfo.removeState(ANALYZED)
-    Logger.debug("Dropping analysis tree")
+    logger.debug("Dropping analysis tree")
   }
 
   def dropRecords = {

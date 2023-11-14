@@ -6,8 +6,9 @@
 
 # The application languages
 # ~~~~~
-application.langs="en"
-
+####application.langs="en"
+# "application.langs is deprecated, use play.i18n.langs instead"
+play.i18n.langs = ["en"]
 
 
 # Evolutions
@@ -62,7 +63,8 @@ rdfBaseUrl = "http://data.brabantcloud.nl"
 naveAuthToken = ""
 
 # Set this to true to use the Nave Bulk APi
-mockBulkApi = false
+####mockBulkApi = false
+#mockBulkApi = true
 
 # the ip-adress where the development nave can be reached
 naveApiUrl = "http://localhost:3000"
@@ -79,15 +81,18 @@ domains = {
 #
 # configuration properties for play & play plugins
 #
-play.crypto.secret="FAQ8wRZyGtCtTAyd"
-play.application.loader=init.MyApplicationLoader
-
+####play.crypto.secret="FAQ8wRZyGtCtTAyd"
+play.http.secret.key="changethissosomethingsecret"
+####play.application.loader=init.MyApplicationLoader
+play.modules.enabled += "init.NarthexBindings"
 
 play.mailer {
   host = "localhost"
 }
 
-
+# Override default filters
+# See: https://www.playframework.com/documentation/2.8.x/Filters
+play.filters.enabled = ["com.kenshoo.play.metrics.MetricsFilterImpl"]
 
 play.http.parser.maxDiskBuffer = 512000kB // == 250 MB
 

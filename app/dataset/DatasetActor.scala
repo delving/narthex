@@ -54,6 +54,8 @@ import scala.util.Try
 
 object DatasetActor {
 
+  private val logger = Logger(getClass)
+
   // state machine
 
   sealed trait DatasetActorState
@@ -88,7 +90,7 @@ object DatasetActor {
                     interrupt: Boolean = false)
       extends DatasetActorData
 
-  implicit val activeWrites = new Writes[Active] {
+  implicit val activeWrites: Writes[Active] = new Writes[Active] {
     def writes(active: Active) = Json.obj(
       "datasetSpec" -> active.spec,
       "progressState" -> active.progressState.toString,
@@ -411,19 +413,16 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(StartSaving(scheduledOpt), Dormant) =>
       if(orgContext.saveSemaphore.tryAcquire(dsInfo.spec)) {
-        try {
-
-          log.info(s"save lock acquired for $dsInfo.spec")
-          val graphSaver =
-            context.actorOf(GraphSaver.props(datasetContext, orgContext),
-              "graph-saver")
-          graphSaver ! SaveGraphs(scheduledOpt)
-          goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
-        }
+        log.info(s"save lock acquired for $dsInfo.spec")
+        val graphSaver =
+          context.actorOf(GraphSaver.props(datasetContext, orgContext),
+            "graph-saver")
+        graphSaver ! SaveGraphs(scheduledOpt)
+        goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
       } else {
-          log.info(s"unable to acquire lock for $dsInfo.spec")
-          dsInfo.setError(s"Concurrency limit has been reached for ${dsInfo.spec}; Try saving later. \n")
-          goto(Idle) using InError(s"Concurrency limit has been reached for ${dsInfo.spec}")
+        log.info(s"unable to acquire lock for $dsInfo.spec")
+        dsInfo.setError(s"Concurrency limit has been reached for ${dsInfo.spec}; Try saving later. \n")
+        goto(Idle) using InError(s"Concurrency limit has been reached for ${dsInfo.spec}")
       }
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
@@ -460,7 +459,7 @@ class DatasetActor(val datasetContext: DatasetContext,
         orgContext.semaphore.release(dsInfo.spec)
         noRecordsMatch match {
           case true =>
-            Logger.debug(
+            logger.debug(
               "NoRecordsMatch, so setting state to Incremental Saved")
             dsInfo.setState(INCREMENTAL_SAVED)
             if (dsInfo

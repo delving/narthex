@@ -16,14 +16,16 @@
 
 package triplestore
 
+import scala.util.{Failure, Success}
 import akka.actor.{Actor, ActorLogging, Props}
+import org.joda.time.DateTime
+
 import dataset.DatasetActor.{Scheduled, WorkFailure}
 import dataset.DatasetContext
 import dataset.DsInfo
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import organization.OrgContext
 import nxutil.Utils._
-import org.joda.time.DateTime
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState._
 import services.Temporal._
@@ -46,7 +48,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
   import context.dispatcher
   import triplestore.GraphSaver._
 
-  implicit val ts = orgContext.ts
+  implicit val ts: TripleStore = orgContext.ts
 
   val saveTime = new DateTime()
   val startSave = timeToString(new DateTime())
@@ -103,16 +105,18 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
             chunk.dsInfo.bulkApiUpdate(chunk.bulkActions)
 
           update.map(ok => sendGraphChunkOpt())
-          update.onFailure {
-            case ex: Throwable => failure(ex)
+          update.onComplete {
+            case Success(_) => ()
+            case Failure(ex) => failure(ex)
           }
         } else {
 		  log.info(s"Save a chunk of graphs")
 		  val update = chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
 
 		  update.map(ok => sendGraphChunkOpt())
-		  update.onFailure {
-			case ex: Throwable => failure(ex)
+		  update.onComplete {
+        case Success(_) => ()
+			  case Failure(ex) => failure(ex)
 		  }
 		}
       }

@@ -1,12 +1,13 @@
 package mapping
 
 import akka.actor.{Actor, Props}
+
 import dataset.DatasetActor.StartSkosification
 import dataset.DsInfo
 import mapping.PeriodicSkosifyCheck.ScanForWork
 import organization.OrgContext
-import play.api.Logger
 import triplestore.Sparql._
+import triplestore.TripleStore
 
 object PeriodicSkosifyCheck {
 
@@ -19,9 +20,7 @@ class PeriodicSkosifyCheck(orgContext: OrgContext) extends Actor {
 
   import context.dispatcher
 
-  implicit val ts = orgContext.ts
-
-  val log = Logger.logger
+  implicit val ts: TripleStore = orgContext.ts
 
   def receive = {
 
@@ -42,5 +41,6 @@ class PeriodicSkosifyCheck(orgContext: OrgContext) extends Actor {
         }
       }
   }
+  
 }
 

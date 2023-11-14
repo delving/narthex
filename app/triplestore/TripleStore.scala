@@ -16,19 +16,23 @@
 
 package triplestore
 
+import javax.inject._
 import java.io.{File, StringReader, StringWriter}
 import java.nio.charset.StandardCharsets
 
 import org.apache.jena.rdf.model.{Model, ModelFactory}
-import org.asynchttpclient.netty.NettyResponse
 import play.api.Logger
 import play.api.libs.json.JsObject
-import play.api.libs.ws.{WSAPI, WSResponse}
-import triplestore.TripleStore.{QueryValue, TripleStoreException}
-
+import play.api.libs.ws.{WSClient, WSResponse}
+import play.shaded.ahc.org.asynchttpclient.netty.NettyResponse
 import scala.concurrent._
 
+import triplestore.TripleStore.{QueryValue, TripleStoreException}
+import init.NarthexConfig
+
 object TripleStore {
+
+  private val logger = Logger(getClass)
 
   case class QueryValueType(name: String)
 
@@ -44,7 +48,7 @@ object TripleStore {
       case "literal" => QV_LITERAL
       case "uri" => QV_URI
       case x =>
-        Logger.error(s"Unhandled type $x !")
+        logger.error(s"Unhandled type $x !")
         QV_UNKNOWN
     }
   }
@@ -78,9 +82,18 @@ trait TripleStore {
 
 }
 
+class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit val executionContext: ExecutionContext) extends TripleStore {
 
+  private val logger = Logger(getClass)
 
-class Fuseki(storeURL: String, orgID: String, sparqlQueryPath: String, sparqlUpdatePath: String, graphStorePath: String, graphStoreParam: String, logQueries: Boolean, wsApi: WSAPI)(implicit val executionContext: ExecutionContext) extends TripleStore {
+  var storeURL: String = narthexConfig.tripleStoreUrl
+  var orgID: String = narthexConfig.orgId
+  var sparqlQueryPath: String = narthexConfig.sparqlQueryPath
+  var sparqlUpdatePath: String = narthexConfig.sparqlUpdatePath
+  var graphStorePath: String = narthexConfig.graphStorePath
+  var graphStoreParam: String = narthexConfig.graphStoreParam
+  var logQueries: Boolean = narthexConfig.tripleStoreLog
+
   var queryIndex = 0
 
   private def dataRequest(graphUri: String) = wsApi.url(s"$storeURL/$orgID$graphStorePath").withQueryString(s"$graphStoreParam" -> graphUri)
@@ -92,7 +105,7 @@ class Fuseki(storeURL: String, orgID: String, sparqlQueryPath: String, sparqlUpd
     divider + numbered
   }
 
-  private def logSparql(sparql: String): Unit = if (logQueries) Logger.debug(toLog(sparql))
+  private def logSparql(sparql: String): Unit = if (logQueries) logger.debug(toLog(sparql))
 
   override def ask(sparqlQuery: String): Future[Boolean] = {
     logSparql(sparqlQuery)
@@ -162,7 +175,7 @@ class Fuseki(storeURL: String, orgID: String, sparqlQueryPath: String, sparqlUpd
   class FusekiUpdate extends TripleStoreUpdate {
 
     private def checkUpdateResponse(response: WSResponse, logString: String): Unit = if (response.status / 100 != 2) {
-      Logger.error(logString)
+      logger.error(logString)
       throw new TripleStoreException(s"${response.statusText}: ${response.body}:")
     }
 
@@ -185,7 +198,7 @@ class Fuseki(storeURL: String, orgID: String, sparqlQueryPath: String, sparqlUpd
     }
 
     override def dataPutXMLFile(graphUri: String, file: File) = {
-      Logger.debug(s"Putting $graphUri")
+      logger.debug(s"Putting $graphUri")
       dataRequest(graphUri).withHeaders(
         "Content-Type" -> "application/rdf+xml; charset=utf-8"
       ).put(file).map(checkUpdateResponse(_, graphUri))
@@ -195,7 +208,7 @@ class Fuseki(storeURL: String, orgID: String, sparqlQueryPath: String, sparqlUpd
       val sw = new StringWriter()
       model.write(sw, "TURTLE")
       val turtle = sw.toString
-      Logger.debug(s"Putting $graphUri")
+      logger.debug(s"Putting $graphUri")
       dataRequest(graphUri).withHeaders(
         "Content-Type" -> "text/turtle; charset=utf-8"
       ).put(turtle).map(checkUpdateResponse(_, turtle))

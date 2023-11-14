@@ -13,17 +13,21 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 //===========================================================================
+
 package mapping
 
+import scala.util.{Failure, Success}
 import akka.actor.{Actor, ActorLogging, Props}
+
 import dataset.DatasetActor.WorkFailure
 import dataset.DsInfo
 import organization.OrgContext
-import nxutil.Utils._
 import services.ProgressReporter
 import services.ProgressReporter.ProgressState
 import services.StringHandling.slugify
+import nxutil.Utils._
 import triplestore.Sparql._
+import triplestore.TripleStore
 
 object Skosifier {
 
@@ -47,7 +51,7 @@ class Skosifier(dsInfo: DsInfo, orgContext: OrgContext) extends Actor with Actor
   import context.dispatcher
   import mapping.Skosifier._
 
-  implicit val ts = orgContext.ts
+  implicit val ts: TripleStore = orgContext.ts
 
   var progressOpt: Option[ProgressReporter] = None
   var progressCount = 0
@@ -62,11 +66,13 @@ class Skosifier(dsInfo: DsInfo, orgContext: OrgContext) extends Actor with Actor
         progressOpt = Some(progressReporter)
         ts.query(listSkosificationCasesQ(skosifiedField, Skosifier.chunkSize)).map { listCasesResult =>
           self ! SkosificationJob(skosifiedField, createCasesFromQueryValues(skosifiedField, listCasesResult))
-        } onFailure {
-          case e: Throwable => context.parent ! WorkFailure("Problem listing cases", Some(e))
+        } onComplete {
+          case Success(_) => ()
+          case Failure(e) => context.parent ! WorkFailure("Problem listing cases", Some(e))
         }
-      } onFailure {
-        case e: Throwable => context.parent ! WorkFailure("Problem counting cases", Some(e))
+      } onComplete {
+        case Success(_) => ()
+        case Failure(e) => context.parent ! WorkFailure("Problem counting cases", Some(e))
       }
     }
 
@@ -88,15 +94,17 @@ class Skosifier(dsInfo: DsInfo, orgContext: OrgContext) extends Actor with Actor
             else {
               context.parent ! SkosificationComplete(job.skosifiedField)
             }
-          } onFailure {
-            case e: Exception => context.parent ! WorkFailure("Problem listing cases again", Some(e))
+          } onComplete {
+            case Success(_) => ()
+            case Failure(e) => context.parent ! WorkFailure("Problem listing cases again", Some(e))
           }
         }
         else {
           context.parent ! SkosificationComplete(job.skosifiedField)
         }
-      } onFailure {
-        case e: Exception => context.parent ! WorkFailure("Problem with skosify update", Some(e))
+      } onComplete {
+        case Success(_) => ()
+        case Failure(e) => context.parent ! WorkFailure("Problem with skosify update", Some(e))
       }
     }
   }

@@ -17,21 +17,22 @@
 package mapping
 
 import java.io.StringWriter
-
+import scala.concurrent._
+import scala.concurrent.duration._
+import play.api.Logger
+import play.api.libs.json.{JsValue, Json, Writes}
 import org.apache.jena.rdf.model._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
+
 import organization.OrgContext
-import play.api.Logger
-import play.api.libs.json.{JsValue, Json, Writes}
 import services.StringHandling.{createGraphName, urlEncodeValue}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.Sparql._
 import triplestore.{SkosGraph, TripleStore}
 
-import scala.concurrent._
-import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 object VocabInfo {
 
@@ -47,7 +48,7 @@ object VocabInfo {
                         language: String,
                         rights: String)
 
-  implicit val vocabInfoWrites = new Writes[VocabInfo] {
+  implicit val vocabInfoWrites: Writes[mapping.VocabInfo] = new Writes[VocabInfo] {
     def writes(dsInfo: VocabInfo): JsValue = {
       val out = new StringWriter()
       RDFDataMgr.write(out, dsInfo.model, RDFFormat.JSONLD_FLAT)
@@ -98,6 +99,8 @@ class VocabInfo(val spec: String, val orgContext: OrgContext)(implicit ec: Execu
 
   import mapping.VocabInfo._
 
+  private val logger = Logger(getClass)
+
   def now: String = timeToString(new DateTime())
 
   val uri = getVocabInfoUri(spec, orgContext)
@@ -110,8 +113,9 @@ class VocabInfo(val spec: String, val orgContext: OrgContext)(implicit ec: Execu
 
   // could cache as well so that the get happens less
   def futureModel = ts.dataGet(graphName)
-  futureModel.onFailure {
-    case e: Throwable => Logger.warn(s"No data found for dataset $spec", e)
+  futureModel.onComplete {
+    case Success(_) => ()
+    case Failure(e) => logger.warn(s"No data found for dataset $spec", e)
   }
 
   def model = Await.result(futureModel, patience)

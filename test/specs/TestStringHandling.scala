@@ -1,12 +1,13 @@
 package specs
 
 import java.io.File
+import org.scalatest.flatspec._
+import org.scalatest.matchers._
 
-import org.scalatest.{FlatSpec, Matchers}
 import services.FileHandling
 import services.StringHandling._
 
-class TestStringHandling extends FlatSpec with Matchers {
+class TestStringHandling extends AnyFlatSpec with should.Matchers {
 
   "string handling" should "read csv" in {
 

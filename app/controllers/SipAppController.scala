@@ -14,18 +14,23 @@
 //    limitations under the License.
 //===========================================================================
 
-package web
+package controllers
+
+import javax.inject._
+import scala.concurrent.ExecutionContext
+import play.api._
+import play.api.mvc._
 
 import dataset.SipRepo.AvailableSip
 import organization.OrgContext
-import play.api.Logger
-import play.api.cache.CacheApi
-import play.api.mvc._
+import web.Utils
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
-class SipAppController(val orgContext: OrgContext)
-  extends Controller {
+@Singleton
+class SipAppController @Inject() (
+    orgContext: OrgContext
+)(implicit
+    ec: ExecutionContext
+) extends InjectedController with Logging {
 
   def listSipZips() = Action.async { request =>
     val availableSips: Seq[AvailableSip] = orgContext.availableSips
@@ -52,7 +57,7 @@ class SipAppController(val orgContext: OrgContext)
   }
 
   def downloadSipZip(spec: String) = Action { request =>
-    Logger.debug(s"Download sip-zip '$spec'")
+    logger.debug(s"Download sip-zip '$spec'")
     val sipFileOpt = orgContext.datasetContext(spec).sipFiles.headOption
     sipFileOpt.map(Utils.okFile(_).withHeaders(s"Content-Disposition" -> s"attachment; filename=$spec.sip.zip")).getOrElse(NotFound(s"No sip-zip for $spec"))
   }
@@ -63,4 +68,5 @@ class SipAppController(val orgContext: OrgContext)
     datasetContext.startSipZipGeneration()
     Ok
   }
+
 }

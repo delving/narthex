@@ -22,7 +22,7 @@ import dataset.SipRepo.FACTS_FILE
 import java.util.HashMap
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.Logger
-import play.api.libs.ws.WSAPI
+import play.api.libs.ws.WSClient
 import triplestore.GraphProperties._
 
 import scala.concurrent.duration._
@@ -117,7 +117,7 @@ object SipFactory {
 
 }
 
-class SipFactory(home: File, rdfBaseUrl: String, wsApi: WSAPI, orgId: String)(implicit ec: ExecutionContext) {
+class SipFactory(home: File, rdfBaseUrl: String, wsApi: WSClient, orgId: String)(implicit ec: ExecutionContext) {
 
   lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map( home => new SipPrefixRepo(home, rdfBaseUrl, wsApi, orgId))
 
@@ -125,7 +125,9 @@ class SipFactory(home: File, rdfBaseUrl: String, wsApi: WSAPI, orgId: String)(im
 
 }
 
-class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI, orgId: String)(implicit ec: ExecutionContext) {
+class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient, orgId: String)(implicit ec: ExecutionContext) {
+
+  private val logger = Logger(getClass)
 
   import dataset.SipFactory._
 
@@ -200,8 +202,8 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSAPI, orgId: String)(im
   }
 
   def compareWithSchemasDelvingEu() = {
-    differenceWithSchemasDelvingEu(recordDefinition).map(diff => Logger.warn(s"Rec Def Discrepancy: $diff"))
-    differenceWithSchemasDelvingEu(validation).map(diff => Logger.warn(s"Validation Discrepancy: $diff"))
+    differenceWithSchemasDelvingEu(recordDefinition).map(diff => logger.warn(s"Rec Def Discrepancy: $diff"))
+    differenceWithSchemasDelvingEu(validation).map(diff => logger.warn(s"Validation Discrepancy: $diff"))
   }
 
   def initiateSipZip(sipFile: File, sourceXmlFile: File, facts: SipGenerationFacts) = {
