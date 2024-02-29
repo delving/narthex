@@ -63,6 +63,9 @@ object PocketParser {
     def writeTo(writer: Writer) = {
       val sha1: String = PocketParser.sha1(text)
       writer.write(text)
+      if (id.contains("--")) {
+        throw new Exception(s"""subject URI cannot contain '--'; $id""")
+      }
       writer.write(s"""<!--<${id}__$sha1>-->\n""")
     }
   }
