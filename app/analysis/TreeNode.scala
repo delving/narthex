@@ -42,50 +42,61 @@ object TreeNode {
     val base = new TreeNode(datasetContext.treeRoot, null, null, null)
     var node = base
     val events = new XMLEventReader(source)
-    def getNamespace(pre: String, scope: NamespaceBinding) = {
-      val uri = scope.getURI(pre)
-      if (uri == null && pre != null) throw new Exception( s"""No namespace declared for "$pre" prefix!""")
-      uri
-    }
 
-    try {
-      while (events.hasNext) {
-
-        progressReporter.sendValue()
-
-        events.next() match {
-
-          case EvElemStart(pre, label, attrs, scope) =>
-            node = node.kid(tag(pre, label), getNamespace(pre, scope) + label).start()
-            attrs.foreach { attr =>
-              val uri = MetaData.getUniversalKey(attr, scope)
-              val kid = node.kid(s"@${attr.prefixedKey}", uri)
-              kid.start().value(attr.value.toString()).end()
-            }
-
-          case EvText(text) =>
-            node.value(text)
-
-          case EvEntityRef(entity) => node.value(translateEntity(entity))
-
-          case EvElemEnd(pre, label) =>
-            node.end()
-            node = node.parent
-
-          case EvComment(text) =>
-            stupidParser(text, string => node.value(translateEntity(string)))
-
-          case EvProcInstr(target, text) =>
-          // do nothing
-
-          case x =>
-            Logger.error("EVENT? " + x) // todo: record these in an error file for later
+      def getNamespace(pre: String, scope: NamespaceBinding, label: String) = {
+        if (scope == null) {
+          throw new Exception( s"""parse error for "$pre" prefix! scope $scope; label $label""")
         }
+        val uri = scope.getURI(pre)
+        if (uri == null && pre != null) {
+          throw new Exception( s"""No namespace declared for "$pre" prefix! scope $scope; label $label""")
+        }
+        uri
       }
-    }
-    finally {
+
+      try {
+        while (events.hasNext) {
+
+          progressReporter.sendValue()
+
+          events.next() match {
+            case EvElemStart(pre, label, attrs, scope) =>
+              node = node.kid(tag(pre, label), getNamespace(pre, scope, label) + label).start()
+              attrs.foreach { attr =>
+                val uri = MetaData.getUniversalKey(attr, scope)
+                val kid = node.kid(s"@${attr.prefixedKey}", uri)
+                kid.start().value(attr.value.toString()).end()
+              }
+
+            case EvText(text) =>
+              node.value(text)
+
+            case EvEntityRef(entity) => node.value(translateEntity(entity))
+
+            case EvElemEnd(pre, label) =>
+              node.end()
+              node = node.parent
+
+            case EvComment(text) =>
+              stupidParser(text, string => node.value(translateEntity(string)))
+
+            case EvProcInstr(target, text) =>
+            // do nothing
+
+            case x =>
+              Logger.error("EVENT? " + x) // todo: record these in an error file for later
+          }
+        }
+     } catch {
+       case ex: Exception => {
+         Logger.error("parse error: " + ex.getMessage())
+         throw new Exception("parse error: " + ex.getMessage())
+       }
+    } finally {
+      // Close resources in the finally block
       events.stop()
     }
+
     progressReporter.checkInterrupt()
     val root = base.kids.values.head
     base.finish()
@@ -177,7 +188,7 @@ object TreeNode {
       (JsPath \ "count").read[Int] and
       (JsPath \ "lengths").read[Seq[Seq[String]]] and
       (JsPath \ "kids").lazyRead(Reads.seq[ReadTreeNode](nodeReads))
-    )(ReadTreeNode)
+    ) (ReadTreeNode)
 
   case class PathNode(path: String, count: Int)
 
@@ -195,7 +206,7 @@ object TreeNode {
   implicit val pathWrites: Writes[PathNode] = (
     (JsPath \ "path").write[String] and
       (JsPath \ "count").write[Int]
-    )(unlift(PathNode.unapply))
+    ) (unlift(PathNode.unapply))
 
 }
 
