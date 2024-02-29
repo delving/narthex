@@ -44,31 +44,8 @@ object ProcessedRepo {
   case class GraphChunk(dataset: Dataset, dsInfo: DsInfo, bulkActions: String) {
 
     def bulkAPIQ(orgId: String): String = {
-
-      def createBulkAction(dataset: Dataset, graphUri: String): String = {
-		val model = dataset.getNamedModel(graphUri)
-		val triples = new StringWriter()
-		RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
-		val (spec, localId) = dsInfo.extractSpecIdFromGraphName(graphUri)
-                                                
-		val hubId = s"${orgId}_${spec}_$localId"
-		//val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
-		val actionMap = Json.obj(
-		  "hubId" -> hubId,
-          "orgId" -> orgId,
-		  "dataset" -> spec,
-		  "graphUri" -> graphUri,
-		  "type" -> dsInfo.getLiteralProp(datasetType).getOrElse("narthex_record").toString(),
-		  "tags" -> dsInfo.getLiteralProp(datasetTags).getOrElse("").toString(),
-		  "action" -> "index",
-          "graphMimeType" -> "application/ld+json",
-		  //"contentHash" -> localHash.toString,
-		  "graph" -> s"$triples".stripMargin.trim
-		)
-		actionMap.toString()
+	    dataset.listNames().toList.map(g => dsInfo.createBulkAction(dataset, g)).mkString("\n")
 	  }
-	  dataset.listNames().toList.map(g => createBulkAction(dataset, g)).mkString("\n")
-	}
   }
 
   trait GraphReader {

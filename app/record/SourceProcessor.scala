@@ -191,27 +191,9 @@ class SourceProcessor(val datasetContext: DatasetContext,
               errorOutput.write("\n")
               throw e
           }
-          //val model = dataset.getNamedModel(graphUri)
-          val triples = new StringWriter()
-          RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
 
-          val orgId = dsInfo.orgId
-          val spec = dsInfo.spec
-          val hubId = s"${orgId}_${spec}_$localId"
-          //val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
-          val actionMap = Json.obj(
-            "hubId" -> hubId,
-            "orgId" -> orgId,
-            "localId" -> localId,
-            "dataset" -> spec,
-            "graphUri" -> graphUri,
-            "type" -> dsInfo.getLiteralProp(datasetType).getOrElse("narthex_record").toString(),
-            "action" -> "index",
-            "graphMimeType" -> "application/ld+json",
-            //"contentHash" -> localHash.toString,
-            "graph" -> s"$triples".stripMargin.trim
-          )
-          bulkActionOutput.write(actionMap.toString())
+          val bulkAction = dsInfo.createBulkAction(dataset, graphUri)
+          bulkActionOutput.write(bulkAction)
           bulkActionOutput.write("\n")
           // TODO make sure the named graph is part of the model
           //var nquads = new StringWriter()

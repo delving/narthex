@@ -24,6 +24,7 @@ import harvest.Harvesting.{HarvestCron, HarvestType}
 import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
 import organization.OrgActor.DatasetMessage
 import org.apache.jena.rdf.model._
+import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.DateTime
 import organization.OrgContext
@@ -656,6 +657,28 @@ class DsInfo(
 	val SpecIdExtractor(spec, localId) = id
 	(spec, localId)
   }
+
+  def createBulkAction(dataset: Dataset, graphUri: String): String = {
+		val model = dataset.getNamedModel(graphUri)
+		val triples = new StringWriter()
+		RDFDataMgr.write(triples, model, RDFFormat.NTRIPLES_UTF8)
+		val (_, localId) = extractSpecIdFromGraphName(graphUri)
+		val hubId = s"${orgId}_${spec}_$localId"
+		//val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
+		val actionMap = Json.obj(
+		  "hubId" -> hubId,
+      "orgId" -> orgId,
+		  "dataset" -> spec,
+		  "graphUri" -> graphUri,
+		  "type" -> getLiteralProp(datasetType).getOrElse("narthex_record").toString(),
+		  "tags" -> getLiteralProp(datasetTags).getOrElse("").toString(),
+		  "action" -> "index",
+      "graphMimeType" -> "application/n-triples",
+		  //"contentHash" -> localHash.toString,
+		  "graph" -> s"$triples".stripMargin.trim
+		)
+		actionMap.toString()
+	}
 
 
 
