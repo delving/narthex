@@ -4,6 +4,8 @@
 # except for .gitignore
 !.gitignore
 !.java-version
+conf/*.conf
+!conf/application.conf
 
 # Ignore Play! working directory #
 db
@@ -28,3 +30,5 @@ out
 fuseki_data
 _rpms
 tags
+_servers/
+*.rpm
