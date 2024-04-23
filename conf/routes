@@ -27,9 +27,13 @@ GET         /narthex/socket/dataset                                          con
 GET         /narthex/app/dataset-list                                        controllers.AppController.listDatasets
 GET         /narthex/app/prefixes                                            controllers.AppController.listPrefixes
 GET         /narthex/app/dataset/:spec/create/:character/:prefix             controllers.AppController.createDataset(spec, character, prefix)
++ nocsrf
 POST        /narthex/app/dataset/:spec/upload                                controllers.AppController.uploadDataset(spec)
++ nocsrf
 POST        /narthex/app/dataset/:spec/set-properties                        controllers.AppController.setDatasetProperties(spec)
++ nocsrf
 POST        /narthex/app/dataset/:spec/toggle-skos                           controllers.AppController.toggleSkosifiedField(spec)
++ nocsrf
 POST        /narthex/app/dataset/:spec/set-delimiter                         controllers.AppController.setRecordDelimiter(spec)
 GET         /narthex/app/dataset/:spec/index                                 controllers.AppController.index(spec)
 GET         /narthex/app/dataset/:spec/info                                  controllers.AppController.datasetInfo(spec)
@@ -40,19 +44,23 @@ GET         /narthex/app/dataset/:spec/histogram/:size/*path                 con
 
 GET         /narthex/app/dataset/:spec/term/vocab                            controllers.AppController.getTermVocabulary(spec)
 GET         /narthex/app/dataset/:spec/term/get-mappings                     controllers.AppController.getTermMappings(spec)
++ nocsrf
 POST        /narthex/app/dataset/:spec/term/:vocabSpec/toggle-mapping        controllers.AppController.toggleTermMapping(spec, vocabSpec)
 GET         /narthex/app/dataset/:spec/category/get-mappings                 controllers.AppController.getCategoryMappings(spec)
 
 GET         /narthex/app/skos/list                                           controllers.AppController.listVocabularies
 GET         /narthex/app/skos/:spec/create                                   controllers.AppController.createVocabulary(spec)
 GET         /narthex/app/skos/:spec/delete                                   controllers.AppController.deleteVocabulary(spec)
++ nocsrf
 POST        /narthex/app/skos/:spec/upload                                   controllers.AppController.uploadVocabulary(spec)
++ nocsrf
 POST        /narthex/app/skos/:spec/set-properties                           controllers.AppController.setVocabularyProperties(spec)
 GET         /narthex/app/skos/:spec/info                                     controllers.AppController.vocabularyInfo(spec)
 GET         /narthex/app/skos/:spec/statistics                               controllers.AppController.vocabularyStatistics(spec)
 GET         /narthex/app/skos/:spec/languages                                controllers.AppController.getVocabularyLanguages(spec)
 GET         /narthex/app/skos/:spec/search/:sought/:language                 controllers.AppController.searchVocabulary(spec, sought, language)
 GET         /narthex/app/skos/:specA/:specB/get-mappings                     controllers.AppController.getSkosMappings(specA, specB)
++ nocsrf
 POST        /narthex/app/skos/:specA/:specB/toggle-mapping                   controllers.AppController.toggleSkosMapping(specA, specB)
 
 
@@ -65,8 +73,11 @@ GET         /narthex/app/dataset/:spec/sip-list                              con
 GET         /narthex/app/dataset/:spec/delete-latest                         controllers.AppController.deleteLatestSipFile(spec)
 
 # sip-app
++ nocsrf
 GET         /narthex/sip-app                                                 controllers.SipAppController.listSipZips()
++ nocsrf
 GET         /narthex/sip-app/:spec                                           controllers.SipAppController.downloadSipZip(spec)
++ nocsrf
 POST        /narthex/sip-app/:spec/:zipFileName                              controllers.SipAppController.uploadSipZip(spec, zipFileName)
 
 GET         /narthex/api/:spec                                               controllers.APIController.pathsJSON(spec)
