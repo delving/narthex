@@ -104,7 +104,7 @@ class SipRepo(home: File, spec: String, rdfBaseUrl: String) {
 object Sip {
 
   // Note: this is set in the OrgContext but we don't want a dependency from there (requires app for testing)
-  val XSD_VALIDATION = System.getProperty("XSD_VALIDATION", "true") == "true"
+  val XSD_VALIDATION = System.getProperty("XSD_VALIDATION", "false") == "true"
 
   case class SipMapping(spec: String, prefix: String, version: String,
                         recDefTree: RecDefTree, validatorOpt: Option[Validator],
