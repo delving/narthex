@@ -44,6 +44,7 @@ import scala.language.postfixOps
   * It is obvious that we need to remove this class and only DI the specific values that a component requires,
   * allowing this class to be deleted
   */
+ @Singleton
 class OrgContext @Inject() (
   val narthexConfig: NarthexConfig,
   val cacheApi: SyncCacheApi,
