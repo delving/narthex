@@ -34,6 +34,8 @@ class Semaphore (val permits: Int) {
 
   def inUse(): Int = semaphores.size()
 
+  def size(): Int = permits
+
   def activeSpecs() = {
     semaphores.keySet()
   }

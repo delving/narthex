@@ -83,7 +83,7 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
                 } else {
                   val sem = orgContext.semaphore
                   logger.info(
-                    s"$info skipping, no semaphore available: ${sem.availablePermits()}; ${sem.activeSpecs().toString()}")
+                    s"$info skipping, no semaphore available: ${sem.availablePermits()} of ${sem.size()}; ${sem.activeSpecs().toString()}")
                 }
             }
           }
