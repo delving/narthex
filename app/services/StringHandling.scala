@@ -92,6 +92,8 @@ object StringHandling {
 
   def createGraphName(subject: String) = s"${stripSlash(subject)}/graph"
 
+  def createHubGraphName(orgId: String, spec: String, localId: String) = s"urn:${orgId}_${spec}_${localId}/graph"
+
   val SubjectOfGraph = "(.*)/graph".r
 
   def csvToXML(reader: Reader, writer: Writer): Unit = {

@@ -309,41 +309,10 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       val cn = root.getChildNodes
       val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
       val (rootNode, graphName) = prefix match {
-        case "edm" =>
-          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-          kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "Aggregation").getOrElse(throw new RuntimeException(s"No ore:aggregation found!"))
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
-        case "naa" =>
-          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-          kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "RecordAggregation").getOrElse(kids.head)
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
-        case "nao" =>
-          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-          kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "Recordaggregatie").getOrElse(kids.head)
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
-        case "nant" =>
-          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-          kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "Recordaggregatie").getOrElse(kids.head)
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
         case _ =>
           val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
           kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.head
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
+          (rdfWrapper, StringHandling.createHubGraphName(orgId.getOrElse("unknownOrg"), sipMapping.spec, pocket.id))
       }
       // deliver the pocket
       val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")

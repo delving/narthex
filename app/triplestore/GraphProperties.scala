@@ -65,6 +65,7 @@ object GraphProperties {
   val datasetAggregator = NXProp("datasetAggregator")
   val datasetType = NXProp("datasetType")
   val datasetTags = NXProp("datasetTags")
+  val recDefId = NXProp("datasetMapToPrefix")
   val edmType = NXProp("edmType")
 
   val datasetLanguage = NXProp("datasetLanguage")
