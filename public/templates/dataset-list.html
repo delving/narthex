@@ -2,9 +2,7 @@
 <div class="page-header no-margin">
     <!-- page location, org -->
     <div class="meta">
-        <div class="page">
-            Datasets
-        </div>
+        <div class="page">Datasets</div>
         <div class="organization">
             <span class="fa fa-institution"></span>
             <span>{{ orgId }}</span>
@@ -144,9 +142,9 @@
                             data-ng-class="{ 'closed': !expanded, 'open': expanded }"
                         >
                             <td class="spec">
-                                <span class="spec-field">{{
-                                    dataset.datasetSpec
-                                }}</span>
+                                <span class="spec-field"
+                                    >{{ dataset.datasetSpec }}</span
+                                >
                             </td>
                             <td class="name">
                                 <span
@@ -158,9 +156,7 @@
                             <td class="error">
                                 <span
                                     data-ng-if="dataset.harvestIncrementalMode == 'true'"
-                                    >{{
-                                        dataset.processedIncrementalInvalid
-                                    }}
+                                    >{{ dataset.processedIncrementalInvalid }}
                                     (inc)</span
                                 >
                                 <span
@@ -171,9 +167,7 @@
                             <td class="valid">
                                 <span
                                     data-ng-if="dataset.harvestIncrementalMode == 'true'"
-                                    >{{
-                                        dataset.processedIncrementalValid
-                                    }}
+                                    >{{ dataset.processedIncrementalValid }}
                                     (inc)</span
                                 >
                                 <span
@@ -239,10 +233,8 @@
                                 </span>
                             </td>
                             <td class="date-time">
-                                {{
-                                    dataset.stateCurrent.date
-                                        | date: 'yyyy/MM/dd HH:mm'
-                                }}
+                                {{ dataset.stateCurrent.date | date: 'yyyy/MM/dd
+                                HH:mm' }}
                             </td>
                         </tr>
                     </tbody>
@@ -263,8 +255,8 @@
                                 <h4 class="list-group-item-heading">
                                     Raw
                                     <small class="badge"
-                                        >{{ dataset.stateRaw.d }}
-                                        {{ dataset.stateRaw.t }}</small
+                                        >{{ dataset.stateRaw.d }} {{
+                                        dataset.stateRaw.t }}</small
                                     >
                                 </h4>
                                 <div class="btn-toolbar">
@@ -285,11 +277,9 @@
                                 <h4 class="list-group-item-heading">
                                     Raw Analyzed
                                     <small class="badge"
-                                        >{{ dataset.stateRawAnalyzed.d }}
-                                        {{
-                                            dataset.stateRawAnalyzed.t
-                                                | date: 'HH:mm'
-                                        }}</small
+                                        >{{ dataset.stateRawAnalyzed.d }} {{
+                                        dataset.stateRawAnalyzed.t | date:
+                                        'HH:mm' }}</small
                                     >
                                 </h4>
                                 <div class="btn-toolbar">
@@ -307,8 +297,8 @@
                                 <h4 class="list-group-item-heading">
                                     Sourced
                                     <small class="badge"
-                                        >{{ dataset.stateSourced.d }}
-                                        {{ dataset.stateSourced.t }}</small
+                                        >{{ dataset.stateSourced.d }} {{
+                                        dataset.stateSourced.t }}</small
                                     >
                                 </h4>
                                 <div class="btn-toolbar">
@@ -329,8 +319,8 @@
                                 <h4 class="list-group-item-heading">
                                     Mappable
                                     <small class="badge"
-                                        >{{ dataset.stateMappable.d }}
-                                        {{ dataset.stateMappable.t }}</small
+                                        >{{ dataset.stateMappable.d }} {{
+                                        dataset.stateMappable.t }}</small
                                     >
                                 </h4>
                                 <div class="btn-toolbar">
@@ -351,8 +341,8 @@
                                 <h4 class="list-group-item-heading">
                                     Processable
                                     <small class="badge"
-                                        >{{ dataset.stateProcessable.d }}
-                                        {{ dataset.stateProcessable.t }}</small
+                                        >{{ dataset.stateProcessable.d }} {{
+                                        dataset.stateProcessable.t }}</small
                                     >
                                 </h4>
                                 <div class="btn-toolbar">
@@ -374,8 +364,7 @@
                                     Incremental Saved
                                     <small class="badge"
                                         >{{ dataset.stateIncrementalSaved.d }}
-                                        {{
-                                            dataset.stateIncrementalSaved.t
+                                        {{ dataset.stateIncrementalSaved.t
                                         }}</small
                                     >
                                 </h4>
@@ -398,8 +387,8 @@
                                 <h4 class="list-group-item-heading">
                                     Processed
                                     <small class="badge"
-                                        >{{ dataset.stateProcessed.d }}
-                                        {{ dataset.stateProcessed.t }}</small
+                                        >{{ dataset.stateProcessed.d }} {{
+                                        dataset.stateProcessed.t }}</small
                                     >
                                 </h4>
                                 <div class="btn-toolbar">
@@ -420,8 +409,8 @@
                                 <h4 class="list-group-item-heading">
                                     Analyzed
                                     <small class="badge"
-                                        >{{ dataset.stateAnalyzed.d }}
-                                        {{ dataset.stateAnalyzed.t }}</small
+                                        >{{ dataset.stateAnalyzed.d }} {{
+                                        dataset.stateAnalyzed.t }}</small
                                     >
                                 </h4>
                                 <div class="btn-toolbar">
@@ -456,8 +445,8 @@
                                 <h4 class="list-group-item-heading">
                                     Saved
                                     <small class="badge"
-                                        >{{ dataset.stateSaved.d }}
-                                        {{ dataset.stateSaved.t }}</small
+                                        >{{ dataset.stateSaved.d }} {{
+                                        dataset.stateSaved.t }}</small
                                     >
                                 </h4>
                                 <div class="btn-toolbar">
@@ -514,9 +503,10 @@
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                                 <i class="fa fa-exclamation-circle"></i>
-                                <span>{{
-                                    dataset.datasetErrorMessage | unsafe
-                                }}</span>
+                                <span
+                                    >{{ dataset.datasetErrorMessage | unsafe
+                                    }}</span
+                                >
                                 <hr />
                                 You must
                                 <a
@@ -912,15 +902,15 @@
                     <i class="fa fa-binoculars"></i>
                     <span>Sample</span>
                 </button>
-                <a href="{{ pmhPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'pmh'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                <a href="/narthex/preview/{{ pmhPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'pmh'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
-                <a href="{{ adlibPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                <a href="/narthex/preview/{{ adlibPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
-                <a href="{{ dataset.edit.harvestDownloadURL }}" data-ng-show="dataset.edit.harvestType == 'download'" target="_blank" type="button" class="btn btn-default">
+                <a href="/narthex/preview/{{ dataset.edit.harvestDownloadURL }}" data-ng-show="dataset.edit.harvestType == 'download'" target="_blank" type="button" class="btn btn-default">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
@@ -990,7 +980,7 @@
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
-            <a href="{{ pmhPreviewBase }}&from={{trimMillis(dataset.edit.harvestPreviousTime)}}Z" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!incrementalPreview">
+            <a href="/narthex/preview/{{ pmhPreviewBase }}&from={{trimMillis(dataset.edit.harvestPreviousTime)}}Z" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!incrementalPreview">
                 <i class="fa fa-binoculars"></i>
                 <span>Preview</span>
             </a>

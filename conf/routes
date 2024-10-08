@@ -31,6 +31,7 @@ GET         /narthex/app/dataset/:spec/term/get-mappings                     web
 POST        /narthex/app/dataset/:spec/term/:vocabSpec/toggle-mapping        web.AppController.toggleTermMapping(spec, vocabSpec)
 GET         /narthex/app/dataset/:spec/category/get-mappings                 web.AppController.getCategoryMappings(spec)
 
+
 GET         /narthex/app/skos/list                                           web.AppController.listVocabularies
 GET         /narthex/app/skos/:spec/create                                   web.AppController.createVocabulary(spec)
 GET         /narthex/app/skos/:spec/delete                                   web.AppController.deleteVocabulary(spec)
@@ -51,6 +52,8 @@ GET         /narthex/app/categories/gather-counts                            web
 
 GET         /narthex/app/dataset/:spec/sip-list                              web.AppController.listSipFiles(spec)
 GET         /narthex/app/dataset/:spec/delete-latest                         web.AppController.deleteLatestSipFile(spec)
+
+GET         /narthex/preview/*dataUrl                                        web.PreviewController.previewHarvestUrl(dataUrl)
 
 # sip-app
 GET         /narthex/sip-app                                                 web.SipAppController.listSipZips()

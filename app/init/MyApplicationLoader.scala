@@ -102,7 +102,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsApi, mailService, orgActorRef)
 
-  lazy val router = new Routes(httpErrorHandler, mainController, webSocketController, appController,
+  lazy val router = new Routes(httpErrorHandler, mainController, webSocketController, appController, previewController,
     sipAppController, apiController, webJarAssets, assets, metricsController, infoController)
 
   lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(new OrgActor(orgContext, harvestingExecutionContext)), appConfig.orgId)
@@ -120,6 +120,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
   lazy val requireJs = new RequireJS(environment, webJarAssets)
   lazy val metricsController = new MetricsController(metrics)
   lazy val sipAppController: SipAppController = new SipAppController(orgContext)
+  lazy val previewController: PreviewController = new PreviewController(orgContext)
   lazy val mainController = new MainController(defaultCacheApi,
     appConfig.narthexDomain, appConfig.naveDomain, appConfig.orgId,
     webJarAssets, requireJs, configString("sipAppDownloadUrl"), configFlag("enableIncrementalHarvest"),
