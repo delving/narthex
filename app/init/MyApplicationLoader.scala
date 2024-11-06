@@ -100,7 +100,7 @@ class MyComponents(context: Context, narthexDataDir: File, datadogConfig: Option
 
   implicit val tripleStore = new Fuseki(tripleStoreUrl, appConfig.orgId, sparqlQueryPath, sparqlUpdatePath, graphStorePath, graphStoreParam, tripleStoreLog, wsApi)
 
-  lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsApi, mailService, orgActorRef)
+  implicit lazy val orgContext = new OrgContext(appConfig, defaultCacheApi, wsApi, mailService, orgActorRef)
 
   lazy val router = new Routes(httpErrorHandler, mainController, webSocketController, appController, previewController,
     sipAppController, apiController, webJarAssets, assets, metricsController, infoController)

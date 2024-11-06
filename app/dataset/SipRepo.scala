@@ -39,6 +39,8 @@ import scala.collection.JavaConversions._
 import scala.io.Source
 import scala.util.Try
 
+import organization.OrgContext
+
 /**
  * A repository of sip files which knows everything about what a sip means, revealing all of the contained
  * attributes from the contained property files and able to produce a SipMapper which can transform pockets
@@ -121,7 +123,7 @@ object Sip {
 
     val prefix: String
 
-    def executeMapping(pocket: Pocket): Try[Pocket]
+    def executeMapping(pocket: Pocket, orgContext: OrgContext): Try[Pocket]
 
   }
 
@@ -140,7 +142,7 @@ object Sip {
 
 }
 
-class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
+class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File){
 
   import dataset.Sip._
   import dataset.SipRepo._
@@ -293,7 +295,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
     override val prefix: String = sipMapping.prefix
 
-    override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
+    override def executeMapping(pocket: Pocket, orgContext: OrgContext): Try[Pocket] = Try {
       val metadataRecord = factory.metadataRecordFrom(pocket.getText)
       val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord),
         sipMapping.recMapping.getRecDefTree)
@@ -312,7 +314,12 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
         case _ =>
           val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
           kids.foreach(rdfWrapper.appendChild)
-          (rdfWrapper, StringHandling.createHubGraphName(orgId.getOrElse("unknownOrg"), sipMapping.spec, pocket.id))
+          var orgIdLabel = orgId.getOrElse("")
+          if (orgIdLabel == "") {
+            orgIdLabel = orgContext.appConfig.orgId
+          } 
+
+          (rdfWrapper, StringHandling.createHubGraphName(orgIdLabel, sipMapping.spec, pocket.id))
       }
       // deliver the pocket
       val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")

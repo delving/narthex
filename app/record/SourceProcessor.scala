@@ -205,7 +205,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         def catchPocket(rawPocket: Pocket): Unit = {
           progress.get.checkInterrupt()
           val startAll = System.currentTimeMillis()
-          val pocketTry = sipMapper.executeMapping(rawPocket)
+          val pocketTry = sipMapper.executeMapping(rawPocket, orgContext)
           val processing = System.currentTimeMillis() - startAll
           val startWrite = System.currentTimeMillis()
           pocketTry match {
