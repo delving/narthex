@@ -156,11 +156,27 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
   def readMap(propertyFileName: String): Map[String, String] = {
     entries.get(propertyFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
-      val lines = Source.fromInputStream(inputStream, "UTF-8").getLines()
-      val propertyMap = lines.flatMap { line =>
-        val equals = line.indexOf("=")
-        if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
-      }.toMap
+      val lines = Try(Source.fromInputStream(inputStream, "UTF-8").getLines().toList)
+        .getOrElse(Nil) // Default to an empty list if there's an error reading lines
+
+      val propertyMap = lines
+        .filter(_.contains("=")) // Skip lines without "="
+        .flatMap { line =>
+        try {
+          val Array(key, value) = line.split("=", 2) // Split on the first "=" only
+          Some(key.trim -> value.trim)
+        } catch {
+          case _: Throwable =>
+            println(s"Skipping line due to parse error: $line") // Logging for debug
+            None
+        }
+      }
+        .toMap
+
+      // Debug output (optional)
+      propertyMap.foreach { case (key, value) => Logger.debug(s"$key -> $value") }
+      
+
       inputStream.close()
     return propertyMap
     } getOrElse (throw new RuntimeException(s"No entry for $propertyFileName of $dsInfoSpec"))
