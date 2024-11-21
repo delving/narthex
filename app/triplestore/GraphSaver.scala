@@ -126,8 +126,9 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           log.info(s"Only drop orphans when not in incremental mode")
         }
         orgContext.semaphore.release(datasetContext.dsInfo.spec)
+        orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
         log.info(
-          s"${datasetContext.dsInfo.spec} semaphore should be released: ${orgContext.semaphore.activeSpecs().toString()}"
+          s"${datasetContext.dsInfo.spec} semaphore should be released: ${orgContext.semaphore.activeSpecs().toString()}; save Semaphore ${orgContext.saveSemaphore.activeSpecs().toString()}"
         )
         log.info("All graphs saved")
         context.parent ! GraphSaveComplete
