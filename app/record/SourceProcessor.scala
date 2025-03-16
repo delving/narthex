@@ -182,24 +182,9 @@ class SourceProcessor(val datasetContext: DatasetContext,
         }
 
         def writeBulkAction(rdf: String, graphUri: String, localId: String) = {
-          val model = dataset.getNamedModel(graphUri)
-          try {
-            model.read(new StringReader(rdf), null, "RDF/XML")
-          } catch {
-            case e: Throwable =>
-              errorOutput.write(rdf)
-              errorOutput.write("\n")
-              throw e
-          }
-
-          val bulkAction = dsInfo.createBulkAction(dataset, graphUri)
+          val bulkAction = dsInfo.createBulkActionRaw(rdf, graphUri)
           bulkActionOutput.write(bulkAction)
           bulkActionOutput.write("\n")
-          // TODO make sure the named graph is part of the model
-          //var nquads = new StringWriter()
-          //RDFDataMgr.write(nquads, model, RDFFormat.NQUADS)
-          //nquadOutput.write(s"$nquads".stripMargin.trim)
-          //nquadOutput.write("\n")
         }
 
         def catchPocket(rawPocket: Pocket): Unit = {

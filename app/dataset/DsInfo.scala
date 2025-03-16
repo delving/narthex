@@ -652,6 +652,27 @@ class DsInfo(
 	(orgId, spec, localId)
   }
 
+  def createBulkActionRaw(rdf: String, graphUri: String): String = {
+		val (cOrgId, cSpec, cLocalId) = extractSpecIdFromGraphName(graphUri)
+		val hubId = s"${cOrgId}_${cSpec}_${cLocalId}"
+		//val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
+		val actionMap = Json.obj(
+		  "hubId" -> hubId,
+      "orgId" -> cOrgId,
+		  "dataset" -> cSpec,
+      "localId" -> cLocalId,
+		  "graphUri" -> graphUri,
+		  "type" -> getLiteralProp(datasetType).getOrElse("narthex_record").toString(),
+		  "tags" -> getLiteralProp(datasetTags).getOrElse("").toString(),
+		  "action" -> "index",
+      "graphMimeType" -> "application/rdf+xml",
+		  //"contentHash" -> localHash.toString,
+		  "recDefId" -> getLiteralProp(recDefId).getOrElse("").toString(),
+		  "graph" -> s"$rdf".stripMargin.trim
+		)
+		actionMap.toString()
+	}
+
   def createBulkAction(dataset: Dataset, graphUri: String): String = {
 		val model = dataset.getNamedModel(graphUri)
 		val triples = new StringWriter()
