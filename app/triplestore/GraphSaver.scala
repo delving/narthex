@@ -57,12 +57,33 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
 
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
+  
+  override def postStop(): Unit = {
+    // Ensure resources are cleaned up even if actor is terminated unexpectedly
+    reader.foreach(_.close())
+    reader = None
+    
+    // Release BOTH semaphores if this actor is stopped without proper completion
+    if (orgContext.semaphore.isActive(datasetContext.dsInfo.spec) || 
+        orgContext.saveSemaphore.isActive(datasetContext.dsInfo.spec)) {
+      log.warning(s"GraphSaver stopped unexpectedly for ${datasetContext.dsInfo.spec}, releasing both semaphores")
+      orgContext.semaphore.release(datasetContext.dsInfo.spec)
+      orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
+    }
+    
+    super.postStop()
+  }
 
   def failure(ex: Throwable) = {
-    log.info(ex.getMessage)
+    log.error(s"GraphSaver failure for ${datasetContext.dsInfo.spec}: ${ex.getMessage}", ex)
     reader.foreach(_.close())
-
     reader = None
+    
+    // CRITICAL: Always release BOTH semaphores on failure to be safe
+    orgContext.semaphore.release(datasetContext.dsInfo.spec)
+    orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
+    log.info(s"Released both semaphores for ${datasetContext.dsInfo.spec} due to failure")
+    
     context.parent ! WorkFailure(ex.getMessage, Some(ex))
   }
 
@@ -129,9 +150,11 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           datasetContext.dsInfo.removeNaveOrphans(startSave)
           log.info(s"Only drop orphans when not in incremental mode")
         }
+        // Release BOTH semaphores on successful completion to be safe
         orgContext.semaphore.release(datasetContext.dsInfo.spec)
+        orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
         log.info(
-          s"${datasetContext.dsInfo.spec} semaphore should be released: ${orgContext.semaphore.activeSpecs().toString()}"
+          s"${datasetContext.dsInfo.spec} both semaphores released. Active specs - semaphore: ${orgContext.semaphore.activeSpecs().toString()}, saveSemaphore: ${orgContext.saveSemaphore.activeSpecs().toString()}"
         )
         log.info("All graphs saved")
         context.parent ! GraphSaveComplete

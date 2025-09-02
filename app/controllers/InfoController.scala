@@ -43,19 +43,19 @@ class InfoController @Inject() ( // order of these explicit parameters does not 
   }
 
   def connectionStats = Action { request =>
-    val stats = tripleStore match {
+    tripleStore match {
       case fuseki: Fuseki => 
         val (active, total, failed) = fuseki.getConnectionStats
-        Map(
+        val failureRate = if (total > 0) Math.round((failed.toDouble / total * 100) * 100.0) / 100.0 else 0.0
+        Ok(Json.obj(
           "activeConnections" -> active,
           "totalRequests" -> total,
           "failedRequests" -> failed,
-          "failureRate" -> (if (total > 0) (failed.toDouble / total * 100).round(2) else 0.0)
-        )
+          "failureRate" -> failureRate
+        )).as(ContentTypes.JSON)
       case _ => 
-        Map("error" -> "Connection stats not available for this triple store implementation")
+        Ok(Json.obj("error" -> "Connection stats not available for this triple store implementation")).as(ContentTypes.JSON)
     }
-    Ok(Json.toJson(stats)).as(ContentTypes.JSON)
   }
 
 }

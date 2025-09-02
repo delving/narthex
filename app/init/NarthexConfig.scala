@@ -123,6 +123,11 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
   def fusekiReadTimeoutMs: Int = configuration.getOptional[Int]("fuseki.readTimeoutMs").getOrElse(60000)
   logger.info(s"fuseki.readTimeoutMs: $fusekiReadTimeoutMs")
 
+  // Fuseki authentication settings
+  def fusekiUsername: Option[String] = configuration.getOptional[String]("fuseki-username").filter(_.nonEmpty)
+  def fusekiPassword: Option[String] = configuration.getOptional[String]("fuseki-password").filter(_.nonEmpty)
+  logger.info(s"fuseki authentication enabled: ${fusekiUsername.isDefined}")
+
   private def configFlag(name: String): Boolean =
     configuration.getOptional[Boolean](name).getOrElse(false)
 

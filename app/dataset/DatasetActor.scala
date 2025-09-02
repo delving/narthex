@@ -18,8 +18,10 @@ package dataset
 
 import java.io.File
 
-import akka.actor.SupervisorStrategy.Stop
+import akka.actor.SupervisorStrategy.{Stop, Restart}
+import akka.actor.OneForOneStrategy
 import akka.actor._
+import scala.concurrent.duration._
 import analysis.Analyzer
 import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
 import dataset.DatasetActor._
@@ -158,8 +160,22 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   import context.dispatcher
 
-  override val supervisorStrategy = OneForOneStrategy() {
+  override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1.minute) {
+    case _: OutOfMemoryError =>
+      log.error("Child actor ran out of memory - stopping")
+      Stop
+    case _: StackOverflowError =>
+      log.error("Child actor stack overflow - stopping")
+      Stop
+    case _: java.io.IOException =>
+      log.warning("Child actor IO exception - restarting")
+      Restart
+    case throwable: Exception =>
+      log.warning(s"Child actor exception: ${throwable.getMessage} - restarting")
+      self ! WorkFailure(s"Child failure: $throwable", Some(throwable))
+      Restart
     case throwable: Throwable =>
+      log.error(s"Child actor fatal error: $throwable - stopping")
       self ! WorkFailure(s"Child failure: $throwable", Some(throwable))
       Stop
   }
@@ -174,6 +190,48 @@ class DatasetActor(val datasetContext: DatasetContext,
   def broadcastIdleState() = broadcastRaw(datasetContext.dsInfo)
 
   def broadcastProgress(active: Active) = broadcastRaw(active)
+
+  // Track child actors for proper cleanup
+  private var childActors: Set[ActorRef] = Set.empty
+  
+  override def preStart(): Unit = {
+    super.preStart()
+    log.info(s"Starting DatasetActor for dataset: ${dsInfo.spec}")
+  }
+
+  override def postStop(): Unit = {
+    log.info(s"Stopping DatasetActor for dataset: ${dsInfo.spec}")
+    
+    // CRITICAL: Always release BOTH semaphores when actor stops (safe to call even if not held)
+    log.warning(s"DatasetActor stopped, ensuring both semaphores are released for: ${dsInfo.spec}")
+    orgContext.semaphore.release(dsInfo.spec)
+    orgContext.saveSemaphore.release(dsInfo.spec)
+    
+    // Stop all child actors to prevent resource leaks
+    childActors.foreach { child =>
+      log.debug(s"Stopping child actor: $child")
+      context.stop(child)
+    }
+    childActors = Set.empty
+    super.postStop()
+  }
+
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    log.warning(s"Restarting DatasetActor for dataset: ${dsInfo.spec} due to: ${reason.getMessage}")
+    super.preRestart(reason, message)
+  }
+
+  override def postRestart(reason: Throwable): Unit = {
+    super.postRestart(reason)
+    log.info(s"Restarted DatasetActor for dataset: ${dsInfo.spec}")
+  }
+
+  private def createChildActor(props: Props, name: String): ActorRef = {
+    val child = context.actorOf(props, name)
+    childActors += child
+    context.watch(child)
+    child
+  }
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
@@ -357,12 +415,12 @@ class DatasetActor(val datasetContext: DatasetContext,
           case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
           case ADLIB => HarvestAdLib(strategy, url, ds, se)
         }
-        val harvester =
-          context.actorOf(Harvester.props(datasetContext,
-                                          orgContext.appConfig.harvestTimeOut,
-                                          orgContext.wsApi,
-                                          harvestingExecutionContext),
-                          "harvester")
+        val harvester = createChildActor(
+          Harvester.props(datasetContext,
+                         orgContext.appConfig.harvestTimeOut,
+                         orgContext.wsApi,
+                         harvestingExecutionContext),
+          "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
@@ -370,16 +428,16 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
 
     case Event(AdoptSource(file, orgContext), Dormant) =>
-      val sourceProcessor =
-        context.actorOf(SourceProcessor.props(datasetContext, orgContext),
-                        "source-adopter")
+      val sourceProcessor = createChildActor(
+        SourceProcessor.props(datasetContext, orgContext),
+        "source-adopter")
       sourceProcessor ! AdoptSource(file, orgContext)
       goto(Adopting) using Active(dsInfo.spec, Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>
-      val sourceProcessor =
-        context.actorOf(SourceProcessor.props(datasetContext, orgContext),
-                        "source-generator")
+      val sourceProcessor = createChildActor(
+        SourceProcessor.props(datasetContext, orgContext),
+        "source-generator")
       sourceProcessor ! GenerateSipZip
       goto(Generating) using Active(dsInfo.spec,
                                     Some(sourceProcessor),
@@ -388,24 +446,24 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(StartAnalysis(processed), Dormant) =>
       log.info(s"Start analysis processed=$processed")
       if (processed) {
-        val analyzer =
-          context.actorOf(Analyzer.props(datasetContext), "analyzer-processed")
+        val analyzer = createChildActor(
+          Analyzer.props(datasetContext), "analyzer-processed")
         analyzer ! AnalyzeFile(datasetContext.processedRepo.baseOutput.xmlFile,
                                processed)
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       } else {
         val rawFile = datasetContext.rawXmlFile.getOrElse(
           throw new Exception(s"Unable to find 'raw' file to analyze"))
-        val analyzer =
-          context.actorOf(Analyzer.props(datasetContext), "analyzer-raw")
+        val analyzer = createChildActor(
+          Analyzer.props(datasetContext), "analyzer-raw")
         analyzer ! AnalyzeFile(rawFile, processed = false)
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       }
 
     case Event(StartProcessing(scheduledOpt), Dormant) =>
-      val sourceProcessor =
-        context.actorOf(SourceProcessor.props(datasetContext, orgContext),
-                        "source-processor")
+      val sourceProcessor = createChildActor(
+        SourceProcessor.props(datasetContext, orgContext),
+        "source-processor")
       sourceProcessor ! Process(scheduledOpt)
       goto(Processing) using Active(dsInfo.spec,
                                     Some(sourceProcessor),
@@ -414,9 +472,9 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(StartSaving(scheduledOpt), Dormant) =>
       if(orgContext.saveSemaphore.tryAcquire(dsInfo.spec)) {
         log.info(s"save lock acquired for $dsInfo.spec")
-        val graphSaver =
-          context.actorOf(GraphSaver.props(datasetContext, orgContext),
-            "graph-saver")
+        val graphSaver = createChildActor(
+          GraphSaver.props(datasetContext, orgContext),
+          "graph-saver")
         graphSaver ! SaveGraphs(scheduledOpt)
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
       } else {
@@ -426,18 +484,18 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
-      val skosifier =
-        context.actorOf(Skosifier.props(dsInfo, orgContext), "skosifier")
+      val skosifier = createChildActor(
+        Skosifier.props(dsInfo, orgContext), "skosifier")
       skosifier ! skosifiedField
       goto(Skosifying) using Active(dsInfo.spec, Some(skosifier), SKOSIFYING)
 
     case Event(StartCategoryCounting, Dormant) =>
       if (datasetContext.processedRepo.nonEmpty) {
         implicit val ts = orgContext.ts
-        val categoryCounter =
-          context.actorOf(CategoryCounter.props(dsInfo,
-                                                datasetContext.processedRepo,
-                                                orgContext),
+        val categoryCounter = createChildActor(
+          CategoryCounter.props(dsInfo,
+                               datasetContext.processedRepo,
+                               orgContext),
                           "category-counter")
         categoryCounter ! CountCategories
         goto(Categorizing) using Active(dsInfo.spec,
@@ -573,9 +631,9 @@ class DatasetActor(val datasetContext: DatasetContext,
       if (scheduledOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
         //dsInfo.setState(PROCESSABLE)
-        val graphSaver =
-          context.actorOf(GraphSaver.props(datasetContext, orgContext),
-                          "graph-saver")
+        val graphSaver = createChildActor(
+          GraphSaver.props(datasetContext, orgContext),
+          "graph-saver")
         graphSaver ! SaveGraphs(scheduledOpt)
         dsInfo.setState(INCREMENTAL_SAVED)
         active.childOpt.foreach(_ ! PoisonPill)
