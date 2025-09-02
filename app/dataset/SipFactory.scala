@@ -207,29 +207,46 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient, orgId: String)
   }
 
   def initiateSipZip(sipFile: File, sourceXmlFile: File, facts: SipGenerationFacts) = {
-    val zos = new ZipOutputStream(new FileOutputStream(sipFile))
+    val fos = new FileOutputStream(sipFile)
+    try {
+      val zos = new ZipOutputStream(fos)
+      try {
+        addFactsEntry(facts, zos)
 
-    addFactsEntry(facts, zos)
+        // record definition and validation
+        def copyIn(fileToCopy: File) = {
+          zos.putNextEntry(new ZipEntry(fileToCopy.getName))
+          val fileIn = new FileInputStream(fileToCopy)
+          try {
+            IOUtils.copy(fileIn, zos)
+          } finally {
+            fileIn.close()
+          }
+          zos.closeEntry()
+        }
+        copyIn(recordDefinition)
+        copyIn(validation)
 
-    // record definition and validation
-    def copyIn(fileToCopy: File) = {
-      zos.putNextEntry(new ZipEntry(fileToCopy.getName))
-      val fileIn = new FileInputStream(fileToCopy)
-      IOUtils.copy(fileIn, zos)
-      fileIn.close()
-      zos.closeEntry()
+        // source, gzipped
+        zos.putNextEntry(new ZipEntry(SipRepo.SOURCE_FILE))
+        val gzipOut = new GZIPOutputStream(zos)
+        try {
+          val sourceIn = new FileInputStream(sourceXmlFile)
+          try {
+            IOUtils.copy(sourceIn, gzipOut)
+          } finally {
+            sourceIn.close()
+          }
+        } finally {
+          gzipOut.close()
+        }
+      } finally {
+        zos.close()
+      }
+    } catch {
+      case e: Exception =>
+        fos.close()
+        throw e
     }
-    copyIn(recordDefinition)
-    copyIn(validation)
-
-    // source, gzipped
-    zos.putNextEntry(new ZipEntry(SipRepo.SOURCE_FILE))
-    val gzipOut = new GZIPOutputStream(zos)
-    val sourceIn = new FileInputStream(sourceXmlFile)
-    IOUtils.copy(sourceIn, gzipOut)
-    sourceIn.close()
-    gzipOut.close()
-
-    zos.close()
   }
 }

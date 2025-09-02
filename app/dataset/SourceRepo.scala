@@ -125,9 +125,11 @@ object SourceRepo {
   def sourceFactsFromHomedir(home: File): SourceFacts = {
     val file = sourceFactsFile(home)
     val source = Source.fromFile(file, "UTF-8")
-    val facts = readSourceFacts(source)
-    source.close()
-    facts
+    try {
+      readSourceFacts(source)
+    } finally {
+      source.close()
+    }
   }
 
   def createClean(home: File, sourceFacts: SourceFacts, orgContext: OrgContext): SourceRepo = {
@@ -202,7 +204,14 @@ class SourceRepo(home: File, orgContext: OrgContext) {
 
   private def avoidSet(zipFile: File): Set[String] = {
     val idSet = new mutable.HashSet[String]()
-    avoidFiles(zipFile).foreach(Source.fromFile(_, "UTF-8").getLines().foreach(idSet.add))
+    avoidFiles(zipFile).foreach { file =>
+      val source = Source.fromFile(file, "UTF-8")
+      try {
+        source.getLines().foreach(idSet.add)
+      } finally {
+        source.close()
+      }
+    }
     idSet.toSet
   }
 
@@ -252,16 +261,27 @@ class SourceRepo(home: File, orgContext: OrgContext) {
       val idsFiles = files.map(createIdsFile)
       idsFiles.foreach { idsFile =>
         if (!idsFile.exists()) throw new RuntimeException(s"where the hell is $idsFile?")
-        val ids = Source.fromFile(idsFile, "UTF-8").getLines()
-        val intersectionIds = ids.filter(idSet.contains)
-        if (intersectionIds.nonEmpty) {
-          // create an intersection file
-          val intersection = createIntersectionFile(idsFile, newIdsFile)
-          writeToFile(intersection, intersectionIds.mkString("\n"))
-          // update the active count
-          val avoid = avoidSet(idsFile)
-          val activeCount = ids.count(!avoid.contains(_))
-          writeToFile(createActiveIdsFile(idsFile), activeCount.toString)
+        val source = Source.fromFile(idsFile, "UTF-8")
+        try {
+          val ids = source.getLines()
+          val intersectionIds = ids.filter(idSet.contains)
+          if (intersectionIds.nonEmpty) {
+            // create an intersection file
+            val intersection = createIntersectionFile(idsFile, newIdsFile)
+            writeToFile(intersection, intersectionIds.mkString("\n"))
+            // update the active count
+            val avoid = avoidSet(idsFile)
+            // Need to re-read the file for counting since iterator is consumed
+            val source2 = Source.fromFile(idsFile, "UTF-8")
+            try {
+              val activeCount = source2.getLines().count(!avoid.contains(_))
+              writeToFile(createActiveIdsFile(idsFile), activeCount.toString)
+            } finally {
+              source2.close()
+            }
+          }
+        } finally {
+          source.close()
         }
       }
       Some(file)

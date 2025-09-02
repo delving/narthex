@@ -78,7 +78,12 @@ class APIController @Inject() (
   def pathsJSON(spec: String) =  Action(parse.anyContent) { implicit request =>
     val treeFile = orgContext.datasetContext(spec).index
     if (treeFile.exists()) {
-      val string = IOUtils.toString(new FileInputStream(treeFile), Charset.forName("UTF-8"))
+      val fis = new FileInputStream(treeFile)
+      val string = try {
+        IOUtils.toString(fis, Charset.forName("UTF-8"))
+      } finally {
+        fis.close()
+      }
       val json = Json.parse(string)
       val tree = json.as[ReadTreeNode]
       val paths = TreeNode.gatherPaths(tree, new Call(request.method, request.path).absoluteURL())

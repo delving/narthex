@@ -35,7 +35,7 @@ import services.ProgressReporter.ProgressState._
 import services.{ProgressReporter, StringHandling}
 
 import scala.concurrent._
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success}\nimport scala.util.control.NonFatal
 import scala.language.postfixOps
 
 object Harvester {
@@ -65,26 +65,72 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var pageCount = 0
   var progressOpt: Option[ProgressReporter] = None
 
-  def addPage(page: String): Int = {
-    // lazily create the temp zip file output
-    val zipOutput = zipOutputOpt.getOrElse {
-      val newTempFile = File.createTempFile("narthex-harvest", ".zip")
-      tempFileOpt = Some(newTempFile)
-      val newZipOutput = new ZipOutputStream(new FileOutputStream(newTempFile))
-      zipOutputOpt = Some(newZipOutput)
-      newZipOutput
+  private def cleanup(): Unit = {
+    zipOutputOpt.foreach { zipOutput =>
+      try {
+        zipOutput.close()
+      } catch {
+        case NonFatal(e) =>
+          log.warning(s"Error closing ZipOutputStream: ${e.getMessage}")
+      }
     }
-    val harvestPageName = s"harvest_$pageCount.xml"
-    zipOutput.putNextEntry(new ZipEntry(harvestPageName))
-    zipOutput.write(page.getBytes("UTF-8"))
-    zipOutput.closeEntry()
-    pageCount += 1
-    pageCount
+    zipOutputOpt = None
+    
+    tempFileOpt.foreach { tempFile =>
+      if (tempFile.exists() && !tempFile.delete()) {
+        log.warning(s"Failed to delete temp file: ${tempFile.getAbsolutePath}")
+      }
+    }
+    tempFileOpt = None
+  }
+
+  override def postStop(): Unit = {
+    cleanup()
+    super.postStop()
+  }
+
+  def addPage(page: String): Int = {
+    try {
+      // lazily create the temp zip file output
+      val zipOutput = zipOutputOpt.getOrElse {
+        val newTempFile = File.createTempFile("narthex-harvest", ".zip")
+        tempFileOpt = Some(newTempFile)
+        val fos = new FileOutputStream(newTempFile)
+        try {
+          val newZipOutput = new ZipOutputStream(fos)
+          zipOutputOpt = Some(newZipOutput)
+          newZipOutput
+        } catch {
+          case NonFatal(e) =>
+            fos.close()
+            throw e
+        }
+      }
+      val harvestPageName = s"harvest_$pageCount.xml"
+      zipOutput.putNextEntry(new ZipEntry(harvestPageName))
+      zipOutput.write(page.getBytes("UTF-8"))
+      zipOutput.closeEntry()
+      pageCount += 1
+      pageCount
+    } catch {
+      case NonFatal(e) =>
+        log.error(s"Error adding page to harvest zip: ${e.getMessage}", e)
+        cleanup()
+        throw e
+    }
   }
 
   def finish(strategy: HarvestStrategy, errorOpt: Option[String]) = {
-
-    zipOutputOpt.foreach(_.close())
+    // Close ZIP output stream but keep tempFile for potential use
+    zipOutputOpt.foreach { zipOutput =>
+      try {
+        zipOutput.close()
+      } catch {
+        case NonFatal(e) =>
+          log.warning(s"Error closing ZipOutputStream in finish: ${e.getMessage}")
+      }
+    }
+    zipOutputOpt = None
     log.info(s"Finished $strategy harvest error=$errorOpt for dataset $datasetContext")
     errorOpt match {
       case Some("noRecordsMatch") =>

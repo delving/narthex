@@ -25,6 +25,8 @@ import play.api.Logger
 
 import scala.io.Source
 import scala.sys.process._
+import scala.util.Try
+import scala.util.control.NonFatal
 
 object FileHandling {
 
@@ -39,7 +41,16 @@ object FileHandling {
 
   def createReader(inputStream: InputStream): BufferedReader = new BufferedReader(new InputStreamReader(new BOMInputStream(inputStream), "UTF-8"))
 
-  def createReader(file: File): BufferedReader = createReader(new FileInputStream(file))
+  def createReader(file: File): BufferedReader = {
+    val fis = new FileInputStream(file)
+    try {
+      createReader(fis)
+    } catch {
+      case NonFatal(e) =>
+        fis.close()
+        throw e
+    }
+  }
 
   def readerCounting(file: File): (BufferedReader, CountingInputStream) = {
     val fis: FileInputStream = new FileInputStream(file)
@@ -49,9 +60,27 @@ object FileHandling {
     (br, cis)
   }
 
-  def createWriter(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))
+  def createWriter(file: File) = {
+    val fos = new FileOutputStream(file)
+    try {
+      new BufferedWriter(new OutputStreamWriter(fos, "UTF-8"))
+    } catch {
+      case NonFatal(e) =>
+        fos.close()
+        throw e
+    }
+  }
 
-  def appender(file: File) = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, true), "UTF-8"))
+  def appender(file: File) = {
+    val fos = new FileOutputStream(file, true)
+    try {
+      new BufferedWriter(new OutputStreamWriter(fos, "UTF-8"))
+    } catch {
+      case NonFatal(e) =>
+        fos.close()
+        throw e
+    }
+  }
 
   def createWriter(outputStream: OutputStream) = new BufferedWriter(new OutputStreamWriter(outputStream, "UTF-8"))
 
@@ -65,21 +94,39 @@ object FileHandling {
 
   def sourceFromFile(file: File): (Source, ReadProgress) = {
     if (file.getName.endsWith(".zip")) {
-      val zc = new ZipConcatXML(new ZipFile(file))
-      (zc, zc.readProgress)
+      Try {
+        val zipFile = new ZipFile(file)
+        val zc = new ZipConcatXML(zipFile)
+        (zc, zc.readProgress)
+      }.recover {
+        case NonFatal(e) =>
+          throw new RuntimeException(s"Failed to open zip file: ${file.getName}", e)
+      }.get
     }
     else if (file.getName.endsWith(".xml.gz")) {
       val is = new FileInputStream(file)
-      val cs = new CountingInputStream(is)
-      val gz = new GZIPInputStream(cs)
-      val bis = new BOMInputStream(gz)
-      (Source.fromInputStream(bis, "UTF-8"), new FileReadProgress(file.length(), cs))
+      try {
+        val cs = new CountingInputStream(is)
+        val gz = new GZIPInputStream(cs)
+        val bis = new BOMInputStream(gz)
+        (Source.fromInputStream(bis, "UTF-8"), new FileReadProgress(file.length(), cs))
+      } catch {
+        case NonFatal(e) =>
+          is.close()
+          throw new RuntimeException(s"Failed to open gzipped XML file: ${file.getName}", e)
+      }
     }
     else if (file.getName.endsWith(".xml")) {
       val is = new FileInputStream(file)
-      val cs = new CountingInputStream(is)
-      val bis = new BOMInputStream(cs)
-      (Source.fromInputStream(bis, "UTF-8"), new FileReadProgress(file.length(), cs))
+      try {
+        val cs = new CountingInputStream(is)
+        val bis = new BOMInputStream(cs)
+        (Source.fromInputStream(bis, "UTF-8"), new FileReadProgress(file.length(), cs))
+      } catch {
+        case NonFatal(e) =>
+          is.close()
+          throw new RuntimeException(s"Failed to open XML file: ${file.getName}", e)
+      }
     }
     else {
       throw new RuntimeException(s"Unrecognized source from: ${file.getName}")
@@ -101,51 +148,95 @@ object FileHandling {
     var entryReader: Reader = null
     var nextChar: Int = -1
     var charCount = 0L
+    var closed = false
 
     class ZipReadProgress(size: Long) extends ReadProgress {
       override def getPercentRead: Int = ((100 * charCount) / size).toInt
     }
 
+    private def closeCurrentReader(): Unit = {
+      if (entryReader != null) {
+        try {
+          entryReader.close()
+        } catch {
+          case NonFatal(_) => // Ignore errors during cleanup
+        }
+        entryReader = null
+      }
+    }
+
+    private def closeFile(): Unit = {
+      if (!closed) {
+        closeCurrentReader()
+        try {
+          file.close()
+        } catch {
+          case NonFatal(_) => // Ignore errors during cleanup
+        }
+        closed = true
+      }
+    }
+
     class ZipEntryIterator extends Iterator[Char] {
       override def hasNext: Boolean = {
+        if (closed) return false
+        
         entry match {
           case Some(zipEntry) =>
             if (nextChar >= 0) {
               true
             }
             else {
+              closeCurrentReader()
               entry = None
               hasNext
             }
 
           case None =>
             if (entries.hasMoreElements) {
-              // check for .xml
-              entry = Some(entries.nextElement())
-              val is = file.getInputStream(entry.get)
-              entryReader = new InputStreamReader(new BOMInputStream(new BufferedInputStream(is)), "UTF-8")
-              nextChar = entryReader.read()
-              charCount += 1
-              hasNext
+              try {
+                entry = Some(entries.nextElement())
+                val is = file.getInputStream(entry.get)
+                entryReader = new InputStreamReader(new BOMInputStream(new BufferedInputStream(is)), "UTF-8")
+                nextChar = entryReader.read()
+                charCount += 1
+                hasNext
+              } catch {
+                case NonFatal(e) =>
+                  closeFile()
+                  throw new RuntimeException("Error reading zip entry", e)
+              }
             }
             else {
-              file.close()
+              closeFile()
               false
             }
         }
       }
 
       override def next(): Char = {
-        val c = nextChar
-        nextChar = entryReader.read()
-        charCount += 1
-        c.toChar
+        if (closed || entryReader == null) {
+          throw new IllegalStateException("Iterator is closed")
+        }
+        try {
+          val c = nextChar
+          nextChar = entryReader.read()
+          charCount += 1
+          c.toChar
+        } catch {
+          case NonFatal(e) =>
+            closeFile()
+            throw new RuntimeException("Error reading character", e)
+        }
       }
     }
 
     override protected val iter: Iterator[Char] = new ZipEntryIterator
 
     def readProgress = new ZipReadProgress(getZipFileSize(file))
+    
+    // Override close to ensure proper cleanup
+    override def close(): Unit = closeFile()
   }
 
   class FileConcatXML(directory: File) extends Source {
@@ -155,39 +246,82 @@ object FileHandling {
     var entry: Option[Reader] = None
     var nextChar: Int = -1
     var charCount = 0L
+    var closed = false
+
+    private def closeCurrentReader(): Unit = {
+      entry.foreach { reader =>
+        try {
+          reader.close()
+        } catch {
+          case NonFatal(_) => // Ignore errors during cleanup
+        }
+      }
+      entry = None
+    }
+
+    private def closeAll(): Unit = {
+      if (!closed) {
+        closeCurrentReader()
+        closed = true
+      }
+    }
 
     class FileIterator extends Iterator[Char] {
-      override def hasNext: Boolean = entry.map { reader =>
-        if (nextChar >= 0) {
-          true
-        }
-        else {
-          reader.close()
-          entry = None
-          hasNext
-        }
-      } getOrElse {
-        if (entries.nonEmpty) {
-          entry = Some(new InputStreamReader(new BOMInputStream(new BufferedInputStream(new FileInputStream(entries.head))), "UTF-8"))
-          entries = entries.tail
-          nextChar = entry.get.read()
-          charCount += 1
-          hasNext
-        }
-        else {
-          false
+      override def hasNext: Boolean = {
+        if (closed) return false
+        
+        entry.map { reader =>
+          if (nextChar >= 0) {
+            true
+          }
+          else {
+            closeCurrentReader()
+            hasNext
+          }
+        } getOrElse {
+          if (entries.nonEmpty) {
+            try {
+              val fis = new FileInputStream(entries.head)
+              val reader = new InputStreamReader(new BOMInputStream(new BufferedInputStream(fis)), "UTF-8")
+              entry = Some(reader)
+              entries = entries.tail
+              nextChar = entry.get.read()
+              charCount += 1
+              hasNext
+            } catch {
+              case NonFatal(e) =>
+                closeAll()
+                throw new RuntimeException(s"Error reading file: ${entries.head.getName}", e)
+            }
+          }
+          else {
+            closeAll()
+            false
+          }
         }
       }
 
       override def next(): Char = {
-        val c = nextChar
-        nextChar = entry.get.read()
-        charCount += 1
-        c.toChar
+        if (closed || entry.isEmpty) {
+          throw new IllegalStateException("Iterator is closed")
+        }
+        try {
+          val c = nextChar
+          nextChar = entry.get.read()
+          charCount += 1
+          c.toChar
+        } catch {
+          case NonFatal(e) =>
+            closeAll()
+            throw new RuntimeException("Error reading character", e)
+        }
       }
     }
 
     override protected val iter: Iterator[Char] = new FileIterator
+    
+    // Override close to ensure proper cleanup
+    override def close(): Unit = closeAll()
 
     class FileReadProgress() extends ReadProgress {
       override def getPercentRead: Int = ((100 * charCount) / totalLength).toInt

@@ -412,11 +412,16 @@ class DsInfo(
     }
     sourceFiles.listFiles
       .filter(_.getName.endsWith(".ids"))
-      .flatMap(Source.fromFile(_).getLines())
-      .foldLeft(Map.empty[String, Int]) { (count, keyword) =>
-        {
-          count + (keyword -> (count.getOrElse(keyword, 0) + 1))
+      .flatMap { file =>
+        val source = Source.fromFile(file)
+        try {
+          source.getLines().toList  // Collect to avoid keeping the source open
+        } finally {
+          source.close()
         }
+      }
+      .foldLeft(Map.empty[String, Int]) { (count, keyword) =>
+        count + (keyword -> (count.getOrElse(keyword, 0) + 1))
       }
   }
 
