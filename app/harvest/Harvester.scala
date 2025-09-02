@@ -35,7 +35,8 @@ import services.ProgressReporter.ProgressState._
 import services.{ProgressReporter, StringHandling}
 
 import scala.concurrent._
-import scala.util.{Failure, Success}\nimport scala.util.control.NonFatal
+import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 import scala.language.postfixOps
 
 object Harvester {

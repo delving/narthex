@@ -23,9 +23,11 @@ import java.nio.charset.StandardCharsets
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import play.api.Logger
 import play.api.libs.json.JsObject
-import play.api.libs.ws.{WSClient, WSResponse}
+import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.shaded.ahc.org.asynchttpclient.netty.NettyResponse
 import scala.concurrent._
+import scala.concurrent.duration._
+import java.util.concurrent.atomic.AtomicInteger
 
 import triplestore.TripleStore.{QueryValue, TripleStoreException}
 import init.NarthexConfig
@@ -85,6 +87,11 @@ trait TripleStore {
 class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit val executionContext: ExecutionContext) extends TripleStore {
 
   private val logger = Logger(getClass)
+  
+  // Connection metrics
+  private val activeConnections = new AtomicInteger(0)
+  private val totalRequests = new AtomicInteger(0)
+  private val failedRequests = new AtomicInteger(0)
 
   var storeURL: String = narthexConfig.tripleStoreUrl
   var orgID: String = narthexConfig.orgId
@@ -96,7 +103,37 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
 
   var queryIndex = 0
 
-  private def dataRequest(graphUri: String) = wsApi.url(s"$storeURL/$orgID$graphStorePath").withQueryString(s"$graphStoreParam" -> graphUri)
+  private def configureRequest(request: WSRequest): WSRequest = {
+    request
+      .withRequestTimeout(scala.concurrent.duration.Duration(narthexConfig.fusekiRequestTimeoutMs, "milliseconds"))
+      .withHeaders(
+        "Connection" -> "keep-alive",
+        "Accept-Charset" -> "utf-8",
+        "Accept-Encoding" -> "gzip, deflate"
+      )
+  }
+
+  private def dataRequest(graphUri: String): WSRequest = {
+    val baseRequest = wsApi.url(s"$storeURL/$orgID$graphStorePath")
+      .withQueryString(s"$graphStoreParam" -> graphUri)
+    configureRequest(baseRequest)
+  }
+
+  private def queryRequest(sparqlQuery: String): WSRequest = {
+    val baseRequest = wsApi.url(s"$storeURL/$orgID$sparqlQueryPath")
+      .withQueryString("query" -> sparqlQuery)
+    configureRequest(baseRequest).withHeaders(
+      "ACCEPT" -> "application/sparql-results+json",
+      "CONTENT_TYPE" -> "application/x-www-form-urlencoded"
+    )
+  }
+
+  private def updateRequest(): WSRequest = {
+    val baseRequest = wsApi.url(s"$storeURL/$orgID$sparqlUpdatePath")
+    configureRequest(baseRequest).withHeaders(
+      "Content-Type" -> "application/sparql-update; charset=utf-8"
+    )
+  }
 
   private def toLog(sparql: String): String = {
     queryIndex += 1
@@ -107,66 +144,74 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
 
   private def logSparql(sparql: String): Unit = if (logQueries) logger.debug(toLog(sparql))
 
+  private def executeWithMetrics[T](operation: String)(block: => Future[T]): Future[T] = {
+    activeConnections.incrementAndGet()
+    totalRequests.incrementAndGet()
+    val startTime = System.currentTimeMillis()
+    
+    block.andThen {
+      case scala.util.Success(_) =>
+        val duration = System.currentTimeMillis() - startTime
+        logger.debug(s"$operation completed in ${duration}ms")
+        activeConnections.decrementAndGet()
+        
+      case scala.util.Failure(ex) =>
+        failedRequests.incrementAndGet()
+        activeConnections.decrementAndGet()
+        logger.warn(s"$operation failed after ${System.currentTimeMillis() - startTime}ms: ${ex.getMessage}")
+    }
+  }
+
+  def getConnectionStats: (Int, Int, Int) = (activeConnections.get(), totalRequests.get(), failedRequests.get())
+
   override def ask(sparqlQuery: String): Future[Boolean] = {
     logSparql(sparqlQuery)
-    val request = wsApi.url(s"$storeURL/$orgID$sparqlQueryPath").withQueryString(
-      "query" -> sparqlQuery
-      //"output" -> "json"
-    ).withHeaders(
-        "Accept-Charset" -> "utf-8",
-        "Accept-Encoding" -> "utf-8",
-        "ACCEPT" -> "application/sparql-results+json",
-        "CONTENT_TYPE" -> "application/x-www-form-urlencoded"
-      )
-    request.get().map { response =>
-      if (response.status / 100 != 2) {
-        throw new RuntimeException(s"Ask response not 2XX, but ${response.status}: ${response.statusText}\n${toLog(sparqlQuery)}")
+    executeWithMetrics("ASK query") {
+      val request = queryRequest(sparqlQuery)
+      request.get().map { response =>
+        if (response.status / 100 != 2) {
+          throw new RuntimeException(s"Ask response not 2XX, but ${response.status}: ${response.statusText}\n${toLog(sparqlQuery)}")
+        }
+        (response.json \ "boolean").as[Boolean]
       }
-      (response.json \ "boolean").as[Boolean]
     }
   }
 
   override def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = {
     logSparql(sparqlQuery)
-    val request = wsApi.url(s"$storeURL/$orgID$sparqlQueryPath")
-      .withQueryString(
-        "query" -> sparqlQuery
-        //"output" -> "json"
-      )
-      .withHeaders(
-        "Accept-Charset" -> "utf-8",
-        "Accept-Encoding" -> "utf-8",
-        "ACCEPT" -> "application/sparql-results+json",
-        "CONTENT_TYPE" -> "application/x-www-form-urlencoded"
-      )
+    executeWithMetrics("SELECT query") {
+      val request = queryRequest(sparqlQuery)
       request.get().map { response =>
-      if (response.status / 100 != 2) {
-        throw new RuntimeException(s"Query response not 2XX, but ${response.status}: ${response.statusText}\n${toLog(sparqlQuery)}")
-      }
-      val json = response.json
-      val vars = (json \ "head" \ "vars").as[List[String]]
-      val bindings = (json \ "results" \ "bindings").as[List[JsObject]]
-      bindings.flatMap { binding =>
-        if (binding.keys.isEmpty)
-          None
-        else {
-          val valueMap = vars.flatMap(v => (binding \ v).asOpt[JsObject].map(value => v -> QueryValue(value))).toMap
-          Some(valueMap)
+        if (response.status / 100 != 2) {
+          throw new RuntimeException(s"Query response not 2XX, but ${response.status}: ${response.statusText}\n${toLog(sparqlQuery)}")
+        }
+        val json = response.json
+        val vars = (json \ "head" \ "vars").as[List[String]]
+        val bindings = (json \ "results" \ "bindings").as[List[JsObject]]
+        bindings.flatMap { binding =>
+          if (binding.keys.isEmpty)
+            None
+          else {
+            val valueMap = vars.flatMap(v => (binding \ v).asOpt[JsObject].map(value => v -> QueryValue(value))).toMap
+            Some(valueMap)
+          }
         }
       }
     }
   }
 
   override def dataGet(graphName: String): Future[Model] = {
-    dataRequest(graphName).withHeaders(
-      "Accept" -> "text/turtle"
-    ).get().map { response =>
-      if (response.status / 100 != 2) {
-        throw new RuntimeException(s"Get response for $graphName not 2XX, but ${response.status}: ${response.statusText}")
+    executeWithMetrics(s"GET graph $graphName") {
+      dataRequest(graphName).withHeaders(
+        "Accept" -> "text/turtle"
+      ).get().map { response =>
+        if (response.status / 100 != 2) {
+          throw new RuntimeException(s"Get response for $graphName not 2XX, but ${response.status}: ${response.statusText}")
+        }
+        val netty = response.underlying[NettyResponse]
+        val body = netty.getResponseBody(StandardCharsets.UTF_8)
+        ModelFactory.createDefaultModel().read(new StringReader(body), null, "TURTLE")
       }
-      val netty = response.underlying[NettyResponse]
-      val body = netty.getResponseBody(StandardCharsets.UTF_8)
-      ModelFactory.createDefaultModel().read(new StringReader(body), null, "TURTLE")
     }
   }
 
@@ -181,10 +226,10 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
 
     override def sparqlUpdate(sparqlUpdate: String) = {
       logSparql(sparqlUpdate)
-      val request = wsApi.url(s"$storeURL/$orgID$sparqlUpdatePath").withHeaders(
-        "Content-Type" -> "application/sparql-update; charset=utf-8"
-      )
-      request.post(sparqlUpdate).map(checkUpdateResponse(_, sparqlUpdate))
+      executeWithMetrics("SPARQL UPDATE") {
+        val request = updateRequest()
+        request.post(sparqlUpdate).map(checkUpdateResponse(_, sparqlUpdate))
+      }
     }
 
     override def dataPost(graphUri: String, model: Model) = {
@@ -192,16 +237,20 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
       model.write(sw, "TURTLE")
       val turtle = sw.toString
       logSparql(turtle)
-      dataRequest(graphUri).withHeaders(
-        "Content-Type" -> "text/turtle; charset=utf-8"
-      ).post(turtle).map(checkUpdateResponse(_, turtle))
+      executeWithMetrics(s"POST graph $graphUri") {
+        dataRequest(graphUri).withHeaders(
+          "Content-Type" -> "text/turtle; charset=utf-8"
+        ).post(turtle).map(checkUpdateResponse(_, turtle))
+      }
     }
 
     override def dataPutXMLFile(graphUri: String, file: File) = {
       logger.debug(s"Putting $graphUri")
-      dataRequest(graphUri).withHeaders(
-        "Content-Type" -> "application/rdf+xml; charset=utf-8"
-      ).put(file).map(checkUpdateResponse(_, graphUri))
+      executeWithMetrics(s"PUT XML file to $graphUri") {
+        dataRequest(graphUri).withHeaders(
+          "Content-Type" -> "application/rdf+xml; charset=utf-8"
+        ).put(file).map(checkUpdateResponse(_, graphUri))
+      }
     }
 
     override def dataPutGraph(graphUri: String, model: Model) = {
@@ -209,9 +258,11 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
       model.write(sw, "TURTLE")
       val turtle = sw.toString
       logger.debug(s"Putting $graphUri")
-      dataRequest(graphUri).withHeaders(
-        "Content-Type" -> "text/turtle; charset=utf-8"
-      ).put(turtle).map(checkUpdateResponse(_, turtle))
+      executeWithMetrics(s"PUT graph $graphUri") {
+        dataRequest(graphUri).withHeaders(
+          "Content-Type" -> "text/turtle; charset=utf-8"
+        ).put(turtle).map(checkUpdateResponse(_, turtle))
+      }
     }
 
   }

@@ -111,6 +111,18 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
   def graphStoreParam: String = configStringNoSlash("graph-store-param")
   logger.info(s"graph-store-param: $graphStoreParam")
 
+  // Fuseki connection pool settings
+  def fusekiMaxConnectionsPerHost: Int = configuration.getOptional[Int]("fuseki.maxConnectionsPerHost").getOrElse(10)
+  logger.info(s"fuseki.maxConnectionsPerHost: $fusekiMaxConnectionsPerHost")
+  def fusekiMaxConnectionsTotal: Int = configuration.getOptional[Int]("fuseki.maxConnectionsTotal").getOrElse(30)
+  logger.info(s"fuseki.maxConnectionsTotal: $fusekiMaxConnectionsTotal")
+  def fusekiConnectionTimeoutMs: Int = configuration.getOptional[Int]("fuseki.connectionTimeoutMs").getOrElse(5000)
+  logger.info(s"fuseki.connectionTimeoutMs: $fusekiConnectionTimeoutMs")
+  def fusekiRequestTimeoutMs: Int = configuration.getOptional[Int]("fuseki.requestTimeoutMs").getOrElse(30000)
+  logger.info(s"fuseki.requestTimeoutMs: $fusekiRequestTimeoutMs")
+  def fusekiReadTimeoutMs: Int = configuration.getOptional[Int]("fuseki.readTimeoutMs").getOrElse(60000)
+  logger.info(s"fuseki.readTimeoutMs: $fusekiReadTimeoutMs")
+
   private def configFlag(name: String): Boolean =
     configuration.getOptional[Boolean](name).getOrElse(false)
 
