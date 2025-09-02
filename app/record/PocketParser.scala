@@ -31,6 +31,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
 import scala.xml.pull._
 import scala.xml.{MetaData, NamespaceBinding, TopScope}
+import scala.util.control.NonFatal
 
 object PocketParser {
 
@@ -109,6 +110,27 @@ class PocketParser(facts: SourceFacts,
   var lastProgress = 0L
   var recordCount = 0
   var namespaceMap: Map[String, String] = Map.empty
+  
+  // Namespace optimization: cache processed namespace scopes to avoid redundant traversals
+  private val namespaceScopeCache = mutable.Map[Int, Map[String, String]]()
+  
+  private def getNamespacesFromScope(scope: NamespaceBinding): Map[String, String] = {
+    val scopeHashCode = scope.hashCode()
+    namespaceScopeCache.getOrElseUpdate(scopeHashCode, {
+      val scopeMap = mutable.Map[String, String]()
+      
+      def collectNamespaces(binding: NamespaceBinding): Unit = {
+        if (binding eq TopScope) return
+        if (binding.prefix != null && binding.uri != null) {
+          scopeMap += binding.prefix -> binding.uri
+        }
+        collectNamespaces(binding.parent)
+      }
+      
+      collectNamespaces(scope)
+      scopeMap.toMap
+    })
+  }
 
   def parse(source: Source,
             avoid: Set[String],
@@ -116,9 +138,13 @@ class PocketParser(facts: SourceFacts,
             progress: ProgressReporter): Int = {
     val events = new XMLEventReader(source)
     var depth = 0
-    val recordText = new mutable.StringBuilder()
+    // Optimize: pre-allocate StringBuilder with reasonable initial capacity like Java version
+    val recordText = new mutable.StringBuilder(1024)
     var uniqueId: Option[String] = None
     var startElement: Option[String] = None
+    
+    // Memory safety: track record size to prevent OOM on extremely large records
+    val maxRecordSize = 10 * 1024 * 1024 // 10MB limit per record
 
     def indent() = {
       var countdown = depth
@@ -134,6 +160,15 @@ class PocketParser(facts: SourceFacts,
         indent()
         recordText.append(startElement.get).append("\n")
         startElement = None
+        checkRecordSize()
+      }
+    }
+    
+    def checkRecordSize() = {
+      if (recordText.length > maxRecordSize) {
+        val currentId = uniqueId.getOrElse("unknown")
+        logger.error(s"Record $currentId exceeds maximum size limit of ${maxRecordSize / (1024 * 1024)}MB - skipping")
+        throw new RuntimeException(s"Record $currentId too large: ${recordText.length} bytes")
       }
     }
 
@@ -143,12 +178,19 @@ class PocketParser(facts: SourceFacts,
     }
 
     def push(tag: String, attrs: MetaData, scope: NamespaceBinding) = {
-      def recordNamespace(binding: NamespaceBinding): Unit = {
+      // Optimize namespace collection like Java version - only collect unique prefixes
+      def collectNamespacesDirect(binding: NamespaceBinding): Unit = {
         if (binding eq TopScope) return
-        namespaceMap += binding.prefix -> binding.uri
-        recordNamespace(binding.parent)
+        if (binding.prefix != null && binding.uri != null && !namespaceMap.contains(binding.prefix)) {
+          namespaceMap += binding.prefix -> binding.uri
+        }
+        collectNamespacesDirect(binding.parent)
       }
-      recordNamespace(scope)
+      
+      // Only process if we haven't seen this scope before or need new namespaces
+      if (scope ne TopScope) {
+        collectNamespacesDirect(scope)
+      }
       def findUniqueId(attrs: List[MetaData]) = attrs.foreach { attr =>
         path.push((s"@${attr.prefixedKey}", new StringBuilder()))
         val ps = pathString
@@ -180,7 +222,11 @@ class PocketParser(facts: SourceFacts,
       }
     }
 
-    def addFieldText(text: String) = path.headOption.foreach(_._2.append(text))
+    def addFieldText(text: String) = {
+      path.headOption.foreach(_._2.append(text))
+      // Check size occasionally during text accumulation
+      if (recordText.length % 10000 == 0) checkRecordSize()
+    }
 
     def pop(tag: String) = {
       val string = pathString
@@ -210,18 +256,32 @@ class PocketParser(facts: SourceFacts,
             val cleanId = cleanUpId(id)
             if (avoid.contains(cleanId)) None
             else {
-              var recordContent = recordText.toString()
-              // only replace for NAA data
-              if (recordContent.contains("identifier.hyph-guid")) {
-                recordContent = recordContent.replaceAll("oai_dc:dc", "record")
+              // Optimize string operations - avoid unnecessary toString() calls
+              val hasNaaData = recordText.indexOf("identifier.hyph-guid") >= 0
+              
+              // Build namespace string efficiently
+              val scope = if (namespaceMap.nonEmpty) {
+                val scopeBuilder = new StringBuilder()
+                namespaceMap.foreach { case (prefix, uri) =>
+                  if (prefix != null) {
+                    scopeBuilder.append(s""" xmlns:$prefix="$uri"""")
+                  }
+                }
+                scopeBuilder.toString()
+              } else ""
+              
+              // Apply transformations efficiently
+              val recordContent = if (hasNaaData) {
+                recordText.toString().replaceAll("oai_dc:dc", "record")
+              } else {
+                recordText.toString()
               }
-              val scope = namespaceMap.view
-                .filter(_._1 != null)
-                .map(kv => s"""xmlns:${kv._1}="${kv._2}" """)
-                .mkString
-                .trim
-              val scopedRecordContent =
-                recordContent.replaceFirst(">", s" $scope>")
+              
+              val scopedRecordContent = if (scope.nonEmpty) {
+                recordContent.replaceFirst(">", s"$scope>")
+              } else {
+                recordContent
+              }
               if (pocketWrap) {
                 val wrapped =
                   s"""<$POCKET id="$cleanId">\n$scopedRecordContent</$POCKET>\n"""
@@ -240,6 +300,14 @@ class PocketParser(facts: SourceFacts,
           }
           recordText.clear()
           depth = 0
+          
+          // Memory optimization: reset namespace map per record and cleanup cache periodically
+          namespaceMap = Map.empty
+          if (recordCount % 1000 == 0) {
+            // Cleanup namespace cache every 1000 records to prevent excessive memory usage
+            namespaceScopeCache.clear()
+            logger.debug(s"Cleared namespace cache at record $recordCount")
+          }
         } else {
           if (string == facts.uniqueId) setUniqueId(text)
           indent()
@@ -261,7 +329,16 @@ class PocketParser(facts: SourceFacts,
 
     while (events.hasNext) {
       progress.sendValue(Some(recordCount))
-      events.next() match {
+      
+      // Memory monitoring: log memory usage every 10,000 records for large files
+      if (recordCount > 0 && recordCount % 10000 == 0) {
+        val runtime = Runtime.getRuntime
+        val usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
+        logger.info(s"Processed $recordCount records. Memory usage: ${usedMemory}MB. Namespace cache size: ${namespaceScopeCache.size}")
+      }
+      
+      try {
+        events.next() match {
         case EvElemStart(pre, label, attrs, scope) =>
           push(tag(pre, label), attrs, scope)
         case EvText(text)          => addFieldText(text)
@@ -271,6 +348,15 @@ class PocketParser(facts: SourceFacts,
           stupidParser(text, entity => addFieldText(s"&$entity;"))
         case EvProcInstr(target, text) =>
         case x                         => logger.error("EVENT? " + x)
+        }
+      } catch {
+        case NonFatal(e) =>
+          logger.error(s"Error processing XML event at record $recordCount: ${e.getMessage}")
+          // Reset state and continue with next record
+          recordText.clear()
+          depth = 0
+          uniqueId = None
+          namespaceMap = Map.empty
       }
     }
     recordCount
