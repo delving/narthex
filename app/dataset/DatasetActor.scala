@@ -652,11 +652,14 @@ class DatasetActor(val datasetContext: DatasetContext,
   when(Saving) {
 
     case Event(GraphSaveComplete, active: Active) =>
-      log.info(s"released save lock for $dsInfo.spec")
-      orgContext.saveSemaphore.release(dsInfo.spec)
+      log.info(s"GraphSaveComplete received for $dsInfo.spec")
+      // Note: GraphSaver already released semaphores, so don't double-release
       dsInfo.setState(SAVED)
       dsInfo.setRecordsSync(false)
-      active.childOpt.foreach(_ ! PoisonPill)
+      active.childOpt.foreach { child =>
+        childActors -= child
+        context.stop(child) // Use context.stop instead of PoisonPill for cleaner termination
+      }
       goto(Idle) using Dormant
 
   }
@@ -683,6 +686,12 @@ class DatasetActor(val datasetContext: DatasetContext,
   }
 
   whenUnhandled {
+
+    case Event(Terminated(actor), _) =>
+      log.info(s"Child actor terminated: $actor")
+      // Remove from tracked children and continue
+      childActors -= actor
+      stay()
 
     // this is because PeriodicSkosifyCheck may send multiple for us.  he'll be back
     case Event(StartSkosification(skosifiedField), active: Active) =>
