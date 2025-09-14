@@ -49,11 +49,13 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
   def receive = {
 
     case ScanForHarvests =>
-      val futureList = DsInfo.listDsInfo(orgContext)
+      // OPTIMIZATION: Only query datasets with harvestable states to prevent error dataset timestamp updates
+      val allowedStateStrings = PeriodicHarvest.harvestingAllowed.map(_.toString)
+      val futureList = DsInfo.listDsInfoWithStateFilter(orgContext, allowedStateStrings)
       futureList.onComplete {
         case Success(list) =>
           list.
-            filter(info => PeriodicHarvest.harvestingAllowed.contains(info.getState()) && info.hasPreviousTime()).
+            filter(info => info.hasPreviousTime()). // Only need to filter by previousTime now
             sortWith((s, t) => s.getPreviousHarvestTime().isBefore(t.getPreviousHarvestTime())).
             foreach { listedInfo =>
               val harvestCron = listedInfo.currentHarvestCron

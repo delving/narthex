@@ -41,11 +41,26 @@ thesaurus = true
 categories = false
 
 # Fuseki
-triple-store = "http://127.0.0.1:3030/"
+triple-store = "http://127.0.0.1:3033/"
 sparql-query-path = "/query"
 sparql-update-path = "/update"
 graph-store-path = "/data"
 graph-store-param = "graph"
+
+# Fuseki Authentication (for Fuseki 4.x+ with access control)
+# Leave blank for no authentication (Fuseki 2.x style)
+fuseki-username = "admin"
+fuseki-password = "pw123"
+
+# Fuseki connection pool settings
+fuseki {
+  # Connection pool settings for better performance - increased limits for concurrent dataset processing
+  maxConnectionsPerHost = 100
+  maxConnectionsTotal = 200
+  connectionTimeoutMs = 10000
+  requestTimeoutMs = 60000
+  readTimeoutMs = 120000
+}
 
 enableIncrementalHarvest = true
 
@@ -95,6 +110,28 @@ play.mailer {
 play.filters.enabled = ["com.kenshoo.play.metrics.MetricsFilterImpl"]
 
 play.http.parser.maxDiskBuffer = 512000kB // == 250 MB
+
+# Play WS client connection pooling configuration
+play.ws {
+  # Connection pool settings - increased for concurrent dataset processing
+  ahc {
+    # Maximum number of connections per host
+    maxConnectionsPerHost = 100
+    # Maximum total connections
+    maxConnectionsTotal = 200
+    # Connection timeout
+    connectTimeout = 10s
+    # Request timeout  
+    requestTimeout = 60s
+    # Read timeout
+    readTimeout = 120s
+    # Keep alive settings
+    keepAlive = true
+    # Pool connections
+    pooledConnectionIdleTimeout = 30s
+    connectionPoolCleanerPeriod = 1s
+  }
+}
 
 datadog {
   # Settings for datadog monitoring reporter

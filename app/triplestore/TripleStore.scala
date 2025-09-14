@@ -80,6 +80,8 @@ trait TripleStore {
   def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]]
 
   def dataGet(graphName: String): Future[Model]
+  
+  def batchCheckGraphExistence(graphUris: List[String]): Future[Map[String, Boolean]]
 
   val up: TripleStoreUpdate
 
@@ -241,6 +243,57 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
         val netty = response.underlying[NettyResponse]
         val body = netty.getResponseBody(StandardCharsets.UTF_8)
         ModelFactory.createDefaultModel().read(new StringReader(body), null, "TURTLE")
+      }
+    }
+  }
+  
+  override def batchCheckGraphExistence(graphUris: List[String]): Future[Map[String, Boolean]] = {
+    if (graphUris.isEmpty) {
+      Future.successful(Map.empty)
+    } else {
+      // Create efficient SPARQL query to check multiple graphs at once
+      val graphValues = graphUris.map(uri => s"<$uri>").mkString(" ")
+      val batchQuery = s"""
+        |SELECT ?graphUri ?hasData WHERE {
+        |  VALUES ?graphUri { $graphValues }
+        |  OPTIONAL { 
+        |    GRAPH ?graphUri { 
+        |      ?s ?p ?o 
+        |    } 
+        |  }
+        |  BIND(BOUND(?s) AS ?hasData)
+        |}
+      """.stripMargin
+      
+      executeWithMetrics(s"Batch existence check for ${graphUris.length} graphs") {
+        val request = queryRequest(batchQuery)
+        request.get().map { response =>
+          if (response.status / 100 != 2) {
+            response.status match {
+              case 401 =>
+                logger.error("Fuseki authentication failed for batch existence query. Check credentials.")
+                throw new TripleStoreException(s"Unauthorized batch query. Status: ${response.status}")
+              case 403 =>
+                logger.error("Fuseki access forbidden for batch existence query.")
+                throw new TripleStoreException(s"Forbidden batch query. Status: ${response.status}")
+              case _ =>
+                throw new RuntimeException(s"Batch query response not 2XX, but ${response.status}: ${response.statusText}")
+            }
+          }
+          
+          val json = response.json
+          val bindings = (json \ "results" \ "bindings").as[List[JsObject]]
+          
+          // Convert results to Map[graphUri -> exists]
+          val results = bindings.map { binding =>
+            val graphUri = (binding \ "graphUri" \ "value").as[String]
+            val hasData = (binding \ "hasData" \ "value").asOpt[String].contains("true")
+            graphUri -> hasData
+          }.toMap
+          
+          // Ensure all requested URIs are in result (missing ones = false)
+          graphUris.map(uri => uri -> results.getOrElse(uri, false)).toMap
+        }
       }
     }
   }

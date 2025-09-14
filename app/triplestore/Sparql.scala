@@ -79,6 +79,39 @@ object Sparql {
       |}
       |ORDER BY ?spec
      """.stripMargin
+     
+  def selectDatasetSpecsWithStateFilterQ(allowedStates: List[String]) = {
+    val stateFilter = if (allowedStates.nonEmpty) {
+      // Check for presence of specific state properties (e.g., stateSaved, stateIncrementalSaved)  
+      val stateChecks = allowedStates.map { state =>
+        val stateProperty = state match {
+          case "SAVED" => s"<$stateSaved>"
+          case "INCREMENTAL_SAVED" => s"<$stateIncrementalSaved>"
+          case "PROCESSED" => s"<$stateProcessed>"
+          case "RAW" => s"<$stateRaw>"
+          case "ANALYZED" => s"<$stateAnalyzed>"
+          case _ => s"<${NX_NAMESPACE}state$state>" // fallback
+        }
+        s"EXISTS { ?s $stateProperty ?time }"
+      }.mkString(" || ")
+      
+      s"""
+         |    FILTER ($stateChecks)
+      """.stripMargin
+    } else ""
+    
+    s"""
+      |SELECT DISTINCT ?spec
+      |WHERE {
+      |  GRAPH ?g {
+      |    ?s <$datasetSpec> ?spec .
+      |    FILTER NOT EXISTS { ?s <$deleted> true }
+      |    $stateFilter
+      |  }
+      |}
+      |ORDER BY ?spec
+     """.stripMargin
+  }
 
   def askIfDatasetExistsQ(uri: String) =
     s"""

@@ -101,3 +101,4 @@ GET         /narthex/assets/*file                                            con
 GET         /non-public/monitoring/metrics                                   com.kenshoo.play.metrics.MetricsController.metrics
 GET         /non-public/monitoring/info                                      controllers.InfoController.info
 GET         /non-public/monitoring/health                                    controllers.InfoController.health
+GET         /non-public/monitoring/connection-stats                          controllers.InfoController.connectionStats

@@ -100,17 +100,42 @@ object DsInfo {
   def listDsInfo(orgContext: OrgContext)(
       implicit ec: ExecutionContext,
       ts: TripleStore): Future[List[DsInfo]] = {
-    ts.query(selectDatasetSpecsQ).map { list =>
-      list.map { entry =>
-        val spec = entry("spec").text
-        new DsInfo(
-          spec,
-          orgContext.appConfig.nxUriPrefix,
-          orgContext.appConfig.naveApiAuthToken,
-          orgContext.appConfig.naveApiUrl,
-          orgContext,
-          orgContext.appConfig.mockBulkApi
-        )
+    listDsInfoWithStateFilter(orgContext, List.empty)
+  }
+  
+  def listDsInfoWithStateFilter(orgContext: OrgContext, allowedStates: List[String])(
+      implicit ec: ExecutionContext,
+      ts: TripleStore): Future[List[DsInfo]] = {
+    val query = if (allowedStates.nonEmpty) {
+      ts.query(selectDatasetSpecsWithStateFilterQ(allowedStates))
+    } else {
+      ts.query(selectDatasetSpecsQ)
+    }
+    
+    query.flatMap { list =>
+      val specs = list.map(entry => entry("spec").text)
+      
+      // Batch check existence for filtered datasets only - prevents error dataset timestamp updates
+      val graphUris = specs.map(spec => getGraphName(spec, orgContext.appConfig.nxUriPrefix))
+      
+      ts.batchCheckGraphExistence(graphUris).map { existenceMap =>
+        specs.map { spec =>
+          val graphUri = getGraphName(spec, orgContext.appConfig.nxUriPrefix)
+          val dataExists = existenceMap.getOrElse(graphUri, false)
+          
+          val dsInfo = new DsInfo(
+            spec,
+            orgContext.appConfig.nxUriPrefix,
+            orgContext.appConfig.naveApiAuthToken,
+            orgContext.appConfig.naveApiUrl,
+            orgContext,
+            orgContext.appConfig.mockBulkApi
+          )
+          
+          // Cache the existence result to avoid individual dataGet() calls
+          dsInfo.cacheDataExists(dataExists)
+          dsInfo
+        }
       }
     }
   }
@@ -237,12 +262,47 @@ class DsInfo(
 
   val skosGraphName = getSkosGraphName(uri)
 
-  // could cache as well so that the get happens less
-  def futureModel = ts.dataGet(graphName)
-
-  futureModel.onComplete {
-    case Success(_) => ()
-    case Failure(e) => logger.warn(s"No data found for dataset $spec", e)
+  // Caching to avoid repeated expensive dataGet() calls
+  private var cachedDataExists: Option[Boolean] = None
+  private var cachedModel: Option[Model] = None
+  
+  def cacheDataExists(exists: Boolean): Unit = {
+    cachedDataExists = Some(exists)
+  }
+  
+  def futureModel: Future[Model] = {
+    cachedDataExists match {
+      case Some(false) =>
+        // We know data doesn't exist - return empty model immediately
+        logger.debug(s"Using cached 'no data' result for dataset $spec")
+        Future.successful(ModelFactory.createDefaultModel())
+        
+      case Some(true) =>
+        // We know data exists - fetch it (but could also cache the model)
+        cachedModel match {
+          case Some(model) =>
+            logger.debug(s"Using cached model for dataset $spec")
+            Future.successful(model)
+          case None =>
+            logger.debug(s"Fetching data for dataset $spec (existence confirmed)")
+            val future = ts.dataGet(graphName)
+            future.onComplete {
+              case Success(model) => cachedModel = Some(model)
+              case Failure(e) => logger.warn(s"Failed to fetch data for dataset $spec", e)
+            }
+            future
+        }
+        
+      case None =>
+        // No cache - use original logic (fallback)
+        logger.debug(s"No cache available for dataset $spec - using original dataGet")
+        val future = ts.dataGet(graphName)
+        future.onComplete {
+          case Success(_) => ()
+          case Failure(e) => logger.warn(s"No data found for dataset $spec", e)
+        }
+        future
+    }
   }
 
   def getModel = Await.result(futureModel, patience)
