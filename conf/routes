@@ -102,3 +102,6 @@ GET         /non-public/monitoring/metrics                                   com
 GET         /non-public/monitoring/info                                      controllers.InfoController.info
 GET         /non-public/monitoring/health                                    controllers.InfoController.health
 GET         /non-public/monitoring/connection-stats                          controllers.InfoController.connectionStats
+
+# Preview functionality for OAI-PMH and AdLib harvest URLs
+GET         /narthex/preview/*dataUrl                                        web.PreviewController.previewHarvestUrl(dataUrl)

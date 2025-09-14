@@ -648,15 +648,15 @@
                     <i class="fa fa-binoculars"></i>
                     <span>Sample</span>
                 </button>
-                <a href="{{ pmhPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'pmh'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                <a href="/narthex/preview/{{ pmhPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'pmh'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
-                <a href="{{ adlibPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                <a href="/narthex/preview/{{ adlibPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
-                <a href="{{ dataset.edit.harvestDownloadURL }}" data-ng-show="dataset.edit.harvestType == 'download'" target="_blank" type="button" class="btn btn-default">
+                <a href="/narthex/preview/{{ dataset.edit.harvestDownloadURL }}" data-ng-show="dataset.edit.harvestType == 'download'" target="_blank" type="button" class="btn btn-default">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
@@ -726,7 +726,7 @@
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
-            <a href="{{ pmhPreviewBase }}&from={{trimMillis(dataset.edit.harvestPreviousTime)}}Z" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!incrementalPreview">
+            <a href="/narthex/preview/{{ pmhPreviewBase }}&from={{trimMillis(dataset.edit.harvestPreviousTime)}}Z" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!incrementalPreview">
                 <i class="fa fa-binoculars"></i>
                 <span>Preview</span>
             </a>
