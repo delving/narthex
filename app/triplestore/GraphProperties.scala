@@ -112,6 +112,11 @@ object GraphProperties {
   val harvestIncrementalCount = NXProp("harvestIncrementalCount", intProp)
   val harvestFullCount = NXProp("harvestFullCount", intProp)
 
+  val harvestContinueOnError = NXProp("harvestContinueOnError", booleanProp)
+  val harvestErrorThreshold = NXProp("harvestErrorThreshold", intProp)
+  val harvestErrorCount = NXProp("harvestErrorCount", intProp)
+  val harvestErrorRecoveryAttempts = NXProp("harvestErrorRecoveryAttempts", intProp)
+
   val idFilterType = NXProp("idFilterType")
   val idFilterExpression = NXProp("idFilterExpression")
 

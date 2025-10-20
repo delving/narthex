@@ -633,6 +633,31 @@
                     <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
                 </div>
             </div>
+            <!-- Error Handling Configuration (AdLib-specific) -->
+            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'adlib'">
+                <label class="col-sm-3">Error Handling</label>
+                <div class="col-sm-9">
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" data-ng-model="dataset.edit.harvestContinueOnError" data-ng-true-value="true" data-ng-false-value="false"/>
+                            Continue harvesting when encountering errors
+                        </label>
+                        <p class="help-block">
+                            If enabled, harvest will continue when pages fail and retry individual records.
+                            Failed records will be stored separately for manual review.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'adlib' && dataset.edit.harvestContinueOnError">
+                <label class="col-sm-3" for="error_threshold">Error Threshold (%)</label>
+                <div class="col-sm-9">
+                    <input type="number" id="error_threshold" class="form-control" min="0" max="100" data-ng-model="dataset.edit.harvestErrorThreshold" placeholder="10"/>
+                    <p class="help-block">
+                        Stop harvesting if error rate exceeds this percentage (0 = unlimited errors)
+                    </p>
+                </div>
+            </div>
             <div class="form-group" data-ng-show="dataset.edit.harvestType == 'download'">
                 <label class="col-sm-3" for="download_url">Download URL</label>
                 <div class="col-sm-9">

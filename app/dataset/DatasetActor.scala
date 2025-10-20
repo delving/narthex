@@ -89,6 +89,8 @@ object DatasetActor {
                     progressState: ProgressState,
                     progressType: ProgressType = TYPE_IDLE,
                     count: Int = 0,
+                    errorCount: Int = 0,
+                    errorRecoveryAttempts: Int = 0,
                     interrupt: Boolean = false)
       extends DatasetActorData
 
@@ -97,7 +99,10 @@ object DatasetActor {
       "datasetSpec" -> active.spec,
       "progressState" -> active.progressState.toString,
       "progressType" -> active.progressType.toString,
-      "count" -> active.count
+      "count" -> active.count,
+      "errorCount" -> active.errorCount,
+      "errorRecoveryAttempts" -> active.errorRecoveryAttempts,
+      "interrupt" -> active.interrupt
     )
   }
 

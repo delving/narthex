@@ -131,9 +131,11 @@ trait Harvesting {
   }
 
   def fetchAdLibPage(timeOut: Long, wsApi: WSClient, strategy: HarvestStrategy, url: String, database: String, search: String,
-                     diagnosticOption: Option[AdLibDiagnostic] = None)
+                     diagnosticOption: Option[AdLibDiagnostic] = None,
+                     limit: Int = 50,
+                     startFrom: Option[Int] = None)
                     (implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
-    val startFrom = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1)
+    val startFromValue = startFrom.getOrElse(diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1))
     val cleanUrl = url.stripSuffix("?")
     val requestUrl = wsApi.url(cleanUrl).withRequestTimeout(timeOut.milliseconds)
     // UMU 2014-10-16T15:00
@@ -148,8 +150,8 @@ trait Harvesting {
       "database" -> database,
       "search" -> searchModified,
       "xmltype" -> "grouped",
-      "limit" -> "50",
-      "startFrom" -> startFrom.toString
+      "limit" -> limit.toString,
+      "startFrom" -> startFromValue.toString
     )
     logger.info(s"harvest url: ${request.uri}")
     // define your success condition
