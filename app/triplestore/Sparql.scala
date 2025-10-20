@@ -85,6 +85,13 @@ object Sparql {
       // Check for presence of specific state properties (e.g., stateSaved, stateIncrementalSaved)  
       val stateChecks = allowedStates.map { state =>
         val stateProperty = state match {
+          // Handle actual enum toString values (e.g., "stateSaved")
+          case "stateSaved" => s"<$stateSaved>"
+          case "stateIncrementalSaved" => s"<$stateIncrementalSaved>"
+          case "stateProcessed" => s"<$stateProcessed>"
+          case "stateRaw" => s"<$stateRaw>"
+          case "stateAnalyzed" => s"<$stateAnalyzed>"
+          // Handle enum name values (e.g., "SAVED") as fallback
           case "SAVED" => s"<$stateSaved>"
           case "INCREMENTAL_SAVED" => s"<$stateIncrementalSaved>"
           case "PROCESSED" => s"<$stateProcessed>"

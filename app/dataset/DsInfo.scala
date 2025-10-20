@@ -119,10 +119,19 @@ object DsInfo {
       val graphUris = specs.map(spec => getGraphName(spec, orgContext.appConfig.nxUriPrefix))
       
       ts.batchCheckGraphExistence(graphUris).map { existenceMap =>
+        // Store batch results in Play cache for future DsInfo instances to use
+        existenceMap.foreach { case (graphUri, exists) =>
+          val spec = specs.find(s => getGraphName(s, orgContext.appConfig.nxUriPrefix) == graphUri)
+          spec.foreach { s =>
+            val cacheKey = s"dataset_existence_$s"
+            orgContext.cacheApi.set(cacheKey, exists, 30.seconds) // Shorter cache for more responsive updates
+          }
+        }
+
         specs.map { spec =>
           val graphUri = getGraphName(spec, orgContext.appConfig.nxUriPrefix)
           val dataExists = existenceMap.getOrElse(graphUri, false)
-          
+
           val dsInfo = new DsInfo(
             spec,
             orgContext.appConfig.nxUriPrefix,
@@ -131,7 +140,7 @@ object DsInfo {
             orgContext,
             orgContext.appConfig.mockBulkApi
           )
-          
+
           // Cache the existence result to avoid individual dataGet() calls
           dsInfo.cacheDataExists(dataExists)
           dsInfo
@@ -193,21 +202,51 @@ object DsInfo {
   def freshDsInfo(spec: String, orgContext: OrgContext)(
       implicit ec: ExecutionContext,
       ts: TripleStore): Future[Option[DsInfo]] = {
-    ts.ask(
-        askIfDatasetExistsQ(
-          getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)))
-      .map(
-        answer =>
-          if (answer)
-            Some(new DsInfo(
-              spec,
-              orgContext.appConfig.nxUriPrefix,
-              orgContext.appConfig.naveApiAuthToken,
-              orgContext.appConfig.naveApiUrl,
-              orgContext,
-              orgContext.appConfig.mockBulkApi
-            ))
-          else None)
+
+    // Check if we have cached existence result first to avoid expensive ASK query
+    val cacheKey = s"dataset_existence_$spec"
+    orgContext.cacheApi.get[Boolean](cacheKey) match {
+      case Some(exists) =>
+        logger.debug(s"Using cached existence result for $spec: $exists")
+        if (exists) {
+          val dsInfo = new DsInfo(
+            spec,
+            orgContext.appConfig.nxUriPrefix,
+            orgContext.appConfig.naveApiAuthToken,
+            orgContext.appConfig.naveApiUrl,
+            orgContext,
+            orgContext.appConfig.mockBulkApi
+          )
+          dsInfo.cacheDataExists(exists)
+          Future.successful(Some(dsInfo))
+        } else {
+          Future.successful(None)
+        }
+
+      case None =>
+        // Fallback to original ASK query if no cache available
+        logger.debug(s"No cached existence for $spec, using ASK query")
+        ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)))
+          .map { answer =>
+            if (answer) {
+              val dsInfo = new DsInfo(
+                spec,
+                orgContext.appConfig.nxUriPrefix,
+                orgContext.appConfig.naveApiAuthToken,
+                orgContext.appConfig.naveApiUrl,
+                orgContext,
+                orgContext.appConfig.mockBulkApi
+              )
+              // Cache this result for future use
+              orgContext.cacheApi.set(cacheKey, answer, 30.seconds)
+              dsInfo.cacheDataExists(answer)
+              Some(dsInfo)
+            } else {
+              orgContext.cacheApi.set(cacheKey, answer, 30.seconds)
+              None
+            }
+          }
+    }
   }
 
   def withDsInfo[T](spec: String, orgContext: OrgContext)(
@@ -265,10 +304,24 @@ class DsInfo(
   // Caching to avoid repeated expensive dataGet() calls
   private var cachedDataExists: Option[Boolean] = None
   private var cachedModel: Option[Model] = None
-  
+
+  // Check for cached existence result on creation
+  private def loadCachedExistence(): Unit = {
+    if (cachedDataExists.isEmpty) {
+      val cacheKey = s"dataset_existence_$spec"
+      cachedDataExists = orgContext.cacheApi.get[Boolean](cacheKey)
+      if (cachedDataExists.isDefined) {
+        logger.debug(s"Loaded cached existence result for dataset $spec: ${cachedDataExists.get}")
+      }
+    }
+  }
+
   def cacheDataExists(exists: Boolean): Unit = {
     cachedDataExists = Some(exists)
   }
+
+  // Initialize cache on construction
+  loadCachedExistence()
   
   def futureModel: Future[Model] = {
     cachedDataExists match {
@@ -295,7 +348,7 @@ class DsInfo(
         
       case None =>
         // No cache - use original logic (fallback)
-        logger.debug(s"No cache available for dataset $spec - using original dataGet")
+        logger.warn(s"CACHE MISS: No cache available for dataset $spec - using expensive dataGet call. This indicates caching is not working properly.")
         val future = ts.dataGet(graphName)
         future.onComplete {
           case Success(_) => ()
@@ -411,6 +464,16 @@ class DsInfo(
   def setState(state: DsState.Value) = {
     setSingularLiteralProps(
       NXProp(state.toString, GraphProperties.timeProp) -> now)
+
+    // Update existence cache immediately with new state - don't just invalidate
+    val cacheKey = s"dataset_existence_$spec"
+    val dataExists = state match {
+      case DsState.SAVED | DsState.INCREMENTAL_SAVED | DsState.PROCESSED => true
+      case _ => false // For ERROR, RAW, etc. - assume no processed data exists
+    }
+    orgContext.cacheApi.set(cacheKey, dataExists, 30.seconds)
+    cachedDataExists = Some(dataExists)
+    logger.debug(s"Updated existence cache for $spec due to state change to $state (dataExists: $dataExists)")
   }
 
   def setHarvestIncrementalMode(enabled: Boolean = false) = {

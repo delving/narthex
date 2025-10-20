@@ -6,7 +6,7 @@ import play.api.libs.ws._
 import scala.concurrent.{ExecutionContext, Future}
 import organization.OrgContext
 
-class PreviewController (orgContext: OrgContext)(implicit val ec: ExecutionContext) extends Controller() {
+class PreviewController @Inject() (orgContext: OrgContext)(implicit val ec: ExecutionContext) extends InjectedController {
 
   def previewHarvestUrl(dataUrl: String): Action[AnyContent] = Action.async { request =>
 
@@ -25,14 +25,21 @@ class PreviewController (orgContext: OrgContext)(implicit val ec: ExecutionConte
     orgContext.wsApi.url(url).get().flatMap { response =>
       val headers = response.allHeaders.map { case (k, v) => k -> v.mkString(",") }
 
+      // Preserve Content-Type but filter out Content-Length (which Play recalculates)
       val filteredHeaders = headers.filterNot { case (key, _) =>
-        key.equalsIgnoreCase("Content-Length") || key.equalsIgnoreCase("Content-Type")
+        key.equalsIgnoreCase("Content-Length")
       }
 
-      val result = Ok(response.body)
+      // Get Content-Type for proper response formatting
+      val contentTypeOpt = headers.get("Content-Type")
+
+      val result = contentTypeOpt match {
+        case Some(contentType) => Ok(response.body).as(contentType)
+        case None => Ok(response.body)
+      }
+
       Future.successful(result.withHeaders(filteredHeaders.toSeq: _*))
     }.recover {
-      // Handle errors, like if the URL is incorrect or there's a network issue
       case e: Exception => InternalServerError(s"Error retrieving data: ${e.getMessage}")
     }
   }

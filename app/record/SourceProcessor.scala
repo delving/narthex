@@ -152,11 +152,17 @@ class SourceProcessor(val datasetContext: DatasetContext,
         val sipMapper = datasetContext.sipMapperOpt.getOrElse(
           throw new RuntimeException(s"No sip mapper for $datasetContext"))
 
-        // TODO: enable again when incremental harvesting is supported
-        //if (scheduledOpt.isEmpty) datasetContext.processedRepo.clear()
-        datasetContext.processedRepo.clear()
+        // CRITICAL FIX: Clear processed repo based on harvest type, not just presence of schedule
+        val isIncrementalHarvest = scheduledOpt.exists(_.modifiedAfter.isDefined)
+        if (isIncrementalHarvest) {
+          log.info("Incremental harvest - preserving existing processed data, will create new numbered file")
+        } else {
+          log.info("Full harvest - clearing all previous processed data")
+          datasetContext.processedRepo.clear()
+        }
 
         val processedOutput = datasetContext.processedRepo.createOutput
+        log.info(s"Processing will write to: ${processedOutput.xmlFile.getName} (number: ${processedOutput.number})")
         val xmlOutput = createWriter(processedOutput.xmlFile)
         val errorOutput = createWriter(processedOutput.errorFile)
         val bulkActionOutput = createWriter(processedOutput.bulkActionFile)

@@ -51,14 +51,25 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
     case ScanForHarvests =>
       // OPTIMIZATION: Only query datasets with harvestable states to prevent error dataset timestamp updates
       val allowedStateStrings = PeriodicHarvest.harvestingAllowed.map(_.toString)
+      logger.info(s"PeriodicHarvest: Scanning for datasets in states: ${allowedStateStrings.mkString(", ")}")
       val futureList = DsInfo.listDsInfoWithStateFilter(orgContext, allowedStateStrings)
       futureList.onComplete {
         case Success(list) =>
-          list.
-            filter(info => info.hasPreviousTime()). // Only need to filter by previousTime now
+          logger.info(s"PeriodicHarvest: Found ${list.length} datasets in harvestable states: ${list.map(_.spec).mkString(", ")}")
+
+          val datasetsWithPreviousTime = list.filter(info => info.hasPreviousTime())
+          logger.info(s"PeriodicHarvest: ${datasetsWithPreviousTime.length} datasets have previous harvest time: ${datasetsWithPreviousTime.map(_.spec).mkString(", ")}")
+
+          datasetsWithPreviousTime.
             sortWith((s, t) => s.getPreviousHarvestTime().isBefore(t.getPreviousHarvestTime())).
             foreach { listedInfo =>
               val harvestCron = listedInfo.currentHarvestCron
+
+              // Extra debugging for specific dataset
+              if (listedInfo.spec == "bevrijdingsmuseum-zeeland") {
+                logger.info(s"DEBUG bevrijdingsmuseum-zeeland: harvestCron=$harvestCron, timeToWork=${harvestCron.timeToWork}, previous=${harvestCron.previous}, delay=${harvestCron.delay}, unit=${harvestCron.unit}, incremental=${harvestCron.incremental}")
+              }
+
               logger.info(s"scheduled ds: ${listedInfo.spec} ${listedInfo.currentHarvestCron.previous.toString()} (time to work: ${harvestCron.timeToWork})")
               if (harvestCron.timeToWork) withDsInfo(listedInfo.spec, orgContext) { info => // the cached version
                 if (orgContext.semaphore.tryAcquire(info.spec)) {

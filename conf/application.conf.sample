@@ -79,7 +79,7 @@ naveAuthToken = ""
 
 # Set this to true to use the Nave Bulk APi
 ####mockBulkApi = false
-#mockBulkApi = true
+mockBulkApi = true
 
 # the ip-adress where the development nave can be reached
 naveApiUrl = "http://localhost:3000"
