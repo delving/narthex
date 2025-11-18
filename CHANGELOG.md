@@ -7,12 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## Changed
+-   history of changes: see https://github.com/delving/narthex/compare/v0.8.0...main
 
+## v0.8.0 (2025-11-18)
+
+### Added
+
+-   AdLib harvester error recovery with configurable retry mechanism
+-   Break failed harvest pages into individual record requests for retry
+-   Configurable error threshold to stop harvest if error rate exceeds limit
+-   Store failed records in separate files (harvest_errors.zip and harvest_errors.txt)
+-   OAI-PMH and AdLib harvest URL preview functionality
+-   Dataset caching improvements for better performance
+-   Connection pooling for SPARQL queries
+-   Fuseki authentication configuration support
+-   UI configuration for harvest error handling options
+
+### Fixed
+
+-   RDF model cache invalidation after property updates
+-   Harvest configuration UI property initialization order
+-   Numeric property type conversion between frontend and backend
+-   Angular checkbox binding for harvest configuration
+-   Harvest button disable bug after setting record delimiter
+-   Dataset state caching for incremental harvest processing
+-   File handling improvements in case of errors
+-   Saving event handling for dataset properties
+
+### Changed
+
+-   Major performance improvements and resource management
+-   Improved namespace handling
+-   Better logging for harvest semaphores
+-   Show hours and minutes in Last Changed in dataset list
 -   add spinner to indicate activity to dataset list [[GH-169]](https://github.com/delving/narthex/pull/169)
 -   Upgrade to Scala 2.13 [[GH-167]](https://github.com/delving/narthex/pull/167)
 
--   history of changes: see https://github.com/delving/narthex/compare/v0.6.10...main
+-   history of changes: see https://github.com/delving/narthex/compare/v0.7.1...v0.8.0
 
 ## v0.6.10 (2023-11-13)
 
