@@ -202,7 +202,20 @@ define(["angular"], function () {
         ];
 
         $scope.decorateDataset = function (dataset) {
+            // Initialize error handling properties with defaults if not present
+            // Must do this BEFORE copying to ensure dataset and dataset.edit match
+            if (!dataset.harvestContinueOnError) {
+                dataset.harvestContinueOnError = 'false';
+            }
+            if (!dataset.harvestErrorThreshold) {
+                dataset.harvestErrorThreshold = 10;
+            } else {
+                // Backend returns as string, but <input type="number"> needs a number
+                dataset.harvestErrorThreshold = parseInt(dataset.harvestErrorThreshold, 10);
+            }
+
             dataset.edit = angular.copy(dataset);
+
             dataset.apiMappings = $scope.apiPrefix + dataset.datasetSpec + '/mappings';
             dataset.states = [];
 //            if (dataset.character) dataset.prefix = info.character.prefix;
@@ -522,8 +535,13 @@ define(["angular"], function () {
         function setProperties(propertyList) {
             var payload = {propertyList: propertyList, values: {}};
             _.forEach(propertyList, function (propertyName) {
-                payload.values[propertyName] = angular.copy($scope.dataset.edit[propertyName]);
-                //console.log(propertyName, angular.copy($scope.dataset.edit[propertyName]));
+                var value = angular.copy($scope.dataset.edit[propertyName]);
+                // Backend expects all values as strings - convert numbers to strings
+                if (typeof value === 'number') {
+                    value = value.toString();
+                }
+                payload.values[propertyName] = value;
+                //console.log(propertyName, value);
             });
             datasetListService.setDatasetProperties($scope.dataset.datasetSpec, payload);
             $scope.showMetadataSubmitSuccess = true;

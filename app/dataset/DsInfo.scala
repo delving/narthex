@@ -380,12 +380,16 @@ class DsInfo(
     val sparql = withSynced.mkString(";\n")
     val futureUpdate = ts.up.sparqlUpdate(sparql)
     Await.ready(futureUpdate, patience)
+    // Invalidate cached model so next read gets fresh data with updated properties
+    cachedModel = None
   }
 
   def removeLiteralProp(prop: NXProp): Unit = {
     val futureUpdate =
       ts.up.sparqlUpdate(removeLiteralPropertyQ(graphName, uri, prop))
     Await.ready(futureUpdate, patience)
+    // Invalidate cached model so next read gets fresh data
+    cachedModel = None
   }
 
   def getLiteralPropList(prop: NXProp): List[String] = {
@@ -399,12 +403,16 @@ class DsInfo(
     val futureUpdate = ts.up.sparqlUpdate(
       addLiteralPropertyToListQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
+    // Invalidate cached model so next read gets fresh data
+    cachedModel = None
   }
 
   def removeLiteralPropFromList(prop: NXProp, uriValueString: String): Unit = {
     val futureUpdate = ts.up.sparqlUpdate(
       deleteLiteralPropertyFromListQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
+    // Invalidate cached model so next read gets fresh data
+    cachedModel = None
   }
 
   def getUriProp(prop: NXProp): Option[String] = {
@@ -468,8 +476,8 @@ class DsInfo(
     // Update existence cache immediately with new state - don't just invalidate
     val cacheKey = s"dataset_existence_$spec"
     val dataExists = state match {
-      case DsState.SAVED | DsState.INCREMENTAL_SAVED | DsState.PROCESSED => true
-      case _ => false // For ERROR, RAW, etc. - assume no processed data exists
+      case DsState.EMPTY | DsState.DISABLED => false // Only truly empty/disabled datasets don't exist
+      case _ => true // All other states (RAW, SOURCED, PROCESSED, SAVED, etc.) mean data exists
     }
     orgContext.cacheApi.set(cacheKey, dataExists, 30.seconds)
     cachedDataExists = Some(dataExists)

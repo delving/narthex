@@ -104,7 +104,8 @@ object Harvesting {
     database: String,
     search: String,
     strategy: HarvestStrategy,
-    diagnostic: AdLibDiagnostic)
+    diagnostic: AdLibDiagnostic,
+    errorOpt: Option[String] = None)
 
   case class HarvestCron(previous: DateTime, delay: Int, unit: DelayUnit, incremental: Boolean) {
 
@@ -165,25 +166,44 @@ trait Harvesting {
     wsResponseFuture.map { response =>
       val diagnostic = response.xml \ "diagnostic"
       val errorNode = diagnostic \ "error"
+
+      // Always parse diagnostic info, even if there's an error
+      val diagnosticInfo = AdLibDiagnostic(
+        totalItems = tagToInt(diagnostic, "hits"),
+        current = tagToInt(diagnostic, "first_item"),
+        pageItems = tagToInt(diagnostic, "hits_on_display")
+      )
+
       val error: Option[HarvestError] = if (errorNode.isEmpty) None
       else {
         val errorInfo = (errorNode \ "info").text
         val errorMessage = (errorNode \ "message").text
         Some(HarvestError(s"Error: $errorInfo, '$errorMessage'", strategy))
       }
-      error getOrElse {
-        AdLibHarvestPage(
-          response.xml.toString(),
-          cleanUrl,
-          database,
-          search,
-          strategy,
-          AdLibDiagnostic(
-            totalItems = tagToInt(diagnostic, "hits"),
-            current = tagToInt(diagnostic, "first_item"),
-            pageItems = tagToInt(diagnostic, "hits_on_display")
+
+      error match {
+        case Some(harvestError) =>
+          // Return an AdLibHarvestPage with empty records but valid diagnostic
+          // This allows error recovery in the harvester to know which page failed
+          AdLibHarvestPage(
+            "", // empty records
+            cleanUrl,
+            database,
+            search,
+            strategy,
+            diagnosticInfo,
+            Some(harvestError.error) // include error message
           )
-        )
+        case None =>
+          AdLibHarvestPage(
+            response.xml.toString(),
+            cleanUrl,
+            database,
+            search,
+            strategy,
+            diagnosticInfo,
+            None
+          )
       }
     }
   }
