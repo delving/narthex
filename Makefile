@@ -7,6 +7,10 @@ FUSEKI:=apache-fuseki
 FUSEKI_VERSION:=4.7.0
 FUSEKI_VERSION_RPM:=4.7.0
 
+# Java 8 is required for Scala 2.12/2.13 compatibility
+JAVA_HOME:=/usr/lib/jvm/java-8-openjdk
+export JAVA_HOME
+export PATH:=$(JAVA_HOME)/bin:$(PATH)
 
 # var print rule
 print-%  : ; @echo $* = $($*)

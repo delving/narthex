@@ -19,6 +19,8 @@
 
   // -- DEV RequireJS config --
   requirejs.config({
+    // Increase timeout for slower connections/browsers (default is 7 seconds)
+    waitSeconds: 30,
     // Packages = top-level folders; loads a contained file named "main.js"
     packages: [
       "common", "datasetList", "dataset", "skos", "terms", "categories"
@@ -26,40 +28,71 @@
     shim: {
       "jsRoutes": {
         deps: [],
-        // it's not a RequireJS module, so we have to tell it what var is returned
         exports: "jsRoutes"
       },
-      // Hopefully this all will not be necessary but can be fetched from WebJars in the future
+      'jquery': {
+        exports: '$'
+      },
       'angular': {
         deps: ['jquery'],
         exports: 'angular'
       },
-      'angular-route': ['angular'],
-      'angular-cookies': ['angular'],
-      'angular-file-upload': ['angular'],
-      'angular-sanitize': ['angular'],
-      'ngStorage': ['angular'],
-      'ng-grid': ['angular'],
-      'bootstrap': ['jquery'],
-      'ui-bootstrap': ['angular'],
-      'ui-bootstrap-tpls': ['ui-bootstrap']
+      'angular-route': {
+        deps: ['angular'],
+        exports: 'angular'
+      },
+      'angular-cookies': {
+        deps: ['angular'],
+        exports: 'angular'
+      },
+      'angular-file-upload': {
+        deps: ['angular'],
+        exports: 'angular'
+      },
+      'angular-sanitize': {
+        deps: ['angular'],
+        exports: 'angular'
+      },
+      'ngStorage': {
+        deps: ['angular'],
+        exports: 'angular'
+      },
+      'ng-grid': {
+        deps: ['angular', 'jquery'],
+        exports: 'ngGrid'
+      },
+      'bootstrap': {
+        deps: ['jquery'],
+        exports: '$.fn.tooltip'
+      },
+      'ui-bootstrap': {
+        deps: ['angular'],
+        exports: 'angular'
+      },
+      'ui-bootstrap-tpls': {
+        deps: ['ui-bootstrap'],
+        exports: 'angular'
+      },
+      'underscorejs': {
+        exports: '_'
+      }
     },
     paths: {
-      // Static files first (public/vendor/), WebJars fallback (lib/)
-      'requirejs': ['/narthex/assets/vendor/requirejs/require.min', '../lib/requirejs/require'],
-      'jquery': ['/narthex/assets/vendor/jquery/jquery.min', '/narthex/assets/vendor/jquery/jquery', '../lib/jquery/jquery'],
-      'angular': ['/narthex/assets/vendor/angularjs/angular.min', '/narthex/assets/vendor/angularjs/angular', '../lib/angularjs/angular'],
-      'angular-sanitize': ['/narthex/assets/vendor/angularjs/angular-sanitize.min', '../lib/angularjs/angular-sanitize'],
-      'angular-route': ['/narthex/assets/vendor/angularjs/angular-route.min', '../lib/angularjs/angular-route'],
-      'angular-cookies': ['/narthex/assets/vendor/angularjs/angular-cookies.min', '../lib/angularjs/angular-cookies'],
-      'ng-grid': ['/narthex/assets/vendor/ng-grid/ng-grid.min', '../lib/ng-grid/ng-grid'],
-      'ngStorage': ['/narthex/assets/vendor/ngStorage/ngStorage.min', '../lib/ngStorage/ngStorage'],
-      'angular-file-upload': ['/narthex/assets/vendor/angular-file-upload/angular-file-upload.min', '../lib/angular-file-upload/angular-file-upload'],
-      'bootstrap': ['/narthex/assets/vendor/bootstrap/js/bootstrap.min', '../lib/bootstrap/js/bootstrap'],
-      'ui-bootstrap': ['/narthex/assets/vendor/angular-ui-bootstrap/ui-bootstrap.min', '../lib/angular-ui-bootstrap/ui-bootstrap'],
-      'ui-bootstrap-tpls': ['/narthex/assets/vendor/angular-ui-bootstrap/ui-bootstrap-tpls.min', '../lib/angular-ui-bootstrap/ui-bootstrap-tpls'],
-      'underscorejs': ['/narthex/assets/vendor/underscorejs/underscore.min', '../lib/underscorejs/underscore'],
-      'jsRoutes': ['/narthex/jsRoutes']
+      // Static vendor files only - no CDN fallback to avoid CORS/MIME issues
+      'requirejs': '/narthex/assets/vendor/requirejs/require.min',
+      'jquery': '/narthex/assets/vendor/jquery/jquery.min',
+      'angular': '/narthex/assets/vendor/angularjs/angular.min',
+      'angular-sanitize': '/narthex/assets/vendor/angularjs/angular-sanitize.min',
+      'angular-route': '/narthex/assets/vendor/angularjs/angular-route.min',
+      'angular-cookies': '/narthex/assets/vendor/angularjs/angular-cookies.min',
+      'ng-grid': '/narthex/assets/vendor/ng-grid/ng-grid.min',
+      'ngStorage': '/narthex/assets/vendor/ngStorage/ngStorage.min',
+      'angular-file-upload': '/narthex/assets/vendor/angular-file-upload/angular-file-upload.min',
+      'bootstrap': '/narthex/assets/vendor/bootstrap/js/bootstrap.min',
+      'ui-bootstrap': '/narthex/assets/vendor/angular-ui-bootstrap/ui-bootstrap.min',
+      'ui-bootstrap-tpls': '/narthex/assets/vendor/angular-ui-bootstrap/ui-bootstrap-tpls.min',
+      'underscorejs': '/narthex/assets/vendor/underscorejs/underscore.min',
+      'jsRoutes': '/narthex/jsRoutes'
     }
   });
 
