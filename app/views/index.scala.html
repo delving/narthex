@@ -6,28 +6,15 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <script type="text/javascript">
-            (function () {
-                const head = document.head
-                const append = head.appendChild
-                head.appendChild = child => {
-                    if (child && child.src && child.src.indexOf('//cdn.jsdelivr.net/webjars/bootstrap/3.1.1-1/js/bootstrap.min.js') >= 0) {
-                        child.src = '//cdn.jsdelivr.net/webjars/bootstrap/3.1.1/js/bootstrap.min.js'
-                        console.log('patched bootstrap')
-                    }
-                    append.call(head, child)
-                }
-            }());
-        </script>
         <title>Narthex - @orgId </title>
         <link rel="shortcut icon" type="image/png" href="@Assets.versioned("images/favicon.png")">
         <link rel="stylesheet" media="screen" href="@Assets.versioned("css/font-awesome.min.css")">
-        @webJarsUtil.locate("/bootstrap.min.css").css()
-        @webJarsUtil.locate("/jquery.min.js").script()
-        @webJarsUtil.locate("/bootstrap.min.js").script()
+        <link rel="stylesheet" media="screen" href="@Assets.versioned("vendor/bootstrap/css/bootstrap.min.css")">
+        <script type="text/javascript" src="@Assets.versioned("vendor/jquery/jquery.min.js")"></script>
+        <script type="text/javascript" src="@Assets.versioned("vendor/bootstrap/js/bootstrap.min.js")"></script>
         <link rel="stylesheet" media="screen" href="@Assets.versioned("stylesheets/main.css")">
-        <link rel="stylesheet" media="screen" href="@Assets.versioned("lib/ng-grid/ng-grid.css")" />
-        @webJarsUtil.locate("requirejs", "require.min.js").script(Map("data-main" -> routes.Assets.versioned("javascripts/main.js").url))
+        <link rel="stylesheet" media="screen" href="@Assets.versioned("vendor/ng-grid/ng-grid.min.css")" />
+        <script data-main="@routes.Assets.versioned("javascripts/main.js")" type="text/javascript" src="@Assets.versioned("vendor/requirejs/require.min.js")"></script>
     </head>
     <body>
         <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="IndexCtrl" data-ng-init="initialize('@orgId', '@sipCreatorLink', '@enableIncrementalHarvest', '@supportedDatasetTypes')">
@@ -96,8 +83,5 @@
             </div>
 
         </div>
-
-        <script data-main="@routes.Assets.versioned("javascripts/lib/bootstrap.js")" type="text/javascript" src="@routes.Assets.versioned("lib/requirejs/require.js")"></script>
-
     </body>
 </html>

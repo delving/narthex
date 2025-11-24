@@ -45,19 +45,20 @@
       'ui-bootstrap-tpls': ['ui-bootstrap']
     },
     paths: {
-      'requirejs': ['../lib/requirejs/require'],
-      'jquery': ['../lib/jquery/jquery'],
-      'angular': ['../lib/angularjs/angular'],
-      'angular-sanitize': ['../lib/angularjs/angular-sanitize'],
-      'ng-grid': ['../lib/ng-grid/ng-grid'],
-      'ngStorage': ['../lib/ngStorage/ngStorage'],
-      'angular-route': ['../lib/angularjs/angular-route'],
-      'angular-cookies': ['../lib/angularjs/angular-cookies'],
-      'angular-file-upload': ['../lib/angular-file-upload/angular-file-upload'],
-      'bootstrap': ['../lib/bootstrap/js/bootstrap'],
-      'ui-bootstrap': ['../lib/angular-ui-bootstrap/ui-bootstrap'],
-      'ui-bootstrap-tpls': ['../lib/angular-ui-bootstrap/ui-bootstrap-tpls'],
-      'underscorejs': ['../lib/underscorejs/underscore'],
+      // Static files first (public/vendor/), WebJars fallback (lib/)
+      'requirejs': ['/narthex/assets/vendor/requirejs/require.min', '../lib/requirejs/require'],
+      'jquery': ['/narthex/assets/vendor/jquery/jquery.min', '/narthex/assets/vendor/jquery/jquery', '../lib/jquery/jquery'],
+      'angular': ['/narthex/assets/vendor/angularjs/angular.min', '/narthex/assets/vendor/angularjs/angular', '../lib/angularjs/angular'],
+      'angular-sanitize': ['/narthex/assets/vendor/angularjs/angular-sanitize.min', '../lib/angularjs/angular-sanitize'],
+      'angular-route': ['/narthex/assets/vendor/angularjs/angular-route.min', '../lib/angularjs/angular-route'],
+      'angular-cookies': ['/narthex/assets/vendor/angularjs/angular-cookies.min', '../lib/angularjs/angular-cookies'],
+      'ng-grid': ['/narthex/assets/vendor/ng-grid/ng-grid.min', '../lib/ng-grid/ng-grid'],
+      'ngStorage': ['/narthex/assets/vendor/ngStorage/ngStorage.min', '../lib/ngStorage/ngStorage'],
+      'angular-file-upload': ['/narthex/assets/vendor/angular-file-upload/angular-file-upload.min', '../lib/angular-file-upload/angular-file-upload'],
+      'bootstrap': ['/narthex/assets/vendor/bootstrap/js/bootstrap.min', '../lib/bootstrap/js/bootstrap'],
+      'ui-bootstrap': ['/narthex/assets/vendor/angular-ui-bootstrap/ui-bootstrap.min', '../lib/angular-ui-bootstrap/ui-bootstrap'],
+      'ui-bootstrap-tpls': ['/narthex/assets/vendor/angular-ui-bootstrap/ui-bootstrap-tpls.min', '../lib/angular-ui-bootstrap/ui-bootstrap-tpls'],
+      'underscorejs': ['/narthex/assets/vendor/underscorejs/underscore.min', '../lib/underscorejs/underscore'],
       'jsRoutes': ['/narthex/jsRoutes']
     }
   });
