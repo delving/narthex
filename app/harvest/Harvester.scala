@@ -396,11 +396,11 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
       if (pageHasError && continueOnError) {
         // Error recovery path: AdLib API returned an error or empty records
-        log.warning(s"AdLib API error on page at offset ${diagnostic.current}: ${errorOpt.getOrElse("empty records")}")
-        harvestErrors += (url -> errorOpt.getOrElse("empty records"))
-
         // Build the full page URL with current parameters for reconstruction
         val fullPageUrl = s"$url?database=$database&search=$search&xmltype=grouped&limit=${diagnostic.pageItems}&startFrom=${diagnostic.current}"
+        log.warning(s"AdLib API error on page at offset ${diagnostic.current} from $fullPageUrl: ${errorOpt.getOrElse("empty records")}")
+        harvestErrors += (fullPageUrl -> errorOpt.getOrElse("empty records"))
+
         val recordUrls = breakPageIntoRecords(fullPageUrl, diagnostic.pageItems, diagnostic.current)
 
         log.info(s"Breaking failed page into ${recordUrls.size} individual record requests")
@@ -458,11 +458,11 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
           case Failure(e) if continueOnError =>
             // Error recovery path: failed to process records locally
-            log.warning(s"Failed to process harvest page records, breaking into individual records: ${e.getMessage}")
-            harvestErrors += (url -> e.toString)
-
             // Build the full page URL with current parameters for reconstruction
             val fullPageUrl = s"$url?database=$database&search=$search&xmltype=grouped&limit=${diagnostic.pageItems}&startFrom=${diagnostic.current}"
+            log.warning(s"Failed to process harvest page records from $fullPageUrl, breaking into individual records: ${e.getMessage}")
+            harvestErrors += (fullPageUrl -> e.toString)
+
             val recordUrls = breakPageIntoRecords(fullPageUrl, diagnostic.pageItems, diagnostic.current)
 
             recordUrls.zipWithIndex.foreach { case (_, idx) =>
@@ -493,7 +493,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
     case AdLibSingleRecordHarvest(recordOffset, url, database, search, strategy, originalPageUrl) => actorWork(context) {
       errorPagesSubmitted += 1
-      log.debug(s"Attempting single-record harvest at offset $recordOffset")
+      val singleRecordUrl = s"$url?database=$database&search=$search&xmltype=grouped&limit=1&startFrom=$recordOffset"
+      log.debug(s"Attempting single-record harvest from $singleRecordUrl")
 
       val futurePage = fetchAdLibPage(
         timeout, wsApi, strategy, url, database, search,
@@ -507,35 +508,35 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
           // Check if the single-record request returned an error
           errorOpt match {
             case Some(error) =>
-              log.warning(s"AdLib API error for single record at offset $recordOffset: $error")
-              errorRecords :+= (recordOffset.toString, "", error)
+              log.warning(s"AdLib API error for single record from $singleRecordUrl: $error")
+              errorRecords :+= (recordOffset.toString, "", s"$error (source: $singleRecordUrl)")
             case None if records.nonEmpty =>
               Try(addPage(records)) match {
                 case Success(_) =>
-                  log.debug(s"Successfully recovered record at offset $recordOffset")
+                  log.debug(s"Successfully recovered record from $singleRecordUrl")
                   recordsProcessed += 1
                 case Failure(e) =>
-                  log.warning(s"Failed to recover record at offset $recordOffset: ${e.getMessage}")
-                  errorRecords :+= (recordOffset.toString, records, e.toString)
+                  log.warning(s"Failed to recover record from $singleRecordUrl: ${e.getMessage}")
+                  errorRecords :+= (recordOffset.toString, records, s"${e.toString} (source: $singleRecordUrl)")
               }
             case None =>
-              log.warning(s"Empty response for single record at offset $recordOffset")
-              errorRecords :+= (recordOffset.toString, "", "empty response")
+              log.warning(s"Empty response for single record from $singleRecordUrl")
+              errorRecords :+= (recordOffset.toString, "", s"empty response (source: $singleRecordUrl)")
           }
           errorPagesProcessed += 1
 
         case Success(HarvestError(error, _)) =>
-          log.warning(s"Error retrieving single record at offset $recordOffset: $error")
-          errorRecords :+= (recordOffset.toString, "", error)
+          log.warning(s"Error retrieving single record from $singleRecordUrl: $error")
+          errorRecords :+= (recordOffset.toString, "", s"$error (source: $singleRecordUrl)")
           errorPagesProcessed += 1
 
         case Failure(e) =>
-          log.warning(s"Failed single-record harvest at offset $recordOffset: ${e.getMessage}")
-          errorRecords :+= (recordOffset.toString, "", e.toString)
+          log.warning(s"Failed single-record harvest from $singleRecordUrl: ${e.getMessage}")
+          errorRecords :+= (recordOffset.toString, "", s"${e.toString} (source: $singleRecordUrl)")
           errorPagesProcessed += 1
 
         case _ =>
-          log.warning(s"Unexpected response for single-record harvest at offset $recordOffset")
+          log.warning(s"Unexpected response for single-record harvest from $singleRecordUrl")
           errorPagesProcessed += 1
       }
 
