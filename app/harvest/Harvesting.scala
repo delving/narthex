@@ -164,6 +164,7 @@ trait Harvesting {
     }
 
     wsResponseFuture.map { response =>
+      val sourceUrl = request.uri.toString
       val diagnostic = response.xml \ "diagnostic"
       val errorNode = diagnostic \ "error"
 
@@ -178,7 +179,8 @@ trait Harvesting {
       else {
         val errorInfo = (errorNode \ "info").text
         val errorMessage = (errorNode \ "message").text
-        Some(HarvestError(s"Error: $errorInfo, '$errorMessage'", strategy))
+        logger.error(s"AdLib API error from $sourceUrl: $errorInfo, '$errorMessage'")
+        Some(HarvestError(s"Error from $sourceUrl: $errorInfo, '$errorMessage'", strategy))
       }
 
       error match {
@@ -249,10 +251,12 @@ trait Harvesting {
     }
 
     wsResponseFuture.map { response =>
-      logger.debug(s"start get for: \n ${response.underlying[NettyResponse].getUri}")
+      val sourceUri = response.underlying[NettyResponse].getUri.toString
+      logger.debug(s"start get for: \n $sourceUri")
       val error: Option[HarvestError] = if (response.status != 200) {
+        logger.error(s"HTTP error from $sourceUri: ${response.statusText}")
         logger.debug(s"error response: ${response.underlying[NettyResponse].getResponseBody}")
-        Some(HarvestError(s"HTTP Response: ${response.statusText}", strategy))
+        Some(HarvestError(s"HTTP Response: ${response.statusText} from $sourceUri", strategy))
       }
       else {
         val netty = response.underlying[NettyResponse]
@@ -262,38 +266,57 @@ trait Harvesting {
         }
 
         logger.trace(s"OAI-PMH Response: \n ''''${body}''''")
-        val xml = XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", "")) // reader old
-        val errorNode = xml \ "error"
 
-        val records = xml \ verb \ "record"
-        // todo: if there is a resumptionToken end the list size is greater than the cursor but zero records are returned through an error.
-        val tokenNode = xml \ verb \ "resumptionToken"
-        val faultyEmptyResponse: String = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
-          val completeListSize = tagToInt(tokenNode, "@completeListSize")
-          val cursor = tagToInt(tokenNode, "@cursor", 1)
-          if (completeListSize > cursor && records.isEmpty) {
-            s"""For set ${set} with <a href="${netty.getUri}" target="_blank">url</a>, the completeLisSize was reported to be ${completeListSize} but at cursor ${cursor} 0 records were returned"""
-          } else ""
-        } else ""
-        if (errorNode.nonEmpty || records.isEmpty || faultyEmptyResponse.nonEmpty) {
-          val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text else "noRecordsMatch"
-          if (faultyEmptyResponse.nonEmpty) {
-            Some(HarvestError(faultyEmptyResponse, strategy))
-          }
-          else if ("noRecordsMatch" == errorCode) {
-            logger.debug("No PMH Records returned")
-            if (pageNumber > 1) {
-              Some(HarvestError("noRecordsMatchRecoverable", strategy))
-            } else {
-              Some(HarvestError("noRecordsMatch", strategy))
-            }
-          }
-          else {
-            Some(HarvestError(errorNode.text, strategy))
-          }
+        // Parse XML with better error handling
+        val xmlResult = try {
+          scala.util.Success(XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", "")))
+        } catch {
+          case e: org.xml.sax.SAXParseException =>
+            logger.error(s"SAX parsing error from $sourceUri at line ${e.getLineNumber}, column ${e.getColumnNumber}: ${e.getMessage}")
+            scala.util.Failure(e)
+          case e: Exception =>
+            logger.error(s"XML parsing error from $sourceUri: ${e.getMessage}")
+            scala.util.Failure(e)
         }
-        else {
-          None
+
+        xmlResult match {
+          case scala.util.Failure(e) =>
+            Some(HarvestError(s"XML parsing failed for $sourceUri: ${e.getMessage}", strategy))
+          case scala.util.Success(xml) =>
+            val errorNode = xml \ "error"
+
+            val records = xml \ verb \ "record"
+            // todo: if there is a resumptionToken end the list size is greater than the cursor but zero records are returned through an error.
+            val tokenNode = xml \ verb \ "resumptionToken"
+            val faultyEmptyResponse: String = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
+              val completeListSize = tagToInt(tokenNode, "@completeListSize")
+              val cursor = tagToInt(tokenNode, "@cursor", 1)
+              if (completeListSize > cursor && records.isEmpty) {
+                s"""For set ${set} with <a href="$sourceUri" target="_blank">url</a>, the completeLisSize was reported to be ${completeListSize} but at cursor ${cursor} 0 records were returned"""
+              } else ""
+            } else ""
+            if (errorNode.nonEmpty || records.isEmpty || faultyEmptyResponse.nonEmpty) {
+              val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text else "noRecordsMatch"
+              if (faultyEmptyResponse.nonEmpty) {
+                logger.error(s"Faulty empty response from $sourceUri: $faultyEmptyResponse")
+                Some(HarvestError(faultyEmptyResponse, strategy))
+              }
+              else if ("noRecordsMatch" == errorCode) {
+                logger.debug(s"No PMH Records returned from $sourceUri")
+                if (pageNumber > 1) {
+                  Some(HarvestError("noRecordsMatchRecoverable", strategy))
+                } else {
+                  Some(HarvestError("noRecordsMatch", strategy))
+                }
+              }
+              else {
+                logger.error(s"OAI-PMH error from $sourceUri: ${errorNode.text}")
+                Some(HarvestError(s"${errorNode.text} from $sourceUri", strategy))
+              }
+            }
+            else {
+              None
+            }
         }
       }
       if (!error.isEmpty) {
@@ -305,40 +328,57 @@ trait Harvesting {
       }
       else {
         val netty = response.underlying[NettyResponse]
+        val sourceUri = netty.getUri.toString
         var body = netty.getResponseBody(StandardCharsets.UTF_8)
         if (body.indexOf('\uFEFF') == 0) {
           body = body.substring(1)
         }
-        val xml = XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", ""))
-        val tokenNode = xml \ "ListRecords" \ "resumptionToken"
-        val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
-          val completeListSize = tagToInt(tokenNode, "@completeListSize")
-          val cursor = tagToInt(tokenNode, "@cursor", 1)
-          Some(PMHResumptionToken(
-            value = tokenNode.text,
-            currentRecord = cursor,
-            totalRecords = completeListSize,
-            prefix = metadataPrefix
-          ))
+
+        // Parse XML with better error handling
+        val xmlOrError = try {
+          scala.util.Right(XML.loadString(body.replace("ï»¿", "").replace("\u0239\u0187\u0191", "")))
+        } catch {
+          case e: org.xml.sax.SAXParseException =>
+            logger.error(s"SAX parsing error from $sourceUri at line ${e.getLineNumber}, column ${e.getColumnNumber}: ${e.getMessage}")
+            scala.util.Left(HarvestError(s"XML parsing failed for $sourceUri: ${e.getMessage}", strategy))
+          case e: Exception =>
+            logger.error(s"XML parsing error from $sourceUri: ${e.getMessage}")
+            scala.util.Left(HarvestError(s"XML parsing failed for $sourceUri: ${e.getMessage}", strategy))
         }
-        else {
-          None
+
+        xmlOrError match {
+          case scala.util.Left(error) => error
+          case scala.util.Right(xml) =>
+            val tokenNode = xml \ "ListRecords" \ "resumptionToken"
+            val newToken = if (tokenNode.nonEmpty && tokenNode.text.trim.nonEmpty) {
+              val completeListSize = tagToInt(tokenNode, "@completeListSize")
+              val cursor = tagToInt(tokenNode, "@cursor", 1)
+              Some(PMHResumptionToken(
+                value = tokenNode.text,
+                currentRecord = cursor,
+                totalRecords = completeListSize,
+                prefix = metadataPrefix
+              ))
+            }
+            else {
+              None
+            }
+            val total =
+              if (newToken.isDefined) newToken.get.totalRecords
+              else if (resumption.isDefined) resumption.get.totalRecords
+              else 0
+            val harvestPage = PMHHarvestPage(
+              records = xml.toString(),
+              url = url,
+              set = set,
+              metadataPrefix = metadataPrefix,
+              totalRecords = total,
+              strategy,
+              resumptionToken = newToken
+            )
+            logger.debug(s"Return PMHHarvestPage: $newToken, $sourceUri")
+            harvestPage
         }
-        val total =
-          if (newToken.isDefined) newToken.get.totalRecords
-          else if (resumption.isDefined) resumption.get.totalRecords
-          else 0
-        val harvestPage = PMHHarvestPage(
-          records = xml.toString(),
-          url = url,
-          set = set,
-          metadataPrefix = metadataPrefix,
-          totalRecords = total,
-          strategy,
-          resumptionToken = newToken
-        )
-        logger.debug(s"Return PMHHarvestPage: $newToken, ${netty.getUri}")
-        harvestPage
       }
     }
   }
