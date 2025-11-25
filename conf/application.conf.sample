@@ -121,7 +121,7 @@ play.ws {
     maxConnectionsTotal = 200
     # Connection timeout
     connectTimeout = 10s
-    # Request timeout  
+    # Request timeout
     requestTimeout = 60s
     # Read timeout
     readTimeout = 120s
@@ -130,6 +130,9 @@ play.ws {
     # Pool connections
     pooledConnectionIdleTimeout = 30s
     connectionPoolCleanerPeriod = 1s
+    # Maximum response content length in bytes (50 MB)
+    # This allows OAI-PMH responses with many records to complete
+    maxContentLength = 52428800
   }
 }
 
