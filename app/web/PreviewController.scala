@@ -33,14 +33,22 @@ class PreviewController @Inject() (orgContext: OrgContext)(implicit val ec: Exec
       // Get Content-Type for proper response formatting
       val contentTypeOpt = headers.get("Content-Type")
 
+      // Strip XSL stylesheet reference to allow XML to render in browser
+      val bodyText = response.body
+      val cleanedBody = if (bodyText.contains("<?xml-stylesheet")) {
+        bodyText.replaceAll("""<\?xml-stylesheet[^>]*\?>""", "")
+      } else {
+        bodyText
+      }
+
       val result = contentTypeOpt match {
-        case Some(contentType) => Ok(response.body).as(contentType)
-        case None => Ok(response.body)
+        case Some(contentType) => Ok(cleanedBody).as(contentType)
+        case None => Ok(cleanedBody)
       }
 
       Future.successful(result.withHeaders(filteredHeaders.toSeq: _*))
     }.recover {
-      case e: Exception => InternalServerError(s"Error retrieving data: ${e.getMessage}")
+      case e: Exception => InternalServerError(s"Error retrieving data from $url: ${e.getMessage}")
     }
   }
 }
