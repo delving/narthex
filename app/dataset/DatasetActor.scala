@@ -464,6 +464,15 @@ class DatasetActor(val datasetContext: DatasetContext,
         stay() using InError("Unable to determine harvest type")
       }
 
+    // Handle StartHarvest when not in Dormant state (e.g., after previous harvest completed and dataset is in PROCESSED state)
+    // This is the fix for stuck actors holding semaphores when scheduled harvests can't start
+    case Event(StartHarvest(strategy), data) =>
+      log.warning(s"Received StartHarvest($strategy) while in non-Dormant state: $data")
+      log.info(s"Resetting to Dormant and reprocessing StartHarvest for dataset ${dsInfo.spec}")
+      // First transition to Dormant state, then resend the StartHarvest message
+      self ! StartHarvest(strategy)
+      stay() using Dormant
+
     case Event(AdoptSource(file, orgContext), Dormant) =>
       val sourceProcessor = createChildActor(
         SourceProcessor.props(datasetContext, orgContext),
