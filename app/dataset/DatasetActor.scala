@@ -109,6 +109,8 @@ object DatasetActor {
 
   case class InError(error: String) extends DatasetActorData
 
+  case class InRetry(message: String, retryCount: Int) extends DatasetActorData
+
   // messages to receive
 
   trait HarvestStrategy
@@ -241,6 +243,10 @@ class DatasetActor(val datasetContext: DatasetContext,
     childActors += child
     context.watch(child)
     child
+  }
+
+  private def isHarvestFailure(active: Active): Boolean = {
+    active.progressState == HARVESTING
   }
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
@@ -731,6 +737,144 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   }
 
+  // Handlers for InRetry state
+  when(Idle) {
+
+    // Handle commands while in retry state
+    case Event(Command(commandName), InRetry(message, retryCount)) =>
+      log.info(s"In retry mode (attempt #$retryCount). Command: $commandName")
+
+      commandName match {
+        case "stop retrying" =>
+          log.info(s"User stopped retrying after $retryCount attempts")
+          dsInfo.clearRetryState()
+          dsInfo.setError(s"Harvest stopped after $retryCount retry attempts: $message")
+          mailService.sendProcessingErrorMessage(dsInfo.spec, message, None)
+          goto(Idle) using InError(message)
+
+        case "retry now" =>
+          log.info(s"User triggered immediate retry (attempt #${retryCount + 1})")
+          val newCount = dsInfo.incrementRetryCount()
+          if (orgContext.semaphore.tryAcquire(dsInfo.spec)) {
+            // Get harvest strategy and start harvest
+            val strategy = FromScratch
+            self ! StartHarvest(strategy)
+            stay() using InRetry(message, newCount)
+          } else {
+            log.warning("Could not acquire semaphore for immediate retry")
+            stay()
+          }
+
+        case "clear error" =>
+          // User wants to completely clear retry state
+          log.info("User cleared retry state")
+          dsInfo.clearRetryState()
+          goto(Idle) using Dormant
+
+        case _ =>
+          log.info(s"Ignoring command '$commandName' while in retry mode")
+          stay()
+      }
+
+    // Handle StartHarvest while in retry mode (triggered by PeriodicHarvest or manual retry)
+    case Event(StartHarvest(strategy), InRetry(message, retryCount)) =>
+      log.info(s"Starting retry harvest attempt #${retryCount + 1} for ${dsInfo.spec}")
+
+      // Increment retry count
+      val newCount = dsInfo.incrementRetryCount()
+
+      // Start harvest (reuse existing harvest startup logic)
+      def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
+      harvestTypeFromString(prop(harvestType)).map { harvestType =>
+        datasetContext.dropTree()
+
+        // Prepare source repo based on strategy
+        strategy match {
+          case FromScratch =>
+            log.info("FromScratch: clearing all data")
+            datasetContext.sourceRepoOpt match {
+              case Some(sourceRepo) => sourceRepo.clearData()
+              case None => datasetContext.createSourceRepo(SourceFacts(harvestType))
+            }
+          case FromScratchIncremental =>
+            log.info("FromScratchIncremental: preserving existing data")
+            datasetContext.sourceRepoOpt match {
+              case None => datasetContext.createSourceRepo(SourceFacts(harvestType))
+              case Some(_) => log.debug("Source repo exists, keeping data")
+            }
+          case _ =>
+            log.info(s"Strategy $strategy: checking source repo")
+            datasetContext.sourceRepoOpt match {
+              case None => datasetContext.createSourceRepo(SourceFacts(harvestType))
+              case Some(_) => log.debug("Source repo exists, keeping data")
+            }
+        }
+
+        val (url, ds, pre, se, recordId, downloadLink) = (prop(harvestURL),
+          prop(harvestDataset),
+          prop(harvestPrefix),
+          prop(harvestSearch),
+          prop(harvestRecord),
+          prop(harvestDownloadURL))
+
+        val kickoff = harvestType match {
+          case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
+          case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
+          case ADLIB => HarvestAdLib(strategy, url, ds, se)
+        }
+        val harvester = createChildActor(
+          Harvester.props(datasetContext,
+                         orgContext.appConfig.harvestTimeOut,
+                         orgContext.wsApi,
+                         harvestingExecutionContext),
+          "harvester")
+        harvester ! kickoff
+        goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
+      } getOrElse {
+        log.error(s"Unable to determine harvest type for retry")
+        stay() using InRetry(message, newCount)
+      }
+
+    // Handle another failure while already in retry mode
+    case Event(WorkFailure(newMessage, exceptionOpt), InRetry(oldMessage, retryCount)) =>
+      log.warning(s"Retry attempt #$retryCount failed: $newMessage")
+
+      // Update retry state with new message but keep count
+      dsInfo.setInRetry(newMessage, retryCount)
+
+      exceptionOpt match {
+        case Some(exception) => log.error(exception, newMessage)
+        case None            => log.error(newMessage)
+      }
+
+      // Stay in retry mode, PeriodicHarvest will trigger next attempt
+      orgContext.semaphore.release(dsInfo.spec)
+      stay() using InRetry(newMessage, retryCount)
+  }
+
+  when(Harvesting) {
+    // Handle successful harvest completion while in retry mode
+    case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch), InRetry(message, retryCount)) =>
+      log.info(s"Harvest succeeded after $retryCount retry attempts for ${dsInfo.spec}")
+      dsInfo.clearRetryState()
+      orgContext.semaphore.release(dsInfo.spec)
+
+      // Continue with normal harvest completion flow
+      if (noRecordsMatch) {
+        goto(Idle) using Dormant
+      } else {
+        fileOpt match {
+          case Some(file) =>
+            dsInfo.setState(DsState.RAW)
+            val analyzer = createChildActor(Analyzer.props(datasetContext), "analyzer")
+            analyzer ! Analyze(file, RecordMode.HARVEST)
+            goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), ANALYZING)
+          case None =>
+            goto(Idle) using Dormant
+        }
+      }
+  }
+
   whenUnhandled {
 
     case Event(CheckForStuckState, active: Active) =>
@@ -829,14 +973,39 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Work failure [$message] while in [$active]")
-      dsInfo.setError(s"While $stateName, failure: $message")
-      exceptionOpt match {
-        case Some(exception) => log.error(exception, message)
-        case None            => log.error(message)
+
+      // Check if this is a harvest failure (candidate for retry)
+      if (isHarvestFailure(active)) {
+        log.info(s"Harvest failure detected, entering retry mode for ${dsInfo.spec}")
+
+        // Set retry state in dataset properties
+        dsInfo.setInRetry(message, 0)
+
+        // Log the error but don't send email yet (will send after max retries or manual stop)
+        exceptionOpt match {
+          case Some(exception) => log.error(exception, message)
+          case None            => log.error(message)
+        }
+
+        // Release semaphore so PeriodicHarvest can re-acquire for retry
+        active.childOpt.foreach(_ ! PoisonPill)
+        orgContext.semaphore.release(dsInfo.spec)
+        orgContext.saveSemaphore.release(dsInfo.spec)
+
+        // Transition to retry state (not error state)
+        goto(Idle) using InRetry(message, 0)
+
+      } else {
+        // Non-harvest failure - use existing error handling
+        dsInfo.setError(s"While $stateName, failure: $message")
+        exceptionOpt match {
+          case Some(exception) => log.error(exception, message)
+          case None            => log.error(message)
+        }
+        mailService.sendProcessingErrorMessage(dsInfo.spec, message, exceptionOpt)
+        active.childOpt.foreach(_ ! PoisonPill)
+        goto(Idle) using InError(message)
       }
-      mailService.sendProcessingErrorMessage(dsInfo.spec, message, exceptionOpt)
-      active.childOpt.foreach(_ ! PoisonPill)
-      goto(Idle) using InError(message)
 
     case Event(WorkFailure(message, exceptionOpt), _) =>
       log.warning(s"Work failure $message while dormant")
