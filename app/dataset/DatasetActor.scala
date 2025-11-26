@@ -91,7 +91,8 @@ object DatasetActor {
                     count: Int = 0,
                     errorCount: Int = 0,
                     errorRecoveryAttempts: Int = 0,
-                    interrupt: Boolean = false)
+                    interrupt: Boolean = false,
+                    stateStartTime: Long = System.currentTimeMillis())
       extends DatasetActorData
 
   implicit val activeWrites: Writes[Active] = new Writes[Active] {
@@ -144,6 +145,10 @@ object DatasetActor {
                           progressState: ProgressState,
                           progressType: ProgressType = TYPE_IDLE,
                           count: Int = 0)
+
+  case object CheckForStuckState
+
+  case object ForceReleaseAndReset
 
   def props(datasetContext: DatasetContext,
             mailService: MailService,
@@ -239,6 +244,21 @@ class DatasetActor(val datasetContext: DatasetContext,
   }
 
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
+
+  // Schedule periodic check for stuck states
+  // Check every 5 minutes, max time = 2x harvest timeout (default 180s = 3min, so 6min total, but use minimum of 30min)
+  private val stuckStateCheckInterval = 5.minutes
+  private val harvestTimeoutMinutes = (orgContext.appConfig.harvestTimeOut / 1000 / 60).toInt
+  private val maxStateTime = Math.max(30, harvestTimeoutMinutes * 2).minutes
+
+  log.info(s"Stuck state detection enabled: check every ${stuckStateCheckInterval.toMinutes} minutes, max state time ${maxStateTime.toMinutes} minutes")
+
+  context.system.scheduler.scheduleWithFixedDelay(
+    stuckStateCheckInterval,
+    stuckStateCheckInterval,
+    self,
+    CheckForStuckState
+  )
 
   when(Idle) {
 
@@ -390,6 +410,7 @@ class DatasetActor(val datasetContext: DatasetContext,
         log.info(s"Starting harvest $strategy with type $harvestType")
         strategy match {
           case FromScratch =>
+            log.info("FromScratch: clearing all data")
             datasetContext.sourceRepoOpt match {
               case Some(sourceRepo) =>
                 sourceRepo.clearData()
@@ -397,16 +418,27 @@ class DatasetActor(val datasetContext: DatasetContext,
                 // no source repo, use the default for the harvest type
                 datasetContext.createSourceRepo(SourceFacts(harvestType))
             }
-          //case FromScratchIncremental =>
+          case FromScratchIncremental =>
+            log.info("FromScratchIncremental: preserving existing data, will check for new records")
+            // Don't clear data - we want to keep existing data and add new records
+            datasetContext.sourceRepoOpt match {
+              case None =>
+                // Create source repo if it doesn't exist yet
+                datasetContext.createSourceRepo(SourceFacts(harvestType))
+              case Some(_) =>
+                // Source repo exists, keep the data
+                log.debug("Source repo exists, keeping existing data for incremental harvest")
+            }
           case _ =>
+            // For other strategies like ModifiedAfter, Sample, etc
+            log.info(s"Strategy $strategy: checking source repo")
             datasetContext.sourceRepoOpt match {
-              case Some(sourceRepo) =>
-                sourceRepo.clearData()
               case None =>
-                // no source repo, use the default for the harvest type
                 datasetContext.createSourceRepo(SourceFacts(harvestType))
+              case Some(_) =>
+                // Keep existing data for incremental strategies
+                log.debug("Source repo exists, keeping data")
             }
-          //case _ =>
         }
         val (url, ds, pre, se, recordId, downloadLink) = (prop(harvestURL),
           prop(harvestDataset),
@@ -692,6 +724,42 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   whenUnhandled {
 
+    case Event(CheckForStuckState, active: Active) =>
+      val currentTime = System.currentTimeMillis()
+      val timeInState = currentTime - active.stateStartTime
+      if (timeInState > maxStateTime.toMillis) {
+        log.error(s"Dataset ${dsInfo.spec} stuck in state $stateName for ${timeInState / 1000 / 60} minutes - forcing reset")
+        log.error(s"Active state details: progressState=${active.progressState}, progressType=${active.progressType}, childOpt=${active.childOpt}")
+        // Send force reset message to self
+        self ! ForceReleaseAndReset
+      }
+      stay()
+
+    case Event(CheckForStuckState, _) =>
+      // Not in active state, nothing to check
+      stay()
+
+    case Event(ForceReleaseAndReset, active: Active) =>
+      log.warning(s"Force releasing semaphores and resetting dataset ${dsInfo.spec}")
+      // Kill any child actors
+      active.childOpt.foreach { child =>
+        log.warning(s"Killing stuck child actor: $child")
+        child ! PoisonPill
+      }
+      // Release semaphores
+      orgContext.semaphore.release(dsInfo.spec)
+      orgContext.saveSemaphore.release(dsInfo.spec)
+      // Set error state
+      dsInfo.setError(s"Actor stuck in state $stateName for more than ${maxStateTime.toMinutes} minutes - forced reset")
+      // Return to idle
+      goto(Idle) using InError(s"Stuck in $stateName - forced reset")
+
+    case Event(ForceReleaseAndReset, _) =>
+      log.warning(s"Force release requested but not in active state - releasing semaphores anyway")
+      orgContext.semaphore.release(dsInfo.spec)
+      orgContext.saveSemaphore.release(dsInfo.spec)
+      stay()
+
     case Event(Terminated(actor), _) =>
       log.info(s"Child actor terminated: $actor")
       // Remove from tracked children and continue
@@ -776,7 +844,19 @@ class DatasetActor(val datasetContext: DatasetContext,
   }
 
   onTransition {
-    case _ -> Idle => broadcastIdleState()
+    case fromState -> toState =>
+      log.info(s"State transition: $fromState -> $toState for dataset ${dsInfo.spec}")
+      stateData match {
+        case active: Active =>
+          log.debug(s"State data: progressState=${active.progressState}, progressType=${active.progressType}, childPresent=${active.childOpt.isDefined}")
+        case Dormant =>
+          log.debug("State data: Dormant")
+        case InError(error) =>
+          log.warn(s"State data: InError($error)")
+      }
+      if (toState == Idle) {
+        broadcastIdleState()
+      }
   }
 
 }
