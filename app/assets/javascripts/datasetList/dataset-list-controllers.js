@@ -214,6 +214,21 @@ define(["angular"], function () {
                 dataset.harvestErrorThreshold = parseInt(dataset.harvestErrorThreshold, 10);
             }
 
+            // Parse retry status
+            dataset.inRetry = dataset.harvestInRetry === 'true';
+            dataset.retryCount = parseInt(dataset.harvestRetryCount) || 0;
+            dataset.retryMessage = dataset.harvestRetryMessage || '';
+
+            // Calculate next retry time
+            if (dataset.inRetry && dataset.harvestLastRetryTime) {
+                var lastRetry = new Date(dataset.harvestLastRetryTime);
+                var retryIntervalMs = ($scope.narthexConfig.retryIntervalMinutes || 60) * 60 * 1000;
+                var nextRetry = new Date(lastRetry.getTime() + retryIntervalMs);
+                var now = new Date();
+                var diffMs = nextRetry - now;
+                dataset.nextRetryMinutes = Math.max(0, Math.round(diffMs / 60000));
+            }
+
             dataset.edit = angular.copy(dataset);
 
             dataset.apiMappings = $scope.apiPrefix + dataset.datasetSpec + '/mappings';
@@ -657,6 +672,14 @@ define(["angular"], function () {
 
         $scope.clearError = function () {
             command("clear error", null);
+        };
+
+        $scope.retryNow = function () {
+            command("retry now", null);
+        };
+
+        $scope.stopRetrying = function () {
+            command("stop retrying", "Stop automatic retry and show error?");
         };
 
         $scope.deleteDataset = function () {

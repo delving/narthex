@@ -326,7 +326,29 @@
                             </div>
                         </div>
 
-                        <div data-ng-if="dataset.datasetErrorMessage">
+                        <!-- Retry status indicator (non-blocking) -->
+                        <div data-ng-if="dataset.inRetry" class="alert alert-warning" role="alert">
+                            <div class="pull-right btn-group">
+                                <button type="button" class="btn btn-xs btn-primary"
+                                        data-ng-click="retryNow()"
+                                        data-ng-disabled="datasetBusy">
+                                    <i class="fa fa-refresh"></i> Retry Now
+                                </button>
+                                <button type="button" class="btn btn-xs btn-default"
+                                        data-ng-click="stopRetrying()">
+                                    <i class="fa fa-stop"></i> Stop Retrying
+                                </button>
+                            </div>
+                            <i class="fa fa-clock-o"></i>
+                            <strong>Harvest failed</strong> -
+                            Retrying in <span class="badge">{{ dataset.nextRetryMinutes }}</span> minutes
+                            (attempt #{{ dataset.retryCount }})
+                            <br/>
+                            <small class="text-muted">{{ dataset.retryMessage }}</small>
+                        </div>
+
+                        <!-- Permanent error (blocking, requires dismissal) -->
+                        <div data-ng-if="dataset.datasetErrorMessage && !dataset.inRetry">
                             <div class="alert alert-danger" role="alert">
                                 <button type="button" class="close" data-dismiss="alert" data-ng-click="clearError()"
                                     aria-label="Close">
