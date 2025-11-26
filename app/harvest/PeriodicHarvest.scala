@@ -100,8 +100,43 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
                 }
             }
           }
+
+          // Check for datasets in retry mode
+          checkRetryHarvests()
+
         case Failure(_) => ()
       }
+  }
+
+  /**
+   * Check for datasets in retry mode and trigger retry if interval has passed.
+   */
+  private def checkRetryHarvests(): Unit = {
+    val retryIntervalMinutes = orgContext.appConfig.harvestRetryIntervalMinutes
+
+    val futureRetryList = DsInfo.listDsInfoInRetry(orgContext)
+    futureRetryList.onComplete {
+      case Success(retryList) =>
+        logger.info(s"PeriodicHarvest: Found ${retryList.length} datasets in retry mode")
+
+        retryList.filter(_.isTimeForRetry(retryIntervalMinutes)).foreach { info =>
+          logger.info(s"PeriodicHarvest: Time for retry harvest of ${info.spec} (attempt #${info.getRetryCount + 1})")
+
+          if (orgContext.semaphore.tryAcquire(info.spec)) {
+            logger.info(s"PeriodicHarvest: Acquired semaphore, triggering retry for ${info.spec}")
+
+            // Determine harvest strategy (use FromScratch for retries)
+            val strategy = FromScratch
+
+            // Send message to trigger harvest
+            orgContext.orgActor ! info.createMessage(StartHarvest(strategy))
+          } else {
+            logger.info(s"PeriodicHarvest: Could not acquire semaphore for ${info.spec}, will retry later")
+          }
+        }
+      case Failure(e) =>
+        logger.error(s"Failed to check retry datasets: ${e.getMessage}", e)
+    }
   }
 }
 
