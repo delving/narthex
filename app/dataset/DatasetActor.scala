@@ -861,7 +861,7 @@ class DatasetActor(val datasetContext: DatasetContext,
         case Dormant =>
           log.debug("State data: Dormant")
         case InError(error) =>
-          log.warn(s"State data: InError($error)")
+          log.warning(s"State data: InError($error)")
       }
       if (toState == Idle) {
         broadcastIdleState()
