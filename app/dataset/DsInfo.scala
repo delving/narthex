@@ -102,7 +102,29 @@ object DsInfo {
       ts: TripleStore): Future[List[DsInfo]] = {
     listDsInfoWithStateFilter(orgContext, List.empty)
   }
-  
+
+  /**
+   * List all datasets currently in retry mode.
+   */
+  def listDsInfoInRetry(orgContext: OrgContext)(
+      implicit ec: ExecutionContext,
+      ts: TripleStore): Future[List[DsInfo]] = {
+
+    ts.query(Sparql.selectDatasetsInRetryQ).map { list =>
+      list.map { entry =>
+        val spec = entry("spec").text
+        new DsInfo(
+          spec,
+          orgContext.appConfig.nxUriPrefix,
+          orgContext.appConfig.naveApiAuthToken,
+          orgContext.appConfig.naveApiUrl,
+          orgContext,
+          orgContext.appConfig.mockBulkApi
+        )
+      }
+    }
+  }
+
   def listDsInfoWithStateFilter(orgContext: OrgContext, allowedStates: List[String])(
       implicit ec: ExecutionContext,
       ts: TripleStore): Future[List[DsInfo]] = {
@@ -532,6 +554,91 @@ class DsInfo(
         datasetErrorTime -> now
       )
     }
+  }
+
+  /**
+   * Set the dataset into retry mode after a harvest failure.
+   * This clears any existing error state and initializes retry tracking.
+   */
+  def setInRetry(message: String, retryCount: Int = 0): Unit = {
+    // Clear existing error message (don't block UI)
+    removeLiteralProp(datasetErrorMessage)
+
+    // Set retry state
+    setSingularLiteralProps(
+      harvestInRetry -> "true",
+      harvestRetryCount -> retryCount.toString,
+      harvestLastRetryTime -> now,
+      harvestRetryMessage -> message
+    )
+  }
+
+  /**
+   * Increment the retry count and update last retry time.
+   * Called before each retry attempt.
+   * @return The new retry count
+   */
+  def incrementRetryCount(): Int = {
+    val currentCount = getLiteralProp(harvestRetryCount).map(_.toInt).getOrElse(0)
+    val newCount = currentCount + 1
+    setSingularLiteralProps(
+      harvestRetryCount -> newCount.toString,
+      harvestLastRetryTime -> now
+    )
+    newCount
+  }
+
+  /**
+   * Clear all retry state. Called on successful harvest or manual stop.
+   */
+  def clearRetryState(): Unit = {
+    removeLiteralProp(harvestInRetry)
+    removeLiteralProp(harvestRetryCount)
+    removeLiteralProp(harvestLastRetryTime)
+    removeLiteralProp(harvestRetryMessage)
+  }
+
+  /**
+   * Check if dataset is currently in retry mode.
+   */
+  def isInRetry: Boolean =
+    getLiteralProp(harvestInRetry).exists(_ == "true")
+
+  /**
+   * Get current retry count.
+   */
+  def getRetryCount: Int =
+    getLiteralProp(harvestRetryCount).map(_.toInt).getOrElse(0)
+
+  /**
+   * Get timestamp of last retry attempt.
+   */
+  def getLastRetryTime: Option[DateTime] =
+    getTimeProp(harvestLastRetryTime)
+
+  /**
+   * Get the error message that triggered retry mode.
+   */
+  def getRetryMessage: Option[String] =
+    getLiteralProp(harvestRetryMessage)
+
+  /**
+   * Calculate when the next retry should occur.
+   * @param intervalMinutes The configured retry interval
+   */
+  def getNextRetryTime(intervalMinutes: Int): DateTime = {
+    getLastRetryTime match {
+      case Some(lastRetry) => lastRetry.plusMinutes(intervalMinutes)
+      case None => new DateTime() // Retry immediately if no last time
+    }
+  }
+
+  /**
+   * Check if enough time has passed for next retry.
+   * @param intervalMinutes The configured retry interval
+   */
+  def isTimeForRetry(intervalMinutes: Int): Boolean = {
+    getNextRetryTime(intervalMinutes).isBeforeNow
   }
 
   val LineId = "<!--<([^>]+)__([^>]+)>-->".r

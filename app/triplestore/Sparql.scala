@@ -79,7 +79,23 @@ object Sparql {
       |}
       |ORDER BY ?spec
      """.stripMargin
-     
+
+  val selectDatasetsInRetryQ =
+    s"""
+      |PREFIX nx: <${NX_NAMESPACE}>
+      |SELECT DISTINCT ?spec ?retryCount ?lastRetryTime
+      |WHERE {
+      |  GRAPH ?g {
+      |    ?s nx:datasetSpec ?spec .
+      |    ?s nx:harvestInRetry true .
+      |    OPTIONAL { ?s nx:harvestRetryCount ?retryCount }
+      |    OPTIONAL { ?s nx:harvestLastRetryTime ?lastRetryTime }
+      |    FILTER NOT EXISTS { ?s <$deleted> true }
+      |  }
+      |}
+      |ORDER BY ?lastRetryTime
+     """.stripMargin
+
   def selectDatasetSpecsWithStateFilterQ(allowedStates: List[String]) = {
     val stateFilter = if (allowedStates.nonEmpty) {
       // Check for presence of specific state properties (e.g., stateSaved, stateIncrementalSaved)  
