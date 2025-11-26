@@ -64,6 +64,11 @@ fuseki {
 
 enableIncrementalHarvest = true
 
+# Harvest retry configuration
+narthex.harvest {
+  # Interval between retry attempts in minutes (default: 60 = 1 hour)
+  retryIntervalMinutes = 60
+}
 
 # GraphDB
 #triple-store = "http://127.0.0.1:7200/repositories"

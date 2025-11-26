@@ -112,6 +112,12 @@ object GraphProperties {
   val harvestIncrementalCount = NXProp("harvestIncrementalCount", intProp)
   val harvestFullCount = NXProp("harvestFullCount", intProp)
 
+  // Harvest retry properties
+  val harvestInRetry = NXProp("harvestInRetry", booleanProp)
+  val harvestRetryCount = NXProp("harvestRetryCount", intProp)
+  val harvestLastRetryTime = NXProp("harvestLastRetryTime", timeProp)
+  val harvestRetryMessage = NXProp("harvestRetryMessage")
+
   val harvestContinueOnError = NXProp("harvestContinueOnError", booleanProp)
   val harvestErrorThreshold = NXProp("harvestErrorThreshold", intProp)
   val harvestErrorCount = NXProp("harvestErrorCount", intProp)

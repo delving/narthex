@@ -61,6 +61,11 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(false)
   logger.info(s"enableIncrementalHarvest: $enableIncrementalHarvest")
 
+  def harvestRetryIntervalMinutes: Int = configuration
+    .getOptional[Int]("narthex.harvest.retryIntervalMinutes")
+    .getOrElse(60)
+  logger.info(s"narthex.harvest.retryIntervalMinutes: $harvestRetryIntervalMinutes")
+
   def crunchWhiteSpace: Boolean =
     configuration.getOptional[Boolean]("crunchWhiteSpace").getOrElse(true)
   logger.info(s"crunchWhiteSpace: $crunchWhiteSpace")
