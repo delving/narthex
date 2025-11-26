@@ -25,7 +25,13 @@ lazy val root = (project in file(".")).
   enablePlugins(DockerPlugin).
   //enablePlugins(GitVersioning). // Not working, see: https://github.com/rallyhealth/sbt-git-versioning
   settings(
-    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
+    buildInfoKeys := Seq[BuildInfoKey](
+      name,
+      version,
+      scalaVersion,
+      sbtVersion,
+      "commitSha" -> git.gitHeadCommit.value.getOrElse("unknown")
+    ),
     buildInfoPackage := "buildinfo"
   )
 
