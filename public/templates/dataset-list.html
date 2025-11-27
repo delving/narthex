@@ -1,4 +1,11 @@
 <!-- E -->
+<div ng-if="!websocketConnected && !websocketError" class="alert alert-warning" style="margin: 15px 15px 0 15px;">
+    <i class="fa fa-exclamation-triangle"></i> WebSocket disconnected. Reconnecting...
+</div>
+<div ng-if="websocketError" class="alert alert-danger" style="margin: 15px 15px 0 15px;">
+    <i class="fa fa-times-circle"></i> {{websocketError}}
+</div>
+
 <div class="page-header no-margin">
     <!-- page location, org -->
     <div class="meta">

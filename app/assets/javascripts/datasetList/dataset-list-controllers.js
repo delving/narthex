@@ -51,32 +51,118 @@ define(["angular"], function () {
         $scope.stateFilter = "";
         $scope.socketSubscribers = {};
 
+        // WebSocket connection state
+        var socket;
+        var reconnectAttempts = 0;
+        var maxReconnectAttempts = 10;
+        var reconnectDelay = 1000;
+        var heartbeatInterval;
+        var isReconnecting = false;
+        var intentionallyClosed = false;
+
         function createWebSocket(path) {
             var protocolPrefix = ($location.$$protocol === 'https') ? 'wss:' : 'ws:';
             return new WebSocket(protocolPrefix + '//' + location.host + path);
         }
 
-        var socket = createWebSocket('/narthex/socket/dataset')
+        function startHeartbeat() {
+            stopHeartbeat();
+            heartbeatInterval = setInterval(function() {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send("ping");
+                }
+            }, 30000);
+        }
 
-        socket.onopen = function () {
-            socket.send("user arrived on datasets page");
-        };
+        function stopHeartbeat() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+        }
 
-        socket.onmessage = function (messageReturned) {
-            var message = JSON.parse(messageReturned.data);
-            console.log("Received websocket msg: " + message)
-            var callback = $scope.socketSubscribers[message.datasetSpec];
-            if (callback) {
-                callback(message);
+        function connectWebSocket() {
+            if (isReconnecting || intentionallyClosed) {
+                return;
             }
-            else {
-                console.warn("Message for unknown dataset: " + message.datasetSpec);
-            }
-        };
+
+            socket = createWebSocket('/narthex/socket/dataset');
+
+            socket.onopen = function () {
+                console.log("WebSocket connected");
+                socket.send("user arrived on datasets page");
+                reconnectAttempts = 0;
+                reconnectDelay = 1000;
+                isReconnecting = false;
+
+                startHeartbeat();
+
+                $scope.$apply(function() {
+                    $scope.websocketConnected = true;
+                    $scope.websocketError = null;
+                });
+            };
+
+            socket.onmessage = function (messageReturned) {
+                var message = JSON.parse(messageReturned.data);
+                console.log("Received websocket msg: " + message);
+                var callback = $scope.socketSubscribers[message.datasetSpec];
+                if (callback) {
+                    callback(message);
+                } else {
+                    console.warn("Message for unknown dataset: " + message.datasetSpec);
+                }
+            };
+
+            socket.onerror = function (error) {
+                console.error("WebSocket error:", error);
+                $scope.$apply(function() {
+                    $scope.websocketConnected = false;
+                });
+            };
+
+            socket.onclose = function (event) {
+                console.log("WebSocket closed:", event.code, event.reason);
+                stopHeartbeat();
+
+                $scope.$apply(function() {
+                    $scope.websocketConnected = false;
+                });
+
+                if (intentionallyClosed) {
+                    return;
+                }
+
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    isReconnecting = true;
+                    reconnectAttempts++;
+                    var delay = Math.min(reconnectDelay * Math.pow(2, reconnectAttempts - 1), 30000);
+                    console.log("Reconnecting in " + delay + "ms (attempt " + reconnectAttempts + "/" + maxReconnectAttempts + ")");
+
+                    setTimeout(function() {
+                        isReconnecting = false;
+                        connectWebSocket();
+                    }, delay);
+                } else {
+                    console.error("Max reconnection attempts reached");
+                    $scope.$apply(function() {
+                        $scope.websocketError = "Connection lost. Please refresh the page.";
+                    });
+                }
+            };
+        }
+
+        $scope.websocketConnected = false;
+        connectWebSocket();
 
         $scope.$on('$destroy', function () {
-            socket.send("user left datasets page");
-            socket.close();
+            intentionallyClosed = true;
+            stopHeartbeat();
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send("user left datasets page");
+                socket.close();
+            }
+            reconnectAttempts = maxReconnectAttempts;
         });
 
         $scope.subscribe = function (spec, callback) {
