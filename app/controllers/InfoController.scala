@@ -24,7 +24,7 @@ class InfoController @Inject() ( // order of these explicit parameters does not 
       "version" -> BuildInfo.version,
       "scalaVersion" -> BuildInfo.scalaVersion,
       "sbtVersion" -> BuildInfo.sbtVersion,
-      "gitCommitSha" -> "TODO" //BuildInfo.gitCommitSha
+      "gitCommitSha" -> BuildInfo.commitSha
     )
     Ok(Json.toJson(result))
   }
