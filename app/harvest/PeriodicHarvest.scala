@@ -21,7 +21,7 @@ import scala.language.postfixOps
 import play.api.Logger
 import akka.actor.{Actor, Props}
 
-import dataset.DatasetActor.{FromScratchIncremental, ModifiedAfter, StartHarvest}
+import dataset.DatasetActor.{FromScratch, FromScratchIncremental, ModifiedAfter, StartHarvest}
 import dataset.DsInfo
 import dataset.DsInfo.{DsState, withDsInfo}
 import harvest.PeriodicHarvest.ScanForHarvests
