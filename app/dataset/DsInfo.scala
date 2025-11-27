@@ -110,7 +110,7 @@ object DsInfo {
       implicit ec: ExecutionContext,
       ts: TripleStore): Future[List[DsInfo]] = {
 
-    ts.query(Sparql.selectDatasetsInRetryQ).map { list =>
+    ts.query(selectDatasetsInRetryQ).map { list =>
       list.map { entry =>
         val spec = entry("spec").text
         new DsInfo(
@@ -273,18 +273,13 @@ object DsInfo {
 
   def withDsInfo[T](spec: String, orgContext: OrgContext)(
       block: DsInfo => T)(implicit ec: ExecutionContext, ts: TripleStore) = {
-    val cacheName = getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)
-    orgContext.cacheApi.get[DsInfo](cacheName) map { dsInfo =>
-      block(dsInfo)
-    } getOrElse {
-      val dsInfo = Await
-        .result(freshDsInfo(spec, orgContext: OrgContext), 30.seconds)
-        .getOrElse {
-          throw new RuntimeException(s"No dataset info for $spec")
-        }
-      orgContext.cacheApi.set(cacheName, dsInfo, cacheTime)
-      block(dsInfo)
-    }
+    // Cache removed to fix harvest storm bug and ensure fresh data
+    val dsInfo = Await
+      .result(freshDsInfo(spec, orgContext: OrgContext), 30.seconds)
+      .getOrElse {
+        throw new RuntimeException(s"No dataset info for $spec")
+      }
+    block(dsInfo)
   }
   def getDsInfo(spec: String, orgContext: OrgContext)(
       implicit ec: ExecutionContext,
