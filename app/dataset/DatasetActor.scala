@@ -92,7 +92,8 @@ object DatasetActor {
                     errorCount: Int = 0,
                     errorRecoveryAttempts: Int = 0,
                     interrupt: Boolean = false,
-                    stateStartTime: Long = System.currentTimeMillis())
+                    stateStartTime: Long = System.currentTimeMillis(),
+                    lastActivityTime: Long = System.currentTimeMillis())
       extends DatasetActorData
 
   implicit val activeWrites: Writes[Active] = new Writes[Active] {
@@ -865,10 +866,10 @@ class DatasetActor(val datasetContext: DatasetContext,
       } else {
         fileOpt match {
           case Some(file) =>
-            dsInfo.setState(DsState.RAW)
+            dsInfo.setState(RAW)
             val analyzer = createChildActor(Analyzer.props(datasetContext), "analyzer")
-            analyzer ! Analyze(file, RecordMode.HARVEST)
-            goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), ANALYZING)
+            analyzer ! AnalyzeFile(file, processed = false)
+            goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
           case None =>
             goto(Idle) using Dormant
         }
@@ -879,10 +880,12 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(CheckForStuckState, active: Active) =>
       val currentTime = System.currentTimeMillis()
+      val timeSinceActivity = currentTime - active.lastActivityTime
       val timeInState = currentTime - active.stateStartTime
-      if (timeInState > maxStateTime.toMillis) {
-        log.error(s"Dataset ${dsInfo.spec} stuck in state $stateName for ${timeInState / 1000 / 60} minutes - forcing reset")
+      if (timeSinceActivity > maxStateTime.toMillis) {
+        log.error(s"Dataset ${dsInfo.spec} stuck in state $stateName - no activity for ${timeSinceActivity / 1000 / 60} minutes - forcing reset")
         log.error(s"Active state details: progressState=${active.progressState}, progressType=${active.progressType}, childOpt=${active.childOpt}")
+        log.error(s"State duration: ${timeInState / 1000 / 60} minutes, last activity: ${timeSinceActivity / 1000 / 60} minutes ago")
         // Send force reset message to self
         self ! ForceReleaseAndReset
       }
@@ -931,7 +934,8 @@ class DatasetActor(val datasetContext: DatasetContext,
       } else {
         val nextActive = active.copy(progressState = tick.progressState,
                                      progressType = tick.progressType,
-                                     count = tick.count)
+                                     count = tick.count,
+                                     lastActivityTime = System.currentTimeMillis())
         broadcastProgress(nextActive)
         stay() using nextActive
       }
