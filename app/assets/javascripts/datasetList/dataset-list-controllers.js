@@ -789,6 +789,8 @@ define(["angular"], function () {
             if (areYouSure && !confirm(areYouSure)) return;
             datasetListService.command($scope.dataset.datasetSpec, command).then(function (reply) {
                 console.log("command: " + command + " has reply: " + reply + " (" + $scope.dataset.datasetSpec + ")");
+                // Trigger a refresh command to update the dataset state in UI
+                return datasetListService.command($scope.dataset.datasetSpec, "refresh");
             }).then(function () {
                 if (after) after();
             });
