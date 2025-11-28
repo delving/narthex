@@ -404,6 +404,11 @@ define(["angular"], function () {
                 });
 
                 $scope.updateDatasetStateCounter();
+
+                // Re-apply the current filter to remove finished datasets from filtered view
+                if ($scope.stateFilter) {
+                    _.each($scope.datasets, filterDatasetByState);
+                }
             });
         };
 
