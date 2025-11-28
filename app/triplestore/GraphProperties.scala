@@ -123,6 +123,12 @@ object GraphProperties {
   val harvestErrorCount = NXProp("harvestErrorCount", intProp)
   val harvestErrorRecoveryAttempts = NXProp("harvestErrorRecoveryAttempts", intProp)
 
+  // Operation tracking for restart recovery
+  val datasetCurrentOperation = NXProp("datasetCurrentOperation")  // HARVESTING, PROCESSING, SAVING, etc.
+  val datasetOperationStartTime = NXProp("datasetOperationStartTime", timeProp)
+  val datasetOperationTrigger = NXProp("datasetOperationTrigger")  // "automatic" or "manual"
+  val datasetOperationStatus = NXProp("datasetOperationStatus")    // "in_progress", "completed", "interrupted"
+
   val idFilterType = NXProp("idFilterType")
   val idFilterExpression = NXProp("idFilterExpression")
 

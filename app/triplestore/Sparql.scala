@@ -96,6 +96,24 @@ object Sparql {
       |ORDER BY ?lastRetryTime
      """.stripMargin
 
+  val selectDatasetsWithIncompleteOperationsQ =
+    s"""
+      |PREFIX nx: <${NX_NAMESPACE}>
+      |SELECT DISTINCT ?spec ?operation ?startTime ?trigger ?status
+      |WHERE {
+      |  GRAPH ?g {
+      |    ?s nx:datasetSpec ?spec .
+      |    ?s nx:datasetCurrentOperation ?operation .
+      |    ?s nx:datasetOperationStatus ?status .
+      |    OPTIONAL { ?s nx:datasetOperationStartTime ?startTime }
+      |    OPTIONAL { ?s nx:datasetOperationTrigger ?trigger }
+      |    FILTER NOT EXISTS { ?s <$deleted> true }
+      |    FILTER (?status = "in_progress")
+      |  }
+      |}
+      |ORDER BY ?startTime
+     """.stripMargin
+
   def selectDatasetSpecsWithStateFilterQ(allowedStates: List[String]) = {
     val stateFilter = if (allowedStates.nonEmpty) {
       // Check for presence of specific state properties (e.g., stateSaved, stateIncrementalSaved)  
