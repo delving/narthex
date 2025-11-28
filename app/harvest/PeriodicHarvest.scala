@@ -72,7 +72,10 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
 
               logger.info(s"scheduled ds: ${listedInfo.spec} ${listedInfo.currentHarvestCron.previous.toString()} (time to work: ${harvestCron.timeToWork})")
               if (harvestCron.timeToWork) withDsInfo(listedInfo.spec, orgContext) { info => // the cached version
-                if (orgContext.semaphore.tryAcquire(info.spec)) {
+                // Skip if dataset has an incomplete operation (being recovered or already working)
+                if (info.getCurrentOperation.isDefined) {
+                  logger.info(s"Skipping ${info.spec} - operation ${info.getCurrentOperation.get} already in progress")
+                } else if (orgContext.semaphore.tryAcquire(info.spec)) {
                   logger.info(s"Time to work on $info: $harvestCron")
                   val proposedNext = harvestCron.next
                   val next = if (proposedNext.timeToWork) {
