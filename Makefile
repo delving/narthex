@@ -1,6 +1,6 @@
 # Makefile for Narthex
 NAME:=narthex
-VERSION:=$(shell sh -c 'grep "version in" version.sbt  | cut -d\" -f2')
+VERSION:=$(shell sh -c 'grep "ThisBuild / version" version.sbt | cut -d\" -f2')
 MAINTAINER:="Sjoerd Siebinga <sjoerd@delving.eu>"
 DESCRIPTION:="Narthex Aggregation and mapping platform."
 FUSEKI:=apache-fuseki
@@ -17,6 +17,9 @@ print-%  : ; @echo $* = $($*)
 
 package:
 	sbt package
+
+compile:
+	sbt compile
 
 dist:
 	sbt clean dist
