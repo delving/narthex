@@ -78,20 +78,20 @@
       }
     },
     paths: {
-      // Static vendor files only - no CDN fallback to avoid CORS/MIME issues
-      'requirejs': '/narthex/assets/vendor/requirejs/require.min',
-      'jquery': '/narthex/assets/vendor/jquery/jquery.min',
-      'angular': '/narthex/assets/vendor/angularjs/angular.min',
-      'angular-sanitize': '/narthex/assets/vendor/angularjs/angular-sanitize.min',
-      'angular-route': '/narthex/assets/vendor/angularjs/angular-route.min',
-      'angular-cookies': '/narthex/assets/vendor/angularjs/angular-cookies.min',
-      'ng-grid': '/narthex/assets/vendor/ng-grid/ng-grid.min',
-      'ngStorage': '/narthex/assets/vendor/ngStorage/ngStorage.min',
-      'angular-file-upload': '/narthex/assets/vendor/angular-file-upload/angular-file-upload.min',
-      'bootstrap': '/narthex/assets/vendor/bootstrap/js/bootstrap.min',
-      'ui-bootstrap': '/narthex/assets/vendor/angular-ui-bootstrap/ui-bootstrap.min',
-      'ui-bootstrap-tpls': '/narthex/assets/vendor/angular-ui-bootstrap/ui-bootstrap-tpls.min',
-      'underscorejs': '/narthex/assets/vendor/underscorejs/underscore.min',
+      // Relative paths work for both browser runtime and r.js build
+      'requirejs': '../vendor/requirejs/require.min',
+      'jquery': '../vendor/jquery/jquery.min',
+      'angular': '../vendor/angularjs/angular.min',
+      'angular-sanitize': '../vendor/angularjs/angular-sanitize.min',
+      'angular-route': '../vendor/angularjs/angular-route.min',
+      'angular-cookies': '../vendor/angularjs/angular-cookies.min',
+      'ng-grid': '../vendor/ng-grid/ng-grid.min',
+      'ngStorage': '../vendor/ngStorage/ngStorage.min',
+      'angular-file-upload': '../vendor/angular-file-upload/angular-file-upload.min',
+      'bootstrap': '../vendor/bootstrap/js/bootstrap.min',
+      'ui-bootstrap': '../vendor/angular-ui-bootstrap/ui-bootstrap.min',
+      'ui-bootstrap-tpls': '../vendor/angular-ui-bootstrap/ui-bootstrap-tpls.min',
+      'underscorejs': '../vendor/underscorejs/underscore.min',
       'jsRoutes': '/narthex/jsRoutes'
     }
   });
