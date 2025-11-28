@@ -225,13 +225,52 @@ define(["angular"], function () {
             //console.log($scope.datasets)	
         };	
 	
-        $scope.setStateFilter = function(state){	
-            $scope.stateFilter = state;	
-            //filterDatasetByState(ds)	
-        };	
-	
-        $scope.datasetVisibleFilter = function (ds) {	
-            return ds.visible;	
+        $scope.setStateFilter = function(state){
+            $scope.stateFilter = state;
+            //filterDatasetByState(ds)
+        };
+
+        // Filter breadcrumb functions
+        $scope.hasActiveFilters = function() {
+            return ($scope.currentSortOrder && $scope.currentSortOrder !== 'spec') ||
+                   $scope.stateFilter ||
+                   $scope.specOrNameFilter;
+        };
+
+        $scope.getOrderLabel = function(order) {
+            var labels = {
+                'spec': 'Spec',
+                'state': 'State',
+                'lastmodified': 'Date last modified'
+            };
+            return labels[order] || order;
+        };
+
+        $scope.getStateLabel = function(state) {
+            var stateObj = _.find($scope.datasetStates, {name: state});
+            return stateObj ? stateObj.label : state;
+        };
+
+        $scope.clearOrderFilter = function() {
+            $scope.datasetListOrder('spec'); // Reset to default
+        };
+
+        $scope.clearStateFilter = function() {
+            $scope.stateFilter = '';
+        };
+
+        $scope.clearSpecFilter = function() {
+            $scope.specOrNameFilter = '';
+        };
+
+        $scope.clearAllFilters = function() {
+            $scope.clearOrderFilter();
+            $scope.clearStateFilter();
+            $scope.clearSpecFilter();
+        };
+
+        $scope.datasetVisibleFilter = function (ds) {
+            return ds.visible;
         };	
 	
         $scope.$watch("specOrNameFilter", function () {	

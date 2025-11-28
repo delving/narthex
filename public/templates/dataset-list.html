@@ -77,6 +77,44 @@
     </form>
 </div>
 
+<!-- Active Filter Breadcrumbs -->
+<div class="active-filters" ng-if="hasActiveFilters()"
+     style="margin: 10px 15px; padding: 10px 15px; background-color: #f5f5f5; border-radius: 4px;">
+    <span style="font-weight: bold; margin-right: 10px; color: #333;">Active filters:</span>
+
+    <!-- Order By Breadcrumb -->
+    <span ng-if="currentSortOrder && currentSortOrder !== 'spec'"
+          class="label label-info" style="margin-right: 5px; font-size: 13px; padding: 5px 8px;">
+        Order: {{ getOrderLabel(currentSortOrder) }}
+        <a href ng-click="clearOrderFilter()" style="color: white; margin-left: 5px;" title="Remove filter">
+            <i class="fa fa-times-circle"></i>
+        </a>
+    </span>
+
+    <!-- State Filter Breadcrumb -->
+    <span ng-if="stateFilter"
+          class="label label-info" style="margin-right: 5px; font-size: 13px; padding: 5px 8px;">
+        State: {{ getStateLabel(stateFilter) }}
+        <a href ng-click="clearStateFilter()" style="color: white; margin-left: 5px;" title="Remove filter">
+            <i class="fa fa-times-circle"></i>
+        </a>
+    </span>
+
+    <!-- Spec/Name Filter Breadcrumb -->
+    <span ng-if="specOrNameFilter"
+          class="label label-info" style="margin-right: 5px; font-size: 13px; padding: 5px 8px;">
+        Search: "{{ specOrNameFilter }}"
+        <a href ng-click="clearSpecFilter()" style="color: white; margin-left: 5px;" title="Remove filter">
+            <i class="fa fa-times-circle"></i>
+        </a>
+    </span>
+
+    <!-- Clear All Button -->
+    <a href ng-click="clearAllFilters()" class="btn btn-xs btn-default" style="margin-left: 10px;">
+        <i class="fa fa-times"></i> Clear all filters
+    </a>
+</div>
+
 <div class="file-list datasets">
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
