@@ -88,6 +88,7 @@ GET         /narthex/api/:spec/nquads                                        con
 GET         /narthex/api/:spec/sourced                                       controllers.APIController.processingSourcedText(spec)
 GET         /narthex/api/:spec/processed                                     controllers.APIController.processingProcessedText(spec)
 GET         /narthex/api/:spec/log                                           controllers.APIController.processingHarvestingLog(spec)
+GET         /narthex/api/:spec/activity                                      controllers.APIController.activityLog(spec)
 GET         /narthex/api/:spec/tree                                          controllers.APIController.indexJSON(spec)
 GET         /narthex/api/:spec/unique/*path                                  controllers.APIController.uniqueText(spec, path)
 GET         /narthex/api/:spec/histogram/*path                               controllers.APIController.histogramText(spec, path)

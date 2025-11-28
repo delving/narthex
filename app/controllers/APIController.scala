@@ -75,6 +75,16 @@ class APIController @Inject() (
     Some(datasetContext.harvestLogger).map(Utils.okFile(_)).getOrElse(NotFound(s"No processed files found for $spec"))
   }
 
+  def activityLog(spec: String) = Action(parse.anyContent) { implicit request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val activityFile = datasetContext.activityLog
+    if (activityFile.exists()) {
+      Utils.okFile(activityFile)
+    } else {
+      NotFound(s"No activity log found for $spec")
+    }
+  }
+
   def pathsJSON(spec: String) =  Action(parse.anyContent) { implicit request =>
     val treeFile = orgContext.datasetContext(spec).index
     if (treeFile.exists()) {
