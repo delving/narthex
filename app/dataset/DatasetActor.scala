@@ -43,7 +43,7 @@ import record.SourceProcessor._
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
-import services.{MailService, ProgressReporter}
+import services.{ActivityLogger, MailService, ProgressReporter}
 import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
@@ -214,7 +214,12 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   // Track child actors for proper cleanup
   private var childActors: Set[ActorRef] = Set.empty
-  
+
+  // Track workflow for activity logging
+  private var currentWorkflowId: Option[String] = None
+  private var workflowStartTime: Option[DateTime] = None
+  private var operationStartTime: Option[DateTime] = None
+
   override def preStart(): Unit = {
     super.preStart()
     log.info(s"Starting DatasetActor for dataset: ${dsInfo.spec}")
@@ -1051,32 +1056,111 @@ class DatasetActor(val datasetContext: DatasetContext,
           log.warning(s"State data: InError($error)")
       }
 
-      // Track operation state for restart recovery
+      // Track operation state for restart recovery and activity logging
       if (toState == Idle) {
         broadcastIdleState()
+
+        // Log operation completion if we were tracking one
+        operationStartTime.foreach { startTime =>
+          val trigger = dsInfo.getOperationTrigger.getOrElse("manual")
+          val operation = fromState.toString.toUpperCase
+
+          // Log operation complete
+          ActivityLogger.logOperationComplete(
+            datasetContext.activityLog,
+            operation,
+            trigger,
+            startTime,
+            currentWorkflowId
+          )
+
+          // If this completes a workflow, log workflow completion
+          if (currentWorkflowId.isDefined && workflowStartTime.isDefined) {
+            ActivityLogger.completeWorkflow(
+              datasetContext.activityLog,
+              currentWorkflowId.get,
+              workflowStartTime.get
+            )
+            // Clear workflow tracking
+            currentWorkflowId = None
+            workflowStartTime = None
+          }
+        }
+
         // Clear operation tracking when returning to idle
         dsInfo.clearOperation()
+        operationStartTime = None
+
         // Notify parent that this dataset is now idle
         context.parent ! DatasetBecameIdle(dsInfo.spec)
+
       } else if (fromState == Idle) {
-        // Entering an active state - track the operation
+        // Entering an active state from Idle - this is a new operation
         val operation = toState.toString.toUpperCase
-        // Determine trigger based on stateData - scheduled operations are automatic
-        val trigger = stateData match {
-          case active: Active if active.spec != null =>
-            // If there's a scheduled operation, it's automatic
-            "automatic"
-          case _ =>
-            // Otherwise assume manual (command-driven)
-            "manual"
+        val trigger = dsInfo.getOperationTrigger.getOrElse("manual")
+
+        // For automatic triggers starting from Idle, create a new workflow
+        if (trigger == "automatic") {
+          val workflowId = ActivityLogger.generateWorkflowId(dsInfo.spec)
+          currentWorkflowId = Some(workflowId)
+          workflowStartTime = Some(DateTime.now())
+
+          // Log workflow start with expected operations
+          val expectedOps = operation match {
+            case "HARVESTING" => Seq("HARVEST", "PROCESS", "SAVE")
+            case _ => Seq(operation)
+          }
+          ActivityLogger.startWorkflow(
+            datasetContext.activityLog,
+            workflowId,
+            "periodic", // Most automatic triggers are periodic
+            expectedOps
+          )
         }
+
+        // Log operation start
+        operationStartTime = Some(DateTime.now())
+        ActivityLogger.logOperationStart(
+          datasetContext.activityLog,
+          operation,
+          trigger,
+          currentWorkflowId
+        )
+
+        // Track in triple store for restart recovery
         dsInfo.setCurrentOperation(operation, trigger)
+
         // Notify parent that this dataset became active
         context.parent ! DatasetBecameActive(dsInfo.spec)
+
       } else {
-        // Transitioning between active states - update the operation
-        val operation = toState.toString.toUpperCase
-        dsInfo.setCurrentOperation(operation)
+        // Transitioning between active states within a workflow
+        val newOperation = toState.toString.toUpperCase
+        val trigger = dsInfo.getOperationTrigger.getOrElse("manual")
+
+        // Complete the previous operation
+        operationStartTime.foreach { startTime =>
+          val oldOperation = fromState.toString.toUpperCase
+          ActivityLogger.logOperationComplete(
+            datasetContext.activityLog,
+            oldOperation,
+            trigger,
+            startTime,
+            currentWorkflowId
+          )
+        }
+
+        // Start the new operation
+        operationStartTime = Some(DateTime.now())
+        ActivityLogger.logOperationStart(
+          datasetContext.activityLog,
+          newOperation,
+          trigger,
+          currentWorkflowId
+        )
+
+        // Update triple store
+        dsInfo.setCurrentOperation(newOperation)
       }
   }
 
