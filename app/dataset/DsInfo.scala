@@ -25,7 +25,7 @@ import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
 import organization.OrgActor.DatasetMessage
 import org.apache.jena.rdf.model._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, Minutes}
 import organization.OrgContext
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json, Writes}
@@ -111,6 +111,28 @@ object DsInfo {
       ts: TripleStore): Future[List[DsInfo]] = {
 
     ts.query(selectDatasetsInRetryQ).map { list =>
+      list.map { entry =>
+        val spec = entry("spec").text
+        new DsInfo(
+          spec,
+          orgContext.appConfig.nxUriPrefix,
+          orgContext.appConfig.naveApiAuthToken,
+          orgContext.appConfig.naveApiUrl,
+          orgContext,
+          orgContext.appConfig.mockBulkApi
+        )
+      }
+    }
+  }
+
+  /**
+   * List all datasets with incomplete operations (for restart recovery).
+   */
+  def listDsInfoWithIncompleteOperations(orgContext: OrgContext)(
+      implicit ec: ExecutionContext,
+      ts: TripleStore): Future[List[DsInfo]] = {
+
+    ts.query(selectDatasetsWithIncompleteOperationsQ).map { list =>
       list.map { entry =>
         val spec = entry("spec").text
         new DsInfo(
@@ -610,6 +632,72 @@ class DsInfo(
    */
   def getLastRetryTime: Option[DateTime] =
     getTimeProp(harvestLastRetryTime)
+
+  /**
+   * Set the current operation for restart recovery tracking.
+   */
+  def setCurrentOperation(operation: String, trigger: String = "automatic"): Unit = {
+    setSingularLiteralProps(
+      datasetCurrentOperation -> operation,
+      datasetOperationStartTime -> now,
+      datasetOperationTrigger -> trigger,
+      datasetOperationStatus -> "in_progress"
+    )
+  }
+
+  /**
+   * Mark current operation as completed.
+   */
+  def completeOperation(): Unit = {
+    setSingularLiteralProps(datasetOperationStatus -> "completed")
+  }
+
+  /**
+   * Clear operation tracking (called when returning to Idle).
+   */
+  def clearOperation(): Unit = {
+    removeLiteralProp(datasetCurrentOperation)
+    removeLiteralProp(datasetOperationStartTime)
+    removeLiteralProp(datasetOperationTrigger)
+    removeLiteralProp(datasetOperationStatus)
+  }
+
+  /**
+   * Get current operation if any.
+   */
+  def getCurrentOperation: Option[String] =
+    getLiteralProp(datasetCurrentOperation)
+
+  /**
+   * Get operation start time.
+   */
+  def getOperationStartTime: Option[DateTime] =
+    getTimeProp(datasetOperationStartTime)
+
+  /**
+   * Get operation trigger (automatic or manual).
+   */
+  def getOperationTrigger: Option[String] =
+    getLiteralProp(datasetOperationTrigger)
+
+  /**
+   * Get operation status.
+   */
+  def getOperationStatus: Option[String] =
+    getLiteralProp(datasetOperationStatus)
+
+  /**
+   * Check if operation is stale (started more than given minutes ago).
+   */
+  def isOperationStale(thresholdMinutes: Int): Boolean = {
+    getOperationStartTime match {
+      case Some(startTime) =>
+        val now = DateTime.now()
+        val minutesAgo = Minutes.minutesBetween(startTime, now).getMinutes
+        minutesAgo > thresholdMinutes
+      case None => false
+    }
+  }
 
   /**
    * Get the error message that triggered retry mode.
