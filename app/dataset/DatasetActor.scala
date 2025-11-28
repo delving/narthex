@@ -153,6 +153,14 @@ object DatasetActor {
 
   case object ForceReleaseAndReset
 
+  case object GetCurrentState
+
+  case class CurrentState(spec: String, isActive: Boolean)
+
+  case class DatasetBecameActive(spec: String)
+
+  case class DatasetBecameIdle(spec: String)
+
   def props(datasetContext: DatasetContext,
             mailService: MailService,
             orgContext: OrgContext,
@@ -878,6 +886,12 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   whenUnhandled {
 
+    case Event(GetCurrentState, _) =>
+      // Return whether this actor is currently active (not in Idle state)
+      val isActive = stateName != Idle
+      sender() ! CurrentState(dsInfo.spec, isActive)
+      stay()
+
     case Event(CheckForStuckState, active: Active) =>
       val currentTime = System.currentTimeMillis()
       val timeSinceActivity = currentTime - active.lastActivityTime
@@ -1038,6 +1052,11 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
       if (toState == Idle) {
         broadcastIdleState()
+        // Notify parent that this dataset is now idle
+        context.parent ! DatasetBecameIdle(dsInfo.spec)
+      } else if (fromState == Idle) {
+        // Notify parent that this dataset became active
+        context.parent ! DatasetBecameActive(dsInfo.spec)
       }
   }
 

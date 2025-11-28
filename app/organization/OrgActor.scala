@@ -50,6 +50,9 @@ class OrgActor (
 
   var results = Map.empty[String, Option[List[CategoryCount]]]
 
+  // Track which datasets are currently active (not in Idle state)
+  var activeDatasets = Set.empty[String]
+
   def receive = {
 
     case DatasetMessage(spec, message) =>
@@ -75,9 +78,17 @@ class OrgActor (
         results = Map.empty[String, Option[List[CategoryCount]]]
       }
 
+    case DatasetBecameActive(spec) =>
+      log.info(s"Dataset $spec became active")
+      activeDatasets = activeDatasets + spec
+
+    case DatasetBecameIdle(spec) =>
+      log.info(s"Dataset $spec became idle")
+      activeDatasets = activeDatasets - spec
+
     case GetActiveDatasets =>
-      val activeSpecs = context.children.map(_.path.name).toList.sorted
-      sender() ! ActiveDatasets(activeSpecs)
+      // Simply return the tracked set of active datasets
+      sender() ! ActiveDatasets(activeDatasets.toList.sorted)
 
     case Terminated(name) =>
       log.info(s"Demised $name")
