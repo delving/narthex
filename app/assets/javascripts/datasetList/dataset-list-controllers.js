@@ -199,7 +199,8 @@ define(["angular"], function () {
         function filterDatasetByState(ds) {	
             var filter = $scope.stateFilter;	
             if (filter != 'stateEmpty') {	
-                ds.visible = !filter || ds.stateCurrent.name === filter;	
+                var currentState = ds.stateCurrentForFilter || ds.stateCurrent;
+                ds.visible = !filter || currentState.name === filter;	
             }	
             else {	
                 ds.visible = !filter || ds.empty;	
@@ -273,6 +274,7 @@ define(["angular"], function () {
         };
 
         $scope.datasetStates = [
+            {name: 'stateActive', label: 'Active', count: 0},
             {name: 'stateEmpty', label: 'Empty', count: 0},
             {name: 'stateDisabled', label: 'Disabled', count: 0},
             {name: 'stateRaw', label: 'Raw', count: 0},
@@ -378,6 +380,44 @@ define(["angular"], function () {
             pageScroll.scrollTo({hash: $location.hash()});
         }
 
+        // Track active datasets from server
+        $scope.activeDatasets = {
+            processing: [],
+            saving: []
+        };
+
+        $scope.updateActiveDatasets = function () {
+            datasetListService.listActiveDatasets().then(function (data) {
+                $scope.activeDatasets = data;
+
+                // Mark datasets as active or inactive based on active actors (includes all states)
+                _.forEach($scope.datasets, function (ds) {
+                    var isActive = _.contains(data.active, ds.datasetSpec);
+                    ds.isActive = isActive;
+
+                    // If dataset is active, override stateCurrent for filtering
+                    if (isActive) {
+                        ds.stateCurrentForFilter = {name: 'stateActive', date: Date.now()};
+                    } else {
+                        ds.stateCurrentForFilter = ds.stateCurrent;
+                    }
+                });
+
+                $scope.updateDatasetStateCounter();
+            });
+        };
+
+        // Poll for active datasets every 5 seconds
+        $scope.updateActiveDatasets();
+        var activeDatasetsInterval = setInterval(function () {
+            $scope.updateActiveDatasets();
+        }, 5000);
+
+        // Clean up interval on scope destruction
+        $scope.$on('$destroy', function () {
+            clearInterval(activeDatasetsInterval);
+        });
+
         $scope.updateDatasetList = function (dataset) {
             $scope.datasets = _.map($scope.datasets, function (ds) {
                 if (ds.datasetSpec == dataset.datasetSpec){
@@ -389,7 +429,9 @@ define(["angular"], function () {
 
         $scope.updateDatasetStateCounter = function () {
             var datasetStateCounter = _.countBy($scope.datasets, function (dataset) {
-                return dataset.stateCurrent.name;
+                // Use stateCurrentForFilter if available (includes active state), otherwise stateCurrent
+                var state = dataset.stateCurrentForFilter || dataset.stateCurrent;
+                return state.name;
             });
             //var datasetErrorCounter = _.countBy($scope.datasets, function (dataset) {
             //   return _.isUndefined(dataset.errorMessage);

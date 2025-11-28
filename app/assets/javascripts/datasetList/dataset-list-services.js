@@ -75,6 +75,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                listActiveDatasets: function () {
+                    return app.listActiveDatasets().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 setDatasetProperties: function (spec, payload) {
                     return app.setDatasetProperties(spec).post(payload).then(
                         function (response) {

@@ -35,6 +35,10 @@ object OrgActor {
 
   case class DatasetsCountCategories(datasets: Seq[String])
 
+  case object GetActiveDatasets
+
+  case class ActiveDatasets(specs: List[String])
+
 }
 
 class OrgActor (
@@ -70,6 +74,10 @@ class OrgActor (
         orgContext.categoriesRepo.createSheet(finishedCountLists.flatten)
         results = Map.empty[String, Option[List[CategoryCount]]]
       }
+
+    case GetActiveDatasets =>
+      val activeSpecs = context.children.map(_.path.name).toList.sorted
+      sender() ! ActiveDatasets(activeSpecs)
 
     case Terminated(name) =>
       log.info(s"Demised $name")

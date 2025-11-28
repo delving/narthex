@@ -99,7 +99,7 @@
                             data-ng-class="{ 'closed': !expanded, 'open': expanded }">
                             <td class="spec">
                                 <span class="spec-field">{{ dataset.datasetSpec }}
-                                    <i data-ng-show="dataset.progress" class="fa fa-spinner fa-pulse fa-1x fa-fw"></i>
+                                    <i data-ng-show="dataset.isActive || dataset.progress" class="fa fa-spinner fa-pulse fa-1x fa-fw" title="Processing or saving"></i>
                                 </span>
                             </td>
                             <td class="name">

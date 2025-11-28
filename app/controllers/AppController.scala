@@ -88,6 +88,30 @@ class AppController @Inject() (
     })
   }
 
+  def listActiveDatasets = Action.async { request =>
+    import scala.jdk.CollectionConverters._
+    import scala.concurrent.duration._
+    import akka.pattern.ask
+    import akka.util.Timeout
+    import organization.OrgActor.{GetActiveDatasets, ActiveDatasets}
+
+    implicit val timeout = Timeout(2.seconds)
+
+    // Get all specs from semaphores (processing and saving)
+    val processingSpecs = orgContext.semaphore.activeSpecs().asScala.toList.sorted
+    val savingSpecs = orgContext.saveSemaphore.activeSpecs().asScala.toList.sorted
+
+    // Query OrgActor for all active dataset actors (includes all states, not just processing/saving)
+    (orgContext.orgActor ? GetActiveDatasets).mapTo[ActiveDatasets].map { activeDatasets =>
+      Ok(Json.obj(
+        "processing" -> processingSpecs,
+        "saving" -> savingSpecs,
+        "active" -> activeDatasets.specs,
+        "total" -> activeDatasets.specs.size
+      ))
+    }
+  }
+
   def listPrefixes = Action { request =>
     val prefixes = orgContext.sipFactory.prefixRepos.map(_.prefix)
     Ok(Json.toJson(prefixes))
