@@ -9,7 +9,11 @@
 <div class="page-header no-margin">
     <!-- page location, org -->
     <div class="meta">
-        <div class="page">Datasets</div>
+        <div class="page">Datasets
+            <span data-ng-if="activeDatasets.total > 0" class="label label-primary" style="margin-left: 10px;">
+                <i class="fa fa-cog fa-spin"></i> {{ activeDatasets.total }} active
+            </span>
+        </div>
         <div class="organization">
             <span class="fa fa-institution"></span>
             <span>{{ orgId }}</span>
@@ -96,7 +100,8 @@
                 <table class="dataset-list-table">
                     <tbody>
                         <tr data-spec="{{ dataset.datasetSpec }}" data-ng-click="expanded = !expanded" class="clickable"
-                            data-ng-class="{ 'closed': !expanded, 'open': expanded }">
+                            data-ng-class="{ 'closed': !expanded, 'open': expanded }"
+                            style="{{dataset.isActive ? 'background-color: #f0f8ff; border-left: 3px solid #337ab7;' : ''}}">
                             <td class="spec">
                                 <span class="spec-field">{{ dataset.datasetSpec }}
                                     <i data-ng-show="dataset.isActive || dataset.progress" class="fa fa-spinner fa-pulse fa-1x fa-fw" title="Processing or saving"></i>
@@ -126,6 +131,9 @@
                                 {{ dataset.datasetRecordCount }}
                             </td>
                             <td class="status">
+                                <span data-ng-if="dataset.isActive" class="label label-primary" style="margin-right: 5px;">
+                                    <i class="fa fa-cog fa-spin"></i> ACTIVE
+                                </span>
                                 <span ng-switch="dataset.stateCurrent.name" class="indicator" data-ng-class="{stateEmpty:'empty',
                                             stateRaw: 'raw',
                                             stateRawAnalyzed: 'raw-analyzed',
