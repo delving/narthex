@@ -1050,13 +1050,33 @@ class DatasetActor(val datasetContext: DatasetContext,
         case InError(error) =>
           log.warning(s"State data: InError($error)")
       }
+
+      // Track operation state for restart recovery
       if (toState == Idle) {
         broadcastIdleState()
+        // Clear operation tracking when returning to idle
+        dsInfo.clearOperation()
         // Notify parent that this dataset is now idle
         context.parent ! DatasetBecameIdle(dsInfo.spec)
       } else if (fromState == Idle) {
+        // Entering an active state - track the operation
+        val operation = toState.toString.toUpperCase
+        // Determine trigger based on stateData - scheduled operations are automatic
+        val trigger = stateData match {
+          case active: Active if active.spec != null =>
+            // If there's a scheduled operation, it's automatic
+            "automatic"
+          case _ =>
+            // Otherwise assume manual (command-driven)
+            "manual"
+        }
+        dsInfo.setCurrentOperation(operation, trigger)
         // Notify parent that this dataset became active
         context.parent ! DatasetBecameActive(dsInfo.spec)
+      } else {
+        // Transitioning between active states - update the operation
+        val operation = toState.toString.toUpperCase
+        dsInfo.setCurrentOperation(operation)
       }
   }
 
