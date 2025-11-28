@@ -30,8 +30,10 @@ class PreviewController @Inject() (orgContext: OrgContext)(implicit val ec: Exec
         key.equalsIgnoreCase("Content-Length")
       }
 
-      // Get Content-Type for proper response formatting
-      val contentTypeOpt = headers.get("Content-Type")
+      // Get Content-Type for proper response formatting (case-insensitive lookup)
+      val contentTypeOpt = headers.find { case (key, _) =>
+        key.equalsIgnoreCase("Content-Type")
+      }.map(_._2)
 
       // Strip XSL stylesheet reference to allow XML to render in browser
       val bodyText = response.body
