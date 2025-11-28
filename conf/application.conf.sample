@@ -17,6 +17,15 @@ play.i18n.langs = ["en"]
 # evolutionplugin=disabled
 
 
+# WebSocket configuration
+# ~~~~~
+# Keep WebSocket connections alive and prevent idle timeouts
+play.server.websocket.periodic-keep-alive-max-idle = 30s
+play.server.websocket.frame.maxLength = 64k
+# Prevent idle timeout from closing WebSocket connections
+play.server.http.idleTimeout = 1 hour
+
+
 akka {
   default-dispatcher.core-pool-size-max = 64
 //  debug.receive = on
