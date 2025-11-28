@@ -2,9 +2,10 @@ define(
     [
         "angular",
         "./dataset-list-controllers",
-        "./dataset-list-services"
+        "./dataset-list-services",
+        "./activity-modal-controller"
     ],
-    function (angular, controllers) {
+    function (angular, controllers, services, activityModalController) {
         "use strict";
 
         var datasetListRoutes = angular.module("datasetList.routes", ["narthex.common"]);
@@ -32,6 +33,7 @@ define(
 
         narthexDatasetList.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);
         narthexDatasetList.controller("IndexCtrl", controllers.IndexCtrl);
+        narthexDatasetList.controller('ActivityModalCtrl', activityModalController);
         var config = function config($rootScopeProvider) {
             $rootScopeProvider.digestTtl(15);
         };

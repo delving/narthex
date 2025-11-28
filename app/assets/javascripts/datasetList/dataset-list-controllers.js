@@ -845,6 +845,25 @@ define(["angular"], function () {
                 fetchSipFileList();
             });
         };
+
+        $scope.openActivityModal = function () {
+            var activityUrl = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/activity";
+
+            $uibModal.open({
+                templateUrl: 'activity-modal.html',
+                controller: 'ActivityModalCtrl',
+                size: 'lg',
+                resolve: {
+                    spec: function() {
+                        return $scope.dataset.datasetSpec;
+                    },
+                    activityUrl: function() {
+                        return activityUrl;
+                    }
+                }
+            });
+        };
+
         function executeIdFilter() {
             var expression = $scope.dataset.edit.idFilterExpression || '';
             var delimiter = ":::";
