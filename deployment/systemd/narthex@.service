@@ -1,0 +1,39 @@
+[Unit]
+Description=Narthex instance for %i
+After=network.target fuseki.service
+Wants=fuseki.service
+
+[Service]
+Type=simple
+User=narthex
+Group=narthex
+WorkingDirectory=/opt/narthex
+
+# Read environment from org-specific file
+EnvironmentFile=/etc/narthex/%i.env
+
+# Start Narthex with org-specific config and port
+ExecStart=/opt/narthex/bin/narthex \
+  -Dconfig.file=/etc/narthex/%i.conf \
+  -Dhttp.port=${PORT} \
+  -Dhttp.address=127.0.0.1 \
+  -Dpidfile.path=/var/run/narthex/narthex-%i.pid \
+  -Dlogger.file=/etc/narthex/logback-%i.xml
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+# Resource limits
+LimitNOFILE=65536
+SuccessExitStatus=143
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/narthex /var/run/narthex /home/narthex/NarthexFiles/%i
+
+[Install]
+WantedBy=multi-user.target

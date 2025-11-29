@@ -20,8 +20,8 @@ define(["angular", "common"], function (angular) {
     var mod = angular.module("categories.services", ["narthex.common"]);
 
     mod.service("categoriesService", [
-        "$http", "$q", "playRoutes", "$location",
-        function ($http, $q, playRoutes, $location) {
+        "$http", "$q", "playRoutes", "$location", "modalAlert",
+        function ($http, $q, playRoutes, $location, modalAlert) {
             var app = playRoutes.controllers.AppController;
 
             var rejection = function (reply) {
@@ -31,10 +31,10 @@ define(["angular", "common"], function (angular) {
                 else {
                     console.log('why', reply);
                     if (reply.data.problem) {
-                        alert("Processing problem " + reply.status + " (" + reply.data.problem + ")");
+                        modalAlert.error("Processing Problem", "Error " + reply.status + ": " + reply.data.problem);
                     }
                     else {
-                        alert("Network problem " + reply.statusText);
+                        modalAlert.error("Network Problem", reply.statusText);
                     }
                 }
             };

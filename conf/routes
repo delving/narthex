@@ -25,6 +25,7 @@ GET         /narthex/jsRoutes.js                                             con
 # File Handling
 GET         /narthex/socket/dataset                                          controllers.WebSocketController.dataset
 GET         /narthex/app/dataset-list                                        controllers.AppController.listDatasets
+GET         /narthex/app/dataset-list-light                                  controllers.AppController.listDatasetsLight
 GET         /narthex/app/active-datasets                                     controllers.AppController.listActiveDatasets
 GET         /narthex/app/prefixes                                            controllers.AppController.listPrefixes
 GET         /narthex/app/dataset/:spec/create/:character/:prefix             controllers.AppController.createDataset(spec, character, prefix)

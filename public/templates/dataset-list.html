@@ -137,7 +137,9 @@
             <div data-ng-controller="DatasetEntryCtrl">
                 <table class="dataset-list-table">
                     <tbody>
-                        <tr data-spec="{{ dataset.datasetSpec }}" data-ng-click="expanded = !expanded" class="clickable"
+                        <tr data-spec="{{ dataset.datasetSpec }}"
+                            data-ng-click="expanded = !expanded; expandDataset(dataset)"
+                            class="clickable"
                             data-ng-class="{ 'closed': !expanded, 'open': expanded }"
                             style="{{dataset.isActive ? 'background-color: #f0f8ff; border-left: 3px solid #337ab7;' : ''}}">
                             <td class="spec">
@@ -547,6 +549,117 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Activity History Modal -->
+                    <div class="modal fade" ng-class="{'in': activityModal.visible}" ng-show="activityModal.visible">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <button type="button" class="close" ng-click="activityModal.scope.close()" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                    <h3 class="modal-title">
+                                        <i class="fa fa-history"></i> Activity History - {{ activityModal.scope.spec }}
+                                    </h3>
+                                </div>
+                                <div class="modal-body">
+                                    <div ng-if="activityModal.scope.loading" class="text-center">
+                                        <i class="fa fa-spinner fa-spin fa-2x"></i>
+                                        <p>Loading activity log...</p>
+                                    </div>
+
+                                    <div ng-if="activityModal.scope.error" class="alert alert-danger">
+                                        <i class="fa fa-exclamation-triangle"></i> {{ activityModal.scope.error }}
+                                    </div>
+
+                                    <div ng-if="!activityModal.scope.loading && !activityModal.scope.error && activityModal.scope.activities.length === 0" class="alert alert-info">
+                                        <i class="fa fa-info-circle"></i> No activity recorded yet.
+                                    </div>
+
+                                    <div ng-if="!activityModal.scope.loading && !activityModal.scope.error && activityModal.scope.activities.length > 0">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th width="20"></th>
+                                                    <th>Timestamp</th>
+                                                    <th>Operation</th>
+                                                    <th>Trigger</th>
+                                                    <th>Status</th>
+                                                    <th>Duration</th>
+                                                    <th>Records</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr ng-repeat-start="activity in activityModal.scope.activities"
+                                                    ng-if="activity.isWorkflow"
+                                                    class="clickable"
+                                                    ng-click="activityModal.scope.toggleWorkflow(activity)"
+                                                    style="background-color: #f5f5f5; font-weight: bold;">
+                                                    <td>
+                                                        <i class="fa" ng-class="activity.expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                                    </td>
+                                                    <td>{{ activityModal.scope.formatTimestamp(activity.timestamp) }}</td>
+                                                    <td>
+                                                        <i class="fa fa-sitemap"></i> {{ activityModal.scope.getOperationLabel(activity) }}
+                                                    </td>
+                                                    <td>{{ activityModal.scope.getTriggerLabel(activity) }}</td>
+                                                    <td>
+                                                        <span class="label" ng-class="activityModal.scope.getStatusClass(activity.status)">
+                                                            {{ activity.status || 'in progress' }}
+                                                        </span>
+                                                        <span ng-if="activity.errorMessage" class="text-danger">
+                                                            <br/>{{ activity.errorMessage }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ activityModal.scope.formatDuration(activity.duration_seconds) }}</td>
+                                                    <td>{{ activity.total_records || '-' }}</td>
+                                                </tr>
+
+                                                <tr ng-if="activity.isWorkflow && activity.expanded" ng-repeat="step in activity.steps"
+                                                    style="background-color: #fafafa;">
+                                                    <td></td>
+                                                    <td style="padding-left: 30px;">{{ activityModal.scope.formatTimestamp(step.timestamp) }}</td>
+                                                    <td style="padding-left: 30px;">
+                                                        <i class="fa fa-angle-right"></i> {{ step.operation }}
+                                                    </td>
+                                                    <td>-</td>
+                                                    <td>
+                                                        <span class="label" ng-class="activityModal.scope.getStatusClass(step.status)">
+                                                            {{ step.status }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ activityModal.scope.formatDuration(step.duration_seconds) }}</td>
+                                                    <td>{{ step.recordCount || '-' }}</td>
+                                                </tr>
+
+                                                <tr ng-repeat-end ng-if="!activity.isWorkflow">
+                                                    <td></td>
+                                                    <td>{{ activityModal.scope.formatTimestamp(activity.timestamp) }}</td>
+                                                    <td>{{ activity.operation }}</td>
+                                                    <td>{{ activityModal.scope.getTriggerLabel(activity) }}</td>
+                                                    <td>
+                                                        <span class="label" ng-class="activityModal.scope.getStatusClass(activity.status)">
+                                                            {{ activity.status }}
+                                                        </span>
+                                                        <span ng-if="activity.errorMessage" class="text-danger">
+                                                            <br/>{{ activity.errorMessage }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ activityModal.scope.formatDuration(activity.duration_seconds) }}</td>
+                                                    <td>{{ activity.recordCount || '-' }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-default" ng-click="activityModal.scope.close()">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-backdrop fade" ng-class="{'in': activityModal.visible}" ng-show="activityModal.visible"></div>
+
                 </div>
             </div>
         </div>
@@ -1113,113 +1226,6 @@
                 </div>
             </div>
         </div>
-    </div>
-</script>
-
-<!-- Activity History Modal Template -->
-<script type="text/ng-template" id="activity-modal.html">
-    <div class="modal-header">
-        <h3 class="modal-title">
-            <i class="fa fa-history"></i> Activity History - {{ spec }}
-        </h3>
-        <button type="button" class="close" ng-click="close()" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-    <div class="modal-body">
-        <div ng-if="loading" class="text-center">
-            <i class="fa fa-spinner fa-spin fa-2x"></i>
-            <p>Loading activity log...</p>
-        </div>
-
-        <div ng-if="error" class="alert alert-danger">
-            <i class="fa fa-exclamation-triangle"></i> {{ error }}
-        </div>
-
-        <div ng-if="!loading && !error && activities.length === 0" class="alert alert-info">
-            <i class="fa fa-info-circle"></i> No activity recorded yet.
-        </div>
-
-        <div ng-if="!loading && !error && activities.length > 0">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th width="20"></th>
-                        <th>Timestamp</th>
-                        <th>Operation</th>
-                        <th>Trigger</th>
-                        <th>Status</th>
-                        <th>Duration</th>
-                        <th>Records</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <ng-container ng-repeat="activity in activities">
-                        <!-- Workflow parent row -->
-                        <tr ng-if="activity.isWorkflow" class="clickable" ng-click="toggleWorkflow(activity)"
-                            style="background-color: #f5f5f5; font-weight: bold;">
-                            <td>
-                                <i class="fa" ng-class="activity.expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-                            </td>
-                            <td>{{ formatTimestamp(activity.timestamp) }}</td>
-                            <td>
-                                <i class="fa fa-sitemap"></i> {{ getOperationLabel(activity) }}
-                            </td>
-                            <td>{{ getTriggerLabel(activity) }}</td>
-                            <td>
-                                <span class="label" ng-class="getStatusClass(activity.status)">
-                                    {{ activity.status || 'in progress' }}
-                                </span>
-                                <span ng-if="activity.errorMessage" class="text-danger">
-                                    <br/>{{ activity.errorMessage }}
-                                </span>
-                            </td>
-                            <td>{{ formatDuration(activity.duration_seconds) }}</td>
-                            <td>{{ activity.total_records || '-' }}</td>
-                        </tr>
-
-                        <!-- Workflow steps (when expanded) -->
-                        <tr ng-if="activity.isWorkflow && activity.expanded" ng-repeat="step in activity.steps"
-                            style="background-color: #fafafa;">
-                            <td></td>
-                            <td style="padding-left: 30px;">{{ formatTimestamp(step.timestamp) }}</td>
-                            <td style="padding-left: 30px;">
-                                <i class="fa fa-angle-right"></i> {{ step.operation }}
-                            </td>
-                            <td>-</td>
-                            <td>
-                                <span class="label" ng-class="getStatusClass(step.status)">
-                                    {{ step.status }}
-                                </span>
-                            </td>
-                            <td>{{ formatDuration(step.duration_seconds) }}</td>
-                            <td>{{ step.recordCount || '-' }}</td>
-                        </tr>
-
-                        <!-- Standalone operation row -->
-                        <tr ng-if="!activity.isWorkflow">
-                            <td></td>
-                            <td>{{ formatTimestamp(activity.timestamp) }}</td>
-                            <td>{{ activity.operation }}</td>
-                            <td>{{ getTriggerLabel(activity) }}</td>
-                            <td>
-                                <span class="label" ng-class="getStatusClass(activity.status)">
-                                    {{ activity.status }}
-                                </span>
-                                <span ng-if="activity.errorMessage" class="text-danger">
-                                    <br/>{{ activity.errorMessage }}
-                                </span>
-                            </td>
-                            <td>{{ formatDuration(activity.duration_seconds) }}</td>
-                            <td>{{ activity.recordCount || '-' }}</td>
-                        </tr>
-                    </ng-container>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div class="modal-footer">
-        <button class="btn btn-default" ng-click="close()">Close</button>
     </div>
 </script>
 

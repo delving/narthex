@@ -17,7 +17,7 @@
 define(["angular"], function () {
     "use strict";
 
-    var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll) {
+    var DatasetCtrl = function ($rootScope, $scope, $routeParams, $timeout, $location, datasetService, pageScroll, modalAlert) {
         var MAX_FOR_VOCABULARY = 12500;
         $scope.spec = $routeParams.spec;
 
@@ -182,7 +182,7 @@ define(["angular"], function () {
                     if (entry.length != 0) {
                         $scope.recordRootNode = entry.kids[0];
                     } else {
-                        alert("PMH metadata root is empty. Leaving old root in place");
+                        modalAlert.warning("Empty Metadata Root", "PMH metadata root is empty. Leaving old root in place");
                     }
                 };
             });
@@ -305,7 +305,7 @@ define(["angular"], function () {
 
     };
 
-    DatasetCtrl.$inject = ["$rootScope", "$scope", "$routeParams", "$timeout", "$location", "datasetService", "pageScroll"];
+    DatasetCtrl.$inject = ["$rootScope", "$scope", "$routeParams", "$timeout", "$location", "datasetService", "pageScroll", "modalAlert"];
 
     var TreeCtrl = function ($scope) {
         $scope.$watch('tree', function (tree) {

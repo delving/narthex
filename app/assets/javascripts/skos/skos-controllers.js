@@ -17,7 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var SkosListCtrl = function ($rootScope, $scope, $location, $routeParams, skosService) {
+    var SkosListCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, modalAlert) {
 
         $scope.newDataset = {};
 
@@ -68,7 +68,7 @@ define(["angular"], function (angular) {
         };
     };
 
-    SkosListCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService"];
+    SkosListCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "skosService", "modalAlert"];
 
     var metadataFields = [
         "skosName", "skosOwner"
@@ -93,7 +93,7 @@ define(["angular"], function (angular) {
             if (!($files.length && !sk.uploading)) return;
             var onlyFile = $files[0];
             if (!(onlyFile.name.endsWith('.xml'))) {
-                alert("Sorry, the file must end with '.xml'");
+                modalAlert.warning("Invalid File Type", "Sorry, the file must end with '.xml'");
                 return;
             }
             sk.uploading = true;

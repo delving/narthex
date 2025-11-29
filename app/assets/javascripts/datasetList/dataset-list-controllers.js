@@ -108,9 +108,52 @@ define(["angular"], function () {
                 console.log("Received websocket msg: " + message);
                 var callback = $scope.socketSubscribers[message.datasetSpec];
                 if (callback) {
+                    // Dataset is expanded - use its specific callback
                     callback(message);
                 } else {
-                    console.warn("Message for unknown dataset: " + message.datasetSpec);
+                    // Dataset is not expanded - handle update globally
+                    console.debug("Handling update for collapsed dataset: " + message.datasetSpec);
+                    $scope.$apply(function() {
+                        // Find the dataset in the list
+                        var datasetIndex = _.findIndex($scope.datasets, function(ds) {
+                            return ds.datasetSpec === message.datasetSpec || ds.spec === message.datasetSpec;
+                        });
+
+                        if (datasetIndex !== -1) {
+                            // Dataset exists in list - update it
+                            var existingDataset = $scope.datasets[datasetIndex];
+
+                            // If it's a lightweight dataset, merge the update
+                            if (existingDataset.isLight && !existingDataset.fullDataLoaded) {
+                                // Update lightweight fields
+                                if (message.processedValid !== undefined) existingDataset.processedValid = message.processedValid;
+                                if (message.processedInvalid !== undefined) existingDataset.processedInvalid = message.processedInvalid;
+                                if (message.datasetRecordCount !== undefined) existingDataset.recordCount = message.datasetRecordCount;
+
+                                // Update state timestamps
+                                ['stateRaw', 'stateAnalyzed', 'stateProcessed', 'stateSaved', 'stateIncrementalSaved'].forEach(function(stateProp) {
+                                    if (message[stateProp] !== undefined) {
+                                        existingDataset[stateProp] = message[stateProp];
+                                    }
+                                });
+
+                                // Re-decorate to update computed properties
+                                $scope.decorateDatasetLight(existingDataset);
+                            } else {
+                                // Full dataset - merge update into existing object to preserve UI state
+                                // Use angular.extend to merge properties without replacing the object
+                                angular.extend(existingDataset, message);
+                                // Re-decorate to update computed properties
+                                $scope.decorateDataset(existingDataset);
+                            }
+
+                            // Update state counters
+                            $scope.updateDatasetStateCounter();
+                        } else {
+                            // Dataset not in current list (might be filtered out)
+                            console.debug("Dataset " + message.datasetSpec + " not in current view");
+                        }
+                    });
                 }
             };
 
@@ -328,6 +371,60 @@ define(["angular"], function () {
             {name: 'stateIncrementalSaved', label: 'Incremental Saved', count: 0}
         ];
 
+        /**
+         * Decorate a dataset with minimal info (for collapsed view).
+         * Used with lightweight dataset list.
+         */
+        $scope.decorateDatasetLight = function (dataset) {
+            // Map lightweight property names to template property names
+            dataset.datasetSpec = dataset.spec;
+            dataset.datasetName = dataset.name;
+            dataset.datasetRecordCount = dataset.recordCount;
+
+            dataset.apiMappings = $scope.apiPrefix + dataset.spec + '/mappings';
+            dataset.states = [];
+            dataset.isLight = true; // Flag to indicate this is lightweight data
+            dataset.fullDataLoaded = false;
+
+            // Initialize dataset.edit for lightweight datasets
+            // This is needed because DatasetEntryCtrl watches dataset.edit
+            dataset.edit = angular.copy(dataset);
+
+            // Process state timestamps from light data
+            var stateVisible = false;
+            _.forEach(
+                $scope.datasetStates,
+                function (state) {
+                    var time = dataset[state.name];
+                    if (time) {
+                        stateVisible = true;
+                        var dt = time.split('T');
+                        dataset.states.push({"name": state.name, "date": Date.parse(time)});
+                        dataset[state.name] = {
+                            d: dt[0],
+                            t: dt[1].split('+')[0],
+                            dt: dt
+                        };
+                    }
+                }
+            );
+
+            if (!stateVisible) {
+                dataset.empty = true;
+            }
+
+            dataset.stateCurrent = _.max(dataset.states, function (state) {
+                return state.date
+            });
+
+            if (_.isEmpty(dataset.states)) {
+                dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
+            }
+
+            filterDatasetBySpec(dataset);
+            return dataset;
+        };
+
         $scope.decorateDataset = function (dataset) {
             // Initialize error handling properties with defaults if not present
             // Must do this BEFORE copying to ensure dataset and dataset.edit match
@@ -360,6 +457,7 @@ define(["angular"], function () {
 
             dataset.apiMappings = $scope.apiPrefix + dataset.datasetSpec + '/mappings';
             dataset.states = [];
+            dataset.fullDataLoaded = true; // Mark as having full data
 //            if (dataset.character) dataset.prefix = info.character.prefix;
 //            split the states into date and time
             var stateVisible = false;
@@ -404,10 +502,29 @@ define(["angular"], function () {
             return dataset;
         };
 
+        /**
+         * Load full dataset details when expanding.
+         * Only fetches if not already loaded.
+         */
+        $scope.expandDataset = function (dataset) {
+            if (dataset.fullDataLoaded) {
+                return; // Already have full data
+            }
+
+            // Fetch full dataset info
+            datasetListService.datasetInfo(dataset.spec).then(function (fullData) {
+                // Merge full data into the light dataset object
+                angular.extend(dataset, fullData);
+                // Re-decorate with full data
+                $scope.decorateDataset(dataset);
+            });
+        };
+
         $scope.fetchDatasetList = function () {
             $scope.specOrNameFilter = "";
-            datasetListService.listDatasets().then(function (array) {
-                _.forEach(array, $scope.decorateDataset);
+            // Use lightweight endpoint for faster initial load
+            datasetListService.listDatasetsLight().then(function (array) {
+                _.forEach(array, $scope.decorateDatasetLight);
                 $scope.datasets = array;
                 $scope.updateDatasetStateCounter();
             });
@@ -558,10 +675,18 @@ define(["angular"], function () {
         "lastIncrementalHarvestTime", "processedIncrementalValid", "processedIncrementalInvalid"
     ];
 
-    var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload, $routeParams) {
+    var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload, $routeParams, modalAlert, $injector, $http) {
         if (!$scope.dataset) {
-            alert("no dataset!");
+            modalAlert.error("Dataset Error", "No dataset specified!");
             return;
+        }
+
+        // Try to get $uibModal (optional dependency for activity modal)
+        var $uibModal = null;
+        try {
+            $uibModal = $injector.get('$uibModal');
+        } catch (e) {
+            console.warn('$uibModal not available - activity modal feature disabled. Make sure ui.bootstrap is loaded.');
         }
         $scope.subscribe($scope.dataset.datasetSpec, function (message) {
             function addProgressMessage(p) {
@@ -650,6 +775,11 @@ define(["angular"], function () {
             $scope.adlibPreviewBase = $scope.adlibPreviewBase + connector + "search=" + searchValue ;
         }
         function setUnchanged() {
+            // Safety check: ensure dataset.edit exists before comparing
+            if (!$scope.dataset || !$scope.dataset.edit) {
+                return;
+            }
+
             function unchanged(fieldNameList) {
                 var unchanged = true;
                 _.forEach(fieldNameList, function (fieldName) {
@@ -688,7 +818,7 @@ define(["angular"], function () {
             if (!($files.length && !$scope.dataset.uploading)) return;
             var onlyFile = $files[0];
             if (!(onlyFile.name.endsWith('.xml.gz') || onlyFile.name.endsWith('.xml') || onlyFile.name.endsWith('.csv') || onlyFile.name.endsWith('.sip.zip'))) {
-                alert("Sorry, the file must end with '.xml.gz', '.xml', '.csv' or '.sip.zip'");
+                modalAlert.warning("Invalid File Type", "Sorry, the file must end with '.xml.gz', '.xml', '.csv' or '.sip.zip'");
                 return;
             }
             $scope.dataset.uploading = true;
@@ -712,7 +842,7 @@ define(["angular"], function () {
                     console.log("Failure during upload: status", status);
                     console.log("Failure during upload: headers", headers);
                     console.log("Failure during upload: config", config);
-                    alert(data.problem);
+                    modalAlert.error("Upload Failed", data.problem || "An error occurred during upload");
                 }
             );
         };
@@ -886,24 +1016,101 @@ define(["angular"], function () {
         };
 
         $scope.openActivityModal = function () {
-            var activityUrl = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/activity";
+            // Create child scope for the modal
+            var modalScope = $scope.$new();
+            modalScope.spec = $scope.dataset.datasetSpec;
+            modalScope.loading = true;
+            modalScope.activities = [];
+            modalScope.error = null;
 
-            $uibModal.open({
-                templateUrl: 'activity-modal.html',
-                controller: 'ActivityModalCtrl',
-                size: 'lg',
-                resolve: {
-                    spec: function() {
-                        return $scope.dataset.datasetSpec;
-                    },
-                    activityUrl: function() {
-                        return activityUrl;
-                    }
+            // Helper functions for the template
+            modalScope.formatTimestamp = function(timestamp) {
+                if (!timestamp) return '-';
+                var date = new Date(timestamp);
+                return date.toLocaleString();
+            };
+
+            modalScope.formatDuration = function(seconds) {
+                if (!seconds) return '-';
+                if (seconds < 60) return seconds.toFixed(1) + 's';
+                var minutes = Math.floor(seconds / 60);
+                var secs = Math.floor(seconds % 60);
+                return minutes + 'm ' + secs + 's';
+            };
+
+            modalScope.getStatusClass = function(status) {
+                if (!status) return 'label-default';
+                switch(status.toLowerCase()) {
+                    case 'success': return 'label-success';
+                    case 'completed': return 'label-success';
+                    case 'failed': return 'label-danger';
+                    case 'error': return 'label-danger';
+                    case 'in progress': return 'label-info';
+                    case 'running': return 'label-info';
+                    default: return 'label-default';
                 }
-            });
+            };
+
+            modalScope.getOperationLabel = function(activity) {
+                return activity.operation || 'Workflow';
+            };
+
+            modalScope.getTriggerLabel = function(activity) {
+                if (activity.trigger === 'manual') return 'Manual';
+                if (activity.trigger === 'scheduled') return 'Scheduled';
+                if (activity.trigger === 'cron') return 'Cron';
+                return activity.trigger || '-';
+            };
+
+            modalScope.toggleWorkflow = function(activity) {
+                activity.expanded = !activity.expanded;
+            };
+
+            modalScope.close = function() {
+                modalScope.$destroy();
+                $scope.activityModal.visible = false;
+            };
+
+            // Show the modal
+            $scope.activityModal = { visible: true, scope: modalScope };
+
+            // Fetch activity log
+            var activityUrl = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/activity";
+            $http.get(activityUrl).then(
+                function(response) {
+                    modalScope.loading = false;
+                    // Parse JSONL (JSON Lines format)
+                    var lines = response.data.trim().split('\n');
+                    var activities = lines.map(function(line) {
+                        try {
+                            var activity = JSON.parse(line);
+                            // Mark workflows for special rendering
+                            if (activity.steps && activity.steps.length > 0) {
+                                activity.isWorkflow = true;
+                                activity.expanded = false;
+                            }
+                            return activity;
+                        } catch(e) {
+                            return null;
+                        }
+                    }).filter(function(item) { return item !== null; });
+
+                    // Reverse to show newest first
+                    modalScope.activities = activities.reverse();
+                },
+                function(error) {
+                    modalScope.loading = false;
+                    modalScope.error = "Failed to load activity log: " + (error.statusText || "Unknown error");
+                }
+            );
         };
 
         function executeIdFilter() {
+            // Safety check: ensure dataset.edit exists before accessing properties
+            if (!$scope.dataset || !$scope.dataset.edit) {
+                return;
+            }
+
             var expression = $scope.dataset.edit.idFilterExpression || '';
             var delimiter = ":::";
             var divider = expression.indexOf(delimiter);
@@ -927,7 +1134,7 @@ define(["angular"], function () {
 
     };
 
-    DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams"];
+    DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams", "modalAlert", "$injector", "$http"];
 
     /** Controls the sidebar and headers */
     var IndexCtrl = function ($rootScope, $scope, $location) {

@@ -17,7 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var CategorySetCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, pageScroll) {
+    var CategorySetCtrl = function ($rootScope, $scope, $location, $routeParams, categoriesService, $timeout, pageScroll, modalAlert) {
 
         function getSearchParams() {
             $scope.spec = $routeParams.spec;
@@ -182,7 +182,7 @@ define(["angular"], function (angular) {
 //        };
     };
 
-    CategorySetCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "categoriesService", "$timeout", "pageScroll"];
+    CategorySetCtrl.$inject = ["$rootScope", "$scope", "$location", "$routeParams", "categoriesService", "$timeout", "pageScroll", "modalAlert"];
 
     var progressStates = {
         'state-harvesting': "Harvesting",
@@ -251,11 +251,11 @@ define(["angular"], function (angular) {
                 }
             }, function (problem) {
                 if (problem.status == 404) {
-                    alert("Processing problem with " + file.name);
+                    modalAlert.error("Processing Problem", "Processing problem with " + file.name);
                     fetchDatasetList()
                 }
                 else {
-                    alert("Network problem " + problem.status);
+                    modalAlert.error("Network Problem", "Network problem: " + problem.status);
                 }
             })
         }

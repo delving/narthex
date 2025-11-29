@@ -103,7 +103,7 @@
   require(
     ['angular', 'angular-cookies', 'angular-route', 'angular-file-upload',
       'angular-sanitize', 'ngStorage', 'jquery',
-      'underscorejs', 'bootstrap', 'ui-bootstrap-tpls', 'ui-bootstrap', 'ng-grid', './app'],
+      'underscorejs', 'bootstrap', 'ui-bootstrap', 'ui-bootstrap-tpls', 'ng-grid', './app'],
     function (angular) {
       angular.bootstrap(document, ['app']);
     }

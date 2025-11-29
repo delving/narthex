@@ -20,17 +20,17 @@ define(["angular", "common"], function (angular) {
     var mod = angular.module("terms.services", ["narthex.common"]);
 
     mod.service("termsService", [
-        "$http", "$q", "playRoutes",
-        function ($http, $q, playRoutes) {
+        "$http", "$q", "playRoutes", "modalAlert",
+        function ($http, $q, playRoutes, modalAlert) {
             var app = playRoutes.controllers.AppController;
 
             var rejection = function (reply) {
                 console.log('why', reply);
                 if (reply.data.problem) {
-                    alert("Processing problem " + reply.status + " (" + reply.data.problem + ")");
+                    modalAlert.error("Processing Problem", "Error " + reply.status + ": " + reply.data.problem);
                 }
                 else {
-                    alert("Network problem " + reply.statusText);
+                    modalAlert.error("Network Problem", reply.statusText);
                 }
             };
 

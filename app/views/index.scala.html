@@ -80,6 +80,32 @@
                 </div>
             </div>
 
+            <!-- Modal Alert -->
+            <div data-ng-controller="ModalAlertCtrl">
+                <div class="modal fade" ng-class="{'in': alertModal.visible}" ng-show="alertModal.visible" tabindex="-1" role="dialog" style="display: block;" ng-style="{'display': alertModal.visible ? 'block' : 'none'}">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header" ng-class="{'bg-danger': alertModal.type === 'error', 'bg-warning': alertModal.type === 'warning', 'bg-info': alertModal.type === 'info'}">
+                                <button type="button" class="close" ng-click="closeAlertModal()" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                                <h4 class="modal-title">
+                                    <i class="fa" ng-class="{'fa-exclamation-circle': alertModal.type === 'error', 'fa-exclamation-triangle': alertModal.type === 'warning', 'fa-info-circle': alertModal.type === 'info'}"></i>
+                                    {{ alertModal.title }}
+                                </h4>
+                            </div>
+                            <div class="modal-body">
+                                <p>{{ alertModal.message }}</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-default" ng-click="closeAlertModal()">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-backdrop fade" ng-class="{'in': alertModal.visible}" ng-show="alertModal.visible"></div>
+            </div>
+
         </div>
     </body>
 </html>

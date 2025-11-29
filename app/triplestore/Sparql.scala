@@ -80,6 +80,36 @@ object Sparql {
       |ORDER BY ?spec
      """.stripMargin
 
+  /**
+   * Lightweight query for dataset list - only selects fields needed for collapsed view.
+   * This avoids fetching the full RDF model for each dataset, significantly improving performance.
+   */
+  val selectDatasetsLightQ =
+    s"""
+      |PREFIX nx: <${NX_NAMESPACE}>
+      |SELECT DISTINCT ?spec ?name ?processedValid ?processedInvalid ?recordCount
+      |                ?stateRaw ?stateAnalyzed ?stateProcessed ?stateSaved ?stateIncrementalSaved
+      |                ?currentOperation ?operationStatus
+      |WHERE {
+      |  GRAPH ?g {
+      |    ?s nx:datasetSpec ?spec .
+      |    OPTIONAL { ?s nx:datasetName ?name }
+      |    OPTIONAL { ?s nx:processedValid ?processedValid }
+      |    OPTIONAL { ?s nx:processedInvalid ?processedInvalid }
+      |    OPTIONAL { ?s nx:datasetRecordCount ?recordCount }
+      |    OPTIONAL { ?s nx:stateRaw ?stateRaw }
+      |    OPTIONAL { ?s nx:stateAnalyzed ?stateAnalyzed }
+      |    OPTIONAL { ?s nx:stateProcessed ?stateProcessed }
+      |    OPTIONAL { ?s nx:stateSaved ?stateSaved }
+      |    OPTIONAL { ?s nx:stateIncrementalSaved ?stateIncrementalSaved }
+      |    OPTIONAL { ?s nx:datasetCurrentOperation ?currentOperation }
+      |    OPTIONAL { ?s nx:datasetOperationStatus ?operationStatus }
+      |    FILTER NOT EXISTS { ?s <$deleted> true }
+      |  }
+      |}
+      |ORDER BY ?spec
+     """.stripMargin
+
   val selectDatasetsInRetryQ =
     s"""
       |PREFIX nx: <${NX_NAMESPACE}>

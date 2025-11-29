@@ -20,8 +20,8 @@ define(["angular", "common"], function (angular) {
     var mod = angular.module("datasetList.services", ["narthex.common"]);
 
     mod.service("datasetListService", [
-        "$http", "$q", "playRoutes", "$location",
-        function ($http, $q, playRoutes, $location) {
+        "$http", "$q", "playRoutes", "$location", "modalAlert",
+        function ($http, $q, playRoutes, $location, modalAlert) {
             var app = playRoutes.controllers.AppController;
 
             var rejection = function (reply) {
@@ -31,10 +31,10 @@ define(["angular", "common"], function (angular) {
                 else {
                     console.log('why', reply);
                     if (reply.data.problem) {
-                        alert("Processing problem " + reply.status + " (" + reply.data.problem + ")");
+                        modalAlert.error("Processing Problem", "Error " + reply.status + ": " + reply.data.problem);
                     }
                     else {
-                        alert("Network problem " + reply.statusText);
+                        modalAlert.error("Network Problem", reply.statusText);
                     }
                 }
             };
@@ -61,6 +61,22 @@ define(["angular", "common"], function (angular) {
                 },
                 listDatasets: function () {
                     return app.listDatasets().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                listDatasetsLight: function () {
+                    return app.listDatasetsLight().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                datasetInfo: function (spec) {
+                    return app.datasetInfo(spec).get().then(
                         function (response) {
                             return response.data;
                         },

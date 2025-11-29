@@ -97,6 +97,54 @@ object DsInfo {
     }
   }
 
+  /**
+   * Lightweight dataset info containing only fields needed for collapsed list view.
+   * This avoids expensive RDF model serialization for the initial dataset list load.
+   */
+  case class DsInfoLight(
+    spec: String,
+    name: Option[String],
+    processedValid: Option[Int],
+    processedInvalid: Option[Int],
+    recordCount: Option[Int],
+    stateRaw: Option[String],
+    stateAnalyzed: Option[String],
+    stateProcessed: Option[String],
+    stateSaved: Option[String],
+    stateIncrementalSaved: Option[String],
+    currentOperation: Option[String],
+    operationStatus: Option[String]
+  )
+
+  implicit val dsInfoLightWrites: Writes[DsInfoLight] = Json.writes[DsInfoLight]
+
+  /**
+   * List all datasets with minimal data for initial page load.
+   * Only fetches ~10 essential fields instead of full RDF models.
+   */
+  def listDsInfoLight(orgContext: OrgContext)(
+      implicit ec: ExecutionContext,
+      ts: TripleStore): Future[List[DsInfoLight]] = {
+    ts.query(selectDatasetsLightQ).map { results =>
+      results.map { row =>
+        DsInfoLight(
+          spec = row("spec").text,
+          name = row.get("name").map(_.text),
+          processedValid = row.get("processedValid").map(_.text.toInt),
+          processedInvalid = row.get("processedInvalid").map(_.text.toInt),
+          recordCount = row.get("recordCount").map(_.text.toInt),
+          stateRaw = row.get("stateRaw").map(_.text),
+          stateAnalyzed = row.get("stateAnalyzed").map(_.text),
+          stateProcessed = row.get("stateProcessed").map(_.text),
+          stateSaved = row.get("stateSaved").map(_.text),
+          stateIncrementalSaved = row.get("stateIncrementalSaved").map(_.text),
+          currentOperation = row.get("currentOperation").map(_.text),
+          operationStatus = row.get("operationStatus").map(_.text)
+        )
+      }
+    }
+  }
+
   def listDsInfo(orgContext: OrgContext)(
       implicit ec: ExecutionContext,
       ts: TripleStore): Future[List[DsInfo]] = {
