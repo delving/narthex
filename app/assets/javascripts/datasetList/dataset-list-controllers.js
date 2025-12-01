@@ -675,19 +675,14 @@ define(["angular"], function () {
         "lastIncrementalHarvestTime", "processedIncrementalValid", "processedIncrementalInvalid"
     ];
 
-    var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload, $routeParams, modalAlert, $injector, $http) {
+    var DatasetEntryCtrl = function ($scope, datasetListService, $location, $timeout, $upload, $routeParams, modalAlert, $http) {
         if (!$scope.dataset) {
             modalAlert.error("Dataset Error", "No dataset specified!");
             return;
         }
 
-        // Try to get $uibModal (optional dependency for activity modal)
-        var $uibModal = null;
-        try {
-            $uibModal = $injector.get('$uibModal');
-        } catch (e) {
-            console.warn('$uibModal not available - activity modal feature disabled. Make sure ui.bootstrap is loaded.');
-        }
+        // Initialize activity modal state
+        $scope.activityModal = { visible: false };
         $scope.subscribe($scope.dataset.datasetSpec, function (message) {
             function addProgressMessage(p) {
                 var pre = progressStates[p.state] + " " + p.count.toString();
@@ -1016,6 +1011,8 @@ define(["angular"], function () {
         };
 
         $scope.openActivityModal = function () {
+            console.log('Opening activity modal for dataset:', $scope.dataset.datasetSpec);
+
             // Create child scope for the modal
             var modalScope = $scope.$new();
             modalScope.spec = $scope.dataset.datasetSpec;
@@ -1031,7 +1028,7 @@ define(["angular"], function () {
             };
 
             modalScope.formatDuration = function(seconds) {
-                if (!seconds) return '-';
+                if (seconds === null || seconds === undefined) return '-';
                 if (seconds < 60) return seconds.toFixed(1) + 's';
                 var minutes = Math.floor(seconds / 60);
                 var secs = Math.floor(seconds % 60);
@@ -1073,11 +1070,14 @@ define(["angular"], function () {
 
             // Show the modal
             $scope.activityModal = { visible: true, scope: modalScope };
+            console.log('Modal visibility set to:', $scope.activityModal.visible);
 
             // Fetch activity log
-            var activityUrl = $scope.apiPrefix + "/" + $scope.dataset.datasetSpec + "/activity";
-            $http.get(activityUrl).then(
+            var activityUrl = $scope.apiPrefix + $scope.dataset.datasetSpec + "/activity";
+            console.log('Fetching activity log from:', activityUrl);
+            $http.get(activityUrl, { transformResponse: function(data) { return data; } }).then(
                 function(response) {
+                    console.log('Activity log received, parsing JSONL...');
                     modalScope.loading = false;
                     // Parse JSONL (JSON Lines format)
                     var lines = response.data.trim().split('\n');
@@ -1134,7 +1134,7 @@ define(["angular"], function () {
 
     };
 
-    DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams", "modalAlert", "$injector", "$http"];
+    DatasetEntryCtrl.$inject = ["$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams", "modalAlert", "$http"];
 
     /** Controls the sidebar and headers */
     var IndexCtrl = function ($rootScope, $scope, $location) {

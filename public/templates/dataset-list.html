@@ -551,7 +551,7 @@
                     </div>
 
                     <!-- Activity History Modal -->
-                    <div class="modal fade" ng-class="{'in': activityModal.visible}" ng-show="activityModal.visible">
+                    <div class="modal fade" ng-class="{'in': activityModal.visible}" ng-show="activityModal.visible" style="display: block;" ng-if="activityModal.visible">
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
                                 <div class="modal-header">
@@ -612,7 +612,7 @@
                                                         </span>
                                                     </td>
                                                     <td>{{ activityModal.scope.formatDuration(activity.duration_seconds) }}</td>
-                                                    <td>{{ activity.total_records || '-' }}</td>
+                                                    <td>{{ activity.total_records || activity.recordCount || '-' }}</td>
                                                 </tr>
 
                                                 <tr ng-if="activity.isWorkflow && activity.expanded" ng-repeat="step in activity.steps"
@@ -646,7 +646,7 @@
                                                         </span>
                                                     </td>
                                                     <td>{{ activityModal.scope.formatDuration(activity.duration_seconds) }}</td>
-                                                    <td>{{ activity.recordCount || '-' }}</td>
+                                                    <td>{{ activity.total_records || activity.recordCount || '-' }}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -658,7 +658,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="modal-backdrop fade" ng-class="{'in': activityModal.visible}" ng-show="activityModal.visible"></div>
+                    <div class="modal-backdrop fade" ng-class="{'in': activityModal.visible}" ng-show="activityModal.visible" ng-click="activityModal.scope.close()"></div>
 
                 </div>
             </div>
