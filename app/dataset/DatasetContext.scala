@@ -53,10 +53,6 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   val harvestLogger = new File(rootDir, "harvesting_log.txt")
   val activityLog = new File(rootDir, "activity.jsonl")
 
-  // Organization-level activity directory for daily aggregate logs
-  val orgActivityDir = new File(orgContext.orgRoot, "activity")
-  if (!orgActivityDir.exists()) orgActivityDir.mkdirs()
-
   // todo: maybe not put it in raw
   val pocketFile = new File(orgContext.rawDir, s"$dsInfo.xml")
 
