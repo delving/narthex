@@ -88,7 +88,9 @@ object Sparql {
     s"""
       |PREFIX nx: <${NX_NAMESPACE}>
       |SELECT DISTINCT ?spec ?name ?processedValid ?processedInvalid ?recordCount
-      |                ?stateRaw ?stateAnalyzed ?stateProcessed ?stateSaved ?stateIncrementalSaved
+      |                ?stateDisabled ?stateRaw ?stateRawAnalyzed ?stateSourced
+      |                ?stateMappable ?stateProcessable ?stateAnalyzed ?stateProcessed
+      |                ?stateSaved ?stateIncrementalSaved
       |                ?currentOperation ?operationStatus
       |WHERE {
       |  GRAPH ?g {
@@ -97,7 +99,12 @@ object Sparql {
       |    OPTIONAL { ?s nx:processedValid ?processedValid }
       |    OPTIONAL { ?s nx:processedInvalid ?processedInvalid }
       |    OPTIONAL { ?s nx:datasetRecordCount ?recordCount }
+      |    OPTIONAL { ?s nx:stateDisabled ?stateDisabled }
       |    OPTIONAL { ?s nx:stateRaw ?stateRaw }
+      |    OPTIONAL { ?s nx:stateRawAnalyzed ?stateRawAnalyzed }
+      |    OPTIONAL { ?s nx:stateSourced ?stateSourced }
+      |    OPTIONAL { ?s nx:stateMappable ?stateMappable }
+      |    OPTIONAL { ?s nx:stateProcessable ?stateProcessable }
       |    OPTIONAL { ?s nx:stateAnalyzed ?stateAnalyzed }
       |    OPTIONAL { ?s nx:stateProcessed ?stateProcessed }
       |    OPTIONAL { ?s nx:stateSaved ?stateSaved }
