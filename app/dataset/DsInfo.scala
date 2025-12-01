@@ -122,10 +122,40 @@ object DsInfo {
     errorMessage: Option[String],
     errorTime: Option[String],
     harvestType: Option[String],
-    harvestDownloadURL: Option[String]
+    harvestDownloadURL: Option[String],
+    harvestIncrementalMode: Option[String],
+    processedIncrementalValid: Option[Int],
+    processedIncrementalInvalid: Option[Int]
   )
 
-  implicit val dsInfoLightWrites: Writes[DsInfoLight] = Json.writes[DsInfoLight]
+  implicit val dsInfoLightWrites: Writes[DsInfoLight] = new Writes[DsInfoLight] {
+    def writes(ds: DsInfoLight): JsValue = Json.obj(
+      "spec" -> ds.spec,
+      "name" -> ds.name,
+      "processedValid" -> ds.processedValid,
+      "processedInvalid" -> ds.processedInvalid,
+      "recordCount" -> ds.recordCount,
+      "stateDisabled" -> ds.stateDisabled,
+      "stateRaw" -> ds.stateRaw,
+      "stateRawAnalyzed" -> ds.stateRawAnalyzed,
+      "stateSourced" -> ds.stateSourced,
+      "stateMappable" -> ds.stateMappable,
+      "stateProcessable" -> ds.stateProcessable,
+      "stateAnalyzed" -> ds.stateAnalyzed,
+      "stateProcessed" -> ds.stateProcessed,
+      "stateSaved" -> ds.stateSaved,
+      "stateIncrementalSaved" -> ds.stateIncrementalSaved,
+      "currentOperation" -> ds.currentOperation,
+      "operationStatus" -> ds.operationStatus,
+      "errorMessage" -> ds.errorMessage,
+      "errorTime" -> ds.errorTime,
+      "harvestType" -> ds.harvestType,
+      "harvestDownloadURL" -> ds.harvestDownloadURL,
+      "harvestIncrementalMode" -> ds.harvestIncrementalMode,
+      "processedIncrementalValid" -> ds.processedIncrementalValid,
+      "processedIncrementalInvalid" -> ds.processedIncrementalInvalid
+    )
+  }
 
   /**
    * List all datasets with minimal data for initial page load.
@@ -157,7 +187,10 @@ object DsInfo {
           errorMessage = row.get("errorMessage").map(_.text),
           errorTime = row.get("errorTime").map(_.text),
           harvestType = row.get("harvestType").map(_.text),
-          harvestDownloadURL = row.get("harvestDownloadURL").map(_.text)
+          harvestDownloadURL = row.get("harvestDownloadURL").map(_.text),
+          harvestIncrementalMode = row.get("harvestIncrementalMode").map(_.text),
+          processedIncrementalValid = row.get("processedIncrementalValid").map(_.text.toInt),
+          processedIncrementalInvalid = row.get("processedIncrementalInvalid").map(_.text.toInt)
         )
       }
     }

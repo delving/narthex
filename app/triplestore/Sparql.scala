@@ -94,6 +94,7 @@ object Sparql {
       |                ?currentOperation ?operationStatus
       |                ?errorMessage ?errorTime
       |                ?harvestType ?harvestDownloadURL
+      |                ?harvestIncrementalMode ?processedIncrementalValid ?processedIncrementalInvalid
       |WHERE {
       |  GRAPH ?g {
       |    ?s nx:datasetSpec ?spec .
@@ -117,6 +118,9 @@ object Sparql {
       |    OPTIONAL { ?s nx:datasetErrorTime ?errorTime }
       |    OPTIONAL { ?s nx:harvestType ?harvestType }
       |    OPTIONAL { ?s nx:harvestDownloadURL ?harvestDownloadURL }
+      |    OPTIONAL { ?s nx:harvestIncrementalMode ?harvestIncrementalMode }
+      |    OPTIONAL { ?s nx:processedIncrementalValid ?processedIncrementalValid }
+      |    OPTIONAL { ?s nx:processedIncrementalInvalid ?processedIncrementalInvalid }
       |    FILTER NOT EXISTS { ?s <$deleted> true }
       |  }
       |}
