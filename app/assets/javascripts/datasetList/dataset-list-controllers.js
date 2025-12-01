@@ -460,7 +460,8 @@ define(["angular"], function () {
             // Calculate next retry time
             if (dataset.inRetry && dataset.harvestLastRetryTime) {
                 var lastRetry = new Date(dataset.harvestLastRetryTime);
-                var retryIntervalMs = ($scope.narthexConfig.retryIntervalMinutes || 60) * 60 * 1000;
+                var retryIntervalMinutes = ($scope.narthexConfig && $scope.narthexConfig.retryIntervalMinutes) || 60;
+                var retryIntervalMs = retryIntervalMinutes * 60 * 1000;
                 var nextRetry = new Date(lastRetry.getTime() + retryIntervalMs);
                 var now = new Date();
                 var diffMs = nextRetry - now;
