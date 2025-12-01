@@ -130,12 +130,20 @@ define(["angular"], function () {
                                 if (message.processedInvalid !== undefined) existingDataset.processedInvalid = message.processedInvalid;
                                 if (message.datasetRecordCount !== undefined) existingDataset.recordCount = message.datasetRecordCount;
 
-                                // Update state timestamps
-                                ['stateRaw', 'stateAnalyzed', 'stateProcessed', 'stateSaved', 'stateIncrementalSaved'].forEach(function(stateProp) {
+                                // Update all state timestamps (including disabled and intermediate states)
+                                ['stateDisabled', 'stateEmpty', 'stateRaw', 'stateRawAnalyzed', 'stateSourced',
+                                 'stateMappable', 'stateProcessable', 'stateAnalyzed', 'stateProcessed',
+                                 'stateSaved', 'stateIncrementalSaved', 'stateInError'].forEach(function(stateProp) {
                                     if (message[stateProp] !== undefined) {
                                         existingDataset[stateProp] = message[stateProp];
                                     }
                                 });
+
+                                // Update operation status fields
+                                if (message.currentOperation !== undefined) existingDataset.currentOperation = message.currentOperation;
+                                if (message.operationStatus !== undefined) existingDataset.operationStatus = message.operationStatus;
+                                if (message.errorMessage !== undefined) existingDataset.errorMessage = message.errorMessage;
+                                if (message.errorTime !== undefined) existingDataset.errorTime = message.errorTime;
 
                                 // Re-decorate to update computed properties
                                 $scope.decorateDatasetLight(existingDataset);
