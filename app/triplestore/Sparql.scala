@@ -93,6 +93,7 @@ object Sparql {
       |                ?stateSaved ?stateIncrementalSaved
       |                ?currentOperation ?operationStatus
       |                ?errorMessage ?errorTime
+      |                ?harvestType ?harvestDownloadURL
       |WHERE {
       |  GRAPH ?g {
       |    ?s nx:datasetSpec ?spec .
@@ -114,6 +115,8 @@ object Sparql {
       |    OPTIONAL { ?s nx:datasetOperationStatus ?operationStatus }
       |    OPTIONAL { ?s nx:datasetErrorMessage ?errorMessage }
       |    OPTIONAL { ?s nx:datasetErrorTime ?errorTime }
+      |    OPTIONAL { ?s nx:harvestType ?harvestType }
+      |    OPTIONAL { ?s nx:harvestDownloadURL ?harvestDownloadURL }
       |    FILTER NOT EXISTS { ?s <$deleted> true }
       |  }
       |}

@@ -120,7 +120,9 @@ object DsInfo {
     currentOperation: Option[String],
     operationStatus: Option[String],
     errorMessage: Option[String],
-    errorTime: Option[String]
+    errorTime: Option[String],
+    harvestType: Option[String],
+    harvestDownloadURL: Option[String]
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = Json.writes[DsInfoLight]
@@ -153,7 +155,9 @@ object DsInfo {
           currentOperation = row.get("currentOperation").map(_.text),
           operationStatus = row.get("operationStatus").map(_.text),
           errorMessage = row.get("errorMessage").map(_.text),
-          errorTime = row.get("errorTime").map(_.text)
+          errorTime = row.get("errorTime").map(_.text),
+          harvestType = row.get("harvestType").map(_.text),
+          harvestDownloadURL = row.get("harvestDownloadURL").map(_.text)
         )
       }
     }
