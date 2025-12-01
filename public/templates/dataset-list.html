@@ -9,11 +9,7 @@
 <div class="page-header no-margin">
     <!-- page location, org -->
     <div class="meta">
-        <div class="page">Datasets
-            <span data-ng-if="activeDatasets.total > 0" class="label label-primary" style="margin-left: 10px;">
-                <i class="fa fa-cog fa-spin"></i> {{ activeDatasets.total }} active
-            </span>
-        </div>
+        <div class="page">Datasets</div>
         <div class="organization">
             <span class="fa fa-institution"></span>
             <span>{{ orgId }}</span>
@@ -73,6 +69,14 @@
         <div class="form-group">
             <input type="text" class="form-control" data-ng-model="specOrNameFilter"
                 placeholder="Filter by Spec or Name" />
+        </div>
+        <div class="form-group pull-right">
+            <button type="button" class="btn"
+                    ng-class="{'btn-primary': stateFilter === 'stateActive', 'btn-default': stateFilter !== 'stateActive'}"
+                    ng-click="stateFilter === 'stateActive' ? stateFilter = '' : setStateFilter('stateActive')">
+                <i class="fa fa-cog" ng-class="{'fa-spin': activeDatasets.total > 0}"></i>
+                {{ activeDatasets.total }} active
+            </button>
         </div>
     </form>
 </div>
