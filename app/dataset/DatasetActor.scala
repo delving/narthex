@@ -1065,13 +1065,30 @@ class DatasetActor(val datasetContext: DatasetContext,
           val trigger = dsInfo.getOperationTrigger.getOrElse("manual")
           val operation = fromState.toString.toUpperCase
 
-          // Log operation complete
+          // Determine record count based on operation type
+          val recordCountOpt: Option[Int] = operation match {
+            case "PROCESSING" | "SAVING" =>
+              // For processing/saving, sum valid + invalid records
+              for {
+                valid <- dsInfo.getLiteralProp(processedValid).map(_.toInt)
+                invalid <- dsInfo.getLiteralProp(processedInvalid).map(_.toInt)
+              } yield valid + invalid
+            case "ANALYZING" | "HARVESTING" =>
+              // For analyzing/harvesting, use datasetRecordCount field
+              dsInfo.getLiteralProp(datasetRecordCount).map(_.toInt)
+            case _ =>
+              // For other operations, try datasetRecordCount
+              dsInfo.getLiteralProp(datasetRecordCount).map(_.toInt)
+          }
+
+          // Log operation complete with record count
           ActivityLogger.logOperationComplete(
             datasetContext.activityLog,
             operation,
             trigger,
             startTime,
-            currentWorkflowId
+            currentWorkflowId,
+            recordCountOpt
           )
 
           // If this completes a workflow, log workflow completion
@@ -1079,7 +1096,8 @@ class DatasetActor(val datasetContext: DatasetContext,
             ActivityLogger.completeWorkflow(
               datasetContext.activityLog,
               currentWorkflowId.get,
-              workflowStartTime.get
+              workflowStartTime.get,
+              recordCountOpt  // Use the same record count from the final operation
             )
             // Clear workflow tracking
             currentWorkflowId = None
@@ -1141,12 +1159,27 @@ class DatasetActor(val datasetContext: DatasetContext,
         // Complete the previous operation
         operationStartTime.foreach { startTime =>
           val oldOperation = fromState.toString.toUpperCase
+
+          // Determine record count for the completed operation
+          val recordCountOpt: Option[Int] = oldOperation match {
+            case "PROCESSING" | "SAVING" =>
+              for {
+                valid <- dsInfo.getLiteralProp(processedValid).map(_.toInt)
+                invalid <- dsInfo.getLiteralProp(processedInvalid).map(_.toInt)
+              } yield valid + invalid
+            case "ANALYZING" | "HARVESTING" =>
+              dsInfo.getLiteralProp(datasetRecordCount).map(_.toInt)
+            case _ =>
+              dsInfo.getLiteralProp(datasetRecordCount).map(_.toInt)
+          }
+
           ActivityLogger.logOperationComplete(
             datasetContext.activityLog,
             oldOperation,
             trigger,
             startTime,
-            currentWorkflowId
+            currentWorkflowId,
+            recordCountOpt
           )
         }
 
