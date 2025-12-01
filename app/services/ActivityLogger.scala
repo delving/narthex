@@ -29,19 +29,35 @@ import services.Temporal.timeToString
  *
  * For automatic workflows (e.g., periodic harvest), operations are grouped using
  * a workflow_id to show the complete pipeline as a single logical activity.
+ *
+ * Logs are written to BOTH:
+ * 1. Dataset-specific log: <orgId>/<spec>/activity.jsonl
+ * 2. Daily aggregate log: <orgId>/activity/activity-YYYY-MM-DD.jsonl
  */
 object ActivityLogger {
 
   /**
+   * Get the daily aggregate activity file for today.
+   */
+  private def getDailyActivityFile(orgActivityDir: File): File = {
+    val today = DateTime.now().toString("yyyy-MM-dd")
+    new File(orgActivityDir, s"activity-$today.jsonl")
+  }
+
+  /**
    * Start a new workflow (for automatic triggers that run multiple operations).
    *
-   * @param activityLog File to append to
+   * @param activityLog File to append to (dataset-specific)
+   * @param orgActivityDir Directory for daily aggregate logs
+   * @param dataset Dataset spec
    * @param workflowId Unique identifier for this workflow
    * @param triggerType Type of automatic trigger ("periodic", "retry", etc.)
    * @param operations List of operations that will be executed
    */
   def startWorkflow(
     activityLog: File,
+    orgActivityDir: File,
+    dataset: String,
     workflowId: String,
     triggerType: String,
     operations: Seq[String]
@@ -55,12 +71,18 @@ object ActivityLogger {
       "operations" -> operations
     )
     appendEntry(activityLog, entry)
+
+    // Also log to daily aggregate with dataset field
+    val aggregateEntry = entry + ("dataset" -> JsString(dataset))
+    appendEntry(getDailyActivityFile(orgActivityDir), aggregateEntry)
   }
 
   /**
    * Log the start of an operation.
    *
-   * @param activityLog File to append to
+   * @param activityLog File to append to (dataset-specific)
+   * @param orgActivityDir Directory for daily aggregate logs
+   * @param dataset Dataset spec
    * @param operation Operation name (HARVEST, PROCESS, SAVE, etc.)
    * @param trigger "manual" or "automatic"
    * @param workflowId Optional workflow ID for automatic workflows
@@ -68,6 +90,8 @@ object ActivityLogger {
    */
   def logOperationStart(
     activityLog: File,
+    orgActivityDir: File,
+    dataset: String,
     operation: String,
     trigger: String,
     workflowId: Option[String] = None,
@@ -93,12 +117,18 @@ object ActivityLogger {
     }
 
     appendEntry(activityLog, entry)
+
+    // Also log to daily aggregate with dataset field
+    val aggregateEntry = entry + ("dataset" -> JsString(dataset))
+    appendEntry(getDailyActivityFile(orgActivityDir), aggregateEntry)
   }
 
   /**
    * Log the completion of an operation.
    *
-   * @param activityLog File to append to
+   * @param activityLog File to append to (dataset-specific)
+   * @param orgActivityDir Directory for daily aggregate logs
+   * @param dataset Dataset spec
    * @param operation Operation name
    * @param trigger "manual" or "automatic"
    * @param startTime When the operation started
@@ -108,6 +138,8 @@ object ActivityLogger {
    */
   def logOperationComplete(
     activityLog: File,
+    orgActivityDir: File,
+    dataset: String,
     operation: String,
     trigger: String,
     startTime: DateTime,
@@ -138,12 +170,18 @@ object ActivityLogger {
     }
 
     appendEntry(activityLog, entry)
+
+    // Also log to daily aggregate with dataset field
+    val aggregateEntry = entry + ("dataset" -> JsString(dataset))
+    appendEntry(getDailyActivityFile(orgActivityDir), aggregateEntry)
   }
 
   /**
    * Log a failed operation.
    *
-   * @param activityLog File to append to
+   * @param activityLog File to append to (dataset-specific)
+   * @param orgActivityDir Directory for daily aggregate logs
+   * @param dataset Dataset spec
    * @param operation Operation name
    * @param trigger "manual" or "automatic"
    * @param startTime When the operation started
@@ -153,6 +191,8 @@ object ActivityLogger {
    */
   def logOperationFailed(
     activityLog: File,
+    orgActivityDir: File,
+    dataset: String,
     operation: String,
     trigger: String,
     startTime: DateTime,
@@ -182,12 +222,18 @@ object ActivityLogger {
     }
 
     appendEntry(activityLog, entry)
+
+    // Also log to daily aggregate with dataset field
+    val aggregateEntry = entry + ("dataset" -> JsString(dataset))
+    appendEntry(getDailyActivityFile(orgActivityDir), aggregateEntry)
   }
 
   /**
    * Complete a workflow (for automatic triggers).
    *
-   * @param activityLog File to append to
+   * @param activityLog File to append to (dataset-specific)
+   * @param orgActivityDir Directory for daily aggregate logs
+   * @param dataset Dataset spec
    * @param workflowId Unique identifier for this workflow
    * @param startTime When the workflow started
    * @param totalRecords Total records processed in the workflow
@@ -195,6 +241,8 @@ object ActivityLogger {
    */
   def completeWorkflow(
     activityLog: File,
+    orgActivityDir: File,
+    dataset: String,
     workflowId: String,
     startTime: DateTime,
     totalRecords: Option[Int] = None,
@@ -218,12 +266,18 @@ object ActivityLogger {
     }
 
     appendEntry(activityLog, entry)
+
+    // Also log to daily aggregate with dataset field
+    val aggregateEntry = entry + ("dataset" -> JsString(dataset))
+    appendEntry(getDailyActivityFile(orgActivityDir), aggregateEntry)
   }
 
   /**
    * Fail a workflow (for automatic triggers).
    *
-   * @param activityLog File to append to
+   * @param activityLog File to append to (dataset-specific)
+   * @param orgActivityDir Directory for daily aggregate logs
+   * @param dataset Dataset spec
    * @param workflowId Unique identifier for this workflow
    * @param startTime When the workflow started
    * @param errorMessage Description of the error
@@ -232,6 +286,8 @@ object ActivityLogger {
    */
   def failWorkflow(
     activityLog: File,
+    orgActivityDir: File,
+    dataset: String,
     workflowId: String,
     startTime: DateTime,
     errorMessage: String,
@@ -256,6 +312,10 @@ object ActivityLogger {
     }
 
     appendEntry(activityLog, entry)
+
+    // Also log to daily aggregate with dataset field
+    val aggregateEntry = entry + ("dataset" -> JsString(dataset))
+    appendEntry(getDailyActivityFile(orgActivityDir), aggregateEntry)
   }
 
   /**
