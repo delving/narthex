@@ -92,6 +92,7 @@ object Sparql {
       |                ?stateMappable ?stateProcessable ?stateAnalyzed ?stateProcessed
       |                ?stateSaved ?stateIncrementalSaved
       |                ?currentOperation ?operationStatus
+      |                ?errorMessage ?errorTime
       |WHERE {
       |  GRAPH ?g {
       |    ?s nx:datasetSpec ?spec .
@@ -111,6 +112,8 @@ object Sparql {
       |    OPTIONAL { ?s nx:stateIncrementalSaved ?stateIncrementalSaved }
       |    OPTIONAL { ?s nx:datasetCurrentOperation ?currentOperation }
       |    OPTIONAL { ?s nx:datasetOperationStatus ?operationStatus }
+      |    OPTIONAL { ?s nx:datasetErrorMessage ?errorMessage }
+      |    OPTIONAL { ?s nx:datasetErrorTime ?errorTime }
       |    FILTER NOT EXISTS { ?s <$deleted> true }
       |  }
       |}

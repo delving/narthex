@@ -118,7 +118,9 @@ object DsInfo {
     stateSaved: Option[String],
     stateIncrementalSaved: Option[String],
     currentOperation: Option[String],
-    operationStatus: Option[String]
+    operationStatus: Option[String],
+    errorMessage: Option[String],
+    errorTime: Option[String]
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = Json.writes[DsInfoLight]
@@ -149,7 +151,9 @@ object DsInfo {
           stateSaved = row.get("stateSaved").map(_.text),
           stateIncrementalSaved = row.get("stateIncrementalSaved").map(_.text),
           currentOperation = row.get("currentOperation").map(_.text),
-          operationStatus = row.get("operationStatus").map(_.text)
+          operationStatus = row.get("operationStatus").map(_.text),
+          errorMessage = row.get("errorMessage").map(_.text),
+          errorTime = row.get("errorTime").map(_.text)
         )
       }
     }
