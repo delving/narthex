@@ -406,13 +406,19 @@ define(["angular"], function () {
                     var time = dataset[state.name];
                     if (time) {
                         stateVisible = true;
-                        var dt = time.split('T');
-                        dataset.states.push({"name": state.name, "date": Date.parse(time)});
-                        dataset[state.name] = {
-                            d: dt[0],
-                            t: dt[1].split('+')[0],
-                            dt: dt
-                        };
+                        // Check if time is a string (raw timestamp) or already an object (already parsed)
+                        if (typeof time === 'string') {
+                            var dt = time.split('T');
+                            dataset.states.push({"name": state.name, "date": Date.parse(time)});
+                            dataset[state.name] = {
+                                d: dt[0],
+                                t: dt[1].split('+')[0],
+                                dt: dt
+                            };
+                        } else {
+                            // Already parsed, just update states array
+                            dataset.states.push({"name": state.name, "date": Date.parse(time.d + 'T' + time.t)});
+                        }
                     }
                 }
             );
@@ -475,13 +481,19 @@ define(["angular"], function () {
                     var time = dataset[state.name];
                     if (time) {
                         stateVisible = true;
-                        var dt = time.split('T');
-                        dataset.states.push({"name": state.name, "date": Date.parse(time)});
-                        dataset[state.name] = {
-                            d: dt[0],
-                            t: dt[1].split('+')[0],
-                            dt: dt
-                        };
+                        // Check if time is a string (raw timestamp) or already an object (already parsed)
+                        if (typeof time === 'string') {
+                            var dt = time.split('T');
+                            dataset.states.push({"name": state.name, "date": Date.parse(time)});
+                            dataset[state.name] = {
+                                d: dt[0],
+                                t: dt[1].split('+')[0],
+                                dt: dt
+                            };
+                        } else {
+                            // Already parsed, just update states array
+                            dataset.states.push({"name": state.name, "date": Date.parse(time.d + 'T' + time.t)});
+                        }
                     }
                 }
             );
