@@ -642,6 +642,47 @@ define(["angular"], function () {
             });
         };
 
+        $scope.fastSave = function(dataset) {
+            if (!dataset || !dataset.datasetSpec) {
+                modalAlert.error("Error", "Invalid dataset");
+                return;
+            }
+
+            // Determine steps based on current state
+            var steps = [];
+            if (dataset.stateAnalyzed) {
+                steps = ["Save"];
+            } else if (dataset.stateProcessed) {
+                steps = ["Analyze", "Save"];
+            } else if (dataset.stateProcessable) {
+                steps = ["Process", "Analyze", "Save"];
+            } else if (dataset.stateSourced) {
+                steps = ["Make SIP", "Process", "Analyze", "Save"];
+            } else {
+                modalAlert.error("Error", "Dataset not ready for fast save");
+                return;
+            }
+
+            var stepsList = steps.join(" → ");
+            if (!confirm("Run workflow: " + stepsList + "\n\nfor dataset '" +
+                         dataset.datasetSpec + "'?")) {
+                return;
+            }
+
+            modalAlert.info("Fast Save Started",
+                "Running: " + stepsList + "\n\n" +
+                "Monitor progress in the activity log.");
+
+            datasetListService.command(dataset.datasetSpec, "start fast save")
+                .then(function(reply) {
+                    console.log("Fast save started: " + stepsList);
+                })
+                .catch(function(error) {
+                    modalAlert.error("Fast Save Failed",
+                        error.data && error.data.problem ? error.data.problem : error.statusText);
+                });
+        };
+
         $scope.openAllDatasets = false;
         $scope.$watch('openAllDatasets', function(newValue, oldValue, scope){
             var listRowHeaders = angular.element(document.getElementsByClassName("clickable"));

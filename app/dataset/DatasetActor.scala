@@ -399,6 +399,49 @@ class DatasetActor(val datasetContext: DatasetContext,
             self ! StartSaving(None)
             "saving started"
 
+          case "start fast save" =>
+            // Smart workflow continuation based on current state
+            val scheduledContext = datasetContext.sourceRepoOpt
+              .flatMap(_.latestSourceFileOpt)
+              .map(file => Scheduled(None, file))
+              .getOrElse(throw new Exception("No source file found"))
+
+            if (dsInfo.getState(ANALYZED)) {
+              // Entry: stateAnalyzed → Save only
+              log.info(s"Fast save from ANALYZED: Save only (${dsInfo.spec})")
+              val graphSaver = createChildActor(
+                GraphSaver.props(datasetContext, orgContext),
+                "graph-saver")
+              graphSaver ! SaveGraphs(Some(scheduledContext))
+              sender() ! JsString("Fast save: Saving")
+              goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
+
+            } else if (dsInfo.getState(PROCESSED)) {
+              // Entry: stateProcessed → Analyze → Save
+              log.info(s"Fast save from PROCESSED: Analyze → Save (${dsInfo.spec})")
+              self ! AnalyzeTree
+              sender() ! JsString("Fast save: Analyze → Save")
+              stay()
+
+            } else if (dsInfo.getState(PROCESSABLE)) {
+              // Entry: stateProcessable → Process → Analyze → Save
+              log.info(s"Fast save from PROCESSABLE: Process → Analyze → Save (${dsInfo.spec})")
+              self ! StartProcessing(Some(scheduledContext))
+              sender() ! JsString("Fast save: Process → Analyze → Save")
+              stay()
+
+            } else if (dsInfo.getState(SOURCED)) {
+              // Entry: stateSourced → Make SIP → Process → Analyze → Save
+              log.info(s"Fast save from SOURCED: Make SIP → Process → Analyze → Save (${dsInfo.spec})")
+              self ! StartSipGeneration(Some(scheduledContext))
+              sender() ! JsString("Fast save: Make SIP → Process → Analyze → Save")
+              stay()
+
+            } else {
+              sender() ! JsString("Dataset not ready for fast save")
+              stay()
+            }
+
           case "start skosification" =>
             self ! StartSkosification
             "skosification started"

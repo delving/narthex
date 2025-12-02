@@ -346,3 +346,12 @@ code.path span {
 .x-ng-cloak {
   display: none;
 }
+/* Dataset list actions column */
+.dataset-list-table .actions {
+  width: 40px;
+  text-align: center;
+  vertical-align: middle;
+}
+.dataset-list-table .actions .dropdown-menu {
+  min-width: 160px;
+}
