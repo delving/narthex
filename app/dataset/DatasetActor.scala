@@ -181,6 +181,9 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   import context.dispatcher
 
+  // Track if we're in fast save mode (to continue processing after SIP generation)
+  private var fastSaveScheduledOpt: Option[Scheduled] = None
+
   override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1.minute) {
     case _: OutOfMemoryError =>
       log.error("Child actor ran out of memory - stopping")
@@ -399,47 +402,60 @@ class DatasetActor(val datasetContext: DatasetContext,
             self ! StartSaving(None)
             "saving started"
 
-          case "start fast save" =>
-            // Smart workflow continuation based on current state
-            val scheduledContext = datasetContext.sourceRepoOpt
+          case cmd if cmd.startsWith("start fast save") =>
+            // Smart workflow continuation based on specified or current state
+            // Uses Scheduled context to enable automatic chaining (Process → Save)
+            // Command format: "start fast save" or "start fast save from stateXxx"
+            val fromState = if (cmd.contains(" from ")) {
+              cmd.split(" from ").lastOption.getOrElse("")
+            } else {
+              "" // Auto-detect
+            }
+
+            val scheduledOpt = datasetContext.sourceRepoOpt
               .flatMap(_.latestSourceFileOpt)
               .map(file => Scheduled(None, file))
-              .getOrElse(throw new Exception("No source file found"))
 
-            if (dsInfo.getState(ANALYZED)) {
-              // Entry: stateAnalyzed → Save only
-              log.info(s"Fast save from ANALYZED: Save only (${dsInfo.spec})")
-              val graphSaver = createChildActor(
-                GraphSaver.props(datasetContext, orgContext),
-                "graph-saver")
-              graphSaver ! SaveGraphs(Some(scheduledContext))
-              sender() ! JsString("Fast save: Saving")
-              goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
+            scheduledOpt match {
+              case Some(scheduled) =>
+                // Use specified state or fall back to current state
+                val targetState = fromState match {
+                  case "stateAnalyzed" => ANALYZED
+                  case "stateProcessed" => PROCESSED
+                  case "stateProcessable" => PROCESSABLE
+                  case "stateSourced" => SOURCED
+                  case _ => dsInfo.getState() // Auto-detect
+                }
 
-            } else if (dsInfo.getState(PROCESSED)) {
-              // Entry: stateProcessed → Analyze → Save
-              log.info(s"Fast save from PROCESSED: Analyze → Save (${dsInfo.spec})")
-              self ! AnalyzeTree
-              sender() ! JsString("Fast save: Analyze → Save")
-              stay()
+                targetState match {
+                  case ANALYZED =>
+                    log.info(s"Fast save from ANALYZED: Save only (${dsInfo.spec})")
+                    self ! StartSaving(Some(scheduled))
+                    "Fast save: Saving"
 
-            } else if (dsInfo.getState(PROCESSABLE)) {
-              // Entry: stateProcessable → Process → Analyze → Save
-              log.info(s"Fast save from PROCESSABLE: Process → Analyze → Save (${dsInfo.spec})")
-              self ! StartProcessing(Some(scheduledContext))
-              sender() ! JsString("Fast save: Process → Analyze → Save")
-              stay()
+                  case PROCESSED =>
+                    log.info(s"Fast save from PROCESSED: Save (${dsInfo.spec})")
+                    self ! StartSaving(Some(scheduled))
+                    "Fast save: Saving"
 
-            } else if (dsInfo.getState(SOURCED)) {
-              // Entry: stateSourced → Make SIP → Process → Analyze → Save
-              log.info(s"Fast save from SOURCED: Make SIP → Process → Analyze → Save (${dsInfo.spec})")
-              self ! StartSipGeneration(Some(scheduledContext))
-              sender() ! JsString("Fast save: Make SIP → Process → Analyze → Save")
-              stay()
+                  case PROCESSABLE =>
+                    log.info(s"Fast save from PROCESSABLE: Process → Save (${dsInfo.spec})")
+                    self ! StartProcessing(Some(scheduled))
+                    "Fast save: Process → Save"
 
-            } else {
-              sender() ! JsString("Dataset not ready for fast save")
-              stay()
+                  case SOURCED =>
+                    log.info(s"Fast save from SOURCED: Make SIP → Process → Save (${dsInfo.spec})")
+                    // Set flag to continue processing after SIP generation
+                    fastSaveScheduledOpt = Some(scheduled)
+                    self ! GenerateSipZip
+                    "Fast save: Make SIP → Process → Save"
+
+                  case _ =>
+                    "Dataset not ready for fast save"
+                }
+
+              case None =>
+                "No source file found for fast save"
             }
 
           case "start skosification" =>
@@ -713,7 +729,18 @@ class DatasetActor(val datasetContext: DatasetContext,
       //        FileUtils.copyFile(datasetContext.pocketFile, rawFile)
       //        db.setStatus(RAW_POCKETS)
       active.childOpt.foreach(_ ! PoisonPill)
-      goto(Idle) using Dormant
+
+      // Check if we're in fast save mode and should continue to processing
+      fastSaveScheduledOpt match {
+        case Some(scheduled) if datasetContext.sipMapperOpt.isDefined =>
+          log.info(s"Fast save mode: continuing to processing after SIP generation")
+          fastSaveScheduledOpt = None // Clear the flag
+          self ! StartProcessing(Some(scheduled))
+          goto(Idle) using Dormant
+        case _ =>
+          fastSaveScheduledOpt = None // Clear the flag if set
+          goto(Idle) using Dormant
+      }
 
   }
 

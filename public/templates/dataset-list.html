@@ -133,7 +133,6 @@
                 <th class="total">Total</th>
                 <th class="status">Status</th>
                 <th class="date-time">Last changed</th>
-                <th class="actions"></th>
             </tr>
         </thead>
     </table>
@@ -209,24 +208,6 @@
                             <td class="date-time">
                                 {{ dataset.stateCurrent.date | date: 'yyyy/MM/dd HH:mm' }}
                             </td>
-                            <td class="actions" ng-click="$event.stopPropagation()">
-                                <div class="dropdown" ng-if="dataset.stateSourced || dataset.stateProcessable || dataset.stateProcessed || dataset.stateAnalyzed">
-                                    <button class="btn btn-sm btn-default"
-                                            data-toggle="dropdown"
-                                            aria-haspopup="true"
-                                            aria-expanded="false"
-                                            ng-disabled="dataset.isActive || datasetBusy || dataset.stateSaved">
-                                        <i class="fa fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-right">
-                                        <li ng-if="!dataset.stateSaved">
-                                            <a href ng-click="fastSave(dataset)">
-                                                <i class="fa fa-fw fa-bolt"></i> Fast Save
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -276,6 +257,10 @@
                                         <i class="fa fa-fw fa-cube"></i>
                                         <span>Make SIP</span>
                                     </a>
+                                    <a href data-ng-click="fastSave(dataset, 'stateSourced')" ng-disabled="dataset.isActive || datasetBusy">
+                                        <i class="fa fa-fw fa-bolt"></i>
+                                        <span>Fast Save</span>
+                                    </a>
                                 </div>
                             </li>
                             <li data-ng-show="dataset.stateMappable" class="ds-state list-group-item"
@@ -303,6 +288,10 @@
                                     <a href data-ng-click="start('start processing')">
                                         <i class="fa fa-fw fa-cogs"></i>
                                         <span>Process</span>
+                                    </a>
+                                    <a href data-ng-click="fastSave(dataset, 'stateProcessable')" ng-disabled="dataset.isActive || datasetBusy">
+                                        <i class="fa fa-fw fa-bolt"></i>
+                                        <span>Fast Save</span>
                                     </a>
                                 </div>
                             </li>
@@ -335,6 +324,10 @@
                                         <i class="fa fa-fw fa-bar-chart"></i>
                                         <span>Analyze</span>
                                     </a>
+                                    <a href data-ng-click="fastSave(dataset, 'stateProcessed')" ng-disabled="dataset.isActive || datasetBusy">
+                                        <i class="fa fa-fw fa-bolt"></i>
+                                        <span>Fast Save</span>
+                                    </a>
                                 </div>
                             </li>
                             <li data-ng-show="dataset.stateAnalyzed " class="ds-state list-group-item"
@@ -361,6 +354,10 @@
                                     <a href data-ng-click="start('start saving')">
                                         <i class="fa fa-fw fa-database"></i>
                                         <span>Save</span>
+                                    </a>
+                                    <a href data-ng-click="fastSave(dataset, 'stateAnalyzed')" ng-disabled="dataset.isActive || datasetBusy">
+                                        <i class="fa fa-fw fa-bolt"></i>
+                                        <span>Fast Save</span>
                                     </a>
                                 </div>
                             </li>

@@ -45,6 +45,23 @@ define(["angular"], function (angular) {
                     title: title || "Information",
                     message: message
                 });
+            },
+
+            /**
+             * Show a confirmation modal with OK/Cancel buttons
+             * @param title - Modal title
+             * @param message - Confirmation message
+             * @param onConfirm - Callback function to execute when OK is clicked
+             * @param onCancel - Optional callback function to execute when Cancel is clicked
+             */
+            confirm: function(title, message, onConfirm, onCancel) {
+                $rootScope.$broadcast("modalAlert:show", {
+                    type: "confirm",
+                    title: title || "Confirm",
+                    message: message,
+                    onConfirm: onConfirm,
+                    onCancel: onCancel
+                });
             }
         };
     }]);
@@ -52,12 +69,14 @@ define(["angular"], function (angular) {
     /**
      * Modal alert controller - handles displaying the modal
      */
-    mod.controller("ModalAlertCtrl", ["$scope", function($scope) {
+    mod.controller("ModalAlertCtrl", ["$scope", "$timeout", function($scope, $timeout) {
         $scope.alertModal = {
             visible: false,
             type: "error",
             title: "",
-            message: ""
+            message: "",
+            onConfirm: null,
+            onCancel: null
         };
 
         $scope.$on("modalAlert:show", function(event, data) {
@@ -65,12 +84,32 @@ define(["angular"], function (angular) {
                 visible: true,
                 type: data.type || "error",
                 title: data.title || "Alert",
-                message: data.message || ""
+                message: data.message || "",
+                onConfirm: data.onConfirm || null,
+                onCancel: data.onCancel || null
             };
         });
 
         $scope.closeAlertModal = function() {
             $scope.alertModal.visible = false;
+        };
+
+        $scope.confirmAlertModal = function() {
+            $scope.alertModal.visible = false;
+            if ($scope.alertModal.onConfirm) {
+                $timeout(function() {
+                    $scope.alertModal.onConfirm();
+                }, 0);
+            }
+        };
+
+        $scope.cancelAlertModal = function() {
+            $scope.alertModal.visible = false;
+            if ($scope.alertModal.onCancel) {
+                $timeout(function() {
+                    $scope.alertModal.onCancel();
+                }, 0);
+            }
         };
     }]);
 

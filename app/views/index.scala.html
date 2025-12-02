@@ -85,20 +85,22 @@
                 <div class="modal fade" ng-class="{'in': alertModal.visible}" ng-show="alertModal.visible" tabindex="-1" role="dialog" style="display: block;" ng-style="{'display': alertModal.visible ? 'block' : 'none'}">
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
-                            <div class="modal-header" ng-class="{'bg-danger': alertModal.type === 'error', 'bg-warning': alertModal.type === 'warning', 'bg-info': alertModal.type === 'info'}">
+                            <div class="modal-header" ng-class="{'bg-danger': alertModal.type === 'error', 'bg-warning': alertModal.type === 'warning', 'bg-info': alertModal.type === 'info' || alertModal.type === 'confirm'}">
                                 <button type="button" class="close" ng-click="closeAlertModal()" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                                 <h4 class="modal-title">
-                                    <i class="fa" ng-class="{'fa-exclamation-circle': alertModal.type === 'error', 'fa-exclamation-triangle': alertModal.type === 'warning', 'fa-info-circle': alertModal.type === 'info'}"></i>
+                                    <i class="fa" ng-class="{'fa-exclamation-circle': alertModal.type === 'error', 'fa-exclamation-triangle': alertModal.type === 'warning', 'fa-info-circle': alertModal.type === 'info', 'fa-question-circle': alertModal.type === 'confirm'}"></i>
                                     {{ alertModal.title }}
                                 </h4>
                             </div>
                             <div class="modal-body">
-                                <p>{{ alertModal.message }}</p>
+                                <p style="white-space: pre-line;">{{ alertModal.message }}</p>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-default" ng-click="closeAlertModal()">Close</button>
+                                <button type="button" class="btn btn-default" ng-click="cancelAlertModal()" ng-if="alertModal.type === 'confirm'">Cancel</button>
+                                <button type="button" class="btn btn-primary" ng-click="confirmAlertModal()" ng-if="alertModal.type === 'confirm'">OK</button>
+                                <button type="button" class="btn btn-default" ng-click="closeAlertModal()" ng-if="alertModal.type !== 'confirm'">Close</button>
                             </div>
                         </div>
                     </div>

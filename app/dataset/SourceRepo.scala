@@ -351,6 +351,8 @@ class SourceRepo(home: File, orgContext: OrgContext) {
 
   def lastModified = listZipFiles.lastOption.map(_.lastModified()).getOrElse(0L)
 
+  def latestSourceFileOpt: Option[File] = listZipFiles.lastOption
+
   def generatePockets(sourceOutputStream: OutputStream, idFilter: IdFilter, progress: ProgressReporter): Int = {
     var recordCount = 0
     val rawOutput = createWriter(sourceOutputStream)

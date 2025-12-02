@@ -37,7 +37,7 @@ define(["angular"], function () {
         'state-error': "Error"
     };
 
-    var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll) {
+    var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll, modalAlert) {
 
         $scope.apiPrefix = "/narthex/api/"
         $scope.enableIncrementalHarvest = $rootScope.enableIncrementalHarvest;
@@ -642,45 +642,68 @@ define(["angular"], function () {
             });
         };
 
-        $scope.fastSave = function(dataset) {
+        $scope.fastSave = function(dataset, fromState) {
+            console.log("fastSave called with dataset:", dataset, "fromState:", fromState);
+
             if (!dataset || !dataset.datasetSpec) {
                 modalAlert.error("Error", "Invalid dataset");
                 return;
             }
 
-            // Determine steps based on current state
+            // Determine steps based on specified state or current state
+            // Note: Fast save uses incremental workflow (Process → Save, skips Analysis)
             var steps = [];
-            if (dataset.stateAnalyzed) {
+            var state = fromState || null;
+
+            // If no state specified, auto-detect from current state
+            if (!state) {
+                if (dataset.stateAnalyzed) {
+                    state = 'stateAnalyzed';
+                } else if (dataset.stateProcessed) {
+                    state = 'stateProcessed';
+                } else if (dataset.stateProcessable) {
+                    state = 'stateProcessable';
+                } else if (dataset.stateSourced) {
+                    state = 'stateSourced';
+                }
+            }
+
+            // Map state to workflow steps
+            if (state === 'stateAnalyzed') {
                 steps = ["Save"];
-            } else if (dataset.stateProcessed) {
-                steps = ["Analyze", "Save"];
-            } else if (dataset.stateProcessable) {
-                steps = ["Process", "Analyze", "Save"];
-            } else if (dataset.stateSourced) {
-                steps = ["Make SIP", "Process", "Analyze", "Save"];
+            } else if (state === 'stateProcessed') {
+                steps = ["Save"];
+            } else if (state === 'stateProcessable') {
+                steps = ["Process", "Save"];
+            } else if (state === 'stateSourced') {
+                steps = ["Make SIP", "Process", "Save"];
             } else {
+                console.log("Dataset not in valid state for fast save");
                 modalAlert.error("Error", "Dataset not ready for fast save");
                 return;
             }
 
             var stepsList = steps.join(" → ");
-            if (!confirm("Run workflow: " + stepsList + "\n\nfor dataset '" +
-                         dataset.datasetSpec + "'?")) {
-                return;
-            }
+            var confirmMessage = "Run workflow: " + stepsList + "\n\nfor dataset '" + dataset.datasetSpec + "'?";
 
-            modalAlert.info("Fast Save Started",
-                "Running: " + stepsList + "\n\n" +
-                "Monitor progress in the activity log.");
+            console.log("Showing confirm modal");
+            modalAlert.confirm("Fast Save Confirmation", confirmMessage, function() {
+                console.log("Confirm callback executed");
+                // On confirm - execute fast save
+                modalAlert.info("Fast Save Started",
+                    "Running: " + stepsList + "\n\n" +
+                    "Monitor progress in the activity log.");
 
-            datasetListService.command(dataset.datasetSpec, "start fast save")
-                .then(function(reply) {
-                    console.log("Fast save started: " + stepsList);
-                })
-                .catch(function(error) {
-                    modalAlert.error("Fast Save Failed",
-                        error.data && error.data.problem ? error.data.problem : error.statusText);
-                });
+                datasetListService.command(dataset.datasetSpec, "start fast save from " + state)
+                    .then(function(reply) {
+                        console.log("Fast save started: " + stepsList);
+                    })
+                    .catch(function(error) {
+                        console.log("Fast save error:", error);
+                        modalAlert.error("Fast Save Failed",
+                            error.data && error.data.problem ? error.data.problem : error.statusText);
+                    });
+            });
         };
 
         $scope.openAllDatasets = false;
@@ -702,7 +725,7 @@ define(["angular"], function () {
     };
 
     DatasetListCtrl.$inject = [
-        "$rootScope", "$scope", "datasetListService", "$location", "pageScroll"
+        "$rootScope", "$scope", "datasetListService", "$location", "pageScroll", "modalAlert"
     ];
 
     // these lists must match with DsInfo.scala
