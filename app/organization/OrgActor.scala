@@ -21,10 +21,14 @@ import dataset.DatasetActor._
 import mapping.CategoriesSpreadsheet.CategoryCount
 import mapping.CategoryCounter.CategoryCountComplete
 import organization.OrgActor._
+import play.api.libs.json._
 
+import java.io.{File, PrintWriter}
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.io.Source
 import scala.language.postfixOps
-import scala.util.{Success, Failure}
+import scala.util.{Success, Failure, Try}
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
@@ -58,6 +62,72 @@ object OrgActor {
   case object GetQueueStatus
   case class CancelResult(success: Boolean, message: String)
 
+  // Queue persistence
+  case object PersistQueueState
+  case object ShutdownPersist
+
+  // Persisted queue entry (serializable version of QueuedOperation)
+  case class PersistedQueueEntry(
+    spec: String,
+    messageType: String,    // "StartHarvest", "StartProcessing", "StartSaving", "Command"
+    messageArg: String,     // harvest strategy or command string
+    trigger: String,
+    enqueuedAt: Long
+  )
+
+  case class PersistedQueueState(
+    activeSpecs: List[String],      // Were actively processing (need priority re-queue)
+    queuedEntries: List[PersistedQueueEntry],  // Were waiting in queue
+    savedAt: Long
+  )
+
+  // JSON format for persistence
+  implicit val persistedQueueEntryFormat: Format[PersistedQueueEntry] = Json.format[PersistedQueueEntry]
+  implicit val persistedQueueStateFormat: Format[PersistedQueueState] = Json.format[PersistedQueueState]
+
+  // Helper to serialize message to persistable form
+  def messageToPersistedEntry(spec: String, message: AnyRef, trigger: String, enqueuedAt: Long): Option[PersistedQueueEntry] = {
+    message match {
+      case StartHarvest(strategy) =>
+        val strategyStr = strategy match {
+          case Sample => "Sample"
+          case FromScratch => "FromScratch"
+          case FromScratchIncremental => "FromScratchIncremental"
+          case ModifiedAfter(_, _) => "FromScratchIncremental"  // Treat as incremental on restore
+        }
+        Some(PersistedQueueEntry(spec, "StartHarvest", strategyStr, trigger, enqueuedAt))
+      case StartProcessing(_) =>
+        Some(PersistedQueueEntry(spec, "StartProcessing", "", trigger, enqueuedAt))
+      case StartSaving(_) =>
+        Some(PersistedQueueEntry(spec, "StartSaving", "", trigger, enqueuedAt))
+      case Command(cmd) =>
+        Some(PersistedQueueEntry(spec, "Command", cmd, trigger, enqueuedAt))
+      case _ =>
+        None  // Don't persist other message types
+    }
+  }
+
+  // Helper to deserialize persisted entry back to message
+  def persistedEntryToMessage(entry: PersistedQueueEntry): Option[AnyRef] = {
+    entry.messageType match {
+      case "StartHarvest" =>
+        val strategy = entry.messageArg match {
+          case "Sample" => Sample
+          case "FromScratch" => FromScratch
+          case _ => FromScratchIncremental
+        }
+        Some(StartHarvest(strategy))
+      case "StartProcessing" =>
+        Some(StartProcessing(None))
+      case "StartSaving" =>
+        Some(StartSaving(None))
+      case "Command" =>
+        Some(Command(entry.messageArg))
+      case _ =>
+        None
+    }
+  }
+
 }
 
 class OrgActor (
@@ -76,10 +146,139 @@ class OrgActor (
   // Priority queue: manual operations come before periodic/recovery
   var operationQueue: Vector[QueuedOperation] = Vector.empty
 
+  // Queue persistence file
+  val queueStateFile = new File(orgContext.orgRoot, "queue-state.json")
+
+  // Scheduler for periodic queue persistence
+  var persistScheduler: Option[Cancellable] = None
+
   override def preStart(): Unit = {
     super.preStart()
+
+    // Load persisted queue state first (before startup recovery)
+    loadPersistedQueueState()
+
+    // Schedule periodic queue persistence every minute
+    implicit val ec: ExecutionContext = context.dispatcher
+    persistScheduler = Some(
+      context.system.scheduler.scheduleWithFixedDelay(
+        1.minute, 1.minute, self, PersistQueueState
+      )
+    )
+    log.info("Queue persistence scheduler started (every 1 minute)")
+
     // Perform startup recovery for interrupted operations
     performStartupRecovery()
+  }
+
+  override def postStop(): Unit = {
+    // Cancel the scheduler
+    persistScheduler.foreach(_.cancel())
+
+    // Final save on shutdown
+    saveQueueState()
+    log.info("Queue state persisted on shutdown")
+
+    super.postStop()
+  }
+
+  // Save current queue state to file
+  private def saveQueueState(): Unit = {
+    import scala.jdk.CollectionConverters._
+    Try {
+      // Get currently active specs from semaphore
+      val activeSpecs = orgContext.semaphore.activeSpecs().asScala.toList
+
+      // Convert queued operations to persisted entries
+      val queuedEntries = operationQueue.flatMap { op =>
+        messageToPersistedEntry(op.spec, op.message, op.trigger, op.enqueuedAt)
+      }.toList
+
+      val state = PersistedQueueState(
+        activeSpecs = activeSpecs,
+        queuedEntries = queuedEntries,
+        savedAt = System.currentTimeMillis()
+      )
+
+      val json = Json.prettyPrint(Json.toJson(state))
+      val writer = new PrintWriter(queueStateFile)
+      try {
+        writer.write(json)
+        log.debug(s"Queue state saved: ${activeSpecs.length} active, ${queuedEntries.length} queued")
+      } finally {
+        writer.close()
+      }
+    }.recover {
+      case e: Exception =>
+        log.error(e, "Failed to save queue state")
+    }
+  }
+
+  // Load persisted queue state and re-queue operations
+  private def loadPersistedQueueState(): Unit = {
+    if (!queueStateFile.exists()) {
+      log.info("No persisted queue state found - clean start")
+      return
+    }
+
+    Try {
+      val source = Source.fromFile(queueStateFile)
+      try {
+        val json = source.mkString
+        Json.parse(json).validate[PersistedQueueState] match {
+          case JsSuccess(state, _) =>
+            val age = System.currentTimeMillis() - state.savedAt
+            val ageMinutes = age / 60000
+
+            log.info(s"Loading persisted queue state (saved ${ageMinutes} minutes ago)")
+            log.info(s"  Active specs to restore: ${state.activeSpecs.mkString(", ")}")
+            log.info(s"  Queued entries to restore: ${state.queuedEntries.length}")
+
+            // Re-queue previously active specs first (they were interrupted)
+            // Mark them as "recovery" trigger since they need to resume
+            state.activeSpecs.foreach { spec =>
+              // We don't know what operation was running, so we'll let the
+              // existing startup recovery handle this based on triple store state
+              log.info(s"Previously active spec $spec will be handled by startup recovery")
+            }
+
+            // Re-queue the previously queued entries (skip duplicates)
+            state.queuedEntries.foreach { entry =>
+              val alreadyQueued = operationQueue.exists(_.spec == entry.spec)
+              if (alreadyQueued) {
+                log.info(s"Skipping duplicate queued entry for ${entry.spec}")
+              } else {
+                persistedEntryToMessage(entry) match {
+                  case Some(message) =>
+                    log.info(s"Restoring queued operation: ${entry.spec} (${entry.messageType}, ${entry.trigger})")
+                    // Use enqueuedAt from persisted entry to maintain order
+                    val op = QueuedOperation(entry.spec, message, entry.trigger, entry.enqueuedAt)
+                    operationQueue = insertWithPriority(operationQueue, op)
+                  case None =>
+                    log.warning(s"Could not restore queued operation for ${entry.spec}: unknown message type ${entry.messageType}")
+                }
+              }
+            }
+
+            if (operationQueue.nonEmpty) {
+              log.info(s"Restored ${operationQueue.length} queued operations")
+            }
+
+          case JsError(errors) =>
+            log.warning(s"Failed to parse persisted queue state: $errors")
+        }
+      } finally {
+        source.close()
+      }
+
+      // Delete the file after loading (will be recreated on next save)
+      queueStateFile.delete()
+      log.info("Deleted persisted queue state file after loading")
+
+    }.recover {
+      case e: Exception =>
+        log.error(e, "Failed to load persisted queue state")
+    }
   }
 
   def performStartupRecovery(): Unit = {
@@ -284,6 +483,13 @@ class OrgActor (
     case Terminated(name) =>
       log.info(s"Demised $name")
       log.info(s"Children: ${context.children}")
+
+    case PersistQueueState =>
+      saveQueueState()
+
+    case ShutdownPersist =>
+      saveQueueState()
+      log.info("Queue state persisted on explicit shutdown request")
 
     case spurious =>
       log.error(s"Spurious message $spurious")
