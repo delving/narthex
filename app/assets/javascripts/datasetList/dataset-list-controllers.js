@@ -1149,14 +1149,21 @@ define(["angular"], function () {
         };
 
         function command(command, areYouSure, after) {
-            if (areYouSure && !confirm(areYouSure)) return;
-            datasetListService.command($scope.dataset.datasetSpec, command).then(function (reply) {
-                console.log("command: " + command + " has reply: " + reply + " (" + $scope.dataset.datasetSpec + ")");
-                // Trigger a refresh command to update the dataset state in UI
-                return datasetListService.command($scope.dataset.datasetSpec, "refresh");
-            }).then(function () {
-                if (after) after();
-            });
+            function executeCommand() {
+                datasetListService.command($scope.dataset.datasetSpec, command).then(function (reply) {
+                    console.log("command: " + command + " has reply: " + reply + " (" + $scope.dataset.datasetSpec + ")");
+                    // Trigger a refresh command to update the dataset state in UI
+                    return datasetListService.command($scope.dataset.datasetSpec, "refresh");
+                }).then(function () {
+                    if (after) after();
+                });
+            }
+
+            if (areYouSure) {
+                modalAlert.confirm("Confirm Action", areYouSure, executeCommand);
+            } else {
+                executeCommand();
+            }
         }
 
         $scope.interruptProcessing = function () {

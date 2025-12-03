@@ -74,7 +74,7 @@ define(["angular"], function (angular) {
         "skosName", "skosOwner"
     ];
 
-    var SkosListEntryCtrl = function ($scope, skosService, $location, $timeout, $upload) {
+    var SkosListEntryCtrl = function ($scope, skosService, $location, $timeout, $upload, modalAlert) {
 
         var sk = $scope.skos;
 
@@ -182,12 +182,17 @@ define(["angular"], function (angular) {
         };
 
         $scope.deleteVocabulary = function (skos) {
-            if (!confirm("Delete vocabulary " + skos.skosSpec + "?")) return;
-            skosService.deleteVocabulary(skos.skosSpec).then($scope.fetchSkosList)
+            modalAlert.confirm(
+                "Delete Vocabulary",
+                "Delete vocabulary " + skos.skosSpec + "?",
+                function() {
+                    skosService.deleteVocabulary(skos.skosSpec).then($scope.fetchSkosList);
+                }
+            );
         }
     };
 
-    SkosListEntryCtrl.$inject = ["$scope", "skosService", "$location", "$timeout", "$upload"];
+    SkosListEntryCtrl.$inject = ["$scope", "skosService", "$location", "$timeout", "$upload", "modalAlert"];
 
     var SkosMapCtrl = function ($rootScope, $scope, $location, $routeParams, skosService, $timeout, pageScroll) {
         $scope.show = "all";
