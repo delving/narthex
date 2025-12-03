@@ -25,6 +25,7 @@ import dataset.DatasetActor.{FromScratch, FromScratchIncremental, ModifiedAfter,
 import dataset.DsInfo
 import dataset.DsInfo.{DsState, withDsInfo}
 import harvest.PeriodicHarvest.ScanForHarvests
+import organization.OrgActor.EnqueueOperation
 import organization.OrgContext
 import services.Temporal.DelayUnit
 import triplestore.TripleStore
@@ -75,7 +76,8 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
                 // Skip if dataset has an incomplete operation (being recovered or already working)
                 if (info.getCurrentOperation.isDefined) {
                   logger.info(s"Skipping ${info.spec} - operation ${info.getCurrentOperation.get} already in progress")
-                } else if (orgContext.semaphore.tryAcquire(info.spec)) {
+                } else {
+                  // Queue the harvest operation - OrgActor handles concurrency limit
                   logger.info(s"Time to work on $info: $harvestCron")
                   val proposedNext = harvestCron.next
                   val next = if (proposedNext.timeToWork) {
@@ -93,13 +95,8 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
                   val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, justDate) else FromScratchIncremental
                   val startHarvest = StartHarvest(strategy)
 
-                  logger.info(s"$info acquired semaphore. permits available ${orgContext.semaphore.availablePermits()}")
-                  logger.info(s"$info incremental harvest kickoff $startHarvest")
-                  orgContext.orgActor ! info.createMessage(startHarvest)
-                } else {
-                  val sem = orgContext.semaphore
-                  logger.info(
-                    s"$info skipping, no semaphore available: ${sem.availablePermits()} of ${sem.size()}; ${sem.activeSpecs().toString()}")
+                  logger.info(s"$info queueing periodic harvest $startHarvest")
+                  orgContext.orgActor ! EnqueueOperation(info.spec, startHarvest, "periodic")
                 }
             }
           }
@@ -125,17 +122,10 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
         retryList.filter(_.isTimeForRetry(retryIntervalMinutes)).foreach { info =>
           logger.info(s"PeriodicHarvest: Time for retry harvest of ${info.spec} (attempt #${info.getRetryCount + 1})")
 
-          if (orgContext.semaphore.tryAcquire(info.spec)) {
-            logger.info(s"PeriodicHarvest: Acquired semaphore, triggering retry for ${info.spec}")
-
-            // Determine harvest strategy (use FromScratch for retries)
-            val strategy = FromScratch
-
-            // Send message to trigger harvest
-            orgContext.orgActor ! info.createMessage(StartHarvest(strategy))
-          } else {
-            logger.info(s"PeriodicHarvest: Could not acquire semaphore for ${info.spec}, will retry later")
-          }
+          // Queue the retry harvest - OrgActor handles concurrency limit
+          val strategy = FromScratch
+          logger.info(s"PeriodicHarvest: Queueing retry for ${info.spec}")
+          orgContext.orgActor ! EnqueueOperation(info.spec, StartHarvest(strategy), "periodic")
         }
       case Failure(e) =>
         logger.error(s"Failed to check retry datasets: ${e.getMessage}", e)

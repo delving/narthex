@@ -27,6 +27,8 @@ GET         /narthex/socket/dataset                                          con
 GET         /narthex/app/dataset-list                                        controllers.AppController.listDatasets
 GET         /narthex/app/dataset-list-light                                  controllers.AppController.listDatasetsLight
 GET         /narthex/app/active-datasets                                     controllers.AppController.listActiveDatasets
++ nocsrf
+POST        /narthex/app/cancel-queue/:spec                                  controllers.AppController.cancelQueuedOperation(spec)
 GET         /narthex/app/prefixes                                            controllers.AppController.listPrefixes
 GET         /narthex/app/dataset/:spec/create/:character/:prefix             controllers.AppController.createDataset(spec, character, prefix)
 + nocsrf

@@ -110,26 +110,37 @@ class AppController @Inject() (
   }
 
   def listActiveDatasets = Action.async { request =>
-    import scala.jdk.CollectionConverters._
     import scala.concurrent.duration._
     import akka.pattern.ask
     import akka.util.Timeout
-    import organization.OrgActor.{GetActiveDatasets, ActiveDatasets}
+    import organization.OrgActor.{GetQueueStatus, QueueStatus}
 
     implicit val timeout = Timeout(2.seconds)
 
-    // Get all specs from semaphores (processing and saving)
-    val processingSpecs = orgContext.semaphore.activeSpecs().asScala.toList.sorted
-    val savingSpecs = orgContext.saveSemaphore.activeSpecs().asScala.toList.sorted
-
-    // Query OrgActor for all active dataset actors (includes all states, not just processing/saving)
-    (orgContext.orgActor ? GetActiveDatasets).mapTo[ActiveDatasets].map { activeDatasets =>
+    // Query OrgActor for complete queue status
+    (orgContext.orgActor ? GetQueueStatus).mapTo[QueueStatus].map { status =>
       Ok(Json.obj(
-        "processing" -> processingSpecs,
-        "saving" -> savingSpecs,
-        "active" -> activeDatasets.specs,
-        "total" -> activeDatasets.specs.size
+        "processing" -> status.processing.sorted,
+        "saving" -> status.saving.sorted,
+        "queued" -> status.queued.map { case (spec, trigger, pos) =>
+          Json.obj("spec" -> spec, "trigger" -> trigger, "position" -> pos)
+        },
+        "queueLength" -> status.queued.length,
+        "availableSlots" -> orgContext.semaphore.availablePermits()
       ))
+    }
+  }
+
+  def cancelQueuedOperation(spec: String) = Action.async { request =>
+    import scala.concurrent.duration._
+    import akka.pattern.ask
+    import akka.util.Timeout
+    import organization.OrgActor.{CancelQueuedOperation, CancelResult}
+
+    implicit val timeout = Timeout(2.seconds)
+
+    (orgContext.orgActor ? CancelQueuedOperation(spec)).mapTo[CancelResult].map { result =>
+      Ok(Json.obj("success" -> result.success, "message" -> result.message))
     }
   }
 
