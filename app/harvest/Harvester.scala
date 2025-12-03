@@ -75,6 +75,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var zipOutputOpt: Option[ZipOutputStream] = None
   var pageCount = 0
   var progressOpt: Option[ProgressReporter] = None
+  var recordsPerPage: Option[Int] = None  // Tracks page size for total pages calculation
 
   // Error recovery state
   var harvestErrors: Map[String, String] = Map.empty
@@ -436,12 +437,20 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
           case Success(pageNumber) =>
             recordsProcessed += diagnostic.pageItems
 
-            strategy match {
-              case ModifiedAfter(_, _) =>
-                progressOpt.get.sendPage(pageNumber) // This compensates for AdLib's failure to report number of hits
-              case _ =>
-                progressOpt.get.sendPercent(diagnostic.percentComplete)
-            }
+            // Calculate total pages from total items and page size
+            val calculatedTotalPages = if (diagnostic.pageItems > 0 && diagnostic.totalItems > 0) {
+              Some((diagnostic.totalItems + diagnostic.pageItems - 1) / diagnostic.pageItems)
+            } else None
+
+            // Send progress with detailed metadata
+            val currentRecords = diagnostic.current + diagnostic.pageItems
+            progressOpt.get.sendProgress(
+              percent = diagnostic.percentComplete,
+              currentPage = Some(pageNumber),
+              totalPages = calculatedTotalPages,
+              currentRecords = Some(currentRecords),
+              totalRecords = Some(diagnostic.totalItems)
+            )
             log.info(s"Harvest Page: $pageNumber - $url $database to $datasetContext: $diagnostic")
 
             if (diagnostic.totalItems == 0) {
@@ -629,13 +638,42 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     case PMHHarvestPage(records, url, set, prefix, total, strategy, resumptionToken) => actorWork(context) {
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
+
+      // Count records on first page to determine page size for total pages calculation
+      if (recordsPerPage.isEmpty) {
+        try {
+          val xml = scala.xml.XML.loadString(records)
+          val recordCount = (xml \\ "record").length
+          if (recordCount > 0) {
+            recordsPerPage = Some(recordCount)
+            log.info(s"Detected $recordCount records per page")
+          }
+        } catch {
+          case NonFatal(e) =>
+            log.warning(s"Could not count records in page: ${e.getMessage}")
+        }
+      }
+
       resumptionToken.map { token =>
-        if (token.hasPercentComplete) {
-          progressOpt.get.sendPercent(token.percentComplete)
-        }
-        else {
-          progressOpt.get.sendPage(pageCount)
-        }
+        // Send progress with detailed metadata
+        // Use cursor if meaningful (> 1), otherwise don't show record count
+        // (cursor defaults to 1 when not provided by PMH server)
+        val hasMeaningfulCursor = token.currentRecord > 1
+
+        // Calculate total pages if we know records per page and total records
+        val calculatedTotalPages = for {
+          perPage <- recordsPerPage
+          if token.totalRecords > 0 && perPage > 0
+        } yield (token.totalRecords + perPage - 1) / perPage  // Ceiling division
+
+        val percent = if (token.hasPercentComplete) token.percentComplete else 1
+        progressOpt.get.sendProgress(
+          percent = percent,
+          currentPage = Some(pageCount),
+          totalPages = calculatedTotalPages,
+          currentRecords = if (hasMeaningfulCursor) Some(token.currentRecord) else None,
+          totalRecords = if (token.totalRecords > 0) Some(token.totalRecords) else None
+        )
         val futurePage = fetchPMHPage(pageNumber, timeout, wsApi, strategy, url, set, prefix, resumptionToken)
         handleFailure(futurePage, strategy, "pmh harvest page")
         futurePage pipeTo self

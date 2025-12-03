@@ -33,6 +33,7 @@ import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import mapping.Skosifier.SkosificationComplete
 import mapping.{CategoryCounter, Skosifier}
+import organization.OrgActor.EnqueueOperation
 import organization.OrgContext
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
@@ -93,7 +94,11 @@ object DatasetActor {
                     errorRecoveryAttempts: Int = 0,
                     interrupt: Boolean = false,
                     stateStartTime: Long = System.currentTimeMillis(),
-                    lastActivityTime: Long = System.currentTimeMillis())
+                    lastActivityTime: Long = System.currentTimeMillis(),
+                    currentPage: Option[Int] = None,
+                    totalPages: Option[Int] = None,
+                    currentRecords: Option[Int] = None,
+                    totalRecords: Option[Int] = None)
       extends DatasetActorData
 
   implicit val activeWrites: Writes[Active] = new Writes[Active] {
@@ -104,7 +109,11 @@ object DatasetActor {
       "count" -> active.count,
       "errorCount" -> active.errorCount,
       "errorRecoveryAttempts" -> active.errorRecoveryAttempts,
-      "interrupt" -> active.interrupt
+      "interrupt" -> active.interrupt,
+      "currentPage" -> active.currentPage,
+      "totalPages" -> active.totalPages,
+      "currentRecords" -> active.currentRecords,
+      "totalRecords" -> active.totalRecords
     )
   }
 
@@ -147,7 +156,11 @@ object DatasetActor {
   case class ProgressTick(reporterOpt: Option[ProgressReporter],
                           progressState: ProgressState,
                           progressType: ProgressType = TYPE_IDLE,
-                          count: Int = 0)
+                          count: Int = 0,
+                          currentPage: Option[Int] = None,
+                          totalPages: Option[Int] = None,
+                          currentRecords: Option[Int] = None,
+                          totalRecords: Option[Int] = None)
 
   case object CheckForStuckState
 
@@ -595,18 +608,16 @@ class DatasetActor(val datasetContext: DatasetContext,
                                     PROCESSING)
 
     case Event(StartSaving(scheduledOpt), Dormant) =>
-      if(orgContext.saveSemaphore.tryAcquire(dsInfo.spec)) {
-        log.info(s"save lock acquired for $dsInfo.spec")
-        val graphSaver = createChildActor(
-          GraphSaver.props(datasetContext, orgContext),
-          "graph-saver")
-        graphSaver ! SaveGraphs(scheduledOpt)
-        goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
-      } else {
-        log.info(s"unable to acquire lock for $dsInfo.spec")
-        dsInfo.setError(s"Concurrency limit has been reached for ${dsInfo.spec}; Try saving later. \n")
-        goto(Idle) using InError(s"Concurrency limit has been reached for ${dsInfo.spec}")
+      // OrgActor already manages concurrency via queue - just track save for status reporting
+      if (!orgContext.saveSemaphore.tryAcquire(dsInfo.spec)) {
+        log.warning(s"saveSemaphore already held for ${dsInfo.spec} - continuing anyway (queue should prevent this)")
       }
+      log.info(s"Starting save for ${dsInfo.spec}")
+      val graphSaver = createChildActor(
+        GraphSaver.props(datasetContext, orgContext),
+        "graph-saver")
+      graphSaver ! SaveGraphs(scheduledOpt)
+      goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
       val skosifier = createChildActor(
@@ -838,16 +849,11 @@ class DatasetActor(val datasetContext: DatasetContext,
 
         case "retry now" =>
           log.info(s"User triggered immediate retry (attempt #${retryCount + 1})")
-          val newCount = dsInfo.incrementRetryCount()
-          if (orgContext.semaphore.tryAcquire(dsInfo.spec)) {
-            // Get harvest strategy and start harvest
-            val strategy = FromScratch
-            self ! StartHarvest(strategy)
-            stay() using InRetry(message, newCount)
-          } else {
-            log.warning("Could not acquire semaphore for immediate retry")
-            stay()
-          }
+          dsInfo.incrementRetryCount()
+          // Route through OrgActor for proper queue management
+          val strategy = FromScratch
+          orgContext.orgActor ! EnqueueOperation(dsInfo.spec, StartHarvest(strategy), "manual")
+          stay()
 
         case "clear error" =>
           // User wants to completely clear retry state
@@ -1024,7 +1030,11 @@ class DatasetActor(val datasetContext: DatasetContext,
         val nextActive = active.copy(progressState = tick.progressState,
                                      progressType = tick.progressType,
                                      count = tick.count,
-                                     lastActivityTime = System.currentTimeMillis())
+                                     lastActivityTime = System.currentTimeMillis(),
+                                     currentPage = tick.currentPage,
+                                     totalPages = tick.totalPages,
+                                     currentRecords = tick.currentRecords,
+                                     totalRecords = tick.totalRecords)
         broadcastProgress(nextActive)
         stay() using nextActive
       }

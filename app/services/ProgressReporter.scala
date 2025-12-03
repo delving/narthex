@@ -98,6 +98,12 @@ trait ProgressReporter {
 
   def sendPage(page: Int): Unit
 
+  def sendProgress(percent: Int,
+                   currentPage: Option[Int] = None,
+                   totalPages: Option[Int] = None,
+                   currentRecords: Option[Int] = None,
+                   totalRecords: Option[Int] = None): Unit
+
   def setMaximum(max: Int): Unit
 
   def setReadProgress(readProgress: ReadProgress): Unit
@@ -117,6 +123,12 @@ class FakeProgressReporter extends ProgressReporter {
   override def sendWorkers(workerCount: Int): Unit = {}
 
   override def sendPage(page: Int): Unit = {}
+
+  override def sendProgress(percent: Int,
+                            currentPage: Option[Int] = None,
+                            totalPages: Option[Int] = None,
+                            currentRecords: Option[Int] = None,
+                            totalRecords: Option[Int] = None): Unit = {}
 
   override def setMaximum(max: Int): Unit = {}
 
@@ -154,6 +166,28 @@ class UpdatingProgressReporter(progressState: ProgressState, datasetActor: Actor
       }
       sendPageNumber(percent)
       percentWas = percent
+      lastProgress = System.currentTimeMillis()
+    }
+  }
+
+  var lastPage = 0
+
+  override def sendProgress(percent: Int,
+                            currentPage: Option[Int] = None,
+                            totalPages: Option[Int] = None,
+                            currentRecords: Option[Int] = None,
+                            totalRecords: Option[Int] = None): Unit = {
+    checkInterrupt()
+    val percentValue = if (percent < 1) 1 else percent
+    val pageValue = currentPage.getOrElse(0)
+    // Send update if percent changed OR page changed (with patience throttling)
+    val shouldSend = (percentValue > percentWas || pageValue > lastPage) &&
+      (System.currentTimeMillis() - lastProgress) > PATIENCE_MILLIS
+    if (shouldSend) {
+      datasetActor ! ProgressTick(Option(this), progressState, PERCENT, percentValue,
+        currentPage, totalPages, currentRecords, totalRecords)
+      percentWas = percentValue
+      lastPage = pageValue
       lastProgress = System.currentTimeMillis()
     }
   }
