@@ -907,7 +907,13 @@ define(["angular"], function () {
                 }
                 else {
                     console.log($scope.dataset);
+                    // Preserve progress from current dataset when receiving state updates
+                    var existingProgress = $scope.dataset.progress;
                     $scope.dataset = $scope.decorateDataset(message);
+                    // Restore progress if dataset is still active (has current operation)
+                    if (existingProgress && $scope.dataset.currentOperation) {
+                        $scope.dataset.progress = existingProgress;
+                    }
                     $scope.updateDatasetList(message);
                     $scope.updateDatasetStateCounter();
                     $scope.datasetBusy = false;

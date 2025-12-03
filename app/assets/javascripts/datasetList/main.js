@@ -15,7 +15,7 @@ define(
                 function ($routeProvider) {
                     $routeProvider.when(
                         "/", {
-                            templateUrl: "/narthex/assets/templates/dataset-list.html?v=0.8.2.15",
+                            templateUrl: "/narthex/assets/templates/dataset-list.html?v=0.8.2.15a",
                             controller: controllers.DatasetListCtrl,
                             reloadOnSearch: false
                         }

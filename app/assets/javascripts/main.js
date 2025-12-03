@@ -22,7 +22,7 @@
     // Increase timeout for slower connections/browsers (default is 7 seconds)
     waitSeconds: 30,
     // Cache busting: update this version when JavaScript changes
-    urlArgs: "v=0.8.2.15",
+    urlArgs: "v=0.8.2.15a",
     // Packages = top-level folders; loads a contained file named "main.js"
     packages: [
       "common", "datasetList", "dataset", "skos", "terms", "categories"
