@@ -32,7 +32,9 @@ class WebSocketController @Inject() (implicit
 
     def receive = {
       case active: Active => out ! Json.stringify(Json.toJson(active))
-      case idle: DsInfo => out ! Json.stringify(Json.toJson(idle))
+      case idle: DsInfo =>
+        // Use simple JSON format with expected field names for frontend
+        out ! Json.stringify(idle.toSimpleJson)
       case fromClient: String => log.debug(s"Message from browser: $fromClient")
     }
   }

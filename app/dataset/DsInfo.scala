@@ -1133,4 +1133,52 @@ class DsInfo(
     bulkApiUpdate(s"${actionMap.toString()}\n")
   }
 
+  /**
+   * Convert DsInfo to simple JSON format for WebSocket updates.
+   * Uses the same field names as DsInfoLight so frontend can handle it.
+   */
+  def toSimpleJson: JsValue = {
+    import triplestore.GraphProperties.{datasetName => dsName, processedValid => pValid,
+      processedInvalid => pInvalid, datasetRecordCount => dsRecordCount,
+      stateDisabled => sDisabled, stateRaw => sRaw, stateRawAnalyzed => sRawAnalyzed,
+      stateSourced => sSourced, stateMappable => sMappable, stateProcessable => sProcessable,
+      stateAnalyzed => sAnalyzed, stateProcessed => sProcessed, stateSaved => sSaved,
+      stateIncrementalSaved => sIncrementalSaved, datasetCurrentOperation => curOperation,
+      datasetOperationStatus => opStatus, datasetErrorMessage => dsErrorMessage,
+      harvestType => hType, harvestURL => hURL, harvestDataset => hDataset,
+      harvestPrefix => hPrefix, harvestSearch => hSearch, harvestIncrementalMode => hIncrementalMode,
+      processedIncrementalValid => pIncrementalValid, processedIncrementalInvalid => pIncrementalInvalid}
+    Json.obj(
+      "datasetSpec" -> spec,
+      "spec" -> spec,
+      "datasetName" -> getLiteralProp(dsName),
+      "orgId" -> this.orgId,
+      "processedValid" -> getLiteralProp(pValid).map(_.toInt),
+      "processedInvalid" -> getLiteralProp(pInvalid).map(_.toInt),
+      "datasetRecordCount" -> getLiteralProp(dsRecordCount).map(_.toInt),
+      "stateDisabled" -> getLiteralProp(sDisabled),
+      "stateRaw" -> getLiteralProp(sRaw),
+      "stateRawAnalyzed" -> getLiteralProp(sRawAnalyzed),
+      "stateSourced" -> getLiteralProp(sSourced),
+      "stateMappable" -> getLiteralProp(sMappable),
+      "stateProcessable" -> getLiteralProp(sProcessable),
+      "stateAnalyzed" -> getLiteralProp(sAnalyzed),
+      "stateProcessed" -> getLiteralProp(sProcessed),
+      "stateSaved" -> getLiteralProp(sSaved),
+      "stateIncrementalSaved" -> getLiteralProp(sIncrementalSaved),
+      "currentOperation" -> getLiteralProp(curOperation),
+      "operationStatus" -> getLiteralProp(opStatus),
+      "datasetErrorMessage" -> getLiteralProp(dsErrorMessage),
+      "errorMessage" -> getLiteralProp(dsErrorMessage),
+      "harvestType" -> getLiteralProp(hType),
+      "harvestURL" -> getLiteralProp(hURL),
+      "harvestDataset" -> getLiteralProp(hDataset),
+      "harvestPrefix" -> getLiteralProp(hPrefix),
+      "harvestSearch" -> getLiteralProp(hSearch),
+      "harvestIncrementalMode" -> getLiteralProp(hIncrementalMode),
+      "processedIncrementalValid" -> getLiteralProp(pIncrementalValid).map(_.toInt),
+      "processedIncrementalInvalid" -> getLiteralProp(pIncrementalInvalid).map(_.toInt)
+    )
+  }
+
 }
