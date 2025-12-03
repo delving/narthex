@@ -641,8 +641,13 @@ define(["angular"], function () {
                     }
 
                     // If dataset is active or queued, override stateCurrent for filtering
+                    // Keep stable timestamp to prevent list reordering on every poll
                     if (ds.isActive || ds.isQueued) {
-                        ds.stateCurrentForFilter = {name: 'stateActive', date: Date.now()};
+                        // Only set new timestamp if dataset just became active
+                        if (!ds.stateCurrentForFilter || ds.stateCurrentForFilter.name !== 'stateActive') {
+                            ds.stateCurrentForFilter = {name: 'stateActive', date: Date.now()};
+                        }
+                        // else: keep existing stateCurrentForFilter to maintain stable sort order
                     } else {
                         ds.stateCurrentForFilter = ds.stateCurrent;
                     }
