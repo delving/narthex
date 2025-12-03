@@ -666,7 +666,18 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
           if token.totalRecords > 0 && perPage > 0
         } yield (token.totalRecords + perPage - 1) / perPage  // Ceiling division
 
-        val percent = if (token.hasPercentComplete) token.percentComplete else 1
+        // Calculate percent: prefer cursor-based, fallback to page-based
+        // Returns 0 when indeterminate (triggers animated progress bar in UI)
+        val percent = if (token.hasPercentComplete && hasMeaningfulCursor) {
+          token.percentComplete
+        } else {
+          // Fallback: calculate from page count if we know total pages
+          calculatedTotalPages.map { total =>
+            val pc = (pageCount * 100) / total
+            if (pc < 1) 1 else pc
+          }.getOrElse(0)  // 0 = indeterminate, shows animated progress bar
+        }
+
         progressOpt.get.sendProgress(
           percent = percent,
           currentPage = Some(pageCount),

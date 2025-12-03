@@ -424,6 +424,7 @@
                         <div data-ng-if="dataset.progress" class="ds-progress">
                             <div class="input-group">
                                 <progressbar class="form-control-feedback progress-striped"
+                                    ng-class="{'active': dataset.progress.count === 0}"
                                     value="dataset.progress.count" max="100">{{ dataset.progress.message }}
                                 </progressbar>
                                 <!-- Page/record metadata -->
