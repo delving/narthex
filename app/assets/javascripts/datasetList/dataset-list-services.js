@@ -99,6 +99,14 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                cancelQueuedOperation: function (spec) {
+                    return app.cancelQueuedOperation(spec).post().then(
+                        function (response) {
+                            return response;
+                        },
+                        rejection
+                    );
+                },
                 setDatasetProperties: function (spec, payload) {
                     return app.setDatasetProperties(spec).post(payload).then(
                         function (response) {

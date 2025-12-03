@@ -140,19 +140,34 @@ define(["angular"], function () {
                                 });
 
                                 // Update operation status fields
-                                if (message.currentOperation !== undefined) existingDataset.currentOperation = message.currentOperation;
+                                var operationChanged = false;
+                                if (message.currentOperation !== undefined) {
+                                    operationChanged = existingDataset.currentOperation !== message.currentOperation;
+                                    existingDataset.currentOperation = message.currentOperation;
+                                }
                                 if (message.operationStatus !== undefined) existingDataset.operationStatus = message.operationStatus;
                                 if (message.errorMessage !== undefined) existingDataset.errorMessage = message.errorMessage;
                                 if (message.errorTime !== undefined) existingDataset.errorTime = message.errorTime;
 
                                 // Re-decorate to update computed properties
                                 $scope.decorateDatasetLight(existingDataset);
+
+                                // If operation started or completed, update active count immediately
+                                if (operationChanged) {
+                                    $scope.updateActiveDatasets();
+                                }
                             } else {
                                 // Full dataset - merge update into existing object to preserve UI state
+                                var operationChanged = existingDataset.currentOperation !== message.currentOperation;
                                 // Use angular.extend to merge properties without replacing the object
                                 angular.extend(existingDataset, message);
                                 // Re-decorate to update computed properties
                                 $scope.decorateDataset(existingDataset);
+
+                                // If operation started or completed, update active count immediately
+                                if (operationChanged) {
+                                    $scope.updateActiveDatasets();
+                                }
                             }
 
                             // Update state counters
@@ -435,6 +450,12 @@ define(["angular"], function () {
                 dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
             }
 
+            // Check for error state (errorMessage comes from DsInfoLight)
+            // Use truthiness check - null and undefined should not trigger error state
+            if (dataset.errorMessage) {
+                dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
+            }
+
             filterDatasetBySpec(dataset);
             return dataset;
         };
@@ -508,7 +529,8 @@ define(["angular"], function () {
             if (_.isEmpty(dataset.states)) {
                 dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
             }
-            if (!_.isUndefined(dataset.datasetErrorMessage)) {
+            // Use truthiness check - null and undefined should not trigger error state
+            if (dataset.datasetErrorMessage || dataset.errorMessage) {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
             }
             //console.log(dataset, dataset.stateCurrent, dataset.states, dataset.datasetErrorMessage)
@@ -560,20 +582,66 @@ define(["angular"], function () {
         // Track active datasets from server
         $scope.activeDatasets = {
             processing: [],
-            saving: []
+            saving: [],
+            queued: [],
+            queueLength: 0,
+            availableSlots: 0,
+            total: 0
         };
 
         $scope.updateActiveDatasets = function () {
             datasetListService.listActiveDatasets().then(function (data) {
+                // Calculate total (processing + saving + queued)
+                data.total = (data.processing || []).length +
+                             (data.saving || []).length +
+                             (data.queued || []).length;
                 $scope.activeDatasets = data;
 
-                // Mark datasets as active or inactive based on active actors (includes all states)
-                _.forEach($scope.datasets, function (ds) {
-                    var isActive = _.contains(data.active, ds.datasetSpec);
-                    ds.isActive = isActive;
+                // Build lookup maps for quick access
+                var processingSet = {};
+                var savingSet = {};
+                var queuedMap = {};
 
-                    // If dataset is active, override stateCurrent for filtering
-                    if (isActive) {
+                (data.processing || []).forEach(function(spec) {
+                    processingSet[spec] = true;
+                });
+                (data.saving || []).forEach(function(spec) {
+                    savingSet[spec] = true;
+                });
+                (data.queued || []).forEach(function(q) {
+                    queuedMap[q.spec] = { trigger: q.trigger, position: q.position };
+                });
+
+                // Update each dataset with status info
+                _.forEach($scope.datasets, function (ds) {
+                    var spec = ds.datasetSpec;
+                    ds.isProcessing = !!processingSet[spec];
+                    ds.isSaving = !!savingSet[spec];
+                    ds.isQueued = !!queuedMap[spec];
+                    ds.queueInfo = queuedMap[spec] || null;
+                    ds.isActive = ds.isProcessing || ds.isSaving;
+
+                    // Set activity status for display
+                    if (ds.isProcessing) {
+                        ds.activityStatus = 'processing';
+                        ds.activityTrigger = null;
+                        ds.queuePosition = null;
+                    } else if (ds.isSaving) {
+                        ds.activityStatus = 'saving';
+                        ds.activityTrigger = null;
+                        ds.queuePosition = null;
+                    } else if (ds.isQueued) {
+                        ds.activityStatus = 'queued';
+                        ds.activityTrigger = ds.queueInfo.trigger;
+                        ds.queuePosition = ds.queueInfo.position;
+                    } else {
+                        ds.activityStatus = null;
+                        ds.activityTrigger = null;
+                        ds.queuePosition = null;
+                    }
+
+                    // If dataset is active or queued, override stateCurrent for filtering
+                    if (ds.isActive || ds.isQueued) {
                         ds.stateCurrentForFilter = {name: 'stateActive', date: Date.now()};
                     } else {
                         ds.stateCurrentForFilter = ds.stateCurrent;
@@ -585,6 +653,16 @@ define(["angular"], function () {
                 // Re-apply the current filter to remove finished datasets from filtered view
                 if ($scope.stateFilter) {
                     _.each($scope.datasets, filterDatasetByState);
+                }
+            });
+        };
+
+        // Cancel a queued operation
+        $scope.cancelQueuedOperation = function(spec) {
+            datasetListService.cancelQueuedOperation(spec).then(function(response) {
+                if (response.data && response.data.success) {
+                    // Immediately update the UI
+                    $scope.updateActiveDatasets();
                 }
             });
         };
@@ -797,7 +875,11 @@ define(["angular"], function () {
                     $scope.dataset.progress = addProgressMessage({
                         state: message.progressState,
                         type: message.progressType,
-                        count: parseInt(message.count)
+                        count: parseInt(message.count),
+                        currentPage: message.currentPage,
+                        totalPages: message.totalPages,
+                        currentRecords: message.currentRecords,
+                        totalRecords: message.totalRecords
                     });
                     $scope.datasetBusy = true;
                 }
@@ -834,26 +916,40 @@ define(["angular"], function () {
         $scope.apiWebResourcePath = "/data/webresource/" + $scope.dataset.orgId + "/" + $scope.dataset.datasetSpec + "/source/";
 
         $scope.sparqlPath = baseUrl + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
-        if($scope.dataset.harvestURL && $scope.dataset.harvestType == 'pmh') {
-            if ($scope.dataset.harvestRecord) {
-                $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=GetRecord&metadataPrefix=" + $scope.dataset.harvestPrefix;
-                $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&identifier=" + $scope.dataset.harvestRecord;
-            } else if ($scope.dataset.harvestDataset) {
-                $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
-                $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&set=" + $scope.dataset.harvestDataset;
-            } else {
-                $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
+
+        // Build preview URLs for harvest testing
+        function buildPreviewUrls() {
+            if($scope.dataset.harvestURL && $scope.dataset.harvestType == 'pmh') {
+                if ($scope.dataset.harvestRecord) {
+                    $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=GetRecord&metadataPrefix=" + $scope.dataset.harvestPrefix;
+                    $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&identifier=" + $scope.dataset.harvestRecord;
+                } else if ($scope.dataset.harvestDataset) {
+                    $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
+                    $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&set=" + $scope.dataset.harvestDataset;
+                } else {
+                    $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
+                }
+            }
+            if ($scope.dataset.harvestType == 'adlib' && $scope.dataset.harvestURL) {
+                $scope.adlibPreviewBase = $scope.dataset.harvestURL.replace('?', '')
+                if ($scope.dataset.harvestDataset) {
+                    $scope.adlibPreviewBase = $scope.adlibPreviewBase + "?database=" +$scope.dataset.harvestDataset;
+                }
+                var connector = $scope.dataset.harvestDataset ? "&" : "?";
+                var searchValue = $scope.dataset.harvestSearch ? $scope.dataset.harvestSearch : "all";
+                $scope.adlibPreviewBase = $scope.adlibPreviewBase + connector + "search=" + searchValue ;
             }
         }
-        if ($scope.dataset.harvestType == 'adlib' && $scope.dataset.harvestURL) {
-            $scope.adlibPreviewBase = $scope.dataset.harvestURL.replace('?', '')
-            if ($scope.dataset.harvestDataset) {
-                $scope.adlibPreviewBase = $scope.adlibPreviewBase + "?database=" +$scope.dataset.harvestDataset;
+
+        // Build preview URLs initially
+        buildPreviewUrls();
+
+        // Watch for harvestURL changes (when full data is loaded after lightweight initial load)
+        $scope.$watch('dataset.harvestURL', function(newVal, oldVal) {
+            if (newVal && newVal !== oldVal) {
+                buildPreviewUrls();
             }
-            var connector = $scope.dataset.harvestDataset ? "&" : "?";
-            var searchValue = $scope.dataset.harvestSearch ? $scope.dataset.harvestSearch : "all";
-            $scope.adlibPreviewBase = $scope.adlibPreviewBase + connector + "search=" + searchValue ;
-        }
+        });
         function setUnchanged() {
             // Safety check: ensure dataset.edit exists before comparing
             if (!$scope.dataset || !$scope.dataset.edit) {

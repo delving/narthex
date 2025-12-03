@@ -131,6 +131,7 @@
                 <th class="error">In error</th>
                 <th class="valid">Valid</th>
                 <th class="total">Total</th>
+                <th class="activity">Activity</th>
                 <th class="status">Status</th>
                 <th class="date-time">Last changed</th>
             </tr>
@@ -145,7 +146,7 @@
                             data-ng-click="expanded = !expanded; expandDataset(dataset)"
                             class="clickable"
                             data-ng-class="{ 'closed': !expanded, 'open': expanded }"
-                            style="{{dataset.isActive ? 'background-color: #f0f8ff; border-left: 3px solid #337ab7;' : ''}}">
+                            style="{{dataset.isActive ? 'background-color: #f0f8ff; border-left: 3px solid #337ab7;' : (dataset.isQueued ? 'background-color: #fff8e6; border-left: 3px solid #f0ad4e;' : '')}}">
                             <td class="spec">
                                 <span class="spec-field">{{ dataset.datasetSpec }}
                                     <i data-ng-show="dataset.isActive || dataset.progress" class="fa fa-spinner fa-pulse fa-1x fa-fw" title="Processing or saving"></i>
@@ -174,10 +175,34 @@
                             <td class="total">
                                 {{ dataset.datasetRecordCount }}
                             </td>
-                            <td class="status">
-                                <span data-ng-if="dataset.isActive" class="label label-primary" style="margin-right: 5px;">
-                                    <i class="fa fa-cog fa-spin"></i> ACTIVE
+                            <td class="activity">
+                                <!-- Processing status -->
+                                <span data-ng-if="dataset.isProcessing" class="label label-primary">
+                                    <i class="fa fa-cog fa-spin"></i> PROCESSING
                                 </span>
+                                <!-- Saving status -->
+                                <span data-ng-if="dataset.isSaving" class="label label-info">
+                                    <i class="fa fa-save"></i> SAVING
+                                </span>
+                                <!-- Queued status with position, trigger, and cancel button -->
+                                <span data-ng-if="dataset.isQueued" class="label label-warning">
+                                    <i class="fa fa-hourglass-half"></i>
+                                    QUEUED #{{ dataset.queuePosition }}
+                                    <span ng-if="dataset.activityTrigger === 'periodic'">(auto)</span>
+                                    <span ng-if="dataset.activityTrigger === 'manual'">(manual)</span>
+                                    <span ng-if="dataset.activityTrigger === 'recovery'">(recovery)</span>
+                                    <button type="button" class="btn btn-xs btn-link" style="padding: 0 5px; color: white;"
+                                            data-ng-click="cancelQueuedOperation(dataset.datasetSpec); $event.stopPropagation();"
+                                            title="Cancel queued operation">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </span>
+                                <!-- Idle indicator -->
+                                <span data-ng-if="!dataset.isProcessing && !dataset.isSaving && !dataset.isQueued" class="text-muted">
+                                    <i class="fa fa-minus"></i>
+                                </span>
+                            </td>
+                            <td class="status">
                                 <span ng-switch="dataset.stateCurrent.name" class="indicator" data-ng-class="{stateEmpty:'empty',
                                             stateRaw: 'raw',
                                             stateRawAnalyzed: 'raw-analyzed',
@@ -391,6 +416,17 @@
                                 <progressbar class="form-control-feedback progress-striped"
                                     value="dataset.progress.count" max="100">{{ dataset.progress.message }}
                                 </progressbar>
+                                <!-- Page/record metadata -->
+                                <span class="input-group-addon" style="background: #f5f5f5; font-size: 11px; min-width: 100px;"
+                                      data-ng-if="dataset.progress.currentPage || dataset.progress.currentRecords">
+                                    <span data-ng-if="dataset.progress.currentPage">
+                                        pg {{ dataset.progress.currentPage }}<span data-ng-if="dataset.progress.totalPages">/{{ dataset.progress.totalPages }}</span>
+                                    </span>
+                                    <span data-ng-if="dataset.progress.currentPage && dataset.progress.currentRecords"> | </span>
+                                    <span data-ng-if="dataset.progress.currentRecords">
+                                        {{ dataset.progress.currentRecords }}<span data-ng-if="dataset.progress.totalRecords">/{{ dataset.progress.totalRecords }}</span> rec
+                                    </span>
+                                </span>
                                 <div class="input-group-btn">
                                     <button class="btn btn-danger btn-xs" data-ng-click="interruptProcessing(file)"
                                         data-ng-show="dataset.progress">
@@ -423,14 +459,14 @@
                         </div>
 
                         <!-- Permanent error (blocking, requires dismissal) -->
-                        <div data-ng-if="dataset.datasetErrorMessage && !dataset.inRetry">
+                        <div data-ng-if="(dataset.datasetErrorMessage || dataset.errorMessage) && !dataset.inRetry">
                             <div class="alert alert-danger" role="alert">
                                 <button type="button" class="close" data-dismiss="alert" data-ng-click="clearError()"
                                     aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                                 <i class="fa fa-exclamation-circle"></i>
-                                <span>{{ dataset.datasetErrorMessage | unsafe
+                                <span>{{ dataset.datasetErrorMessage || dataset.errorMessage | unsafe
                                     }}</span>
                                 <hr />
                                 You must
