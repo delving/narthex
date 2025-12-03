@@ -146,8 +146,9 @@ define(["angular"], function () {
                                     existingDataset.currentOperation = message.currentOperation;
                                 }
                                 if (message.operationStatus !== undefined) existingDataset.operationStatus = message.operationStatus;
-                                if (message.errorMessage !== undefined) existingDataset.errorMessage = message.errorMessage;
-                                if (message.errorTime !== undefined) existingDataset.errorTime = message.errorTime;
+                                // Only update error fields with truthy values - don't clear existing errors with null
+                                if (message.errorMessage) existingDataset.errorMessage = message.errorMessage;
+                                if (message.errorTime) existingDataset.errorTime = message.errorTime;
 
                                 // Re-decorate to update computed properties
                                 $scope.decorateDatasetLight(existingDataset);
@@ -159,8 +160,15 @@ define(["angular"], function () {
                             } else {
                                 // Full dataset - merge update into existing object to preserve UI state
                                 var operationChanged = existingDataset.currentOperation !== message.currentOperation;
+                                // Preserve error state if message doesn't have a truthy error value
+                                var existingError = existingDataset.errorMessage || existingDataset.datasetErrorMessage;
                                 // Use angular.extend to merge properties without replacing the object
                                 angular.extend(existingDataset, message);
+                                // Restore error if it was cleared by null in message
+                                if (existingError && !existingDataset.errorMessage && !existingDataset.datasetErrorMessage) {
+                                    existingDataset.errorMessage = existingError;
+                                    existingDataset.datasetErrorMessage = existingError;
+                                }
                                 // Re-decorate to update computed properties
                                 $scope.decorateDataset(existingDataset);
 
