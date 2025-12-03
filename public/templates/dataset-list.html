@@ -176,13 +176,23 @@
                                 {{ dataset.datasetRecordCount }}
                             </td>
                             <td class="activity">
-                                <!-- Processing status -->
+                                <!-- Processing status with cancel button -->
                                 <span data-ng-if="dataset.isProcessing" class="label label-primary">
                                     <i class="fa fa-cog fa-spin"></i> PROCESSING
+                                    <button type="button" class="btn btn-xs btn-link" style="padding: 0 5px; color: white;"
+                                            data-ng-click="interruptOperation(dataset.datasetSpec); $event.stopPropagation();"
+                                            title="Interrupt processing">
+                                        <i class="fa fa-times"></i>
+                                    </button>
                                 </span>
-                                <!-- Saving status -->
+                                <!-- Saving status with cancel button -->
                                 <span data-ng-if="dataset.isSaving" class="label label-info">
                                     <i class="fa fa-save"></i> SAVING
+                                    <button type="button" class="btn btn-xs btn-link" style="padding: 0 5px; color: white;"
+                                            data-ng-click="interruptOperation(dataset.datasetSpec); $event.stopPropagation();"
+                                            title="Interrupt saving">
+                                        <i class="fa fa-times"></i>
+                                    </button>
                                 </span>
                                 <!-- Queued status with position, trigger, and cancel button -->
                                 <span data-ng-if="dataset.isQueued" class="label label-warning">

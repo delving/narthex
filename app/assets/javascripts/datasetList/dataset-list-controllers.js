@@ -680,6 +680,15 @@ define(["angular"], function () {
             });
         };
 
+        // Interrupt a processing/saving operation
+        $scope.interruptOperation = function(spec) {
+            modalAlert.confirm("Interrupt Operation", "Interrupt processing for this dataset?", function() {
+                datasetListService.command(spec, "interrupt").then(function() {
+                    $scope.updateActiveDatasets();
+                });
+            });
+        };
+
         // Poll for active datasets every 5 seconds
         $scope.updateActiveDatasets();
         var activeDatasetsInterval = setInterval(function () {
