@@ -1138,13 +1138,20 @@ class DatasetActor(val datasetContext: DatasetContext,
 
       // Track operation state for restart recovery and activity logging
       if (toState == Idle) {
+        // Capture trigger before clearing (needed for logging)
+        val trigger = dsInfo.getOperationTrigger.getOrElse("manual")
+        val operation = fromState.toString.toUpperCase
+
+        // Clear operation tracking BEFORE broadcast so UI sees cleared state
+        dsInfo.clearOperation()
+        val completedStartTime = operationStartTime
+        operationStartTime = None
+
+        // Broadcast idle state (now with cleared operation)
         broadcastIdleState()
 
         // Log operation completion if we were tracking one
-        operationStartTime.foreach { startTime =>
-          val trigger = dsInfo.getOperationTrigger.getOrElse("manual")
-          val operation = fromState.toString.toUpperCase
-
+        completedStartTime.foreach { startTime =>
           // Determine record count based on operation type
           val recordCountOpt: Option[Int] = operation match {
             case "PROCESSING" | "SAVING" =>
@@ -1184,10 +1191,6 @@ class DatasetActor(val datasetContext: DatasetContext,
             workflowStartTime = None
           }
         }
-
-        // Clear operation tracking when returning to idle
-        dsInfo.clearOperation()
-        operationStartTime = None
 
         // Notify parent that this dataset is now idle
         context.parent ! DatasetBecameIdle(dsInfo.spec)
