@@ -96,3 +96,4 @@ The application uses Akka actors for concurrent data processing. Key actor conte
 
 ## Testing Approach
 Tests use ScalaTest with Play Framework support. Mock external services using Mockito and Play MockWS for web service testing.
+- you need to use `make compile` to compile narthex
