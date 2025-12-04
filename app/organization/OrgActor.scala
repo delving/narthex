@@ -19,6 +19,7 @@ package organization
 import akka.actor._
 import dataset.DatasetActor._
 import mapping.CategoriesSpreadsheet.CategoryCount
+import record.SourceProcessor.AdoptSource
 import mapping.CategoryCounter.CategoryCountComplete
 import organization.OrgActor._
 import play.api.libs.json._
@@ -62,9 +63,11 @@ object OrgActor {
   case object GetQueueStatus
   case class CancelResult(success: Boolean, message: String)
 
-  // Queue persistence
+  // Queue persistence and health checks
   case object PersistQueueState
   case object ShutdownPersist
+  case object ProcessQueueOnStartup
+  case object PeriodicQueueCheck
 
   // Persisted queue entry (serializable version of QueuedOperation)
   case class PersistedQueueEntry(
@@ -149,8 +152,9 @@ class OrgActor (
   // Queue persistence file
   val queueStateFile = new File(orgContext.orgRoot, "queue-state.json")
 
-  // Scheduler for periodic queue persistence
+  // Schedulers for periodic tasks
   var persistScheduler: Option[Cancellable] = None
+  var queueCheckScheduler: Option[Cancellable] = None
 
   override def preStart(): Unit = {
     super.preStart()
@@ -167,13 +171,28 @@ class OrgActor (
     )
     log.info("Queue persistence scheduler started (every 1 minute)")
 
+    // Schedule periodic queue health check every 30 seconds
+    // This ensures queued items get processed even if semaphore release messages are lost
+    queueCheckScheduler = Some(
+      context.system.scheduler.scheduleWithFixedDelay(
+        30.seconds, 30.seconds, self, PeriodicQueueCheck
+      )
+    )
+    log.info("Queue health check scheduler started (every 30 seconds)")
+
     // Perform startup recovery for interrupted operations
     performStartupRecovery()
+
+    // Schedule queue processing after a short delay to start any restored queued items
+    // This ensures the queue is processed even when no workers were active before restart
+    context.system.scheduler.scheduleOnce(5.seconds, self, ProcessQueueOnStartup)
+    log.info("Scheduled queue processing for 5 seconds after startup")
   }
 
   override def postStop(): Unit = {
-    // Cancel the scheduler
+    // Cancel the schedulers
     persistScheduler.foreach(_.cancel())
+    queueCheckScheduler.foreach(_.cancel())
 
     // Final save on shutdown
     saveQueueState()
@@ -385,16 +404,31 @@ class OrgActor (
 
   private def processQueue(): Unit = {
     // Try to dequeue and execute pending operations
-    while (operationQueue.nonEmpty && orgContext.semaphore.availablePermits() > 0) {
-      val next = operationQueue.head
-      if (orgContext.semaphore.tryAcquire(next.spec)) {
-        operationQueue = operationQueue.tail
-        log.info(s"Dequeued ${next.spec} (${next.trigger}), ${operationQueue.length} remaining in queue")
-        routeToDatasetActor(next.spec, next.message)
+    // Skip items whose spec is already active and try the next one
+    var remainingQueue = operationQueue
+    var newQueue = Vector.empty[QueuedOperation]
+    var processed = 0
+
+    while (remainingQueue.nonEmpty && orgContext.semaphore.availablePermits() > 0) {
+      val op = remainingQueue.head
+      remainingQueue = remainingQueue.tail
+
+      if (orgContext.semaphore.tryAcquire(op.spec)) {
+        // Got semaphore, execute this operation
+        processed += 1
+        log.info(s"Dequeued ${op.spec} (${op.trigger}), starting execution")
+        routeToDatasetActor(op.spec, op.message)
       } else {
-        // Couldn't acquire (maybe same spec already active), try next
-        return
+        // Couldn't acquire (spec already active), keep in queue for later
+        newQueue = newQueue :+ op
       }
+    }
+
+    // Combine: items we couldn't process + items we didn't reach
+    operationQueue = newQueue ++ remainingQueue
+
+    if (processed > 0) {
+      log.info(s"Processed $processed items from queue, ${operationQueue.length} remaining")
     }
   }
 
@@ -413,6 +447,7 @@ class OrgActor (
     case _: StartHarvest => true
     case _: StartProcessing => true
     case _: StartSaving => true
+    case _: AdoptSource => true  // File uploads need semaphore control
     case Command(cmd) => cmd.startsWith("start ") && !cmd.contains("refresh")
     case _ => false
   }
@@ -486,6 +521,17 @@ class OrgActor (
 
     case PersistQueueState =>
       saveQueueState()
+
+    case ProcessQueueOnStartup =>
+      log.info(s"Processing queue on startup: ${operationQueue.length} items queued, ${orgContext.semaphore.availablePermits()} permits available")
+      processQueue()
+
+    case PeriodicQueueCheck =>
+      // Safety net: periodically try to process queue in case semaphore releases were missed
+      if (operationQueue.nonEmpty && orgContext.semaphore.availablePermits() > 0) {
+        log.info(s"Periodic queue check: ${operationQueue.length} queued, ${orgContext.semaphore.availablePermits()} permits available - processing")
+        processQueue()
+      }
 
     case ShutdownPersist =>
       saveQueueState()
