@@ -92,9 +92,58 @@
                     <i class="fa fa-clock-o"></i>
                     {{ activeDatasets.queued.length }} queued
                 </button>
+                <button type="button" class="btn btn-default"
+                        ng-click="toggleStatsPanel()"
+                        title="Show completion statistics">
+                    <i class="fa fa-bar-chart"></i>
+                    <span ng-if="showStatsPanel"><i class="fa fa-caret-up"></i></span>
+                    <span ng-if="!showStatsPanel"><i class="fa fa-caret-down"></i></span>
+                </button>
             </div>
         </div>
     </form>
+
+    <!-- Completion Stats Panel -->
+    <div ng-if="showStatsPanel" class="panel panel-default" style="margin-top: 10px; margin-bottom: 0;">
+        <div class="panel-heading" style="padding: 8px 15px;">
+            <strong><i class="fa fa-check-circle"></i> Completed (Saved)</strong>
+            <button class="btn btn-xs btn-default pull-right" ng-click="refreshStats()" title="Refresh stats">
+                <i class="fa fa-refresh"></i>
+            </button>
+        </div>
+        <div class="panel-body" style="padding: 10px 15px;">
+            <table class="table table-condensed table-striped" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th class="text-center">Manual</th>
+                        <th class="text-center">Automatic</th>
+                        <th class="text-center">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Last 1h</strong></td>
+                        <td class="text-center">{{ completionStats.manual1h || 0 }}</td>
+                        <td class="text-center">{{ completionStats.automatic1h || 0 }}</td>
+                        <td class="text-center"><strong>{{ (completionStats.manual1h || 0) + (completionStats.automatic1h || 0) }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Last 4h</strong></td>
+                        <td class="text-center">{{ completionStats.manual4h || 0 }}</td>
+                        <td class="text-center">{{ completionStats.automatic4h || 0 }}</td>
+                        <td class="text-center"><strong>{{ (completionStats.manual4h || 0) + (completionStats.automatic4h || 0) }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Last 24h</strong></td>
+                        <td class="text-center">{{ completionStats.manual24h || 0 }}</td>
+                        <td class="text-center">{{ completionStats.automatic24h || 0 }}</td>
+                        <td class="text-center"><strong>{{ (completionStats.manual24h || 0) + (completionStats.automatic24h || 0) }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- Active Filter Breadcrumbs -->

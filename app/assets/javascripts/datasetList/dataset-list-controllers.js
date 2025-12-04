@@ -607,6 +607,20 @@ define(["angular"], function () {
             total: 0
         };
 
+        // Completion stats for observability
+        $scope.completionStats = null;
+        $scope.showStatsPanel = false;
+
+        $scope.toggleStatsPanel = function() {
+            $scope.showStatsPanel = !$scope.showStatsPanel;
+        };
+
+        $scope.refreshStats = function() {
+            datasetListService.listActiveDatasets().then(function(data) {
+                $scope.completionStats = data.completionStats;
+            });
+        };
+
         $scope.updateActiveDatasets = function () {
             datasetListService.listActiveDatasets().then(function (data) {
                 // Calculate total (processing + saving + queued)
@@ -614,6 +628,11 @@ define(["angular"], function () {
                              (data.saving || []).length +
                              (data.queued || []).length;
                 $scope.activeDatasets = data;
+
+                // Update completion stats from response
+                if (data.completionStats) {
+                    $scope.completionStats = data.completionStats;
+                }
 
                 // Build lookup maps for quick access
                 var processingSet = {};

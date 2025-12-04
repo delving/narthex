@@ -58,10 +58,25 @@ object OrgActor {
   case class QueueStatus(
     processing: List[String],
     saving: List[String],
-    queued: List[(String, String, Int)]  // (spec, trigger, position)
+    queued: List[(String, String, Int)],  // (spec, trigger, position)
+    stats: CompletionStats
   )
   case object GetQueueStatus
   case class CancelResult(success: Boolean, message: String)
+
+  // Completion tracking for observability
+  case class CompletedOperation(
+    spec: String,
+    completedAt: Long,
+    trigger: String,           // "manual", "periodic", "recovery"
+    durationSeconds: Option[Long]
+  )
+
+  case class CompletionStats(
+    manual1h: Int, automatic1h: Int,
+    manual4h: Int, automatic4h: Int,
+    manual24h: Int, automatic24h: Int
+  )
 
   // Queue persistence and health checks
   case object PersistQueueState
@@ -81,10 +96,13 @@ object OrgActor {
   case class PersistedQueueState(
     activeSpecs: List[String],      // Were actively processing (need priority re-queue)
     queuedEntries: List[PersistedQueueEntry],  // Were waiting in queue
+    completedOperations: List[CompletedOperation],  // Completed operations for stats
     savedAt: Long
   )
 
   // JSON format for persistence
+  implicit val completedOperationFormat: Format[CompletedOperation] = Json.format[CompletedOperation]
+  implicit val completionStatsFormat: Format[CompletionStats] = Json.format[CompletionStats]
   implicit val persistedQueueEntryFormat: Format[PersistedQueueEntry] = Json.format[PersistedQueueEntry]
   implicit val persistedQueueStateFormat: Format[PersistedQueueState] = Json.format[PersistedQueueState]
 
@@ -148,6 +166,13 @@ class OrgActor (
   // Queue for pending operations when concurrency limit reached
   // Priority queue: manual operations come before periodic/recovery
   var operationQueue: Vector[QueuedOperation] = Vector.empty
+
+  // Track completed operations for observability stats
+  var completedOperations: Vector[CompletedOperation] = Vector.empty
+
+  // Track specs that started saving (spec -> trigger) for completion tracking
+  // This is needed because saveSemaphore is released before DatasetBecameIdle is sent
+  var savingSpecs: Map[String, String] = Map.empty
 
   // Queue persistence file
   val queueStateFile = new File(orgContext.orgRoot, "queue-state.json")
@@ -216,6 +241,7 @@ class OrgActor (
       val state = PersistedQueueState(
         activeSpecs = activeSpecs,
         queuedEntries = queuedEntries,
+        completedOperations = completedOperations.toList,
         savedAt = System.currentTimeMillis()
       )
 
@@ -281,6 +307,13 @@ class OrgActor (
 
             if (operationQueue.nonEmpty) {
               log.info(s"Restored ${operationQueue.length} queued operations")
+            }
+
+            // Restore completed operations (prune entries older than 24h)
+            val cutoff = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+            completedOperations = state.completedOperations.filter(_.completedAt > cutoff).toVector
+            if (completedOperations.nonEmpty) {
+              log.info(s"Restored ${completedOperations.length} completed operation entries")
             }
 
           case JsError(errors) =>
@@ -365,21 +398,27 @@ class OrgActor (
 
     if (!needsSemaphore || isSampleHarvest) {
       // Non-processing commands and sample harvests execute immediately
-      routeToDatasetActor(spec, message)
+      routeToDatasetActor(spec, message, trigger)
     } else if (orgContext.semaphore.tryAcquire(spec)) {
       // Got semaphore, execute immediately
       log.info(s"Acquired semaphore for $spec ($trigger), executing immediately. Available: ${orgContext.semaphore.availablePermits()}")
-      routeToDatasetActor(spec, message)
+      routeToDatasetActor(spec, message, trigger)
     } else {
-      // Queue the operation with priority (manual before periodic/recovery)
+      // Couldn't acquire semaphore - check why
+      val isAlreadyActive = orgContext.semaphore.isActive(spec)
       val alreadyQueued = operationQueue.exists(_.spec == spec)
-      if (!alreadyQueued) {
+
+      if (isAlreadyActive) {
+        // Dataset is already processing - don't queue another operation
+        log.warning(s"$spec is already active (processing/saving), ignoring $trigger request")
+      } else if (alreadyQueued) {
+        log.info(s"$spec already queued, ignoring duplicate request")
+      } else {
+        // Not active and not queued - queue it (all workers busy)
         val newOp = QueuedOperation(spec, message, trigger)
         operationQueue = insertWithPriority(operationQueue, newOp)
         val position = operationQueue.indexWhere(_.spec == spec) + 1
         log.info(s"Queued $spec ($trigger) at position $position of ${operationQueue.length}")
-      } else {
-        log.info(s"$spec already queued, ignoring duplicate request")
       }
     }
   }
@@ -417,7 +456,7 @@ class OrgActor (
         // Got semaphore, execute this operation
         processed += 1
         log.info(s"Dequeued ${op.spec} (${op.trigger}), starting execution")
-        routeToDatasetActor(op.spec, op.message)
+        routeToDatasetActor(op.spec, op.message, op.trigger)
       } else {
         // Couldn't acquire (spec already active), keep in queue for later
         newQueue = newQueue :+ op
@@ -432,7 +471,7 @@ class OrgActor (
     }
   }
 
-  private def routeToDatasetActor(spec: String, message: AnyRef): Unit = {
+  private def routeToDatasetActor(spec: String, message: AnyRef, trigger: String = "manual"): Unit = {
     val actor: ActorRef = context.child(spec).getOrElse {
       val datasetContext = orgContext.datasetContext(spec)
       val datasetActor = context.actorOf(props(datasetContext, orgContext.mailService, orgContext, harvestingExecutionContext), spec)
@@ -440,7 +479,20 @@ class OrgActor (
       context.watch(datasetActor)
       datasetActor
     }
+
+    // Track save operations for completion statistics
+    if (isSaveOperation(message)) {
+      savingSpecs = savingSpecs + (spec -> trigger)
+      log.info(s"Tracking save operation for $spec (trigger: $trigger)")
+    }
+
     actor ! message
+  }
+
+  private def isSaveOperation(message: AnyRef): Boolean = message match {
+    case _: StartSaving => true
+    case Command(cmd) => cmd == "start saving"
+    case _ => false
   }
 
   private def isOperationMessage(message: AnyRef): Boolean = message match {
@@ -458,6 +510,29 @@ class OrgActor (
       operationQueue = operationQueue.filterNot(_.spec == spec)
       log.info(s"Removed $spec from queue")
     }
+  }
+
+  private def calculateCompletionStats(): CompletionStats = {
+    val now = System.currentTimeMillis()
+    val hour1 = now - (1 * 60 * 60 * 1000)
+    val hour4 = now - (4 * 60 * 60 * 1000)
+    val hour24 = now - (24 * 60 * 60 * 1000)
+
+    def countByTrigger(cutoff: Long, isManual: Boolean): Int = {
+      completedOperations.count { op =>
+        op.completedAt > cutoff &&
+        (if (isManual) op.trigger == "manual" else op.trigger != "manual")
+      }
+    }
+
+    CompletionStats(
+      manual1h = countByTrigger(hour1, isManual = true),
+      automatic1h = countByTrigger(hour1, isManual = false),
+      manual4h = countByTrigger(hour4, isManual = true),
+      automatic4h = countByTrigger(hour4, isManual = false),
+      manual24h = countByTrigger(hour24, isManual = true),
+      automatic24h = countByTrigger(hour24, isManual = false)
+    )
   }
 
   def receive = {
@@ -490,6 +565,39 @@ class OrgActor (
     case DatasetBecameIdle(spec) =>
       log.info(s"Dataset $spec became idle")
       activeDatasets = activeDatasets - spec
+
+      // Track completion if it was a SAVE operation (check savingSpecs map)
+      savingSpecs.get(spec) match {
+        case Some(trigger) =>
+          val completed = CompletedOperation(
+            spec = spec,
+            completedAt = System.currentTimeMillis(),
+            trigger = trigger,
+            durationSeconds = None
+          )
+          completedOperations = completedOperations :+ completed
+          savingSpecs = savingSpecs - spec  // Remove from tracking
+          log.info(s"Tracked completion for $spec (trigger: $trigger)")
+
+          // Prune old entries (older than 24h) and enforce max limit of 3000 entries
+          val cutoff = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+          val beforePrune = completedOperations.length
+          completedOperations = completedOperations.filter(_.completedAt > cutoff)
+
+          // If still over limit, keep only the most recent 3000
+          val maxCompletedEntries = 3000
+          if (completedOperations.length > maxCompletedEntries) {
+            completedOperations = completedOperations.takeRight(maxCompletedEntries)
+          }
+
+          if (completedOperations.length < beforePrune) {
+            log.info(s"Pruned ${beforePrune - completedOperations.length} old/excess completion entries")
+          }
+
+        case None =>
+          // Not a save operation, nothing to track
+      }
+
       removeFromQueue(spec)  // Remove if still in queue (e.g., cancelled)
       processQueue()         // Try to start next queued operation
 
@@ -504,7 +612,8 @@ class OrgActor (
       val queued = operationQueue.zipWithIndex.map { case (op, idx) =>
         (op.spec, op.trigger, idx + 1)
       }.toList
-      sender() ! QueueStatus(processing, saving, queued)
+      val stats = calculateCompletionStats()
+      sender() ! QueueStatus(processing, saving, queued, stats)
 
     case CancelQueuedOperation(spec) =>
       val wasQueued = operationQueue.exists(_.spec == spec)

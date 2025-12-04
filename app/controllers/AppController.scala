@@ -126,7 +126,15 @@ class AppController @Inject() (
           Json.obj("spec" -> spec, "trigger" -> trigger, "position" -> pos)
         },
         "queueLength" -> status.queued.length,
-        "availableSlots" -> orgContext.semaphore.availablePermits()
+        "availableSlots" -> orgContext.semaphore.availablePermits(),
+        "completionStats" -> Json.obj(
+          "manual1h" -> status.stats.manual1h,
+          "automatic1h" -> status.stats.automatic1h,
+          "manual4h" -> status.stats.manual4h,
+          "automatic4h" -> status.stats.automatic4h,
+          "manual24h" -> status.stats.manual24h,
+          "automatic24h" -> status.stats.automatic24h
+        )
       ))
     }
   }
