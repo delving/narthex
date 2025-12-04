@@ -650,7 +650,15 @@ class DatasetActor(val datasetContext: DatasetContext,
       def processIncremental(fileOpt: Option[File],
                              noRecordsMatch: Boolean,
                              mod: Option[DateTime]) = {
-        orgContext.semaphore.release(dsInfo.spec)
+        // Determine if there will be more work (processing/saving)
+        val hasMoreWork = !noRecordsMatch && fileOpt.isDefined
+
+        // Only release semaphore if no more work to do
+        // If there's more work, semaphore will be released by GraphSaver
+        if (!hasMoreWork) {
+          orgContext.semaphore.release(dsInfo.spec)
+        }
+
         noRecordsMatch match {
           case true =>
             logger.debug(
@@ -687,23 +695,45 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
       strategy match {
         case Sample =>
+          // Sample harvests bypass semaphore, no release needed
           dsInfo.setState(RAW)
         case FromScratch =>
-          dsInfo.removeState(SAVED)
-          dsInfo.removeState(ANALYZED)
-          dsInfo.removeState(INCREMENTAL_SAVED)
-          dsInfo.removeState(PROCESSED)
-          dsInfo.setState(SOURCED)
-          dsInfo.setLastHarvestTime(incremental = false)
+          if (noRecordsMatch) {
+            // Full harvest returned no records - all records depublished
+            // Keep SAVED state so dataset stays in harvest cycle for auto-recovery
+            // Reset counts to 0 to reflect current state
+            log.info(s"Full harvest (FromScratch) returned noRecordsMatch for ${dsInfo.spec} - resetting counts to 0")
+            dsInfo.setRecordCount(0)
+            dsInfo.setProcessedRecordCounts(0, 0)
+          } else {
+            dsInfo.removeState(SAVED)
+            dsInfo.removeState(ANALYZED)
+            dsInfo.removeState(INCREMENTAL_SAVED)
+            dsInfo.removeState(PROCESSED)
+            dsInfo.setState(SOURCED)
+            dsInfo.setLastHarvestTime(incremental = false)
+          }
+          // Release semaphore since FromScratch harvest is complete
+          orgContext.semaphore.release(dsInfo.spec)
 
         case ModifiedAfter(mod, _) =>
           processIncremental(fileOpt, noRecordsMatch, Some(mod))
 
         case FromScratchIncremental =>
-          processIncremental(fileOpt, noRecordsMatch, None)
-          dsInfo.updatedSpecCountFromFile(dsInfo.spec,
-                                        orgContext.appConfig.narthexDataDir,
-                                        orgContext.appConfig.orgId)
+          if (noRecordsMatch) {
+            // Full harvest returned no records - all records depublished
+            // Keep SAVED state so dataset stays in harvest cycle for auto-recovery
+            // Reset counts to 0 to reflect current state
+            log.info(s"Full harvest (FromScratchIncremental) returned noRecordsMatch for ${dsInfo.spec} - resetting counts to 0")
+            dsInfo.setRecordCount(0)
+            dsInfo.setProcessedRecordCounts(0, 0)
+            orgContext.semaphore.release(dsInfo.spec)
+          } else {
+            processIncremental(fileOpt, noRecordsMatch, None)
+            dsInfo.updatedSpecCountFromFile(dsInfo.spec,
+                                          orgContext.appConfig.narthexDataDir,
+                                          orgContext.appConfig.orgId)
+          }
       }
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
@@ -750,6 +780,9 @@ class DatasetActor(val datasetContext: DatasetContext,
           goto(Idle) using Dormant
         case _ =>
           fastSaveScheduledOpt = None // Clear the flag if set
+          // Release semaphore since we're not continuing to processing
+          // The semaphore was held by processIncremental or Adopting handler
+          orgContext.semaphore.release(dsInfo.spec)
           goto(Idle) using Dormant
       }
 
@@ -792,6 +825,8 @@ class DatasetActor(val datasetContext: DatasetContext,
                                                   dsInfo.processedValidVal,
                                                   dsInfo.processedInvalidVal)
         active.childOpt.foreach(_ ! PoisonPill)
+        // Release semaphore since we're not going through GraphSaver
+        orgContext.semaphore.release(dsInfo.spec)
         goto(Idle) using Dormant
       }
   }
@@ -1069,6 +1104,9 @@ class DatasetActor(val datasetContext: DatasetContext,
         log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
         // kill active actors
         active.childOpt.foreach(_ ! PoisonPill)
+        // Release semaphores since we're aborting the operation
+        orgContext.semaphore.release(dsInfo.spec)
+        orgContext.saveSemaphore.release(dsInfo.spec)
         goto(Idle) using Dormant
       }
 
@@ -1107,6 +1145,9 @@ class DatasetActor(val datasetContext: DatasetContext,
         }
         mailService.sendProcessingErrorMessage(dsInfo.spec, message, exceptionOpt)
         active.childOpt.foreach(_ ! PoisonPill)
+        // Release semaphores since operation failed
+        orgContext.semaphore.release(dsInfo.spec)
+        orgContext.saveSemaphore.release(dsInfo.spec)
         goto(Idle) using InError(message)
       }
 
