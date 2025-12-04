@@ -270,15 +270,20 @@ define(["angular"], function () {
             }	
         }	
 	
-        function filterDatasetByState(ds) {	
-            var filter = $scope.stateFilter;	
-            if (filter != 'stateEmpty') {	
+        function filterDatasetByState(ds) {
+            var filter = $scope.stateFilter;
+            if (!filter) {
+                ds.visible = true;
+            } else if (filter === 'stateWorking') {
+                ds.visible = ds.isProcessing === true || ds.isSaving === true;
+            } else if (filter === 'stateQueued') {
+                ds.visible = ds.isQueued === true;
+            } else if (filter === 'stateEmpty') {
+                ds.visible = ds.empty;
+            } else {
                 var currentState = ds.stateCurrentForFilter || ds.stateCurrent;
-                ds.visible = !filter || currentState.name === filter;	
-            }	
-            else {	
-                ds.visible = !filter || ds.empty;	
-            }	
+                ds.visible = currentState.name === filter;
+            }
         }	
 	
         $scope.datasetListOrder = function (orderBy) {	
@@ -388,6 +393,8 @@ define(["angular"], function () {
 
         $scope.datasetStates = [
             {name: 'stateActive', label: 'Active', count: 0},
+            {name: 'stateWorking', label: 'Working', count: 0},
+            {name: 'stateQueued', label: 'Queued', count: 0},
             {name: 'stateEmpty', label: 'Empty', count: 0},
             {name: 'stateDisabled', label: 'Disabled', count: 0},
             {name: 'stateRaw', label: 'Raw', count: 0},
@@ -566,6 +573,9 @@ define(["angular"], function () {
             datasetListService.datasetInfo(dataset.spec).then(function (fullData) {
                 // Merge full data into the light dataset object
                 angular.extend(dataset, fullData);
+                // Mark as fully loaded so WebSocket updates don't overwrite with light data
+                dataset.fullDataLoaded = true;
+                dataset.isLight = false;
                 // Re-decorate with full data
                 $scope.decorateDataset(dataset);
             });
@@ -715,17 +725,25 @@ define(["angular"], function () {
                 var state = dataset.stateCurrentForFilter || dataset.stateCurrent;
                 return state.name;
             });
-            //var datasetErrorCounter = _.countBy($scope.datasets, function (dataset) {
-            //   return _.isUndefined(dataset.errorMessage);
-            //});
-            //console.log(datasetErrorCounter);
+
+            // Count activity-based states separately
+            var workingCount = 0;
+            var queuedCount = 0;
+            _.forEach($scope.datasets, function(dataset) {
+                if (dataset.isProcessing || dataset.isSaving) workingCount++;
+                if (dataset.isQueued) queuedCount++;
+            });
+
             $scope.datasetStates = _.map(
                 $scope.datasetStates,
                 function (state) {
-                    if (_.has(datasetStateCounter, state.name)) {
+                    if (state.name === 'stateWorking') {
+                        state.count = workingCount;
+                    } else if (state.name === 'stateQueued') {
+                        state.count = queuedCount;
+                    } else if (_.has(datasetStateCounter, state.name)) {
                         state.count = datasetStateCounter[state.name];
-                    }
-                    else {
+                    } else {
                         state.count = 0;
                     }
                     return state;

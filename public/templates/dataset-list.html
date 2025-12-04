@@ -71,12 +71,28 @@
                 placeholder="Filter by Spec or Name" />
         </div>
         <div class="form-group pull-right">
-            <button type="button" class="btn"
-                    ng-class="{'btn-primary': stateFilter === 'stateActive', 'btn-default': stateFilter !== 'stateActive'}"
-                    ng-click="stateFilter === 'stateActive' ? stateFilter = '' : setStateFilter('stateActive')">
-                <i class="fa fa-cog" ng-class="{'fa-spin': activeDatasets.total > 0}"></i>
-                {{ activeDatasets.total }} active
-            </button>
+            <div class="btn-group">
+                <button type="button" class="btn"
+                        ng-class="{'btn-primary': stateFilter === 'stateActive', 'btn-default': stateFilter !== 'stateActive'}"
+                        ng-click="stateFilter === 'stateActive' ? stateFilter = '' : setStateFilter('stateActive')">
+                    <i class="fa fa-cog" ng-class="{'fa-spin': activeDatasets.total > 0}"></i>
+                    {{ activeDatasets.total }} active
+                </button>
+                <button type="button" class="btn"
+                        ng-class="{'btn-success': stateFilter === 'stateWorking', 'btn-default': stateFilter !== 'stateWorking'}"
+                        ng-click="stateFilter === 'stateWorking' ? stateFilter = '' : setStateFilter('stateWorking')"
+                        ng-if="activeDatasets.processing.length + activeDatasets.saving.length > 0">
+                    <i class="fa fa-play"></i>
+                    {{ activeDatasets.processing.length + activeDatasets.saving.length }} working
+                </button>
+                <button type="button" class="btn"
+                        ng-class="{'btn-info': stateFilter === 'stateQueued', 'btn-default': stateFilter !== 'stateQueued'}"
+                        ng-click="stateFilter === 'stateQueued' ? stateFilter = '' : setStateFilter('stateQueued')"
+                        ng-if="activeDatasets.queued.length > 0">
+                    <i class="fa fa-clock-o"></i>
+                    {{ activeDatasets.queued.length }} queued
+                </button>
+            </div>
         </div>
     </form>
 </div>
