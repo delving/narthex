@@ -76,6 +76,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var pageCount = 0
   var progressOpt: Option[ProgressReporter] = None
   var recordsPerPage: Option[Int] = None  // Tracks page size for total pages calculation
+  var harvestedRecords: Int = 0  // Actual count of harvested records for accurate progress
 
   // Error recovery state
   var harvestErrors: Map[String, String] = Map.empty
@@ -366,6 +367,11 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     // http://umu.adlibhosting.com/api/wwwopac.ashx?xmltype=grouped&limit=50&database=collect&search=modification%20greater%20%272014-12-01%27
 
     case HarvestAdLib(strategy, url, database, search) => actorWork(context) {
+      // Reset counters for new harvest
+      pageCount = 0
+      harvestedRecords = 0
+      recordsPerPage = None
+
       log.info(s"Harvesting $url $database to $datasetContext")
 
       // Initialize error recovery settings from dataset config
@@ -556,6 +562,11 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     }
 
     case HarvestPMH(strategy: HarvestStrategy, raw_url, set, prefix, recordId) => actorWork(context) {
+      // Reset counters for new harvest
+      pageCount = 0
+      harvestedRecords = 0
+      recordsPerPage = None
+
       val url = s"${raw_url.stripSuffix("?")}?"
       log.info(s"Harvesting $strategy: $url $set $prefix to $datasetContext")
       val harvestRecord = if (!recordId.isEmpty) Option(recordId) else None
@@ -639,50 +650,52 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
 
-      // Count records on first page to determine page size for total pages calculation
-      if (recordsPerPage.isEmpty) {
-        try {
-          val xml = scala.xml.XML.loadString(records)
-          val recordCount = (xml \\ "record").length
-          if (recordCount > 0) {
-            recordsPerPage = Some(recordCount)
-            log.info(s"Detected $recordCount records per page")
-          }
-        } catch {
-          case NonFatal(e) =>
-            log.warning(s"Could not count records in page: ${e.getMessage}")
-        }
+      // Count records on this page - both for page size detection and accurate progress
+      val recordsOnPage = try {
+        val xml = scala.xml.XML.loadString(records)
+        (xml \\ "record").length
+      } catch {
+        case NonFatal(e) =>
+          log.warning(s"Could not count records in page: ${e.getMessage}")
+          0
+      }
+
+      // Track total harvested records
+      harvestedRecords += recordsOnPage
+
+      // Detect records per page on first page with records
+      if (recordsPerPage.isEmpty && recordsOnPage > 0) {
+        recordsPerPage = Some(recordsOnPage)
+        log.info(s"Detected $recordsOnPage records per page")
       }
 
       resumptionToken.map { token =>
-        // Send progress with detailed metadata
-        // Use cursor if meaningful (> 1), otherwise don't show record count
-        // (cursor defaults to 1 when not provided by PMH server)
-        val hasMeaningfulCursor = token.currentRecord > 1
-
         // Calculate total pages if we know records per page and total records
         val calculatedTotalPages = for {
           perPage <- recordsPerPage
           if token.totalRecords > 0 && perPage > 0
         } yield (token.totalRecords + perPage - 1) / perPage  // Ceiling division
 
-        // Calculate percent: prefer cursor-based, fallback to page-based
-        // Returns 0 when indeterminate (triggers animated progress bar in UI)
-        val percent = if (token.hasPercentComplete && hasMeaningfulCursor) {
-          token.percentComplete
+        // Calculate percent based on actual harvested records (most accurate)
+        // Falls back to page-based if no total records available
+        val percent = if (token.totalRecords > 0 && harvestedRecords > 0) {
+          val pc = (harvestedRecords * 100) / token.totalRecords
+          if (pc < 1) 1 else if (pc > 99) 99 else pc  // Cap at 99 until actually done
         } else {
           // Fallback: calculate from page count if we know total pages
-          calculatedTotalPages.map { total =>
-            val pc = (pageCount * 100) / total
+          calculatedTotalPages.map { totalPages =>
+            val pc = (pageCount * 100) / totalPages
             if (pc < 1) 1 else pc
           }.getOrElse(0)  // 0 = indeterminate, shows animated progress bar
         }
+
+        log.info(s"Progress: $harvestedRecords/${token.totalRecords} records, page $pageCount/${calculatedTotalPages.getOrElse("?")} = $percent%")
 
         progressOpt.get.sendProgress(
           percent = percent,
           currentPage = Some(pageCount),
           totalPages = calculatedTotalPages,
-          currentRecords = if (hasMeaningfulCursor) Some(token.currentRecord) else None,
+          currentRecords = Some(harvestedRecords),
           totalRecords = if (token.totalRecords > 0) Some(token.totalRecords) else None
         )
         val futurePage = fetchPMHPage(pageNumber, timeout, wsApi, strategy, url, set, prefix, resumptionToken)
