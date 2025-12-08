@@ -509,9 +509,18 @@ define(["angular"], function () {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
             }
 
-            // Disabled state always takes precedence - a disabled dataset should show as disabled
+            // Disabled state takes precedence, BUT ignore stale disabled state
+            // If any workflow state is >1 day newer than stateDisabled, consider it re-enabled
             if (dataset.stateDisabled) {
-                dataset.stateCurrent = {"name": "stateDisabled", "date": Date.now()};
+                var disabledDate = Date.parse(dataset.stateDisabled);
+                var oneDayMs = 24 * 60 * 60 * 1000;
+                var isStaleDisabled = _.some(dataset.states, function(s) {
+                    return s.date > (disabledDate + oneDayMs);
+                });
+
+                if (!isStaleDisabled) {
+                    dataset.stateCurrent = {"name": "stateDisabled", "date": Date.now()};
+                }
             }
 
             filterDatasetBySpec(dataset);
@@ -620,9 +629,18 @@ define(["angular"], function () {
             if (dataset.datasetErrorMessage || dataset.errorMessage) {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
             }
-            // Disabled state always takes precedence - a disabled dataset should show as disabled
+            // Disabled state takes precedence, BUT ignore stale disabled state
+            // If any workflow state is >1 day newer than stateDisabled, consider it re-enabled
             if (dataset.stateDisabled) {
-                dataset.stateCurrent = {"name": "stateDisabled", "date": Date.now()};
+                var disabledDate = Date.parse(dataset.stateDisabled);
+                var oneDayMs = 24 * 60 * 60 * 1000;
+                var isStaleDisabled = _.some(dataset.states, function(s) {
+                    return s.date > (disabledDate + oneDayMs);
+                });
+
+                if (!isStaleDisabled) {
+                    dataset.stateCurrent = {"name": "stateDisabled", "date": Date.now()};
+                }
             }
             //console.log(dataset, dataset.stateCurrent, dataset.states, dataset.datasetErrorMessage)
             // showCounters removed from html: todo: remove?
