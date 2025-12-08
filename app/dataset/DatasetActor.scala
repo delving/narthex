@@ -606,6 +606,18 @@ class DatasetActor(val datasetContext: DatasetContext,
                                processed)
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       } else {
+        // Raw analysis: clean up all downstream workflow states (they're now stale)
+        // This handles re-analysis scenarios where old states should be invalidated
+        log.info(s"Cleaning up stale workflow states for ${dsInfo.spec}")
+        dsInfo.removeState(SOURCED)
+        dsInfo.removeState(MAPPABLE)
+        dsInfo.removeState(PROCESSABLE)
+        dsInfo.removeState(PROCESSED)
+        dsInfo.removeState(ANALYZED)
+        dsInfo.removeState(SAVED)
+        dsInfo.removeState(INCREMENTAL_SAVED)
+        dsInfo.removeLiteralProp(delimitersSet)
+
         val rawFile = datasetContext.rawXmlFile.getOrElse(
           throw new Exception(s"Unable to find 'raw' file to analyze"))
         val analyzer = createChildActor(

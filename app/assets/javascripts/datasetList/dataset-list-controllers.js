@@ -474,17 +474,20 @@ define(["angular"], function () {
             // States that indicate delimiters have been set (you can't reach these without valid delimiters)
             var statesBeyondDelimit = ['stateSourced', 'stateMappable', 'stateProcessable',
                                        'stateProcessed', 'stateSaved', 'stateIncrementalSaved'];
+            var rawAnalyzedState = _.find(dataset.states, function(s) { return s.name === 'stateRawAnalyzed'; });
+            // Only count past-delimit states if they're NEWER than stateRawAnalyzed (i.e., current workflow run)
             var hasProgressedPastDelimit = _.some(dataset.states, function(s) {
-                return _.contains(statesBeyondDelimit, s.name);
+                if (!_.contains(statesBeyondDelimit, s.name)) return false;
+                // If re-analyzed, past states are stale - only valid if newer than rawAnalyzed
+                return !rawAnalyzedState || s.date > rawAnalyzedState.date;
             });
 
             if (hasProgressedPastDelimit) {
-                // Legacy datasets: if they've been processed, delimiters were valid
+                // Dataset has progressed past delimit stage in current workflow
                 dataset.delimitersValid = true;
             } else if (dataset.delimitersSet) {
                 // Check if delimitersSet is newer than stateRawAnalyzed
                 var delimDate = new Date(dataset.delimitersSet);
-                var rawAnalyzedState = _.find(dataset.states, function(s) { return s.name === 'stateRawAnalyzed'; });
                 if (rawAnalyzedState) {
                     dataset.delimitersValid = delimDate.getTime() > rawAnalyzedState.date;
                 } else {
@@ -599,17 +602,20 @@ define(["angular"], function () {
             // States that indicate delimiters have been set (you can't reach these without valid delimiters)
             var statesBeyondDelimit = ['stateSourced', 'stateMappable', 'stateProcessable',
                                        'stateProcessed', 'stateSaved', 'stateIncrementalSaved'];
+            var rawAnalyzedState = _.find(dataset.states, function(s) { return s.name === 'stateRawAnalyzed'; });
+            // Only count past-delimit states if they're NEWER than stateRawAnalyzed (i.e., current workflow run)
             var hasProgressedPastDelimit = _.some(dataset.states, function(s) {
-                return _.contains(statesBeyondDelimit, s.name);
+                if (!_.contains(statesBeyondDelimit, s.name)) return false;
+                // If re-analyzed, past states are stale - only valid if newer than rawAnalyzed
+                return !rawAnalyzedState || s.date > rawAnalyzedState.date;
             });
 
             if (hasProgressedPastDelimit) {
-                // Legacy datasets: if they've been processed, delimiters were valid
+                // Dataset has progressed past delimit stage in current workflow
                 dataset.delimitersValid = true;
             } else if (dataset.delimitersSet) {
                 // Check if delimitersSet is newer than stateRawAnalyzed
                 var delimDate = new Date(dataset.delimitersSet);
-                var rawAnalyzedState = _.find(dataset.states, function(s) { return s.name === 'stateRawAnalyzed'; });
                 if (rawAnalyzedState) {
                     dataset.delimitersValid = delimDate.getTime() > rawAnalyzedState.date;
                 } else {

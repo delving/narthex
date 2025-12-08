@@ -99,6 +99,19 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
     def sendRefresh() = orgContext.orgActor ! dsInfo.createMessage(Command("refresh"))
 
+    // Helper to clean up all workflow states when uploading a new raw file
+    def cleanupWorkflowStates(): Unit = {
+      dsInfo.removeState(RAW_ANALYZED)
+      dsInfo.removeState(ANALYZED)
+      dsInfo.removeState(SOURCED)
+      dsInfo.removeState(MAPPABLE)
+      dsInfo.removeState(PROCESSABLE)
+      dsInfo.removeState(PROCESSED)
+      dsInfo.removeState(SAVED)
+      dsInfo.removeState(INCREMENTAL_SAVED)
+      dsInfo.removeLiteralProp(GraphProperties.delimitersSet)
+    }
+
     if (fileName.endsWith(".csv")) {
       val csvFile = setTargetFile(createRawFile(fileName))
       val reader = FileHandling.createReader(csvFile)
@@ -112,8 +125,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
         case Success(_) => dsInfo.setState(RAW)
         case Failure(e) => dsInfo.removeState(RAW)
       }
-      dsInfo.removeState(RAW_ANALYZED)
-      dsInfo.removeState(ANALYZED)
+      cleanupWorkflowStates()
       dropTree()
       sendRefresh()
       None
@@ -121,8 +133,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     else if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
       setTargetFile(createRawFile(fileName))
       dsInfo.setState(RAW)
-      dsInfo.removeState(RAW_ANALYZED)
-      dsInfo.removeState(ANALYZED)
+      cleanupWorkflowStates()
       dsInfo.removeLiteralProp(GraphProperties.harvestType)
       dropTree()
       sendRefresh()
