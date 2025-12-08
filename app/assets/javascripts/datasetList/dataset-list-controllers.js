@@ -521,7 +521,7 @@ define(["angular"], function () {
                 });
 
                 if (!isStaleDisabled) {
-                    dataset.stateCurrent = {"name": "stateDisabled", "date": Date.now()};
+                    dataset.stateCurrent = {"name": "stateDisabled", "date": disabledDate};
                 }
             }
 
@@ -643,7 +643,7 @@ define(["angular"], function () {
                 });
 
                 if (!isStaleDisabled) {
-                    dataset.stateCurrent = {"name": "stateDisabled", "date": Date.now()};
+                    dataset.stateCurrent = {"name": "stateDisabled", "date": disabledDate};
                 }
             }
             //console.log(dataset, dataset.stateCurrent, dataset.states, dataset.datasetErrorMessage)
