@@ -37,6 +37,7 @@ import services.FileHandling._
 import services.ProgressReporter.ProgressState._
 import services.Temporal._
 import services.{FileHandling, ProgressReporter}
+import mapping.DefaultMappingRepo
 import play.api.libs.json.{JsValue, Json, Writes}
 
 
@@ -105,6 +106,25 @@ class SourceProcessor(val datasetContext: DatasetContext,
           val idFilter = dsInfo.getIdFilter
           val pocketCount =
             sourceRepo.generatePockets(pocketOutput, idFilter, progressReporter)
+
+          // Get effective mapping XML if dataset uses default mapping
+          val effectiveMappingXml: Option[String] = if (dsInfo.usesDefaultMapping) {
+            (for {
+              prefix <- dsInfo.getDefaultMappingPrefix
+              version = dsInfo.getDefaultMappingVersion.getOrElse("latest")
+              defaultMappingRepo = new DefaultMappingRepo(datasetContext.orgContext.orgRoot)
+              xml <- defaultMappingRepo.getXml(prefix, version)
+            } yield {
+              log.info(s"Using default mapping for dataset ${dsInfo.spec}: prefix=$prefix, version=$version")
+              xml
+            }).orElse {
+              log.warning(s"Dataset ${dsInfo.spec} configured for default mapping but mapping not found, falling back to manual")
+              None
+            }
+          } else {
+            None
+          }
+
           val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt
             .map { latestSip =>
               val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping =>
@@ -112,7 +132,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
               datasetContext.sipFiles.foreach(_.delete())
               val sipFile = datasetContext.createSipFile
               pocketOutput.close()
-              latestSip.copyWithSourceTo(sipFile, pocketFile, prefixRepoOpt, SipGenerationFacts(dsInfo))
+              latestSip.copyWithSourceTo(sipFile, pocketFile, prefixRepoOpt, SipGenerationFacts(dsInfo), effectiveMappingXml)
               Some(sipFile)
             } getOrElse {
             val facts = SipGenerationFacts(dsInfo)

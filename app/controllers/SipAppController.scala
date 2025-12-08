@@ -18,18 +18,23 @@ package controllers
 
 import javax.inject._
 import scala.concurrent.ExecutionContext
+import scala.io.Source
 import play.api._
 import play.api.mvc._
 
+import dataset.DsInfo
 import dataset.SipRepo.AvailableSip
+import mapping.DefaultMappingRepo
 import organization.OrgContext
+import triplestore.TripleStore
 import web.Utils
 
 @Singleton
 class SipAppController @Inject() (
     orgContext: OrgContext
 )(implicit
-    ec: ExecutionContext
+    ec: ExecutionContext,
+    ts: TripleStore
 ) extends InjectedController with Logging {
 
   def listSipZips() = Action.async { request =>
@@ -65,8 +70,74 @@ class SipAppController @Inject() (
   def uploadSipZip(spec: String, zipFileName: String) = Action(parse.temporaryFile) { request =>
     val datasetContext = orgContext.datasetContext(spec)
     request.body.moveTo(datasetContext.sipRepo.createSipZipFile(zipFileName))
+
+    // Archive the mapping from the uploaded SIP
+    archiveMappingFromSip(spec, datasetContext)
+
     datasetContext.startSipZipGeneration()
     Ok
+  }
+
+  private def archiveMappingFromSip(spec: String, datasetContext: dataset.DatasetContext): Unit = {
+    try {
+      // Get the latest SIP (which is the one we just uploaded)
+      datasetContext.sipRepo.latestSipOpt.foreach { sip =>
+        sip.sipMappingOpt.foreach { sipMapping =>
+          val prefix = sipMapping.prefix
+          val mappingFileName = s"mapping_$prefix.xml"
+
+          // Extract mapping XML from SIP
+          sip.entries.get(mappingFileName).foreach { entry =>
+            val inputStream = sip.zipFile.getInputStream(entry)
+            try {
+              val mappingXml = Source.fromInputStream(inputStream, "UTF-8").mkString
+
+              // Compute hash of uploaded mapping
+              val uploadedHash = DefaultMappingRepo.computeHash(mappingXml)
+
+              // Save to dataset mapping repo
+              val repo = datasetContext.datasetMappingRepo
+              repo.saveFromSipUpload(mappingXml, prefix, Some(s"Uploaded via SIP-Creator"))
+
+              // Check if dataset uses default mapping and if hash differs
+              DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
+                if (dsInfo.usesDefaultMapping) {
+                  val defaultPrefix = dsInfo.getDefaultMappingPrefix
+                  val defaultVersion = dsInfo.getDefaultMappingVersion
+
+                  // Only check if the prefixes match
+                  if (defaultPrefix.contains(prefix)) {
+                    // Get the default mapping hash
+                    val defaultMappingRepo = new DefaultMappingRepo(orgContext.orgRoot)
+                    val targetVersion = defaultVersion.getOrElse("latest")
+                    val defaultHash = if (targetVersion == "latest") {
+                      defaultMappingRepo.getInfo(prefix).flatMap(_.versions.sortBy(_.timestamp.getMillis).lastOption.map(_.hash))
+                    } else {
+                      Some(targetVersion)
+                    }
+
+                    // If hashes differ, auto-switch to manual mode
+                    defaultHash.foreach { dHash =>
+                      if (dHash != uploadedHash) {
+                        logger.info(s"Dataset $spec: Uploaded mapping hash ($uploadedHash) differs from default mapping hash ($dHash). Auto-switching to manual mode.")
+                        dsInfo.setMappingSource("manual", None, None)
+                      }
+                    }
+                  }
+                }
+              }
+
+              logger.debug(s"Archived mapping from SIP upload for dataset $spec: $mappingFileName (hash: $uploadedHash)")
+            } finally {
+              inputStream.close()
+            }
+          }
+        }
+      }
+    } catch {
+      case e: Exception =>
+        logger.warn(s"Failed to archive mapping from SIP upload for $spec: ${e.getMessage}")
+    }
   }
 
 }

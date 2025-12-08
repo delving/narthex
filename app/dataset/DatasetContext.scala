@@ -34,6 +34,7 @@ import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
 import services.StringHandling.pathToDirectory
 import services.{FileHandling, StringHandling}
+import mapping.DatasetMappingRepo
 import triplestore.GraphProperties
 
 import scala.util.{Failure, Success, Try}
@@ -65,6 +66,8 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   lazy val sipRepo = new SipRepo(sipsDir, dsInfo.spec, orgContext.appConfig.rdfBaseUrl)
 
   lazy val processedRepo = new ProcessedRepo(processedDir, dsInfo)
+
+  lazy val datasetMappingRepo = new DatasetMappingRepo(rootDir)
 
   def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
 

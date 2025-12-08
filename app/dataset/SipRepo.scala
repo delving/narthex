@@ -361,7 +361,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
   def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
 
-  def copyWithSourceTo(sipFile: File, sourceXmlFile: File, sipPrefixRepoOpt: Option[SipPrefixRepo], facts: SipGenerationFacts) = {
+  def copyWithSourceTo(sipFile: File, sourceXmlFile: File, sipPrefixRepoOpt: Option[SipPrefixRepo], facts: SipGenerationFacts, customMappingXml: Option[String] = None) = {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
     var sourceFound = false
 
@@ -400,16 +400,26 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           logger.debug(s"Mapping: ${entry.getName}")
           sipMappingOpt.foreach { sipMapping =>
             zos.putNextEntry(new ZipEntry(sipMapping.fileName))
-            // if there is a new schema version, set it
-            sipPrefixRepoOpt.foreach(sipPrefix => sipMapping.recMapping.setSchemaVersion(new SchemaVersion(sipPrefix.schemaVersions)))
 
-            sipPrefixRepoOpt.map { prefixRepo =>
-              val factsMap = prefixRepo.toMap(facts)
-              for(factEntry <- factsMap.entrySet().asScala) {
-                sipMapping.recMapping.setFact(factEntry.getKey(), factEntry.getValue())
-              }
+            customMappingXml match {
+              case Some(customXml) =>
+                // Use custom mapping XML (e.g., from default mappings)
+                logger.debug(s"Using custom mapping XML for ${sipMapping.fileName}")
+                val xmlBytes = customXml.getBytes("UTF-8")
+                zos.write(xmlBytes)
+
+              case None =>
+                // if there is a new schema version, set it
+                sipPrefixRepoOpt.foreach(sipPrefix => sipMapping.recMapping.setSchemaVersion(new SchemaVersion(sipPrefix.schemaVersions)))
+
+                sipPrefixRepoOpt.map { prefixRepo =>
+                  val factsMap = prefixRepo.toMap(facts)
+                  for(factEntry <- factsMap.entrySet().asScala) {
+                    sipMapping.recMapping.setFact(factEntry.getKey(), factEntry.getValue())
+                  }
+                }
+                RecMapping.write(zos, sipMapping.recMapping)
             }
-            RecMapping.write(zos, sipMapping.recMapping)
             zos.closeEntry()
           }
 
