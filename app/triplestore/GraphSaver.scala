@@ -22,11 +22,11 @@ import org.joda.time.DateTime
 
 import dataset.DatasetActor.{Scheduled, WorkFailure}
 import dataset.DatasetContext
-import dataset.DsInfo
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import organization.OrgContext
 import nxutil.Utils._
 import services.ProgressReporter
+import services.ProgressReporter.InterruptedException
 import services.ProgressReporter.ProgressState._
 import services.Temporal._
 
@@ -75,20 +75,43 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
   }
 
   def failure(ex: Throwable) = {
-    log.error(s"GraphSaver failure for ${datasetContext.dsInfo.spec}: ${ex.getMessage}", ex)
+    ex match {
+      case _: InterruptedException =>
+        // Graceful interruption - not an error, user cancelled the operation
+        log.info(s"GraphSaver interrupted for ${datasetContext.dsInfo.spec}")
+        handleInterruption()
+      case _ =>
+        log.error(s"GraphSaver failure for ${datasetContext.dsInfo.spec}: ${ex.getMessage}", ex)
+        reader.foreach(_.close())
+        reader = None
+
+        // CRITICAL: Always release BOTH semaphores on failure to be safe
+        orgContext.semaphore.release(datasetContext.dsInfo.spec)
+        orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
+        log.info(s"Released both semaphores for ${datasetContext.dsInfo.spec} due to failure")
+
+        context.parent ! WorkFailure(ex.getMessage, Some(ex))
+    }
+  }
+
+  def handleInterruption() = {
+    log.info(s"Handling interruption for ${datasetContext.dsInfo.spec}")
     reader.foreach(_.close())
     reader = None
-    
-    // CRITICAL: Always release BOTH semaphores on failure to be safe
+
+    // Release semaphores since operation was cancelled
     orgContext.semaphore.release(datasetContext.dsInfo.spec)
     orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
-    log.info(s"Released both semaphores for ${datasetContext.dsInfo.spec} due to failure")
-    
-    context.parent ! WorkFailure(ex.getMessage, Some(ex))
+    log.info(s"Released both semaphores for ${datasetContext.dsInfo.spec} due to interruption")
+
+    // Notify parent that save was interrupted (not a failure, just stopped)
+    context.parent ! WorkFailure("Save operation interrupted by user", None)
   }
 
   def sendGraphChunkOpt() = {
     try {
+      // Check for interruption before processing next chunk
+      progressOpt.foreach(_.checkInterrupt())
       progressOpt.get.sendValue()
       self ! reader.get.readChunkOpt
     } catch {
@@ -119,27 +142,37 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
 
     case Some(chunk: GraphChunk) =>
       actorWork(context) {
-        //log.info(s"Save a chunk of graphs")
-        //log.info(s"chunk: ${chunk}")
-        if (!chunk.bulkActions.isEmpty) {
-          val update =
-            chunk.dsInfo.bulkApiUpdate(chunk.bulkActions)
+        // Check for interruption before processing chunk
+        val isInterrupted = try {
+          progressOpt.foreach(_.checkInterrupt())
+          false
+        } catch {
+          case _: InterruptedException =>
+            handleInterruption()
+            true
+        }
 
-          update.map(ok => sendGraphChunkOpt())
-          update.onComplete {
-            case Success(_) => ()
-            case Failure(ex) => failure(ex)
+        if (!isInterrupted) {
+          if (!chunk.bulkActions.isEmpty) {
+            val update =
+              chunk.dsInfo.bulkApiUpdate(chunk.bulkActions)
+
+            update.map(_ => sendGraphChunkOpt())
+            update.onComplete {
+              case Success(_) => ()
+              case Failure(ex) => failure(ex)
+            }
+          } else {
+            log.info(s"Save a chunk of graphs")
+            val update = chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
+
+            update.map(_ => sendGraphChunkOpt())
+            update.onComplete {
+              case Success(_) => ()
+              case Failure(ex) => failure(ex)
+            }
           }
-        } else {
-		  log.info(s"Save a chunk of graphs")
-		  val update = chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
-
-		  update.map(ok => sendGraphChunkOpt())
-		  update.onComplete {
-        case Success(_) => ()
-			  case Failure(ex) => failure(ex)
-		  }
-		}
+        }
       }
 
     case None =>
