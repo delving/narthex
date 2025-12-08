@@ -508,7 +508,18 @@ class OrgActor (
     case _: StartProcessing => true
     case _: StartSaving => true
     case _: AdoptSource => true  // File uploads need semaphore control
-    case Command(cmd) => cmd.startsWith("start ") && !cmd.contains("refresh")
+    case Command(cmd) =>
+      // Only heavy operations need semaphore control
+      // Analysis, skosification, and category counting are quick local operations
+      val heavyCommands = Set(
+        "start sample harvest",
+        "start first harvest",
+        "start generating sip",
+        "start processing",
+        "start saving"
+      )
+      val isFastSave = cmd.startsWith("start fast save")
+      heavyCommands.contains(cmd) || isFastSave
     case _ => false
   }
 
