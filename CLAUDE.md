@@ -97,3 +97,10 @@ The application uses Akka actors for concurrent data processing. Key actor conte
 ## Testing Approach
 Tests use ScalaTest with Play Framework support. Mock external services using Mockito and Play MockWS for web service testing.
 - you need to use `make compile` to compile narthex
+
+## Version Management
+When bumping the version, **update both files**:
+1. `version.sbt` - Canonical version for Scala/Play
+2. `app/assets/javascripts/main.js` - Update `urlArgs: "v=X.X.X.X"` for JavaScript cache-busting
+
+The `main.js` version must be a static string (not a variable) due to RequireJS r.js optimizer limitations. The optimizer parses the config and cannot evaluate dynamic expressions.
