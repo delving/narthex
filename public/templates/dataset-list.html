@@ -580,9 +580,9 @@
                                     <li data-ng-class="{'active':leftTabOpen === 'activity'}">
                                         <a href role="tab" data-ng-click="leftTabOpen = 'activity'">Activity</a>
                                     </li>
-                                    <!--<li data-ng-class="{'active':leftTabOpen === 'mapping'}">-->
-                                    <!--<a href role="tab" data-ng-click="leftTabOpen ='mapping'">Mapping</a>-->
-                                    <!--</li>-->
+                                    <li data-ng-class="{'active':leftTabOpen === 'mapping'}" ng-if="enableDefaultMappings">
+                                        <a href role="tab" data-ng-click="leftTabOpen ='mapping'">Mapping</a>
+                                    </li>
                                 </ul>
 
                                 <div class="tab-content clearfix">
@@ -620,8 +620,8 @@
                                             </div>
                                         </div>
                                         <div ng-switch-when="mapping">
-                                            <div data-ng-include="'mapping.html'">
-                                                harvesting statistics
+                                            <div data-ng-include="'/narthex/assets/templates/mapping.html'">
+                                                mapping source
                                             </div>
                                         </div>
                                     </div>

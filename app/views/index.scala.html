@@ -1,7 +1,7 @@
 @import org.webjars.play.WebJarsUtil
 @import routes.Assets
 @(orgId: String, sipCreatorLink: String, version: String, supportedDatasetTypes: String, commitSha: String,
-  naveDomain: String, enableIncrementalHarvest: Boolean)(implicit
+  naveDomain: String, enableIncrementalHarvest: Boolean, enableDefaultMappings: Boolean)(implicit
   assets: AssetsFinder, webJarsUtil: WebJarsUtil, req: play.api.mvc.RequestHeader)
 <!DOCTYPE html>
 <html>
@@ -15,7 +15,7 @@
         <script data-main="@routes.Assets.versioned("javascripts/main.js")?v=@version" type="text/javascript" src="@Assets.versioned("vendor/requirejs/require.min.js")"></script>
     </head>
     <body>
-        <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="IndexCtrl" data-ng-init="initialize('@orgId', '@sipCreatorLink', '@enableIncrementalHarvest', '@supportedDatasetTypes')">
+        <div id="page-wrapper" class="open" ng-class="{'open': toggleBar}" ng-cloak data-ng-controller="IndexCtrl" data-ng-init="initialize('@orgId', '@sipCreatorLink', '@enableIncrementalHarvest', '@supportedDatasetTypes', '@enableDefaultMappings')">
             <!-- Sidebar -->
 
             <div id="sidebar-wrapper">
@@ -43,6 +43,11 @@
                             <li class="sidebar-list">
                                 <a href id="nav-skos" data-ng-click="sidebarNav('skos')">
                                     SKOS Vocabularies<span class="menu-icon fa fa-book"></span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list" ng-if="enableDefaultMappings">
+                                <a href id="nav-default-mappings" data-ng-click="sidebarNav('default-mappings')">
+                                    Default Mappings<span class="menu-icon fa fa-map"></span>
                                 </a>
                             </li>
                             <li class="sidebar-list">

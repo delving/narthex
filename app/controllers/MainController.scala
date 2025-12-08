@@ -56,7 +56,7 @@ class MainController @Inject() (
   def index: Action[AnyContent] = Action { implicit request =>
     Ok(views.html.index(narthexConfig.orgId, narthexConfig.sipAppDownloadUrl, BuildInfo.version,
       narthexConfig.supportedDatasetTypes.mkString(","), BuildInfo.commitSha,
-      narthexConfig.naveDomain, narthexConfig.enableIncrementalHarvest))
+      narthexConfig.naveDomain, narthexConfig.enableIncrementalHarvest, narthexConfig.enableDefaultMappings))
       .withHeaders(CACHE_CONTROL -> "no-cache")
   }
 

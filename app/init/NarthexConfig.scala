@@ -61,6 +61,11 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(false)
   logger.info(s"enableIncrementalHarvest: $enableIncrementalHarvest")
 
+  def enableDefaultMappings: Boolean = configuration
+    .getOptional[Boolean]("enableDefaultMappings")
+    .getOrElse(false)
+  logger.info(s"enableDefaultMappings: $enableDefaultMappings")
+
   def harvestRetryIntervalMinutes: Int = configuration
     .getOptional[Int]("narthex.harvest.retryIntervalMinutes")
     .getOrElse(60)
