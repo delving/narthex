@@ -512,10 +512,12 @@ define(["angular"], function () {
             // Disabled state takes precedence, BUT ignore stale disabled state
             // If any workflow state is >1 day newer than stateDisabled, consider it re-enabled
             if (dataset.stateDisabled) {
-                var disabledDate = Date.parse(dataset.stateDisabled);
+                // Get the parsed disabled date from states array (stateDisabled is already converted to object)
+                var disabledState = _.find(dataset.states, function(s) { return s.name === 'stateDisabled'; });
+                var disabledDate = disabledState ? disabledState.date : 0;
                 var oneDayMs = 24 * 60 * 60 * 1000;
                 var isStaleDisabled = _.some(dataset.states, function(s) {
-                    return s.date > (disabledDate + oneDayMs);
+                    return s.name !== 'stateDisabled' && s.date > (disabledDate + oneDayMs);
                 });
 
                 if (!isStaleDisabled) {
@@ -632,10 +634,12 @@ define(["angular"], function () {
             // Disabled state takes precedence, BUT ignore stale disabled state
             // If any workflow state is >1 day newer than stateDisabled, consider it re-enabled
             if (dataset.stateDisabled) {
-                var disabledDate = Date.parse(dataset.stateDisabled);
+                // Get the parsed disabled date from states array (stateDisabled is already converted to object)
+                var disabledState = _.find(dataset.states, function(s) { return s.name === 'stateDisabled'; });
+                var disabledDate = disabledState ? disabledState.date : 0;
                 var oneDayMs = 24 * 60 * 60 * 1000;
                 var isStaleDisabled = _.some(dataset.states, function(s) {
-                    return s.date > (disabledDate + oneDayMs);
+                    return s.name !== 'stateDisabled' && s.date > (disabledDate + oneDayMs);
                 });
 
                 if (!isStaleDisabled) {
