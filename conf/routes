@@ -73,6 +73,30 @@ GET         /narthex/app/sheets-list                                         con
 GET         /narthex/app/sheet/:spec                                         controllers.AppController.sheet(spec)
 GET         /narthex/app/categories/gather-counts                            controllers.AppController.gatherCategoryCounts
 
+# Default Mappings - Named Mappings Structure (prefix/name/versions)
+GET         /narthex/app/default-mappings                                    controllers.AppController.listDefaultMappings
+GET         /narthex/app/default-mappings/:prefix                            controllers.AppController.listMappingsForPrefix(prefix)
+GET         /narthex/app/default-mappings/:prefix/:name                      controllers.AppController.getNamedMappingInfo(prefix, name)
+GET         /narthex/app/default-mappings/:prefix/:name/xml/:version         controllers.AppController.getDefaultMappingXml(prefix, name, version)
++ nocsrf
+POST        /narthex/app/default-mappings/:prefix/create                     controllers.AppController.createNamedMapping(prefix)
++ nocsrf
+POST        /narthex/app/default-mappings/:prefix/:name/upload               controllers.AppController.uploadDefaultMapping(prefix, name)
++ nocsrf
+POST        /narthex/app/default-mappings/:prefix/:name/copy-from/:spec      controllers.AppController.copyMappingFromDataset(prefix, name, spec)
++ nocsrf
+POST        /narthex/app/default-mappings/:prefix/:name/set-current          controllers.AppController.setCurrentDefaultMapping(prefix, name)
++ nocsrf
+DELETE      /narthex/app/default-mappings/:prefix/:name/versions/:hash       controllers.AppController.deleteDefaultMappingVersion(prefix, name, hash)
+
+# Dataset Mapping Source
+GET         /narthex/app/dataset/:spec/mapping-versions                      controllers.AppController.listDatasetMappingVersions(spec)
+GET         /narthex/app/dataset/:spec/mapping-xml/:version                  controllers.AppController.getDatasetMappingXml(spec, version)
++ nocsrf
+POST        /narthex/app/dataset/:spec/set-mapping-source                    controllers.AppController.setDatasetMappingSource(spec)
++ nocsrf
+POST        /narthex/app/dataset/:spec/rollback-mapping/:hash                controllers.AppController.rollbackDatasetMapping(spec, hash)
+
 GET         /narthex/app/dataset/:spec/sip-list                              controllers.AppController.listSipFiles(spec)
 GET         /narthex/app/dataset/:spec/delete-latest                         controllers.AppController.deleteLatestSipFile(spec)
 

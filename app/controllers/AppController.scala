@@ -48,6 +48,10 @@ import harvest.Harvesting.HarvestType.harvestTypeFromString
 import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
 import mapping.VocabInfo
+import mapping.DefaultMappingRepo
+import mapping.DefaultMappingRepo._
+import mapping.DatasetMappingRepo
+import mapping.DatasetMappingRepo._
 import mapping.VocabInfo._
 import organization.OrgActor.DatasetMessage
 import web.Utils
@@ -479,4 +483,193 @@ class AppController @Inject() (
     Utils.okFile(orgContext.categoriesRepo.sheet(spec))
   }
 
+  // ==================== Default Mappings (Named Mappings) ====================
+
+  private lazy val defaultMappingRepo = new DefaultMappingRepo(orgContext.orgRoot)
+
+  def listDefaultMappings = Action { request =>
+    val prefixMappings = defaultMappingRepo.listAll()
+    // Get available prefixes from the factory directory (schema definitions)
+    val availablePrefixes = orgContext.sipFactory.prefixRepos.map(_.prefix).toList.sorted
+    Ok(Json.obj(
+      "prefixes" -> Json.toJson(prefixMappings),
+      "availablePrefixes" -> Json.toJson(availablePrefixes)
+    ))
+  }
+
+  def listMappingsForPrefix(prefix: String) = Action { request =>
+    val mappings = defaultMappingRepo.listMappingsForPrefix(prefix)
+    Ok(Json.obj(
+      "prefix" -> prefix,
+      "mappings" -> Json.toJson(mappings)
+    ))
+  }
+
+  def getNamedMappingInfo(prefix: String, name: String) = Action { request =>
+    defaultMappingRepo.getInfo(prefix, name) match {
+      case Some(info) => Ok(Json.toJson(info))
+      case None => NotFound(Json.obj("problem" -> s"No mapping found: $prefix/$name"))
+    }
+  }
+
+  def getDefaultMappingXml(prefix: String, name: String, version: String) = Action { request =>
+    defaultMappingRepo.getXml(prefix, name, version) match {
+      case Some(xml) => Ok(xml).as("application/xml")
+      case None => NotFound(Json.obj("problem" -> s"Mapping version not found: $prefix/$name/$version"))
+    }
+  }
+
+  def createNamedMapping(prefix: String) = Action(parse.json) { request =>
+    val displayName = (request.body \ "displayName").as[String]
+    if (displayName.trim.isEmpty) {
+      BadRequest(Json.obj("problem" -> "Display name is required"))
+    } else {
+      val mapping = defaultMappingRepo.createMapping(prefix, displayName)
+      Ok(Json.toJson(mapping))
+    }
+  }
+
+  def uploadDefaultMapping(prefix: String, name: String) = Action(parse.multipartFormData) { request =>
+    request.body.file("file").map { file =>
+      val xmlContent = FileUtils.readFileToString(file.ref.path.toFile, "UTF-8")
+      val notes = request.body.dataParts.get("notes").flatMap(_.headOption)
+      val version = defaultMappingRepo.saveVersion(prefix, name, xmlContent, "upload", None, notes)
+      Ok(Json.toJson(version))
+    }.getOrElse {
+      NotAcceptable(Json.obj("problem" -> "No file provided"))
+    }
+  }
+
+  def copyMappingFromDataset(prefix: String, name: String, spec: String) = Action(parse.json) { request =>
+    import scala.io.Source
+
+    val notes = (request.body \ "notes").asOpt[String]
+
+    // Get the mapping XML from the dataset's current SIP
+    val sipRepo = orgContext.datasetContext(spec).sipRepo
+
+    sipRepo.latestSipOpt match {
+      case Some(sip) =>
+        // Find the mapping file in the SIP zip
+        val mappingFileName = s"mapping_$prefix.xml"
+        sip.entries.get(mappingFileName) match {
+          case Some(entry) =>
+            val inputStream = sip.zipFile.getInputStream(entry)
+            try {
+              val mappingXml = Source.fromInputStream(inputStream, "UTF-8").mkString
+              val version = defaultMappingRepo.saveVersion(
+                prefix,
+                name,
+                mappingXml,
+                "copy_from_dataset",
+                Some(spec),
+                notes.orElse(Some(s"Copied from dataset: $spec"))
+              )
+              Ok(Json.toJson(version))
+            } finally {
+              inputStream.close()
+            }
+          case None =>
+            NotFound(Json.obj("problem" -> s"No mapping file found in SIP for prefix: $prefix"))
+        }
+      case None =>
+        NotFound(Json.obj("problem" -> s"No SIP found for dataset: $spec"))
+    }
+  }
+
+  def setCurrentDefaultMapping(prefix: String, name: String) = Action(parse.json) { request =>
+    val hash = (request.body \ "hash").as[String]
+    if (defaultMappingRepo.setCurrentVersion(prefix, name, hash)) {
+      Ok(Json.obj("success" -> true))
+    } else {
+      NotFound(Json.obj("problem" -> s"Version not found: $prefix/$name/$hash"))
+    }
+  }
+
+  def deleteDefaultMappingVersion(prefix: String, name: String, hash: String) = Action { request =>
+    if (defaultMappingRepo.deleteVersion(prefix, name, hash)) {
+      Ok(Json.obj("success" -> true))
+    } else {
+      NotFound(Json.obj("problem" -> s"Version not found: $prefix/$name/$hash"))
+    }
+  }
+
+  // ==================== Dataset Mapping Source ====================
+
+  def listDatasetMappingVersions(spec: String) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val repo = datasetContext.datasetMappingRepo
+    val versions = repo.listVersions
+    val currentHash = repo.getCurrentVersionHash
+
+    Ok(Json.obj(
+      "spec" -> spec,
+      "prefix" -> repo.getPrefix,
+      "currentVersion" -> currentHash,
+      "versions" -> versions.map { v =>
+        Json.obj(
+          "timestamp" -> v.timestamp.toString,
+          "hash" -> v.hash,
+          "source" -> v.source,
+          "sourceDefault" -> v.sourceDefault,
+          "description" -> v.description,
+          "isCurrent" -> currentHash.contains(v.hash)
+        )
+      }
+    ))
+  }
+
+  def getDatasetMappingXml(spec: String, version: String) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val repo = datasetContext.datasetMappingRepo
+
+    repo.getXml(version) match {
+      case Some(xml) => Ok(xml).as("application/xml")
+      case None => NotFound(Json.obj("problem" -> s"Mapping version $version not found for dataset $spec"))
+    }
+  }
+
+  def setDatasetMappingSource(spec: String) = Action(parse.json) { request =>
+    val source = (request.body \ "source").as[String]
+    val prefix = (request.body \ "prefix").asOpt[String]
+    val name = (request.body \ "name").asOpt[String]
+    val version = (request.body \ "version").asOpt[String]
+
+    DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
+      dsInfo.setMappingSource(source, prefix, name, version)
+      Ok(Json.obj(
+        "success" -> true,
+        "mappingSource" -> dsInfo.getMappingSource,
+        "defaultMappingPrefix" -> dsInfo.getDefaultMappingPrefix,
+        "defaultMappingName" -> dsInfo.getDefaultMappingName,
+        "defaultMappingVersion" -> dsInfo.getDefaultMappingVersion
+      ))
+    }
+  }
+
+  def rollbackDatasetMapping(spec: String, hash: String) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val repo = datasetContext.datasetMappingRepo
+
+    repo.rollbackTo(hash) match {
+      case Some(newVersion) =>
+        // Also switch to manual mapping source since we're using a specific dataset version
+        DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
+          dsInfo.setMappingSource("manual", None, None)
+        }
+        Ok(Json.obj(
+          "success" -> true,
+          "newVersion" -> Json.obj(
+            "timestamp" -> newVersion.timestamp.toString,
+            "hash" -> newVersion.hash,
+            "source" -> newVersion.source,
+            "description" -> newVersion.description
+          )
+        ))
+      case None =>
+        NotFound(Json.obj("problem" -> s"Cannot rollback: version $hash not found for dataset $spec"))
+    }
+  }
+
 }
+

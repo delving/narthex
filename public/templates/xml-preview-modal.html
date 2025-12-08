@@ -1,0 +1,21 @@
+<!-- Prism.js for syntax highlighting -->
+<link rel="stylesheet" href="/narthex/assets/vendor/prism/prism-tomorrow.min.css">
+<script src="/narthex/assets/vendor/prism/prism.min.js"></script>
+<script src="/narthex/assets/vendor/prism/prism-markup.min.js"></script>
+
+<div class="modal-header">
+    <button type="button" class="close" ng-click="close()" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+    <h4 class="modal-title">
+        <i class="fa fa-code"></i> {{ title }}
+    </h4>
+</div>
+<div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+    <pre style="margin: 0; border-radius: 4px;"><code class="language-markup">{{ formattedXml }}</code></pre>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-default" ng-click="close()">
+        <i class="fa fa-times"></i> Close
+    </button>
+</div>

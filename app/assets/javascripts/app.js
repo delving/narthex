@@ -29,7 +29,8 @@ define(
         "dataset",
         "skos",
         "terms",
-        "categories"
+        "categories",
+        "defaultMappings"
     ],
     function (angular) {
         "use strict";
@@ -44,6 +45,7 @@ define(
                 "narthex.skos",
                 "narthex.terms",
                 "narthex.categories",
+                "narthex.defaultMappings",
                 "angularFileUpload",
                 "ngSanitize",
                 "ui.bootstrap.tpls",

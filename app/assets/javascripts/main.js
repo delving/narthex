@@ -25,7 +25,7 @@
     urlArgs: "v=0.8.2.17",
     // Packages = top-level folders; loads a contained file named "main.js"
     packages: [
-      "common", "datasetList", "dataset", "skos", "terms", "categories"
+      "common", "datasetList", "dataset", "skos", "terms", "categories", "defaultMappings"
     ],
     shim: {
       "jsRoutes": {

@@ -3,6 +3,9 @@
 # that overrides values as needed
 # ~~~~~
 
+# Apps
+enableDefaultMappings = true
+
 
 # The application languages
 # ~~~~~

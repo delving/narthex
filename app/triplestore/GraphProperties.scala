@@ -130,6 +130,12 @@ object GraphProperties {
   val datasetOperationTrigger = NXProp("datasetOperationTrigger")  // "automatic" or "manual"
   val datasetOperationStatus = NXProp("datasetOperationStatus")    // "in_progress", "completed", "interrupted"
 
+  // Mapping source properties for default mappings feature
+  val datasetMappingSource = NXProp("datasetMappingSource")                    // "manual" | "default"
+  val datasetDefaultMappingPrefix = NXProp("datasetDefaultMappingPrefix")      // e.g., "edm", "crm"
+  val datasetDefaultMappingName = NXProp("datasetDefaultMappingName")          // e.g., "museum-mapping"
+  val datasetDefaultMappingVersion = NXProp("datasetDefaultMappingVersion")    // hash or "latest"
+
   val idFilterType = NXProp("idFilterType")
   val idFilterExpression = NXProp("idFilterExpression")
 
