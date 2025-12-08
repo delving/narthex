@@ -37,6 +37,11 @@
                         <i class="fa fa-check-circle"></i>
                         <span> Confirm Unique Id</span>
                     </a>
+                    <!-- Record Root Selection instruction for single-record datasets -->
+                    <span class="label label-info" data-ng-show="showRecordRootSelector">
+                        <i class="fa fa-hand-o-left"></i>
+                        Click a highlighted candidate in the tree
+                    </span>
                     <a
                         href
                         class="btn btn-warning btn-sm"
@@ -261,7 +266,7 @@
 </div>
 
 <script type="text/ng-template" id="node.html">
-    <div class="node" data-ng-class="{ 'chosen': node == selectedNode, 'active': node.lengths.length != 0 }" data-ng-click="selectNode(node, $event)" class="outer-node">
+    <div class="node" data-ng-class="{ 'chosen': node == selectedNode, 'active': node.lengths.length != 0, 'record-root-candidate': isRecordRootCandidate(node) }" data-ng-click="selectNode(node, $event)" class="outer-node">
         <span data-ng-show="!node.lengths.length > 0" data-ng-click="node.collapsed = !node.collapsed">
             <i data-ng-class="{ 'fa, fa-folder-open-o' : !node.collapsed, 'fa, fa-folder-o': node.collapsed}" class="fa pointer"></i>
         </span>
@@ -269,6 +274,9 @@
         <span class="pull-right">
             <span data-ng-if="node == recordRootNode" class="badge badge-record-root">
                 Record Root
+            </span>
+            <span data-ng-if="isRecordRootCandidate(node)" class="badge badge-candidate" data-ng-click="selectRecordRoot(node); $event.stopPropagation();">
+                Click to Select
             </span>
             <span data-ng-if="node == uniqueIdNode" class="badge badge-unique">
                 Unique Id

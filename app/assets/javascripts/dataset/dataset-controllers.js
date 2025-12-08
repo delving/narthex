@@ -157,35 +157,81 @@ define(["angular"], function () {
         };
 
         $scope.proposeUniqueIdNode = function (node) {
-            function selectFirstEmptyWithCount(node, count) {
-                if (!node) return undefined;
-                if (!node.lengths.length && node.count >= count) {
-                    return node;
+            // Gather all candidate ancestor containers (excluding document root at depth 0)
+            function gatherCandidates(treeNode, targetCount) {
+                var candidates = [];
+                function traverse(n, depth) {
+                    if (!n) return;
+                    // Skip document root (depth 0) and leaf nodes (has text content)
+                    if (depth > 0 && !n.lengths.length && n.count >= targetCount) {
+                        candidates.push(n);
+                    }
+                    if (n.kids) {
+                        for (var i = 0; i < n.kids.length; i++) {
+                            traverse(n.kids[i], depth + 1);
+                        }
+                    }
                 }
-                else for (var index = 0; index < node.kids.length; index++) {
-                    var emptyWithCount = selectFirstEmptyWithCount(node.kids[index], count);
-                    if (emptyWithCount) return emptyWithCount;
-                }
-                return undefined;
+                traverse(treeNode, 0);
+                return candidates;
             }
-            var recordRootNode = selectFirstEmptyWithCount($scope.tree, node.count);
-            $scope.uniqueIdChosen = !!recordRootNode;
-            if (recordRootNode) {
-                $scope.recordRootNode = recordRootNode;
+
+            var candidates = gatherCandidates($scope.tree, node.count);
+
+            if (node.count === 1 && candidates.length > 1) {
+                // Single record with multiple candidate containers - need manual selection
                 $scope.uniqueIdNode = node;
+                $scope.recordRootCandidates = candidates;
+                $scope.showRecordRootSelector = true;
+                $scope.uniqueIdChosen = false;
+            } else if (candidates.length > 0) {
+                // Multi-record or single candidate - auto-select first match
+                $scope.recordRootNode = candidates[0];
+                $scope.uniqueIdNode = node;
+                $scope.uniqueIdChosen = true;
+                $scope.showRecordRootSelector = false;
+                $scope.recordRootCandidates = [];
+            } else {
+                // No valid candidates found
+                $scope.uniqueIdChosen = false;
+                $scope.showRecordRootSelector = false;
+                $scope.recordRootCandidates = [];
             }
         };
 
+        // Handle manual selection of record root for single-record datasets
+        $scope.selectRecordRoot = function(candidate) {
+            $scope.recordRootNode = candidate;
+            $scope.uniqueIdChosen = true;
+            $scope.showRecordRootSelector = false;
+            $scope.recordRootCandidates = [];
+        };
+
+        // Check if a node is a record root candidate (for highlighting in tree)
+        $scope.isRecordRootCandidate = function(node) {
+            if (!$scope.showRecordRootSelector || !$scope.recordRootCandidates) return false;
+            return _.some($scope.recordRootCandidates, function(c) { return c === node; });
+        };
+
         $scope.selectPMHRecordRoot = function() {
-            $scope.recordRootNode.kids.forEach(function(entry) {
-                if (entry.tag === 'metadata') {
-                    if (entry.length != 0) {
-                        $scope.recordRootNode = entry.kids[0];
-                    } else {
-                        modalAlert.warning("Empty Metadata Root", "PMH metadata root is empty. Leaving old root in place");
-                    }
-                };
+            // Find metadata element and show its children as candidates
+            var metadataNode = _.find($scope.recordRootNode.kids, function(entry) {
+                return entry.tag === 'metadata';
             });
+
+            if (!metadataNode) {
+                modalAlert.warning("No Metadata Element", "Could not find metadata element in record.");
+                return;
+            }
+
+            if (!metadataNode.kids || metadataNode.kids.length === 0) {
+                modalAlert.warning("Empty Metadata Root", "PMH metadata root is empty. Leaving old root in place.");
+                return;
+            }
+
+            // Always show candidates - let user confirm their choice
+            $scope.recordRootCandidates = metadataNode.kids;
+            $scope.showRecordRootSelector = true;
         };
 
         $scope.confirmUniqueId = function() {

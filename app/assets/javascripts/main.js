@@ -17,12 +17,29 @@
 (function (requirejs) {
   "use strict";
 
+  // Extract version from main.js URL query parameter (set by Play template)
+  // Falls back to timestamp if version not found
+  function getVersionFromScript() {
+    var scripts = document.getElementsByTagName('script');
+    for (var i = 0; i < scripts.length; i++) {
+      var src = scripts[i].getAttribute('data-main') || '';
+      if (src.indexOf('main.js') !== -1) {
+        var match = src.match(/[?&]v=([^&]+)/);
+        if (match) return match[1];
+      }
+    }
+    // Fallback: use timestamp (for dev without Play)
+    return Date.now();
+  }
+
+  var appVersion = getVersionFromScript();
+
   // -- DEV RequireJS config --
   requirejs.config({
     // Increase timeout for slower connections/browsers (default is 7 seconds)
     waitSeconds: 30,
-    // Cache busting: update this version when JavaScript changes
-    urlArgs: "v=0.8.2.17",
+    // Cache busting: version extracted from Play template or timestamp fallback
+    urlArgs: "v=" + appVersion,
     // Packages = top-level folders; loads a contained file named "main.js"
     packages: [
       "common", "datasetList", "dataset", "skos", "terms", "categories", "defaultMappings"

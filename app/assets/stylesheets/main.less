@@ -617,6 +617,13 @@ code {
       background: @linnen;
       cursor: default;
     }
+    &.record-root-candidate {
+      background: lighten(@brand-info, 35%);
+      border-left: 3px solid @brand-info;
+      &:hover {
+        background: lighten(@brand-info, 30%);
+      }
+    }
   }
   .inner-node {
     padding-left: 10px;
@@ -638,6 +645,14 @@ code {
     &.badge-record-root {
       background: @alert-warning-bg;
       font-weight: normal;
+    }
+    &.badge-candidate {
+      background: @brand-info;
+      font-weight: normal;
+      cursor: pointer;
+      &:hover {
+        background: darken(@brand-info, 10%);
+      }
     }
   }
 }
