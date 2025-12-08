@@ -480,6 +480,14 @@ class DatasetActor(val datasetContext: DatasetContext,
             broadcastIdleState()
             "refreshed"
 
+          case "resetToDormant" =>
+            // Force release semaphores in case they're stuck from a previous crash
+            log.info(s"resetToDormant: Force releasing semaphores for ${dsInfo.spec}")
+            orgContext.semaphore.release(dsInfo.spec)
+            orgContext.saveSemaphore.release(dsInfo.spec)
+            broadcastIdleState()
+            "reset to dormant"
+
           // todo: category counting?
 
           case _ =>
@@ -496,6 +504,8 @@ class DatasetActor(val datasetContext: DatasetContext,
       stay()
 
     case Event(StartHarvest(strategy), Dormant) =>
+      // Auto-enable: remove disabled state when starting any workflow
+      dsInfo.removeState(DISABLED)
       datasetContext.dropTree()
       def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
       harvestTypeFromString(prop(harvestType)).map { harvestType =>
@@ -566,6 +576,8 @@ class DatasetActor(val datasetContext: DatasetContext,
       stay() using Dormant
 
     case Event(AdoptSource(file, orgContext), Dormant) =>
+      // Auto-enable: remove disabled state when starting any workflow
+      dsInfo.removeState(DISABLED)
       val sourceProcessor = createChildActor(
         SourceProcessor.props(datasetContext, orgContext),
         "source-adopter")
@@ -573,6 +585,8 @@ class DatasetActor(val datasetContext: DatasetContext,
       goto(Adopting) using Active(dsInfo.spec, Some(sourceProcessor), ADOPTING)
 
     case Event(GenerateSipZip, Dormant) =>
+      // Auto-enable: remove disabled state when starting any workflow
+      dsInfo.removeState(DISABLED)
       val sourceProcessor = createChildActor(
         SourceProcessor.props(datasetContext, orgContext),
         "source-generator")
@@ -582,6 +596,8 @@ class DatasetActor(val datasetContext: DatasetContext,
                                     GENERATING)
 
     case Event(StartAnalysis(processed), Dormant) =>
+      // Auto-enable: remove disabled state when starting any workflow
+      dsInfo.removeState(DISABLED)
       log.info(s"Start analysis processed=$processed")
       if (processed) {
         val analyzer = createChildActor(
@@ -599,6 +615,8 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
 
     case Event(StartProcessing(scheduledOpt), Dormant) =>
+      // Auto-enable: remove disabled state when starting any workflow
+      dsInfo.removeState(DISABLED)
       val sourceProcessor = createChildActor(
         SourceProcessor.props(datasetContext, orgContext),
         "source-processor")
@@ -608,6 +626,8 @@ class DatasetActor(val datasetContext: DatasetContext,
                                     PROCESSING)
 
     case Event(StartSaving(scheduledOpt), Dormant) =>
+      // Auto-enable: remove disabled state when starting any workflow
+      dsInfo.removeState(DISABLED)
       // OrgActor already manages concurrency via queue - just track save for status reporting
       if (!orgContext.saveSemaphore.tryAcquire(dsInfo.spec)) {
         log.warning(s"saveSemaphore already held for ${dsInfo.spec} - continuing anyway (queue should prevent this)")
@@ -620,12 +640,16 @@ class DatasetActor(val datasetContext: DatasetContext,
       goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
+      // Auto-enable: remove disabled state when starting any workflow
+      dsInfo.removeState(DISABLED)
       val skosifier = createChildActor(
         Skosifier.props(dsInfo, orgContext), "skosifier")
       skosifier ! skosifiedField
       goto(Skosifying) using Active(dsInfo.spec, Some(skosifier), SKOSIFYING)
 
     case Event(StartCategoryCounting, Dormant) =>
+      // Auto-enable: remove disabled state when starting any workflow
+      dsInfo.removeState(DISABLED)
       if (datasetContext.processedRepo.nonEmpty) {
         implicit val ts = orgContext.ts
         val categoryCounter = createChildActor(
@@ -1100,6 +1124,11 @@ class DatasetActor(val datasetContext: DatasetContext,
       if (commandName == "refresh") {
         log.warning("refresh unhandled command")
         stay()
+      } else if (commandName == "interrupt") {
+        log.info(s"Interrupt command received for ${dsInfo.spec} - setting interrupt flag")
+        // Set the interrupt flag so next ProgressTick will trigger interruption
+        // The child actor will check this flag and stop gracefully
+        stay() using active.copy(interrupt = true)
       } else {
         log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
         // kill active actors
