@@ -587,6 +587,49 @@ class DsInfo(
     }
   }
 
+  // Mapping source methods for default mappings feature
+  def getMappingSource: String = getLiteralProp(datasetMappingSource).getOrElse("manual")
+
+  def getDefaultMappingPrefix: Option[String] = getLiteralProp(datasetDefaultMappingPrefix)
+
+  def getDefaultMappingName: Option[String] = getLiteralProp(datasetDefaultMappingName)
+
+  def getDefaultMappingVersion: Option[String] = getLiteralProp(datasetDefaultMappingVersion)
+
+  def setMappingSource(
+    source: String,
+    prefix: Option[String] = None,
+    name: Option[String] = None,
+    version: Option[String] = None
+  ): Unit = {
+    source match {
+      case "manual" =>
+        // Clear default mapping settings when switching to manual
+        setSingularLiteralProps(datasetMappingSource -> "manual")
+        // Remove default mapping properties by setting empty strings
+        setSingularLiteralProps(
+          datasetDefaultMappingPrefix -> "",
+          datasetDefaultMappingName -> "",
+          datasetDefaultMappingVersion -> ""
+        )
+      case "default" =>
+        val actualPrefix = prefix.getOrElse("")
+        val actualName = name.getOrElse("default")
+        val actualVersion = version.getOrElse("latest")
+        setSingularLiteralProps(
+          datasetMappingSource -> "default",
+          datasetDefaultMappingPrefix -> actualPrefix,
+          datasetDefaultMappingName -> actualName,
+          datasetDefaultMappingVersion -> actualVersion
+        )
+      case _ =>
+        logger.warn(s"Unknown mapping source: $source, defaulting to manual")
+        setSingularLiteralProps(datasetMappingSource -> "manual")
+    }
+  }
+
+  def usesDefaultMapping: Boolean = getMappingSource == "default"
+
   def getState(): DsState.Value = {
 
     def max(lh: (DsState.Value, DateTime), rh: (DsState.Value, DateTime)) =
@@ -1147,6 +1190,8 @@ class DsInfo(
       datasetOperationStatus => opStatus, datasetErrorMessage => dsErrorMessage,
       harvestType => hType, harvestURL => hURL, harvestDataset => hDataset,
       harvestPrefix => hPrefix, harvestSearch => hSearch, harvestIncrementalMode => hIncrementalMode,
+      harvestDelay => hDelay, harvestDelayUnit => hDelayUnit, harvestPreviousTime => hPreviousTime,
+      harvestIncremental => hIncremental,
       processedIncrementalValid => pIncrementalValid, processedIncrementalInvalid => pIncrementalInvalid}
     Json.obj(
       "datasetSpec" -> spec,
@@ -1176,6 +1221,10 @@ class DsInfo(
       "harvestPrefix" -> getLiteralProp(hPrefix),
       "harvestSearch" -> getLiteralProp(hSearch),
       "harvestIncrementalMode" -> getLiteralProp(hIncrementalMode),
+      "harvestDelay" -> getLiteralProp(hDelay),
+      "harvestDelayUnit" -> getLiteralProp(hDelayUnit),
+      "harvestPreviousTime" -> getLiteralProp(hPreviousTime),
+      "harvestIncremental" -> getLiteralProp(hIncremental),
       "processedIncrementalValid" -> getLiteralProp(pIncrementalValid).map(_.toInt),
       "processedIncrementalInvalid" -> getLiteralProp(pIncrementalInvalid).map(_.toInt)
     )
