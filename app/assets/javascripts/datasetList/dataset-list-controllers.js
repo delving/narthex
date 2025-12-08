@@ -471,17 +471,23 @@ define(["angular"], function () {
             });
 
             // Check if delimiters are valid (set after the latest analysis)
-            // If stateRawAnalyzed is newer than delimitersSet, delimiters need to be re-verified
-            // Note: We must use the parsed date from states array since stateRawAnalyzed is already
-            // converted to an object {d, t, dt} by the state parsing loop above
-            if (dataset.delimitersSet) {
+            // States that indicate delimiters have been set (you can't reach these without valid delimiters)
+            var statesBeyondDelimit = ['stateSourced', 'stateMappable', 'stateProcessable',
+                                       'stateProcessed', 'stateSaved', 'stateIncrementalSaved'];
+            var hasProgressedPastDelimit = _.some(dataset.states, function(s) {
+                return _.contains(statesBeyondDelimit, s.name);
+            });
+
+            if (hasProgressedPastDelimit) {
+                // Legacy datasets: if they've been processed, delimiters were valid
+                dataset.delimitersValid = true;
+            } else if (dataset.delimitersSet) {
+                // Check if delimitersSet is newer than stateRawAnalyzed
                 var delimDate = new Date(dataset.delimitersSet);
                 var rawAnalyzedState = _.find(dataset.states, function(s) { return s.name === 'stateRawAnalyzed'; });
                 if (rawAnalyzedState) {
-                    // rawAnalyzedState.date is already a parsed timestamp (from Date.parse)
                     dataset.delimitersValid = delimDate.getTime() > rawAnalyzedState.date;
                 } else {
-                    // No raw analysis state, so delimiters are valid if set
                     dataset.delimitersValid = true;
                 }
             } else {
@@ -579,17 +585,23 @@ define(["angular"], function () {
             });
 
             // Check if delimiters are valid (set after the latest analysis)
-            // If stateRawAnalyzed is newer than delimitersSet, delimiters need to be re-verified
-            // Note: We must use the parsed date from states array since stateRawAnalyzed is already
-            // converted to an object {d, t, dt} by the state parsing loop above
-            if (dataset.delimitersSet) {
+            // States that indicate delimiters have been set (you can't reach these without valid delimiters)
+            var statesBeyondDelimit = ['stateSourced', 'stateMappable', 'stateProcessable',
+                                       'stateProcessed', 'stateSaved', 'stateIncrementalSaved'];
+            var hasProgressedPastDelimit = _.some(dataset.states, function(s) {
+                return _.contains(statesBeyondDelimit, s.name);
+            });
+
+            if (hasProgressedPastDelimit) {
+                // Legacy datasets: if they've been processed, delimiters were valid
+                dataset.delimitersValid = true;
+            } else if (dataset.delimitersSet) {
+                // Check if delimitersSet is newer than stateRawAnalyzed
                 var delimDate = new Date(dataset.delimitersSet);
                 var rawAnalyzedState = _.find(dataset.states, function(s) { return s.name === 'stateRawAnalyzed'; });
                 if (rawAnalyzedState) {
-                    // rawAnalyzedState.date is already a parsed timestamp (from Date.parse)
                     dataset.delimitersValid = delimDate.getTime() > rawAnalyzedState.date;
                 } else {
-                    // No raw analysis state, so delimiters are valid if set
                     dataset.delimitersValid = true;
                 }
             } else {
