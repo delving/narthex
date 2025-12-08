@@ -96,6 +96,10 @@ object GraphProperties {
   val stateSynced = NXProp("stateSynced", timeProp)
   val stateDisabled = NXProp("stateDisabled", timeProp)
 
+  val delimitersSet = NXProp("delimitersSet", timeProp)
+  val recordRoot = NXProp("recordRoot")
+  val uniqueId = NXProp("uniqueId")
+
   val harvestType = NXProp("harvestType")
   val harvestURL = NXProp("harvestURL")
   val harvestDataset = NXProp("harvestDataset")

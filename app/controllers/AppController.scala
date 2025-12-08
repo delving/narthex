@@ -237,10 +237,14 @@ class AppController @Inject() (
   def setRecordDelimiter(spec: String) = Action(parse.json) { request =>
     val datasetContext = orgContext.datasetContext(spec)
     // todo: recordContainer instead perhaps
-    val recordRoot = (request.body \ "recordRoot").as[String]
-    val uniqueId = (request.body \ "uniqueId").as[String]
+    val recordRootValue = (request.body \ "recordRoot").as[String]
+    val uniqueIdValue = (request.body \ "uniqueId").as[String]
     val harvestTypeOpt = datasetContext.dsInfo.getLiteralProp(harvestType).flatMap(harvestTypeFromString)
-    datasetContext.setDelimiters(harvestTypeOpt, recordRoot, uniqueId)
+    datasetContext.setDelimiters(harvestTypeOpt, recordRootValue, uniqueIdValue)
+    // Store delimiter values in triple store for visibility and to track that they've been set
+    datasetContext.dsInfo.setDelimiters(recordRootValue, uniqueIdValue)
+    // Broadcast update via WebSocket so UI refreshes
+    sendRefresh(spec)
     Ok
   }
 

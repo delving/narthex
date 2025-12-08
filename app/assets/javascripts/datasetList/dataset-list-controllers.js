@@ -37,7 +37,7 @@ define(["angular"], function () {
         'state-error': "Error"
     };
 
-    var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll, modalAlert) {
+    var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll, modalAlert, $timeout) {
 
         $scope.apiPrefix = "/narthex/api/"
         $scope.enableIncrementalHarvest = $rootScope.enableIncrementalHarvest;
@@ -138,6 +138,11 @@ define(["angular"], function () {
                                         existingDataset[stateProp] = message[stateProp];
                                     }
                                 });
+
+                                // Update delimiter fields
+                                if (message.delimitersSet !== undefined) existingDataset.delimitersSet = message.delimitersSet;
+                                if (message.recordRoot !== undefined) existingDataset.recordRoot = message.recordRoot;
+                                if (message.uniqueId !== undefined) existingDataset.uniqueId = message.uniqueId;
 
                                 // Update operation status fields
                                 var operationChanged = false;
@@ -399,6 +404,7 @@ define(["angular"], function () {
             {name: 'stateWorking', label: 'Working', count: 0},
             {name: 'stateQueued', label: 'Queued', count: 0},
             {name: 'stateEmpty', label: 'Empty', count: 0},
+            {name: 'stateReadyToHarvest', label: 'Ready to Harvest', count: 0},
             {name: 'stateDisabled', label: 'Disabled', count: 0},
             {name: 'stateRaw', label: 'Raw', count: 0},
             {name: 'stateRawAnalyzed', label: 'Raw analyzed', count: 0},
@@ -464,8 +470,31 @@ define(["angular"], function () {
                 return state.date
             });
 
+            // Check if delimiters are valid (set after the latest analysis)
+            // If stateRawAnalyzed is newer than delimitersSet, delimiters need to be re-verified
+            // Note: We must use the parsed date from states array since stateRawAnalyzed is already
+            // converted to an object {d, t, dt} by the state parsing loop above
+            if (dataset.delimitersSet) {
+                var delimDate = new Date(dataset.delimitersSet);
+                var rawAnalyzedState = _.find(dataset.states, function(s) { return s.name === 'stateRawAnalyzed'; });
+                if (rawAnalyzedState) {
+                    // rawAnalyzedState.date is already a parsed timestamp (from Date.parse)
+                    dataset.delimitersValid = delimDate.getTime() > rawAnalyzedState.date;
+                } else {
+                    // No raw analysis state, so delimiters are valid if set
+                    dataset.delimitersValid = true;
+                }
+            } else {
+                dataset.delimitersValid = false;
+            }
+
             if (_.isEmpty(dataset.states)) {
-                dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
+                // Check if delimiters are valid - this means dataset is ready to harvest
+                if (dataset.delimitersValid) {
+                    dataset.stateCurrent = {"name": "stateReadyToHarvest", "date": Date.now()};
+                } else {
+                    dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
+                }
             }
 
             // Check for error state (errorMessage comes from DsInfoLight)
@@ -549,8 +578,31 @@ define(["angular"], function () {
                 return state.date
             });
 
+            // Check if delimiters are valid (set after the latest analysis)
+            // If stateRawAnalyzed is newer than delimitersSet, delimiters need to be re-verified
+            // Note: We must use the parsed date from states array since stateRawAnalyzed is already
+            // converted to an object {d, t, dt} by the state parsing loop above
+            if (dataset.delimitersSet) {
+                var delimDate = new Date(dataset.delimitersSet);
+                var rawAnalyzedState = _.find(dataset.states, function(s) { return s.name === 'stateRawAnalyzed'; });
+                if (rawAnalyzedState) {
+                    // rawAnalyzedState.date is already a parsed timestamp (from Date.parse)
+                    dataset.delimitersValid = delimDate.getTime() > rawAnalyzedState.date;
+                } else {
+                    // No raw analysis state, so delimiters are valid if set
+                    dataset.delimitersValid = true;
+                }
+            } else {
+                dataset.delimitersValid = false;
+            }
+
             if (_.isEmpty(dataset.states)) {
-                dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
+                // Check if delimiters are valid - this means dataset is ready to harvest
+                if (dataset.delimitersValid) {
+                    dataset.stateCurrent = {"name": "stateReadyToHarvest", "date": Date.now()};
+                } else {
+                    dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
+                }
             }
             // Use truthiness check - null and undefined should not trigger error state
             if (dataset.datasetErrorMessage || dataset.errorMessage) {
@@ -874,7 +926,7 @@ define(["angular"], function () {
     };
 
     DatasetListCtrl.$inject = [
-        "$rootScope", "$scope", "datasetListService", "$location", "pageScroll", "modalAlert"
+        "$rootScope", "$scope", "datasetListService", "$location", "pageScroll", "modalAlert", "$timeout"
     ];
 
     // these lists must match with DsInfo.scala

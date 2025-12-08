@@ -290,6 +290,7 @@
                                             stateAnalyzed: 'analyzed',
                                             stateSaved:'saved',
                                             stateDisabled:'disabled',
+                                            stateReadyToHarvest:'ready-to-harvest',
                                             '':'default'}[dataset.stateCurrent.name]">
                                     <span ng-switch-when="stateRaw">Raw source</span>
                                     <span ng-switch-when="stateRawAnalyzed">Raw source analyzed</span>
@@ -302,6 +303,7 @@
                                     <span ng-switch-when="stateAnalyzed">Analyzed</span>
                                     <span ng-switch-when="stateSaved">Saved</span>
                                     <span ng-switch-when="stateDisabled">Disabled</span>
+                                    <span ng-switch-when="stateReadyToHarvest">Ready to Harvest</span>
                                     <span ng-switch-default>Empty</span>
                                 </span>
                             </td>
@@ -339,9 +341,28 @@
                                         'HH:mm' }}</small>
                                 </h4>
                                 <div class="btn-toolbar">
-                                    <a href data-ng-click="goToDataset()">
+                                    <a href data-ng-click="goToDataset()" data-ng-if="!dataset.delimitersValid">
                                         <i class="fa fa-fw fa-eye"></i>
                                         <span>Delimit</span>
+                                    </a>
+                                    <a href data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')" data-ng-if="dataset.delimitersValid">
+                                        <i class="fa fa-fw fa-download"></i>
+                                        <span>Start Harvest</span>
+                                    </a>
+                                </div>
+                            </li>
+                            <!-- Ready to harvest: delimiters set but no state yet (PMH datasets after config) -->
+                            <li data-ng-show="dataset.delimitersValid && !dataset.stateRawAnalyzed && !dataset.stateSourced" class="ds-state list-group-item"
+                                data-ng-class="{ 'later': true }">
+                                <h4 class="list-group-item-heading">
+                                    Ready to Harvest
+                                    <small class="badge">{{ dataset.delimitersSet | date: 'dd-MM' }} {{
+                                        dataset.delimitersSet | date: 'HH:mm' }}</small>
+                                </h4>
+                                <div class="btn-toolbar">
+                                    <a href data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')">
+                                        <i class="fa fa-fw fa-download"></i>
+                                        <span>Start Harvest</span>
                                     </a>
                                 </div>
                             </li>

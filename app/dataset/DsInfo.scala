@@ -125,7 +125,10 @@ object DsInfo {
     harvestDownloadURL: Option[String],
     harvestIncrementalMode: Option[String],
     processedIncrementalValid: Option[Int],
-    processedIncrementalInvalid: Option[Int]
+    processedIncrementalInvalid: Option[Int],
+    delimitersSet: Option[String],
+    recordRootValue: Option[String],
+    uniqueIdValue: Option[String]
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = new Writes[DsInfoLight] {
@@ -153,7 +156,10 @@ object DsInfo {
       "harvestDownloadURL" -> ds.harvestDownloadURL,
       "harvestIncrementalMode" -> ds.harvestIncrementalMode,
       "processedIncrementalValid" -> ds.processedIncrementalValid,
-      "processedIncrementalInvalid" -> ds.processedIncrementalInvalid
+      "processedIncrementalInvalid" -> ds.processedIncrementalInvalid,
+      "delimitersSet" -> ds.delimitersSet,
+      "recordRoot" -> ds.recordRootValue,
+      "uniqueId" -> ds.uniqueIdValue
     )
   }
 
@@ -190,7 +196,10 @@ object DsInfo {
           harvestDownloadURL = row.get("harvestDownloadURL").map(_.text),
           harvestIncrementalMode = row.get("harvestIncrementalMode").map(_.text),
           processedIncrementalValid = row.get("processedIncrementalValid").map(_.text.toInt),
-          processedIncrementalInvalid = row.get("processedIncrementalInvalid").map(_.text.toInt)
+          processedIncrementalInvalid = row.get("processedIncrementalInvalid").map(_.text.toInt),
+          delimitersSet = row.get("delimitersSet").map(_.text),
+          recordRootValue = row.get("recordRoot").map(_.text),
+          uniqueIdValue = row.get("uniqueId").map(_.text)
         )
       }
     }
@@ -962,6 +971,12 @@ class DsInfo(
     harvestPrefix -> prefix
   )
 
+  def setDelimiters(recordRootValue: String, uniqueIdValue: String) = setSingularLiteralProps(
+    recordRoot -> recordRootValue,
+    uniqueId -> uniqueIdValue,
+    delimitersSet -> timeToLocalString(DateTime.now())
+  )
+
   def setHarvestCron(harvestCron: HarvestCron = currentHarvestCron) =
     setSingularLiteralProps(
       harvestPreviousTime -> timeToLocalString(harvestCron.previous),
@@ -1192,7 +1207,8 @@ class DsInfo(
       harvestPrefix => hPrefix, harvestSearch => hSearch, harvestIncrementalMode => hIncrementalMode,
       harvestDelay => hDelay, harvestDelayUnit => hDelayUnit, harvestPreviousTime => hPreviousTime,
       harvestIncremental => hIncremental,
-      processedIncrementalValid => pIncrementalValid, processedIncrementalInvalid => pIncrementalInvalid}
+      processedIncrementalValid => pIncrementalValid, processedIncrementalInvalid => pIncrementalInvalid,
+      delimitersSet => dsDelimitersSet, recordRoot => dsRecordRoot, uniqueId => dsUniqueId}
     Json.obj(
       "datasetSpec" -> spec,
       "spec" -> spec,
@@ -1226,7 +1242,10 @@ class DsInfo(
       "harvestPreviousTime" -> getLiteralProp(hPreviousTime),
       "harvestIncremental" -> getLiteralProp(hIncremental),
       "processedIncrementalValid" -> getLiteralProp(pIncrementalValid).map(_.toInt),
-      "processedIncrementalInvalid" -> getLiteralProp(pIncrementalInvalid).map(_.toInt)
+      "processedIncrementalInvalid" -> getLiteralProp(pIncrementalInvalid).map(_.toInt),
+      "delimitersSet" -> getLiteralProp(dsDelimitersSet),
+      "recordRoot" -> getLiteralProp(dsRecordRoot),
+      "uniqueId" -> getLiteralProp(dsUniqueId)
     )
   }
 
