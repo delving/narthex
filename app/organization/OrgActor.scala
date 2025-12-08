@@ -170,9 +170,10 @@ class OrgActor (
   // Track completed operations for observability stats
   var completedOperations: Vector[CompletedOperation] = Vector.empty
 
-  // Track specs that started saving (spec -> trigger) for completion tracking
-  // This is needed because saveSemaphore is released before DatasetBecameIdle is sent
-  var savingSpecs: Map[String, String] = Map.empty
+  // Track specs with active workflows (spec -> trigger) for completion tracking
+  // This tracks the trigger from when a workflow starts (harvest/process/save)
+  // so we can attribute completions correctly even for multi-step workflows
+  var workflowSpecs: Map[String, String] = Map.empty
 
   // Queue persistence file
   val queueStateFile = new File(orgContext.orgRoot, "queue-state.json")
@@ -480,18 +481,25 @@ class OrgActor (
       datasetActor
     }
 
-    // Track save operations for completion statistics
-    if (isSaveOperation(message)) {
-      savingSpecs = savingSpecs + (spec -> trigger)
-      log.info(s"Tracking save operation for $spec (trigger: $trigger)")
+    // Track workflow operations for completion statistics
+    // Track any workflow-starting operation (harvest, process, save) so we can
+    // attribute the completion to the correct trigger even for multi-step workflows
+    if (isWorkflowStartOperation(message)) {
+      // Only set if not already tracking (don't overwrite trigger from earlier step)
+      if (!workflowSpecs.contains(spec)) {
+        workflowSpecs = workflowSpecs + (spec -> trigger)
+        log.info(s"Tracking workflow for $spec (trigger: $trigger)")
+      }
     }
 
     actor ! message
   }
 
-  private def isSaveOperation(message: AnyRef): Boolean = message match {
+  private def isWorkflowStartOperation(message: AnyRef): Boolean = message match {
+    case _: StartHarvest => true
+    case _: StartProcessing => true
     case _: StartSaving => true
-    case Command(cmd) => cmd == "start saving"
+    case Command(cmd) => cmd.startsWith("start ") && !cmd.contains("refresh")
     case _ => false
   }
 
@@ -566,8 +574,8 @@ class OrgActor (
       log.info(s"Dataset $spec became idle")
       activeDatasets = activeDatasets - spec
 
-      // Track completion if it was a SAVE operation (check savingSpecs map)
-      savingSpecs.get(spec) match {
+      // Track completion if we were tracking a workflow for this spec
+      workflowSpecs.get(spec) match {
         case Some(trigger) =>
           val completed = CompletedOperation(
             spec = spec,
@@ -576,8 +584,8 @@ class OrgActor (
             durationSeconds = None
           )
           completedOperations = completedOperations :+ completed
-          savingSpecs = savingSpecs - spec  // Remove from tracking
-          log.info(s"Tracked completion for $spec (trigger: $trigger)")
+          workflowSpecs = workflowSpecs - spec  // Remove from tracking
+          log.info(s"Tracked workflow completion for $spec (trigger: $trigger)")
 
           // Prune old entries (older than 24h) and enforce max limit of 3000 entries
           val cutoff = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
