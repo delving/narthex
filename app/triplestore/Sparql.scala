@@ -138,6 +138,7 @@ object Sparql {
       |    OPTIONAL { ?s nx:harvestRetryCount ?retryCount }
       |    OPTIONAL { ?s nx:harvestLastRetryTime ?lastRetryTime }
       |    FILTER NOT EXISTS { ?s <$deleted> true }
+      |    FILTER NOT EXISTS { ?s <$stateDisabled> ?disabledTime }
       |  }
       |}
       |ORDER BY ?lastRetryTime
@@ -194,6 +195,7 @@ object Sparql {
       |  GRAPH ?g {
       |    ?s <$datasetSpec> ?spec .
       |    FILTER NOT EXISTS { ?s <$deleted> true }
+      |    FILTER NOT EXISTS { ?s <$stateDisabled> ?disabledTime }
       |    $stateFilter
       |  }
       |}
