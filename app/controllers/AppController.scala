@@ -117,7 +117,7 @@ class AppController @Inject() (
     import scala.concurrent.duration._
     import akka.pattern.ask
     import akka.util.Timeout
-    import organization.OrgActor.{GetQueueStatus, QueueStatus}
+    import organization.OrgActor.{GetQueueStatus, QueueStatus, completionDetailFormat}
 
     implicit val timeout = Timeout(2.seconds)
 
@@ -138,7 +138,8 @@ class AppController @Inject() (
           "automatic4h" -> status.stats.automatic4h,
           "manual24h" -> status.stats.manual24h,
           "automatic24h" -> status.stats.automatic24h
-        )
+        ),
+        "completionDetails" -> Json.toJson(status.completionDetails)
       ))
     }
   }

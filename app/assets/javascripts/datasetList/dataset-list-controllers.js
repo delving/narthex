@@ -730,6 +730,8 @@ define(["angular"], function () {
 
         // Completion stats for observability
         $scope.completionStats = null;
+        $scope.completionDetails = [];
+        $scope.uniqueDatasets24h = 0;
         $scope.showStatsPanel = false;
 
         $scope.toggleStatsPanel = function() {
@@ -753,6 +755,17 @@ define(["angular"], function () {
                 // Update completion stats from response
                 if (data.completionStats) {
                     $scope.completionStats = data.completionStats;
+                }
+
+                // Update completion details and calculate unique datasets
+                if (data.completionDetails) {
+                    $scope.completionDetails = data.completionDetails;
+                    // Calculate unique datasets
+                    var seen = {};
+                    data.completionDetails.forEach(function(op) {
+                        seen[op.spec] = true;
+                    });
+                    $scope.uniqueDatasets24h = Object.keys(seen).length;
                 }
 
                 // Build lookup maps for quick access
@@ -1797,6 +1810,9 @@ define(["angular"], function () {
                     break;
                 case 'skos':
                     $location.path('/skos');
+                    break;
+                case 'stats':
+                    $location.path('/stats');
                     break;
                 case 'categories':
                     $location.path('/categories');

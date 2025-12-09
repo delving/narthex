@@ -1,0 +1,174 @@
+<div class="container-fluid" style="padding: 15px;">
+    <div class="page-header" style="margin-top: 0;">
+        <h3>
+            <i class="fa fa-bar-chart"></i> Processing Activity (Last 24 Hours)
+            <a href="#/" class="btn btn-default btn-sm pull-right">
+                <i class="fa fa-arrow-left"></i> Back to Datasets
+            </a>
+        </h3>
+    </div>
+
+    <!-- Loading indicator -->
+    <div ng-if="loading" class="text-center" style="padding: 50px;">
+        <i class="fa fa-spinner fa-spin fa-3x"></i>
+        <p style="margin-top: 15px;">Loading statistics...</p>
+    </div>
+
+    <!-- Main content -->
+    <div ng-if="!loading">
+        <!-- Grouping Toggle -->
+        <div class="btn-group" style="margin-bottom: 15px;">
+            <button class="btn" ng-class="{'btn-primary': grouping === 'dataset', 'btn-default': grouping !== 'dataset'}"
+                    ng-click="setGrouping('dataset')">
+                <i class="fa fa-database"></i> By Dataset
+            </button>
+            <button class="btn" ng-class="{'btn-primary': grouping === 'hour', 'btn-default': grouping !== 'hour'}"
+                    ng-click="setGrouping('hour')">
+                <i class="fa fa-clock-o"></i> By Hour
+            </button>
+        </div>
+
+        <button class="btn btn-default pull-right" ng-click="refreshStats()">
+            <i class="fa fa-refresh"></i> Refresh
+        </button>
+
+        <!-- Summary Stats -->
+        <div class="well well-sm">
+            <strong>{{ completionDetails.length }}</strong> operations |
+            <strong>{{ uniqueDatasets }}</strong> datasets |
+            <strong>{{ manualCount }}</strong> manual |
+            <strong>{{ automaticCount }}</strong> automatic
+        </div>
+
+        <!-- Empty state -->
+        <div ng-if="completionDetails.length === 0" class="alert alert-info">
+            <i class="fa fa-info-circle"></i> No processing activity in the last 24 hours.
+        </div>
+
+        <!-- By Dataset View -->
+        <div ng-if="grouping === 'dataset' && completionDetails.length > 0" class="panel panel-default">
+            <div class="panel-heading">
+                <span class="badge pull-right">{{ groupedByDataset.length }} datasets</span>
+                <i class="fa fa-database"></i> Grouped by Dataset
+            </div>
+            <table class="table table-striped table-hover" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;"></th>
+                        <th ng-click="sortByDataset('spec')" style="cursor: pointer;">
+                            Dataset
+                            <i class="fa fa-sort text-muted"></i>
+                        </th>
+                        <th ng-click="sortByDataset('count')" style="cursor: pointer; width: 100px;" class="text-center">
+                            Operations
+                            <i class="fa fa-sort text-muted"></i>
+                        </th>
+                        <th class="text-center" style="width: 80px;">Manual</th>
+                        <th class="text-center" style="width: 80px;">Automatic</th>
+                        <th ng-click="sortByDataset('lastActivity')" style="cursor: pointer; width: 150px;">
+                            Last Activity
+                            <i class="fa fa-sort text-muted"></i>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat-start="item in groupedByDataset"
+                        ng-click="expandDataset(item)" style="cursor: pointer;"
+                        ng-class="{'active': expandedDataset === item}">
+                        <td>
+                            <i class="fa" ng-class="expandedDataset === item ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                        </td>
+                        <td><strong>{{ item.spec }}</strong></td>
+                        <td class="text-center">{{ item.count }}</td>
+                        <td class="text-center">{{ item.manual }}</td>
+                        <td class="text-center">{{ item.automatic }}</td>
+                        <td>{{ formatRelativeTime(item.lastActivity) }}</td>
+                    </tr>
+                    <!-- Expanded Detail -->
+                    <tr ng-repeat-end ng-if="expandedDataset === item">
+                        <td colspan="6" style="background: #f9f9f9; padding: 15px;">
+                            <h5><i class="fa fa-list"></i> Operations for {{ item.spec }}</h5>
+                            <table class="table table-condensed" style="margin-bottom: 0;">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Trigger</th>
+                                        <th>Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="op in item.operations | orderBy:'-completedAt'">
+                                        <td>{{ formatRelativeTime(op.completedAt) }}</td>
+                                        <td>
+                                            <span class="label" ng-class="{'label-info': op.trigger === 'manual', 'label-success': op.trigger !== 'manual'}">
+                                                {{ op.trigger }}
+                                            </span>
+                                        </td>
+                                        <td>{{ formatDuration(op.durationSeconds) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- By Hour View -->
+        <div ng-if="grouping === 'hour' && completionDetails.length > 0" class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-clock-o"></i> Grouped by Hour (Relative)
+            </div>
+            <table class="table table-striped table-hover" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;"></th>
+                        <th style="width: 200px;">Time</th>
+                        <th class="text-center" style="width: 100px;">Operations</th>
+                        <th class="text-center" style="width: 100px;">Datasets</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat-start="item in groupedByHour" ng-if="item.count > 0"
+                        ng-click="expandHour(item)" style="cursor: pointer;"
+                        ng-class="{'active': expandedHour === item}">
+                        <td>
+                            <i class="fa" ng-class="expandedHour === item ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                        </td>
+                        <td><strong>{{ item.relativeLabel }}</strong></td>
+                        <td class="text-center">{{ item.count }}</td>
+                        <td class="text-center">{{ item.datasetCount }}</td>
+                    </tr>
+                    <!-- Expanded Detail -->
+                    <tr ng-repeat-end ng-if="item.count > 0 && expandedHour === item">
+                        <td colspan="4" style="background: #f9f9f9; padding: 15px;">
+                            <h5><i class="fa fa-list"></i> {{ item.relativeLabel }}</h5>
+                            <table class="table table-condensed" style="margin-bottom: 0;">
+                                <thead>
+                                    <tr>
+                                        <th>Dataset</th>
+                                        <th>Time</th>
+                                        <th>Trigger</th>
+                                        <th>Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="op in item.operations | orderBy:'-completedAt'">
+                                        <td><strong>{{ op.spec }}</strong></td>
+                                        <td>{{ formatRelativeTime(op.completedAt) }}</td>
+                                        <td>
+                                            <span class="label" ng-class="{'label-info': op.trigger === 'manual', 'label-success': op.trigger !== 'manual'}">
+                                                {{ op.trigger }}
+                                            </span>
+                                        </td>
+                                        <td>{{ formatDuration(op.durationSeconds) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

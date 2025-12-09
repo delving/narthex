@@ -142,6 +142,16 @@
                     </tr>
                 </tbody>
             </table>
+            <!-- Summary and link to full stats page -->
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;" class="clearfix">
+                <span class="text-muted">
+                    <strong>{{ completionDetails.length || 0 }}</strong> operations,
+                    <strong>{{ uniqueDatasets24h || 0 }}</strong> unique datasets
+                </span>
+                <a href="#/stats" class="btn btn-xs btn-default pull-right">
+                    <i class="fa fa-bar-chart"></i> View Details
+                </a>
+            </div>
         </div>
     </div>
 </div>

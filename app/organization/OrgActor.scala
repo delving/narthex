@@ -59,7 +59,8 @@ object OrgActor {
     processing: List[String],
     saving: List[String],
     queued: List[(String, String, Int)],  // (spec, trigger, position)
-    stats: CompletionStats
+    stats: CompletionStats,
+    completionDetails: List[CompletionDetail]  // Raw operation details for 24h
   )
   case object GetQueueStatus
   case class CancelResult(success: Boolean, message: String)
@@ -76,6 +77,14 @@ object OrgActor {
     manual1h: Int, automatic1h: Int,
     manual4h: Int, automatic4h: Int,
     manual24h: Int, automatic24h: Int
+  )
+
+  // Detail record for individual completed operations (exposed to frontend)
+  case class CompletionDetail(
+    spec: String,
+    completedAt: Long,
+    trigger: String,
+    durationSeconds: Option[Long]
   )
 
   // Queue persistence and health checks
@@ -103,6 +112,7 @@ object OrgActor {
   // JSON format for persistence
   implicit val completedOperationFormat: Format[CompletedOperation] = Json.format[CompletedOperation]
   implicit val completionStatsFormat: Format[CompletionStats] = Json.format[CompletionStats]
+  implicit val completionDetailFormat: Format[CompletionDetail] = Json.format[CompletionDetail]
   implicit val persistedQueueEntryFormat: Format[PersistedQueueEntry] = Json.format[PersistedQueueEntry]
   implicit val persistedQueueStateFormat: Format[PersistedQueueState] = Json.format[PersistedQueueState]
 
@@ -632,7 +642,11 @@ class OrgActor (
         (op.spec, op.trigger, idx + 1)
       }.toList
       val stats = calculateCompletionStats()
-      sender() ! QueueStatus(processing, saving, queued, stats)
+      // Convert CompletedOperation to CompletionDetail for frontend
+      val details = completedOperations.map { op =>
+        CompletionDetail(op.spec, op.completedAt, op.trigger, op.durationSeconds)
+      }.toList
+      sender() ! QueueStatus(processing, saving, queued, stats, details)
 
     case CancelQueuedOperation(spec) =>
       val wasQueued = operationQueue.exists(_.spec == spec)

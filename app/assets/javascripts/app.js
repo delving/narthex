@@ -30,7 +30,8 @@ define(
         "skos",
         "terms",
         "categories",
-        "defaultMappings"
+        "defaultMappings",
+        "stats"
     ],
     function (angular) {
         "use strict";
@@ -46,6 +47,7 @@ define(
                 "narthex.terms",
                 "narthex.categories",
                 "narthex.defaultMappings",
+                "narthex.stats",
                 "angularFileUpload",
                 "ngSanitize",
                 "ui.bootstrap.tpls",
