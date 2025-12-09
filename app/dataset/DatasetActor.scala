@@ -857,9 +857,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       } else {
         dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
-        mailService.sendProcessingCompleteMessage(dsInfo.spec,
-                                                  dsInfo.processedValidVal,
-                                                  dsInfo.processedInvalidVal)
+        // Success emails disabled - only send emails on errors
         active.childOpt.foreach(_ ! PoisonPill)
         // Release semaphore since we're not going through GraphSaver
         orgContext.semaphore.release(dsInfo.spec)
