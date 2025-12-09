@@ -15,7 +15,7 @@ define(
                 function ($routeProvider) {
                     $routeProvider.when(
                         "/", {
-                            templateUrl: "/narthex/assets/templates/dataset-list.html?v=0.8.2.17",
+                            templateUrl: "/narthex/assets/templates/dataset-list.html?v=0.8.2.35",
                             controller: controllers.DatasetListCtrl,
                             reloadOnSearch: false
                         }
@@ -28,7 +28,8 @@ define(
             "ngRoute",
             "datasetList.routes",
             "datasetList.services",
-            "narthex.common"
+            "narthex.common",
+            "narthex.defaultMappings"
         ]);
 
         narthexDatasetList.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);

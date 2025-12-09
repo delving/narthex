@@ -1,0 +1,24 @@
+<!-- jsdiff library for computing differences -->
+<script src="/narthex/assets/vendor/jsdiff/diff.min.js"></script>
+
+<div class="modal-header">
+    <button type="button" class="close" ng-click="close()" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+    <h4 class="modal-title">
+        <i class="fa fa-exchange"></i> {{ title }}
+    </h4>
+</div>
+<div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+    <div class="diff-legend" style="margin-bottom: 10px;">
+        <span class="label label-success"><i class="fa fa-plus"></i> Added</span>
+        <span class="label label-danger"><i class="fa fa-minus"></i> Removed</span>
+        <span class="label label-default">Unchanged</span>
+    </div>
+    <div class="diff-container" ng-bind-html="diffHtml"></div>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-default" ng-click="close()">
+        <i class="fa fa-times"></i> Close
+    </button>
+</div>

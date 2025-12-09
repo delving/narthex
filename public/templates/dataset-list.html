@@ -601,8 +601,8 @@
                                     <li data-ng-class="{'active':leftTabOpen === 'activity'}">
                                         <a href role="tab" data-ng-click="leftTabOpen = 'activity'">Activity</a>
                                     </li>
-                                    <li data-ng-class="{'active':leftTabOpen === 'mapping'}" ng-if="enableDefaultMappings">
-                                        <a href role="tab" data-ng-click="leftTabOpen ='mapping'">Mapping</a>
+                                    <li data-ng-class="{'active':leftTabOpen === 'mapping'}" ng-if="$root.enableDefaultMappings">
+                                        <a href role="tab" data-ng-click="setLeftTab('mapping')">Mapping</a>
                                     </li>
                                 </ul>
 
@@ -641,8 +641,147 @@
                                             </div>
                                         </div>
                                         <div ng-switch-when="mapping">
-                                            <div data-ng-include="'/narthex/assets/templates/mapping.html'">
-                                                mapping source
+                                            <div class="panel panel-default">
+                                                <div class="panel-body">
+                                                    <div class="clearfix">
+                                                        <h4 class="pull-left" style="margin-top: 0;"><i class="fa fa-map"></i> Mapping Source</h4>
+                                                        <button class="btn btn-sm btn-info pull-right" ng-click="previewCurrentMapping()"
+                                                                ng-disabled="!mapping.datasetVersions || mapping.datasetVersions.length === 0"
+                                                                title="Preview the current mapping XML">
+                                                            <i class="fa fa-eye"></i> Preview Current Mapping
+                                                        </button>
+                                                    </div>
+                                                    <p class="text-muted" ng-if="datasetSchemaPrefix">
+                                                        <small>Schema prefix: <strong>{{ datasetSchemaPrefix | uppercase }}</strong></small>
+                                                    </p>
+
+                                                    <!-- Mapping Source Selection -->
+                                                    <div class="form-group">
+                                                        <div class="radio">
+                                                            <label>
+                                                                <input type="radio" name="mappingSource_{{ dataset.datasetSpec }}" value="manual"
+                                                                       ng-model="mapping.source" ng-change="updateMappingSource()">
+                                                                <strong>Manual</strong> - Use this dataset's own mapping (from SIP uploads)
+                                                            </label>
+                                                        </div>
+                                                        <div class="radio">
+                                                            <label>
+                                                                <input type="radio" name="mappingSource_{{ dataset.datasetSpec }}" value="default"
+                                                                       ng-model="mapping.source" ng-change="updateMappingSource()">
+                                                                <strong>Default Mapping</strong> - Use a shared organization-wide mapping
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Default Mapping Selection (shown when "default" is selected) -->
+                                                    <div ng-if="mapping.source === 'default'" class="panel panel-info">
+                                                        <div class="panel-heading">
+                                                            <h5 class="panel-title">Select Default Mapping</h5>
+                                                        </div>
+                                                        <div class="panel-body">
+                                                            <!-- Show message when no default mappings are available -->
+                                                            <div ng-if="mapping.defaultMappings.length === 0" class="alert alert-warning">
+                                                                <i class="fa fa-info-circle"></i> No default mappings available for
+                                                                <strong>{{ datasetSchemaPrefix | uppercase }}</strong>.
+                                                                <a href="#/default-mappings">Create one in the Default Mappings section</a>.
+                                                            </div>
+                                                            <div class="form-horizontal" ng-if="mapping.defaultMappings.length > 0">
+                                                                <div class="form-group">
+                                                                    <label class="col-sm-3 control-label">Mapping:</label>
+                                                                    <div class="col-sm-9">
+                                                                        <select class="form-control" ng-model="mapping.selectedDefault"
+                                                                                ng-options="m.value as (m.label + ' (' + m.versionCount + ' versions)') for m in mapping.defaultMappings"
+                                                                                ng-change="loadDefaultMappingVersions()">
+                                                                            <option value="">Select a mapping...</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="form-group" ng-if="mapping.selectedDefault">
+                                                                    <label class="col-sm-3 control-label">Version:</label>
+                                                                    <div class="col-sm-9">
+                                                                        <div class="checkbox">
+                                                                            <label>
+                                                                                <input type="checkbox" ng-model="mapping.useSpecificVersion">
+                                                                                Use specific version (otherwise uses latest)
+                                                                            </label>
+                                                                        </div>
+                                                                        <select class="form-control" ng-model="mapping.defaultVersion"
+                                                                                ng-if="mapping.useSpecificVersion" style="margin-top: 5px;">
+                                                                            <option ng-repeat="v in mapping.defaultVersions" value="{{ v.hash }}">
+                                                                                {{ v.label }}
+                                                                            </option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <div class="col-sm-offset-3 col-sm-9">
+                                                                        <button class="btn btn-primary" ng-click="saveDefaultMappingSelection()"
+                                                                                ng-disabled="!mapping.selectedDefault">
+                                                                            <i class="fa fa-save"></i> Save Selection
+                                                                        </button>
+                                                                        <button class="btn btn-info" ng-click="previewDefaultMapping()"
+                                                                                ng-disabled="!mapping.selectedDefault">
+                                                                            <i class="fa fa-eye"></i> Preview
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Dataset Mapping Version History -->
+                                                    <div ng-if="mapping.datasetVersions && mapping.datasetVersions.length > 0">
+                                                        <hr>
+                                                        <h5><i class="fa fa-history"></i> Dataset Mapping History</h5>
+                                                        <table class="table table-condensed table-striped">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Version</th>
+                                                                    <th>Date</th>
+                                                                    <th>Source</th>
+                                                                    <th>Actions</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr ng-repeat="version in mapping.datasetVersions | limitTo:5">
+                                                                    <td>
+                                                                        <code>{{ version.hash }}</code>
+                                                                        <span class="label label-success" ng-if="version.isCurrent">Current</span>
+                                                                    </td>
+                                                                    <td>{{ version.timestamp | date:'yyyy-MM-dd HH:mm' }}</td>
+                                                                    <td>
+                                                                        <span ng-if="version.source === 'sip_upload'">
+                                                                            <i class="fa fa-upload"></i> SIP Upload
+                                                                        </span>
+                                                                        <span ng-if="version.source === 'default_copy'">
+                                                                            <i class="fa fa-share"></i> {{ version.sourceDefault }}
+                                                                        </span>
+                                                                        <span ng-if="version.source === 'rollback'">
+                                                                            <i class="fa fa-undo"></i> Rollback
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <button class="btn btn-xs btn-info" ng-click="previewDatasetMapping(version.hash)">
+                                                                            <i class="fa fa-eye"></i>
+                                                                        </button>
+                                                                        <button class="btn btn-xs btn-warning" ng-click="rollbackToVersion(version.hash)"
+                                                                                ng-if="!version.isCurrent">
+                                                                            <i class="fa fa-undo"></i> Rollback
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                        <p class="text-muted" ng-if="mapping.datasetVersions.length > 5">
+                                                            <small>Showing latest 5 versions. Total: {{ mapping.datasetVersions.length }}</small>
+                                                        </p>
+                                                    </div>
+
+                                                    <div ng-if="!mapping.datasetVersions || mapping.datasetVersions.length === 0" class="alert alert-info">
+                                                        <i class="fa fa-info-circle"></i> No mapping versions found for this dataset.
+                                                        Upload a SIP file to create the first mapping version.
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

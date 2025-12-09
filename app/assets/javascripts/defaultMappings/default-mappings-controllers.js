@@ -17,7 +17,7 @@
 define(["angular"], function (angular) {
     "use strict";
 
-    var DefaultMappingsListCtrl = function ($scope, $rootScope, $location, $modal, defaultMappingsService, datasetListService) {
+    var DefaultMappingsListCtrl = function ($scope, $rootScope, $location, $modal, $timeout, defaultMappingsService, datasetListService) {
 
         $scope.prefixes = [];
         $scope.datasets = [];
@@ -32,7 +32,7 @@ define(["angular"], function (angular) {
         $scope.expandedMappings = {};
 
         function loadMappings() {
-            defaultMappingsService.listDefaultMappings().then(function (data) {
+            return defaultMappingsService.listDefaultMappings().then(function (data) {
                 $scope.prefixes = data.prefixes || [];
                 $scope.availablePrefixes = data.availablePrefixes || [];
             });
@@ -76,19 +76,22 @@ define(["angular"], function (angular) {
 
         function loadMappingVersions(prefix, name) {
             defaultMappingsService.getNamedMappingInfo(prefix, name).then(function (data) {
-                // Find and update the mapping in the prefixes list
-                for (var i = 0; i < $scope.prefixes.length; i++) {
-                    if ($scope.prefixes[i].prefix === prefix) {
-                        for (var j = 0; j < $scope.prefixes[i].mappings.length; j++) {
-                            if ($scope.prefixes[i].mappings[j].name === name) {
-                                $scope.prefixes[i].mappings[j].versions = data.versions || [];
-                                $scope.prefixes[i].mappings[j].currentVersion = data.currentVersion;
-                                break;
+                // Use $timeout to ensure we're in a digest cycle
+                $timeout(function() {
+                    // Find and update the mapping in the prefixes list
+                    for (var i = 0; i < $scope.prefixes.length; i++) {
+                        if ($scope.prefixes[i].prefix === prefix) {
+                            for (var j = 0; j < $scope.prefixes[i].mappings.length; j++) {
+                                if ($scope.prefixes[i].mappings[j].name === name) {
+                                    $scope.prefixes[i].mappings[j].versions = data.versions || [];
+                                    $scope.prefixes[i].mappings[j].currentVersion = data.currentVersion;
+                                    return;
+                                }
                             }
+                            return;
                         }
-                        break;
                     }
-                }
+                }, 0);
             });
         }
 
@@ -120,9 +123,10 @@ define(["angular"], function (angular) {
 
             defaultMappingsService.createNamedMapping(prefix, $scope.newMappingName.trim()).then(function (data) {
                 $scope.newMappingName = '';
-                loadMappings();
-                // Expand the prefix to show the new mapping
-                $scope.expandedPrefixes[prefix] = true;
+                // Wait for loadMappings to complete before expanding
+                return loadMappings().then(function() {
+                    $scope.expandedPrefixes[prefix] = true;
+                });
             });
         };
 
@@ -204,6 +208,44 @@ define(["angular"], function (angular) {
             });
         };
 
+        // =============== Version Comparison ===============
+
+        $scope.getSelectedCount = function(mapping) {
+            if (!mapping.versions) return 0;
+            return mapping.versions.filter(function(v) { return v.selected; }).length;
+        };
+
+        $scope.compareVersions = function(prefix, mapping) {
+            var selected = mapping.versions.filter(function(v) { return v.selected; });
+            if (selected.length !== 2) return;
+
+            // Sort by timestamp (older first)
+            selected.sort(function(a, b) {
+                return new Date(a.timestamp) - new Date(b.timestamp);
+            });
+
+            // Fetch both XMLs and show diff
+            var url1 = '/narthex/app/default-mappings/' + prefix + '/' + mapping.name + '/xml/' + selected[0].hash;
+            var url2 = '/narthex/app/default-mappings/' + prefix + '/' + mapping.name + '/xml/' + selected[1].hash;
+
+            defaultMappingsService.getDefaultMappingXml(prefix, mapping.name, selected[0].hash).then(function(oldXml) {
+                defaultMappingsService.getDefaultMappingXml(prefix, mapping.name, selected[1].hash).then(function(newXml) {
+                    $modal.open({
+                        templateUrl: '/narthex/assets/templates/xml-diff-modal.html',
+                        controller: 'XmlDiffModalCtrl',
+                        size: 'lg',
+                        resolve: {
+                            oldXml: function() { return oldXml; },
+                            newXml: function() { return newXml; },
+                            title: function() {
+                                return 'Compare: ' + selected[0].hash.substr(0, 8) + ' vs ' + selected[1].hash.substr(0, 8);
+                            }
+                        }
+                    });
+                });
+            });
+        };
+
         // =============== Preview Mapping ===============
 
         $scope.previewMapping = function (prefix, name, version) {
@@ -239,7 +281,7 @@ define(["angular"], function (angular) {
     };
 
     DefaultMappingsListCtrl.$inject = [
-        "$scope", "$rootScope", "$location", "$modal", "defaultMappingsService", "datasetListService"
+        "$scope", "$rootScope", "$location", "$modal", "$timeout", "defaultMappingsService", "datasetListService"
     ];
 
     // XML Preview Modal Controller
@@ -288,8 +330,55 @@ define(["angular"], function (angular) {
 
     XmlPreviewModalCtrl.$inject = ["$scope", "$modalInstance", "$timeout", "xmlContent", "title"];
 
+    // XML Diff Modal Controller
+    var XmlDiffModalCtrl = function ($scope, $modalInstance, $sce, $timeout, oldXml, newXml, title) {
+        $scope.title = title;
+
+        // Helper to escape HTML
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Compute diff using jsdiff library
+        $timeout(function() {
+            if (window.Diff) {
+                var diff = Diff.diffLines(oldXml, newXml);
+                var html = '<pre class="diff-view">';
+                diff.forEach(function(part) {
+                    var cssClass = part.added ? 'diff-added' : part.removed ? 'diff-removed' : 'diff-unchanged';
+                    var prefix = part.added ? '+' : part.removed ? '-' : ' ';
+                    var lines = part.value.split('\n');
+                    lines.forEach(function(line, i) {
+                        if (i < lines.length - 1 || line) {
+                            html += '<span class="' + cssClass + '">' + prefix + ' ' + escapeHtml(line) + '\n</span>';
+                        }
+                    });
+                });
+                html += '</pre>';
+                $scope.diffHtml = $sce.trustAsHtml(html);
+            } else {
+                // Fallback if jsdiff not loaded
+                $scope.diffHtml = $sce.trustAsHtml('<div class="alert alert-warning">Diff library not loaded. Showing raw comparison.</div>' +
+                    '<h5>Old Version:</h5><pre>' + escapeHtml(oldXml) + '</pre>' +
+                    '<h5>New Version:</h5><pre>' + escapeHtml(newXml) + '</pre>');
+            }
+        }, 100);
+
+        $scope.close = function () {
+            $modalInstance.dismiss('cancel');
+        };
+    };
+
+    XmlDiffModalCtrl.$inject = ["$scope", "$modalInstance", "$sce", "$timeout", "oldXml", "newXml", "title"];
+
     return {
         DefaultMappingsListCtrl: DefaultMappingsListCtrl,
-        XmlPreviewModalCtrl: XmlPreviewModalCtrl
+        XmlPreviewModalCtrl: XmlPreviewModalCtrl,
+        XmlDiffModalCtrl: XmlDiffModalCtrl
     };
 });

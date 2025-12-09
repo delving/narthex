@@ -561,6 +561,22 @@ define(["angular"], function () {
                 dataset.nextRetryMinutes = Math.max(0, Math.round(diffMs / 60000));
             }
 
+            // Normalize mapping source properties (handle both JSON-LD formats)
+            // The JSON-LD may use full URIs or local names, so check both
+            var nxPrefix = 'http://schemas.delving.eu/narthex/terms/';
+            dataset.mappingSource = dataset.datasetMappingSource ||
+                                    dataset[nxPrefix + 'datasetMappingSource'] ||
+                                    dataset.mappingSource;
+            dataset.defaultMappingPrefix = dataset.datasetDefaultMappingPrefix ||
+                                           dataset[nxPrefix + 'datasetDefaultMappingPrefix'] ||
+                                           dataset.defaultMappingPrefix;
+            dataset.defaultMappingName = dataset.datasetDefaultMappingName ||
+                                         dataset[nxPrefix + 'datasetDefaultMappingName'] ||
+                                         dataset.defaultMappingName;
+            dataset.defaultMappingVersion = dataset.datasetDefaultMappingVersion ||
+                                            dataset[nxPrefix + 'datasetDefaultMappingVersion'] ||
+                                            dataset.defaultMappingVersion;
+
             dataset.edit = angular.copy(dataset);
 
             dataset.apiMappings = $scope.apiPrefix + dataset.datasetSpec + '/mappings';
@@ -1001,7 +1017,7 @@ define(["angular"], function () {
         "lastIncrementalHarvestTime", "processedIncrementalValid", "processedIncrementalInvalid"
     ];
 
-    var DatasetEntryCtrl = function ($rootScope, $scope, datasetListService, $location, $timeout, $upload, $routeParams, modalAlert, $http) {
+    var DatasetEntryCtrl = function ($rootScope, $scope, datasetListService, $location, $timeout, $upload, $routeParams, modalAlert, $http, $modal) {
         if (!$scope.dataset) {
             modalAlert.error("Dataset Error", "No dataset specified!");
             return;
@@ -1009,6 +1025,11 @@ define(["angular"], function () {
 
         // Pass enableDefaultMappings to scope for conditional display
         $scope.enableDefaultMappings = $rootScope.enableDefaultMappings;
+
+        // Function for tab switching (needed for mapping tab)
+        $scope.setLeftTab = function(tabName) {
+            $scope.leftTabOpen = tabName;
+        };
 
         // Initialize activity modal state
         $scope.activityModal = { visible: false };
@@ -1071,6 +1092,10 @@ define(["angular"], function () {
         $scope.leftTabOpen = "metadata";
         $scope.rightTabOpen = $scope.dataset.harvestURL ? "harvest" : "drop";
         $scope.expanded = $routeParams.dataset == $scope.dataset.datasetSpec;
+        // If auto-expanded from URL, fetch full dataset data
+        if ($scope.expanded) {
+            $scope.expandDataset($scope.dataset);
+        }
         $scope.idFilter = {};
         var baseUrl = angular.element("#content-wrapper").data("nave-url");
         $scope.searchLink = baseUrl + "/search?q=delving_spec:" + "\"" + $scope.dataset.datasetSpec + "\"";
@@ -1494,32 +1519,63 @@ define(["angular"], function () {
 
         // ==================== Mapping Source Functions ====================
 
-        // Initialize mapping source state
-        $scope.mappingSource = $scope.dataset.mappingSource || $scope.dataset.datasetMappingSource || 'manual';
-        $scope.defaultMappingPrefix = $scope.dataset.defaultMappingPrefix || $scope.dataset.datasetDefaultMappingPrefix || '';
-        $scope.defaultMappingName = $scope.dataset.defaultMappingName || $scope.dataset.datasetDefaultMappingName || '';
-        $scope.defaultMappingVersion = $scope.dataset.defaultMappingVersion || $scope.dataset.datasetDefaultMappingVersion || 'latest';
-        $scope.defaultMappings = [];        // List of all mappings for dropdown
-        $scope.defaultMappingVersions = []; // Versions for selected mapping
-        $scope.datasetMappingVersions = [];
+        // Initialize mapping source state using an object to avoid ng-switch scope issues
+        // Note: Use normalized property names (mappingSource, defaultMappingPrefix, etc.)
+        // which are set in decorateDataset from various JSON-LD formats
+        $scope.mapping = {
+            source: $scope.dataset.mappingSource || 'manual',
+            defaultPrefix: $scope.dataset.defaultMappingPrefix || '',
+            defaultName: $scope.dataset.defaultMappingName || '',
+            defaultVersion: $scope.dataset.defaultMappingVersion || 'latest',
+            selectedDefault: '',  // Combined "prefix/name" value for dropdown
+            useSpecificVersion: false,
+            defaultMappings: [],        // List of all mappings for dropdown
+            defaultVersions: [],        // Versions for selected mapping
+            datasetVersions: []         // Dataset's own mapping versions
+        };
         $scope.datasetSchemaPrefix = $scope.dataset.datasetMapToPrefix || '';
-        $scope.selectedDefaultMapping = '';  // Combined "prefix/name" value for dropdown
-        $scope.useSpecificVersion = false;   // Checkbox for using specific version
 
         // Initialize selected mapping from saved state
-        if ($scope.defaultMappingPrefix && $scope.defaultMappingName) {
-            $scope.selectedDefaultMapping = $scope.defaultMappingPrefix + '/' + $scope.defaultMappingName;
-            if ($scope.defaultMappingVersion && $scope.defaultMappingVersion !== 'latest') {
-                $scope.useSpecificVersion = true;
+        if ($scope.mapping.defaultPrefix && $scope.mapping.defaultName) {
+            $scope.mapping.selectedDefault = $scope.mapping.defaultPrefix + '/' + $scope.mapping.defaultName;
+            if ($scope.mapping.defaultVersion && $scope.mapping.defaultVersion !== 'latest') {
+                $scope.mapping.useSpecificVersion = true;
             }
         }
 
+        // Re-initialize mapping state when full dataset data is loaded
+        $scope.$watch('dataset.fullDataLoaded', function(newVal, oldVal) {
+            if (newVal && !oldVal) {
+                // Full data just loaded - update mapping state from normalized dataset properties
+                $scope.mapping.source = $scope.dataset.mappingSource || 'manual';
+                $scope.mapping.defaultPrefix = $scope.dataset.defaultMappingPrefix || '';
+                $scope.mapping.defaultName = $scope.dataset.defaultMappingName || '';
+                $scope.mapping.defaultVersion = $scope.dataset.defaultMappingVersion || 'latest';
+                $scope.datasetSchemaPrefix = $scope.dataset.datasetMapToPrefix || '';
+
+                if ($scope.mapping.defaultVersion && $scope.mapping.defaultVersion !== 'latest') {
+                    $scope.mapping.useSpecificVersion = true;
+                }
+
+                // Reload default mappings list, then set the selection after options are loaded
+                loadDefaultMappings().then(function() {
+                    // Set selectedDefault after dropdown options are available
+                    if ($scope.mapping.defaultPrefix && $scope.mapping.defaultName) {
+                        $scope.mapping.selectedDefault = $scope.mapping.defaultPrefix + '/' + $scope.mapping.defaultName;
+                        // Also load versions for the selected mapping
+                        $scope.loadDefaultMappingVersions();
+                    }
+                });
+            }
+        });
+
         // Load default mappings list (filtered by dataset's schema prefix)
+        // Returns a promise that resolves when mappings are loaded
         function loadDefaultMappings() {
             // Update datasetSchemaPrefix in case full data was loaded after initialization
             $scope.datasetSchemaPrefix = $scope.dataset.datasetMapToPrefix || '';
 
-            $http.get('/narthex/app/default-mappings').then(function(response) {
+            return $http.get('/narthex/app/default-mappings').then(function(response) {
                 var allPrefixes = response.data.prefixes || [];
                 var mappingsList = [];
 
@@ -1529,50 +1585,45 @@ define(["angular"], function () {
                     if ($scope.datasetSchemaPrefix && prefixData.prefix !== $scope.datasetSchemaPrefix) {
                         return;
                     }
-                    (prefixData.mappings || []).forEach(function(mapping) {
+                    (prefixData.mappings || []).forEach(function(m) {
                         mappingsList.push({
-                            value: prefixData.prefix + '/' + mapping.name,
+                            value: prefixData.prefix + '/' + m.name,
                             prefix: prefixData.prefix,
-                            name: mapping.name,
-                            displayName: mapping.displayName,
-                            label: prefixData.prefix.toUpperCase() + ' - ' + mapping.displayName,
-                            versionCount: mapping.versionCount
+                            name: m.name,
+                            displayName: m.displayName,
+                            label: prefixData.prefix.toUpperCase() + ' - ' + m.displayName,
+                            versionCount: m.versionCount
                         });
                     });
                 });
 
-                $scope.defaultMappings = mappingsList;
-
-                // Load versions if a mapping is already selected
-                if ($scope.selectedDefaultMapping) {
-                    $scope.loadDefaultMappingVersions();
-                }
+                $scope.mapping.defaultMappings = mappingsList;
             });
         }
 
         // Load dataset mapping versions
         function loadDatasetMappingVersions() {
             $http.get('/narthex/app/dataset/' + $scope.dataset.datasetSpec + '/mapping-versions').then(function(response) {
-                $scope.datasetMappingVersions = response.data.versions || [];
+                $scope.mapping.datasetVersions = response.data.versions || [];
             });
         }
 
         // Load versions for selected default mapping
         $scope.loadDefaultMappingVersions = function() {
-            if (!$scope.selectedDefaultMapping) {
-                $scope.defaultMappingVersions = [];
-                $scope.defaultMappingPrefix = '';
-                $scope.defaultMappingName = '';
+            if (!$scope.mapping.selectedDefault) {
+                $scope.mapping.defaultVersions = [];
+                $scope.mapping.defaultPrefix = '';
+                $scope.mapping.defaultName = '';
                 return;
             }
 
             // Parse the combined value
-            var parts = $scope.selectedDefaultMapping.split('/');
-            $scope.defaultMappingPrefix = parts[0];
-            $scope.defaultMappingName = parts[1];
+            var parts = $scope.mapping.selectedDefault.split('/');
+            $scope.mapping.defaultPrefix = parts[0];
+            $scope.mapping.defaultName = parts[1];
 
-            $http.get('/narthex/app/default-mappings/' + $scope.defaultMappingPrefix + '/' + $scope.defaultMappingName).then(function(response) {
-                $scope.defaultMappingVersions = (response.data.versions || []).map(function(v) {
+            $http.get('/narthex/app/default-mappings/' + $scope.mapping.defaultPrefix + '/' + $scope.mapping.defaultName).then(function(response) {
+                $scope.mapping.defaultVersions = (response.data.versions || []).map(function(v) {
                     v.label = v.hash + ' (' + new Date(v.timestamp).toLocaleDateString() + ')';
                     if (v.notes) v.label += ' - ' + v.notes;
                     return v;
@@ -1581,41 +1632,82 @@ define(["angular"], function () {
         };
 
         $scope.updateMappingSource = function() {
-            if ($scope.mappingSource === 'manual') {
+            // Only auto-save when switching to manual (to clear default mapping)
+            if ($scope.mapping.source === 'manual') {
                 $scope.saveDefaultMappingSelection();
             }
         };
 
         $scope.saveDefaultMappingSelection = function() {
-            var version = $scope.useSpecificVersion ? $scope.defaultMappingVersion : 'latest';
+            var version = $scope.mapping.useSpecificVersion ? $scope.mapping.defaultVersion : 'latest';
             var payload = {
-                source: $scope.mappingSource,
-                prefix: $scope.defaultMappingPrefix || null,
-                name: $scope.defaultMappingName || null,
+                source: $scope.mapping.source,
+                prefix: $scope.mapping.defaultPrefix || null,
+                name: $scope.mapping.defaultName || null,
                 version: version
             };
+            console.log('saveDefaultMappingSelection - payload:', payload);
             $http.post('/narthex/app/dataset/' + $scope.dataset.datasetSpec + '/set-mapping-source', payload).then(function(response) {
+                console.log('saveDefaultMappingSelection - response:', response.data);
                 if (response.data.success) {
                     modalAlert.info("Mapping Source Updated", "Mapping source has been saved successfully.");
+                    // Reload dataset mapping versions to reflect any changes
+                    loadDatasetMappingVersions();
                 }
             }, function(error) {
+                console.error('saveDefaultMappingSelection - error:', error);
                 modalAlert.error("Error", "Failed to save mapping source: " + (error.data && error.data.problem || "Unknown error"));
             });
         };
 
         $scope.previewDefaultMapping = function() {
-            if (!$scope.defaultMappingPrefix || !$scope.defaultMappingName) return;
-            var version = $scope.useSpecificVersion && $scope.defaultMappingVersion ? $scope.defaultMappingVersion : 'latest';
-            $http.get('/narthex/app/default-mappings/' + $scope.defaultMappingPrefix + '/' + $scope.defaultMappingName + '/xml/' + version).then(function(response) {
-                modalAlert.info("Mapping Preview", "<pre style='max-height: 400px; overflow-y: auto;'>" + escapeHtml(response.data) + "</pre>");
+            if (!$scope.mapping.defaultPrefix || !$scope.mapping.defaultName) return;
+            var version = $scope.mapping.useSpecificVersion && $scope.mapping.defaultVersion ? $scope.mapping.defaultVersion : 'latest';
+            $http.get('/narthex/app/default-mappings/' + $scope.mapping.defaultPrefix + '/' + $scope.mapping.defaultName + '/xml/' + version).then(function(response) {
+                openXmlPreviewModal(response.data, 'Default Mapping: ' + $scope.mapping.defaultPrefix.toUpperCase() + ' - ' + $scope.mapping.defaultName);
             });
+        };
+
+        // Preview current dataset mapping (from SIP uploads)
+        $scope.previewCurrentMapping = function() {
+            // Get the current mapping version (first one in the list or specified)
+            var currentVersion = null;
+            if ($scope.mapping.datasetVersions && $scope.mapping.datasetVersions.length > 0) {
+                for (var i = 0; i < $scope.mapping.datasetVersions.length; i++) {
+                    if ($scope.mapping.datasetVersions[i].isCurrent) {
+                        currentVersion = $scope.mapping.datasetVersions[i].hash;
+                        break;
+                    }
+                }
+                if (!currentVersion) {
+                    currentVersion = $scope.mapping.datasetVersions[0].hash;
+                }
+            }
+            if (!currentVersion) {
+                modalAlert.warning("No Mapping", "No mapping versions available for this dataset.");
+                return;
+            }
+            $scope.previewDatasetMapping(currentVersion);
         };
 
         $scope.previewDatasetMapping = function(hash) {
             $http.get('/narthex/app/dataset/' + $scope.dataset.datasetSpec + '/mapping-xml/' + hash).then(function(response) {
-                modalAlert.info("Mapping Preview", "<pre style='max-height: 400px; overflow-y: auto;'>" + escapeHtml(response.data) + "</pre>");
+                openXmlPreviewModal(response.data, 'Dataset Mapping: ' + $scope.dataset.datasetSpec + ' (' + hash + ')');
             });
         };
+
+        // Helper function to open XML preview modal with proper formatting
+        function openXmlPreviewModal(xmlContent, title) {
+            $modal.open({
+                templateUrl: '/narthex/assets/templates/xml-preview-modal.html',
+                controller: 'XmlPreviewModalCtrl',
+                size: 'lg',
+                resolve: {
+                    xmlContent: function() { return xmlContent; },
+                    title: function() { return title; }
+                }
+            });
+        }
 
         $scope.rollbackToVersion = function(hash) {
             if (!confirm('Are you sure you want to rollback to this mapping version? This will create a new version and switch to manual mode.')) {
@@ -1641,24 +1733,34 @@ define(["angular"], function () {
                 .replace(/'/g, "&#039;");
         }
 
+        // Helper function to initialize mapping selection after loading options
+        function initMappingSelection() {
+            loadDefaultMappings().then(function() {
+                // Restore selection from saved state after options are loaded
+                if ($scope.mapping.defaultPrefix && $scope.mapping.defaultName) {
+                    $scope.mapping.selectedDefault = $scope.mapping.defaultPrefix + '/' + $scope.mapping.defaultName;
+                    $scope.loadDefaultMappingVersions();
+                }
+            });
+            loadDatasetMappingVersions();
+        }
+
         // Load mapping data when expanding dataset
         $scope.$watch('expanded', function(newVal) {
             if (newVal && $scope.leftTabOpen === 'mapping') {
-                loadDefaultMappings();
-                loadDatasetMappingVersions();
+                initMappingSelection();
             }
         });
 
         $scope.$watch('leftTabOpen', function(newVal) {
             if (newVal === 'mapping' && $scope.expanded) {
-                loadDefaultMappings();
-                loadDatasetMappingVersions();
+                initMappingSelection();
             }
         });
 
     };
 
-    DatasetEntryCtrl.$inject = ["$rootScope", "$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams", "modalAlert", "$http"];
+    DatasetEntryCtrl.$inject = ["$rootScope", "$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams", "modalAlert", "$http", "$modal"];
 
     /** Controls the sidebar and headers */
     var IndexCtrl = function ($rootScope, $scope, $location) {

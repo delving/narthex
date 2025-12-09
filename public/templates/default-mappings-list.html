@@ -88,11 +88,26 @@
 
                         <div class="panel-body" ng-if="isMappingExpanded(prefixData.prefix, mapping.name)"
                              ng-click="$event.stopPropagation()">
+                            <!-- Compare Button -->
+                            <div class="btn-toolbar" style="margin-bottom: 10px;"
+                                 ng-if="mapping.versions && mapping.versions.length > 1">
+                                <button class="btn btn-sm btn-info"
+                                        ng-click="compareVersions(prefixData.prefix, mapping)"
+                                        ng-disabled="getSelectedCount(mapping) !== 2">
+                                    <i class="fa fa-exchange"></i> Compare Selected
+                                    <span ng-if="getSelectedCount(mapping) > 0">({{ getSelectedCount(mapping) }}/2)</span>
+                                </button>
+                                <span class="text-muted" style="margin-left: 10px; line-height: 30px;">
+                                    Select exactly 2 versions to compare
+                                </span>
+                            </div>
+
                             <!-- Versions Table -->
                             <table class="table table-striped table-hover table-condensed"
                                    ng-if="mapping.versions && mapping.versions.length > 0">
                                 <thead>
                                     <tr>
+                                        <th style="width: 30px;"></th>
                                         <th>Version</th>
                                         <th>Timestamp</th>
                                         <th>Source</th>
@@ -102,6 +117,10 @@
                                 </thead>
                                 <tbody>
                                     <tr ng-repeat="version in mapping.versions | orderBy:'-timestamp'">
+                                        <td>
+                                            <input type="checkbox" ng-model="version.selected"
+                                                   ng-disabled="getSelectedCount(mapping) >= 2 && !version.selected">
+                                        </td>
                                         <td>
                                             <code>{{ version.hash }}</code>
                                             <span class="label label-success" ng-if="mapping.currentVersion === version.hash">

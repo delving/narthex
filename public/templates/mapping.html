@@ -14,16 +14,12 @@
                     <strong>Manual</strong> - Use this dataset's own mapping (from SIP uploads)
                 </label>
             </div>
-            <div class="radio" ng-if="defaultMappings.length > 0">
+            <div class="radio">
                 <label>
                     <input type="radio" name="mappingSource" value="default"
                            ng-model="mappingSource" ng-change="updateMappingSource()">
                     <strong>Default Mapping</strong> - Use a shared organization-wide mapping
                 </label>
-            </div>
-            <div class="text-muted" ng-if="defaultMappings.length === 0">
-                <small><i class="fa fa-info-circle"></i> No default mapping available for {{ datasetSchemaPrefix | uppercase }}.
-                Create one in the Default Mappings section.</small>
             </div>
         </div>
 
@@ -33,7 +29,13 @@
                 <h5 class="panel-title">Select Default Mapping</h5>
             </div>
             <div class="panel-body">
-                <div class="form-horizontal">
+                <!-- Show message when no default mappings are available -->
+                <div ng-if="defaultMappings.length === 0" class="alert alert-warning">
+                    <i class="fa fa-info-circle"></i> No default mappings available for
+                    <strong>{{ datasetSchemaPrefix | uppercase }}</strong>.
+                    <a href="#/default-mappings">Create one in the Default Mappings section</a>.
+                </div>
+                <div class="form-horizontal" ng-if="defaultMappings.length > 0">
                     <div class="form-group">
                         <label class="col-sm-3 control-label">Mapping:</label>
                         <div class="col-sm-9">

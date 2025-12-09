@@ -974,3 +974,40 @@ p.help-block {
   font-size: smaller;
   margin: 0;
 }
+
+/* Diff view styles for mapping comparison */
+.diff-view {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  padding: 10px;
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.diff-added {
+  background-color: #e6ffed;
+  color: #22863a;
+  display: block;
+}
+
+.diff-removed {
+  background-color: #ffeef0;
+  color: #cb2431;
+  display: block;
+}
+
+.diff-unchanged {
+  color: #6a737d;
+  display: block;
+}
+
+.diff-legend {
+  .label {
+    margin-right: 10px;
+  }
+}

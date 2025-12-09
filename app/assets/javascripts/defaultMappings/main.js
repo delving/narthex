@@ -49,6 +49,7 @@ define(
 
         narthexDefaultMappings.controller('DefaultMappingsListCtrl', controllers.DefaultMappingsListCtrl);
         narthexDefaultMappings.controller('XmlPreviewModalCtrl', controllers.XmlPreviewModalCtrl);
+        narthexDefaultMappings.controller('XmlDiffModalCtrl', controllers.XmlDiffModalCtrl);
 
         return narthexDefaultMappings;
     }
