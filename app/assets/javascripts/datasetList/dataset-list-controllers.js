@@ -285,7 +285,8 @@ define(["angular"], function () {
             } else if (filter === 'stateWorking') {
                 ds.visible = ds.isProcessing === true || ds.isSaving === true;
             } else if (filter === 'stateQueued') {
-                ds.visible = ds.isQueued === true;
+                // Exclude datasets that are processing/saving (they've moved past queued state)
+                ds.visible = ds.isQueued === true && !ds.isProcessing && !ds.isSaving;
             } else if (filter === 'stateEmpty') {
                 ds.visible = ds.empty;
             } else {
