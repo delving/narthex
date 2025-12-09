@@ -996,19 +996,30 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     // Handle another failure while already in retry mode
     case Event(WorkFailure(newMessage, exceptionOpt), InRetry(oldMessage, retryCount)) =>
-      log.warning(s"Retry attempt #$retryCount failed: $newMessage")
-
-      // Update retry state with new message but keep count
-      dsInfo.setInRetry(newMessage, retryCount)
+      val maxRetries = orgContext.appConfig.harvestMaxRetries
+      log.warning(s"Retry attempt #$retryCount failed (max: $maxRetries): $newMessage")
 
       exceptionOpt match {
         case Some(exception) => log.error(exception, newMessage)
         case None            => log.error(newMessage)
       }
 
-      // Stay in retry mode, PeriodicHarvest will trigger next attempt
-      orgContext.semaphore.release(dsInfo.spec)
-      stay() using InRetry(newMessage, retryCount)
+      if (retryCount >= maxRetries) {
+        // Max retries exhausted - send email and go to error state
+        log.error(s"Max retries ($maxRetries) exhausted for ${dsInfo.spec}: $newMessage")
+        dsInfo.clearRetryState()
+        dsInfo.setError(s"Harvest failed after $retryCount retry attempts: $newMessage")
+        mailService.sendProcessingErrorMessage(dsInfo.spec,
+          s"Harvest failed after $retryCount retry attempts: $newMessage", exceptionOpt)
+        orgContext.semaphore.release(dsInfo.spec)
+        goto(Idle) using InError(newMessage)
+      } else {
+        // Update retry state with new message but keep count
+        dsInfo.setInRetry(newMessage, retryCount)
+        // Stay in retry mode, PeriodicHarvest will trigger next attempt
+        orgContext.semaphore.release(dsInfo.spec)
+        stay() using InRetry(newMessage, retryCount)
+      }
   }
 
   when(Harvesting) {

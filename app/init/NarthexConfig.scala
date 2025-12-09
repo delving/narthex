@@ -71,6 +71,11 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(60)
   logger.info(s"narthex.harvest.retryIntervalMinutes: $harvestRetryIntervalMinutes")
 
+  def harvestMaxRetries: Int = configuration
+    .getOptional[Int]("narthex.harvest.maxRetries")
+    .getOrElse(40)
+  logger.info(s"narthex.harvest.maxRetries: $harvestMaxRetries")
+
   def crunchWhiteSpace: Boolean =
     configuration.getOptional[Boolean]("crunchWhiteSpace").getOrElse(true)
   logger.info(s"crunchWhiteSpace: $crunchWhiteSpace")
