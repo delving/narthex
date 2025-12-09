@@ -199,7 +199,6 @@ object Sparql {
       |  GRAPH ?g {
       |    ?s <$datasetSpec> ?spec .
       |    FILTER NOT EXISTS { ?s <$deleted> true }
-      |    FILTER NOT EXISTS { ?s <$stateDisabled> ?disabledTime }
       |    $stateFilter
       |  }
       |}

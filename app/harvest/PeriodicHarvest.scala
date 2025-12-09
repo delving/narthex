@@ -56,9 +56,11 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
       val futureList = DsInfo.listDsInfoWithStateFilter(orgContext, allowedStateStrings)
       futureList.onComplete {
         case Success(list) =>
-          logger.info(s"PeriodicHarvest: Found ${list.length} datasets in harvestable states: ${list.map(_.spec).mkString(", ")}")
+          // Filter by current state to exclude datasets that were disabled long ago but still carry a stateDisabled triple
+          val harvestableDatasets = list.filter(info => PeriodicHarvest.harvestingAllowed.contains(info.getState()))
+          logger.info(s"PeriodicHarvest: Found ${harvestableDatasets.length} datasets in harvestable states: ${harvestableDatasets.map(_.spec).mkString(", ")} (out of ${list.length} with matching state triples)")
 
-          val datasetsWithPreviousTime = list.filter(info => info.hasPreviousTime())
+          val datasetsWithPreviousTime = harvestableDatasets.filter(info => info.hasPreviousTime())
           logger.info(s"PeriodicHarvest: ${datasetsWithPreviousTime.length} datasets have previous harvest time: ${datasetsWithPreviousTime.map(_.spec).mkString(", ")}")
 
           datasetsWithPreviousTime.
@@ -132,7 +134,6 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
     }
   }
 }
-
 
 
 
