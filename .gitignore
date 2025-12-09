@@ -28,3 +28,6 @@ out
 fuseki_data
 _rpms
 tags
+
+# Config files with credentials
+conf/brabantcloud.conf
