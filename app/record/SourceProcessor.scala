@@ -111,11 +111,12 @@ class SourceProcessor(val datasetContext: DatasetContext,
           val effectiveMappingXml: Option[String] = if (dsInfo.usesDefaultMapping) {
             (for {
               prefix <- dsInfo.getDefaultMappingPrefix
+              name <- dsInfo.getDefaultMappingName
               version = dsInfo.getDefaultMappingVersion.getOrElse("latest")
               defaultMappingRepo = new DefaultMappingRepo(datasetContext.orgContext.orgRoot)
-              xml <- defaultMappingRepo.getXml(prefix, version)
+              xml <- defaultMappingRepo.getXml(prefix, name, version)
             } yield {
-              log.info(s"Using default mapping for dataset ${dsInfo.spec}: prefix=$prefix, version=$version")
+              log.info(s"Using default mapping for dataset ${dsInfo.spec}: prefix=$prefix, name=$name, version=$version")
               xml
             }).orElse {
               log.warning(s"Dataset ${dsInfo.spec} configured for default mapping but mapping not found, falling back to manual")
@@ -142,7 +143,8 @@ class SourceProcessor(val datasetContext: DatasetContext,
               datasetContext.sipFiles.foreach(_.delete())
               val sipFile = datasetContext.createSipFile
               pocketOutput.close()
-              prefixRepo.initiateSipZip(sipFile, pocketFile, facts)
+              // Pass effectiveMappingXml to include default mapping in new SIP
+              prefixRepo.initiateSipZip(sipFile, pocketFile, facts, effectiveMappingXml)
               Some(sipFile)
             } getOrElse {
               pocketOutput.close()
