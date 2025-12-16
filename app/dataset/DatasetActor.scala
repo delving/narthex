@@ -197,6 +197,12 @@ class DatasetActor(val datasetContext: DatasetContext,
   // Track if we're in fast save mode (to continue processing after SIP generation)
   private var fastSaveScheduledOpt: Option[Scheduled] = None
 
+  // Track if we're in fast process mode (process only, no save)
+  private var fastProcessOnly: Boolean = false
+
+  // Track if we should auto-continue to processing after first harvest (discovery imports)
+  private var autoProcessAfterFirstHarvest: Boolean = false
+
   override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1.minute) {
     case _: OutOfMemoryError =>
       log.error("Child actor ran out of memory - stopping")
@@ -392,6 +398,11 @@ class DatasetActor(val datasetContext: DatasetContext,
           case "start first harvest" =>
             startHarvest(FromScratch)
 
+          case "start first harvest with auto-process" =>
+            // Used by discovery import to auto-continue to Make SIP → Process after harvest
+            autoProcessAfterFirstHarvest = true
+            startHarvest(FromScratch)
+
           case "start generating sip" =>
             self ! GenerateSipZip
             "sip generation started"
@@ -469,6 +480,31 @@ class DatasetActor(val datasetContext: DatasetContext,
 
               case None =>
                 "No source file found for fast save"
+            }
+
+          case "start fast process" =>
+            // Workflow: Make SIP → Process (stops at PROCESSED, does NOT save)
+            // Used by discovery import to prepare datasets for review
+            val currentState = dsInfo.getState()
+
+            currentState match {
+              case PROCESSABLE =>
+                log.info(s"Fast process from PROCESSABLE: Process only (${dsInfo.spec})")
+                self ! StartProcessing(None)  // None = no auto-save
+                "Fast process: Processing"
+
+              case SOURCED =>
+                log.info(s"Fast process from SOURCED: Make SIP → Process (${dsInfo.spec})")
+                // Set flag to continue to processing (but not save) after SIP generation
+                fastProcessOnly = true
+                self ! GenerateSipZip
+                "Fast process: Make SIP → Process"
+
+              case PROCESSED | ANALYZED | SAVED =>
+                "Dataset already processed"
+
+              case _ =>
+                s"Dataset not ready for fast process (current state: $currentState)"
             }
 
           case "start skosification" =>
@@ -741,6 +777,7 @@ class DatasetActor(val datasetContext: DatasetContext,
             log.info(s"Full harvest (FromScratch) returned noRecordsMatch for ${dsInfo.spec} - resetting counts to 0")
             dsInfo.setRecordCount(0)
             dsInfo.setProcessedRecordCounts(0, 0)
+            orgContext.semaphore.release(dsInfo.spec)
           } else {
             dsInfo.removeState(SAVED)
             dsInfo.removeState(ANALYZED)
@@ -748,9 +785,19 @@ class DatasetActor(val datasetContext: DatasetContext,
             dsInfo.removeState(PROCESSED)
             dsInfo.setState(SOURCED)
             dsInfo.setLastHarvestTime(incremental = false)
+
+            // Auto-continue to Make SIP → Process if flag is set (discovery imports)
+            if (autoProcessAfterFirstHarvest) {
+              autoProcessAfterFirstHarvest = false  // Reset flag
+              log.info(s"Auto-continuing to Make SIP → Process for ${dsInfo.spec}")
+              fastProcessOnly = true  // Use existing flag to stop at PROCESSED (no save)
+              self ! GenerateSipZip
+              // Don't release semaphore - will be released after processing completes
+            } else {
+              // Release semaphore since FromScratch harvest is complete
+              orgContext.semaphore.release(dsInfo.spec)
+            }
           }
-          // Release semaphore since FromScratch harvest is complete
-          orgContext.semaphore.release(dsInfo.spec)
 
         case ModifiedAfter(mod, _) =>
           processIncremental(fileOpt, noRecordsMatch, Some(mod))
@@ -812,10 +859,18 @@ class DatasetActor(val datasetContext: DatasetContext,
         case Some(scheduled) if datasetContext.sipMapperOpt.isDefined =>
           log.info(s"Fast save mode: continuing to processing after SIP generation")
           fastSaveScheduledOpt = None // Clear the flag
+          fastProcessOnly = false
           self ! StartProcessing(Some(scheduled))
+          goto(Idle) using Dormant
+        case _ if fastProcessOnly && datasetContext.sipMapperOpt.isDefined =>
+          log.info(s"Fast process mode: continuing to processing after SIP generation (no save)")
+          fastProcessOnly = false
+          fastSaveScheduledOpt = None
+          self ! StartProcessing(None)  // None = no auto-save after processing
           goto(Idle) using Dormant
         case _ =>
           fastSaveScheduledOpt = None // Clear the flag if set
+          fastProcessOnly = false
           // Release semaphore since we're not continuing to processing
           // The semaphore was held by processIncremental or Adopting handler
           orgContext.semaphore.release(dsInfo.spec)
