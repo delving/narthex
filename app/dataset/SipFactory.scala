@@ -206,7 +206,7 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient, orgId: String)
     differenceWithSchemasDelvingEu(validation).map(diff => logger.warn(s"Validation Discrepancy: $diff"))
   }
 
-  def initiateSipZip(sipFile: File, sourceXmlFile: File, facts: SipGenerationFacts) = {
+  def initiateSipZip(sipFile: File, sourceXmlFile: File, facts: SipGenerationFacts, customMappingXml: Option[String] = None) = {
     val fos = new FileOutputStream(sipFile)
     try {
       val zos = new ZipOutputStream(fos)
@@ -226,6 +226,21 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient, orgId: String)
         }
         copyIn(recordDefinition)
         copyIn(validation)
+
+        // Include mapping if provided (e.g., from default mappings)
+        customMappingXml.foreach { mappingXml =>
+          val mappingFileName = s"mapping_$prefix.xml"
+          logger.info(s"Including default mapping in new SIP: $mappingFileName")
+          zos.putNextEntry(new ZipEntry(mappingFileName))
+          val xmlBytes = mappingXml.getBytes("UTF-8")
+          zos.write(xmlBytes)
+          zos.closeEntry()
+        }
+
+        // hints.txt - required for SIP reading
+        zos.putNextEntry(new ZipEntry(SipRepo.HINTS_FILE))
+        zos.write("pockets=true\n".getBytes("UTF-8"))
+        zos.closeEntry()
 
         // source, gzipped
         zos.putNextEntry(new ZipEntry(SipRepo.SOURCE_FILE))

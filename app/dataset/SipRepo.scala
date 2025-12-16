@@ -83,7 +83,12 @@ class SipRepo(home: File, spec: String, rdfBaseUrl: String) {
 
   def listSips: Seq[Sip] = {
     if (home.exists()) {
-      val filesLastToFirst = home.listFiles().filter(_.getName.endsWith(".sip.zip")).sortBy(_.lastModified())
+      // Filter by spec prefix to only get SIPs for this dataset
+      // SIP filenames are: {spec}__{timestamp}.sip.zip
+      val specPrefix = s"${spec}__"
+      val filesLastToFirst = home.listFiles()
+        .filter(f => f.getName.endsWith(".sip.zip") && f.getName.startsWith(specPrefix))
+        .sortBy(_.lastModified())
       val filesLimited =
         if (filesLastToFirst.length <= SipRepo.MAX_ZIP_COUNT)
           filesLastToFirst
@@ -191,7 +196,14 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
   lazy val edmType = fact("edmType")
   lazy val schemaVersions = fact("schemaVersions")
 
-  lazy val hints = readMap(HINTS_FILE)
+  // hints.txt may not exist in older SIP files - handle gracefully
+  lazy val hints: Map[String, String] = try {
+    readMap(HINTS_FILE)
+  } catch {
+    case _: RuntimeException =>
+      logger.warn(s"No hints.txt found in SIP for $dsInfoSpec - using empty hints")
+      Map.empty
+  }
 
   private def hint(name: String): Option[String] = hints.get(name)
 
@@ -364,6 +376,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
   def copyWithSourceTo(sipFile: File, sourceXmlFile: File, sipPrefixRepoOpt: Option[SipPrefixRepo], facts: SipGenerationFacts, customMappingXml: Option[String] = None) = {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
     var sourceFound = false
+    var hintsFound = false
 
     def copyFileIn(sourceFile: File, fileName: String, gzip: Boolean) = {
       zos.putNextEntry(new ZipEntry(fileName))
@@ -437,7 +450,12 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           copyFileIn(sourceXmlFile, entry.getName, gzip = true)
 
         case FACTS_FILE =>
-          // Do not copy
+          // Do not copy - we add our own facts
+
+        case HINTS_FILE =>
+          // Track that we found hints and copy it
+          hintsFound = true
+          copyEntry()
 
         case entryName =>
           logger.debug(s"Verbatim: ${entry.getName}")
@@ -448,6 +466,14 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     if (!sourceFound) {
       logger.debug(s"Source added afterwards")
       copyFileIn(sourceXmlFile, SOURCE_FILE, gzip = true)
+    }
+
+    // Ensure hints.txt is always present (required for SIP reading)
+    if (!hintsFound) {
+      logger.debug(s"Adding hints.txt (not found in source SIP)")
+      zos.putNextEntry(new ZipEntry(HINTS_FILE))
+      zos.write("pockets=true\n".getBytes("UTF-8"))
+      zos.closeEntry()
     }
 
     zos.close()

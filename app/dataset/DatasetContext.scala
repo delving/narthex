@@ -63,7 +63,8 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   val treeRoot = new NodeRepo(this, treeDir)
 
-  lazy val sipRepo = new SipRepo(sipsDir, dsInfo.spec, orgContext.appConfig.rdfBaseUrl)
+  // Use org-level sipsDir to match where createSipFile writes
+  lazy val sipRepo = new SipRepo(orgContext.sipsDir, dsInfo.spec, orgContext.appConfig.rdfBaseUrl)
 
   lazy val processedRepo = new ProcessedRepo(processedDir, dsInfo)
 
