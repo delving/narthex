@@ -128,7 +128,8 @@ object DsInfo {
     processedIncrementalInvalid: Option[Int],
     delimitersSet: Option[String],
     recordRootValue: Option[String],
-    uniqueIdValue: Option[String]
+    uniqueIdValue: Option[String],
+    mappingSource: Option[String]
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = new Writes[DsInfoLight] {
@@ -159,7 +160,8 @@ object DsInfo {
       "processedIncrementalInvalid" -> ds.processedIncrementalInvalid,
       "delimitersSet" -> ds.delimitersSet,
       "recordRoot" -> ds.recordRootValue,
-      "uniqueId" -> ds.uniqueIdValue
+      "uniqueId" -> ds.uniqueIdValue,
+      "mappingSource" -> ds.mappingSource
     )
   }
 
@@ -199,7 +201,8 @@ object DsInfo {
           processedIncrementalInvalid = row.get("processedIncrementalInvalid").map(_.text.toInt),
           delimitersSet = row.get("delimitersSet").map(_.text),
           recordRootValue = row.get("recordRoot").map(_.text),
-          uniqueIdValue = row.get("uniqueId").map(_.text)
+          uniqueIdValue = row.get("uniqueId").map(_.text),
+          mappingSource = row.get("mappingSource").map(_.text)
         )
       }
     }
