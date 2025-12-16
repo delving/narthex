@@ -1779,7 +1779,7 @@ define(["angular"], function () {
     /** Controls the sidebar and headers */
     var IndexCtrl = function ($rootScope, $scope, $location) {
 
-        $scope.initialize = function (orgId, sipCreatorLink, enableIncrementalHarvest, supportedDatasetTypes, enableDefaultMappings) {
+        $scope.initialize = function (orgId, sipCreatorLink, enableIncrementalHarvest, supportedDatasetTypes, enableDefaultMappings, enableDatasetDiscovery) {
             //console.log("Initializing index");
             $rootScope.orgId = orgId;
             $rootScope.sipCreatorLink = sipCreatorLink;
@@ -1787,6 +1787,8 @@ define(["angular"], function () {
             $rootScope.supportedDatasetTypes = supportedDatasetTypes ? supportedDatasetTypes.split(",") : [];
             $rootScope.enableDefaultMappings = enableDefaultMappings === 'true';
             $scope.enableDefaultMappings = $rootScope.enableDefaultMappings;
+            $rootScope.enableDatasetDiscovery = enableDatasetDiscovery === 'true';
+            $scope.enableDatasetDiscovery = $rootScope.enableDatasetDiscovery;
             $scope.toggleBar = true;
         };
 
@@ -1822,6 +1824,9 @@ define(["angular"], function () {
                     break;
                 case 'default-mappings':
                     $location.path('/default-mappings');
+                    break;
+                case 'discovery':
+                    $location.path('/discovery');
                     break;
             }
             $('#nav-' + page).addClass('active');

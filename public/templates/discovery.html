@@ -1,0 +1,206 @@
+<div class="container-fluid" style="padding: 15px; padding-bottom: 70px;">
+    <div class="row">
+        <!-- Sources Panel (Left) -->
+        <div class="col-md-3">
+            <div class="panel panel-default">
+                <div class="panel-heading clearfix">
+                    <span class="panel-title" style="line-height: 24px;">
+                        <i class="fa fa-cloud-download"></i> OAI-PMH Sources
+                    </span>
+                    <button class="btn btn-xs btn-primary pull-right" ng-click="openSourceConfig(null)">
+                        <i class="fa fa-plus"></i> New
+                    </button>
+                </div>
+                <div class="list-group" style="margin-bottom: 0; max-height: 400px; overflow-y: auto;">
+                    <a href="" class="list-group-item"
+                       ng-repeat="source in sources"
+                       ng-class="{'active': selectedSource && selectedSource.id === source.id}"
+                       ng-click="selectSource(source)">
+                        <div class="pull-right">
+                            <button class="btn btn-xs btn-default" ng-click="openSourceConfig(source); $event.stopPropagation(); $event.preventDefault();" title="Edit">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                            <button class="btn btn-xs btn-danger" ng-click="deleteSource(source); $event.stopPropagation(); $event.preventDefault();" title="Delete">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                        <h5 class="list-group-item-heading">
+                            <i class="fa fa-circle" ng-class="{'text-success': source.enabled, 'text-muted': !source.enabled}"></i>
+                            {{ source.name }}
+                        </h5>
+                        <p class="list-group-item-text text-muted small">
+                            {{ source.url | limitTo:50 }}{{ source.url.length > 50 ? '...' : '' }}
+                        </p>
+                    </a>
+                    <div class="list-group-item text-muted text-center" ng-if="sources.length === 0">
+                        <i class="fa fa-info-circle"></i> No sources configured
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Discovery Results Panel (Right) -->
+        <div class="col-md-9">
+            <!-- No source selected -->
+            <div class="alert alert-info" ng-if="!selectedSource">
+                <i class="fa fa-arrow-left"></i> Select a source from the list to discover datasets.
+            </div>
+
+            <!-- Source selected -->
+            <div ng-if="selectedSource">
+                <div class="panel panel-primary">
+                    <div class="panel-heading">
+                        <h4 class="panel-title">
+                            <i class="fa fa-search"></i> {{ selectedSource.name }}
+                            <button class="btn btn-sm btn-default pull-right" ng-click="discover()" ng-disabled="discovering">
+                                <i class="fa fa-refresh" ng-class="{'fa-spin': discovering}"></i>
+                                {{ discovering ? 'Discovering...' : 'Discover Sets' }}
+                            </button>
+                        </h4>
+                    </div>
+                    <div class="panel-body">
+                        <p class="text-muted small">{{ selectedSource.url }}</p>
+
+                        <!-- Loading -->
+                        <div ng-if="discovering" class="text-center" style="padding: 40px;">
+                            <i class="fa fa-spinner fa-spin fa-3x"></i>
+                            <p style="margin-top: 15px;">Fetching sets from OAI-PMH endpoint...</p>
+                        </div>
+
+                        <!-- Discovery Result -->
+                        <div ng-if="discoveryResult && !discovering">
+                            <div class="well well-sm">
+                                <strong>{{ discoveryResult.totalSets }}</strong> total sets found |
+                                <strong class="text-success">{{ discoveryResult.newSets.length }}</strong> new |
+                                <strong class="text-info">{{ discoveryResult.existingSets.length }}</strong> existing |
+                                <strong class="text-warning">{{ discoveryResult.ignoredSets.length }}</strong> ignored
+                            </div>
+
+                            <!-- New Sets -->
+                            <div class="panel panel-success" ng-if="discoveryResult.newSets.length > 0">
+                                <div class="panel-heading">
+                                    <span class="badge pull-right">{{ discoveryResult.newSets.length }}</span>
+                                    <i class="fa fa-plus-circle"></i> New Sets
+                                </div>
+                                <table class="table table-hover table-condensed" style="margin-bottom: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 30px;"></th>
+                                            <th>Spec</th>
+                                            <th>Title</th>
+                                            <th>Mapping</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="set in discoveryResult.newSets"
+                                            ng-click="toggleSetSelection(set)"
+                                            style="cursor: pointer;"
+                                            ng-class="{'success': isSelected(set)}">
+                                            <td>
+                                                <input type="checkbox" ng-checked="isSelected(set)" ng-click="toggleSetSelection(set); $event.stopPropagation();">
+                                            </td>
+                                            <td>
+                                                <strong>{{ set.normalizedSpec }}</strong>
+                                                <br><small class="text-muted">{{ set.setSpec }}</small>
+                                            </td>
+                                            <td>
+                                                {{ set.title || set.setName }}
+                                                <br><small class="text-muted" ng-if="set.description">{{ set.description | limitTo:80 }}...</small>
+                                            </td>
+                                            <td>
+                                                <span ng-if="set.matchedMappingRule" class="label label-primary">
+                                                    {{ set.matchedMappingRule.prefix }}/{{ set.matchedMappingRule.mappingName }}
+                                                </span>
+                                                <span ng-if="!set.matchedMappingRule" class="text-muted">-</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Existing Sets (collapsed by default) -->
+                            <div class="panel panel-info" ng-if="discoveryResult.existingSets.length > 0">
+                                <div class="panel-heading" ng-click="showExisting = !showExisting" style="cursor: pointer;">
+                                    <span class="badge pull-right">{{ discoveryResult.existingSets.length }}</span>
+                                    <i class="fa" ng-class="showExisting ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                    Existing Datasets
+                                </div>
+                                <table class="table table-condensed" style="margin-bottom: 0;" ng-if="showExisting">
+                                    <tbody>
+                                        <tr ng-repeat="set in discoveryResult.existingSets">
+                                            <td>{{ set.normalizedSpec }}</td>
+                                            <td>{{ set.title || set.setName }}</td>
+                                            <td><span class="label label-info">Already imported</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Ignored Sets -->
+                            <div class="panel panel-warning" ng-if="discoveryResult.ignoredSets.length > 0">
+                                <div class="panel-heading" ng-click="showIgnored = !showIgnored" style="cursor: pointer;">
+                                    <span class="badge pull-right">{{ discoveryResult.ignoredSets.length }}</span>
+                                    <i class="fa" ng-class="showIgnored ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                    Ignored Sets
+                                </div>
+                                <table class="table table-condensed" style="margin-bottom: 0;" ng-if="showIgnored">
+                                    <tbody>
+                                        <tr ng-repeat="set in discoveryResult.ignoredSets">
+                                            <td>{{ set.normalizedSpec }}</td>
+                                            <td>{{ set.title || set.setName }}</td>
+                                            <td>
+                                                <button class="btn btn-xs btn-default" ng-click="unignoreSet(set)">
+                                                    <i class="fa fa-undo"></i> Unignore
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Empty state -->
+                            <div class="alert alert-success" ng-if="discoveryResult.newSets.length === 0">
+                                <i class="fa fa-check-circle"></i> All sets have been imported or ignored.
+                            </div>
+                        </div>
+
+                        <!-- No results yet -->
+                        <div ng-if="!discoveryResult && !discovering" class="text-center text-muted" style="padding: 40px;">
+                            <i class="fa fa-search fa-3x"></i>
+                            <p style="margin-top: 15px;">Click "Discover Sets" to fetch available datasets from this OAI-PMH endpoint.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Bar -->
+    <div ng-if="discoveryResult && discoveryResult.newSets.length > 0"
+         style="position: fixed; bottom: 0; left: 0; right: 0; background: #f5f5f5; border-top: 2px solid #ddd; padding: 12px 20px; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-3"></div>
+                <div class="col-md-9">
+                    <button class="btn btn-default" ng-click="selectAllNew()">
+                        <i class="fa fa-check-square-o"></i> Select All ({{ discoveryResult.newSets.length }})
+                    </button>
+                    <button class="btn btn-default" ng-click="clearSelection()" ng-disabled="getSelectedCount() === 0">
+                        <i class="fa fa-square-o"></i> Clear
+                    </button>
+                    <span class="text-muted" style="margin: 0 10px;">|</span>
+                    <button class="btn btn-warning" ng-click="ignoreSelected()" ng-disabled="getSelectedCount() === 0">
+                        <i class="fa fa-ban"></i> Ignore ({{ getSelectedCount() }})
+                    </button>
+                    <button class="btn btn-success pull-right" ng-click="importSelected()" ng-disabled="getSelectedCount() === 0 || importing">
+                        <i class="fa fa-download" ng-class="{'fa-spin fa-spinner': importing}"></i>
+                        Import Selected ({{ getSelectedCount() }})
+                    </button>
+                    <span class="pull-right text-muted" style="margin-right: 15px; line-height: 34px;">
+                        {{ getSelectedCount() }} of {{ discoveryResult.newSets.length }} selected
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

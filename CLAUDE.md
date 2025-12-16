@@ -104,3 +104,4 @@ When bumping the version, **update both files**:
 2. `app/assets/javascripts/main.js` - Update `urlArgs: "v=X.X.X.X"` for JavaScript cache-busting
 
 The `main.js` version must be a static string (not a variable) due to RequireJS r.js optimizer limitations. The optimizer parses the config and cannot evaluate dynamic expressions.
+- use `make complile` for building. otherwise you get java build errors

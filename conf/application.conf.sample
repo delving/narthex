@@ -5,6 +5,7 @@
 
 # Apps
 enableDefaultMappings = true
+enableDatasetDiscovery = true
 
 
 # The application languages

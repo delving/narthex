@@ -66,6 +66,11 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(false)
   logger.info(s"enableDefaultMappings: $enableDefaultMappings")
 
+  def enableDatasetDiscovery: Boolean = configuration
+    .getOptional[Boolean]("enableDatasetDiscovery")
+    .getOrElse(false)
+  logger.info(s"enableDatasetDiscovery: $enableDatasetDiscovery")
+
   def harvestRetryIntervalMinutes: Int = configuration
     .getOptional[Int]("narthex.harvest.retryIntervalMinutes")
     .getOrElse(60)

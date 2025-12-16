@@ -1,0 +1,64 @@
+<div class="modal-header">
+    <button type="button" class="close" ng-click="cancel()" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+    <h4 class="modal-title">
+        <i class="fa fa-download"></i> Import {{ selectedSets.length }} Dataset(s)
+    </h4>
+</div>
+<div class="modal-body">
+    <div class="alert alert-info">
+        <i class="fa fa-info-circle"></i>
+        The following datasets will be created and configured with harvest settings from <strong>{{ source.name }}</strong>.
+    </div>
+
+    <div class="panel panel-default" ng-repeat="req in importRequests" style="margin-bottom: 10px;">
+        <div class="panel-heading" style="padding: 8px 12px;">
+            <div class="row">
+                <div class="col-sm-6">
+                    <strong>{{ req.normalizedSpec }}</strong>
+                    <small class="text-muted" style="margin-left: 10px;">from: {{ req.setSpec }}</small>
+                </div>
+                <div class="col-sm-6 text-right">
+                    <span ng-if="req.mappingPrefix && req.mappingName" class="label label-primary">
+                        {{ req.mappingPrefix }}/{{ req.mappingName }}
+                    </span>
+                    <span ng-if="!req.mappingPrefix || !req.mappingName" class="label label-default">Manual mapping</span>
+                </div>
+            </div>
+        </div>
+        <div class="panel-body" style="padding: 10px 12px;">
+            <div class="form-group" style="margin-bottom: 8px;">
+                <label class="control-label" style="font-weight: normal; margin-bottom: 2px;">Name</label>
+                <input type="text" class="form-control input-sm" ng-model="req.datasetName" placeholder="Dataset name">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="control-label" style="font-weight: normal; margin-bottom: 2px;">Description</label>
+                <textarea class="form-control input-sm" ng-model="req.datasetDescription" rows="2" placeholder="Dataset description (optional)"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-warning" ng-if="importRequests.length > 10" style="margin-bottom: 10px;">
+        <i class="fa fa-exclamation-triangle"></i>
+        You are importing {{ importRequests.length }} datasets. This may take a while.
+    </div>
+
+    <div class="well well-sm">
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" ng-model="autoStartWorkflow">
+                <strong>Auto-start workflow</strong>: Harvest, analyze, generate SIP, and process each dataset
+            </label>
+        </div>
+        <p class="help-block text-muted" style="margin-bottom: 0;">
+            The workflow will stop before saving, allowing you to review the results.
+        </p>
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" ng-click="cancel()">Cancel</button>
+    <button type="button" class="btn btn-success" ng-click="confirm()">
+        <i class="fa fa-download"></i> Import {{ importRequests.length }} Dataset(s)
+    </button>
+</div>

@@ -1,0 +1,179 @@
+<div class="modal-header">
+    <button type="button" class="close" ng-click="cancel()" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+    <h4 class="modal-title">
+        <i class="fa fa-cloud-download"></i>
+        {{ isNew ? 'Add OAI-PMH Source' : 'Edit OAI-PMH Source' }}
+    </h4>
+</div>
+<div class="modal-body">
+    <form class="form-horizontal">
+        <!-- Basic Info -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-info-circle"></i> Basic Information
+            </div>
+            <div class="panel-body">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">Name *</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" ng-model="source.name" placeholder="e.g., Memorix Maior ENB">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">OAI-PMH URL *</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" ng-model="source.url" placeholder="https://api.example.com/oai-pmh">
+                        <p class="help-block">Base URL for the OAI-PMH endpoint (ListSets will be appended)</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">Enabled</label>
+                    <div class="col-sm-9">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" ng-model="source.enabled"> Source is active
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Harvest Defaults -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-download"></i> Harvest Defaults
+            </div>
+            <div class="panel-body">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">Metadata Prefix</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" ng-model="source.defaultMetadataPrefix" placeholder="oai_dc">
+                        <p class="help-block">OAI-PMH metadataPrefix for harvesting (e.g., oai_dc, edm)</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">Schema Prefix</label>
+                    <div class="col-sm-9">
+                        <select class="form-control" ng-model="source.defaultPrefix">
+                            <option ng-repeat="p in availablePrefixes" ng-value="p">{{ p }}</option>
+                        </select>
+                        <p class="help-block">Target schema prefix for imported datasets</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">Aggregator</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" ng-model="source.defaultAggregator" placeholder="e.g., Brabant Cloud">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">EDM Type</label>
+                    <div class="col-sm-9">
+                        <select class="form-control" ng-model="source.defaultEdmType">
+                            <option value="">-- None --</option>
+                            <option ng-repeat="t in edmTypes" ng-value="t">{{ t }}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Harvest Scheduling -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-clock-o"></i> Harvest Scheduling
+            </div>
+            <div class="panel-body">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">Schedule</label>
+                    <div class="col-sm-9">
+                        <div class="form-inline">
+                            <span style="margin-right: 8px;">Every</span>
+                            <input type="number" class="form-control" ng-model="source.harvestDelay" min="1" placeholder="1" style="width: 80px; margin-right: 8px;">
+                            <select class="form-control" ng-model="source.harvestDelayUnit" style="width: 110px;">
+                                <option ng-repeat="u in delayUnits" ng-value="u">{{ u }}</option>
+                            </select>
+                        </div>
+                        <p class="help-block">Leave empty for no automatic re-harvesting</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">Incremental</label>
+                    <div class="col-sm-9">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" ng-model="source.harvestIncremental"> Use incremental harvesting
+                            </label>
+                        </div>
+                        <p class="help-block">Only fetch records modified since last harvest</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mapping Rules -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-random"></i> Mapping Rules
+                <button class="btn btn-xs btn-primary pull-right" ng-click="addMappingRule()">
+                    <i class="fa fa-plus"></i> Add Rule
+                </button>
+            </div>
+            <div class="panel-body">
+                <p class="text-muted" ng-if="source.mappingRules.length === 0">
+                    No mapping rules configured. Add rules to automatically assign default mappings based on setSpec patterns.
+                </p>
+                <table class="table table-condensed" ng-if="source.mappingRules.length > 0">
+                    <thead>
+                        <tr>
+                            <th>Regex Pattern</th>
+                            <th>Prefix</th>
+                            <th>Mapping</th>
+                            <th style="width: 100px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="rule in source.mappingRules">
+                            <td>
+                                <input type="text" class="form-control input-sm" ng-model="rule.pattern" placeholder=".*bidprentje$">
+                            </td>
+                            <td>
+                                <select class="form-control input-sm" ng-model="rule.prefix" ng-change="rule.mappingName = ''">
+                                    <option ng-repeat="p in availablePrefixes" ng-value="p">{{ p }}</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-control input-sm" ng-model="rule.mappingName">
+                                    <option value="">-- Select --</option>
+                                    <option ng-repeat="m in getMappingsForPrefix(rule.prefix)" ng-value="m.name">{{ m.displayName }}</option>
+                                </select>
+                            </td>
+                            <td>
+                                <button class="btn btn-xs btn-default" ng-click="testPattern(rule)" title="Test pattern">
+                                    <i class="fa fa-play"></i>
+                                </button>
+                                <button class="btn btn-xs btn-danger" ng-click="removeMappingRule($index)" title="Remove">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="help-block">
+                    <strong>Pattern syntax:</strong> Use Java/JavaScript regex. Examples:
+                    <code>.*bidprentje$</code> matches specs ending with "bidprentje",
+                    <code>^enb-05-.*</code> matches specs starting with "enb-05-"
+                </p>
+            </div>
+        </div>
+    </form>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" ng-click="cancel()">Cancel</button>
+    <button type="button" class="btn btn-primary" ng-click="save()">
+        <i class="fa fa-save"></i> {{ isNew ? 'Create Source' : 'Save Changes' }}
+    </button>
+</div>

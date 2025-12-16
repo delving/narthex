@@ -97,6 +97,25 @@ POST        /narthex/app/dataset/:spec/set-mapping-source                    con
 + nocsrf
 POST        /narthex/app/dataset/:spec/rollback-mapping/:hash                controllers.AppController.rollbackDatasetMapping(spec, hash)
 
+# Dataset Discovery - OAI-PMH Sources
+GET         /narthex/app/discovery/sources                                   controllers.DiscoveryController.listSources
+GET         /narthex/app/discovery/sources/:id                               controllers.DiscoveryController.getSource(id)
++ nocsrf
+POST        /narthex/app/discovery/sources                                   controllers.DiscoveryController.createSource
++ nocsrf
+PUT         /narthex/app/discovery/sources/:id                               controllers.DiscoveryController.updateSource(id)
++ nocsrf
+DELETE      /narthex/app/discovery/sources/:id                               controllers.DiscoveryController.deleteSource(id)
+GET         /narthex/app/discovery/sources/:id/discover                      controllers.DiscoveryController.discoverSets(id)
++ nocsrf
+POST        /narthex/app/discovery/sources/:id/ignore                        controllers.DiscoveryController.ignoreSets(id)
++ nocsrf
+POST        /narthex/app/discovery/sources/:id/unignore                      controllers.DiscoveryController.unignoreSets(id)
++ nocsrf
+POST        /narthex/app/discovery/import                                    controllers.DiscoveryController.importSets
++ nocsrf
+POST        /narthex/app/discovery/preview-spec                              controllers.DiscoveryController.previewSpecTransform
+
 GET         /narthex/app/dataset/:spec/sip-list                              controllers.AppController.listSipFiles(spec)
 GET         /narthex/app/dataset/:spec/delete-latest                         controllers.AppController.deleteLatestSipFile(spec)
 
