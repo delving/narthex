@@ -1594,6 +1594,9 @@ define(["angular"], function () {
                         $scope.loadDefaultMappingVersions();
                     }
                 });
+
+                // Also load the dataset's own mapping versions (from SIP uploads)
+                loadDatasetMappingVersions();
             }
         });
 
