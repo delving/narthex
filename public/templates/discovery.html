@@ -89,6 +89,7 @@
                                             <th>Spec</th>
                                             <th>Title</th>
                                             <th>Mapping</th>
+                                            <th style="width: 40px;"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -112,6 +113,25 @@
                                                     {{ set.matchedMappingRule.prefix }}/{{ set.matchedMappingRule.mappingName }}
                                                 </span>
                                                 <span ng-if="!set.matchedMappingRule" class="text-muted">-</span>
+                                            </td>
+                                            <td ng-click="$event.stopPropagation()">
+                                                <div class="dropdown">
+                                                    <button class="btn btn-xs btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+                                                        <i class="fa fa-ellipsis-v"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-right">
+                                                        <li>
+                                                            <a href="{{ getPreviewUrl(set) }}" target="_blank">
+                                                                <i class="fa fa-binoculars"></i> Preview
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a href="" ng-click="ignoreSet(set)">
+                                                                <i class="fa fa-ban"></i> Ignore
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             </td>
                                         </tr>
                                     </tbody>

@@ -159,6 +159,24 @@ define(["angular"], function (angular) {
             });
         };
 
+        // Ignore a single set (from kebab menu)
+        $scope.ignoreSet = function(set) {
+            discoveryService.ignoreSets($scope.selectedSource.id, [set.setSpec]).then(function() {
+                $scope.discover(); // Refresh
+            });
+        };
+
+        // Get preview URL for OAI-PMH set
+        $scope.getPreviewUrl = function(set) {
+            if (!$scope.selectedSource) return '#';
+            var baseUrl = $scope.selectedSource.url;
+            var prefix = $scope.selectedSource.defaultMetadataPrefix || 'oai_dc';
+            // Construct OAI-PMH ListRecords URL with set filter
+            return '/narthex/preview/' + encodeURIComponent(baseUrl) +
+                   '?verb=ListRecords&metadataPrefix=' + encodeURIComponent(prefix) +
+                   '&set=' + encodeURIComponent(set.setSpec);
+        };
+
         // Import
         $scope.importSelected = function() {
             var selectedList = $scope.getSelectedList();
