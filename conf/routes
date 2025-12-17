@@ -22,6 +22,10 @@ GET         /narthex/logout                                                  con
 # JavaScript routes object
 GET         /narthex/jsRoutes.js                                             controllers.MainController.jsRoutes()
 
+# Webhook endpoints (from Hub3)
++ nocsrf
+POST        /narthex/webhook/indexing                                        controllers.WebhookController.indexingComplete
+
 # File Handling
 GET         /narthex/socket/dataset                                          controllers.WebSocketController.dataset
 GET         /narthex/app/dataset-list                                        controllers.AppController.listDatasets

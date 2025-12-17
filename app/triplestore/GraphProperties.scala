@@ -96,6 +96,16 @@ object GraphProperties {
   val stateSynced = NXProp("stateSynced", timeProp)
   val stateDisabled = NXProp("stateDisabled", timeProp)
 
+  // Indexing result properties (from Hub3 webhook notifications)
+  val indexingRecordsIndexed = NXProp("indexingRecordsIndexed", intProp)
+  val indexingRecordsExpected = NXProp("indexingRecordsExpected", intProp)
+  val indexingOrphansDeleted = NXProp("indexingOrphansDeleted", intProp)
+  val indexingErrorCount = NXProp("indexingErrorCount", intProp)
+  val indexingLastStatus = NXProp("indexingLastStatus")
+  val indexingLastMessage = NXProp("indexingLastMessage")
+  val indexingLastTimestamp = NXProp("indexingLastTimestamp", timeProp)
+  val indexingLastRevision = NXProp("indexingLastRevision", intProp)
+
   val delimitersSet = NXProp("delimitersSet", timeProp)
   val recordRoot = NXProp("recordRoot")
   val uniqueId = NXProp("uniqueId")
@@ -106,6 +116,8 @@ object GraphProperties {
   val harvestRecord = NXProp("harvestRecord")
   val harvestPrefix = NXProp("harvestPrefix")
   val harvestSearch = NXProp("harvestSearch")
+  val harvestUsername = NXProp("harvestUsername")
+  val harvestPassword = NXProp("harvestPassword")  // Stored encrypted
   val harvestDownloadURL = NXProp("harvestDownloadURL")
   val harvestPreviousTime = NXProp("harvestPreviousTime", timeProp)
   val lastFullHarvestTime = NXProp("lastFullHarvestTime", timeProp)

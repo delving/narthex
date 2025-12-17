@@ -267,6 +267,37 @@ object ActivityLogger {
   }
 
   /**
+   * Log indexing errors received from Hub3 webhook notification.
+   *
+   * @param activityLog File to append to
+   * @param errors Sequence of indexing errors from Hub3
+   */
+  def logIndexingErrors(activityLog: File, errors: Seq[webhook.IndexingError]): Unit = {
+    val now = timeToString(DateTime.now())
+
+    // Log a summary entry
+    val summaryEntry = Json.obj(
+      "timestamp" -> now,
+      "operation" -> "INDEXING_ERRORS",
+      "status" -> "reported",
+      "error_count" -> errors.size
+    )
+    appendEntry(activityLog, summaryEntry)
+
+    // Log each individual error
+    errors.foreach { err =>
+      val errorEntry = Json.obj(
+        "timestamp" -> now,
+        "operation" -> "INDEXING_ERROR",
+        "document_id" -> err.documentId,
+        "error_type" -> err.errorType,
+        "reason" -> err.reason
+      )
+      appendEntry(activityLog, errorEntry)
+    }
+  }
+
+  /**
    * Append a JSON entry as a single line to the activity log.
    */
   private def appendEntry(activityLog: File, entry: JsObject): Unit = {

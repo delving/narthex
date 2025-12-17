@@ -32,6 +32,12 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     configuration.getOptional[Boolean]("mockBulkApi").getOrElse(false)
   logger.info(s"mockBulkApi: $mockBulkApi")
 
+  // Webhook configuration for receiving notifications from Hub3
+  def webhookApiKey: String = configuration
+    .getOptional[String]("webhook.apiKey")
+    .getOrElse("")
+  logger.info(s"webhook.apiKey: ${if (webhookApiKey.nonEmpty) "[configured]" else "[not set]"}")
+
   private val homeDir: String = configuration
     .getOptional[String]("narthexHome")
     .getOrElse(System.getProperty("user.home") + "/NarthexFiles")
@@ -147,6 +153,14 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
   def fusekiUsername: Option[String] = configuration.getOptional[String]("fuseki-username").filter(_.nonEmpty)
   def fusekiPassword: Option[String] = configuration.getOptional[String]("fuseki-password").filter(_.nonEmpty)
   logger.info(s"fuseki authentication enabled: ${fusekiUsername.isDefined}")
+
+  // Application secret for credential encryption (Play Framework's secret key)
+  def appSecret: String = configuration.getOptional[String]("play.http.secret.key").getOrElse {
+    // Fallback to legacy config name
+    configuration.getOptional[String]("application.secret").getOrElse {
+      throw new RuntimeException("Missing application secret: play.http.secret.key")
+    }
+  }
 
   private def configFlag(name: String): Boolean =
     configuration.getOptional[Boolean](name).getOrElse(false)

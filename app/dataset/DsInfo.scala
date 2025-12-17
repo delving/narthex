@@ -129,7 +129,9 @@ object DsInfo {
     delimitersSet: Option[String],
     recordRootValue: Option[String],
     uniqueIdValue: Option[String],
-    mappingSource: Option[String]
+    mappingSource: Option[String],
+    harvestUsername: Option[String],
+    harvestPasswordSet: Option[Boolean]
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = new Writes[DsInfoLight] {
@@ -161,7 +163,9 @@ object DsInfo {
       "delimitersSet" -> ds.delimitersSet,
       "recordRoot" -> ds.recordRootValue,
       "uniqueId" -> ds.uniqueIdValue,
-      "mappingSource" -> ds.mappingSource
+      "mappingSource" -> ds.mappingSource,
+      "harvestUsername" -> ds.harvestUsername,
+      "harvestPasswordSet" -> ds.harvestPasswordSet
     )
   }
 
@@ -202,7 +206,9 @@ object DsInfo {
           delimitersSet = row.get("delimitersSet").map(_.text),
           recordRootValue = row.get("recordRoot").map(_.text),
           uniqueIdValue = row.get("uniqueId").map(_.text),
-          mappingSource = row.get("mappingSource").map(_.text)
+          mappingSource = row.get("mappingSource").map(_.text),
+          harvestUsername = row.get("harvestUsername").map(_.text),
+          harvestPasswordSet = row.get("harvestPasswordSet").map(_.text.toBoolean)
         )
       }
     }
@@ -540,6 +546,44 @@ class DsInfo(
     Await.ready(futureUpdate, patience)
     // Invalidate cached model so next read gets fresh data
     cachedModel = None
+  }
+
+  /**
+   * Store indexing results received from Hub3 webhook notification.
+   * Called when Hub3 sends completion notification after orphan control.
+   */
+  def setIndexingResults(
+      status: String,
+      recordsIndexed: Int,
+      recordsExpected: Int,
+      orphansDeleted: Int,
+      errorCount: Int,
+      revision: Int,
+      message: Option[String],
+      timestamp: String
+  ): Unit = {
+    import triplestore.GraphProperties.{
+      indexingRecordsIndexed, indexingRecordsExpected, indexingOrphansDeleted,
+      indexingErrorCount, indexingLastStatus, indexingLastMessage,
+      indexingLastTimestamp, indexingLastRevision
+    }
+
+    val baseProps: List[(NXProp, String)] = List(
+      indexingRecordsIndexed -> recordsIndexed.toString,
+      indexingRecordsExpected -> recordsExpected.toString,
+      indexingOrphansDeleted -> orphansDeleted.toString,
+      indexingErrorCount -> errorCount.toString,
+      indexingLastStatus -> status,
+      indexingLastTimestamp -> timestamp,
+      indexingLastRevision -> revision.toString
+    )
+
+    val allProps = message match {
+      case Some(msg) => baseProps :+ (indexingLastMessage -> msg)
+      case None => baseProps
+    }
+
+    setSingularLiteralProps(allProps: _*)
   }
 
   def getLiteralPropList(prop: NXProp): List[String] = {
@@ -1211,7 +1255,11 @@ class DsInfo(
       harvestDelay => hDelay, harvestDelayUnit => hDelayUnit, harvestPreviousTime => hPreviousTime,
       harvestIncremental => hIncremental,
       processedIncrementalValid => pIncrementalValid, processedIncrementalInvalid => pIncrementalInvalid,
-      delimitersSet => dsDelimitersSet, recordRoot => dsRecordRoot, uniqueId => dsUniqueId}
+      delimitersSet => dsDelimitersSet, recordRoot => dsRecordRoot, uniqueId => dsUniqueId,
+      indexingRecordsIndexed => idxRecordsIndexed, indexingRecordsExpected => idxRecordsExpected,
+      indexingOrphansDeleted => idxOrphansDeleted, indexingErrorCount => idxErrorCount,
+      indexingLastStatus => idxLastStatus, indexingLastMessage => idxLastMessage,
+      indexingLastTimestamp => idxLastTimestamp, indexingLastRevision => idxLastRevision}
     Json.obj(
       "datasetSpec" -> spec,
       "spec" -> spec,
@@ -1248,7 +1296,16 @@ class DsInfo(
       "processedIncrementalInvalid" -> getLiteralProp(pIncrementalInvalid).map(_.toInt),
       "delimitersSet" -> getLiteralProp(dsDelimitersSet),
       "recordRoot" -> getLiteralProp(dsRecordRoot),
-      "uniqueId" -> getLiteralProp(dsUniqueId)
+      "uniqueId" -> getLiteralProp(dsUniqueId),
+      // Indexing results from Hub3 webhook
+      "indexingRecordsIndexed" -> getLiteralProp(idxRecordsIndexed).map(_.toInt),
+      "indexingRecordsExpected" -> getLiteralProp(idxRecordsExpected).map(_.toInt),
+      "indexingOrphansDeleted" -> getLiteralProp(idxOrphansDeleted).map(_.toInt),
+      "indexingErrorCount" -> getLiteralProp(idxErrorCount).map(_.toInt),
+      "indexingLastStatus" -> getLiteralProp(idxLastStatus),
+      "indexingLastMessage" -> getLiteralProp(idxLastMessage),
+      "indexingLastTimestamp" -> getLiteralProp(idxLastTimestamp),
+      "indexingLastRevision" -> getLiteralProp(idxLastRevision).map(_.toInt)
     )
   }
 
