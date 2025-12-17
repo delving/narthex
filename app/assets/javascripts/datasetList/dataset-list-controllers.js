@@ -1699,11 +1699,11 @@ define(["angular"], function () {
             });
         };
 
-        // Preview current dataset mapping (from SIP uploads)
+        // Preview current dataset mapping (from SIP uploads or default mapping)
         $scope.previewCurrentMapping = function() {
-            // Get the current mapping version (first one in the list or specified)
-            var currentVersion = null;
+            // First, check if dataset has its own mapping versions
             if ($scope.mapping.datasetVersions && $scope.mapping.datasetVersions.length > 0) {
+                var currentVersion = null;
                 for (var i = 0; i < $scope.mapping.datasetVersions.length; i++) {
                     if ($scope.mapping.datasetVersions[i].isCurrent) {
                         currentVersion = $scope.mapping.datasetVersions[i].hash;
@@ -1713,12 +1713,31 @@ define(["angular"], function () {
                 if (!currentVersion) {
                     currentVersion = $scope.mapping.datasetVersions[0].hash;
                 }
-            }
-            if (!currentVersion) {
-                modalAlert.warning("No Mapping", "No mapping versions available for this dataset.");
+                $scope.previewDatasetMapping(currentVersion);
                 return;
             }
-            $scope.previewDatasetMapping(currentVersion);
+
+            // If no dataset versions, check if a default mapping is configured
+            if ($scope.mapping.source === 'default' && $scope.mapping.defaultPrefix && $scope.mapping.defaultName) {
+                $scope.previewDefaultMapping();
+                return;
+            }
+
+            // No mapping available
+            modalAlert.warning("No Mapping", "No mapping is configured for this dataset. Select a default mapping or upload a SIP with a mapping.");
+        };
+
+        // Check if any mapping is available for preview
+        $scope.hasAnyMapping = function() {
+            // Has own dataset mapping versions
+            if ($scope.mapping.datasetVersions && $scope.mapping.datasetVersions.length > 0) {
+                return true;
+            }
+            // Has a configured default mapping
+            if ($scope.mapping.source === 'default' && $scope.mapping.defaultPrefix && $scope.mapping.defaultName) {
+                return true;
+            }
+            return false;
         };
 
         $scope.previewDatasetMapping = function(hash) {

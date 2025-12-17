@@ -656,9 +656,9 @@
                                                     <div class="clearfix">
                                                         <h4 class="pull-left" style="margin-top: 0;"><i class="fa fa-map"></i> Mapping Source</h4>
                                                         <button class="btn btn-sm btn-info pull-right" ng-click="previewCurrentMapping()"
-                                                                ng-disabled="!mapping.datasetVersions || mapping.datasetVersions.length === 0"
-                                                                title="Preview the current mapping XML">
-                                                            <i class="fa fa-eye"></i> Preview Current Mapping
+                                                                ng-disabled="!hasAnyMapping()"
+                                                                title="Preview the current mapping XML (uploaded or default)">
+                                                            <i class="fa fa-eye"></i> Preview Mapping
                                                         </button>
                                                     </div>
                                                     <p class="text-muted" ng-if="datasetSchemaPrefix">
