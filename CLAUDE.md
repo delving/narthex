@@ -105,3 +105,4 @@ When bumping the version, **update both files**:
 
 The `main.js` version must be a static string (not a variable) due to RequireJS r.js optimizer limitations. The optimizer parses the config and cannot evaluate dynamic expressions.
 - use `make complile` for building. otherwise you get java build errors
+- always use 'make compile' to compile. Never sbt directly.
