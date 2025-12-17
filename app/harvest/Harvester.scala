@@ -44,7 +44,7 @@ object Harvester {
 
   case class HarvestDownloadLink(strategy: HarvestStrategy, downloadLink: String, dsInfo: DsInfo)
 
-  case class HarvestAdLib(strategy: HarvestStrategy, url: String, database: String, search: String)
+  case class HarvestAdLib(strategy: HarvestStrategy, url: String, database: String, search: String, credentials: Option[(String, String)] = None)
 
   case class HarvestPMH(strategy: HarvestStrategy, url: String, set: String, prefix: String, recordId: String)
 
@@ -56,7 +56,8 @@ object Harvester {
     database: String,
     search: String,
     strategy: HarvestStrategy,
-    originalPageUrl: String
+    originalPageUrl: String,
+    credentials: Option[(String, String)] = None
   )
 
   def props(datasetContext: DatasetContext, timeOut: Long, wsApi: WSClient,
@@ -86,6 +87,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var continueOnError: Boolean = false
   var errorThresholdOpt: Option[Int] = None
   var recordsProcessed: Int = 0
+  var adlibCredentials: Option[(String, String)] = None  // Basic auth credentials for AdLib
 
   private def cleanup(): Unit = {
     zipOutputOpt.foreach { zipOutput =>
@@ -366,20 +368,23 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
     // http://umu.adlibhosting.com/api/wwwopac.ashx?xmltype=grouped&limit=50&database=collect&search=modification%20greater%20%272014-12-01%27
 
-    case HarvestAdLib(strategy, url, database, search) => actorWork(context) {
+    case HarvestAdLib(strategy, url, database, search, credentials) => actorWork(context) {
       // Reset counters for new harvest
       pageCount = 0
       harvestedRecords = 0
       recordsPerPage = None
 
-      log.info(s"Harvesting $url $database to $datasetContext")
+      // Store credentials for use in subsequent page fetches
+      adlibCredentials = credentials
+
+      log.info(s"Harvesting $url $database to $datasetContext (with auth: ${credentials.isDefined})")
 
       // Initialize error recovery settings from dataset config
       continueOnError = datasetContext.dsInfo.getLiteralProp(GraphProperties.harvestContinueOnError).exists(_ == "true")
       errorThresholdOpt = datasetContext.dsInfo.getLiteralProp(GraphProperties.harvestErrorThreshold).map(_.toInt)
       log.info(s"Error recovery enabled: $continueOnError, threshold: $errorThresholdOpt")
 
-      val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search)
+      val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, credentials = adlibCredentials)
       handleFailure(futurePage, strategy, "adlib harvest")
       strategy match {
         case Sample =>
@@ -425,7 +430,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
         // Continue with next page if not last
         if (!diagnostic.isLast) {
           log.info(s"Continuing to next page after error recovery")
-          val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(diagnostic))
+          val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(diagnostic), credentials = adlibCredentials)
           handleFailure(futurePage, strategy, "adlib harvest page")
           futurePage pipeTo self
         } else {
@@ -466,7 +471,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
               finish(strategy, None)
             }
             else {
-              val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(diagnostic))
+              val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(diagnostic), credentials = adlibCredentials)
               handleFailure(futurePage, strategy, "adlib harvest page")
               futurePage pipeTo self
             }
@@ -493,7 +498,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
             // Continue with next page if not last
             if (!diagnostic.isLast) {
-              val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(diagnostic))
+              val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(diagnostic), credentials = adlibCredentials)
               handleFailure(futurePage, strategy, "adlib harvest page")
               futurePage pipeTo self
             }
@@ -506,7 +511,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       }
     }
 
-    case AdLibSingleRecordHarvest(recordOffset, url, database, search, strategy, originalPageUrl) => actorWork(context) {
+    case AdLibSingleRecordHarvest(recordOffset, url, database, search, strategy, originalPageUrl, _) => actorWork(context) {
       errorPagesSubmitted += 1
       val singleRecordUrl = s"$url?database=$database&search=$search&xmltype=grouped&limit=1&startFrom=$recordOffset"
       log.debug(s"Attempting single-record harvest from $singleRecordUrl")
@@ -515,7 +520,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
         timeout, wsApi, strategy, url, database, search,
         diagnosticOption = None,
         limit = 1,
-        startFrom = Some(recordOffset)
+        startFrom = Some(recordOffset),
+        credentials = adlibCredentials
       )
 
       futurePage.onComplete {

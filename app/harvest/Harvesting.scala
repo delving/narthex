@@ -18,6 +18,7 @@ package harvest
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.xml.{NodeSeq, XML}
@@ -134,7 +135,8 @@ trait Harvesting {
   def fetchAdLibPage(timeOut: Long, wsApi: WSClient, strategy: HarvestStrategy, url: String, database: String, search: String,
                      diagnosticOption: Option[AdLibDiagnostic] = None,
                      limit: Int = 50,
-                     startFrom: Option[Int] = None)
+                     startFrom: Option[Int] = None,
+                     credentials: Option[(String, String)] = None)
                     (implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
     val startFromValue = startFrom.getOrElse(diagnosticOption.map(d => d.current + d.pageItems).getOrElse(1))
     val cleanUrl = url.stripSuffix("?")
@@ -147,13 +149,21 @@ trait Harvesting {
         val cleanSearch = if (search.isEmpty) "all" else search
         if (cleanSearch contains "%20") cleanSearch.replace("%20", "") else cleanSearch
     }
-    val request = requestUrl.withQueryString(
+    val baseRequest = requestUrl.withQueryString(
       "database" -> database,
       "search" -> searchModified,
       "xmltype" -> "grouped",
       "limit" -> limit.toString,
       "startFrom" -> startFromValue.toString
     )
+    // Add Basic Auth header if credentials provided
+    val request = credentials match {
+      case Some((username, password)) if username.nonEmpty =>
+        val encoded = Base64.getEncoder.encodeToString(s"$username:$password".getBytes(StandardCharsets.UTF_8))
+        baseRequest.withHttpHeaders("Authorization" -> s"Basic $encoded")
+      case _ =>
+        baseRequest
+    }
     logger.info(s"harvest url: ${request.uri}")
     // define your success condition
     implicit val success = new retry.Success[WSResponse](r => !((500 to 599) contains r.status))

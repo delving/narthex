@@ -1137,6 +1137,20 @@
                     <input id="harv_search" class="form-control" data-ng-model="dataset.edit.harvestSearch" placeholder="search" required/>
                 </div>
             </div>
+            <!-- Basic Auth credentials (AdLib-specific) -->
+            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'adlib'">
+                <label class="col-sm-3" for="harv_username">Username</label>
+                <div class="col-sm-9">
+                    <input id="harv_username" class="form-control" data-ng-model="dataset.edit.harvestUsername" placeholder="(optional)"/>
+                </div>
+            </div>
+            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'adlib'">
+                <label class="col-sm-3" for="harv_password">Password</label>
+                <div class="col-sm-9">
+                    <input id="harv_password" type="password" class="form-control" data-ng-model="dataset.edit.harvestPassword" placeholder="{{ dataset.harvestPasswordSet ? '••••••••' : '(optional)' }}"/>
+                    <p class="help-block text-muted" data-ng-show="dataset.harvestPasswordSet">Leave blank to keep existing password</p>
+                </div>
+            </div>
             <!-- Error Handling Configuration (AdLib-specific) -->
             <div class="form-group" data-ng-show="dataset.edit.harvestType == 'adlib'">
                 <label class="col-sm-3">Error Handling</label>
@@ -1181,7 +1195,7 @@
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
-                <a href="/narthex/preview/{{ adlibPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                <a href="/narthex/preview/{{ adlibPreviewBase }}&__spec={{ dataset.datasetSpec }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>

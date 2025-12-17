@@ -44,7 +44,7 @@ import record.SourceProcessor._
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
-import services.{ActivityLogger, MailService, ProgressReporter}
+import services.{ActivityLogger, CredentialEncryption, MailService, ProgressReporter}
 import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
@@ -585,10 +585,22 @@ class DatasetActor(val datasetContext: DatasetContext,
           prop(harvestRecord),
           prop(harvestDownloadURL))
 
+        // Get AdLib credentials if configured
+        val adlibCredentials: Option[(String, String)] = {
+          val username = prop(harvestUsername)
+          val encryptedPassword = prop(harvestPassword)
+          if (username.nonEmpty && encryptedPassword.nonEmpty) {
+            val password = CredentialEncryption.decrypt(encryptedPassword, orgContext.appConfig.appSecret)
+            Some((username, password))
+          } else {
+            None
+          }
+        }
+
         val kickoff = harvestType match {
           case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
           case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
-          case ADLIB => HarvestAdLib(strategy, url, ds, se)
+          case ADLIB => HarvestAdLib(strategy, url, ds, se, adlibCredentials)
         }
         val harvester = createChildActor(
           Harvester.props(datasetContext,
@@ -1031,10 +1043,22 @@ class DatasetActor(val datasetContext: DatasetContext,
           prop(harvestRecord),
           prop(harvestDownloadURL))
 
+        // Get AdLib credentials if configured
+        val adlibCredentials: Option[(String, String)] = {
+          val username = prop(harvestUsername)
+          val encryptedPassword = prop(harvestPassword)
+          if (username.nonEmpty && encryptedPassword.nonEmpty) {
+            val password = CredentialEncryption.decrypt(encryptedPassword, orgContext.appConfig.appSecret)
+            Some((username, password))
+          } else {
+            None
+          }
+        }
+
         val kickoff = harvestType match {
           case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
           case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
-          case ADLIB => HarvestAdLib(strategy, url, ds, se)
+          case ADLIB => HarvestAdLib(strategy, url, ds, se, adlibCredentials)
         }
         val harvester = createChildActor(
           Harvester.props(datasetContext,
@@ -1150,6 +1174,36 @@ class DatasetActor(val datasetContext: DatasetContext,
       log.info(s"Child actor terminated: $actor")
       // Remove from tracked children and continue
       childActors -= actor
+      stay()
+
+    // Handle indexing completion notification from Hub3 webhook
+    case Event(indexing: webhook.IndexingComplete, _) =>
+      log.info(s"Received indexing completion for ${dsInfo.spec}: " +
+        s"type=${indexing.notificationType}, indexed=${indexing.recordsIndexed}, " +
+        s"expected=${indexing.recordsExpected}, orphans=${indexing.orphansDeleted}, " +
+        s"errors=${indexing.errorCount}")
+
+      // Store indexing results in the triple store
+      dsInfo.setIndexingResults(
+        status = indexing.notificationType,
+        recordsIndexed = indexing.recordsIndexed,
+        recordsExpected = indexing.recordsExpected,
+        orphansDeleted = indexing.orphansDeleted,
+        errorCount = indexing.errorCount,
+        revision = indexing.revision,
+        message = indexing.message,
+        timestamp = indexing.timestamp
+      )
+
+      // Log any indexing errors to activity log
+      indexing.errors.foreach { errors =>
+        if (errors.nonEmpty) {
+          ActivityLogger.logIndexingErrors(datasetContext.activityLog, errors)
+        }
+      }
+
+      // Broadcast updated state to WebSocket clients
+      broadcastIdleState()
       stay()
 
     // this is because PeriodicSkosifyCheck may send multiple for us.  he'll be back

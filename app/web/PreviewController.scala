@@ -1,10 +1,14 @@
 package web
 
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import javax.inject.Inject
 import play.api.mvc._
 import play.api.libs.ws._
 import scala.concurrent.{ExecutionContext, Future}
 import organization.OrgContext
+import services.CredentialEncryption
+import triplestore.GraphProperties._
 
 class PreviewController @Inject() (orgContext: OrgContext)(implicit val ec: ExecutionContext) extends InjectedController {
 
@@ -12,7 +16,15 @@ class PreviewController @Inject() (orgContext: OrgContext)(implicit val ec: Exec
 
     val queryParams: Map[String, Seq[String]] = request.queryString
 
-    val queryString = queryParams.map { case (key, values) =>
+    // Extract optional spec parameter for credential lookup
+    val specOpt = queryParams.get("__spec").flatMap(_.headOption)
+
+    // Remove internal parameters from the query string
+    val cleanedQueryParams = queryParams.filterNot { case (key, _) =>
+      key.startsWith("__")
+    }
+
+    val queryString = cleanedQueryParams.map { case (key, values) =>
       values.map(value => s"$key=$value").mkString("&")
     }.mkString("&")
 
@@ -22,7 +34,29 @@ class PreviewController @Inject() (orgContext: OrgContext)(implicit val ec: Exec
       s"$dataUrl"
     }
 
-    orgContext.wsApi.url(url).get().flatMap { response =>
+    // Look up credentials if spec is provided
+    val credentialsOpt: Option[(String, String)] = specOpt.flatMap { spec =>
+      val dsInfo = orgContext.datasetContext(spec).dsInfo
+      val username = dsInfo.getLiteralProp(harvestUsername).getOrElse("")
+      val encryptedPassword = dsInfo.getLiteralProp(harvestPassword).getOrElse("")
+      if (username.nonEmpty && encryptedPassword.nonEmpty) {
+        val password = CredentialEncryption.decrypt(encryptedPassword, orgContext.appConfig.appSecret)
+        Some((username, password))
+      } else {
+        None
+      }
+    }
+
+    // Build request with optional Basic Auth header
+    val wsRequest = credentialsOpt match {
+      case Some((username, password)) =>
+        val encoded = Base64.getEncoder.encodeToString(s"$username:$password".getBytes(StandardCharsets.UTF_8))
+        orgContext.wsApi.url(url).withHttpHeaders("Authorization" -> s"Basic $encoded")
+      case None =>
+        orgContext.wsApi.url(url)
+    }
+
+    wsRequest.get().flatMap { response =>
       val headers = response.allHeaders.map { case (k, v) => k -> v.mkString(",") }
 
       // Preserve Content-Type but filter out Content-Length (which Play recalculates)

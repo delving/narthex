@@ -37,6 +37,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 
 import organization.OrgContext
+import services.{CredentialEncryption, Temporal}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.{Sparql, TripleStore}
@@ -201,8 +202,22 @@ class AppController @Inject() (
       val diProps: List[NXProp] = propertyList.map(name => allProps.getOrElse(name, throw new RuntimeException(s"Property not recognized: $name")))
       val propsValueOpts = diProps.map(prop => (prop, (request.body \ "values" \ prop.name).asOpt[String]))
       val propsValues = propsValueOpts.filter(t => t._2.isDefined).map(t => (t._1, t._2.get)) // find a better way
-      logger.debug(s"setDatasetProperties $propsValues")
-      dsInfo.setSingularLiteralProps(propsValues: _*)
+
+      // Handle password encryption: encrypt harvestPassword before saving
+      val processedPropsValues = propsValues.map {
+        case (prop, value) if prop == harvestPassword && value.nonEmpty =>
+          // Encrypt the password if it's not already encrypted
+          val encryptedValue = if (CredentialEncryption.isEncrypted(value)) {
+            value // Already encrypted, keep as-is
+          } else {
+            CredentialEncryption.encrypt(value, orgContext.appConfig.appSecret)
+          }
+          (prop, encryptedValue)
+        case other => other
+      }
+
+      logger.debug(s"setDatasetProperties $processedPropsValues")
+      dsInfo.setSingularLiteralProps(processedPropsValues: _*)
       sendRefresh(spec)
       Ok
     }

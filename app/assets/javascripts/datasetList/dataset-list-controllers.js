@@ -1007,7 +1007,7 @@ define(["angular"], function () {
 
     var harvestFields = [
         "harvestType", "harvestURL", "harvestDataset", "harvestPrefix", "harvestSearch", "harvestRecord", "harvestDownloadURL",
-        "harvestContinueOnError", "harvestErrorThreshold"
+        "harvestContinueOnError", "harvestErrorThreshold", "harvestUsername", "harvestPassword"
     ];
 
     var harvestCronFields = [
@@ -1270,7 +1270,21 @@ define(["angular"], function () {
         };
 
         $scope.setHarvest = function () {
-            setProperties(harvestFields);
+            // Filter out harvestPassword if it's empty and a password is already set
+            // This prevents overwriting an existing password with empty value
+            var fieldsToSave = _.filter(harvestFields, function(field) {
+                if (field === 'harvestPassword') {
+                    var passwordValue = $scope.dataset.edit.harvestPassword;
+                    var passwordIsEmpty = !passwordValue || passwordValue === '';
+                    var passwordAlreadySet = $scope.dataset.harvestPasswordSet;
+                    // Don't include password field if empty AND password already exists
+                    if (passwordIsEmpty && passwordAlreadySet) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+            setProperties(fieldsToSave);
         };
 
         $scope.setHarvestCron = function () {
