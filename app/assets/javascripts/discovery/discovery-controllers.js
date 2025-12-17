@@ -172,7 +172,8 @@ define(["angular"], function (angular) {
             var baseUrl = $scope.selectedSource.url;
             var prefix = $scope.selectedSource.defaultMetadataPrefix || 'oai_dc';
             // Construct OAI-PMH ListRecords URL with set filter
-            return '/narthex/preview/' + encodeURIComponent(baseUrl) +
+            // Note: Don't encode baseUrl - the route uses *dataUrl which captures the full path
+            return '/narthex/preview/' + baseUrl +
                    '?verb=ListRecords&metadataPrefix=' + encodeURIComponent(prefix) +
                    '&set=' + encodeURIComponent(set.setSpec);
         };
