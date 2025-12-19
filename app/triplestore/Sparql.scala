@@ -96,6 +96,7 @@ object Sparql {
       |                ?harvestType ?harvestDownloadURL
       |                ?harvestIncrementalMode ?processedIncrementalValid ?processedIncrementalInvalid
       |                ?delimitersSet ?recordRoot ?uniqueId ?mappingSource
+      |                ?defaultMappingPrefix ?defaultMappingName ?defaultMappingVersion
       |                ?harvestUsername ?harvestPasswordSet
       |WHERE {
       |  GRAPH ?g {
@@ -127,6 +128,9 @@ object Sparql {
       |    OPTIONAL { ?s nx:recordRoot ?recordRoot }
       |    OPTIONAL { ?s nx:uniqueId ?uniqueId }
       |    OPTIONAL { ?s nx:datasetMappingSource ?mappingSource }
+      |    OPTIONAL { ?s nx:datasetDefaultMappingPrefix ?defaultMappingPrefix }
+      |    OPTIONAL { ?s nx:datasetDefaultMappingName ?defaultMappingName }
+      |    OPTIONAL { ?s nx:datasetDefaultMappingVersion ?defaultMappingVersion }
       |    OPTIONAL { ?s nx:harvestUsername ?harvestUsername }
       |    OPTIONAL { ?s nx:harvestPassword ?harvestPw }
       |    BIND(BOUND(?harvestPw) AS ?harvestPasswordSet)
@@ -139,13 +143,14 @@ object Sparql {
   val selectDatasetsInRetryQ =
     s"""
       |PREFIX nx: <${NX_NAMESPACE}>
-      |SELECT DISTINCT ?spec ?retryCount ?lastRetryTime
+      |SELECT DISTINCT ?spec ?retryCount ?lastRetryTime ?retryMessage
       |WHERE {
       |  GRAPH ?g {
       |    ?s nx:datasetSpec ?spec .
       |    ?s nx:harvestInRetry true .
       |    OPTIONAL { ?s nx:harvestRetryCount ?retryCount }
       |    OPTIONAL { ?s nx:harvestLastRetryTime ?lastRetryTime }
+      |    OPTIONAL { ?s nx:harvestRetryMessage ?retryMessage }
       |    FILTER NOT EXISTS { ?s <$deleted> true }
       |    FILTER NOT EXISTS { ?s <$stateDisabled> ?disabledTime }
       |  }

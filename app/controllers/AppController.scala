@@ -96,11 +96,12 @@ class AppController @Inject() (
   /**
    * Lightweight dataset list endpoint - only returns minimal fields for collapsed view.
    * This significantly improves initial page load performance (10-20x faster).
+   * Also includes retry status for datasets in retry mode (fetched via separate query).
    */
   def listDatasetsLight = Action.async { request =>
-    import dataset.DsInfo.listDsInfoLight
+    import dataset.DsInfo.listDsInfoLightWithRetry
 
-    getListDsTimer.timeFuture(listDsInfoLight(orgContext)).map(list => {
+    getListDsTimer.timeFuture(listDsInfoLightWithRetry(orgContext)).map(list => {
       val jsonBytes: Array[Byte] = Json.toJson(list).toString().getBytes("UTF-8")
       val bos = new ByteArrayOutputStream(jsonBytes.length)
       val gzip = new GZIPOutputStream(bos)

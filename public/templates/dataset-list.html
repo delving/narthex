@@ -282,8 +282,12 @@
                                         <i class="fa fa-times"></i>
                                     </button>
                                 </span>
+                                <!-- Retry indicator -->
+                                <span data-ng-if="dataset.inRetry && !dataset.isProcessing && !dataset.isSaving && !dataset.isQueued" class="label label-warning" title="{{ dataset.retryMessage }}">
+                                    <i class="fa fa-clock-o"></i> RETRY #{{ dataset.retryCount }} in {{ dataset.nextRetryMinutes }}m
+                                </span>
                                 <!-- Idle indicator -->
-                                <span data-ng-if="!dataset.isProcessing && !dataset.isSaving && !dataset.isQueued" class="text-muted">
+                                <span data-ng-if="!dataset.isProcessing && !dataset.isSaving && !dataset.isQueued && !dataset.inRetry" class="text-muted">
                                     <i class="fa fa-minus"></i>
                                 </span>
                             </td>

@@ -28,7 +28,7 @@ import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.{DateTime, Minutes}
 import organization.OrgContext
 import play.api.Logger
-import play.api.libs.json.{JsValue, Json, Writes}
+import play.api.libs.json.{JsObject, JsValue, Json, Writes}
 import play.api.libs.ws.WSResponse
 import services.StringHandling.{createGraphName, urlEncodeValue}
 import services.Temporal._
@@ -170,6 +170,35 @@ object DsInfo {
   }
 
   /**
+   * Lightweight retry status for datasets in retry mode.
+   */
+  case class RetryStatus(
+    spec: String,
+    retryCount: Option[Int],
+    lastRetryTime: Option[String],
+    retryMessage: Option[String]
+  )
+
+  /**
+   * List datasets in retry mode with lightweight data.
+   */
+  def listRetryStatus()(
+      implicit ec: ExecutionContext,
+      ts: TripleStore): Future[Map[String, RetryStatus]] = {
+    ts.query(selectDatasetsInRetryQ).map { results =>
+      results.map { row =>
+        val spec = row("spec").text
+        spec -> RetryStatus(
+          spec = spec,
+          retryCount = row.get("retryCount").map(_.text.toInt),
+          lastRetryTime = row.get("lastRetryTime").map(_.text),
+          retryMessage = row.get("retryMessage").map(_.text)
+        )
+      }.toMap
+    }
+  }
+
+  /**
    * List all datasets with minimal data for initial page load.
    * Only fetches ~10 essential fields instead of full RDF models.
    */
@@ -210,6 +239,34 @@ object DsInfo {
           harvestUsername = row.get("harvestUsername").map(_.text),
           harvestPasswordSet = row.get("harvestPasswordSet").map(_.text.toBoolean)
         )
+      }
+    }
+  }
+
+  /**
+   * List datasets with retry status merged in.
+   * Runs both queries in parallel and merges results.
+   */
+  def listDsInfoLightWithRetry(orgContext: OrgContext)(
+      implicit ec: ExecutionContext,
+      ts: TripleStore): Future[List[JsValue]] = {
+    for {
+      datasets <- listDsInfoLight(orgContext)
+      retryStatus <- listRetryStatus()
+    } yield {
+      datasets.map { ds =>
+        val baseJson = Json.toJson(ds).as[JsObject]
+        retryStatus.get(ds.spec) match {
+          case Some(retry) =>
+            baseJson ++ Json.obj(
+              "harvestInRetry" -> true,
+              "harvestRetryCount" -> retry.retryCount,
+              "harvestLastRetryTime" -> retry.lastRetryTime,
+              "harvestRetryMessage" -> retry.retryMessage
+            )
+          case None =>
+            baseJson ++ Json.obj("harvestInRetry" -> false)
+        }
       }
     }
   }
@@ -1259,7 +1316,9 @@ class DsInfo(
       indexingRecordsIndexed => idxRecordsIndexed, indexingRecordsExpected => idxRecordsExpected,
       indexingOrphansDeleted => idxOrphansDeleted, indexingErrorCount => idxErrorCount,
       indexingLastStatus => idxLastStatus, indexingLastMessage => idxLastMessage,
-      indexingLastTimestamp => idxLastTimestamp, indexingLastRevision => idxLastRevision}
+      indexingLastTimestamp => idxLastTimestamp, indexingLastRevision => idxLastRevision,
+      harvestInRetry => hInRetry, harvestRetryCount => hRetryCount,
+      harvestLastRetryTime => hLastRetryTime, harvestRetryMessage => hRetryMessage}
     Json.obj(
       "datasetSpec" -> spec,
       "spec" -> spec,
@@ -1305,7 +1364,12 @@ class DsInfo(
       "indexingLastStatus" -> getLiteralProp(idxLastStatus),
       "indexingLastMessage" -> getLiteralProp(idxLastMessage),
       "indexingLastTimestamp" -> getLiteralProp(idxLastTimestamp),
-      "indexingLastRevision" -> getLiteralProp(idxLastRevision).map(_.toInt)
+      "indexingLastRevision" -> getLiteralProp(idxLastRevision).map(_.toInt),
+      // Retry status
+      "harvestInRetry" -> getLiteralProp(hInRetry).map(_.toBoolean),
+      "harvestRetryCount" -> getLiteralProp(hRetryCount).map(_.toInt),
+      "harvestLastRetryTime" -> getLiteralProp(hLastRetryTime),
+      "harvestRetryMessage" -> getLiteralProp(hRetryMessage)
     )
   }
 
