@@ -15,6 +15,28 @@ export PATH:=$(JAVA_HOME)/bin:$(PATH)
 # var print rule
 print-%  : ; @echo $* = $($*)
 
+# Version bumping - increments the patch version (last number)
+bump-version:
+	@echo "Current version: $(VERSION)"
+	@NEW_VERSION=$$(echo $(VERSION) | awk -F. '{print $$1"."$$2"."$$3"."$$4+1}') && \
+	echo "New version: $$NEW_VERSION" && \
+	sed -i 's/version := "$(VERSION)"/version := "'$$NEW_VERSION'"/' version.sbt && \
+	sed -i 's/urlArgs: "v=$(VERSION)"/urlArgs: "v='$$NEW_VERSION'"/' app/assets/javascripts/main.js && \
+	sed -i 's/v=[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/v='$$NEW_VERSION'/g' app/assets/javascripts/datasetList/main.js && \
+	echo "Version bumped to $$NEW_VERSION in:" && \
+	echo "  - version.sbt" && \
+	echo "  - app/assets/javascripts/main.js" && \
+	echo "  - app/assets/javascripts/datasetList/main.js"
+
+# Set a specific version
+set-version:
+	@if [ -z "$(V)" ]; then echo "Usage: make set-version V=0.8.2.99"; exit 1; fi
+	@echo "Setting version to: $(V)"
+	@sed -i 's/version := "[^"]*"/version := "$(V)"/' version.sbt
+	@sed -i 's/urlArgs: "v=[^"]*"/urlArgs: "v=$(V)"/' app/assets/javascripts/main.js
+	@sed -i 's/v=[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/v=$(V)/g' app/assets/javascripts/datasetList/main.js
+	@echo "Version set to $(V)"
+
 package:
 	sbt package
 
