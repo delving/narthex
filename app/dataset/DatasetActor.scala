@@ -557,15 +557,14 @@ class DatasetActor(val datasetContext: DatasetContext,
                 datasetContext.createSourceRepo(SourceFacts(harvestType))
             }
           case FromScratchIncremental =>
-            log.info("FromScratchIncremental: preserving existing data, will check for new records")
-            // Don't clear data - we want to keep existing data and add new records
+            log.info("FromScratchIncremental: clearing data for full periodic harvest")
+            // Clear data like FromScratch - this is a FULL harvest, but uses incremental processing path
             datasetContext.sourceRepoOpt match {
+              case Some(sourceRepo) =>
+                sourceRepo.clearData()
               case None =>
-                // Create source repo if it doesn't exist yet
+                // no source repo, use the default for the harvest type
                 datasetContext.createSourceRepo(SourceFacts(harvestType))
-              case Some(_) =>
-                // Source repo exists, keep the data
-                log.debug("Source repo exists, keeping existing data for incremental harvest")
             }
           case _ =>
             // For other strategies like ModifiedAfter, Sample, etc
@@ -819,9 +818,10 @@ class DatasetActor(val datasetContext: DatasetContext,
             // Full harvest returned no records - all records depublished
             // Keep SAVED state so dataset stays in harvest cycle for auto-recovery
             // Reset counts to 0 to reflect current state
-            log.info(s"Full harvest (FromScratchIncremental) returned noRecordsMatch for ${dsInfo.spec} - resetting counts to 0")
+            log.info(s"Full harvest (FromScratchIncremental) returned noRecordsMatch for ${dsInfo.spec} - resetting counts and disabling index.")
             dsInfo.setRecordCount(0)
             dsInfo.setProcessedRecordCounts(0, 0)
+            dsInfo.disableInNaveIndex()
             orgContext.semaphore.release(dsInfo.spec)
           } else {
             processIncremental(fileOpt, noRecordsMatch, None)
@@ -913,7 +913,10 @@ class DatasetActor(val datasetContext: DatasetContext,
       dsInfo.setState(PROCESSED)
       if (scheduledOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
-        //dsInfo.setState(PROCESSABLE)
+        // Update total record count from filesystem for scheduled/incremental harvests
+        dsInfo.updatedSpecCountFromFile(dsInfo.spec,
+                                        orgContext.appConfig.narthexDataDir,
+                                        orgContext.appConfig.orgId)
         val graphSaver = createChildActor(
           GraphSaver.props(datasetContext, orgContext),
           "graph-saver")
@@ -1023,10 +1026,10 @@ class DatasetActor(val datasetContext: DatasetContext,
               case None => datasetContext.createSourceRepo(SourceFacts(harvestType))
             }
           case FromScratchIncremental =>
-            log.info("FromScratchIncremental: preserving existing data")
+            log.info("FromScratchIncremental: clearing data for full periodic harvest")
             datasetContext.sourceRepoOpt match {
+              case Some(sourceRepo) => sourceRepo.clearData()
               case None => datasetContext.createSourceRepo(SourceFacts(harvestType))
-              case Some(_) => log.debug("Source repo exists, keeping data")
             }
           case _ =>
             log.info(s"Strategy $strategy: checking source repo")
