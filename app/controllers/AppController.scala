@@ -618,9 +618,38 @@ class AppController @Inject() (
   // ==================== Dataset Mapping Source ====================
 
   def listDatasetMappingVersions(spec: String) = Action { request =>
+    import scala.io.Source
+
     val datasetContext = orgContext.datasetContext(spec)
     val repo = datasetContext.datasetMappingRepo
-    val versions = repo.listVersions
+    var versions = repo.listVersions
+
+    // Auto-migrate: if no versions in repo but SIP exists with mapping, import it
+    if (versions.isEmpty) {
+      datasetContext.sipRepo.latestSipOpt.foreach { sip =>
+        sip.sipMappingOpt.foreach { sipMapping =>
+          val prefix = sipMapping.prefix
+          val mappingFileName = s"mapping_$prefix.xml"
+          sip.entries.get(mappingFileName).foreach { entry =>
+            try {
+              val inputStream = sip.zipFile.getInputStream(entry)
+              try {
+                val mappingXml = Source.fromInputStream(inputStream, "UTF-8").mkString
+                repo.saveFromSipUpload(mappingXml, prefix, Some("Auto-migrated from existing SIP"))
+                logger.info(s"Auto-migrated mapping from SIP for dataset $spec (prefix: $prefix)")
+                versions = repo.listVersions // Reload after migration
+              } finally {
+                inputStream.close()
+              }
+            } catch {
+              case e: Exception =>
+                logger.warn(s"Failed to auto-migrate mapping from SIP for $spec: ${e.getMessage}")
+            }
+          }
+        }
+      }
+    }
+
     val currentHash = repo.getCurrentVersionHash
 
     Ok(Json.obj(
@@ -641,12 +670,33 @@ class AppController @Inject() (
   }
 
   def getDatasetMappingXml(spec: String, version: String) = Action { request =>
+    import scala.io.Source
+
     val datasetContext = orgContext.datasetContext(spec)
     val repo = datasetContext.datasetMappingRepo
 
     repo.getXml(version) match {
       case Some(xml) => Ok(xml).as("application/xml")
-      case None => NotFound(Json.obj("problem" -> s"Mapping version $version not found for dataset $spec"))
+      case None =>
+        // Fallback: try to get mapping from SIP file directly
+        if (version == "current" || version == "latest") {
+          datasetContext.sipRepo.latestSipOpt.flatMap { sip =>
+            sip.sipMappingOpt.flatMap { sipMapping =>
+              val mappingFileName = s"mapping_${sipMapping.prefix}.xml"
+              sip.entries.get(mappingFileName).map { entry =>
+                val inputStream = sip.zipFile.getInputStream(entry)
+                try {
+                  val mappingXml = Source.fromInputStream(inputStream, "UTF-8").mkString
+                  Ok(mappingXml).as("application/xml")
+                } finally {
+                  inputStream.close()
+                }
+              }
+            }
+          }.getOrElse(NotFound(Json.obj("problem" -> s"Mapping version $version not found for dataset $spec")))
+        } else {
+          NotFound(Json.obj("problem" -> s"Mapping version $version not found for dataset $spec"))
+        }
     }
   }
 
