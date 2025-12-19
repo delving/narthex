@@ -267,32 +267,43 @@ define(["angular"], function () {
         /* dataset filtering                                                */	
         /********************************************************************/	
 	
-        function filterDatasetBySpec(ds) {
-            var filter = $scope.specOrNameFilter.trim().toLowerCase();
+        // Helper: check if dataset matches spec/name filter
+        function matchesSpecFilter(ds, filter) {
             if (!filter) {
-                ds.visible = true;
-                return;
+                return true;
             }
             var specMatches = ds.datasetSpec && ds.datasetSpec.toLowerCase().indexOf(filter) >= 0;
             var nameMatches = ds.datasetName && ds.datasetName.toLowerCase().indexOf(filter) >= 0;
-            ds.visible = specMatches || nameMatches;
+            return specMatches || nameMatches;
         }	
 	
-        function filterDatasetByState(ds) {
-            var filter = $scope.stateFilter;
+        // Helper: check if dataset matches state filter
+        function matchesStateFilter(ds, filter) {
             if (!filter) {
-                ds.visible = true;
+                return true;
             } else if (filter === 'stateWorking') {
-                ds.visible = ds.isProcessing === true || ds.isSaving === true;
+                return ds.isProcessing === true || ds.isSaving === true;
             } else if (filter === 'stateQueued') {
                 // Exclude datasets that are processing/saving (they've moved past queued state)
-                ds.visible = ds.isQueued === true && !ds.isProcessing && !ds.isSaving;
+                return ds.isQueued === true && !ds.isProcessing && !ds.isSaving;
             } else if (filter === 'stateEmpty') {
-                ds.visible = ds.empty;
+                return ds.empty;
             } else {
                 var currentState = ds.stateCurrentForFilter || ds.stateCurrent;
-                ds.visible = currentState.name === filter;
+                return currentState.name === filter;
             }
+        }
+
+        // Unified filter: applies BOTH filters atomically to prevent flickering
+        function applyAllFilters(ds) {
+            var specFilter = $scope.specOrNameFilter ? $scope.specOrNameFilter.trim().toLowerCase() : '';
+            var stateFilter = $scope.stateFilter;
+            ds.visible = matchesSpecFilter(ds, specFilter) && matchesStateFilter(ds, stateFilter);
+        }
+
+        // Apply all filters to all datasets
+        function applyFiltersToAll() {
+            _.each($scope.datasets, applyAllFilters);
         }	
 	
         $scope.datasetListOrder = function (orderBy) {	
@@ -361,13 +372,9 @@ define(["angular"], function () {
             return ds.visible;
         };	
 	
-        $scope.$watch("specOrNameFilter", function () {	
-            _.each($scope.datasets, filterDatasetBySpec);	
-        });	
-	
-        $scope.$watch("stateFilter", function () {	
-            _.each($scope.datasets, filterDatasetByState);	
-        });	
+        $scope.$watch("specOrNameFilter", applyFiltersToAll);
+
+        $scope.$watch("stateFilter", applyFiltersToAll);	
 
 
         datasetListService.listPrefixes().then(function (prefixes) {
@@ -529,7 +536,23 @@ define(["angular"], function () {
                 }
             }
 
-            filterDatasetBySpec(dataset);
+            // Parse retry status (for lightweight datasets)
+            dataset.inRetry = dataset.harvestInRetry === true || dataset.harvestInRetry === 'true';
+            dataset.retryCount = parseInt(dataset.harvestRetryCount) || 0;
+            dataset.retryMessage = dataset.harvestRetryMessage || '';
+
+            // Calculate next retry time
+            if (dataset.inRetry && dataset.harvestLastRetryTime) {
+                var lastRetry = new Date(dataset.harvestLastRetryTime);
+                var retryIntervalMinutes = ($scope.narthexConfig && $scope.narthexConfig.retryIntervalMinutes) || 60;
+                var retryIntervalMs = retryIntervalMinutes * 60 * 1000;
+                var nextRetry = new Date(lastRetry.getTime() + retryIntervalMs);
+                var now = new Date();
+                var diffMs = nextRetry - now;
+                dataset.nextRetryMinutes = Math.max(0, Math.round(diffMs / 60000));
+            }
+
+            applyAllFilters(dataset);
             return dataset;
         };
 
@@ -677,7 +700,7 @@ define(["angular"], function () {
             dataset.showMapTerms = _.some(dataset.states, function (state) {
                 return state.name == 'stateProcessed' || state.name == 'stateIncrementalSaved';
             });
-            filterDatasetBySpec(dataset);
+            applyAllFilters(dataset);
             return dataset;
         };
 
@@ -826,10 +849,8 @@ define(["angular"], function () {
 
                 $scope.updateDatasetStateCounter();
 
-                // Re-apply the current filter to remove finished datasets from filtered view
-                if ($scope.stateFilter) {
-                    _.each($scope.datasets, filterDatasetByState);
-                }
+                // Re-apply all filters to update visibility after state changes
+                applyFiltersToAll();
             });
         };
 
@@ -1729,12 +1750,15 @@ define(["angular"], function () {
 
         // Check if any mapping is available for preview
         $scope.hasAnyMapping = function() {
-            // Has own dataset mapping versions
-            if ($scope.mapping.datasetVersions && $scope.mapping.datasetVersions.length > 0) {
+            var hasDatasetVersions = $scope.mapping.datasetVersions && $scope.mapping.datasetVersions.length > 0;
+            var hasDefaultMapping = $scope.mapping.source === 'default' && $scope.mapping.defaultPrefix && $scope.mapping.defaultName;
+
+            // Has own dataset mapping versions (from SIP uploads)
+            if (hasDatasetVersions) {
                 return true;
             }
             // Has a configured default mapping
-            if ($scope.mapping.source === 'default' && $scope.mapping.defaultPrefix && $scope.mapping.defaultName) {
+            if (hasDefaultMapping) {
                 return true;
             }
             return false;
