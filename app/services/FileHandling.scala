@@ -19,6 +19,7 @@ package services
 import java.io._
 import java.util.zip.{GZIPInputStream, ZipEntry, ZipFile}
 
+import com.github.luben.zstd.{ZstdInputStream, ZstdOutputStream}
 import org.apache.commons.io.FileUtils._
 import org.apache.commons.io.input.{BOMInputStream, CountingInputStream}
 import play.api.Logger
@@ -55,7 +56,15 @@ object FileHandling {
   def readerCounting(file: File): (BufferedReader, CountingInputStream) = {
     val fis: FileInputStream = new FileInputStream(file)
     val cis = new CountingInputStream(fis)
-    val is = new InputStreamReader(cis, "UTF-8")
+    val name = file.getName
+    val inputStream: InputStream = if (name.endsWith(".zst") || name.endsWith(".xml.zst")) {
+      new ZstdInputStream(cis)
+    } else if (name.endsWith(".gz")) {
+      new GZIPInputStream(cis)
+    } else {
+      cis
+    }
+    val is = new InputStreamReader(inputStream, "UTF-8")
     val br = new BufferedReader(is)
     (br, cis)
   }
@@ -84,6 +93,19 @@ object FileHandling {
 
   def createWriter(outputStream: OutputStream) = new BufferedWriter(new OutputStreamWriter(outputStream, "UTF-8"))
 
+  /** Create a writer that compresses output with ZSTD (level 3 = good balance of speed and compression) */
+  def createZstdWriter(file: File): BufferedWriter = {
+    val fos = new FileOutputStream(file)
+    try {
+      val zstdOut = new ZstdOutputStream(fos, 3)
+      new BufferedWriter(new OutputStreamWriter(zstdOut, "UTF-8"), 65536)  // 64KB buffer
+    } catch {
+      case NonFatal(e) =>
+        fos.close()
+        throw e
+    }
+  }
+
   abstract class ReadProgress {
     def getPercentRead: Int
   }
@@ -102,6 +124,19 @@ object FileHandling {
         case NonFatal(e) =>
           throw new RuntimeException(s"Failed to open zip file: ${file.getName}", e)
       }.get
+    }
+    else if (file.getName.endsWith(".xml.zst") || file.getName.endsWith(".zst")) {
+      val is = new FileInputStream(file)
+      try {
+        val cs = new CountingInputStream(is)
+        val zstd = new ZstdInputStream(cs)
+        val bis = new BOMInputStream(zstd)
+        (Source.fromInputStream(bis, "UTF-8"), new FileReadProgress(file.length(), cs))
+      } catch {
+        case NonFatal(e) =>
+          is.close()
+          throw new RuntimeException(s"Failed to open ZSTD compressed file: ${file.getName}", e)
+      }
     }
     else if (file.getName.endsWith(".xml.gz")) {
       val is = new FileInputStream(file)

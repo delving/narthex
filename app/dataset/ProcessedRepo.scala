@@ -35,6 +35,7 @@ import scala.jdk.CollectionConverters._
 object ProcessedRepo {
 
   val XML_SUFFIX = ".xml"
+  val ZSTD_XML_SUFFIX = ".xml.zst"
   val ERROR_SUFFIX = ".txt"
   val BULK_ACTION_SUFFIX = "_actions.txt"
   val NQUAD_SUFFIX = ".nq"
@@ -83,6 +84,8 @@ object ProcessedRepo {
 
   private def xmlFileName(number: Int) = s"${numberString(number)}$XML_SUFFIX"
 
+  private def zstdXmlFileName(number: Int) = s"${numberString(number)}$ZSTD_XML_SUFFIX"
+
   private def errorFileName(number: Int) =
     s"${numberString(number)}$ERROR_SUFFIX"
 
@@ -96,7 +99,14 @@ object ProcessedRepo {
     file.getName.substring(0, file.getName.indexOf('.')).toInt
 
   case class ProcessedOutput(home: File, number: Int) {
-    val xmlFile = new File(home, xmlFileName(number))
+    // New files are written as ZSTD compressed
+    val xmlFile = new File(home, zstdXmlFileName(number))
+    // Legacy uncompressed XML file (for backward compatibility)
+    val xmlFileLegacy = new File(home, xmlFileName(number))
+    // Get the actual file that exists, preferring ZSTD
+    def actualXmlFile: File = if (xmlFile.exists()) xmlFile else xmlFileLegacy
+    def hasXmlFile: Boolean = xmlFile.exists() || xmlFileLegacy.exists()
+
     val errorFile = new File(home, errorFileName(number))
     val bulkActionFile = new File(home, bulkActionFileName(number))
     val nquadFile = new File(home, nquadFileName(number))
@@ -116,12 +126,12 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   val baseOutput = ProcessedOutput(home, 0)
 
-  def nonEmpty: Boolean = baseOutput.xmlFile.exists()
+  def nonEmpty: Boolean = baseOutput.hasXmlFile
 
   def listXmlFiles: List[File] =
     home
       .listFiles()
-      .filter(f => f.getName.endsWith(XML_SUFFIX))
+      .filter(f => f.getName.endsWith(XML_SUFFIX) || f.getName.endsWith(ZSTD_XML_SUFFIX))
       .sortBy(_.getName)
       .toList
 
@@ -133,7 +143,10 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
       .toList
 
   def listOutputs: List[ProcessedOutput] = {
-    listXmlFiles.map(file => ProcessedOutput(home, getFileNumber(file))).toList
+    listXmlFiles
+      .map(file => ProcessedOutput(home, getFileNumber(file)))
+      .distinctBy(_.number)  // Avoid duplicates if both .xml and .xml.zst exist
+      .toList
   }
 
   def listSourceFiles: List[File] = {
@@ -170,7 +183,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   def getLatestProcessed: Option[File] = {
     val files = listOutputs
-    files.filter(_.xmlFile.exists()).map(_.xmlFile).lastOption
+    files.filter(_.hasXmlFile).map(_.actualXmlFile).lastOption
   }
 
   def getLatestSourced: Option[File] = {
@@ -258,7 +271,8 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
 
   def createGraphReaderXML(fileOpt: Option[File], timeStamp: DateTime, progressReporter: ProgressReporter) = new GraphReader {
     val LineId = "<!--<([^>]+)__([^>]+)>-->".r
-    var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listXmlFiles)
+    // Use actualXmlFile to support both .xml.zst (ZSTD) and .xml (legacy) formats
+    var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listOutputs.map(_.actualXmlFile))
     val totalLength = (0L /: files.map(_.length()))(_ + _)
     var activeReader: Option[BufferedReader] = None
     var previousBytesRead = 0L

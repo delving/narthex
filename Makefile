@@ -1,4 +1,6 @@
 # Makefile for Narthex
+.PHONY: compile dist run package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm
+
 NAME:=narthex
 VERSION:=$(shell sh -c 'grep "ThisBuild / version" version.sbt | cut -d\" -f2')
 MAINTAINER:="Sjoerd Siebinga <sjoerd@delving.eu>"

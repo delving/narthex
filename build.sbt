@@ -86,6 +86,9 @@ libraryDependencies ++= Seq(
   "org.webjars" % "angular-sanitize" % "1.3.11",
 )
 
+// ZSTD compression for processed XML files
+libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.6-4"
+
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.1.4" % Test,
   "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % Test,

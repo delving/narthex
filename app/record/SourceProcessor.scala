@@ -186,7 +186,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
 
         val processedOutput = datasetContext.processedRepo.createOutput
         log.info(s"Processing will write to: ${processedOutput.xmlFile.getName} (number: ${processedOutput.number})")
-        val xmlOutput = createWriter(processedOutput.xmlFile)
+        val xmlOutput = createZstdWriter(processedOutput.xmlFile)  // ZSTD compressed output
         val errorOutput = createWriter(processedOutput.errorFile)
         val bulkActionOutput = createWriter(processedOutput.bulkActionFile)
         //val nquadOutput = createWriter(processedOutput.nquadFile)
