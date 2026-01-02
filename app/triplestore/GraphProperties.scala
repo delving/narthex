@@ -140,6 +140,22 @@ object GraphProperties {
   val harvestErrorCount = NXProp("harvestErrorCount", intProp)
   val harvestErrorRecoveryAttempts = NXProp("harvestErrorRecoveryAttempts", intProp)
 
+  // JSON harvest configuration
+  val harvestJsonItemsPath = NXProp("harvestJsonItemsPath")          // e.g., "Items" or "result"
+  val harvestJsonIdPath = NXProp("harvestJsonIdPath")                // e.g., "ID" or "record.id"
+  val harvestJsonTotalPath = NXProp("harvestJsonTotalPath")          // e.g., "TotalItems"
+  val harvestJsonPageParam = NXProp("harvestJsonPageParam")          // e.g., "page"
+  val harvestJsonPageSizeParam = NXProp("harvestJsonPageSizeParam")  // e.g., "pagesize"
+  val harvestJsonPageSize = NXProp("harvestJsonPageSize", intProp)   // default page size
+  val harvestJsonDetailPath = NXProp("harvestJsonDetailPath")        // e.g., "/items/{id}"
+  val harvestJsonSkipDetail = NXProp("harvestJsonSkipDetail", booleanProp) // optimization: use list records directly
+  val harvestJsonXmlRoot = NXProp("harvestJsonXmlRoot")              // e.g., "records"
+  val harvestJsonXmlRecord = NXProp("harvestJsonXmlRecord")          // e.g., "record"
+
+  // API Key authentication (in addition to existing Basic Auth)
+  val harvestApiKey = NXProp("harvestApiKey")                        // the API key value (stored encrypted)
+  val harvestApiKeyParam = NXProp("harvestApiKeyParam")              // query param name, e.g., "api_key"
+
   // Operation tracking for restart recovery
   val datasetCurrentOperation = NXProp("datasetCurrentOperation")  // HARVESTING, PROCESSING, SAVING, etc.
   val datasetOperationStartTime = NXProp("datasetOperationStartTime", timeProp)

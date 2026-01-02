@@ -155,5 +155,9 @@ GET         /non-public/monitoring/info                                      con
 GET         /non-public/monitoring/health                                    controllers.InfoController.health
 GET         /non-public/monitoring/connection-stats                          controllers.InfoController.connectionStats
 
-# Preview functionality for OAI-PMH and AdLib harvest URLs
+# Preview functionality for harvest URLs
+# JSON harvest preview - fetches first page and transforms to XML (must come before wildcard route)
+GET         /narthex/preview/json/:spec                                      web.PreviewController.previewJsonHarvest(spec)
+
+# Generic preview for OAI-PMH and AdLib harvest URLs (wildcard route)
 GET         /narthex/preview/*dataUrl                                        web.PreviewController.previewHarvestUrl(dataUrl)

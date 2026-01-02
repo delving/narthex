@@ -28,7 +28,8 @@ import dataset.DatasetActor._
 import dataset.DsInfo.DsState._
 import dataset.SourceRepo.SourceFacts
 import harvest.Harvester
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestJSON, HarvestPMH, HarvestDownloadLink}
+import harvest.Harvesting.{JsonHarvestConfig, HarvestType}
 import harvest.Harvesting.HarvestType._
 import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
 import mapping.Skosifier.SkosificationComplete
@@ -584,8 +585,8 @@ class DatasetActor(val datasetContext: DatasetContext,
           prop(harvestRecord),
           prop(harvestDownloadURL))
 
-        // Get AdLib credentials if configured
-        val adlibCredentials: Option[(String, String)] = {
+        // Get Basic Auth credentials if configured
+        val credentials: Option[(String, String)] = {
           val username = prop(harvestUsername)
           val encryptedPassword = prop(harvestPassword)
           if (username.nonEmpty && encryptedPassword.nonEmpty) {
@@ -596,10 +597,36 @@ class DatasetActor(val datasetContext: DatasetContext,
           }
         }
 
+        // Get API key if configured (for JSON harvest)
+        val apiKey: Option[(String, String)] = {
+          val paramName = prop(harvestApiKeyParam)
+          val encryptedKey = prop(harvestApiKey)
+          if (paramName.nonEmpty && encryptedKey.nonEmpty) {
+            val keyValue = CredentialEncryption.decrypt(encryptedKey, orgContext.appConfig.appSecret)
+            Some((paramName, keyValue))
+          } else {
+            None
+          }
+        }
+
         val kickoff = harvestType match {
           case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
           case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
-          case ADLIB => HarvestAdLib(strategy, url, ds, se, adlibCredentials)
+          case ADLIB => HarvestAdLib(strategy, url, ds, se, credentials)
+          case JSON =>
+            val jsonConfig = JsonHarvestConfig(
+              itemsPath = prop(harvestJsonItemsPath),
+              idPath = prop(harvestJsonIdPath),
+              totalPath = Option(prop(harvestJsonTotalPath)).filter(_.nonEmpty),
+              pageParam = Option(prop(harvestJsonPageParam)).filter(_.nonEmpty).getOrElse("page"),
+              pageSizeParam = Option(prop(harvestJsonPageSizeParam)).filter(_.nonEmpty).getOrElse("pagesize"),
+              pageSize = Try(prop(harvestJsonPageSize).toInt).getOrElse(50),
+              detailPath = Option(prop(harvestJsonDetailPath)).filter(_.nonEmpty),
+              skipDetail = prop(harvestJsonSkipDetail) == "true",
+              xmlRoot = Option(prop(harvestJsonXmlRoot)).filter(_.nonEmpty).getOrElse("records"),
+              xmlRecord = Option(prop(harvestJsonXmlRecord)).filter(_.nonEmpty).getOrElse("record")
+            )
+            HarvestJSON(strategy, url, jsonConfig, credentials, apiKey)
         }
         val harvester = createChildActor(
           Harvester.props(datasetContext,
@@ -1046,8 +1073,8 @@ class DatasetActor(val datasetContext: DatasetContext,
           prop(harvestRecord),
           prop(harvestDownloadURL))
 
-        // Get AdLib credentials if configured
-        val adlibCredentials: Option[(String, String)] = {
+        // Get Basic Auth credentials if configured
+        val credentials: Option[(String, String)] = {
           val username = prop(harvestUsername)
           val encryptedPassword = prop(harvestPassword)
           if (username.nonEmpty && encryptedPassword.nonEmpty) {
@@ -1058,10 +1085,36 @@ class DatasetActor(val datasetContext: DatasetContext,
           }
         }
 
+        // Get API key if configured (for JSON harvest)
+        val apiKey: Option[(String, String)] = {
+          val paramName = prop(harvestApiKeyParam)
+          val encryptedKey = prop(harvestApiKey)
+          if (paramName.nonEmpty && encryptedKey.nonEmpty) {
+            val keyValue = CredentialEncryption.decrypt(encryptedKey, orgContext.appConfig.appSecret)
+            Some((paramName, keyValue))
+          } else {
+            None
+          }
+        }
+
         val kickoff = harvestType match {
           case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
           case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
-          case ADLIB => HarvestAdLib(strategy, url, ds, se, adlibCredentials)
+          case ADLIB => HarvestAdLib(strategy, url, ds, se, credentials)
+          case JSON =>
+            val jsonConfig = JsonHarvestConfig(
+              itemsPath = prop(harvestJsonItemsPath),
+              idPath = prop(harvestJsonIdPath),
+              totalPath = Option(prop(harvestJsonTotalPath)).filter(_.nonEmpty),
+              pageParam = Option(prop(harvestJsonPageParam)).filter(_.nonEmpty).getOrElse("page"),
+              pageSizeParam = Option(prop(harvestJsonPageSizeParam)).filter(_.nonEmpty).getOrElse("pagesize"),
+              pageSize = Try(prop(harvestJsonPageSize).toInt).getOrElse(50),
+              detailPath = Option(prop(harvestJsonDetailPath)).filter(_.nonEmpty),
+              skipDetail = prop(harvestJsonSkipDetail) == "true",
+              xmlRoot = Option(prop(harvestJsonXmlRoot)).filter(_.nonEmpty).getOrElse("records"),
+              xmlRecord = Option(prop(harvestJsonXmlRecord)).filter(_.nonEmpty).getOrElse("record")
+            )
+            HarvestJSON(strategy, url, jsonConfig, credentials, apiKey)
         }
         val harvester = createChildActor(
           Harvester.props(datasetContext,

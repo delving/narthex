@@ -21,8 +21,9 @@ import java.nio.charset.StandardCharsets
 import java.util.Base64
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.xml.{NodeSeq, XML}
+import scala.xml.{Elem, Node, NodeSeq, XML}
 import play.api.Logger
+import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.shaded.ahc.org.asynchttpclient.netty.NettyResponse
 import org.joda.time.DateTime
@@ -59,8 +60,14 @@ object Harvesting {
       uniqueId = "/adlibXML/recordList/record/@priref",
       recordContainer = None
     )
+    val JSON = HarvestType(
+      name = "json",
+      recordRoot = "/records/record",          // Default, configurable via harvestJsonXmlRoot/harvestJsonXmlRecord
+      uniqueId = "/records/record/@id",
+      recordContainer = None
+    )
 
-    val ALL_TYPES = List(PMH, ADLIB, DOWNLOAD)
+    val ALL_TYPES = List(PMH, ADLIB, DOWNLOAD, JSON)
 
     def harvestTypeFromString(string: String): Option[HarvestType] = ALL_TYPES.find(s => s.matches(string))
   }
@@ -107,6 +114,40 @@ object Harvesting {
     strategy: HarvestStrategy,
     diagnostic: AdLibDiagnostic,
     errorOpt: Option[String] = None)
+
+  // JSON harvest configuration and page result
+  case class JsonHarvestConfig(
+    itemsPath: String,           // JSON path to items array, e.g., "Items" or "data.results"
+    idPath: String,              // JSON path to record ID, e.g., "ID" or "record.id"
+    totalPath: Option[String],   // JSON path to total count, e.g., "TotalItems"
+    pageParam: String,           // Query param for page number, e.g., "page"
+    pageSizeParam: String,       // Query param for page size, e.g., "pagesize"
+    pageSize: Int,               // Number of records per page
+    detailPath: Option[String],  // URL path template for detail fetch, e.g., "/items/{id}"
+    skipDetail: Boolean,         // If true, use list records directly (optimization)
+    xmlRoot: String,             // Root element name for XML output, e.g., "records"
+    xmlRecord: String            // Record element name for XML output, e.g., "record"
+  )
+
+  case class JsonDiagnostic(totalItems: Option[Int], current: Int, pageItems: Int) {
+    def isLast: Boolean = totalItems.map(total => current + pageItems >= total).getOrElse(false)
+
+    def percentComplete: Int = totalItems match {
+      case Some(total) if total > 0 =>
+        val pc = (100 * current) / total
+        if (pc < 1) 1 else pc
+      case _ => 0
+    }
+  }
+
+  case class JsonHarvestPage(
+    records: String,             // XML string containing all records
+    url: String,
+    strategy: HarvestStrategy,
+    config: JsonHarvestConfig,
+    diagnostic: JsonDiagnostic,
+    errorOpt: Option[String] = None
+  )
 
   case class HarvestCron(previous: DateTime, delay: Int, unit: DelayUnit, incremental: Boolean) {
 
@@ -388,6 +429,182 @@ trait Harvesting {
             )
             logger.debug(s"Return PMHHarvestPage: $newToken, $sourceUri")
             harvestPage
+        }
+      }
+    }
+  }
+
+  // JSON path extraction using dot notation (e.g., "data.items" or "Items")
+  def extractJsonPath(json: JsValue, path: String): JsValue = {
+    if (path.isEmpty) json
+    else path.split("\\.").foldLeft(json) { (js, key) =>
+      (js \ key).getOrElse(JsNull)
+    }
+  }
+
+  // Convert a JSON value to XML elements
+  def jsonToXmlNodes(key: String, value: JsValue): Seq[Node] = {
+    value match {
+      case JsNull => Seq.empty
+      case JsBoolean(b) => Seq(Elem(null, key, scala.xml.Null, scala.xml.TopScope, false, scala.xml.Text(b.toString)))
+      case JsNumber(n) => Seq(Elem(null, key, scala.xml.Null, scala.xml.TopScope, false, scala.xml.Text(n.toString)))
+      case JsString(s) => Seq(Elem(null, key, scala.xml.Null, scala.xml.TopScope, false, scala.xml.Text(s)))
+      case JsArray(arr) =>
+        arr.flatMap(item => jsonToXmlNodes(key, item)).toSeq
+      case obj: JsObject =>
+        val children = obj.fields.flatMap { case (k, v) => jsonToXmlNodes(k, v) }
+        Seq(Elem(null, key, scala.xml.Null, scala.xml.TopScope, false, children: _*))
+    }
+  }
+
+  // Convert a JSON object to an XML record element with id attribute
+  def jsonRecordToXml(json: JsValue, recordName: String, idPath: String): Elem = {
+    val id = extractJsonPath(json, idPath) match {
+      case JsString(s) => s
+      case JsNumber(n) => n.toString
+      case _ => ""
+    }
+    val children = json match {
+      case obj: JsObject =>
+        obj.fields.flatMap { case (k, v) => jsonToXmlNodes(k, v) }
+      case _ => Seq.empty
+    }
+    Elem(null, recordName, new scala.xml.UnprefixedAttribute("id", id, scala.xml.Null), scala.xml.TopScope, false, children: _*)
+  }
+
+  // Wrap records in a root element
+  def wrapRecordsInXml(records: Seq[Elem], rootName: String): String = {
+    val root = Elem(null, rootName, scala.xml.Null, scala.xml.TopScope, false, records: _*)
+    root.toString()
+  }
+
+  def fetchJsonPage(timeOut: Long, wsApi: WSClient, strategy: HarvestStrategy, url: String,
+                    config: JsonHarvestConfig,
+                    diagnosticOption: Option[JsonDiagnostic] = None,
+                    page: Int = 1,
+                    credentials: Option[(String, String)] = None,
+                    apiKey: Option[(String, String)] = None)  // (paramName, keyValue)
+                   (implicit harvestExecutionContext: ExecutionContext): Future[AnyRef] = {
+
+    val cleanUrl = url.stripSuffix("?").stripSuffix("/")
+    val baseRequest = wsApi.url(cleanUrl).withRequestTimeout(timeOut.milliseconds)
+
+    // Add pagination parameters
+    val withPagination = baseRequest.withQueryStringParameters(
+      config.pageParam -> page.toString,
+      config.pageSizeParam -> config.pageSize.toString
+    )
+
+    // Add API key if provided
+    val withApiKey = apiKey match {
+      case Some((paramName, keyValue)) if paramName.nonEmpty && keyValue.nonEmpty =>
+        withPagination.withQueryStringParameters(paramName -> keyValue)
+      case _ => withPagination
+    }
+
+    // Add Basic Auth header if credentials provided
+    val request = credentials match {
+      case Some((username, password)) if username.nonEmpty =>
+        val encoded = Base64.getEncoder.encodeToString(s"$username:$password".getBytes(StandardCharsets.UTF_8))
+        withApiKey.withHttpHeaders("Authorization" -> s"Basic $encoded")
+      case _ =>
+        withApiKey
+    }
+
+    logger.info(s"JSON harvest url: ${request.uri}")
+
+    // Define success condition for retry
+    implicit val success = new retry.Success[WSResponse](r => !((500 to 599) contains r.status))
+
+    // Retry with backoff
+    val wsResponseFuture = retry.Backoff(6, 1.seconds).apply { () =>
+      request.get()
+    }
+
+    wsResponseFuture.map { response =>
+      val sourceUrl = request.uri.toString
+
+      if (response.status != 200) {
+        logger.error(s"HTTP error from $sourceUrl: ${response.statusText}")
+        HarvestError(s"HTTP Response: ${response.statusText} from $sourceUrl", strategy)
+      } else {
+        try {
+          val json = response.json
+
+          // Extract items array
+          val items = extractJsonPath(json, config.itemsPath) match {
+            case JsArray(arr) => arr.toSeq
+            case _ =>
+              logger.warn(s"Items path '${config.itemsPath}' did not return an array from $sourceUrl")
+              Seq.empty
+          }
+
+          // Extract total count if configured
+          val totalItems: Option[Int] = config.totalPath.flatMap { path =>
+            extractJsonPath(json, path) match {
+              case JsNumber(n) => Some(n.toInt)
+              case JsString(s) => scala.util.Try(s.toInt).toOption
+              case _ => None
+            }
+          }
+
+          // Calculate current position
+          val currentPosition = diagnosticOption.map(d => d.current + d.pageItems).getOrElse(0)
+
+          val diagnostic = JsonDiagnostic(
+            totalItems = totalItems,
+            current = currentPosition,
+            pageItems = items.size
+          )
+
+          if (items.isEmpty) {
+            logger.debug(s"No JSON records returned from $sourceUrl (page $page)")
+            if (page > 1 && totalItems.isEmpty) {
+              // If we're past page 1 and no total, assume we've reached the end
+              JsonHarvestPage(
+                records = wrapRecordsInXml(Seq.empty, config.xmlRoot),
+                url = cleanUrl,
+                strategy = strategy,
+                config = config,
+                diagnostic = diagnostic.copy(totalItems = Some(currentPosition)),
+                errorOpt = None
+              )
+            } else if (page == 1) {
+              NoRecordsMatch("No records found", strategy)
+            } else {
+              JsonHarvestPage(
+                records = wrapRecordsInXml(Seq.empty, config.xmlRoot),
+                url = cleanUrl,
+                strategy = strategy,
+                config = config,
+                diagnostic = diagnostic,
+                errorOpt = None
+              )
+            }
+          } else {
+            // Transform JSON records to XML
+            val xmlRecords = items.map { item =>
+              jsonRecordToXml(item, config.xmlRecord, config.idPath)
+            }
+
+            val xmlString = wrapRecordsInXml(xmlRecords, config.xmlRoot)
+
+            JsonHarvestPage(
+              records = xmlString,
+              url = cleanUrl,
+              strategy = strategy,
+              config = config,
+              diagnostic = diagnostic,
+              errorOpt = None
+            )
+          }
+        } catch {
+          case e: JsResultException =>
+            logger.error(s"JSON parsing error from $sourceUrl: ${e.getMessage}")
+            HarvestError(s"JSON parsing failed for $sourceUrl: ${e.getMessage}", strategy)
+          case e: Exception =>
+            logger.error(s"Error processing JSON from $sourceUrl: ${e.getMessage}")
+            HarvestError(s"Error processing JSON from $sourceUrl: ${e.getMessage}", strategy)
         }
       }
     }

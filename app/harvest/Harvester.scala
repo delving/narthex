@@ -25,8 +25,8 @@ import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.pipe
 import dataset.DatasetActor._
 import dataset.DatasetContext
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink, AdLibSingleRecordHarvest}
-import harvest.Harvesting.{AdLibHarvestPage, HarvestError, NoRecordsMatch, PMHHarvestPage}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink, HarvestJSON, AdLibSingleRecordHarvest}
+import harvest.Harvesting.{AdLibHarvestPage, HarvestError, JsonHarvestConfig, JsonHarvestPage, NoRecordsMatch, PMHHarvestPage}
 import nxutil.Utils.actorWork
 import org.apache.commons.io.FileUtils
 import play.api.Logger
@@ -47,6 +47,14 @@ object Harvester {
   case class HarvestAdLib(strategy: HarvestStrategy, url: String, database: String, search: String, credentials: Option[(String, String)] = None)
 
   case class HarvestPMH(strategy: HarvestStrategy, url: String, set: String, prefix: String, recordId: String)
+
+  case class HarvestJSON(
+    strategy: HarvestStrategy,
+    url: String,
+    config: JsonHarvestConfig,
+    credentials: Option[(String, String)] = None,
+    apiKey: Option[(String, String)] = None  // (paramName, keyValue)
+  )
 
   case class HarvestComplete(strategy: HarvestStrategy, fileOpt: Option[File], noRecordsMatch: Boolean = false)
 
@@ -88,6 +96,10 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var errorThresholdOpt: Option[Int] = None
   var recordsProcessed: Int = 0
   var adlibCredentials: Option[(String, String)] = None  // Basic auth credentials for AdLib
+  var jsonCredentials: Option[(String, String)] = None   // Basic auth credentials for JSON
+  var jsonApiKey: Option[(String, String)] = None        // API key for JSON (paramName, keyValue)
+  var jsonConfig: Option[JsonHarvestConfig] = None       // JSON harvest configuration
+  var jsonPageNumber: Int = 1                            // Current JSON page number
 
   private def cleanup(): Unit = {
     zipOutputOpt.foreach { zipOutput =>
@@ -709,6 +721,88 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
         futurePage pipeTo self
       } getOrElse {
         finish(strategy, None)
+      }
+    }
+
+    case HarvestJSON(strategy, url, config, credentials, apiKey) => actorWork(context) {
+      // Reset counters for new harvest
+      pageCount = 0
+      harvestedRecords = 0
+      recordsPerPage = None
+      jsonPageNumber = 1
+
+      // Store credentials and config for subsequent page fetches
+      jsonCredentials = credentials
+      jsonApiKey = apiKey
+      jsonConfig = Some(config)
+
+      log.info(s"JSON Harvesting $url to $datasetContext (with auth: ${credentials.isDefined}, apiKey: ${apiKey.isDefined})")
+
+      val futurePage = fetchJsonPage(timeout, wsApi, strategy, url, config, None, 1, credentials, apiKey)
+      handleFailure(futurePage, strategy, "json harvest")
+
+      strategy match {
+        case Sample =>
+          val slug = StringHandling.slugify(url)
+          val rawXml = datasetContext.createRawFile(s"$slug.xml")
+          futurePage.map {
+            case page: JsonHarvestPage =>
+              FileUtils.writeStringToFile(rawXml, page.records, "UTF-8")
+              finish(strategy, None)
+          }
+        case _ =>
+          progressOpt = Some(ProgressReporter(HARVESTING, context.parent))
+          futurePage pipeTo self
+      }
+    }
+
+    case JsonHarvestPage(records, url, strategy, config, diagnostic, errorOpt) => actorWork(context) {
+      // Check if this page contains an error
+      val pageHasError = errorOpt.isDefined || records.isEmpty
+
+      if (pageHasError) {
+        // JSON harvest doesn't support error recovery like AdLib - just report error
+        finish(strategy, errorOpt.orElse(Some("Empty records")))
+      } else {
+        Try(addPage(records)) match {
+          case Success(pageNumber) =>
+            recordsProcessed += diagnostic.pageItems
+            jsonPageNumber += 1
+
+            // Calculate total pages from total items and page size
+            val calculatedTotalPages = diagnostic.totalItems.flatMap { total =>
+              if (config.pageSize > 0 && total > 0)
+                Some((total + config.pageSize - 1) / config.pageSize)
+              else None
+            }
+
+            // Send progress with detailed metadata
+            val currentRecords = diagnostic.current + diagnostic.pageItems
+            progressOpt.get.sendProgress(
+              percent = diagnostic.percentComplete,
+              currentPage = Some(pageNumber),
+              totalPages = calculatedTotalPages,
+              currentRecords = Some(currentRecords),
+              totalRecords = diagnostic.totalItems
+            )
+            log.info(s"JSON Harvest Page: $pageNumber - $url to $datasetContext: $diagnostic")
+
+            if (diagnostic.isLast) {
+              finish(strategy, None)
+            } else {
+              // Fetch next page
+              val futurePage = fetchJsonPage(
+                timeout, wsApi, strategy, url, config,
+                Some(diagnostic), jsonPageNumber, jsonCredentials, jsonApiKey
+              )
+              handleFailure(futurePage, strategy, "json harvest page")
+              futurePage pipeTo self
+            }
+
+          case Failure(e) =>
+            log.error(s"Failed to process JSON harvest page: ${e.getMessage}", e)
+            finish(strategy, Some(e.toString))
+        }
       }
     }
 
