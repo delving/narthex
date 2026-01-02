@@ -46,6 +46,7 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-library" % "2.13.11",
   "org.scala-lang.modules" %% "scala-xml" % "1.3.0",
+  "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4",
   "com.typesafe.akka" %% "akka-actor-typed" % "2.6.21",
   "com.typesafe.akka" %% "akka-protobuf-v3" % "2.6.21",
   "com.typesafe.akka" %% "akka-stream" % "2.6.21",
@@ -93,7 +94,7 @@ libraryDependencies ++= Seq(
 )
 
 resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
-libraryDependencies += "eu.delving" % "sip-core" % "1.3.0" exclude("org.apache.jena", "jena-arq")
+libraryDependencies += "eu.delving" % "sip-core" % "1.4.0-SNAPSHOT" exclude("org.apache.jena", "jena-arq") exclude("org.slf4j", "slf4j-api")
 
 dependencyOverrides ++= Seq(
   // Currently necessary for running on JDK 17
@@ -105,6 +106,8 @@ dependencyOverrides ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-core" % "2.11.4",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.11.4",
   "com.fasterxml.jackson.core" % "jackson-annotations" % "2.11.4",
+  // SLF4J 2.x from Groovy 4.0.27 is incompatible with Play 2.8.20's logback
+  "org.slf4j" % "slf4j-api" % "1.7.36",
 )
 
 routesGenerator := InjectedRoutesGenerator
@@ -115,7 +118,7 @@ RjsKeys.optimize := "none"
 
 import com.typesafe.sbt.packager.docker._
 dockerCommands := Seq(
-  Cmd("FROM", "frolvlad/alpine-oraclejdk8:slim"),
+  Cmd("FROM", "eclipse-temurin:21-jre-alpine"),
   Cmd("MAINTAINER", "info@delving.eu"),
   Cmd("RUN", "apk update && apk add bash"),
   Cmd("WORKDIR", "/opt/docker"),
@@ -128,7 +131,7 @@ dockerCommands := Seq(
 
 // Scala Compiler Options
 scalacOptions ++= Seq(
-  "-release", "8",
+  "-release", "21",
   "-encoding", "UTF-8",
   "-deprecation", // warning and location for usages of deprecated APIs
   "-feature", // warning and location for usages of features that should be imported explicitly

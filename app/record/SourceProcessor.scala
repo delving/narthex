@@ -41,6 +41,7 @@ import mapping.DefaultMappingRepo
 import play.api.libs.json.{JsValue, Json, Writes}
 
 
+import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
@@ -248,44 +249,60 @@ class SourceProcessor(val datasetContext: DatasetContext,
           //nquadOutput.write("\n")
         }
 
+        // Batch size for parallel processing
+        val batchSize = 100
+        val batch = new ArrayBuffer[Pocket](batchSize)
+
+        def processBatch(): Unit = {
+          if (batch.nonEmpty) {
+            progress.get.checkInterrupt()
+            val startAll = System.currentTimeMillis()
+
+            // Execute mappings in parallel
+            val results = sipMapper.executeMappingsParallel(batch.toSeq)
+            val processing = System.currentTimeMillis() - startAll
+            val startWrite = System.currentTimeMillis()
+
+            // Write results sequentially (maintains order, thread-safe output)
+            results.foreach { case (rawPocket, pocketTry) =>
+              pocketTry match {
+                case Success(pocket) =>
+                  pocket.writeTo(xmlOutput)
+                  validRecords += 1
+
+                case Failure(ue: URIErrorsException) =>
+                  writeError("URI ERRORS", ue.uriErrors.mkString("\n"), rawPocket.id)
+
+                case Failure(disc: DiscardRecordException) =>
+                  writeError("DISCARDED RECORD", disc.getMessage, rawPocket.id)
+
+                case Failure(sax: SAXException) =>
+                  writeError("XSD ERROR", sax.getMessage, rawPocket.id)
+
+                case Failure(unexpected: Throwable) =>
+                  writeError("UNEXPECTED ERROR", unexpected.toString, rawPocket.id)
+              }
+            }
+
+            batch.clear()
+
+            val total = validRecords + invalidRecords
+            if (total % 10000 == 0) {
+              val now = System.currentTimeMillis()
+              log.debug(s"Processing $total: ${now - time}ms")
+              time = now
+            }
+            val writing = System.currentTimeMillis() - startWrite
+            val totalTime = System.currentTimeMillis() - startAll
+            log.debug(s"Batch total: ${totalTime}ms. Processing: ${processing}ms, writing: ${writing}ms")
+          }
+        }
+
         def catchPocket(rawPocket: Pocket): Unit = {
-          progress.get.checkInterrupt()
-          val startAll = System.currentTimeMillis()
-          val pocketTry = sipMapper.executeMapping(rawPocket)
-          val processing = System.currentTimeMillis() - startAll
-          val startWrite = System.currentTimeMillis()
-          pocketTry match {
-            case Success(pocket) =>
-              pocket.writeTo(xmlOutput)
-              // insert RDF graph into bulk actions
-              // TODO make bulk action switchable
-              //writeBulkAction(pocket.text, pocket.id, rawPocket.id)
-              validRecords += 1
-
-            case Failure(ue: URIErrorsException) =>
-              writeError("URI ERRORS",
-                         ue.uriErrors.mkString("\n"),
-                         rawPocket.id)
-
-            case Failure(disc: DiscardRecordException) =>
-              writeError("DISCARDED RECORD", disc.getMessage, rawPocket.id)
-
-            case Failure(sax: SAXException) =>
-              writeError("XSD ERROR", sax.getMessage, rawPocket.id)
-
-            case Failure(unexpected: Throwable) =>
-              writeError("UNEXPECTED ERROR", unexpected.toString, rawPocket.id)
+          batch += rawPocket
+          if (batch.size >= batchSize) {
+            processBatch()
           }
-          val total = validRecords + invalidRecords
-          if (total % 10000 == 0) {
-            val now = System.currentTimeMillis()
-            log.debug(s"Processing $total: ${now - time}ms")
-            time = now
-          }
-          val writing = System.currentTimeMillis() - startWrite
-          val totalTime = System.currentTimeMillis() - startAll
-          log.debug(
-            s"Total: ${totalTime}. Processing: ${processing}, writing: $writing")
         }
 
         val idFilter = dsInfo.getIdFilter
@@ -304,6 +321,8 @@ class SourceProcessor(val datasetContext: DatasetContext,
                          Set.empty[String],
                          catchPocket,
                          progressReporter)
+            // Process any remaining records in the final batch
+            processBatch()
           } finally {
             source.close()
           }
@@ -315,6 +334,9 @@ class SourceProcessor(val datasetContext: DatasetContext,
             sourceRepo.parsePockets(catchPocket, idFilter, progressReporter)
           }
         }
+
+        // Process any remaining records in the final batch
+        processBatch()
 
         xmlOutput.close()
         errorOutput.close()

@@ -38,6 +38,9 @@ import services.StringHandling.urlEncodeValue
 import scala.jdk.CollectionConverters._
 import scala.io.Source
 import scala.util.Try
+import scala.collection.parallel.CollectionConverters._
+import scala.collection.parallel.ForkJoinTaskSupport
+import java.util.concurrent.ForkJoinPool
 
 /**
  * A repository of sip files which knows everything about what a sip means, revealing all of the contained
@@ -129,6 +132,8 @@ object Sip {
     val prefix: String
 
     def executeMapping(pocket: Pocket): Try[Pocket]
+
+    def executeMappingsParallel(pockets: Seq[Pocket]): Seq[(Pocket, Try[Pocket])]
 
   }
 
@@ -309,9 +314,27 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
     val runner = new BulkMappingRunner(sipMapping.recMapping, new CodeGenerator(sipMapping.recMapping).withTrace(false).toRecordMappingCode)
 
+    // Thread pool for parallel processing - sized to available processors
+    private val forkJoinPool = new ForkJoinPool(
+      Math.max(2, Runtime.getRuntime.availableProcessors())
+    )
+
     override val datasetName = sipMapping.spec
 
     override val prefix: String = sipMapping.prefix
+
+    /**
+     * Execute mapping on multiple pockets in parallel.
+     * Thread-safe: CompiledScript.eval() and MetadataRecordFactory are both thread-safe.
+     * Returns results in same order as input.
+     */
+    override def executeMappingsParallel(pockets: Seq[Pocket]): Seq[(Pocket, Try[Pocket])] = {
+      val parPockets = pockets.par
+      parPockets.tasksupport = new ForkJoinTaskSupport(forkJoinPool)
+      parPockets.map { pocket =>
+        (pocket, executeMapping(pocket))
+      }.seq.toSeq
+    }
 
     override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
       val metadataRecord = factory.metadataRecordFrom(pocket.getText)
