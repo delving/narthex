@@ -1028,7 +1028,12 @@ define(["angular"], function () {
 
     var harvestFields = [
         "harvestType", "harvestURL", "harvestDataset", "harvestPrefix", "harvestSearch", "harvestRecord", "harvestDownloadURL",
-        "harvestContinueOnError", "harvestErrorThreshold", "harvestUsername", "harvestPassword"
+        "harvestContinueOnError", "harvestErrorThreshold", "harvestUsername", "harvestPassword",
+        // JSON harvest fields
+        "harvestJsonItemsPath", "harvestJsonIdPath", "harvestJsonTotalPath",
+        "harvestJsonPageParam", "harvestJsonPageSizeParam", "harvestJsonPageSize",
+        "harvestJsonDetailPath", "harvestJsonSkipDetail", "harvestJsonXmlRoot", "harvestJsonXmlRecord",
+        "harvestApiKeyParam", "harvestApiKey"
     ];
 
     var harvestCronFields = [
@@ -1291,8 +1296,8 @@ define(["angular"], function () {
         };
 
         $scope.setHarvest = function () {
-            // Filter out harvestPassword if it's empty and a password is already set
-            // This prevents overwriting an existing password with empty value
+            // Filter out harvestPassword and harvestApiKey if empty and already set
+            // This prevents overwriting existing credentials with empty values
             var fieldsToSave = _.filter(harvestFields, function(field) {
                 if (field === 'harvestPassword') {
                     var passwordValue = $scope.dataset.edit.harvestPassword;
@@ -1300,6 +1305,15 @@ define(["angular"], function () {
                     var passwordAlreadySet = $scope.dataset.harvestPasswordSet;
                     // Don't include password field if empty AND password already exists
                     if (passwordIsEmpty && passwordAlreadySet) {
+                        return false;
+                    }
+                }
+                if (field === 'harvestApiKey') {
+                    var apiKeyValue = $scope.dataset.edit.harvestApiKey;
+                    var apiKeyIsEmpty = !apiKeyValue || apiKeyValue === '';
+                    var apiKeyAlreadySet = $scope.dataset.harvestApiKeySet;
+                    // Don't include API key field if empty AND API key already exists
+                    if (apiKeyIsEmpty && apiKeyAlreadySet) {
                         return false;
                     }
                 }

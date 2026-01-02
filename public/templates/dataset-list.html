@@ -1108,6 +1108,9 @@
                     <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
                     <input type="radio" ng-model="dataset.edit.harvestType" value="download">
                     <span>Download</span>
+                    <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    <input type="radio" ng-model="dataset.edit.harvestType" value="json">
+                    <span>JSON API</span>
                 </div>
 
             </div>
@@ -1117,19 +1120,19 @@
                     <input id="harv_url" class="form-control" data-ng-model="dataset.edit.harvestURL" placeholder="http://...?" required/>
                 </div>
             </div>
-            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'download'">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'download' && dataset.edit.harvestType != 'json'">
                 <label class="col-sm-3" for="harv_set">Server Dataset</label>
                 <div class="col-sm-9">
                     <input id="harv_set" class="form-control" data-ng-model="dataset.edit.harvestDataset" placeholder="dataset"/>
                 </div>
             </div>
-            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'download'">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'download' && dataset.edit.harvestType != 'json'">
                 <label class="col-sm-3" for="harv_record">Record identifier</label>
                 <div class="col-sm-9">
                     <input id="harv_record" class="form-control" data-ng-model="dataset.edit.harvestRecord" placeholder="record identifier"/>
                 </div>
             </div>
-            <div class="form-group" data-ng-show="dataset.edit.harvestType != 'adlib' && dataset.edit.harvestType != 'download'">
+            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'pmh'">
                 <label class="col-sm-3" for="harv_prefix">Metadata Prefix</label>
                 <div class="col-sm-9">
                     <input id="harv_prefix" class="form-control" data-ng-model="dataset.edit.harvestPrefix" placeholder="prefix" required/>
@@ -1186,6 +1189,107 @@
                     <input id="download_url" class="form-control" data-ng-model="dataset.edit.harvestDownloadURL" placeholder="http://...?" required/>
                 </div>
             </div>
+
+            <!-- JSON API Configuration -->
+            <div data-ng-show="dataset.edit.harvestType == 'json'">
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_items_path">Items Path</label>
+                    <div class="col-sm-9">
+                        <input id="json_items_path" class="form-control" data-ng-model="dataset.edit.harvestJsonItemsPath" placeholder="e.g., Items or data.results" required/>
+                        <p class="help-block">JSON path to the array of records (dot notation)</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_id_path">ID Path</label>
+                    <div class="col-sm-9">
+                        <input id="json_id_path" class="form-control" data-ng-model="dataset.edit.harvestJsonIdPath" placeholder="e.g., ID or record.id" required/>
+                        <p class="help-block">JSON path to the unique record identifier</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_total_path">Total Count Path</label>
+                    <div class="col-sm-9">
+                        <input id="json_total_path" class="form-control" data-ng-model="dataset.edit.harvestJsonTotalPath" placeholder="e.g., TotalItems (optional)"/>
+                        <p class="help-block">JSON path to total record count (for progress display)</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_page_param">Page Parameter</label>
+                    <div class="col-sm-9">
+                        <input id="json_page_param" class="form-control" data-ng-model="dataset.edit.harvestJsonPageParam" placeholder="page"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_pagesize_param">Page Size Parameter</label>
+                    <div class="col-sm-9">
+                        <input id="json_pagesize_param" class="form-control" data-ng-model="dataset.edit.harvestJsonPageSizeParam" placeholder="pagesize"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_pagesize">Page Size</label>
+                    <div class="col-sm-9">
+                        <input type="number" id="json_pagesize" class="form-control" data-ng-model="dataset.edit.harvestJsonPageSize" placeholder="50"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_detail_path">Detail Path</label>
+                    <div class="col-sm-9">
+                        <input id="json_detail_path" class="form-control" data-ng-model="dataset.edit.harvestJsonDetailPath" placeholder="e.g., /items/{id} (optional)"/>
+                        <p class="help-block">URL path for individual record details (use {id} placeholder)</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3">Skip Detail Fetch</label>
+                    <div class="col-sm-9">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" data-ng-model="dataset.edit.harvestJsonSkipDetail" ng-true-value="'true'" ng-false-value="'false'"/>
+                                Use list data directly without fetching individual records
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_xml_root">XML Root Element</label>
+                    <div class="col-sm-9">
+                        <input id="json_xml_root" class="form-control" data-ng-model="dataset.edit.harvestJsonXmlRoot" placeholder="records"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_xml_record">XML Record Element</label>
+                    <div class="col-sm-9">
+                        <input id="json_xml_record" class="form-control" data-ng-model="dataset.edit.harvestJsonXmlRecord" placeholder="record"/>
+                    </div>
+                </div>
+                <!-- JSON Authentication Options -->
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_username">Basic Auth Username</label>
+                    <div class="col-sm-9">
+                        <input id="json_username" class="form-control" data-ng-model="dataset.edit.harvestUsername" placeholder="(optional)"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_password">Basic Auth Password</label>
+                    <div class="col-sm-9">
+                        <input id="json_password" type="password" class="form-control" data-ng-model="dataset.edit.harvestPassword" placeholder="{{ dataset.harvestPasswordSet ? '••••••••' : '(optional)' }}"/>
+                        <p class="help-block text-muted" data-ng-show="dataset.harvestPasswordSet">Leave blank to keep existing password</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_apikey_param">API Key Parameter</label>
+                    <div class="col-sm-9">
+                        <input id="json_apikey_param" class="form-control" data-ng-model="dataset.edit.harvestApiKeyParam" placeholder="e.g., api_key (optional)"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3" for="json_apikey">API Key</label>
+                    <div class="col-sm-9">
+                        <input id="json_apikey" type="password" class="form-control" data-ng-model="dataset.edit.harvestApiKey" placeholder="{{ dataset.harvestApiKeySet ? '••••••••' : '(optional)' }}"/>
+                        <p class="help-block text-muted" data-ng-show="dataset.harvestApiKeySet">Leave blank to keep existing API key</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="btn-group  pull-right" role="group">
                 <button type="button" class="btn btn-default" data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-download"></i>
@@ -1204,6 +1308,10 @@
                     <span>Preview</span>
                 </a>
                 <a href="/narthex/preview/{{ dataset.edit.harvestDownloadURL }}" data-ng-show="dataset.edit.harvestType == 'download'" target="_blank" type="button" class="btn btn-default">
+                    <i class="fa fa-binoculars"></i>
+                    <span>Preview</span>
+                </a>
+                <a href="/narthex/preview/json/{{ dataset.datasetSpec }}" data-ng-show="dataset.edit.harvestType == 'json'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
