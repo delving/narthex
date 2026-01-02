@@ -86,6 +86,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var progressOpt: Option[ProgressReporter] = None
   var recordsPerPage: Option[Int] = None  // Tracks page size for total pages calculation
   var harvestedRecords: Int = 0  // Actual count of harvested records for accurate progress
+  var maxTotalRecords: Int = 0  // Track max total records reported by API (to handle inconsistent responses)
+  var maxTotalPages: Int = 0    // Track max total pages calculated
 
   // Error recovery state
   var harvestErrors: Map[String, String] = Map.empty
@@ -385,6 +387,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       pageCount = 0
       harvestedRecords = 0
       recordsPerPage = None
+      maxTotalRecords = 0
+      maxTotalPages = 0
 
       // Store credentials for use in subsequent page fetches
       adlibCredentials = credentials
@@ -462,19 +466,24 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
             // Calculate total pages from total items and page size
             val calculatedTotalPages = if (diagnostic.pageItems > 0 && diagnostic.totalItems > 0) {
-              Some((diagnostic.totalItems + diagnostic.pageItems - 1) / diagnostic.pageItems)
-            } else None
+              (diagnostic.totalItems + diagnostic.pageItems - 1) / diagnostic.pageItems
+            } else 0
 
-            // Send progress with detailed metadata
+            // Track max values to handle inconsistent API responses
+            // (API may report different totals on different pages)
             val currentRecords = diagnostic.current + diagnostic.pageItems
+            maxTotalRecords = math.max(maxTotalRecords, math.max(diagnostic.totalItems, currentRecords))
+            maxTotalPages = math.max(maxTotalPages, math.max(calculatedTotalPages, pageNumber))
+
+            // Send progress with corrected totals (totals should never be less than current)
             progressOpt.get.sendProgress(
               percent = diagnostic.percentComplete,
               currentPage = Some(pageNumber),
-              totalPages = calculatedTotalPages,
+              totalPages = Some(maxTotalPages),
               currentRecords = Some(currentRecords),
-              totalRecords = Some(diagnostic.totalItems)
+              totalRecords = Some(maxTotalRecords)
             )
-            log.info(s"Harvest Page: $pageNumber - $url $database to $datasetContext: $diagnostic")
+            log.info(s"Harvest Page: $pageNumber - $url $database to $datasetContext: $diagnostic (maxTotal: $maxTotalRecords)")
 
             if (diagnostic.totalItems == 0) {
               finish(strategy, Some("noRecordsMatch"))
@@ -584,6 +593,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       pageCount = 0
       harvestedRecords = 0
       recordsPerPage = None
+      maxTotalRecords = 0
+      maxTotalPages = 0
 
       val url = s"${raw_url.stripSuffix("?")}?"
       log.info(s"Harvesting $strategy: $url $set $prefix to $datasetContext")
@@ -689,32 +700,36 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
       resumptionToken.map { token =>
         // Calculate total pages if we know records per page and total records
-        val calculatedTotalPages = for {
+        val calculatedTotalPages = (for {
           perPage <- recordsPerPage
           if token.totalRecords > 0 && perPage > 0
-        } yield (token.totalRecords + perPage - 1) / perPage  // Ceiling division
+        } yield (token.totalRecords + perPage - 1) / perPage).getOrElse(0)  // Ceiling division
+
+        // Track max values to handle inconsistent API responses
+        maxTotalRecords = math.max(maxTotalRecords, math.max(token.totalRecords, harvestedRecords))
+        maxTotalPages = math.max(maxTotalPages, math.max(calculatedTotalPages, pageCount))
 
         // Calculate percent based on actual harvested records (most accurate)
         // Falls back to page-based if no total records available
-        val percent = if (token.totalRecords > 0 && harvestedRecords > 0) {
-          val pc = (harvestedRecords * 100) / token.totalRecords
+        val percent = if (maxTotalRecords > 0 && harvestedRecords > 0) {
+          val pc = (harvestedRecords * 100) / maxTotalRecords
           if (pc < 1) 1 else if (pc > 99) 99 else pc  // Cap at 99 until actually done
         } else {
           // Fallback: calculate from page count if we know total pages
-          calculatedTotalPages.map { totalPages =>
-            val pc = (pageCount * 100) / totalPages
+          if (maxTotalPages > 0) {
+            val pc = (pageCount * 100) / maxTotalPages
             if (pc < 1) 1 else pc
-          }.getOrElse(0)  // 0 = indeterminate, shows animated progress bar
+          } else 0  // 0 = indeterminate, shows animated progress bar
         }
 
-        log.info(s"Progress: $harvestedRecords/${token.totalRecords} records, page $pageCount/${calculatedTotalPages.getOrElse("?")} = $percent%")
+        log.info(s"Progress: $harvestedRecords/$maxTotalRecords records, page $pageCount/$maxTotalPages = $percent%")
 
         progressOpt.get.sendProgress(
           percent = percent,
           currentPage = Some(pageCount),
-          totalPages = calculatedTotalPages,
+          totalPages = if (maxTotalPages > 0) Some(maxTotalPages) else None,
           currentRecords = Some(harvestedRecords),
-          totalRecords = if (token.totalRecords > 0) Some(token.totalRecords) else None
+          totalRecords = if (maxTotalRecords > 0) Some(maxTotalRecords) else None
         )
         val futurePage = fetchPMHPage(pageNumber, timeout, wsApi, strategy, url, set, prefix, resumptionToken)
         handleFailure(futurePage, strategy, "pmh harvest page")
@@ -729,6 +744,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       pageCount = 0
       harvestedRecords = 0
       recordsPerPage = None
+      maxTotalRecords = 0
+      maxTotalPages = 0
       jsonPageNumber = 1
 
       // Store credentials and config for subsequent page fetches
@@ -770,22 +787,27 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
             jsonPageNumber += 1
 
             // Calculate total pages from total items and page size
-            val calculatedTotalPages = diagnostic.totalItems.flatMap { total =>
+            val calculatedTotalPages = diagnostic.totalItems.map { total =>
               if (config.pageSize > 0 && total > 0)
-                Some((total + config.pageSize - 1) / config.pageSize)
-              else None
-            }
+                (total + config.pageSize - 1) / config.pageSize
+              else 0
+            }.getOrElse(0)
 
-            // Send progress with detailed metadata
+            // Track max values to handle inconsistent API responses
             val currentRecords = diagnostic.current + diagnostic.pageItems
+            val reportedTotal = diagnostic.totalItems.getOrElse(0)
+            maxTotalRecords = math.max(maxTotalRecords, math.max(reportedTotal, currentRecords))
+            maxTotalPages = math.max(maxTotalPages, math.max(calculatedTotalPages, pageNumber))
+
+            // Send progress with corrected totals
             progressOpt.get.sendProgress(
               percent = diagnostic.percentComplete,
               currentPage = Some(pageNumber),
-              totalPages = calculatedTotalPages,
+              totalPages = if (maxTotalPages > 0) Some(maxTotalPages) else None,
               currentRecords = Some(currentRecords),
-              totalRecords = diagnostic.totalItems
+              totalRecords = if (maxTotalRecords > 0) Some(maxTotalRecords) else None
             )
-            log.info(s"JSON Harvest Page: $pageNumber - $url to $datasetContext: $diagnostic")
+            log.info(s"JSON Harvest Page: $pageNumber - $url to $datasetContext: $diagnostic (maxTotal: $maxTotalRecords)")
 
             if (diagnostic.isLast) {
               finish(strategy, None)
