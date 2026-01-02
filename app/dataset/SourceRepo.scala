@@ -355,7 +355,8 @@ class SourceRepo(home: File, orgContext: OrgContext) {
 
   def generatePockets(sourceOutputStream: OutputStream, idFilter: IdFilter, progress: ProgressReporter): Int = {
     var recordCount = 0
-    val rawOutput = createWriter(sourceOutputStream)
+    val bufferedOut = new BufferedOutputStream(sourceOutputStream, 65536)  // 64KB buffer for faster I/O
+    val rawOutput = createWriter(bufferedOut)
     try {
       val startList = s"""<$POCKET_LIST>\n"""
       val endList = s"""</$POCKET_LIST>\n"""
