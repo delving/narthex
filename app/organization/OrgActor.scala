@@ -180,10 +180,10 @@ class OrgActor (
   // Track completed operations for observability stats
   var completedOperations: Vector[CompletedOperation] = Vector.empty
 
-  // Track specs with active workflows (spec -> trigger) for completion tracking
-  // This tracks the trigger from when a workflow starts (harvest/process/save)
+  // Track specs with active workflows (spec -> (trigger, startTimeMillis)) for completion tracking
+  // This tracks the trigger and start time from when a workflow starts (harvest/process/save)
   // so we can attribute completions correctly even for multi-step workflows
-  var workflowSpecs: Map[String, String] = Map.empty
+  var workflowSpecs: Map[String, (String, Long)] = Map.empty
 
   // Queue persistence file
   val queueStateFile = new File(orgContext.orgRoot, "queue-state.json")
@@ -497,8 +497,9 @@ class OrgActor (
     if (isWorkflowStartOperation(message)) {
       // Only set if not already tracking (don't overwrite trigger from earlier step)
       if (!workflowSpecs.contains(spec)) {
-        workflowSpecs = workflowSpecs + (spec -> trigger)
-        log.info(s"Tracking workflow for $spec (trigger: $trigger)")
+        val startTime = System.currentTimeMillis()
+        workflowSpecs = workflowSpecs + (spec -> (trigger, startTime))
+        log.info(s"Tracking workflow for $spec (trigger: $trigger, startTime: $startTime)")
       }
     }
 
@@ -597,16 +598,18 @@ class OrgActor (
 
       // Track completion if we were tracking a workflow for this spec
       workflowSpecs.get(spec) match {
-        case Some(trigger) =>
+        case Some((trigger, startTime)) =>
+          val now = System.currentTimeMillis()
+          val durationSeconds = (now - startTime) / 1000
           val completed = CompletedOperation(
             spec = spec,
-            completedAt = System.currentTimeMillis(),
+            completedAt = now,
             trigger = trigger,
-            durationSeconds = None
+            durationSeconds = Some(durationSeconds)
           )
           completedOperations = completedOperations :+ completed
           workflowSpecs = workflowSpecs - spec  // Remove from tracking
-          log.info(s"Tracked workflow completion for $spec (trigger: $trigger)")
+          log.info(s"Tracked workflow completion for $spec (trigger: $trigger, duration: ${durationSeconds}s)")
 
           // Prune old entries (older than 24h) and enforce max limit of 3000 entries
           val cutoff = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
