@@ -87,10 +87,11 @@ class SipRepo(home: File, spec: String, rdfBaseUrl: String) {
   def listSips: Seq[Sip] = {
     if (home.exists()) {
       // Filter by spec prefix to only get SIPs for this dataset
-      // SIP filenames are: {spec}__{timestamp}.sip.zip
+      // SIP filenames are: {spec}__{timestamp}.sip.zip or {spec}.sip.zip (uploaded directly)
       val specPrefix = s"${spec}__"
+      val exactName = s"${spec}.sip.zip"
       val filesLastToFirst = home.listFiles()
-        .filter(f => f.getName.endsWith(".sip.zip") && f.getName.startsWith(specPrefix))
+        .filter(f => f.getName.endsWith(".sip.zip") && (f.getName.startsWith(specPrefix) || f.getName == exactName))
         .sortBy(_.lastModified())
       val filesLimited =
         if (filesLastToFirst.length <= SipRepo.MAX_ZIP_COUNT)

@@ -179,12 +179,14 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
             None
           }
         } getOrElse {
+          logger.error(s"No mapping found in SIP file $sipZipFile for dataset $dsInfo")
           deleteQuietly(sipZipFile)
           Some(s"No mapping found in $sipZipFile for $dsInfo")
         }
       } getOrElse {
+        logger.error(s"Unable to read SIP file ${sipZipFile.getName} for dataset $dsInfo - sipRepo.latestSipOpt returned None")
         deleteQuietly(sipZipFile)
-        Some(s"Unable to use $sipZipFile.getName for $dsInfo")
+        Some(s"Unable to use ${sipZipFile.getName} for $dsInfo")
       }
     }
     else {
