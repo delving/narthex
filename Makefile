@@ -7,8 +7,8 @@ FUSEKI:=apache-fuseki
 FUSEKI_VERSION:=4.7.0
 FUSEKI_VERSION_RPM:=4.7.0
 
-# Java 8 is required for Scala 2.12/2.13 compatibility
-JAVA_HOME:=/usr/lib/jvm/java-8-openjdk
+# Java 21 for better Metaspace management and Groovy 4.x compatibility
+JAVA_HOME:=/usr/lib/jvm/java-21-openjdk
 export JAVA_HOME
 export PATH:=$(JAVA_HOME)/bin:$(PATH)
 
@@ -81,7 +81,7 @@ fpm-build-fuseki-rpm:
 	fpm -s dir -t rpm -n ${FUSEKI} -v $(FUSEKI_VERSION_RPM) \
 		--package $(FUSEKI)-$(FUSEKI_VERSION_RPM).$(FILE_ARCH).rpm \
 		--force \
-		--depends java-1.8.0-openjdk \
+		--depends java-21-openjdk \
 		--rpm-compression bzip2 --rpm-os linux \
 		--url https://jena.apache.org/documentation/fuseki2/index.html \
 		--description "Apache Jena Fuseki" \
