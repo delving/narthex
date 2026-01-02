@@ -89,7 +89,7 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.1.4" % Test,
   "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % Test,
-  "org.scalatestplus.play" %% "scalatestplus-play" % "5.0.0" % Test,
+  "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test,
   "de.leanovate.play-mockws" %% "play-mockws" % "2.8.1" % Test,
 )
 
