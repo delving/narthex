@@ -1,5 +1,5 @@
 # Makefile for Narthex
-.PHONY: compile dist run package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-fuseki-migrate fuseki-compact
+.PHONY: compile dist run package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-jena-tools deploy-fuseki-migrate fuseki-compact
 
 NAME:=narthex
 VERSION:=$(shell sh -c 'grep "ThisBuild / version" version.sbt | cut -d\" -f2')
@@ -229,13 +229,43 @@ deploy-fuseki:
 	@echo "  4. Switch over:"
 	@echo "     ssh $(SSH_HOST) systemctl restart fuseki"
 
+# Deploy only Jena tools (tdbdump, tdb2.tdbloader, etc.)
+# Usage: make deploy-jena-tools SSH_HOST=root@server.example.com
+deploy-jena-tools:
+	@if [ -z "$(SSH_HOST)" ]; then echo "Error: SSH_HOST is required. Usage: make deploy-jena-tools SSH_HOST=root@server.example.com"; exit 1; fi
+	@echo "=== Deploying Jena tools $(JENA_VERSION) to $(SSH_HOST) ==="
+	@echo ""
+	@echo "Step 1: Downloading Jena $(JENA_VERSION) if needed..."
+	@mkdir -p target
+	@if [ ! -f target/apache-jena-$(JENA_VERSION).tar.gz ]; then \
+		wget -P target https://archive.apache.org/dist/jena/binaries/apache-jena-$(JENA_VERSION).tar.gz; \
+	else \
+		echo "Using cached download"; \
+	fi
+	@echo ""
+	@echo "Step 2: Copying to server..."
+	scp target/apache-jena-$(JENA_VERSION).tar.gz $(SSH_HOST):/tmp/
+	@echo ""
+	@echo "Step 3: Extracting to $(JENA_DIR)..."
+	ssh $(SSH_HOST) "cd /opt/hub3 && tar xzf /tmp/apache-jena-$(JENA_VERSION).tar.gz && rm -rf jena && mv apache-jena-$(JENA_VERSION) jena && rm /tmp/apache-jena-$(JENA_VERSION).tar.gz"
+	@echo ""
+	@echo "Step 4: Setting permissions..."
+	ssh $(SSH_HOST) "chown -R narthex:narthex $(JENA_DIR)"
+	@echo ""
+	@echo "=== Jena tools $(JENA_VERSION) installed to $(JENA_DIR) ==="
+	@echo ""
+	@echo "Available tools:"
+	@echo "  $(JENA_DIR)/bin/tdbdump       - Export TDB1 database"
+	@echo "  $(JENA_DIR)/bin/tdb2.tdbloader - Load data into TDB2"
+	@echo "  $(JENA_DIR)/bin/tdb2.tdbcompact - Compact TDB2 database"
+
 # Full Fuseki migration with TDB1 to TDB2 conversion
 # Usage: make deploy-fuseki-migrate SSH_HOST=root@server.example.com DATASET=brabantcloud
 #
-# Prerequisites: Run deploy-fuseki first to install Fuseki 5 to /opt/hub3/fuseki5
-# Source TDB1 databases should be in /opt/hub3/fuseki5/run/databases_v2/
-#
-# WARNING: This will cause downtime. The dataset will be exported and re-imported.
+# Prerequisites:
+#   - Run deploy-fuseki first to install Fuseki 5 to /opt/hub3/fuseki5
+#   - Run deploy-jena-tools to install Jena tools to /opt/hub3/jena
+#   - Source TDB1 databases should be in /opt/hub3/fuseki5/run/databases_v2/
 deploy-fuseki-migrate:
 	@if [ -z "$(SSH_HOST)" ]; then echo "Error: SSH_HOST is required."; exit 1; fi
 	@if [ -z "$(DATASET)" ]; then echo "Error: DATASET is required. Usage: make deploy-fuseki-migrate SSH_HOST=... DATASET=brabantcloud"; exit 1; fi
@@ -244,32 +274,25 @@ deploy-fuseki-migrate:
 	@echo "Source (TDB1): $(FUSEKI_DIR)/run/databases_v2/$(DATASET)"
 	@echo "Target (TDB2): $(FUSEKI_DIR)/run/databases/$(DATASET)"
 	@echo ""
-	@echo "WARNING: This will cause downtime for the $(DATASET) dataset."
-	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read dummy
-	@echo ""
-	@echo "Step 1: Stopping services..."
-	ssh $(SSH_HOST) "systemctl stop narthex fuseki || true"
-	@echo ""
-	@echo "Step 2: Exporting $(DATASET) from TDB1 (this may take a while)..."
+	@echo "Step 1: Exporting $(DATASET) from TDB1 (this may take a while)..."
 	ssh $(SSH_HOST) "$(JENA_DIR)/bin/tdbdump --loc $(FUSEKI_DIR)/run/databases_v2/$(DATASET) > /tmp/$(DATASET).nq"
 	ssh $(SSH_HOST) "ls -lh /tmp/$(DATASET).nq"
 	@echo ""
-	@echo "Step 3: Creating TDB2 database (this may take a while)..."
+	@echo "Step 2: Creating TDB2 database (this may take a while)..."
 	ssh $(SSH_HOST) "rm -rf $(FUSEKI_DIR)/run/databases/$(DATASET)"
 	ssh $(SSH_HOST) "mkdir -p $(FUSEKI_DIR)/run/databases/$(DATASET)"
 	ssh $(SSH_HOST) "$(JENA_DIR)/bin/tdb2.tdbloader --loc $(FUSEKI_DIR)/run/databases/$(DATASET) /tmp/$(DATASET).nq"
 	@echo ""
-	@echo "Step 4: Updating config to TDB2 format..."
+	@echo "Step 3: Updating config to TDB2 format..."
 	ssh $(SSH_HOST) "sed -i 's|tdb:DatasetTDB|tdb2:DatasetTDB2|g; s|tdb:location|tdb2:location|g; s|tdb:unionDefaultGraph|tdb2:unionDefaultGraph|g; s|http://jena.hpl.hp.com/2008/tdb#|http://jena.apache.org/2016/tdb#|g' $(FUSEKI_DIR)/run/configuration/$(DATASET).ttl"
 	@echo ""
-	@echo "Step 5: Cleaning up export file..."
+	@echo "Step 4: Cleaning up export file..."
 	ssh $(SSH_HOST) "rm /tmp/$(DATASET).nq"
 	@echo ""
-	@echo "Step 6: Setting permissions..."
+	@echo "Step 5: Setting permissions..."
 	ssh $(SSH_HOST) "chown -R narthex:narthex $(FUSEKI_DIR)/run/databases/$(DATASET)"
 	@echo ""
-	@echo "Step 7: Showing new database size..."
+	@echo "Step 6: Showing new database size..."
 	ssh $(SSH_HOST) "du -sh $(FUSEKI_DIR)/run/databases/$(DATASET)"
 	@echo ""
 	@echo "=== Migration complete for $(DATASET)! ==="
