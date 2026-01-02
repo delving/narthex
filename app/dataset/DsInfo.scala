@@ -131,7 +131,8 @@ object DsInfo {
     uniqueIdValue: Option[String],
     mappingSource: Option[String],
     harvestUsername: Option[String],
-    harvestPasswordSet: Option[Boolean]
+    harvestPasswordSet: Option[Boolean],
+    harvestApiKeySet: Option[Boolean]
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = new Writes[DsInfoLight] {
@@ -165,7 +166,8 @@ object DsInfo {
       "uniqueId" -> ds.uniqueIdValue,
       "mappingSource" -> ds.mappingSource,
       "harvestUsername" -> ds.harvestUsername,
-      "harvestPasswordSet" -> ds.harvestPasswordSet
+      "harvestPasswordSet" -> ds.harvestPasswordSet,
+      "harvestApiKeySet" -> ds.harvestApiKeySet
     )
   }
 
@@ -237,7 +239,8 @@ object DsInfo {
           uniqueIdValue = row.get("uniqueId").map(_.text),
           mappingSource = row.get("mappingSource").map(_.text),
           harvestUsername = row.get("harvestUsername").map(_.text),
-          harvestPasswordSet = row.get("harvestPasswordSet").map(_.text.toBoolean)
+          harvestPasswordSet = row.get("harvestPasswordSet").map(_.text.toBoolean),
+          harvestApiKeySet = row.get("harvestApiKeySet").map(_.text.toBoolean)
         )
       }
     }
@@ -547,7 +550,6 @@ class DsInfo(
         // We know data exists - fetch it (but could also cache the model)
         cachedModel match {
           case Some(model) =>
-            logger.debug(s"Using cached model for dataset $spec")
             Future.successful(model)
           case None =>
             logger.debug(s"Fetching data for dataset $spec (existence confirmed)")
