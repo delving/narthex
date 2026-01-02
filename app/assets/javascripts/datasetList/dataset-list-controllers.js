@@ -1895,6 +1895,9 @@ define(["angular"], function () {
                 case 'discovery':
                     $location.path('/discovery');
                     break;
+                case 'sip-creator':
+                    $location.path('/sip-creator');
+                    break;
             }
             $('#nav-' + page).addClass('active');
 
@@ -1908,10 +1911,79 @@ define(["angular"], function () {
 
     IndexCtrl.$inject = ["$rootScope", "$scope", "$location"];
 
+    /** Controls the SIP Creator Downloads page */
+    var SipCreatorDownloadsCtrl = function ($scope, $http) {
+        $scope.releases = [];
+        $scope.snapshots = [];
+        $scope.loading = true;
+        $scope.error = null;
+        $scope.activeTab = 'releases';
+
+        // Load downloads on init
+        $scope.loadDownloads = function(refresh) {
+            $scope.loading = true;
+            $scope.error = null;
+
+            var url = '/narthex/api/sip-creator/downloads';
+            if (refresh) {
+                url += '?refresh=true';
+            }
+
+            $http.get(url).then(
+                function(response) {
+                    $scope.releases = response.data.releases || [];
+                    $scope.snapshots = response.data.snapshots || [];
+
+                    // Auto-expand first version in each list
+                    if ($scope.releases.length > 0) {
+                        $scope.releases[0].expanded = true;
+                    }
+                    if ($scope.snapshots.length > 0) {
+                        $scope.snapshots[0].expanded = true;
+                    }
+
+                    $scope.loading = false;
+                },
+                function(error) {
+                    $scope.error = "Failed to load downloads: " + (error.statusText || "Unknown error");
+                    $scope.loading = false;
+                }
+            );
+        };
+
+        $scope.refresh = function() {
+            $scope.loadDownloads(true);
+        };
+
+        $scope.setTab = function(tab) {
+            $scope.activeTab = tab;
+        };
+
+        $scope.toggleVersion = function(version) {
+            version.expanded = !version.expanded;
+        };
+
+        $scope.getOsIcon = function(os) {
+            var icons = {
+                'Linux': 'fa-linux',
+                'macOS': 'fa-apple',
+                'Windows': 'fa-windows',
+                'universal': 'fa-coffee'
+            };
+            return icons[os] || 'fa-file';
+        };
+
+        // Initial load
+        $scope.loadDownloads(false);
+    };
+
+    SipCreatorDownloadsCtrl.$inject = ["$scope", "$http"];
+
     return {
         IndexCtrl: IndexCtrl,
         DatasetListCtrl: DatasetListCtrl,
-        DatasetEntryCtrl: DatasetEntryCtrl
+        DatasetEntryCtrl: DatasetEntryCtrl,
+        SipCreatorDownloadsCtrl: SipCreatorDownloadsCtrl
     };
 
 });

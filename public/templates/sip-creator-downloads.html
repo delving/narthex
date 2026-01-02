@@ -1,0 +1,143 @@
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">
+            <i class="fa fa-download"></i> SIP Creator Downloads
+        </h3>
+    </div>
+    <div class="panel-body">
+        <!-- Loading indicator -->
+        <div ng-if="loading" class="text-center" style="padding: 40px;">
+            <i class="fa fa-spinner fa-spin fa-3x"></i>
+            <p style="margin-top: 15px;">Loading downloads...</p>
+        </div>
+
+        <!-- Error message -->
+        <div ng-if="error" class="alert alert-danger">
+            <i class="fa fa-exclamation-circle"></i> {{ error }}
+        </div>
+
+        <!-- Content (when loaded) -->
+        <div ng-if="!loading && !error">
+            <!-- Tabs for Releases / Snapshots with Refresh button -->
+            <div class="clearfix" style="margin-bottom: 15px;">
+                <ul class="nav nav-tabs pull-left" role="tablist" style="border-bottom: none;">
+                    <li role="presentation" ng-class="{active: activeTab === 'releases'}">
+                        <a href ng-click="setTab('releases')">
+                            <i class="fa fa-tag"></i> Releases
+                            <span class="badge" ng-if="releases.length">{{ releases.length }}</span>
+                        </a>
+                    </li>
+                    <li role="presentation" ng-class="{active: activeTab === 'snapshots'}">
+                        <a href ng-click="setTab('snapshots')">
+                            <i class="fa fa-code-fork"></i> Snapshots
+                            <span class="badge" ng-if="snapshots.length">{{ snapshots.length }}</span>
+                        </a>
+                    </li>
+                </ul>
+                <button class="btn btn-sm btn-default pull-left" ng-click="refresh()" ng-disabled="loading" style="margin-left: 15px; margin-top: 2px;">
+                    <i class="fa fa-refresh" ng-class="{'fa-spin': loading}"></i> Refresh
+                </button>
+            </div>
+            <hr style="margin-top: 0;">
+
+            <div class="tab-content" style="margin-top: 15px;">
+                <!-- Releases Tab -->
+                <div role="tabpanel" class="tab-pane" ng-class="{active: activeTab === 'releases'}">
+                    <div ng-if="releases.length === 0" class="alert alert-info">
+                        <i class="fa fa-info-circle"></i> No releases available yet.
+                    </div>
+
+                    <div ng-repeat="version in releases" class="version-group" style="margin-bottom: 10px;">
+                        <div class="version-header" ng-click="toggleVersion(version)" style="cursor: pointer; padding: 10px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;">
+                            <i class="fa" ng-class="version.expanded ? 'fa-chevron-down' : 'fa-chevron-right'" style="width: 15px;"></i>
+                            <strong style="font-size: 1.1em;">{{ version.version }}</strong>
+                            <span class="text-muted" style="margin-left: 15px;" ng-if="version.date">
+                                <i class="fa fa-calendar"></i> {{ version.date }}
+                            </span>
+                            <span class="badge" style="margin-left: 10px;">{{ version.files.length }} files</span>
+                        </div>
+
+                        <div ng-show="version.expanded" style="border: 1px solid #ddd; border-top: none; border-radius: 0 0 4px 4px;">
+                            <table class="table table-condensed table-hover" style="margin-bottom: 0;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Platform</th>
+                                        <th style="width: 25%;">Architecture</th>
+                                        <th style="width: 25%;">Format</th>
+                                        <th style="width: 25%;">Download</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="file in version.files | orderBy:['os', 'arch', 'ext']">
+                                        <td>
+                                            <i class="fa" ng-class="getOsIcon(file.os)" style="width: 20px;"></i>
+                                            {{ file.os }}
+                                        </td>
+                                        <td>{{ file.arch }}</td>
+                                        <td><span class="label label-default">.{{ file.ext }}</span></td>
+                                        <td>
+                                            <a ng-href="{{ file.url }}" class="btn btn-sm btn-primary" target="_blank">
+                                                <i class="fa fa-download"></i> Download
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Snapshots Tab -->
+                <div role="tabpanel" class="tab-pane" ng-class="{active: activeTab === 'snapshots'}">
+                    <div class="alert alert-warning" style="margin-bottom: 15px;">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <strong>Note:</strong> Snapshots are development builds and may be unstable. Use releases for production.
+                    </div>
+
+                    <div ng-if="snapshots.length === 0" class="alert alert-info">
+                        <i class="fa fa-info-circle"></i> No snapshots available yet.
+                    </div>
+
+                    <div ng-repeat="version in snapshots" class="version-group" style="margin-bottom: 10px;">
+                        <div class="version-header" ng-click="toggleVersion(version)" style="cursor: pointer; padding: 10px; background-color: #fcf8e3; border: 1px solid #faebcc; border-radius: 4px;">
+                            <i class="fa" ng-class="version.expanded ? 'fa-chevron-down' : 'fa-chevron-right'" style="width: 15px;"></i>
+                            <strong style="font-size: 1.1em;">{{ version.version }}</strong>
+                            <span class="text-muted" style="margin-left: 15px;" ng-if="version.date">
+                                <i class="fa fa-clock-o"></i> {{ version.date }}
+                            </span>
+                            <span class="badge" style="margin-left: 10px;">{{ version.files.length }} files</span>
+                        </div>
+
+                        <div ng-show="version.expanded" style="border: 1px solid #faebcc; border-top: none; border-radius: 0 0 4px 4px;">
+                            <table class="table table-condensed table-hover" style="margin-bottom: 0;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Platform</th>
+                                        <th style="width: 25%;">Architecture</th>
+                                        <th style="width: 25%;">Format</th>
+                                        <th style="width: 25%;">Download</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="file in version.files | orderBy:['os', 'arch', 'ext']">
+                                        <td>
+                                            <i class="fa" ng-class="getOsIcon(file.os)" style="width: 20px;"></i>
+                                            {{ file.os }}
+                                        </td>
+                                        <td>{{ file.arch }}</td>
+                                        <td><span class="label label-warning">.{{ file.ext }}</span></td>
+                                        <td>
+                                            <a ng-href="{{ file.url }}" class="btn btn-sm btn-default" target="_blank">
+                                                <i class="fa fa-download"></i> Download
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

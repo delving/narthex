@@ -161,3 +161,6 @@ GET         /narthex/preview/json/:spec                                      web
 
 # Generic preview for OAI-PMH and AdLib harvest URLs (wildcard route)
 GET         /narthex/preview/*dataUrl                                        web.PreviewController.previewHarvestUrl(dataUrl)
+
+# SIP Creator Downloads (public endpoint, no auth required)
+GET         /narthex/api/sip-creator/downloads                               controllers.SipCreatorDownloadsController.getDownloads(refresh: Boolean ?= false)

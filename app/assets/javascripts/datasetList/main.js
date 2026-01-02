@@ -19,6 +19,11 @@ define(
                             controller: controllers.DatasetListCtrl,
                             reloadOnSearch: false
                         }
+                    ).when(
+                        "/sip-creator", {
+                            templateUrl: "/narthex/assets/templates/sip-creator-downloads.html?v=0.8.3.2",
+                            controller: 'SipCreatorDownloadsCtrl'
+                        }
                     );
                 }
             ]
@@ -35,6 +40,7 @@ define(
         narthexDatasetList.controller('DatasetEntryCtrl', controllers.DatasetEntryCtrl);
         narthexDatasetList.controller("IndexCtrl", controllers.IndexCtrl);
         narthexDatasetList.controller('ActivityModalCtrl', activityModalController);
+        narthexDatasetList.controller('SipCreatorDownloadsCtrl', controllers.SipCreatorDownloadsCtrl);
         var config = function config($rootScopeProvider) {
             $rootScopeProvider.digestTtl(15);
         };
