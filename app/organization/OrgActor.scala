@@ -70,7 +70,8 @@ object OrgActor {
     spec: String,
     completedAt: Long,
     trigger: String,           // "manual", "periodic", "recovery"
-    durationSeconds: Option[Long]
+    durationSeconds: Option[Long],
+    recordCount: Option[Int] = None
   )
 
   case class CompletionStats(
@@ -84,7 +85,8 @@ object OrgActor {
     spec: String,
     completedAt: Long,
     trigger: String,
-    durationSeconds: Option[Long]
+    durationSeconds: Option[Long],
+    recordCount: Option[Int] = None
   )
 
   // Queue persistence and health checks
@@ -592,8 +594,8 @@ class OrgActor (
       log.info(s"Dataset $spec became active")
       activeDatasets = activeDatasets + spec
 
-    case DatasetBecameIdle(spec) =>
-      log.info(s"Dataset $spec became idle")
+    case DatasetBecameIdle(spec, recordCount) =>
+      log.info(s"Dataset $spec became idle (records: ${recordCount.getOrElse("N/A")})")
       activeDatasets = activeDatasets - spec
 
       // Track completion if we were tracking a workflow for this spec
@@ -605,11 +607,12 @@ class OrgActor (
             spec = spec,
             completedAt = now,
             trigger = trigger,
-            durationSeconds = Some(durationSeconds)
+            durationSeconds = Some(durationSeconds),
+            recordCount = recordCount
           )
           completedOperations = completedOperations :+ completed
           workflowSpecs = workflowSpecs - spec  // Remove from tracking
-          log.info(s"Tracked workflow completion for $spec (trigger: $trigger, duration: ${durationSeconds}s)")
+          log.info(s"Tracked workflow completion for $spec (trigger: $trigger, duration: ${durationSeconds}s, records: ${recordCount.getOrElse("N/A")})")
 
           // Prune old entries (older than 24h) and enforce max limit of 3000 entries
           val cutoff = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
@@ -647,7 +650,7 @@ class OrgActor (
       val stats = calculateCompletionStats()
       // Convert CompletedOperation to CompletionDetail for frontend
       val details = completedOperations.map { op =>
-        CompletionDetail(op.spec, op.completedAt, op.trigger, op.durationSeconds)
+        CompletionDetail(op.spec, op.completedAt, op.trigger, op.durationSeconds, op.recordCount)
       }.toList
       sender() ! QueueStatus(processing, saving, queued, stats, details)
 

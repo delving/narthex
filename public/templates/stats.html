@@ -94,6 +94,7 @@
                                         <th>Time</th>
                                         <th>Trigger</th>
                                         <th>Duration</th>
+                                        <th>Records</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -105,6 +106,7 @@
                                             </span>
                                         </td>
                                         <td>{{ formatDuration(op.durationSeconds) }}</td>
+                                        <td>{{ op.recordCount | number }}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -150,6 +152,7 @@
                                         <th>Time</th>
                                         <th>Trigger</th>
                                         <th>Duration</th>
+                                        <th>Records</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -162,6 +165,7 @@
                                             </span>
                                         </td>
                                         <td>{{ formatDuration(op.durationSeconds) }}</td>
+                                        <td>{{ op.recordCount | number }}</td>
                                     </tr>
                                 </tbody>
                             </table>

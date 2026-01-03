@@ -173,7 +173,7 @@ object DatasetActor {
 
   case class DatasetBecameActive(spec: String)
 
-  case class DatasetBecameIdle(spec: String)
+  case class DatasetBecameIdle(spec: String, recordCount: Option[Int] = None)
 
   def props(datasetContext: DatasetContext,
             mailService: MailService,
@@ -1406,24 +1406,25 @@ class DatasetActor(val datasetContext: DatasetContext,
         // Broadcast idle state (now with cleared operation)
         broadcastIdleState()
 
+        // Determine record count based on operation type (calculate before logging so it's available for idle message)
+        val recordCountOpt: Option[Int] = operation match {
+          case "PROCESSING" | "SAVING" =>
+            // For processing/saving, use processedValid (saved records)
+            // Fall back to processedIncrementalValid if processedValid is 0 or not set
+            // (processedValid can be incorrectly 0 when files are stored compressed as .xml.zst)
+            val valid = dsInfo.getLiteralProp(processedValid).map(_.toInt)
+            val incrementalValid = dsInfo.getLiteralProp(processedIncrementalValid).map(_.toInt)
+            valid.filter(_ > 0).orElse(incrementalValid).orElse(valid)
+          case "ANALYZING" | "HARVESTING" =>
+            // For analyzing/harvesting, use datasetRecordCount field
+            dsInfo.getLiteralProp(datasetRecordCount).map(_.toInt)
+          case _ =>
+            // For other operations, try datasetRecordCount
+            dsInfo.getLiteralProp(datasetRecordCount).map(_.toInt)
+        }
+
         // Log operation completion if we were tracking one
         completedStartTime.foreach { startTime =>
-          // Determine record count based on operation type
-          val recordCountOpt: Option[Int] = operation match {
-            case "PROCESSING" | "SAVING" =>
-              // For processing/saving, sum valid + invalid records
-              for {
-                valid <- dsInfo.getLiteralProp(processedValid).map(_.toInt)
-                invalid <- dsInfo.getLiteralProp(processedInvalid).map(_.toInt)
-              } yield valid + invalid
-            case "ANALYZING" | "HARVESTING" =>
-              // For analyzing/harvesting, use datasetRecordCount field
-              dsInfo.getLiteralProp(datasetRecordCount).map(_.toInt)
-            case _ =>
-              // For other operations, try datasetRecordCount
-              dsInfo.getLiteralProp(datasetRecordCount).map(_.toInt)
-          }
-
           // Log operation complete with record count
           ActivityLogger.logOperationComplete(
             datasetContext.activityLog,
@@ -1448,8 +1449,8 @@ class DatasetActor(val datasetContext: DatasetContext,
           }
         }
 
-        // Notify parent that this dataset is now idle
-        context.parent ! DatasetBecameIdle(dsInfo.spec)
+        // Notify parent that this dataset is now idle (include record count for stats)
+        context.parent ! DatasetBecameIdle(dsInfo.spec, recordCountOpt)
 
       } else if (fromState == Idle) {
         // Entering an active state from Idle - this is a new operation

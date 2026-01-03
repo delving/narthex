@@ -17,7 +17,8 @@
 
 package dataset
 
-import java.io.{File, StringWriter}
+import java.io.{File, FileInputStream, StringWriter}
+import com.github.luben.zstd.ZstdInputStream
 
 import dataset.SourceRepo.{IdFilter, VERBATIM_FILTER}
 import harvest.Harvesting.{HarvestCron, HarvestType}
@@ -1009,23 +1010,36 @@ class DsInfo(
     if (!processedFiles.exists()) {
       return Map.empty[String, Int]
     }
+    // Accept both .xml (legacy) and .xml.zst (ZSTD compressed) files
     processedFiles.listFiles
-      .filter(_.getName.endsWith(".xml"))
+      .filter(f => f.getName.endsWith(".xml") || f.getName.endsWith(".xml.zst"))
       .flatMap { fname =>
         {
-          Source
-            .fromFile(fname)
-            .getLines()
-            .filter { line =>
-              line match {
-                case LineId(graphName, currentHash) => true
-                case _                              => false
+          // Create appropriate Source based on file type
+          val source = if (fname.getName.endsWith(".xml.zst")) {
+            val fis = new FileInputStream(fname)
+            val zis = new ZstdInputStream(fis)
+            Source.fromInputStream(zis, "UTF-8")
+          } else {
+            Source.fromFile(fname)
+          }
+          try {
+            source
+              .getLines()
+              .filter { line =>
+                line match {
+                  case LineId(graphName, currentHash) => true
+                  case _                              => false
+                }
               }
-            }
-            .map {
-              case LineId(graphName, currentHash) => graphName
-              case _                              =>
-            }
+              .map {
+                case LineId(graphName, currentHash) => graphName
+                case _                              =>
+              }
+              .toList  // Materialize before closing source
+          } finally {
+            source.close()
+          }
         }
       }
       .foldLeft(Map.empty[String, Int]) { (count, word) =>
