@@ -772,9 +772,11 @@ class DsInfo(
 
     // Update existence cache immediately with new state - don't just invalidate
     val cacheKey = s"dataset_existence_$spec"
+    // Note: DISABLED datasets still have metadata in triplestore - only EMPTY means no data
+    // Bug fix: Previously DISABLED was treated as non-existent, which broke property lookups
     val dataExists = state match {
-      case DsState.EMPTY | DsState.DISABLED => false // Only truly empty/disabled datasets don't exist
-      case _ => true // All other states (RAW, SOURCED, PROCESSED, SAVED, etc.) mean data exists
+      case DsState.EMPTY => false // Only truly empty datasets don't exist
+      case _ => true // DISABLED and all other states still have metadata that needs to be readable
     }
     orgContext.cacheApi.set(cacheKey, dataExists, 30.seconds)
     cachedDataExists = Some(dataExists)
