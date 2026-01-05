@@ -37,7 +37,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 
 import organization.OrgContext
-import services.{CredentialEncryption, Temporal}
+import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, Temporal}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.{Sparql, TripleStore}
@@ -59,7 +59,8 @@ import web.Utils
 
 @Singleton
 class AppController @Inject() (
-   orgContext: OrgContext
+   orgContext: OrgContext,
+   indexStatsService: IndexStatsService
 )(implicit
    ec: ExecutionContext,
    ts: TripleStore
@@ -156,6 +157,19 @@ class AppController @Inject() (
 
     (orgContext.orgActor ? CancelQueuedOperation(spec)).mapTo[CancelResult].map { result =>
       Ok(Json.obj("success" -> result.success, "message" -> result.message))
+    }
+  }
+
+  /**
+   * Get index statistics comparing Narthex datasets with Hub3 search index
+   */
+  def indexStats = Action.async { request =>
+    indexStatsService.getIndexStats().map { stats =>
+      Ok(Json.toJson(stats))
+    }.recover {
+      case e: Exception =>
+        logger.error(s"Failed to fetch index stats: ${e.getMessage}", e)
+        InternalServerError(Json.obj("error" -> "Failed to fetch index statistics"))
     }
   }
 

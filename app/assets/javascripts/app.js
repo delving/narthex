@@ -32,7 +32,8 @@ define(
         "categories",
         "defaultMappings",
         "stats",
-        "discovery"
+        "discovery",
+        "indexStats"
     ],
     function (angular) {
         "use strict";
@@ -50,6 +51,7 @@ define(
                 "narthex.defaultMappings",
                 "narthex.stats",
                 "narthex.discovery",
+                "narthex.indexStats",
                 "angularFileUpload",
                 "ngSanitize",
                 "ui.bootstrap.tpls",

@@ -1,0 +1,120 @@
+<div class="container-fluid" style="padding: 15px;">
+    <div class="page-header" style="margin-top: 0;">
+        <h3>
+            <i class="fa fa-bar-chart"></i> Index Statistics
+            <a href="#/" class="btn btn-default btn-sm pull-right">
+                <i class="fa fa-arrow-left"></i> Back to Datasets
+            </a>
+            <button class="btn btn-default btn-sm pull-right" style="margin-right: 10px;" ng-click="loadStats()">
+                <i class="fa fa-refresh"></i> Refresh
+            </button>
+        </h3>
+    </div>
+
+    <!-- Loading indicator -->
+    <div ng-if="loading" class="text-center" style="padding: 50px;">
+        <i class="fa fa-spinner fa-spin fa-3x"></i>
+        <p style="margin-top: 15px;">Loading index statistics...</p>
+    </div>
+
+    <!-- Error message -->
+    <div ng-if="error && !loading" class="alert alert-danger">
+        <i class="fa fa-exclamation-triangle"></i> {{ error }}
+    </div>
+
+    <!-- Main content -->
+    <div ng-if="!loading && !error">
+        <!-- Summary Stats -->
+        <div class="well well-sm">
+            <strong>{{ formatNumber(stats.totalIndexed) }}</strong> indexed records |
+            <strong>{{ stats.totalDatasets }}</strong> datasets |
+            <span class="text-success"><strong>{{ getTabCount('correct') }}</strong> correct</span> |
+            <span class="text-warning"><strong>{{ getTabCount('notIndexed') }}</strong> not indexed</span> |
+            <span class="text-danger"><strong>{{ getTabCount('wrongCount') }}</strong> wrong count</span>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs" style="margin-bottom: 15px;">
+            <li ng-class="{'active': activeTab === 'correct'}">
+                <a href="" ng-click="setTab('correct')">
+                    <i class="fa fa-check text-success"></i> Correct
+                    <span class="badge">{{ getTabCount('correct') }}</span>
+                </a>
+            </li>
+            <li ng-class="{'active': activeTab === 'notIndexed'}">
+                <a href="" ng-click="setTab('notIndexed')">
+                    <i class="fa fa-minus-circle text-warning"></i> Not Indexed
+                    <span class="badge">{{ getTabCount('notIndexed') }}</span>
+                </a>
+            </li>
+            <li ng-class="{'active': activeTab === 'wrongCount'}">
+                <a href="" ng-click="setTab('wrongCount')">
+                    <i class="fa fa-exclamation-triangle text-danger"></i> Wrong Count
+                    <span class="badge">{{ getTabCount('wrongCount') }}</span>
+                </a>
+            </li>
+            <li ng-class="{'active': activeTab === 'deleted'}">
+                <a href="" ng-click="setTab('deleted')">
+                    <i class="fa fa-trash text-muted"></i> Deleted
+                    <span class="badge">{{ getTabCount('deleted') }}</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- Empty state -->
+        <div ng-if="getActiveDatasets().length === 0" class="alert alert-info">
+            <i class="fa fa-info-circle"></i>
+            <span ng-if="activeTab === 'correct'">No datasets with matching counts.</span>
+            <span ng-if="activeTab === 'notIndexed'">No datasets waiting to be indexed.</span>
+            <span ng-if="activeTab === 'wrongCount'">No datasets with mismatched counts.</span>
+            <span ng-if="activeTab === 'deleted'">No deleted datasets.</span>
+        </div>
+
+        <!-- Data table -->
+        <div ng-if="getActiveDatasets().length > 0" class="panel panel-default">
+            <table class="table table-striped table-hover" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th ng-click="sortBy('spec')" style="cursor: pointer;">
+                            Dataset Spec
+                            <i class="fa" ng-class="getSortIcon('spec')"></i>
+                        </th>
+                        <th ng-click="sortBy('recordCount')" style="cursor: pointer; width: 120px;" class="text-right">
+                            Records
+                            <i class="fa" ng-class="getSortIcon('recordCount')"></i>
+                        </th>
+                        <th ng-click="sortBy('processedValid')" style="cursor: pointer; width: 120px;" class="text-right">
+                            Valid
+                            <i class="fa" ng-class="getSortIcon('processedValid')"></i>
+                        </th>
+                        <th ng-click="sortBy('processedInvalid')" style="cursor: pointer; width: 120px;" class="text-right">
+                            Invalid
+                            <i class="fa" ng-class="getSortIcon('processedInvalid')"></i>
+                        </th>
+                        <th ng-click="sortBy('indexCount')" style="cursor: pointer; width: 120px;" class="text-right">
+                            Indexed
+                            <i class="fa" ng-class="getSortIcon('indexCount')"></i>
+                        </th>
+                        <th ng-if="activeTab === 'wrongCount'" style="width: 100px;" class="text-right">
+                            Difference
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="ds in getActiveDatasets() | orderBy:sortField:sortReverse">
+                        <td>
+                            <a href="#/dataset/{{ ds.spec }}">{{ ds.spec }}</a>
+                        </td>
+                        <td class="text-right">{{ formatNumber(ds.recordCount) }}</td>
+                        <td class="text-right">{{ formatNumber(ds.processedValid) }}</td>
+                        <td class="text-right">{{ formatNumber(ds.processedInvalid) }}</td>
+                        <td class="text-right">{{ formatNumber(ds.indexCount) }}</td>
+                        <td ng-if="activeTab === 'wrongCount'" class="text-right" ng-class="getDifferenceClass(ds)">
+                            <span ng-if="getDifference(ds) > 0">+</span>{{ formatNumber(getDifference(ds)) }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

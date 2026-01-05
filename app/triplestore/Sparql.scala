@@ -142,6 +142,26 @@ object Sparql {
       |ORDER BY ?spec
      """.stripMargin
 
+  /**
+   * Query for index statistics - minimal fields needed for comparing Narthex with search index.
+   * Includes deleted datasets so they can be shown in a separate category.
+   */
+  val selectIndexStatsQ =
+    s"""
+      |PREFIX nx: <${NX_NAMESPACE}>
+      |SELECT DISTINCT ?spec ?processedValid ?processedInvalid ?recordCount ?deleted
+      |WHERE {
+      |  GRAPH ?g {
+      |    ?s nx:datasetSpec ?spec .
+      |    OPTIONAL { ?s nx:processedValid ?processedValid }
+      |    OPTIONAL { ?s nx:processedInvalid ?processedInvalid }
+      |    OPTIONAL { ?s nx:datasetRecordCount ?recordCount }
+      |    OPTIONAL { ?s nx:deleted ?deleted }
+      |  }
+      |}
+      |ORDER BY ?spec
+     """.stripMargin
+
   val selectDatasetsInRetryQ =
     s"""
       |PREFIX nx: <${NX_NAMESPACE}>
