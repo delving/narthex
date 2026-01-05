@@ -1,0 +1,67 @@
+# Narthex Systemd Service Template
+#
+# Copy this file to /etc/systemd/system/narthex.service and customize:
+#   1. Replace ${ORG_ID} with your organization ID (e.g., dcn, brabantcloud)
+#   2. Replace ${VERSION} with the Narthex version (e.g., 0.8.3.5)
+#   3. Adjust memory settings (-Xms/-Xmx) based on server capacity
+#
+# After changes:
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart narthex
+
+[Unit]
+Description=Narthex Server
+After=network.target
+
+[Service]
+Type=simple
+User=${ORG_ID}
+Group=${ORG_ID}
+
+# Working directory
+WorkingDirectory=/opt/hub3/${ORG_ID}/NarthexVersions/narthex-${VERSION}
+
+# PID file location
+PIDFile=/opt/hub3/${ORG_ID}/NarthexFiles/narthex.pid
+
+# Main executable with JVM options for Java 21
+ExecStart=/opt/hub3/${ORG_ID}/NarthexVersions/narthex-${VERSION}/bin/narthex \
+    -Dhttp.address=0.0.0.0 \
+    -Dhttp.port=9001 \
+    -Dpidfile.path=/opt/hub3/${ORG_ID}/NarthexFiles/narthex.pid \
+    -Dconfig.file=/opt/hub3/${ORG_ID}/NarthexFiles/narthex.conf \
+    -Dlogger.file=/opt/hub3/${ORG_ID}/NarthexFiles/logger.xml \
+    -J-Xms8g \
+    -J-Xmx10g \
+    -J-XX:MetaspaceSize=1g \
+    -J-XX:MaxMetaspaceSize=2g \
+    -J-XX:CompressedClassSpaceSize=1g \
+    -J-XX:+UseG1GC \
+    -J-XX:MaxGCPauseMillis=200 \
+    -J-XX:ParallelGCThreads=4 \
+    -J-XX:ConcGCThreads=2 \
+    -J-XX:+UseStringDeduplication \
+    -J-Dsun.io.unicode.encoding=UnicodeLittle \
+    -J-Dfile.encoding=UTF8 \
+    -J-XX:+UseCodeCacheFlushing \
+    -J-server
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+# Allow graceful shutdown (Play Framework uses exit code 143)
+SuccessExitStatus=143
+
+# Timeouts
+TimeoutStartSec=120
+TimeoutStopSec=60
+
+# Security hardening (optional, uncomment if desired)
+# NoNewPrivileges=true
+# ProtectSystem=strict
+# ProtectHome=true
+# ReadWritePaths=/opt/hub3/${ORG_ID}/NarthexFiles
+
+[Install]
+WantedBy=multi-user.target
