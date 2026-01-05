@@ -1332,24 +1332,44 @@ class DatasetActor(val datasetContext: DatasetContext,
 
       // Check if this is a harvest failure (candidate for retry)
       if (isHarvestFailure(active)) {
-        log.info(s"Harvest failure detected, entering retry mode for ${dsInfo.spec}")
+        // Check if we're already in retry mode (preserve/use current count)
+        val currentRetryCount = if (dsInfo.isInRetry) dsInfo.getRetryCount else 0
+        val maxRetries = orgContext.appConfig.harvestMaxRetries
 
-        // Set retry state in dataset properties
-        dsInfo.setInRetry(message, 0)
-
-        // Log the error but don't send email yet (will send after max retries or manual stop)
-        exceptionOpt match {
-          case Some(exception) => log.error(exception, message)
-          case None            => log.error(message)
+        if (currentRetryCount > 0) {
+          log.info(s"Retry harvest #$currentRetryCount failed for ${dsInfo.spec}")
+        } else {
+          log.info(s"Harvest failure detected, entering retry mode for ${dsInfo.spec}")
         }
 
-        // Release semaphore so PeriodicHarvest can re-acquire for retry
-        active.childOpt.foreach(_ ! PoisonPill)
-        orgContext.semaphore.release(dsInfo.spec)
-        orgContext.saveSemaphore.release(dsInfo.spec)
+        // Check if max retries exceeded
+        if (currentRetryCount >= maxRetries) {
+          log.warning(s"Max retries ($maxRetries) reached for ${dsInfo.spec}, entering error state")
+          dsInfo.clearRetryState()
+          dsInfo.setError(s"Harvest failed after $currentRetryCount retry attempts: $message")
+          mailService.sendProcessingErrorMessage(dsInfo.spec, s"Harvest failed after $currentRetryCount retry attempts: $message", exceptionOpt)
+          active.childOpt.foreach(_ ! PoisonPill)
+          orgContext.semaphore.release(dsInfo.spec)
+          orgContext.saveSemaphore.release(dsInfo.spec)
+          goto(Idle) using InError(message)
+        } else {
+          // Set retry state in dataset properties (preserve current count)
+          dsInfo.setInRetry(message, currentRetryCount)
 
-        // Transition to retry state (not error state)
-        goto(Idle) using InRetry(message, 0)
+          // Log the error but don't send email yet (will send after max retries or manual stop)
+          exceptionOpt match {
+            case Some(exception) => log.error(exception, message)
+            case None            => log.error(message)
+          }
+
+          // Release semaphore so PeriodicHarvest can re-acquire for retry
+          active.childOpt.foreach(_ ! PoisonPill)
+          orgContext.semaphore.release(dsInfo.spec)
+          orgContext.saveSemaphore.release(dsInfo.spec)
+
+          // Transition to retry state (not error state)
+          goto(Idle) using InRetry(message, currentRetryCount)
+        }
 
       } else {
         // Non-harvest failure - use existing error handling
