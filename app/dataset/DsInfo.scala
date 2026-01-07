@@ -537,6 +537,14 @@ class DsInfo(
     cachedDataExists = Some(exists)
   }
 
+  /** Invalidate the cached model to force fresh data to be read from triplestore.
+    * This should be called when properties are changed externally.
+    */
+  def invalidateCachedModel(): Unit = {
+    cachedModel = None
+    logger.debug(s"Invalidated cached model for dataset $spec")
+  }
+
   // Initialize cache on construction
   loadCachedExistence()
   

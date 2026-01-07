@@ -514,6 +514,9 @@ class DatasetActor(val datasetContext: DatasetContext,
 
           case "refresh" =>
             log.info("refresh")
+            // Invalidate cached model to ensure fresh data is read from triplestore
+            // This is important when properties are changed externally (e.g., via setDatasetProperties)
+            dsInfo.invalidateCachedModel()
             broadcastIdleState()
             "refreshed"
 
