@@ -175,6 +175,12 @@ object DatasetActor {
 
   case class DatasetBecameIdle(spec: String, recordCount: Option[Int] = None)
 
+  // WebSocket broadcast messages - used with Akka event stream for reliable delivery
+  // to all WebSocket actors regardless of their actor paths
+  sealed trait WebSocketBroadcast
+  case class WebSocketProgressBroadcast(active: Active) extends WebSocketBroadcast
+  case class WebSocketIdleBroadcast(dsInfo: DsInfo) extends WebSocketBroadcast
+
   def props(datasetContext: DatasetContext,
             mailService: MailService,
             orgContext: OrgContext,
@@ -228,12 +234,16 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   val errorMessage = dsInfo.getLiteralProp(datasetErrorMessage).getOrElse("")
 
-  def broadcastRaw(message: Any) =
-    context.system.actorSelection("/user/*/flowActor") ! message
+  // Use Akka event stream for WebSocket broadcasts - this is more reliable than
+  // actor selection which can fail due to path mismatches with Play's ActorFlow
+  def broadcastIdleState() = {
+    log.debug(s"Broadcasting idle state for dataset ${dsInfo.spec}")
+    context.system.eventStream.publish(WebSocketIdleBroadcast(datasetContext.dsInfo))
+  }
 
-  def broadcastIdleState() = broadcastRaw(datasetContext.dsInfo)
-
-  def broadcastProgress(active: Active) = broadcastRaw(active)
+  def broadcastProgress(active: Active) = {
+    context.system.eventStream.publish(WebSocketProgressBroadcast(active))
+  }
 
   // Track child actors for proper cleanup
   private var childActors: Set[ActorRef] = Set.empty

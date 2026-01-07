@@ -14,6 +14,7 @@ import akka.util.Timeout
 
 import dataset.DatasetActor.Active
 import dataset.DsInfo
+import dataset.DatasetActor.{WebSocketBroadcast, WebSocketProgressBroadcast, WebSocketIdleBroadcast}
 
 @Singleton
 class WebSocketController @Inject() (implicit
@@ -30,7 +31,25 @@ class WebSocketController @Inject() (implicit
 
   class DatasetSocketActor(val out: ActorRef) extends Actor with ActorLogging {
 
+    override def preStart(): Unit = {
+      // Subscribe to the event stream for WebSocket broadcasts
+      context.system.eventStream.subscribe(self, classOf[WebSocketBroadcast])
+      log.debug("WebSocket actor subscribed to event stream")
+    }
+
+    override def postStop(): Unit = {
+      // Unsubscribe from the event stream
+      context.system.eventStream.unsubscribe(self)
+      log.debug("WebSocket actor unsubscribed from event stream")
+    }
+
     def receive = {
+      // Handle broadcast wrapper messages from event stream
+      case WebSocketProgressBroadcast(active) =>
+        out ! Json.stringify(Json.toJson(active))
+      case WebSocketIdleBroadcast(dsInfo) =>
+        out ! Json.stringify(dsInfo.toSimpleJson)
+      // Handle direct messages (legacy support)
       case active: Active => out ! Json.stringify(Json.toJson(active))
       case idle: DsInfo =>
         // Use simple JSON format with expected field names for frontend
