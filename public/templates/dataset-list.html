@@ -1579,30 +1579,70 @@
 <!--</script>-->
 
 <script type="text/ng-template" id="harvesting-info.html">
-      <!-- TODO: hide if no data available -->
-<ul class="list-group">
-    <li class="list-group-item"> record definition: {{ dataset.datasetMapToPrefix }} </li>
-</ul>
+<!-- Record Count Summary -->
 <ul class="list-group">
     <li class="list-group-item">
-        <!-- If last full harvest date -->
-        Last full harvest date: {{ dataset.lastFullHarvestTime }}
+        <strong>Record Counts</strong>
     </li>
-    <li class="list-group-item">Valid records: {{ dataset.processedValid }}</li>
-    <li class="list-group-item">Invalid records: {{ dataset.processedInvalid }}</li>
+    <li class="list-group-item">
+        <i data-ng-if="dataset.acquisitionMethod == 'harvest'" class="fa fa-download text-info"></i>
+        <i data-ng-if="dataset.acquisitionMethod == 'upload'" class="fa fa-upload text-muted"></i>
+        <i data-ng-if="!dataset.acquisitionMethod" class="fa fa-question text-muted"></i>
+        Acquired: <strong>{{ dataset.acquiredRecordCount || dataset.datasetRecordCount || '-' }}</strong>
+        <span data-ng-if="dataset.acquisitionMethod" class="text-muted">({{ dataset.acquisitionMethod }})</span>
+    </li>
+    <li class="list-group-item" data-ng-if="dataset.deletedRecordCount > 0">
+        <i class="fa fa-minus-circle text-warning"></i>
+        Deleted (OAI-PMH): <strong class="text-warning">{{ dataset.deletedRecordCount }}</strong>
+    </li>
+    <li class="list-group-item">
+        <i class="fa fa-file-text-o text-info"></i>
+        Source records: <strong>{{ dataset.sourceRecordCount || ((dataset.acquiredRecordCount || dataset.datasetRecordCount || 0) - (dataset.deletedRecordCount || 0)) || '-' }}</strong>
+    </li>
+    <li class="list-group-item">
+        <i class="fa fa-check text-success"></i>
+        Valid: <strong class="text-success">{{ dataset.processedValid || '-' }}</strong>
+    </li>
+    <li class="list-group-item" data-ng-if="dataset.processedInvalid > 0">
+        <i class="fa fa-times text-danger"></i>
+        Invalid: <strong class="text-danger">{{ dataset.processedInvalid }}</strong>
+    </li>
 </ul>
+
+<!-- Full Harvest Info -->
 <ul class="list-group">
-    <li class="list-group-item"> <!-- If last incremental harvest date -->
-        In scheduled mode: {{ dataset.harvestIncrementalMode }}</li>
-    <li class="list-group-item">Last scheduled harvest date: {{ dataset.lastIncrementalHarvestTime }}</li>
-    <li class="list-group-item">Valid records: {{ dataset.processedIncrementalValid }}</li>
-    <li class="list-group-item">Invalid records: {{ dataset.processedIncrementalInvalid }}</li>
+    <li class="list-group-item">
+        <strong>Full Harvest</strong>
+    </li>
+    <li class="list-group-item">
+        Last harvest: {{ dataset.lastFullHarvestTime || '-' }}
+    </li>
+    <li class="list-group-item">Record definition: {{ dataset.datasetMapToPrefix || '-' }}</li>
 </ul>
+
+<!-- Incremental Harvest Info (if enabled) -->
+<ul class="list-group" data-ng-if="dataset.harvestIncrementalMode == 'true'">
+    <li class="list-group-item">
+        <strong>Incremental Harvest</strong>
+        <span class="label label-info pull-right">Scheduled</span>
+    </li>
+    <li class="list-group-item">Last scheduled: {{ dataset.lastIncrementalHarvestTime || '-' }}</li>
+    <li class="list-group-item">
+        <i class="fa fa-check text-success"></i>
+        Valid: <strong class="text-success">{{ dataset.processedIncrementalValid || '-' }}</strong>
+    </li>
+    <li class="list-group-item" data-ng-if="dataset.processedIncrementalInvalid > 0">
+        <i class="fa fa-times text-danger"></i>
+        Invalid: <strong class="text-danger">{{ dataset.processedIncrementalInvalid }}</strong>
+    </li>
+</ul>
+
+<!-- Quick Links -->
 <ul class="list-group">
-    <li class="list-group-item"> <a ng-href="" data-ng-click="showLastSourcedPage()">Last harvested records</a></li>
-    <li class="list-group-item"><a ng-href="" data-ng-click="showHarvestingLog()">Harvesting log</a></li>
-    <li class="list-group-item"><a ng-href="" data-ng-click="showLastProcessedPage()">Last processed records</a></li>
-    <li class="list-group-item"><a ng-href="" data-ng-click="showInvalidRecordsPage()">Last processing errors</a></li>
+    <li class="list-group-item"><a ng-href="" data-ng-click="showLastSourcedPage()"><i class="fa fa-list"></i> Last harvested records</a></li>
+    <li class="list-group-item"><a ng-href="" data-ng-click="showHarvestingLog()"><i class="fa fa-file-text-o"></i> Harvesting log</a></li>
+    <li class="list-group-item"><a ng-href="" data-ng-click="showLastProcessedPage()"><i class="fa fa-check-circle"></i> Last processed records</a></li>
+    <li class="list-group-item"><a ng-href="" data-ng-click="showInvalidRecordsPage()"><i class="fa fa-exclamation-circle"></i> Last processing errors</a></li>
 </ul>
 </script>
 
