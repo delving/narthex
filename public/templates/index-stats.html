@@ -27,10 +27,11 @@
         <!-- Summary Stats -->
         <div class="well well-sm">
             <strong>{{ formatNumber(stats.totalIndexed) }}</strong> indexed records |
-            <strong>{{ stats.totalDatasets }}</strong> datasets |
+            <strong>{{ stats.totalDatasets }}</strong> active datasets |
             <span class="text-success"><strong>{{ getTabCount('correct') }}</strong> correct</span> |
             <span class="text-warning"><strong>{{ getTabCount('notIndexed') }}</strong> not indexed</span> |
-            <span class="text-danger"><strong>{{ getTabCount('wrongCount') }}</strong> wrong count</span>
+            <span class="text-danger"><strong>{{ getTabCount('wrongCount') }}</strong> wrong count</span> |
+            <span class="text-muted"><strong>{{ getTabCount('disabled') }}</strong> disabled</span>
         </div>
 
         <!-- Tabs -->
@@ -53,6 +54,12 @@
                     <span class="badge">{{ getTabCount('wrongCount') }}</span>
                 </a>
             </li>
+            <li ng-class="{'active': activeTab === 'disabled'}">
+                <a href="" ng-click="setTab('disabled')">
+                    <i class="fa fa-ban text-muted"></i> Disabled
+                    <span class="badge">{{ getTabCount('disabled') }}</span>
+                </a>
+            </li>
             <li ng-class="{'active': activeTab === 'deleted'}">
                 <a href="" ng-click="setTab('deleted')">
                     <i class="fa fa-trash text-muted"></i> Deleted
@@ -67,6 +74,7 @@
             <span ng-if="activeTab === 'correct'">No datasets with matching counts.</span>
             <span ng-if="activeTab === 'notIndexed'">No datasets waiting to be indexed.</span>
             <span ng-if="activeTab === 'wrongCount'">No datasets with mismatched counts.</span>
+            <span ng-if="activeTab === 'disabled'">No disabled datasets.</span>
             <span ng-if="activeTab === 'deleted'">No deleted datasets.</span>
         </div>
 
@@ -79,19 +87,27 @@
                             Dataset Spec
                             <i class="fa" ng-class="getSortIcon('spec')"></i>
                         </th>
-                        <th ng-click="sortBy('recordCount')" style="cursor: pointer; width: 120px;" class="text-right">
-                            Records
-                            <i class="fa" ng-class="getSortIcon('recordCount')"></i>
+                        <th ng-click="sortBy('acquisitionMethod')" style="cursor: pointer; width: 100px;" title="How source was acquired">
+                            Source
+                            <i class="fa" ng-class="getSortIcon('acquisitionMethod')"></i>
                         </th>
-                        <th ng-click="sortBy('processedValid')" style="cursor: pointer; width: 120px;" class="text-right">
+                        <th ng-click="sortBy('acquiredRecordCount')" style="cursor: pointer; width: 100px;" class="text-right" title="Total records acquired (harvested or uploaded)">
+                            Acquired
+                            <i class="fa" ng-class="getSortIcon('acquiredRecordCount')"></i>
+                        </th>
+                        <th ng-click="sortBy('deletedRecordCount')" style="cursor: pointer; width: 100px;" class="text-right" title="Records marked as deleted in OAI-PMH">
+                            Deleted
+                            <i class="fa" ng-class="getSortIcon('deletedRecordCount')"></i>
+                        </th>
+                        <th ng-click="sortBy('processedValid')" style="cursor: pointer; width: 100px;" class="text-right">
                             Valid
                             <i class="fa" ng-class="getSortIcon('processedValid')"></i>
                         </th>
-                        <th ng-click="sortBy('processedInvalid')" style="cursor: pointer; width: 120px;" class="text-right">
+                        <th ng-click="sortBy('processedInvalid')" style="cursor: pointer; width: 100px;" class="text-right">
                             Invalid
                             <i class="fa" ng-class="getSortIcon('processedInvalid')"></i>
                         </th>
-                        <th ng-click="sortBy('indexCount')" style="cursor: pointer; width: 120px;" class="text-right">
+                        <th ng-click="sortBy('indexCount')" style="cursor: pointer; width: 100px;" class="text-right">
                             Indexed
                             <i class="fa" ng-class="getSortIcon('indexCount')"></i>
                         </th>
@@ -105,10 +121,30 @@
                         <td>
                             <a href="#/dataset/{{ ds.spec }}">{{ ds.spec }}</a>
                         </td>
-                        <td class="text-right">{{ formatNumber(ds.recordCount) }}</td>
-                        <td class="text-right">{{ formatNumber(ds.processedValid) }}</td>
-                        <td class="text-right">{{ formatNumber(ds.processedInvalid) }}</td>
-                        <td class="text-right">{{ formatNumber(ds.indexCount) }}</td>
+                        <td>
+                            <span ng-if="ds.acquisitionMethod === 'harvest'" class="label label-info" title="Harvested via OAI-PMH">
+                                <i class="fa fa-download"></i> harvest
+                            </span>
+                            <span ng-if="ds.acquisitionMethod === 'upload'" class="label label-default" title="Uploaded as file">
+                                <i class="fa fa-upload"></i> upload
+                            </span>
+                            <span ng-if="!ds.acquisitionMethod" class="text-muted">-</span>
+                        </td>
+                        <td class="text-right">{{ formatNumber(ds.acquiredRecordCount) || '-' }}</td>
+                        <td class="text-right">
+                            <span ng-if="ds.deletedRecordCount > 0" class="text-warning" title="Records marked as deleted in OAI-PMH harvest">
+                                {{ formatNumber(ds.deletedRecordCount) }}
+                            </span>
+                            <span ng-if="!ds.deletedRecordCount || ds.deletedRecordCount === 0">-</span>
+                        </td>
+                        <td class="text-right">{{ formatNumber(ds.processedValid) || '-' }}</td>
+                        <td class="text-right">
+                            <span ng-if="ds.processedInvalid > 0" class="text-danger">
+                                {{ formatNumber(ds.processedInvalid) }}
+                            </span>
+                            <span ng-if="!ds.processedInvalid || ds.processedInvalid === 0">-</span>
+                        </td>
+                        <td class="text-right">{{ formatNumber(ds.indexCount) || '-' }}</td>
                         <td ng-if="activeTab === 'wrongCount'" class="text-right" ng-class="getDifferenceClass(ds)">
                             <span ng-if="getDifference(ds) > 0">+</span>{{ formatNumber(getDifference(ds)) }}
                         </td>

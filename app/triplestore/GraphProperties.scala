@@ -176,6 +176,12 @@ object GraphProperties {
   val processedIncrementalValid = NXProp("processedIncrementalValid", intProp)
   val processedIncrementalInvalid = NXProp("processedIncrementalInvalid", intProp)
 
+  // Acquisition tracking properties (for clear record count semantics)
+  val acquiredRecordCount = NXProp("acquiredRecordCount", intProp)    // Total records (harvested or uploaded)
+  val deletedRecordCount = NXProp("deletedRecordCount", intProp)      // Deleted in OAI-PMH (0 for uploads)
+  val sourceRecordCount = NXProp("sourceRecordCount", intProp)        // Active records in source.xml
+  val acquisitionMethod = NXProp("acquisitionMethod")                 // "harvest" or "upload"
+
   val recordGraphsInSync = NXProp("recordGraphsInSync", booleanProp)
   val recordGraphsStored = NXProp("recordGraphsStored", intProp)
   val recordGraphsIndexed = NXProp("recordGraphsIndexed", intProp)

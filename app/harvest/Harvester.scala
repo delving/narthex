@@ -89,6 +89,10 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var maxTotalRecords: Int = 0  // Track max total records reported by API (to handle inconsistent responses)
   var maxTotalPages: Int = 0    // Track max total pages calculated
 
+  // OAI-PMH deleted record tracking
+  var deletedRecordIds: List[String] = List.empty  // Accumulated deleted record IDs
+  var totalDeletedCount: Int = 0                   // Total count of deleted records
+
   // Error recovery state
   var harvestErrors: Map[String, String] = Map.empty
   var errorRecords: List[(String, String, String)] = List.empty // (recordId, xml, error)
@@ -322,7 +326,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     log.info(
       s"Finished $strategy harvest for dataset $datasetContext: " +
       s"error=$errorOpt, errors=${errorRecords.size}, recovery_attempts=$errorPagesSubmitted, " +
-      s"records_processed=$recordsProcessed"
+      s"records_processed=$recordsProcessed, deleted_records=$totalDeletedCount"
     )
 
     errorOpt match {
@@ -339,6 +343,14 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                 Future {
                   val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
                   val fileOption = sourceRepo.acceptFile(tempFileOpt.get, acceptZipReporter)
+
+                  // Save deleted record IDs file if any deleted records were found
+                  if (deletedRecordIds.nonEmpty) {
+                    val deletedFile = new File(sourceRepo.sourceDir, "deleted.ids")
+                    val deletedContent = deletedRecordIds.mkString("\n")
+                    FileUtils.writeStringToFile(deletedFile, deletedContent, "UTF-8")
+                    log.info(s"Saved ${deletedRecordIds.size} deleted record IDs to: ${deletedFile.getAbsolutePath}")
+                  }
 
                   // Save error files if they exist
                   errorsZipOpt.foreach { errZip =>
@@ -595,6 +607,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       recordsPerPage = None
       maxTotalRecords = 0
       maxTotalPages = 0
+      deletedRecordIds = List.empty
+      totalDeletedCount = 0
 
       val url = s"${raw_url.stripSuffix("?")}?"
       log.info(s"Harvesting $strategy: $url $set $prefix to $datasetContext")
@@ -675,9 +689,16 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       }
     }
 
-    case PMHHarvestPage(records, url, set, prefix, total, strategy, resumptionToken) => actorWork(context) {
+    case PMHHarvestPage(records, url, set, prefix, total, strategy, resumptionToken, pageDeletedIds, pageDeletedCount) => actorWork(context) {
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
+
+      // Accumulate deleted record IDs
+      if (pageDeletedIds.nonEmpty) {
+        deletedRecordIds = deletedRecordIds ++ pageDeletedIds
+        totalDeletedCount += pageDeletedCount
+        log.info(s"Accumulated ${pageDeletedIds.size} deleted records (total: $totalDeletedCount)")
+      }
 
       // Count records on this page - both for page size detection and accurate progress
       val recordsOnPage = try {

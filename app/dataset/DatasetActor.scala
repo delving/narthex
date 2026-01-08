@@ -893,6 +893,19 @@ class DatasetActor(val datasetContext: DatasetContext,
       log.info(s"Generated $recordCount pockets")
       dsInfo.setState(MAPPABLE)
       dsInfo.setRecordCount(recordCount)
+
+      // Set acquisition tracking counts
+      datasetContext.sourceRepoOpt.foreach { sourceRepo =>
+        val deletedCount = sourceRepo.deletedCount
+        val acquiredCount = recordCount + deletedCount  // Source + deleted = total acquired
+        // Determine acquisition method: "harvest" if harvest properties exist, otherwise "upload"
+        val acquisitionMethod = dsInfo.getLiteralProp(harvestType).map(_ => "harvest").getOrElse("upload")
+        dsInfo.setAcquisitionCounts(acquiredCount, deletedCount, recordCount, acquisitionMethod)
+        if (deletedCount > 0) {
+          log.info(s"Acquisition counts set: acquired=$acquiredCount, deleted=$deletedCount, source=$recordCount, method=$acquisitionMethod")
+        }
+      }
+
       if (datasetContext.sipMapperOpt.isDefined) {
         log.info(s"There is a mapper, so setting to processable")
         dsInfo.setState(PROCESSABLE)
@@ -1458,14 +1471,20 @@ class DatasetActor(val datasetContext: DatasetContext,
 
         // Log operation completion if we were tracking one
         completedStartTime.foreach { startTime =>
-          // Log operation complete with record count
+          // Log operation complete with record count and acquisition counts
           ActivityLogger.logOperationComplete(
-            datasetContext.activityLog,
-            operation,
-            trigger,
-            startTime,
-            currentWorkflowId,
-            recordCountOpt
+            activityLog = datasetContext.activityLog,
+            operation = operation,
+            trigger = trigger,
+            startTime = startTime,
+            workflowId = currentWorkflowId,
+            recordCount = recordCountOpt,
+            acquiredCount = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt),
+            deletedCount = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt),
+            sourceCount = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt),
+            validCount = dsInfo.getLiteralProp(processedValid).map(_.toInt),
+            invalidCount = dsInfo.getLiteralProp(processedInvalid).map(_.toInt),
+            acquisitionMethod = dsInfo.getLiteralProp(acquisitionMethod)
           )
 
           // If this completes a workflow, log workflow completion
@@ -1547,12 +1566,18 @@ class DatasetActor(val datasetContext: DatasetContext,
           }
 
           ActivityLogger.logOperationComplete(
-            datasetContext.activityLog,
-            oldOperation,
-            trigger,
-            startTime,
-            currentWorkflowId,
-            recordCountOpt
+            activityLog = datasetContext.activityLog,
+            operation = oldOperation,
+            trigger = trigger,
+            startTime = startTime,
+            workflowId = currentWorkflowId,
+            recordCount = recordCountOpt,
+            acquiredCount = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt),
+            deletedCount = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt),
+            sourceCount = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt),
+            validCount = dsInfo.getLiteralProp(processedValid).map(_.toInt),
+            invalidCount = dsInfo.getLiteralProp(processedInvalid).map(_.toInt),
+            acquisitionMethod = dsInfo.getLiteralProp(acquisitionMethod)
           )
         }
 

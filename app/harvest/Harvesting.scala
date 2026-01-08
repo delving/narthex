@@ -103,7 +103,10 @@ object Harvesting {
     metadataPrefix: String,
     totalRecords: Int,
     strategy: HarvestStrategy,
-    resumptionToken: Option[PMHResumptionToken])
+    resumptionToken: Option[PMHResumptionToken],
+    deletedIds: List[String] = List.empty,    // Record IDs with status="deleted"
+    deletedCount: Int = 0                     // Count of deleted records in this page
+  )
 
   case class AdLibHarvestPage
   (
@@ -418,6 +421,19 @@ trait Harvesting {
               if (newToken.isDefined) newToken.get.totalRecords
               else if (resumption.isDefined) resumption.get.totalRecords
               else 0
+
+            // Detect deleted records (status="deleted" in OAI-PMH header)
+            val allRecords = xml \ "ListRecords" \ "record"
+            val deletedRecords = allRecords.filter { record =>
+              (record \ "header" \ "@status").text == "deleted"
+            }
+            val deletedIds = deletedRecords.map { record =>
+              (record \ "header" \ "identifier").text
+            }.toList
+            if (deletedIds.nonEmpty) {
+              logger.info(s"Detected ${deletedIds.size} deleted records in OAI-PMH page")
+            }
+
             val harvestPage = PMHHarvestPage(
               records = xml.toString(),
               url = url,
@@ -425,7 +441,9 @@ trait Harvesting {
               metadataPrefix = metadataPrefix,
               totalRecords = total,
               strategy,
-              resumptionToken = newToken
+              resumptionToken = newToken,
+              deletedIds = deletedIds,
+              deletedCount = deletedIds.size
             )
             logger.debug(s"Return PMHHarvestPage: $newToken, $sourceUri")
             harvestPage

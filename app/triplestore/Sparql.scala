@@ -88,6 +88,7 @@ object Sparql {
     s"""
       |PREFIX nx: <${NX_NAMESPACE}>
       |SELECT DISTINCT ?spec ?name ?processedValid ?processedInvalid ?recordCount
+      |                ?acquiredRecordCount ?deletedRecordCount ?sourceRecordCount ?acquisitionMethod
       |                ?stateDisabled ?stateRaw ?stateRawAnalyzed ?stateSourced
       |                ?stateMappable ?stateProcessable ?stateAnalyzed ?stateProcessed
       |                ?stateSaved ?stateIncrementalSaved
@@ -105,6 +106,10 @@ object Sparql {
       |    OPTIONAL { ?s nx:processedValid ?processedValid }
       |    OPTIONAL { ?s nx:processedInvalid ?processedInvalid }
       |    OPTIONAL { ?s nx:datasetRecordCount ?recordCount }
+      |    OPTIONAL { ?s nx:acquiredRecordCount ?acquiredRecordCount }
+      |    OPTIONAL { ?s nx:deletedRecordCount ?deletedRecordCount }
+      |    OPTIONAL { ?s nx:sourceRecordCount ?sourceRecordCount }
+      |    OPTIONAL { ?s nx:acquisitionMethod ?acquisitionMethod }
       |    OPTIONAL { ?s nx:stateDisabled ?stateDisabled }
       |    OPTIONAL { ?s nx:stateRaw ?stateRaw }
       |    OPTIONAL { ?s nx:stateRawAnalyzed ?stateRawAnalyzed }
@@ -144,19 +149,26 @@ object Sparql {
 
   /**
    * Query for index statistics - minimal fields needed for comparing Narthex with search index.
-   * Includes deleted datasets so they can be shown in a separate category.
+   * Includes deleted and disabled datasets so they can be shown in separate categories.
    */
   val selectIndexStatsQ =
     s"""
       |PREFIX nx: <${NX_NAMESPACE}>
-      |SELECT DISTINCT ?spec ?processedValid ?processedInvalid ?recordCount ?deleted
+      |SELECT DISTINCT ?spec ?processedValid ?processedInvalid ?recordCount
+      |                ?acquiredRecordCount ?deletedRecordCount ?sourceRecordCount ?acquisitionMethod
+      |                ?deleted ?stateDisabled
       |WHERE {
       |  GRAPH ?g {
       |    ?s nx:datasetSpec ?spec .
       |    OPTIONAL { ?s nx:processedValid ?processedValid }
       |    OPTIONAL { ?s nx:processedInvalid ?processedInvalid }
       |    OPTIONAL { ?s nx:datasetRecordCount ?recordCount }
+      |    OPTIONAL { ?s nx:acquiredRecordCount ?acquiredRecordCount }
+      |    OPTIONAL { ?s nx:deletedRecordCount ?deletedRecordCount }
+      |    OPTIONAL { ?s nx:sourceRecordCount ?sourceRecordCount }
+      |    OPTIONAL { ?s nx:acquisitionMethod ?acquisitionMethod }
       |    OPTIONAL { ?s nx:deleted ?deleted }
+      |    OPTIONAL { ?s nx:stateDisabled ?stateDisabled }
       |  }
       |}
       |ORDER BY ?spec

@@ -206,9 +206,8 @@
             <tr>
                 <th class="spec">Spec</th>
                 <th class="name">Display name</th>
-                <th class="error">In error</th>
-                <th class="valid">Valid</th>
-                <th class="total">Total</th>
+                <th class="acquired" title="Acquired records (harvested or uploaded) and deleted count">Acquired</th>
+                <th class="source" title="Source records (valid/invalid after processing)">Source</th>
                 <th class="activity">Activity</th>
                 <th class="status">Status</th>
                 <th class="date-time">Last changed</th>
@@ -234,24 +233,38 @@
                                 <span data-ng-show="dataset.datasetName" class="name-field">{{ dataset.datasetName
                                     }}</span>
                             </td>
-                            <td class="error">
-                                <span data-ng-if="dataset.harvestIncrementalMode == 'true'">{{
-                                    dataset.processedIncrementalInvalid }}
-                                    (inc)</span>
-                                <span
-                                    data-ng-if="!dataset.harvestIncrementalMode || dataset.harvestIncrementalMode == 'false'">{{
-                                    dataset.processedInvalid }}</span>
+                            <td class="acquired"
+                                title="Acquired: {{ dataset.acquiredRecordCount || dataset.datasetRecordCount || 0 }}&#10;Deleted: {{ dataset.deletedRecordCount || 0 }}&#10;Source: {{ dataset.sourceRecordCount || (dataset.acquiredRecordCount || dataset.datasetRecordCount || 0) - (dataset.deletedRecordCount || 0) }}">
+                                <!-- Acquisition method icon -->
+                                <i data-ng-if="dataset.acquisitionMethod == 'harvest'" class="fa fa-download text-info" title="Harvested via OAI-PMH"></i>
+                                <i data-ng-if="dataset.acquisitionMethod == 'upload'" class="fa fa-upload text-muted" title="Uploaded file"></i>
+                                <!-- Acquired count -->
+                                <span data-ng-if="dataset.acquiredRecordCount">{{ dataset.acquiredRecordCount }}</span>
+                                <span data-ng-if="!dataset.acquiredRecordCount && dataset.datasetRecordCount">{{ dataset.datasetRecordCount }}</span>
+                                <span data-ng-if="!dataset.acquiredRecordCount && !dataset.datasetRecordCount">-</span>
+                                <!-- Deleted count (if any) -->
+                                <span data-ng-if="dataset.deletedRecordCount > 0" class="text-warning" title="Deleted records in OAI-PMH">
+                                    (-{{ dataset.deletedRecordCount }})
+                                </span>
                             </td>
-                            <td class="valid">
-                                <span data-ng-if="dataset.harvestIncrementalMode == 'true'">{{
-                                    dataset.processedIncrementalValid }}
-                                    (inc)</span>
-                                <span
-                                    data-ng-if="!dataset.harvestIncrementalMode || dataset.harvestIncrementalMode == 'false'">{{
-                                    dataset.processedValid }}</span>
-                            </td>
-                            <td class="total">
-                                {{ dataset.datasetRecordCount }}
+                            <td class="source"
+                                title="Valid: {{ dataset.harvestIncrementalMode == 'true' ? (dataset.processedIncrementalValid || 0) : (dataset.processedValid || 0) }}&#10;Invalid: {{ dataset.harvestIncrementalMode == 'true' ? (dataset.processedIncrementalInvalid || 0) : (dataset.processedInvalid || 0) }}">
+                                <!-- Valid count (primary) -->
+                                <span data-ng-if="dataset.harvestIncrementalMode == 'true'" class="text-success">
+                                    {{ dataset.processedIncrementalValid || '-' }}
+                                </span>
+                                <span data-ng-if="!dataset.harvestIncrementalMode || dataset.harvestIncrementalMode == 'false'" class="text-success">
+                                    {{ dataset.processedValid || '-' }}
+                                </span>
+                                <!-- Invalid count (if any) -->
+                                <span data-ng-if="dataset.harvestIncrementalMode == 'true' && dataset.processedIncrementalInvalid > 0" class="text-danger">
+                                    /{{ dataset.processedIncrementalInvalid }}
+                                </span>
+                                <span data-ng-if="(!dataset.harvestIncrementalMode || dataset.harvestIncrementalMode == 'false') && dataset.processedInvalid > 0" class="text-danger">
+                                    /{{ dataset.processedInvalid }}
+                                </span>
+                                <!-- Incremental indicator -->
+                                <span data-ng-if="dataset.harvestIncrementalMode == 'true'" class="text-muted" style="font-size: 0.8em;">(inc)</span>
                             </td>
                             <td class="activity">
                                 <!-- Processing status with cancel button -->
@@ -895,7 +908,10 @@
                                                     <th>Trigger</th>
                                                     <th>Status</th>
                                                     <th>Duration</th>
-                                                    <th>Records</th>
+                                                    <th title="Total records processed">Records</th>
+                                                    <th title="Valid records after processing">Valid</th>
+                                                    <th title="Invalid records (discarded/errors)">Invalid</th>
+                                                    <th title="Deleted records in OAI-PMH">Deleted</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -922,6 +938,14 @@
                                                     </td>
                                                     <td>{{ activityModal.scope.formatDuration(activity.duration_seconds) }}</td>
                                                     <td>{{ activity.total_records || activity.recordCount || '-' }}</td>
+                                                    <td>{{ activity.valid_records || '-' }}</td>
+                                                    <td>{{ activity.invalid_records || '-' }}</td>
+                                                    <td>
+                                                        <span ng-if="activity.deleted_records > 0" class="text-warning" title="Deleted in OAI-PMH">
+                                                            {{ activity.deleted_records }}
+                                                        </span>
+                                                        <span ng-if="!activity.deleted_records || activity.deleted_records == 0">-</span>
+                                                    </td>
                                                 </tr>
 
                                                 <tr ng-if="activity.isWorkflow && activity.expanded" ng-repeat="step in activity.steps"
@@ -939,6 +963,14 @@
                                                     </td>
                                                     <td>{{ activityModal.scope.formatDuration(step.duration_seconds) }}</td>
                                                     <td>{{ step.recordCount || '-' }}</td>
+                                                    <td>{{ step.valid_records || '-' }}</td>
+                                                    <td>{{ step.invalid_records || '-' }}</td>
+                                                    <td>
+                                                        <span ng-if="step.deleted_records > 0" class="text-warning">
+                                                            {{ step.deleted_records }}
+                                                        </span>
+                                                        <span ng-if="!step.deleted_records || step.deleted_records == 0">-</span>
+                                                    </td>
                                                 </tr>
 
                                                 <tr ng-repeat-end ng-if="!activity.isWorkflow">
@@ -956,6 +988,14 @@
                                                     </td>
                                                     <td>{{ activityModal.scope.formatDuration(activity.duration_seconds) }}</td>
                                                     <td>{{ activity.total_records || activity.recordCount || '-' }}</td>
+                                                    <td>{{ activity.valid_records || '-' }}</td>
+                                                    <td>{{ activity.invalid_records || '-' }}</td>
+                                                    <td>
+                                                        <span ng-if="activity.deleted_records > 0" class="text-warning" title="Deleted in OAI-PMH">
+                                                            {{ activity.deleted_records }}
+                                                        </span>
+                                                        <span ng-if="!activity.deleted_records || activity.deleted_records == 0">-</span>
+                                                    </td>
                                                 </tr>
                                             </tbody>
                                         </table>

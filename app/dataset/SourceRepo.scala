@@ -292,6 +292,27 @@ class SourceRepo(home: File, orgContext: OrgContext) {
 
   lazy val sourceFacts = SourceRepo.sourceFactsFromHomedir(home)
 
+  /** Public accessor for the source directory (needed by Harvester to write deleted.ids) */
+  def sourceDir: File = home
+
+  /** Read deleted record IDs from the deleted.ids file (written during OAI-PMH harvest) */
+  def deletedIdSet: Set[String] = {
+    val deletedFile = new File(home, "deleted.ids")
+    if (deletedFile.exists()) {
+      val source = Source.fromFile(deletedFile, "UTF-8")
+      try {
+        source.getLines().filter(_.nonEmpty).toSet
+      } finally {
+        source.close()
+      }
+    } else {
+      Set.empty
+    }
+  }
+
+  /** Count of deleted records from the deleted.ids file */
+  def deletedCount: Int = deletedIdSet.size
+
   def countFiles = fileList.size
 
   def clearData() = fileList.foreach(FileUtils.deleteQuietly)
@@ -334,9 +355,17 @@ class SourceRepo(home: File, orgContext: OrgContext) {
     val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
     val totalActiveIds = activeIdCounts.sum
     progress.setMaximum(totalActiveIds)
+
+    // Get deleted record IDs to exclude during Make SIP
+    val deletedIds = deletedIdSet
+    if (deletedIds.nonEmpty) {
+      logger.info(s"Filtering out ${deletedIds.size} deleted records during pocket parsing")
+    }
+
     listZipFiles.foreach { zipFile =>
       progress.checkInterrupt()
-      val idSet = avoidSet(zipFile)
+      // Combine the avoid set with deleted IDs
+      val idSet = avoidSet(zipFile) ++ deletedIds
       val (source, _) = sourceFromFile(zipFile)
       // ignore this read progress because it's one of many files
       try {

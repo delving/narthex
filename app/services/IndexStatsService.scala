@@ -35,8 +35,16 @@ case class DatasetIndexStats(
   recordCount: Option[Int],
   processedValid: Option[Int],
   processedInvalid: Option[Int],
+  // Acquisition tracking fields
+  acquiredRecordCount: Option[Int],
+  deletedRecordCount: Option[Int],
+  sourceRecordCount: Option[Int],
+  acquisitionMethod: Option[String],
+  // Index count from Hub3
   indexCount: Int,
-  deleted: Boolean
+  // Status flags
+  deleted: Boolean,
+  disabled: Boolean
 )
 
 object DatasetIndexStats {
@@ -52,7 +60,8 @@ case class IndexStatsResponse(
   correct: List[DatasetIndexStats],
   notIndexed: List[DatasetIndexStats],
   wrongCount: List[DatasetIndexStats],
-  deleted: List[DatasetIndexStats]
+  deleted: List[DatasetIndexStats],
+  disabled: List[DatasetIndexStats]
 )
 
 object IndexStatsResponse {
@@ -83,7 +92,8 @@ class IndexStatsService @Inject()(
       .url(url)
       .withQueryStringParameters(
         "rows" -> "0",
-        "facet.field" -> "meta.spec"
+        "facet.field" -> "meta.spec",
+        "facet.limit" -> "1000"
       )
       .withRequestTimeout(hub3Timeout)
       .get()
@@ -146,8 +156,14 @@ class IndexStatsService @Inject()(
           recordCount = row.get("recordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
           processedValid = row.get("processedValid").flatMap(v => scala.util.Try(v.text.toInt).toOption),
           processedInvalid = row.get("processedInvalid").flatMap(v => scala.util.Try(v.text.toInt).toOption),
+          // Acquisition tracking fields
+          acquiredRecordCount = row.get("acquiredRecordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
+          deletedRecordCount = row.get("deletedRecordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
+          sourceRecordCount = row.get("sourceRecordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
+          acquisitionMethod = row.get("acquisitionMethod").map(_.text),
           indexCount = 0, // Will be filled in later
-          deleted = row.get("deleted").exists(_.text == "true")
+          deleted = row.get("deleted").exists(_.text == "true"),
+          disabled = row.get("stateDisabled").exists(_.text.nonEmpty)  // Has a timestamp = disabled
         )
       }
     }.recover {
@@ -178,9 +194,12 @@ class IndexStatsService @Inject()(
       }
 
       // Separate deleted datasets first
-      val (deletedDatasets, activeDatasets) = mergedDatasets.partition(_.deleted)
+      val (deletedDatasets, nonDeletedDatasets) = mergedDatasets.partition(_.deleted)
 
-      // Categorize active datasets
+      // Separate disabled datasets from active datasets
+      val (disabledDatasets, activeDatasets) = nonDeletedDatasets.partition(_.disabled)
+
+      // Categorize active datasets (not deleted and not disabled)
       val correct = activeDatasets.filter { ds =>
         ds.processedValid.exists(_ == ds.indexCount)
       }
@@ -199,7 +218,8 @@ class IndexStatsService @Inject()(
         correct = correct.sortBy(_.spec),
         notIndexed = notIndexed.sortBy(_.spec),
         wrongCount = wrongCount.sortBy(_.spec),
-        deleted = deletedDatasets.sortBy(_.spec)
+        deleted = deletedDatasets.sortBy(_.spec),
+        disabled = disabledDatasets.sortBy(_.spec)
       )
     }
   }

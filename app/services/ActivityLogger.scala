@@ -104,6 +104,12 @@ object ActivityLogger {
    * @param startTime When the operation started
    * @param workflowId Optional workflow ID for automatic workflows
    * @param recordCount Optional number of records processed
+   * @param acquiredCount Optional total records acquired (harvested or uploaded)
+   * @param deletedCount Optional records with status="deleted" in OAI-PMH
+   * @param sourceCount Optional active records in source.xml
+   * @param validCount Optional valid records after processing
+   * @param invalidCount Optional invalid records after processing
+   * @param acquisitionMethod Optional how source was acquired ("harvest" or "upload")
    * @param metadata Optional additional metadata (validRecords, invalidRecords, etc.)
    */
   def logOperationComplete(
@@ -113,6 +119,12 @@ object ActivityLogger {
     startTime: DateTime,
     workflowId: Option[String] = None,
     recordCount: Option[Int] = None,
+    acquiredCount: Option[Int] = None,
+    deletedCount: Option[Int] = None,
+    sourceCount: Option[Int] = None,
+    validCount: Option[Int] = None,
+    invalidCount: Option[Int] = None,
+    acquisitionMethod: Option[String] = None,
     metadata: Map[String, JsValue] = Map.empty
   ): Unit = {
     val now = DateTime.now()
@@ -132,6 +144,14 @@ object ActivityLogger {
     }
 
     recordCount.foreach(count => entry = entry + ("recordCount" -> JsNumber(count)))
+
+    // Acquisition tracking counts
+    acquiredCount.foreach(count => entry = entry + ("acquired_records" -> JsNumber(count)))
+    deletedCount.foreach(count => entry = entry + ("deleted_records" -> JsNumber(count)))
+    sourceCount.foreach(count => entry = entry + ("source_records" -> JsNumber(count)))
+    validCount.foreach(count => entry = entry + ("valid_records" -> JsNumber(count)))
+    invalidCount.foreach(count => entry = entry + ("invalid_records" -> JsNumber(count)))
+    acquisitionMethod.foreach(method => entry = entry + ("acquisition_method" -> JsString(method)))
 
     if (metadata.nonEmpty) {
       entry = entry + ("metadata" -> JsObject(metadata))

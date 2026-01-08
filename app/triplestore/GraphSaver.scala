@@ -183,6 +183,18 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           datasetContext.dsInfo.removeNaveOrphans(startSave)
           log.info(s"Only drop orphans when not in incremental mode")
         }
+
+        // Log deleted record IDs for future orphan control (Hub3 bulk delete)
+        // TODO: Implement actual Hub3 bulk delete API call in future iteration
+        datasetContext.sourceRepoOpt.foreach { sourceRepo =>
+          val deletedIds = sourceRepo.deletedIdSet
+          if (deletedIds.nonEmpty) {
+            log.info(s"Found ${deletedIds.size} deleted record IDs for future orphan control in Hub3")
+            // Future: Call Hub3 bulk delete API here
+            // datasetContext.dsInfo.deleteRecordsByIds(deletedIds.toList)
+          }
+        }
+
         // Release BOTH semaphores on successful completion to be safe
         orgContext.semaphore.release(datasetContext.dsInfo.spec)
         orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
