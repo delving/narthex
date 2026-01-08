@@ -98,6 +98,165 @@ object DsInfo {
     }
   }
 
+  // ============================================================================
+  // Field Registry for WebSocket Serialization
+  // ============================================================================
+  //
+  // This is the SINGLE SOURCE OF TRUTH for fields that should appear in WebSocket
+  // updates (toSimpleJson). Adding a new field to WebSocket updates requires:
+  // 1. Add the GraphProperty import
+  // 2. Add a FieldSpec entry to webSocketFields below
+  //
+  // Tests in DsInfoSerializationSpec validate that all required fields are covered.
+  // ============================================================================
+
+  /** Sealed trait for field specifications in WebSocket serialization */
+  sealed trait FieldSpec {
+    def jsonName: String
+    def getValue(dsInfo: DsInfo): Option[JsValue]
+  }
+
+  /** String field - serializes as JsString */
+  case class StringField(jsonName: String, prop: NXProp) extends FieldSpec {
+    def getValue(dsInfo: DsInfo): Option[JsValue] =
+      dsInfo.getLiteralProp(prop).map(v => play.api.libs.json.JsString(v))
+  }
+
+  /** Integer field - serializes as JsNumber, returns None if parse fails */
+  case class IntField(jsonName: String, prop: NXProp) extends FieldSpec {
+    def getValue(dsInfo: DsInfo): Option[JsValue] =
+      dsInfo.getLiteralProp(prop).flatMap(v => scala.util.Try(play.api.libs.json.JsNumber(v.toInt)).toOption)
+  }
+
+  /** Boolean field - serializes as JsBoolean */
+  case class BoolField(jsonName: String, prop: NXProp) extends FieldSpec {
+    def getValue(dsInfo: DsInfo): Option[JsValue] =
+      dsInfo.getLiteralProp(prop).flatMap(v => scala.util.Try(play.api.libs.json.JsBoolean(v.toBoolean)).toOption)
+  }
+
+  /** NonEmpty field - returns JsBoolean(true/false) based on whether value is non-empty */
+  case class NonEmptyField(jsonName: String, prop: NXProp) extends FieldSpec {
+    def getValue(dsInfo: DsInfo): Option[JsValue] =
+      dsInfo.getLiteralProp(prop).map(v => play.api.libs.json.JsBoolean(v.nonEmpty))
+  }
+
+  /**
+   * Registry of all fields to include in WebSocket updates (toSimpleJson).
+   *
+   * Grouped by category for maintainability. When adding new fields:
+   * 1. Add the GraphProperty to the appropriate group
+   * 2. Use the correct FieldSpec type (StringField, IntField, BoolField, NonEmptyField)
+   */
+  val webSocketFields: scala.collection.immutable.Seq[FieldSpec] = {
+    import triplestore.GraphProperties._
+
+    scala.collection.immutable.Seq(
+      // Dataset metadata
+      StringField("datasetName", datasetName),
+      StringField("datasetDescription", datasetDescription),
+      StringField("datasetAggregator", datasetAggregator),
+      StringField("datasetOwner", datasetOwner),
+      StringField("datasetLanguage", datasetLanguage),
+      StringField("datasetRights", datasetRights),
+      StringField("datasetType", datasetType),
+      StringField("datasetTags", datasetTags),
+      StringField("edmType", edmType),
+      StringField("datasetDataProviderURL", datasetDataProviderURL),
+
+      // Record counts
+      IntField("datasetRecordCount", datasetRecordCount),
+      IntField("processedValid", processedValid),
+      IntField("processedInvalid", processedInvalid),
+      IntField("processedIncrementalValid", processedIncrementalValid),
+      IntField("processedIncrementalInvalid", processedIncrementalInvalid),
+      IntField("acquiredRecordCount", acquiredRecordCount),
+      IntField("deletedRecordCount", deletedRecordCount),
+      IntField("sourceRecordCount", sourceRecordCount),
+      StringField("acquisitionMethod", acquisitionMethod),
+
+      // State timestamps
+      StringField("stateDisabled", stateDisabled),
+      StringField("stateRaw", stateRaw),
+      StringField("stateRawAnalyzed", stateRawAnalyzed),
+      StringField("stateSourced", stateSourced),
+      StringField("stateMappable", stateMappable),
+      StringField("stateProcessable", stateProcessable),
+      StringField("stateAnalyzed", stateAnalyzed),
+      StringField("stateProcessed", stateProcessed),
+      StringField("stateSaved", stateSaved),
+      StringField("stateIncrementalSaved", stateIncrementalSaved),
+
+      // Operation status
+      StringField("currentOperation", datasetCurrentOperation),
+      StringField("operationStatus", datasetOperationStatus),
+      StringField("datasetErrorMessage", datasetErrorMessage),
+
+      // Delimiters
+      StringField("delimitersSet", delimitersSet),
+      StringField("recordRoot", recordRoot),
+      StringField("uniqueId", uniqueId),
+
+      // Harvest configuration
+      StringField("harvestType", harvestType),
+      StringField("harvestURL", harvestURL),
+      StringField("harvestDataset", harvestDataset),
+      StringField("harvestPrefix", harvestPrefix),
+      StringField("harvestSearch", harvestSearch),
+      StringField("harvestRecord", harvestRecord),
+      StringField("harvestDownloadURL", harvestDownloadURL),
+      StringField("harvestIncrementalMode", harvestIncrementalMode),
+      StringField("harvestDelay", harvestDelay),
+      StringField("harvestDelayUnit", harvestDelayUnit),
+      StringField("harvestPreviousTime", harvestPreviousTime),
+      StringField("harvestIncremental", harvestIncremental),
+      BoolField("harvestContinueOnError", harvestContinueOnError),
+      IntField("harvestErrorThreshold", harvestErrorThreshold),
+
+      // Harvest credentials
+      StringField("harvestUsername", harvestUsername),
+      NonEmptyField("harvestPasswordSet", harvestPassword),
+      NonEmptyField("harvestApiKeySet", harvestApiKey),
+      StringField("harvestApiKeyParam", harvestApiKeyParam),
+
+      // JSON harvest fields
+      StringField("harvestJsonItemsPath", harvestJsonItemsPath),
+      StringField("harvestJsonIdPath", harvestJsonIdPath),
+      StringField("harvestJsonTotalPath", harvestJsonTotalPath),
+      StringField("harvestJsonPageParam", harvestJsonPageParam),
+      StringField("harvestJsonPageSizeParam", harvestJsonPageSizeParam),
+      IntField("harvestJsonPageSize", harvestJsonPageSize),
+      StringField("harvestJsonDetailPath", harvestJsonDetailPath),
+      BoolField("harvestJsonSkipDetail", harvestJsonSkipDetail),
+      StringField("harvestJsonXmlRoot", harvestJsonXmlRoot),
+      StringField("harvestJsonXmlRecord", harvestJsonXmlRecord),
+
+      // Harvest retry status
+      BoolField("harvestInRetry", harvestInRetry),
+      IntField("harvestRetryCount", harvestRetryCount),
+      StringField("harvestLastRetryTime", harvestLastRetryTime),
+      StringField("harvestRetryMessage", harvestRetryMessage),
+
+      // ID filter
+      StringField("idFilterType", idFilterType),
+      StringField("idFilterExpression", idFilterExpression),
+
+      // Publish flags
+      BoolField("publishOAIPMH", publishOAIPMH),
+      BoolField("publishIndex", publishIndex),
+      BoolField("publishLOD", publishLOD),
+
+      // Indexing results from Hub3 webhook
+      IntField("indexingRecordsIndexed", indexingRecordsIndexed),
+      IntField("indexingRecordsExpected", indexingRecordsExpected),
+      IntField("indexingOrphansDeleted", indexingOrphansDeleted),
+      IntField("indexingErrorCount", indexingErrorCount),
+      StringField("indexingLastStatus", indexingLastStatus),
+      StringField("indexingLastMessage", indexingLastMessage),
+      StringField("indexingLastTimestamp", indexingLastTimestamp),
+      IntField("indexingLastRevision", indexingLastRevision)
+    )
+  }
+
   /**
    * Lightweight dataset info containing only fields needed for collapsed list view.
    * This avoids expensive RDF model serialization for the initial dataset list load.
@@ -108,6 +267,12 @@ object DsInfo {
     processedValid: Option[Int],
     processedInvalid: Option[Int],
     recordCount: Option[Int],
+    // Acquisition tracking fields
+    acquiredRecordCount: Option[Int],
+    deletedRecordCount: Option[Int],
+    sourceRecordCount: Option[Int],
+    acquisitionMethod: Option[String],
+    // State fields
     stateDisabled: Option[String],
     stateRaw: Option[String],
     stateRawAnalyzed: Option[String],
@@ -143,6 +308,12 @@ object DsInfo {
       "processedValid" -> ds.processedValid,
       "processedInvalid" -> ds.processedInvalid,
       "recordCount" -> ds.recordCount,
+      // Acquisition tracking fields
+      "acquiredRecordCount" -> ds.acquiredRecordCount,
+      "deletedRecordCount" -> ds.deletedRecordCount,
+      "sourceRecordCount" -> ds.sourceRecordCount,
+      "acquisitionMethod" -> ds.acquisitionMethod,
+      // State fields
       "stateDisabled" -> ds.stateDisabled,
       "stateRaw" -> ds.stateRaw,
       "stateRawAnalyzed" -> ds.stateRawAnalyzed,
@@ -216,6 +387,12 @@ object DsInfo {
           processedValid = row.get("processedValid").map(_.text.toInt),
           processedInvalid = row.get("processedInvalid").map(_.text.toInt),
           recordCount = row.get("recordCount").map(_.text.toInt),
+          // Acquisition tracking fields
+          acquiredRecordCount = row.get("acquiredRecordCount").map(_.text.toInt),
+          deletedRecordCount = row.get("deletedRecordCount").map(_.text.toInt),
+          sourceRecordCount = row.get("sourceRecordCount").map(_.text.toInt),
+          acquisitionMethod = row.get("acquisitionMethod").map(_.text),
+          // State fields
           stateDisabled = row.get("stateDisabled").map(_.text),
           stateRaw = row.get("stateRaw").map(_.text),
           stateRawAnalyzed = row.get("stateRawAnalyzed").map(_.text),
@@ -1089,6 +1266,21 @@ class DsInfo(
       processedIncrementalInvalid -> invalidCount.toString
     )
 
+  /**
+   * Set acquisition counts for tracking record pipeline from harvest/upload to source.
+   * @param acquired Total records acquired (harvested or uploaded)
+   * @param deleted Records with status="deleted" in OAI-PMH (0 for uploads)
+   * @param source Active records that made it to source.xml (acquired - deleted)
+   * @param method How the source was acquired: "harvest" or "upload"
+   */
+  def setAcquisitionCounts(acquired: Int, deleted: Int, source: Int, method: String) =
+    setSingularLiteralProps(
+      acquiredRecordCount -> acquired.toString,
+      deletedRecordCount -> deleted.toString,
+      sourceRecordCount -> source.toString,
+      acquisitionMethod -> method
+    )
+
   def setHarvestInfo(harvestTypeEnum: HarvestType,
                      url: String,
                      dataset: String,
@@ -1323,80 +1515,45 @@ class DsInfo(
 
   /**
    * Convert DsInfo to simple JSON format for WebSocket updates.
-   * Uses the same field names as DsInfoLight so frontend can handle it.
+   * Uses the webSocketFields registry from DsInfo companion object as the single source of truth.
+   *
+   * This method is used for real-time WebSocket broadcasts when dataset state changes.
+   * All fields that need to survive WebSocket updates MUST be in the webSocketFields registry.
    */
   def toSimpleJson: JsValue = {
-    import triplestore.GraphProperties.{datasetName => dsName, processedValid => pValid,
-      processedInvalid => pInvalid, datasetRecordCount => dsRecordCount,
-      stateDisabled => sDisabled, stateRaw => sRaw, stateRawAnalyzed => sRawAnalyzed,
-      stateSourced => sSourced, stateMappable => sMappable, stateProcessable => sProcessable,
-      stateAnalyzed => sAnalyzed, stateProcessed => sProcessed, stateSaved => sSaved,
-      stateIncrementalSaved => sIncrementalSaved, datasetCurrentOperation => curOperation,
-      datasetOperationStatus => opStatus, datasetErrorMessage => dsErrorMessage,
-      harvestType => hType, harvestURL => hURL, harvestDataset => hDataset,
-      harvestPrefix => hPrefix, harvestSearch => hSearch, harvestIncrementalMode => hIncrementalMode,
-      harvestDelay => hDelay, harvestDelayUnit => hDelayUnit, harvestPreviousTime => hPreviousTime,
-      harvestIncremental => hIncremental,
-      processedIncrementalValid => pIncrementalValid, processedIncrementalInvalid => pIncrementalInvalid,
-      delimitersSet => dsDelimitersSet, recordRoot => dsRecordRoot, uniqueId => dsUniqueId,
-      indexingRecordsIndexed => idxRecordsIndexed, indexingRecordsExpected => idxRecordsExpected,
-      indexingOrphansDeleted => idxOrphansDeleted, indexingErrorCount => idxErrorCount,
-      indexingLastStatus => idxLastStatus, indexingLastMessage => idxLastMessage,
-      indexingLastTimestamp => idxLastTimestamp, indexingLastRevision => idxLastRevision,
-      harvestInRetry => hInRetry, harvestRetryCount => hRetryCount,
-      harvestLastRetryTime => hLastRetryTime, harvestRetryMessage => hRetryMessage}
-    Json.obj(
-      "datasetSpec" -> spec,
-      "spec" -> spec,
-      "datasetName" -> getLiteralProp(dsName),
-      "orgId" -> this.orgId,
-      "processedValid" -> getLiteralProp(pValid).map(_.toInt),
-      "processedInvalid" -> getLiteralProp(pInvalid).map(_.toInt),
-      "datasetRecordCount" -> getLiteralProp(dsRecordCount).map(_.toInt),
-      "stateDisabled" -> getLiteralProp(sDisabled),
-      "stateRaw" -> getLiteralProp(sRaw),
-      "stateRawAnalyzed" -> getLiteralProp(sRawAnalyzed),
-      "stateSourced" -> getLiteralProp(sSourced),
-      "stateMappable" -> getLiteralProp(sMappable),
-      "stateProcessable" -> getLiteralProp(sProcessable),
-      "stateAnalyzed" -> getLiteralProp(sAnalyzed),
-      "stateProcessed" -> getLiteralProp(sProcessed),
-      "stateSaved" -> getLiteralProp(sSaved),
-      "stateIncrementalSaved" -> getLiteralProp(sIncrementalSaved),
-      "currentOperation" -> getLiteralProp(curOperation),
-      "operationStatus" -> getLiteralProp(opStatus),
-      "datasetErrorMessage" -> getLiteralProp(dsErrorMessage),
-      "errorMessage" -> getLiteralProp(dsErrorMessage),
-      "harvestType" -> getLiteralProp(hType),
-      "harvestURL" -> getLiteralProp(hURL),
-      "harvestDataset" -> getLiteralProp(hDataset),
-      "harvestPrefix" -> getLiteralProp(hPrefix),
-      "harvestSearch" -> getLiteralProp(hSearch),
-      "harvestIncrementalMode" -> getLiteralProp(hIncrementalMode),
-      "harvestDelay" -> getLiteralProp(hDelay),
-      "harvestDelayUnit" -> getLiteralProp(hDelayUnit),
-      "harvestPreviousTime" -> getLiteralProp(hPreviousTime),
-      "harvestIncremental" -> getLiteralProp(hIncremental),
-      "processedIncrementalValid" -> getLiteralProp(pIncrementalValid).map(_.toInt),
-      "processedIncrementalInvalid" -> getLiteralProp(pIncrementalInvalid).map(_.toInt),
-      "delimitersSet" -> getLiteralProp(dsDelimitersSet),
-      "recordRoot" -> getLiteralProp(dsRecordRoot),
-      "uniqueId" -> getLiteralProp(dsUniqueId),
-      // Indexing results from Hub3 webhook
-      "indexingRecordsIndexed" -> getLiteralProp(idxRecordsIndexed).map(_.toInt),
-      "indexingRecordsExpected" -> getLiteralProp(idxRecordsExpected).map(_.toInt),
-      "indexingOrphansDeleted" -> getLiteralProp(idxOrphansDeleted).map(_.toInt),
-      "indexingErrorCount" -> getLiteralProp(idxErrorCount).map(_.toInt),
-      "indexingLastStatus" -> getLiteralProp(idxLastStatus),
-      "indexingLastMessage" -> getLiteralProp(idxLastMessage),
-      "indexingLastTimestamp" -> getLiteralProp(idxLastTimestamp),
-      "indexingLastRevision" -> getLiteralProp(idxLastRevision).map(_.toInt),
-      // Retry status
-      "harvestInRetry" -> getLiteralProp(hInRetry).map(_.toBoolean),
-      "harvestRetryCount" -> getLiteralProp(hRetryCount).map(_.toInt),
-      "harvestLastRetryTime" -> getLiteralProp(hLastRetryTime),
-      "harvestRetryMessage" -> getLiteralProp(hRetryMessage)
+    import play.api.libs.json.{JsNull, JsObject, JsString}
+
+    // Core fields that aren't from graph properties
+    val coreFields: scala.collection.immutable.Seq[(String, JsValue)] = scala.collection.immutable.Seq(
+      "datasetSpec" -> JsString(spec),
+      "spec" -> JsString(spec),
+      "orgId" -> JsString(orgId)
     )
+
+    // All fields from the registry - uses getValue which handles type conversion
+    val registryFields: scala.collection.immutable.Seq[(String, JsValue)] = DsInfo.webSocketFields.flatMap { field =>
+      field.getValue(this).map(value => field.jsonName -> value)
+    }
+
+    // Computed fields that require method calls (not simple property lookups)
+    // These are fields derived from multiple properties or require special logic
+    val computedFields: scala.collection.immutable.Seq[(String, JsValue)] = scala.collection.immutable.Seq(
+      // Mapping configuration - duplicated with "dataset" prefix for backward compatibility
+      // getMappingSource returns String (not Option), defaults to "manual"
+      "datasetMappingSource" -> JsString(getMappingSource),
+      "mappingSource" -> JsString(getMappingSource),
+      // getDefaultMappingPrefix/Name/Version return Option[String]
+      "datasetDefaultMappingPrefix" -> getDefaultMappingPrefix.map(JsString(_)).getOrElse(JsNull),
+      "defaultMappingPrefix" -> getDefaultMappingPrefix.map(JsString(_)).getOrElse(JsNull),
+      "datasetDefaultMappingName" -> getDefaultMappingName.map(JsString(_)).getOrElse(JsNull),
+      "defaultMappingName" -> getDefaultMappingName.map(JsString(_)).getOrElse(JsNull),
+      "datasetDefaultMappingVersion" -> getDefaultMappingVersion.map(JsString(_)).getOrElse(JsNull),
+      "defaultMappingVersion" -> getDefaultMappingVersion.map(JsString(_)).getOrElse(JsNull),
+      // Duplicate error message field for backward compatibility
+      "errorMessage" -> getLiteralProp(triplestore.GraphProperties.datasetErrorMessage).map(JsString(_)).getOrElse(JsNull)
+    ).filterNot(_._2 == JsNull)
+
+    JsObject(coreFields ++ registryFields ++ computedFields)
   }
 
 }
