@@ -25,8 +25,12 @@
                 <a href class="btn btn-info" data-ng-click="openAllDatasets = !openAllDatasets">
                     <i class="fa fa-bars"></i> Open/Close All
                 </a>
-                <a href="#/index-stats" class="btn btn-default">
+                <a href="#/index-stats" class="btn btn-default" style="position: relative;">
                     <i class="fa fa-bar-chart"></i> Index Stats
+                    <span ng-if="indexStatsWrongCount > 0" class="badge"
+                          style="position: absolute; top: -8px; right: -8px; background-color: #d9534f; color: white; font-size: 11px; padding: 3px 6px; border-radius: 10px;">
+                        {{ indexStatsWrongCount }}
+                    </span>
                 </a>
             </div>
         </form>

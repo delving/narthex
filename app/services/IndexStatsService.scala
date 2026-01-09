@@ -174,6 +174,23 @@ class IndexStatsService @Inject()(
   }
 
   /**
+   * Get just the count of datasets with wrong index counts (lightweight for polling)
+   * @return Count of datasets with mismatched counts
+   */
+  def getWrongCountCount(): Future[Int] = {
+    for {
+      narthexDatasets <- fetchNarthexDatasets()
+      (_, hub3Counts) <- fetchHub3IndexCounts()
+    } yield {
+      // Merge Hub3 counts and count mismatches
+      narthexDatasets.count { ds =>
+        val indexCount = hub3Counts.getOrElse(ds.spec, 0)
+        !ds.deleted && !ds.disabled && indexCount > 0 && !ds.processedValid.contains(indexCount)
+      }
+    }
+  }
+
+  /**
    * Get combined index statistics from both Narthex and Hub3
    * @return Categorized index statistics
    */

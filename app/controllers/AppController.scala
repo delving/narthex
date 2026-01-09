@@ -173,6 +173,20 @@ class AppController @Inject() (
     }
   }
 
+  /**
+   * Lightweight endpoint to get just the count of datasets with wrong index counts.
+   * Used for polling to show badge on Index Stats button.
+   */
+  def indexStatsWrongCount = Action.async { request =>
+    indexStatsService.getWrongCountCount().map { count =>
+      Ok(Json.obj("wrongCount" -> count))
+    }.recover {
+      case e: Exception =>
+        logger.error(s"Failed to fetch wrong count: ${e.getMessage}", e)
+        InternalServerError(Json.obj("error" -> "Failed to fetch wrong count"))
+    }
+  }
+
   def listPrefixes = Action { request =>
     val prefixes = orgContext.sipFactory.prefixRepos.map(_.prefix)
     Ok(Json.toJson(prefixes))

@@ -130,6 +130,14 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                getIndexStatsWrongCount: function () {
+                    return app.indexStatsWrongCount().get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }
