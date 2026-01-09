@@ -30,6 +30,7 @@
             <strong>{{ stats.totalDatasets }}</strong> active datasets |
             <span class="text-success"><strong>{{ getTabCount('correct') }}</strong> correct</span> |
             <span class="text-warning"><strong>{{ getTabCount('notIndexed') }}</strong> not indexed</span> |
+            <span class="text-muted"><strong>{{ getTabCount('notProcessed') }}</strong> not processed</span> |
             <span class="text-danger"><strong>{{ getTabCount('wrongCount') }}</strong> wrong count</span> |
             <span class="text-muted"><strong>{{ getTabCount('disabled') }}</strong> disabled</span>
         </div>
@@ -46,6 +47,12 @@
                 <a href="" ng-click="setTab('notIndexed')">
                     <i class="fa fa-minus-circle text-warning"></i> Not Indexed
                     <span class="badge">{{ getTabCount('notIndexed') }}</span>
+                </a>
+            </li>
+            <li ng-class="{'active': activeTab === 'notProcessed'}">
+                <a href="" ng-click="setTab('notProcessed')">
+                    <i class="fa fa-clock-o text-muted"></i> Not Processed
+                    <span class="badge">{{ getTabCount('notProcessed') }}</span>
                 </a>
             </li>
             <li ng-class="{'active': activeTab === 'wrongCount'}">
@@ -73,6 +80,7 @@
             <i class="fa fa-info-circle"></i>
             <span ng-if="activeTab === 'correct'">No datasets with matching counts.</span>
             <span ng-if="activeTab === 'notIndexed'">No datasets waiting to be indexed.</span>
+            <span ng-if="activeTab === 'notProcessed'">No datasets that haven't been processed.</span>
             <span ng-if="activeTab === 'wrongCount'">No datasets with mismatched counts.</span>
             <span ng-if="activeTab === 'disabled'">No disabled datasets.</span>
             <span ng-if="activeTab === 'deleted'">No deleted datasets.</span>

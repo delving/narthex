@@ -59,6 +59,7 @@ case class IndexStatsResponse(
   totalDatasets: Int,
   correct: List[DatasetIndexStats],
   notIndexed: List[DatasetIndexStats],
+  notProcessed: List[DatasetIndexStats],
   wrongCount: List[DatasetIndexStats],
   deleted: List[DatasetIndexStats],
   disabled: List[DatasetIndexStats]
@@ -268,6 +269,10 @@ class IndexStatsService @Inject()(
         ds.indexCount == 0 && ds.processedValid.exists(_ > 0)
       }
 
+      val notProcessed = activeDatasets.filter { ds =>
+        ds.processedValid.isEmpty && ds.indexCount == 0
+      }
+
       val wrongCount = activeDatasets.filter { ds =>
         ds.indexCount > 0 && !ds.processedValid.contains(ds.indexCount)
       }
@@ -277,6 +282,7 @@ class IndexStatsService @Inject()(
         totalDatasets = activeDatasets.size,
         correct = correct.sortBy(_.spec),
         notIndexed = notIndexed.sortBy(_.spec),
+        notProcessed = notProcessed.sortBy(_.spec),
         wrongCount = wrongCount.sortBy(_.spec),
         deleted = deletedDatasets.sortBy(_.spec),
         disabled = disabledDatasets.sortBy(_.spec)

@@ -81,6 +81,8 @@ define(["angular"], function (angular) {
                     return $scope.stats.correct;
                 case 'notIndexed':
                     return $scope.stats.notIndexed;
+                case 'notProcessed':
+                    return $scope.stats.notProcessed;
                 case 'wrongCount':
                     return $scope.stats.wrongCount;
                 case 'disabled':
@@ -101,6 +103,8 @@ define(["angular"], function (angular) {
                     return $scope.stats.correct.length;
                 case 'notIndexed':
                     return $scope.stats.notIndexed.length;
+                case 'notProcessed':
+                    return $scope.stats.notProcessed.length;
                 case 'wrongCount':
                     return $scope.stats.wrongCount.length;
                 case 'disabled':
