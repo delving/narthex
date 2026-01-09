@@ -212,6 +212,7 @@
                 <th class="name">Display name</th>
                 <th class="acquired" title="Acquired records (harvested or uploaded) and deleted count">Acquired</th>
                 <th class="source" title="Source records (valid/invalid after processing)">Source</th>
+                <th class="trend" title="24h change in indexed records">Trend</th>
                 <th class="activity">Activity</th>
                 <th class="status">Status</th>
                 <th class="date-time">Last changed</th>
@@ -269,6 +270,18 @@
                                 </span>
                                 <!-- Incremental indicator -->
                                 <span data-ng-if="dataset.harvestIncrementalMode == 'true'" class="text-muted" style="font-size: 0.8em;">(inc)</span>
+                            </td>
+                            <td class="trend" title="24h: source {{ dataset.trend24h.source >= 0 ? '+' : '' }}{{ dataset.trend24h.source }}, indexed {{ dataset.trend24h.indexed >= 0 ? '+' : '' }}{{ dataset.trend24h.indexed }}">
+                                <!-- Trend indicator for indexed records -->
+                                <span data-ng-if="dataset.trend24h.indexed > 0" class="text-success">
+                                    <i class="fa fa-arrow-up"></i> +{{ dataset.trend24h.indexed }}
+                                </span>
+                                <span data-ng-if="dataset.trend24h.indexed < 0" class="text-danger">
+                                    <i class="fa fa-arrow-down"></i> {{ dataset.trend24h.indexed }}
+                                </span>
+                                <span data-ng-if="!dataset.trend24h || dataset.trend24h.indexed == 0" class="text-muted">
+                                    -
+                                </span>
                             </td>
                             <td class="activity">
                                 <!-- Processing status with cancel button -->

@@ -33,6 +33,7 @@ import play.api.libs.json.{JsObject, JsValue, Json, Writes}
 import play.api.libs.ws.WSResponse
 import services.StringHandling.{createGraphName, urlEncodeValue}
 import services.Temporal._
+import services.TrendTrackingService
 import triplestore.GraphProperties._
 import triplestore.Sparql._
 import triplestore.{GraphProperties, SkosGraph, TripleStore}
@@ -425,7 +426,7 @@ object DsInfo {
   }
 
   /**
-   * List datasets with retry status merged in.
+   * List datasets with retry status and trend data merged in.
    * Runs both queries in parallel and merges results.
    */
   def listDsInfoLightWithRetry(orgContext: OrgContext)(
@@ -437,7 +438,9 @@ object DsInfo {
     } yield {
       datasets.map { ds =>
         val baseJson = Json.toJson(ds).as[JsObject]
-        retryStatus.get(ds.spec) match {
+
+        // Add retry status
+        val withRetry = retryStatus.get(ds.spec) match {
           case Some(retry) =>
             baseJson ++ Json.obj(
               "harvestInRetry" -> true,
@@ -448,6 +451,22 @@ object DsInfo {
           case None =>
             baseJson ++ Json.obj("harvestInRetry" -> false)
         }
+
+        // Add trend data (24h delta for indexed records)
+        val trendsLog = new java.io.File(orgContext.datasetsDir, s"${ds.spec}/trends.jsonl")
+        val trendData = TrendTrackingService.getDatasetTrendSummary(trendsLog, ds.spec) match {
+          case Some(summary) =>
+            Json.obj(
+              "trend24h" -> Json.obj(
+                "source" -> summary.delta24h.source,
+                "indexed" -> summary.delta24h.indexed
+              )
+            )
+          case None =>
+            Json.obj("trend24h" -> Json.obj("source" -> 0, "indexed" -> 0))
+        }
+
+        withRetry ++ trendData
       }
     }
   }
