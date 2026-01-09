@@ -46,13 +46,13 @@ define(["angular"], function (angular) {
         $scope.pendingOps = {};
 
         /**
-         * Load index statistics from the API
+         * Load index statistics from the API (with trends data)
          */
         $scope.loadStats = function () {
             $scope.loading = true;
             $scope.error = null;
 
-            $http.get('/narthex/app/index-stats').then(
+            $http.get('/narthex/app/index-stats-with-trends').then(
                 function (response) {
                     $scope.stats = response.data;
                     $scope.loading = false;
@@ -162,6 +162,30 @@ define(["angular"], function (angular) {
                 return 'text-success';
             } else if (diff > 0) {
                 return 'text-warning';
+            } else {
+                return 'text-danger';
+            }
+        };
+
+        /**
+         * Format a trend delta value with +/- prefix
+         */
+        $scope.formatDelta = function (value) {
+            if (value === null || value === undefined || value === 0) {
+                return '-';
+            }
+            var sign = value > 0 ? '+' : '';
+            return sign + value.toLocaleString();
+        };
+
+        /**
+         * Get CSS class for trend delta
+         */
+        $scope.getDeltaClass = function (value) {
+            if (!value || value === 0) {
+                return 'text-muted';
+            } else if (value > 0) {
+                return 'text-success';
             } else {
                 return 'text-danger';
             }

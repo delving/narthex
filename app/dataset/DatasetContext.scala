@@ -53,6 +53,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   val processedDir = new File(rootDir, "processed")
   val harvestLogger = new File(rootDir, "harvesting_log.txt")
   val activityLog = new File(rootDir, "activity.jsonl")
+  val trendsLog = new File(rootDir, "trends.jsonl")
 
   // todo: maybe not put it in raw
   val pocketFile = new File(orgContext.rawDir, s"$dsInfo.xml")

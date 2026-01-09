@@ -111,6 +111,9 @@
                             Indexed
                             <i class="fa" ng-class="getSortIcon('indexCount')"></i>
                         </th>
+                        <th style="width: 80px;" class="text-right" title="24h change in indexed records">
+                            24h Trend
+                        </th>
                         <th ng-if="activeTab === 'wrongCount'" style="width: 100px;" class="text-right">
                             Difference
                         </th>
@@ -148,6 +151,9 @@
                             <span ng-if="!ds.processedInvalid || ds.processedInvalid === 0">-</span>
                         </td>
                         <td class="text-right">{{ formatNumber(ds.indexCount) || '-' }}</td>
+                        <td class="text-right" ng-class="getDeltaClass(ds.delta24h.indexed)">
+                            {{ formatDelta(ds.delta24h.indexed) }}
+                        </td>
                         <td ng-if="activeTab === 'wrongCount'" class="text-right" ng-class="getDifferenceClass(ds)">
                             <span ng-if="getDifference(ds) > 0">+</span>{{ formatNumber(getDifference(ds)) }}
                         </td>

@@ -35,6 +35,11 @@ GET         /narthex/app/active-datasets                                     con
 POST        /narthex/app/cancel-queue/:spec                                  controllers.AppController.cancelQueuedOperation(spec)
 GET         /narthex/app/index-stats                                         controllers.AppController.indexStats
 GET         /narthex/app/index-stats/wrong-count                             controllers.AppController.indexStatsWrongCount
+GET         /narthex/app/index-stats-with-trends                             controllers.AppController.indexStatsWithTrends
+GET         /narthex/app/trends                                              controllers.AppController.getOrganizationTrends
+GET         /narthex/app/trends/:spec                                        controllers.AppController.getDatasetTrends(spec)
++ nocsrf
+POST        /narthex/app/trends/snapshot                                     controllers.AppController.triggerTrendSnapshot
 GET         /narthex/app/prefixes                                            controllers.AppController.listPrefixes
 GET         /narthex/app/dataset/:spec/create/:character/:prefix             controllers.AppController.createDataset(spec, character, prefix)
 + nocsrf

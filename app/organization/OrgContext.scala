@@ -17,6 +17,7 @@
 package organization
 
 import java.io.File
+import java.time.{LocalTime, ZoneId, ZonedDateTime}
 import javax.inject._
 
 import akka.actor.ActorRef
@@ -30,8 +31,9 @@ import mapping._
 import organization.OrgActor.DatasetsCountCategories
 import play.api.cache.SyncCacheApi
 import play.api.libs.ws.WSClient
-import services.MailService
-import triplestore.GraphProperties.categoriesInclude
+import play.api.Logging
+import services.{IndexStatsService, MailService, TrendTrackingService}
+import triplestore.GraphProperties._
 import triplestore.TripleStore
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -50,8 +52,9 @@ class OrgContext @Inject() (
   val cacheApi: SyncCacheApi,
   val wsApi: WSClient,
   val mailService: MailService,
-  val actorSystem: ActorSystem
-) (ec: ExecutionContext, implicit val ts: TripleStore) {
+  val actorSystem: ActorSystem,
+  indexStatsService: IndexStatsService
+) (ec: ExecutionContext, implicit val ts: TripleStore) extends Logging {
 
   val root = narthexConfig.narthexDataDir
   val orgRoot = new File(root, narthexConfig.orgId)
@@ -72,6 +75,82 @@ class OrgContext @Inject() (
   datasetsDir.mkdir()
   rawDir.mkdirs()
   sipsDir.mkdirs()
+
+  // Schedule daily trend snapshot if enabled
+  if (narthexConfig.enableTrendTracking) {
+    scheduleDailyTrendSnapshot()
+  }
+
+  /**
+   * Schedule daily trend snapshot at configured hour.
+   * Captures record counts from all datasets and Hub3 index.
+   */
+  private def scheduleDailyTrendSnapshot(): Unit = {
+    val snapshotHour = narthexConfig.trendSnapshotHour
+
+    // Calculate initial delay until next scheduled time
+    val now = ZonedDateTime.now(ZoneId.systemDefault())
+    val targetTime = now.toLocalDate.atTime(LocalTime.of(snapshotHour, 0)).atZone(ZoneId.systemDefault())
+    val nextRun = if (now.isAfter(targetTime)) targetTime.plusDays(1) else targetTime
+    val initialDelayMillis = java.time.Duration.between(now, nextRun).toMillis
+
+    logger.info(s"Scheduling daily trend snapshot at $snapshotHour:00. First run in ${initialDelayMillis / 3600000} hours.")
+
+    actorSystem.scheduler.scheduleWithFixedDelay(
+      initialDelayMillis.millis,
+      24.hours
+    )(new Runnable {
+      override def run(): Unit = runDailyTrendSnapshot()
+    })(actorSystem.dispatcher)
+  }
+
+  /**
+   * Execute daily trend snapshot for all datasets.
+   */
+  private def runDailyTrendSnapshot(): Unit = {
+    logger.info("Running daily trend snapshot...")
+
+    val result = for {
+      datasets <- DsInfo.listDsInfo(this)
+      (_, hub3Counts) <- indexStatsService.fetchHub3IndexCounts()
+    } yield {
+      var captured = 0
+
+      datasets.foreach { dsInfo =>
+        try {
+          val trendsLog = datasetContext(dsInfo.spec).trendsLog
+          val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
+          val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
+          val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
+          val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
+          val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
+          val indexedRecords = hub3Counts.getOrElse(dsInfo.spec, 0)
+
+          TrendTrackingService.captureSnapshot(
+            trendsLog = trendsLog,
+            snapshotType = "daily",
+            sourceRecords = sourceRecords,
+            acquiredRecords = acquiredRecords,
+            deletedRecords = deletedRecords,
+            validRecords = validRecords,
+            invalidRecords = invalidRecords,
+            indexedRecords = indexedRecords
+          )
+          captured += 1
+        } catch {
+          case e: Exception =>
+            logger.warn(s"Failed to capture trend snapshot for ${dsInfo.spec}: ${e.getMessage}")
+        }
+      }
+
+      logger.info(s"Daily trend snapshot complete: $captured/${datasets.size} datasets processed")
+    }
+
+    val _ = result.recover {
+      case e: Exception =>
+        logger.error(s"Daily trend snapshot failed: ${e.getMessage}", e)
+    }
+  }
 
   def createDsInfo(spec: String, characterString: String, prefix: String) = {
     val character = DsInfo.getCharacter(characterString).get

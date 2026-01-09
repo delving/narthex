@@ -37,7 +37,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 
 import organization.OrgContext
-import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, Temporal}
+import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, Temporal, TrendTrackingService}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.{Sparql, TripleStore}
@@ -188,6 +188,172 @@ class AppController @Inject() (
       case e: Exception =>
         logger.error(s"Failed to fetch alert counts: ${e.getMessage}", e)
         InternalServerError(Json.obj("error" -> "Failed to fetch alert counts"))
+    }
+  }
+
+  /**
+   * Get index statistics augmented with 24h trend data.
+   */
+  def indexStatsWithTrends = Action.async { request =>
+    indexStatsService.getIndexStats().map { stats =>
+      // Augment each dataset with trend data
+      import services.TrendDelta
+      import services.DatasetIndexStats
+
+      def augmentWithTrends(datasets: List[DatasetIndexStats]): List[JsObject] = {
+        datasets.map { ds =>
+          val trendsLog = new java.io.File(
+            orgContext.datasetsDir,
+            s"${ds.spec}/trends.jsonl"
+          )
+          val trendSummary = TrendTrackingService.getDatasetTrendSummary(trendsLog, ds.spec)
+          val baseJson = Json.toJson(ds).as[JsObject]
+
+          trendSummary match {
+            case Some(summary) =>
+              baseJson ++ Json.obj(
+                "delta24h" -> Json.obj(
+                  "source" -> summary.delta24h.source,
+                  "valid" -> summary.delta24h.valid,
+                  "indexed" -> summary.delta24h.indexed
+                )
+              )
+            case None =>
+              baseJson ++ Json.obj(
+                "delta24h" -> Json.obj(
+                  "source" -> 0,
+                  "valid" -> 0,
+                  "indexed" -> 0
+                )
+              )
+          }
+        }
+      }
+
+      Ok(Json.obj(
+        "totalIndexed" -> stats.totalIndexed,
+        "totalDatasets" -> stats.totalDatasets,
+        "correct" -> augmentWithTrends(stats.correct),
+        "notIndexed" -> augmentWithTrends(stats.notIndexed),
+        "wrongCount" -> augmentWithTrends(stats.wrongCount),
+        "deleted" -> augmentWithTrends(stats.deleted),
+        "disabled" -> augmentWithTrends(stats.disabled)
+      ))
+    }.recover {
+      case e: Exception =>
+        logger.error(s"Failed to fetch index stats with trends: ${e.getMessage}", e)
+        InternalServerError(Json.obj("error" -> "Failed to fetch index statistics"))
+    }
+  }
+
+  /**
+   * Get organization-wide trend summary.
+   */
+  def getOrganizationTrends = Action.async { request =>
+    import services.{TrendDelta, DatasetTrendSummary, OrganizationTrends}
+
+    listDsInfo(orgContext).map { datasets =>
+      val summaries = datasets.flatMap { dsInfo =>
+        val trendsLog = orgContext.datasetContext(dsInfo.spec).trendsLog
+        TrendTrackingService.getDatasetTrendSummary(trendsLog, dsInfo.spec)
+      }
+
+      // Calculate net delta across all datasets
+      val netDelta24h = TrendDelta(
+        source = summaries.map(_.delta24h.source).sum,
+        valid = summaries.map(_.delta24h.valid).sum,
+        indexed = summaries.map(_.delta24h.indexed).sum
+      )
+
+      // Categorize datasets
+      val growing = summaries.filter(s =>
+        s.delta24h.source > 0 || s.delta24h.indexed > 0
+      ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed))
+
+      val shrinking = summaries.filter(s =>
+        s.delta24h.source < 0 || s.delta24h.indexed < 0
+      ).sortBy(s => s.delta24h.source + s.delta24h.indexed)
+
+      val stable = summaries.filter(s =>
+        s.delta24h.source == 0 && s.delta24h.indexed == 0
+      ).sortBy(_.spec)
+
+      val orgTrends = OrganizationTrends(
+        generatedAt = DateTime.now(),
+        totalDatasets = datasets.size,
+        totalSourceRecords = summaries.map(_.currentSource.toLong).sum,
+        totalIndexedRecords = summaries.map(_.currentIndexed.toLong).sum,
+        netDelta24h = netDelta24h,
+        growing = growing,
+        shrinking = shrinking,
+        stable = stable
+      )
+
+      Ok(Json.toJson(orgTrends))
+    }.recover {
+      case e: Exception =>
+        logger.error(s"Failed to get organization trends: ${e.getMessage}", e)
+        InternalServerError(Json.obj("error" -> "Failed to fetch organization trends"))
+    }
+  }
+
+  /**
+   * Get trend history for a specific dataset.
+   */
+  def getDatasetTrends(spec: String) = Action { request =>
+    val trendsLog = orgContext.datasetContext(spec).trendsLog
+    val trends = TrendTrackingService.getDatasetTrends(trendsLog, spec)
+    Ok(Json.toJson(trends))
+  }
+
+  /**
+   * Manually trigger a daily trend snapshot for all datasets.
+   */
+  def triggerTrendSnapshot = Action.async { request =>
+    import triplestore.GraphProperties._
+
+    listDsInfo(orgContext).flatMap { datasets =>
+      // Fetch Hub3 index counts
+      indexStatsService.fetchHub3IndexCounts().map { case (_, hub3Counts) =>
+        var captured = 0
+
+        datasets.foreach { dsInfo =>
+          try {
+            val trendsLog = orgContext.datasetContext(dsInfo.spec).trendsLog
+            val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
+            val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
+            val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
+            val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
+            val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
+            val indexedRecords = hub3Counts.getOrElse(dsInfo.spec, 0)
+
+            TrendTrackingService.captureSnapshot(
+              trendsLog = trendsLog,
+              snapshotType = "daily",
+              sourceRecords = sourceRecords,
+              acquiredRecords = acquiredRecords,
+              deletedRecords = deletedRecords,
+              validRecords = validRecords,
+              invalidRecords = invalidRecords,
+              indexedRecords = indexedRecords
+            )
+            captured += 1
+          } catch {
+            case e: Exception =>
+              logger.warn(s"Failed to capture snapshot for ${dsInfo.spec}: ${e.getMessage}")
+          }
+        }
+
+        Ok(Json.obj(
+          "success" -> true,
+          "datasetsProcessed" -> datasets.size,
+          "snapshotsCaptured" -> captured
+        ))
+      }
+    }.recover {
+      case e: Exception =>
+        logger.error(s"Failed to trigger trend snapshot: ${e.getMessage}", e)
+        InternalServerError(Json.obj("error" -> "Failed to trigger trend snapshot"))
     }
   }
 

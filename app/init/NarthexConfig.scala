@@ -87,6 +87,18 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(40)
   logger.info(s"narthex.harvest.maxRetries: $harvestMaxRetries")
 
+  // Trend tracking configuration
+  def enableTrendTracking: Boolean = configuration
+    .getOptional[Boolean]("narthex.trends.enabled")
+    .getOrElse(true)
+  logger.info(s"narthex.trends.enabled: $enableTrendTracking")
+
+  // Hour of day (0-23) to run daily trend snapshot (default: 0 = midnight)
+  def trendSnapshotHour: Int = configuration
+    .getOptional[Int]("narthex.trends.snapshotHour")
+    .getOrElse(0)
+  logger.info(s"narthex.trends.snapshotHour: $trendSnapshotHour")
+
   def crunchWhiteSpace: Boolean =
     configuration.getOptional[Boolean]("crunchWhiteSpace").getOrElse(true)
   logger.info(s"crunchWhiteSpace: $crunchWhiteSpace")

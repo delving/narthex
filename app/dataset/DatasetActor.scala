@@ -45,7 +45,7 @@ import record.SourceProcessor._
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
-import services.{ActivityLogger, CredentialEncryption, MailService, ProgressReporter}
+import services.{ActivityLogger, CredentialEncryption, MailService, ProgressReporter, TrendTrackingService}
 import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
@@ -995,6 +995,32 @@ class DatasetActor(val datasetContext: DatasetContext,
       // Note: GraphSaver already released semaphores, so don't double-release
       dsInfo.setState(SAVED)
       dsInfo.setRecordsSync(false)
+
+      // Capture trend snapshot after successful save
+      try {
+        val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
+        val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
+        val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
+        val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
+        val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
+        // Use validRecords as proxy for indexed - actual Hub3 count checked in daily scheduler
+        val indexedRecords = validRecords
+
+        TrendTrackingService.captureSnapshot(
+          trendsLog = datasetContext.trendsLog,
+          snapshotType = "event",
+          sourceRecords = sourceRecords,
+          acquiredRecords = acquiredRecords,
+          deletedRecords = deletedRecords,
+          validRecords = validRecords,
+          invalidRecords = invalidRecords,
+          indexedRecords = indexedRecords
+        )
+      } catch {
+        case e: Exception =>
+          log.warning(s"Failed to capture trend snapshot: ${e.getMessage}")
+      }
+
       active.childOpt.foreach { child =>
         childActors -= child
         context.stop(child) // Use context.stop instead of PoisonPill for cleaner termination
