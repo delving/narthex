@@ -124,6 +124,25 @@ object OrganizationTrends {
 }
 
 /**
+ * Pre-computed summary stored at organization level for fast API responses.
+ * This avoids reading N JSONL files on each API call.
+ */
+case class TrendsSummaryFile(
+  generatedAt: DateTime,
+  summaries: List[DatasetTrendSummary]
+)
+
+object TrendsSummaryFile {
+  implicit val dateTimeReads: Reads[DateTime] = Reads { json =>
+    json.validate[String].map(s => DateTime.parse(s))
+  }
+  implicit val dateTimeWrites: Writes[DateTime] = Writes { dt =>
+    JsString(timeToString(dt))
+  }
+  implicit val format: Format[TrendsSummaryFile] = Json.format[TrendsSummaryFile]
+}
+
+/**
  * Service for tracking dataset publication/depublication trends over time.
  *
  * Captures snapshots of record counts and computes deltas for 24h, 7d, 30d windows.
@@ -308,5 +327,114 @@ object TrendTrackingService extends Logging {
     } finally {
       writer.close()
     }
+  }
+
+  /**
+   * Generate the organization-level trends summary file.
+   * This pre-computes all deltas for fast API responses with 200+ datasets.
+   *
+   * @param summaryFile The trends_summary.json file at org level
+   * @param datasetsDir The datasets directory containing per-dataset trends.jsonl files
+   * @param specs List of dataset specs to include
+   */
+  def generateTrendsSummary(summaryFile: File, datasetsDir: File, specs: List[String]): Unit = {
+    val summaries = specs.flatMap { spec =>
+      val trendsLog = new File(datasetsDir, s"$spec/trends.jsonl")
+      getDatasetTrendSummary(trendsLog, spec)
+    }
+
+    val summary = TrendsSummaryFile(
+      generatedAt = DateTime.now(),
+      summaries = summaries
+    )
+
+    // Write atomically: write to temp file, then rename
+    val tmpFile = new File(summaryFile.getParent, summaryFile.getName + ".tmp")
+    val content = Json.prettyPrint(Json.toJson(summary))
+
+    val writer = new java.io.FileWriter(tmpFile)
+    try {
+      writer.write(content)
+      writer.flush()
+    } finally {
+      writer.close()
+    }
+
+    // Atomic rename
+    tmpFile.renameTo(summaryFile)
+    logger.info(s"Generated trends summary: ${summaries.size} datasets")
+  }
+
+  /**
+   * Read the cached trends summary file.
+   * Returns None if file doesn't exist or is invalid.
+   *
+   * @param summaryFile The trends_summary.json file at org level
+   * @param maxAgeHours Maximum age in hours before considering stale (default 25 hours)
+   */
+  def readTrendsSummary(summaryFile: File, maxAgeHours: Int = 25): Option[TrendsSummaryFile] = {
+    if (!summaryFile.exists()) {
+      logger.debug("Trends summary file does not exist")
+      return None
+    }
+
+    Try {
+      Using(Source.fromFile(summaryFile)) { source =>
+        val content = source.mkString
+        Json.parse(content).as[TrendsSummaryFile]
+      }.get
+    } match {
+      case scala.util.Success(summary) =>
+        // Check if summary is too old
+        val ageHours = (DateTime.now().getMillis - summary.generatedAt.getMillis) / (1000 * 60 * 60)
+        if (ageHours > maxAgeHours) {
+          logger.debug(s"Trends summary is stale (${ageHours}h old)")
+          None
+        } else {
+          Some(summary)
+        }
+      case scala.util.Failure(e) =>
+        logger.warn(s"Failed to read trends summary: ${e.getMessage}")
+        None
+    }
+  }
+
+  /**
+   * Build OrganizationTrends from a TrendsSummaryFile.
+   * Re-categorizes datasets based on their 24h deltas.
+   */
+  def buildOrganizationTrends(summary: TrendsSummaryFile): OrganizationTrends = {
+    val summaries = summary.summaries
+
+    // Calculate net delta across all datasets
+    val netDelta24h = TrendDelta(
+      source = summaries.map(_.delta24h.source).sum,
+      valid = summaries.map(_.delta24h.valid).sum,
+      indexed = summaries.map(_.delta24h.indexed).sum
+    )
+
+    // Categorize datasets by 24h delta
+    val growing = summaries.filter(s =>
+      s.delta24h.source > 0 || s.delta24h.indexed > 0
+    ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed))
+
+    val shrinking = summaries.filter(s =>
+      s.delta24h.source < 0 || s.delta24h.indexed < 0
+    ).sortBy(s => s.delta24h.source + s.delta24h.indexed)
+
+    val stable = summaries.filter(s =>
+      s.delta24h.source == 0 && s.delta24h.indexed == 0
+    ).sortBy(_.spec)
+
+    OrganizationTrends(
+      generatedAt = summary.generatedAt,
+      totalDatasets = summaries.size,
+      totalSourceRecords = summaries.map(_.currentSource.toLong).sum,
+      totalIndexedRecords = summaries.map(_.currentIndexed.toLong).sum,
+      netDelta24h = netDelta24h,
+      growing = growing,
+      shrinking = shrinking,
+      stable = stable
+    )
   }
 }

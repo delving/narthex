@@ -52,10 +52,10 @@
                     <small class="text-muted">Total Indexed Records</small>
                 </div>
                 <div class="col-md-3 text-center">
-                    <h4 style="margin: 0;" ng-class="getDeltaClass(trends.netDelta24h.indexed)">
-                        {{ formatDelta(trends.netDelta24h.indexed) }}
+                    <h4 style="margin: 0;" ng-class="getDeltaClass(currentNetDelta.indexed)">
+                        {{ formatDelta(currentNetDelta.indexed) }}
                     </h4>
-                    <small class="text-muted">Net 24h Change (Indexed)</small>
+                    <small class="text-muted">Net {{ getTimeWindowLabel() }} Change (Indexed)</small>
                 </div>
             </div>
         </div>
@@ -63,11 +63,11 @@
         <!-- Time Window Selector -->
         <div class="btn-group" style="margin-bottom: 15px;">
             <button class="btn btn-sm" ng-class="timeWindow === '24h' ? 'btn-primary' : 'btn-default'"
-                    ng-click="timeWindow = '24h'">24 Hours</button>
+                    ng-click="setTimeWindow('24h')">24 Hours</button>
             <button class="btn btn-sm" ng-class="timeWindow === '7d' ? 'btn-primary' : 'btn-default'"
-                    ng-click="timeWindow = '7d'">7 Days</button>
+                    ng-click="setTimeWindow('7d')">7 Days</button>
             <button class="btn btn-sm" ng-class="timeWindow === '30d' ? 'btn-primary' : 'btn-default'"
-                    ng-click="timeWindow = '30d'">30 Days</button>
+                    ng-click="setTimeWindow('30d')">30 Days</button>
         </div>
 
         <!-- Tabs -->
@@ -95,9 +95,9 @@
         <!-- Empty state -->
         <div ng-if="getActiveDatasets().length === 0" class="alert alert-info">
             <i class="fa fa-info-circle"></i>
-            <span ng-if="activeTab === 'growing'">No datasets with growth in the last 24 hours.</span>
-            <span ng-if="activeTab === 'shrinking'">No datasets with decline in the last 24 hours.</span>
-            <span ng-if="activeTab === 'stable'">No stable datasets.</span>
+            <span ng-if="activeTab === 'growing'">No datasets with growth in the last {{ getTimeWindowLabel() }}.</span>
+            <span ng-if="activeTab === 'shrinking'">No datasets with decline in the last {{ getTimeWindowLabel() }}.</span>
+            <span ng-if="activeTab === 'stable'">No datasets with changes in the last {{ getTimeWindowLabel() }}.</span>
         </div>
 
         <!-- Data table -->
@@ -108,8 +108,8 @@
                         <th>Dataset Spec</th>
                         <th class="text-right" style="width: 120px;">Current Source</th>
                         <th class="text-right" style="width: 120px;">Current Indexed</th>
-                        <th class="text-right" style="width: 100px;">Source Change</th>
-                        <th class="text-right" style="width: 100px;">Indexed Change</th>
+                        <th class="text-right" style="width: 120px;">Source Δ ({{ getTimeWindowLabel() }})</th>
+                        <th class="text-right" style="width: 120px;">Indexed Δ ({{ getTimeWindowLabel() }})</th>
                     </tr>
                 </thead>
                 <tbody>

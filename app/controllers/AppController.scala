@@ -249,52 +249,65 @@ class AppController @Inject() (
 
   /**
    * Get organization-wide trend summary.
+   * First tries to read from cached trends_summary.json for fast response,
+   * falls back to computing from individual dataset files if cache is stale.
    */
   def getOrganizationTrends = Action.async { request =>
     import services.{TrendDelta, DatasetTrendSummary, OrganizationTrends}
 
-    listDsInfo(orgContext).map { datasets =>
-      val summaries = datasets.flatMap { dsInfo =>
-        val trendsLog = orgContext.datasetContext(dsInfo.spec).trendsLog
-        TrendTrackingService.getDatasetTrendSummary(trendsLog, dsInfo.spec)
-      }
+    // Try to read from cached summary file first (fast path for 200+ datasets)
+    TrendTrackingService.readTrendsSummary(orgContext.trendsSummaryFile) match {
+      case Some(summary) =>
+        logger.debug(s"Using cached trends summary from ${summary.generatedAt}")
+        val orgTrends = TrendTrackingService.buildOrganizationTrends(summary)
+        Future.successful(Ok(Json.toJson(orgTrends)))
 
-      // Calculate net delta across all datasets
-      val netDelta24h = TrendDelta(
-        source = summaries.map(_.delta24h.source).sum,
-        valid = summaries.map(_.delta24h.valid).sum,
-        indexed = summaries.map(_.delta24h.indexed).sum
-      )
+      case None =>
+        // Fallback: compute from individual dataset files (slower but always current)
+        logger.debug("Computing trends from individual dataset files")
+        listDsInfo(orgContext).map { datasets =>
+          val summaries = datasets.flatMap { dsInfo =>
+            val trendsLog = orgContext.datasetContext(dsInfo.spec).trendsLog
+            TrendTrackingService.getDatasetTrendSummary(trendsLog, dsInfo.spec)
+          }
 
-      // Categorize datasets
-      val growing = summaries.filter(s =>
-        s.delta24h.source > 0 || s.delta24h.indexed > 0
-      ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed))
+          // Calculate net delta across all datasets
+          val netDelta24h = TrendDelta(
+            source = summaries.map(_.delta24h.source).sum,
+            valid = summaries.map(_.delta24h.valid).sum,
+            indexed = summaries.map(_.delta24h.indexed).sum
+          )
 
-      val shrinking = summaries.filter(s =>
-        s.delta24h.source < 0 || s.delta24h.indexed < 0
-      ).sortBy(s => s.delta24h.source + s.delta24h.indexed)
+          // Categorize datasets
+          val growing = summaries.filter(s =>
+            s.delta24h.source > 0 || s.delta24h.indexed > 0
+          ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed))
 
-      val stable = summaries.filter(s =>
-        s.delta24h.source == 0 && s.delta24h.indexed == 0
-      ).sortBy(_.spec)
+          val shrinking = summaries.filter(s =>
+            s.delta24h.source < 0 || s.delta24h.indexed < 0
+          ).sortBy(s => s.delta24h.source + s.delta24h.indexed)
 
-      val orgTrends = OrganizationTrends(
-        generatedAt = DateTime.now(),
-        totalDatasets = datasets.size,
-        totalSourceRecords = summaries.map(_.currentSource.toLong).sum,
-        totalIndexedRecords = summaries.map(_.currentIndexed.toLong).sum,
-        netDelta24h = netDelta24h,
-        growing = growing,
-        shrinking = shrinking,
-        stable = stable
-      )
+          val stable = summaries.filter(s =>
+            s.delta24h.source == 0 && s.delta24h.indexed == 0
+          ).sortBy(_.spec)
 
-      Ok(Json.toJson(orgTrends))
-    }.recover {
-      case e: Exception =>
-        logger.error(s"Failed to get organization trends: ${e.getMessage}", e)
-        InternalServerError(Json.obj("error" -> "Failed to fetch organization trends"))
+          val orgTrends = OrganizationTrends(
+            generatedAt = DateTime.now(),
+            totalDatasets = datasets.size,
+            totalSourceRecords = summaries.map(_.currentSource.toLong).sum,
+            totalIndexedRecords = summaries.map(_.currentIndexed.toLong).sum,
+            netDelta24h = netDelta24h,
+            growing = growing,
+            shrinking = shrinking,
+            stable = stable
+          )
+
+          Ok(Json.toJson(orgTrends))
+        }.recover {
+          case e: Exception =>
+            logger.error(s"Failed to get organization trends: ${e.getMessage}", e)
+            InternalServerError(Json.obj("error" -> "Failed to fetch organization trends"))
+        }
     }
   }
 
@@ -317,6 +330,7 @@ class AppController @Inject() (
       // Fetch Hub3 index counts
       indexStatsService.fetchHub3IndexCounts().map { case (_, hub3Counts) =>
         var captured = 0
+        val specs = scala.collection.mutable.ListBuffer[String]()
 
         datasets.foreach { dsInfo =>
           try {
@@ -338,11 +352,24 @@ class AppController @Inject() (
               invalidRecords = invalidRecords,
               indexedRecords = indexedRecords
             )
+            specs += dsInfo.spec
             captured += 1
           } catch {
             case e: Exception =>
               logger.warn(s"Failed to capture snapshot for ${dsInfo.spec}: ${e.getMessage}")
           }
+        }
+
+        // Generate organization-level summary file for fast API responses
+        try {
+          TrendTrackingService.generateTrendsSummary(
+            orgContext.trendsSummaryFile,
+            orgContext.datasetsDir,
+            specs.toList
+          )
+        } catch {
+          case e: Exception =>
+            logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
         }
 
         Ok(Json.obj(

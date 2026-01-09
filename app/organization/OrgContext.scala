@@ -63,6 +63,7 @@ class OrgContext @Inject() (
   val datasetsDir = new File(orgRoot, "datasets")
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
+  val trendsSummaryFile = new File(orgRoot, "trends_summary.json")
   val crunchWhiteSpace = narthexConfig.crunchWhiteSpace
   val semaphore = new Semaphore(narthexConfig.concurrencyLimit)
   val saveSemaphore = new Semaphore(narthexConfig.concurrencyLimit)
@@ -115,6 +116,7 @@ class OrgContext @Inject() (
       (_, hub3Counts) <- indexStatsService.fetchHub3IndexCounts()
     } yield {
       var captured = 0
+      val specs = scala.collection.mutable.ListBuffer[String]()
 
       datasets.foreach { dsInfo =>
         try {
@@ -136,11 +138,20 @@ class OrgContext @Inject() (
             invalidRecords = invalidRecords,
             indexedRecords = indexedRecords
           )
+          specs += dsInfo.spec
           captured += 1
         } catch {
           case e: Exception =>
             logger.warn(s"Failed to capture trend snapshot for ${dsInfo.spec}: ${e.getMessage}")
         }
+      }
+
+      // Generate organization-level summary file for fast API responses
+      try {
+        TrendTrackingService.generateTrendsSummary(trendsSummaryFile, datasetsDir, specs.toList)
+      } catch {
+        case e: Exception =>
+          logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
       }
 
       logger.info(s"Daily trend snapshot complete: $captured/${datasets.size} datasets processed")

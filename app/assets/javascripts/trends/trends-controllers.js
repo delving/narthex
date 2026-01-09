@@ -24,6 +24,88 @@ define(["angular"], function () {
         $scope.activeTab = 'growing';
         $scope.timeWindow = '24h';
 
+        // Cached categorization based on time window
+        $scope.categorized = {
+            growing: [],
+            shrinking: [],
+            stable: []
+        };
+        $scope.currentNetDelta = { source: 0, valid: 0, indexed: 0 };
+
+        /**
+         * Get the delta key for current time window
+         */
+        function getDeltaKey() {
+            return 'delta' + $scope.timeWindow;
+        }
+
+        /**
+         * Get delta for a dataset for current time window
+         */
+        function getDeltaForDataset(ds) {
+            var key = getDeltaKey();
+            return ds[key] || { source: 0, valid: 0, indexed: 0 };
+        }
+
+        /**
+         * Recategorize datasets based on selected time window
+         */
+        function recategorizeDatasets() {
+            if (!$scope.trends) return;
+
+            // Combine all datasets from all categories
+            var all = [].concat(
+                $scope.trends.growing || [],
+                $scope.trends.shrinking || [],
+                $scope.trends.stable || []
+            );
+
+            // Categorize based on selected time window
+            var growing = [];
+            var shrinking = [];
+            var stable = [];
+            var netSource = 0;
+            var netValid = 0;
+            var netIndexed = 0;
+
+            all.forEach(function(ds) {
+                var delta = getDeltaForDataset(ds);
+                netSource += delta.source || 0;
+                netValid += delta.valid || 0;
+                netIndexed += delta.indexed || 0;
+
+                if ((delta.source > 0) || (delta.indexed > 0)) {
+                    growing.push(ds);
+                } else if ((delta.source < 0) || (delta.indexed < 0)) {
+                    shrinking.push(ds);
+                } else {
+                    stable.push(ds);
+                }
+            });
+
+            // Sort by magnitude of change
+            growing.sort(function(a, b) {
+                var deltaA = getDeltaForDataset(a);
+                var deltaB = getDeltaForDataset(b);
+                return (deltaB.source + deltaB.indexed) - (deltaA.source + deltaA.indexed);
+            });
+            shrinking.sort(function(a, b) {
+                var deltaA = getDeltaForDataset(a);
+                var deltaB = getDeltaForDataset(b);
+                return (deltaA.source + deltaA.indexed) - (deltaB.source + deltaB.indexed);
+            });
+            stable.sort(function(a, b) {
+                return a.spec.localeCompare(b.spec);
+            });
+
+            $scope.categorized = {
+                growing: growing,
+                shrinking: shrinking,
+                stable: stable
+            };
+            $scope.currentNetDelta = { source: netSource, valid: netValid, indexed: netIndexed };
+        }
+
         /**
          * Load organization trends from the API
          */
@@ -34,6 +116,7 @@ define(["angular"], function () {
             $http.get('/narthex/app/trends').then(
                 function (response) {
                     $scope.trends = response.data;
+                    recategorizeDatasets();
                     $scope.loading = false;
                 },
                 function (error) {
@@ -45,6 +128,14 @@ define(["angular"], function () {
         };
 
         /**
+         * Set the time window and recategorize
+         */
+        $scope.setTimeWindow = function (window) {
+            $scope.timeWindow = window;
+            recategorizeDatasets();
+        };
+
+        /**
          * Set the active tab
          */
         $scope.setTab = function (tab) {
@@ -52,38 +143,28 @@ define(["angular"], function () {
         };
 
         /**
-         * Get datasets for current tab
+         * Get datasets for current tab (using recategorized data)
          */
         $scope.getActiveDatasets = function () {
-            if (!$scope.trends) return [];
-
-            switch ($scope.activeTab) {
-                case 'growing':
-                    return $scope.trends.growing || [];
-                case 'shrinking':
-                    return $scope.trends.shrinking || [];
-                case 'stable':
-                    return $scope.trends.stable || [];
-                default:
-                    return [];
-            }
+            return $scope.categorized[$scope.activeTab] || [];
         };
 
         /**
-         * Get tab count
+         * Get tab count (using recategorized data)
          */
         $scope.getTabCount = function (tab) {
-            if (!$scope.trends) return 0;
+            return ($scope.categorized[tab] || []).length;
+        };
 
-            switch (tab) {
-                case 'growing':
-                    return ($scope.trends.growing || []).length;
-                case 'shrinking':
-                    return ($scope.trends.shrinking || []).length;
-                case 'stable':
-                    return ($scope.trends.stable || []).length;
-                default:
-                    return 0;
+        /**
+         * Get human-readable label for current time window
+         */
+        $scope.getTimeWindowLabel = function () {
+            switch ($scope.timeWindow) {
+                case '24h': return '24 hours';
+                case '7d': return '7 days';
+                case '30d': return '30 days';
+                default: return $scope.timeWindow;
             }
         };
 
