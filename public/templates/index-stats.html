@@ -122,7 +122,7 @@
                 <tbody>
                     <tr ng-repeat="ds in getActiveDatasets() | orderBy:sortField:sortReverse">
                         <td>
-                            <a href="#/dataset/{{ ds.spec }}">{{ ds.spec }}</a>
+                            <a href="#/?dataset={{ ds.spec }}">{{ ds.spec }}</a>
                         </td>
                         <td>
                             <span ng-if="ds.acquisitionMethod === 'harvest'" class="label label-info" title="Harvested via OAI-PMH">
@@ -164,7 +164,7 @@
                                         </a>
                                     </li>
                                     <li role="menuitem">
-                                        <a href="#/dataset/{{ ds.spec }}">
+                                        <a href="#/?dataset={{ ds.spec }}">
                                             <i class="fa fa-folder-open"></i> Open Dataset
                                         </a>
                                     </li>
