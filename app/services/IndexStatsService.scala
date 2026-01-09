@@ -151,6 +151,27 @@ class IndexStatsService @Inject()(
   def fetchNarthexDatasets(): Future[List[DatasetIndexStats]] = {
     ts.query(selectIndexStatsQ).map { results =>
       results.map { row =>
+        // Parse state timestamps to detect "stale disabled" datasets
+        // A dataset is considered re-enabled if any workflow state is >1 day newer than stateDisabled
+        val stateDisabledOpt = row.get("stateDisabled").map(_.text).filter(_.nonEmpty)
+        val stateSavedOpt = row.get("stateSaved").map(_.text).filter(_.nonEmpty)
+        val stateProcessedOpt = row.get("stateProcessed").map(_.text).filter(_.nonEmpty)
+        val stateAnalyzedOpt = row.get("stateAnalyzed").map(_.text).filter(_.nonEmpty)
+        val stateIncrementalSavedOpt = row.get("stateIncrementalSaved").map(_.text).filter(_.nonEmpty)
+
+        val isDisabled = stateDisabledOpt.exists { disabledTime =>
+          val disabledMillis = parseTimestamp(disabledTime)
+          val oneDayMs = 24 * 60 * 60 * 1000L
+
+          // Check if any other state is >1 day newer than disabled
+          val otherStates = List(stateSavedOpt, stateProcessedOpt, stateAnalyzedOpt, stateIncrementalSavedOpt).flatten
+          val isStaleDisabled = otherStates.exists { stateTime =>
+            parseTimestamp(stateTime) > (disabledMillis + oneDayMs)
+          }
+
+          !isStaleDisabled  // Only disabled if NOT stale
+        }
+
         DatasetIndexStats(
           spec = row("spec").text,
           recordCount = row.get("recordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
@@ -163,13 +184,25 @@ class IndexStatsService @Inject()(
           acquisitionMethod = row.get("acquisitionMethod").map(_.text),
           indexCount = 0, // Will be filled in later
           deleted = row.get("deleted").exists(_.text == "true"),
-          disabled = row.get("stateDisabled").exists(_.text.nonEmpty)  // Has a timestamp = disabled
+          disabled = isDisabled
         )
       }
     }.recover {
       case e: Exception =>
         logger.error(s"Failed to fetch Narthex datasets: ${e.getMessage}", e)
         List.empty
+    }
+  }
+
+  /**
+   * Parse a timestamp string to milliseconds.
+   * Handles ISO format timestamps from the triplestore.
+   */
+  private def parseTimestamp(timestamp: String): Long = {
+    try {
+      org.joda.time.DateTime.parse(timestamp).getMillis
+    } catch {
+      case _: Exception => 0L
     }
   }
 

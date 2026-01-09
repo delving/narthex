@@ -150,6 +150,7 @@ object Sparql {
   /**
    * Query for index statistics - minimal fields needed for comparing Narthex with search index.
    * Includes deleted and disabled datasets so they can be shown in separate categories.
+   * Also includes state timestamps to detect "stale disabled" (re-enabled) datasets.
    */
   val selectIndexStatsQ =
     s"""
@@ -157,6 +158,7 @@ object Sparql {
       |SELECT DISTINCT ?spec ?processedValid ?processedInvalid ?recordCount
       |                ?acquiredRecordCount ?deletedRecordCount ?sourceRecordCount ?acquisitionMethod
       |                ?deleted ?stateDisabled
+      |                ?stateSaved ?stateProcessed ?stateAnalyzed ?stateIncrementalSaved
       |WHERE {
       |  GRAPH ?g {
       |    ?s nx:datasetSpec ?spec .
@@ -169,6 +171,10 @@ object Sparql {
       |    OPTIONAL { ?s nx:acquisitionMethod ?acquisitionMethod }
       |    OPTIONAL { ?s nx:deleted ?deleted }
       |    OPTIONAL { ?s nx:stateDisabled ?stateDisabled }
+      |    OPTIONAL { ?s nx:stateSaved ?stateSaved }
+      |    OPTIONAL { ?s nx:stateProcessed ?stateProcessed }
+      |    OPTIONAL { ?s nx:stateAnalyzed ?stateAnalyzed }
+      |    OPTIONAL { ?s nx:stateIncrementalSaved ?stateIncrementalSaved }
       |  }
       |}
       |ORDER BY ?spec
