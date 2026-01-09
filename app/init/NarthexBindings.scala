@@ -14,9 +14,9 @@ class NarthexBindings extends AbstractModule {
   override def configure(): Unit = {
     bind(classOf[NarthexLifecycle]).asEagerSingleton()
     bind(classOf[NarthexDatadog]).asEagerSingleton()
-    bind(classOf[MailService]).to(classOf[PlayMailService])
-    bind(classOf[TripleStore]).to(classOf[Fuseki])
-    bind(classOf[Metrics]).to(classOf[MetricsImpl])
+    val _ = bind(classOf[MailService]).to(classOf[PlayMailService])
+    val _ = bind(classOf[TripleStore]).to(classOf[Fuseki])
+    val _ = bind(classOf[Metrics]).to(classOf[MetricsImpl])
   }
 
 }

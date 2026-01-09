@@ -143,7 +143,7 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient, orgId: String)
 
   lazy val schemaVersions = recordDefinition.getName.substring(0, recordDefinition.getName.length - RECORD_DEFINITION_SUFFIX.length)
 
-  def addFactsEntry(facts: SipGenerationFacts, zos: ZipOutputStream) {
+  def addFactsEntry(facts: SipGenerationFacts, zos: ZipOutputStream): Unit = {
     zos.putNextEntry(new ZipEntry(FACTS_FILE))
     val factsString =
       s"""spec=${facts.spec}

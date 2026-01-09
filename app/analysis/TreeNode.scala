@@ -75,7 +75,7 @@ object TreeNode {
             node = node.parent
 
           case EvComment(text) =>
-            stupidParser(text, string => node.value(translateEntity(string)))
+            val _ = stupidParser(text, string => node.value(translateEntity(string)))
 
           case EvProcInstr(target, text) =>
           // do nothing
@@ -144,7 +144,7 @@ object TreeNode {
     def record(string: String): Unit = {
       val randomIn: Int = random.nextInt()
       queue += (randomIn -> string)
-      if (queue.size > size) queue.dequeue()
+      if (queue.size > size) { val _ = queue.dequeue() }
     }
 
     def values: List[String] = queue.map(pair => pair._2).toList.sorted.distinct

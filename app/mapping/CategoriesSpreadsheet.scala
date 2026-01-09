@@ -130,7 +130,7 @@ class CategoriesSpreadsheet(list: List[CategoryCount]) {
     datasets.foreach { datasetI =>
       val row = sheet.createRow(datasetI._2 + 1)
       val rowTitle = row.createCell(0)
-      val recordCount = recordCountMap.getOrElse(datasetI._1, 1d)
+      val recordCount: Double = recordCountMap.getOrElse(datasetI._1, 1).toDouble
       rowTitle.setCellValue(s"${datasetI._1} ($recordCount)")
       rowTitle.setCellStyle(datasetStyle)
       categories.foreach { categoryI =>

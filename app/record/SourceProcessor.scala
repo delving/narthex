@@ -326,9 +326,9 @@ class SourceProcessor(val datasetContext: DatasetContext,
           } finally {
             source.close()
           }
-        } getOrElse {
+        }.getOrElse {
           log.info(s"Processing all $sourceFacts")
-          datasetContext.sourceRepoOpt.map { sourceRepo =>
+          datasetContext.sourceRepoOpt.foreach { sourceRepo =>
             val progressReporter = ProgressReporter(PROCESSING, context.parent)
             progress = Some(progressReporter)
             sourceRepo.parsePockets(catchPocket, idFilter, progressReporter)

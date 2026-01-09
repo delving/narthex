@@ -242,7 +242,7 @@ class OrgActor (
   // Save current queue state to file
   private def saveQueueState(): Unit = {
     import scala.jdk.CollectionConverters._
-    Try {
+    val _ = Try {
       // Get currently active specs from semaphore
       val activeSpecs = orgContext.semaphore.activeSpecs().asScala.toList
 
@@ -279,7 +279,7 @@ class OrgActor (
       return
     }
 
-    Try {
+    val _ = Try {
       val source = Source.fromFile(queueStateFile)
       try {
         val json = source.mkString

@@ -231,7 +231,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
     val idSet = new mutable.HashSet[String]()
     val parser = new PocketParser(sourceFacts, idFilter, orgContext)
     def receiveRecord(pocket: Pocket): Unit = {
-      idSet.add(pocket.id)
+      val _ = idSet.add(pocket.id)
     }
 
     val (source, readProgress) = sourceFromFile(file)
@@ -240,7 +240,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
       parser.parse(source, Set.empty, receiveRecord, progress)
     }
     catch {
-      case unknown => logger.error(s"got an error during parsing of source data: ${unknown}")
+      case e: Exception => logger.error(s"got an error during parsing of source data: ${e.getMessage}", e)
     }
     finally {
       source.close()
