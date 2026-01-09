@@ -174,19 +174,29 @@ class IndexStatsService @Inject()(
   }
 
   /**
-   * Get just the count of datasets with wrong index counts (lightweight for polling)
-   * @return Count of datasets with mismatched counts
+   * Get counts of datasets with index issues (lightweight for polling)
+   * @return Tuple of (wrongCount, notIndexedCount)
    */
-  def getWrongCountCount(): Future[Int] = {
+  def getIndexAlertCounts(): Future[(Int, Int)] = {
     for {
       narthexDatasets <- fetchNarthexDatasets()
       (_, hub3Counts) <- fetchHub3IndexCounts()
     } yield {
-      // Merge Hub3 counts and count mismatches
-      narthexDatasets.count { ds =>
+      val activeDatasets = narthexDatasets.filter(ds => !ds.deleted && !ds.disabled)
+
+      // Wrong count: indexed but count doesn't match
+      val wrongCount = activeDatasets.count { ds =>
         val indexCount = hub3Counts.getOrElse(ds.spec, 0)
-        !ds.deleted && !ds.disabled && indexCount > 0 && !ds.processedValid.contains(indexCount)
+        indexCount > 0 && !ds.processedValid.contains(indexCount)
       }
+
+      // Not indexed: has valid records but not in index
+      val notIndexedCount = activeDatasets.count { ds =>
+        val indexCount = hub3Counts.getOrElse(ds.spec, 0)
+        indexCount == 0 && ds.processedValid.exists(_ > 0)
+      }
+
+      (wrongCount, notIndexedCount)
     }
   }
 

@@ -174,16 +174,20 @@ class AppController @Inject() (
   }
 
   /**
-   * Lightweight endpoint to get just the count of datasets with wrong index counts.
+   * Lightweight endpoint to get counts of datasets with index issues.
    * Used for polling to show badge on Index Stats button.
    */
   def indexStatsWrongCount = Action.async { request =>
-    indexStatsService.getWrongCountCount().map { count =>
-      Ok(Json.obj("wrongCount" -> count))
+    indexStatsService.getIndexAlertCounts().map { case (wrongCount, notIndexedCount) =>
+      Ok(Json.obj(
+        "wrongCount" -> wrongCount,
+        "notIndexedCount" -> notIndexedCount,
+        "totalAlerts" -> (wrongCount + notIndexedCount)
+      ))
     }.recover {
       case e: Exception =>
-        logger.error(s"Failed to fetch wrong count: ${e.getMessage}", e)
-        InternalServerError(Json.obj("error" -> "Failed to fetch wrong count"))
+        logger.error(s"Failed to fetch alert counts: ${e.getMessage}", e)
+        InternalServerError(Json.obj("error" -> "Failed to fetch alert counts"))
     }
   }
 

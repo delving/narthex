@@ -872,26 +872,26 @@ define(["angular"], function () {
             $scope.updateActiveDatasets();
         }, 5000);
 
-        // Index stats wrong count badge
-        $scope.indexStatsWrongCount = 0;
-        $scope.updateIndexStatsWrongCount = function () {
+        // Index stats alert badge (wrong count + not indexed)
+        $scope.indexStatsAlertCount = 0;
+        $scope.updateIndexStatsAlertCount = function () {
             datasetListService.getIndexStatsWrongCount().then(function (data) {
-                $scope.indexStatsWrongCount = data.wrongCount || 0;
+                $scope.indexStatsAlertCount = data.totalAlerts || 0;
             }).catch(function () {
                 // Silently ignore errors for badge polling
             });
         };
 
-        // Poll for wrong count every 5 minutes (less frequent than active datasets)
-        $scope.updateIndexStatsWrongCount();
-        var wrongCountInterval = setInterval(function () {
-            $scope.updateIndexStatsWrongCount();
+        // Poll for alert count every 5 minutes (less frequent than active datasets)
+        $scope.updateIndexStatsAlertCount();
+        var alertCountInterval = setInterval(function () {
+            $scope.updateIndexStatsAlertCount();
         }, 300000); // 5 minutes
 
         // Clean up intervals on scope destruction
         $scope.$on('$destroy', function () {
             clearInterval(activeDatasetsInterval);
-            clearInterval(wrongCountInterval);
+            clearInterval(alertCountInterval);
         });
 
         $scope.updateDatasetList = function (dataset) {
