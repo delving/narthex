@@ -246,6 +246,15 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     } getOrElse (throw new RuntimeException(s"Unable to read rec def $sipContentFileName from $file"))
   }
 
+  private def recMappingOpt(sipContentFileName: String, recDefTree: RecDefTree): Option[RecMapping] = {
+    entries.get(sipContentFileName).map { entry =>
+      val inputStream = zipFile.getInputStream(entry)
+      val mapping = RecMapping.read(inputStream, recDefTree)
+      inputStream.close()
+      mapping
+    }
+  }
+
   private class ResolverContext extends CachedResourceResolver.Context {
 
     override def get(urlString: String): String = {
@@ -280,19 +289,20 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     }
   }
 
-  lazy val sipMappingOpt: Option[SipMapping] = schemaVersionOpt.map { schemaVersion =>
+  lazy val sipMappingOpt: Option[SipMapping] = schemaVersionOpt.flatMap { schemaVersion =>
     val PrefixVersion(prefix, version) = schemaVersion
     val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
-    val mapping = recMapping(s"mapping_$prefix.xml", tree)
-    SipMapping(
-      spec = dsInfoSpec,
-      prefix = prefix,
-      version = version,
-      recDefTree = tree,
-      recMapping = mapping,
-      validatorOpt = if (XSD_VALIDATION) validator(s"${schemaVersion}_validation.xsd", prefix) else None,
-      sip = this
-    )
+    recMappingOpt(s"mapping_$prefix.xml", tree).map { mapping =>
+      SipMapping(
+        spec = dsInfoSpec,
+        prefix = prefix,
+        version = version,
+        recDefTree = tree,
+        recMapping = mapping,
+        validatorOpt = if (XSD_VALIDATION) validator(s"${schemaVersion}_validation.xsd", prefix) else None,
+        sip = this
+      )
+    }
   }
 
   def containsSource = entries.asJava.containsKey("source.xml.gz")
@@ -401,6 +411,8 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
     var sourceFound = false
     var hintsFound = false
+    var factsWritten = false
+    var mappingWritten = false
 
     def copyFileIn(sourceFile: File, fileName: String, gzip: Boolean) = {
       zos.putNextEntry(new ZipEntry(fileName))
@@ -417,8 +429,9 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       zos.closeEntry()
     }
 
-    sipPrefixRepoOpt.map { prefixRepo =>
+    sipPrefixRepoOpt.foreach { prefixRepo =>
       prefixRepo.addFactsEntry(facts, zos)
+      factsWritten = true
     }
 
     zipFile.entries.asScala.foreach { entry =>
@@ -458,6 +471,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
                 RecMapping.write(zos, sipMapping.recMapping)
             }
             zos.closeEntry()
+            mappingWritten = true
           }
 
         case RecordDefinitionPattern() =>
@@ -474,7 +488,11 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           copyFileIn(sourceXmlFile, entry.getName, gzip = true)
 
         case FACTS_FILE =>
-          // Do not copy - we add our own facts
+          // Copy original facts if we didn't write new ones
+          if (!factsWritten) {
+            copyEntry()
+            factsWritten = true
+          }
 
         case HINTS_FILE =>
           // Track that we found hints and copy it
@@ -498,6 +516,21 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       zos.putNextEntry(new ZipEntry(HINTS_FILE))
       zos.write("pockets=true\n".getBytes("UTF-8"))
       zos.closeEntry()
+    }
+
+    // Add default mapping if provided but not yet written (no existing mapping in SIP)
+    if (!mappingWritten) {
+      customMappingXml.foreach { mappingXml =>
+        // Determine the mapping filename from schemaVersionOpt
+        schemaVersionOpt.foreach { schemaVersion =>
+          val PrefixVersion(prefix, _) = schemaVersion
+          val mappingFileName = s"mapping_$prefix.xml"
+          logger.info(s"Adding default mapping to SIP: $mappingFileName")
+          zos.putNextEntry(new ZipEntry(mappingFileName))
+          zos.write(mappingXml.getBytes("UTF-8"))
+          zos.closeEntry()
+        }
+      }
     }
 
     zos.close()

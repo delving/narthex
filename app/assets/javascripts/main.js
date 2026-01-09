@@ -26,7 +26,7 @@
     urlArgs: "v=0.8.4.5",
     // Packages = top-level folders; loads a contained file named "main.js"
     packages: [
-      "common", "datasetList", "dataset", "skos", "terms", "categories", "defaultMappings", "stats", "discovery", "indexStats"
+      "common", "datasetList", "dataset", "skos", "terms", "categories", "defaultMappings", "stats", "discovery", "indexStats", "trends"
     ],
     shim: {
       "jsRoutes": {

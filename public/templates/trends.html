@@ -1,0 +1,140 @@
+<div class="container-fluid" style="padding: 15px;">
+    <div class="page-header" style="margin-top: 0;">
+        <h3>
+            <i class="fa fa-line-chart"></i> Dataset Trends
+            <a href="#/" class="btn btn-default btn-sm pull-right">
+                <i class="fa fa-arrow-left"></i> Back to Datasets
+            </a>
+            <button class="btn btn-default btn-sm pull-right" style="margin-right: 10px;" ng-click="loadTrends()">
+                <i class="fa fa-refresh"></i> Refresh
+            </button>
+            <button class="btn btn-primary btn-sm pull-right" style="margin-right: 10px;"
+                    ng-click="triggerSnapshot()" ng-disabled="snapshotPending">
+                <i class="fa" ng-class="snapshotPending ? 'fa-spinner fa-spin' : 'fa-camera'"></i>
+                Capture Snapshot
+            </button>
+        </h3>
+    </div>
+
+    <!-- Loading indicator -->
+    <div ng-if="loading" class="text-center" style="padding: 50px;">
+        <i class="fa fa-spinner fa-spin fa-3x"></i>
+        <p style="margin-top: 15px;">Loading trend data...</p>
+    </div>
+
+    <!-- Error message -->
+    <div ng-if="error && !loading" class="alert alert-danger">
+        <i class="fa fa-exclamation-triangle"></i> {{ error }}
+    </div>
+
+    <!-- Snapshot result -->
+    <div ng-if="snapshotResult" class="alert alert-success alert-dismissible">
+        <button type="button" class="close" ng-click="snapshotResult = null">&times;</button>
+        <i class="fa fa-check"></i>
+        Snapshot captured: {{ snapshotResult.snapshotsCaptured }}/{{ snapshotResult.datasetsProcessed }} datasets
+    </div>
+
+    <!-- Main content -->
+    <div ng-if="!loading && !error && trends">
+        <!-- Summary Stats -->
+        <div class="well well-sm">
+            <div class="row">
+                <div class="col-md-3 text-center">
+                    <h4 style="margin: 0;">{{ formatNumber(trends.totalDatasets) }}</h4>
+                    <small class="text-muted">Total Datasets</small>
+                </div>
+                <div class="col-md-3 text-center">
+                    <h4 style="margin: 0;">{{ formatNumber(trends.totalSourceRecords) }}</h4>
+                    <small class="text-muted">Total Source Records</small>
+                </div>
+                <div class="col-md-3 text-center">
+                    <h4 style="margin: 0;">{{ formatNumber(trends.totalIndexedRecords) }}</h4>
+                    <small class="text-muted">Total Indexed Records</small>
+                </div>
+                <div class="col-md-3 text-center">
+                    <h4 style="margin: 0;" ng-class="getDeltaClass(trends.netDelta24h.indexed)">
+                        {{ formatDelta(trends.netDelta24h.indexed) }}
+                    </h4>
+                    <small class="text-muted">Net 24h Change (Indexed)</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Time Window Selector -->
+        <div class="btn-group" style="margin-bottom: 15px;">
+            <button class="btn btn-sm" ng-class="timeWindow === '24h' ? 'btn-primary' : 'btn-default'"
+                    ng-click="timeWindow = '24h'">24 Hours</button>
+            <button class="btn btn-sm" ng-class="timeWindow === '7d' ? 'btn-primary' : 'btn-default'"
+                    ng-click="timeWindow = '7d'">7 Days</button>
+            <button class="btn btn-sm" ng-class="timeWindow === '30d' ? 'btn-primary' : 'btn-default'"
+                    ng-click="timeWindow = '30d'">30 Days</button>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs" style="margin-bottom: 15px;">
+            <li ng-class="{'active': activeTab === 'growing'}">
+                <a href="" ng-click="setTab('growing')">
+                    <i class="fa fa-arrow-up text-success"></i> Growing
+                    <span class="badge">{{ getTabCount('growing') }}</span>
+                </a>
+            </li>
+            <li ng-class="{'active': activeTab === 'shrinking'}">
+                <a href="" ng-click="setTab('shrinking')">
+                    <i class="fa fa-arrow-down text-danger"></i> Shrinking
+                    <span class="badge">{{ getTabCount('shrinking') }}</span>
+                </a>
+            </li>
+            <li ng-class="{'active': activeTab === 'stable'}">
+                <a href="" ng-click="setTab('stable')">
+                    <i class="fa fa-minus text-muted"></i> Stable
+                    <span class="badge">{{ getTabCount('stable') }}</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- Empty state -->
+        <div ng-if="getActiveDatasets().length === 0" class="alert alert-info">
+            <i class="fa fa-info-circle"></i>
+            <span ng-if="activeTab === 'growing'">No datasets with growth in the last 24 hours.</span>
+            <span ng-if="activeTab === 'shrinking'">No datasets with decline in the last 24 hours.</span>
+            <span ng-if="activeTab === 'stable'">No stable datasets.</span>
+        </div>
+
+        <!-- Data table -->
+        <div ng-if="getActiveDatasets().length > 0" class="panel panel-default">
+            <table class="table table-striped table-hover" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th>Dataset Spec</th>
+                        <th class="text-right" style="width: 120px;">Current Source</th>
+                        <th class="text-right" style="width: 120px;">Current Indexed</th>
+                        <th class="text-right" style="width: 100px;">Source Change</th>
+                        <th class="text-right" style="width: 100px;">Indexed Change</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="ds in getActiveDatasets()">
+                        <td>
+                            <a href="#/?dataset={{ ds.spec }}">{{ ds.spec }}</a>
+                        </td>
+                        <td class="text-right">{{ formatNumber(ds.currentSource) }}</td>
+                        <td class="text-right">{{ formatNumber(ds.currentIndexed) }}</td>
+                        <td class="text-right" ng-class="getDeltaClass(getDelta(ds, 'source'))">
+                            {{ formatDelta(getDelta(ds, 'source')) }}
+                        </td>
+                        <td class="text-right" ng-class="getDeltaClass(getDelta(ds, 'indexed'))">
+                            {{ formatDelta(getDelta(ds, 'indexed')) }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Info about data collection -->
+        <div class="alert alert-info" style="margin-top: 20px;">
+            <i class="fa fa-info-circle"></i>
+            <strong>Note:</strong> Trend data is captured automatically after each SAVE operation and daily at midnight.
+            Use the "Capture Snapshot" button to manually capture current counts.
+        </div>
+    </div>
+</div>
