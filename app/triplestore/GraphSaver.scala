@@ -135,9 +135,20 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
             progressReporter))
         if (!isIncremental) {
           log.info(s"Only increment dataset revision when not in incremental mode")
-          datasetContext.dsInfo.updateDatasetRevision()
+          // IMPORTANT: Wait for increment_revision to complete before sending records.
+          // Otherwise, the first batch may be indexed with the OLD revision and then
+          // deleted as an orphan when clear_orphans runs.
+          val incrementFuture = datasetContext.dsInfo.updateDatasetRevision()
+          incrementFuture.onComplete {
+            case Success(_) =>
+              log.info("Dataset revision incremented, starting to send graph chunks")
+              sendGraphChunkOpt()
+            case Failure(ex) =>
+              failure(ex)
+          }
+        } else {
+          sendGraphChunkOpt()
         }
-        sendGraphChunkOpt()
       }
 
     case Some(chunk: GraphChunk) =>
