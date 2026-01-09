@@ -235,6 +235,7 @@ class AppController @Inject() (
         "totalDatasets" -> stats.totalDatasets,
         "correct" -> augmentWithTrends(stats.correct),
         "notIndexed" -> augmentWithTrends(stats.notIndexed),
+        "notProcessed" -> augmentWithTrends(stats.notProcessed),
         "wrongCount" -> augmentWithTrends(stats.wrongCount),
         "deleted" -> augmentWithTrends(stats.deleted),
         "disabled" -> augmentWithTrends(stats.disabled)
