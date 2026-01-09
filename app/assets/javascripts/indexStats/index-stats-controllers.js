@@ -34,6 +34,7 @@ define(["angular"], function (angular) {
             correct: [],
             notIndexed: [],
             wrongCount: [],
+            disabled: [],
             deleted: []
         };
 
@@ -82,6 +83,8 @@ define(["angular"], function (angular) {
                     return $scope.stats.notIndexed;
                 case 'wrongCount':
                     return $scope.stats.wrongCount;
+                case 'disabled':
+                    return $scope.stats.disabled;
                 case 'deleted':
                     return $scope.stats.deleted;
                 default:
@@ -100,6 +103,8 @@ define(["angular"], function (angular) {
                     return $scope.stats.notIndexed.length;
                 case 'wrongCount':
                     return $scope.stats.wrongCount.length;
+                case 'disabled':
+                    return $scope.stats.disabled.length;
                 case 'deleted':
                     return $scope.stats.deleted.length;
                 default:
