@@ -805,13 +805,13 @@ class DatasetActor(val datasetContext: DatasetContext,
 
         fileOpt match {
           case Some(file) =>
+            // Always regenerate SIP after incremental harvest to keep pockets.xml current
+            log.info(s"Incremental harvest complete, regenerating SIP from all source files")
             if (datasetContext.sipMapperOpt.isDefined) {
-              log.info(s"There is a mapper, so trigger processing")
-              self ! StartProcessing(Some(Scheduled(mod, file)))
-            } else {
-              log.info("No mapper, so generating sip zip only")
-              self ! GenerateSipZip
+              // Set flag to continue to processing after SIP generation
+              fastSaveScheduledOpt = Some(Scheduled(mod, file))
             }
+            self ! GenerateSipZip
           case None =>
             log.info("No incremental file, back to sleep")
         }
@@ -967,9 +967,20 @@ class DatasetActor(val datasetContext: DatasetContext,
       if (scheduledOpt.isDefined) {
         dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
         // Update total record count from filesystem for scheduled/incremental harvests
-        dsInfo.updatedSpecCountFromFile(dsInfo.spec,
+        val (_, _, totalSourceRecords) = dsInfo.updatedSpecCountFromFile(dsInfo.spec,
                                         orgContext.appConfig.narthexDataDir,
                                         orgContext.appConfig.orgId)
+
+        // Set acquisition counts for incremental harvests (since SipZipGeneration was skipped)
+        datasetContext.sourceRepoOpt.foreach { sourceRepo =>
+          val deletedCount = sourceRepo.deletedCount
+          val acquiredCount = totalSourceRecords + deletedCount
+          val acquisitionMethod = dsInfo.getLiteralProp(harvestType).map(_ => "harvest").getOrElse("upload")
+          dsInfo.setAcquisitionCounts(acquiredCount, deletedCount, totalSourceRecords, acquisitionMethod)
+          if (deletedCount > 0 || acquiredCount > 0) {
+            log.info(s"Acquisition counts set during ProcessingComplete: acquired=$acquiredCount, deleted=$deletedCount, source=$totalSourceRecords, method=$acquisitionMethod")
+          }
+        }
         val graphSaver = createChildActor(
           GraphSaver.props(datasetContext, orgContext),
           "graph-saver")

@@ -33,6 +33,7 @@ define(["angular"], function (angular) {
             totalDatasets: 0,
             correct: [],
             notIndexed: [],
+            notProcessed: [],
             wrongCount: [],
             disabled: [],
             deleted: []
