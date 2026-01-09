@@ -85,6 +85,12 @@ class IndexStatsService @Inject()(
    * @return Map of spec -> count, and total indexed documents
    */
   def fetchHub3IndexCounts(): Future[(Long, Map[String, Int])] = {
+    // Return empty data when in mock mode
+    if (narthexConfig.mockBulkApi) {
+      logger.debug("Mock mode enabled - returning empty Hub3 index counts")
+      return Future.successful((0L, Map.empty[String, Int]))
+    }
+
     val url = s"${narthexConfig.naveApiUrl}/api/search/v2"
 
     logger.debug(s"Fetching Hub3 index counts from: $url")

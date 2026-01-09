@@ -1900,6 +1900,12 @@ define(["angular"], function () {
                 case 'stats':
                     $location.path('/stats');
                     break;
+                case 'index-stats':
+                    $location.path('/index-stats');
+                    break;
+                case 'trends':
+                    $location.path('/trends');
+                    break;
                 case 'categories':
                     $location.path('/categories');
                     break;
