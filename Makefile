@@ -1,5 +1,5 @@
 # Makefile for Narthex
-.PHONY: compile dist run package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-jena-tools deploy-fuseki-migrate fuseki-compact
+.PHONY: compile dist run package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-jena-tools deploy-fuseki-migrate fuseki-compact purge-org list-org
 
 NAME:=narthex
 VERSION:=$(shell sh -c 'grep "ThisBuild / version" version.sbt | cut -d\" -f2')
@@ -24,7 +24,7 @@ export PATH:=$(JAVA_HOME)/bin:$(PATH)
 # var print rule
 print-%  : ; @echo $* = $($*)
 
-# Version bumping - increments the patch version (last number)
+# Version bumping - increments the patch version (last number), commits, and tags
 bump-version:
 	@echo "Current version: $(VERSION)"
 	@NEW_VERSION=$$(echo $(VERSION) | awk -F. '{print $$1"."$$2"."$$3"."$$4+1}') && \
@@ -35,9 +35,17 @@ bump-version:
 	echo "Version bumped to $$NEW_VERSION in:" && \
 	echo "  - version.sbt" && \
 	echo "  - app/assets/javascripts/main.js" && \
-	echo "  - app/assets/javascripts/datasetList/main.js"
+	echo "  - app/assets/javascripts/datasetList/main.js" && \
+	echo "" && \
+	echo "Committing and tagging..." && \
+	git add version.sbt app/assets/javascripts/main.js app/assets/javascripts/datasetList/main.js && \
+	git commit -m "chore: bump version to $$NEW_VERSION" && \
+	git tag -a "v$$NEW_VERSION" -m "Release $$NEW_VERSION" && \
+	echo "" && \
+	echo "Created git tag: v$$NEW_VERSION" && \
+	echo "To push: git push && git push --tags"
 
-# Set a specific version
+# Set a specific version, commit, and tag
 set-version:
 	@if [ -z "$(V)" ]; then echo "Usage: make set-version V=0.8.2.99"; exit 1; fi
 	@echo "Setting version to: $(V)"
@@ -45,6 +53,14 @@ set-version:
 	@sed -i 's/urlArgs: "v=[^"]*"/urlArgs: "v=$(V)"/' app/assets/javascripts/main.js
 	@sed -i 's/v=[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/v=$(V)/g' app/assets/javascripts/datasetList/main.js
 	@echo "Version set to $(V)"
+	@echo ""
+	@echo "Committing and tagging..."
+	@git add version.sbt app/assets/javascripts/main.js app/assets/javascripts/datasetList/main.js
+	@git commit -m "chore: bump version to $(V)"
+	@git tag -a "v$(V)" -m "Release $(V)"
+	@echo ""
+	@echo "Created git tag: v$(V)"
+	@echo "To push: git push && git push --tags"
 
 package:
 	sbt package
@@ -313,3 +329,82 @@ fuseki-compact:
 	@echo ""
 	@echo "Compaction triggered. Check status with:"
 	@echo "  ssh $(SSH_HOST) curl -s http://localhost:3030/\$$/tasks"
+
+# Purge all data for an organization (local development)
+# Usage: make purge-org ORG_ID=brabantcloud
+#
+# This will:
+#   1. Delete all dataset directories from NarthexFiles
+#   2. Delete all SIP files
+#   3. Delete all raw uploaded files
+#   4. Clear the processing queue
+#   5. Drop all graphs from local Fuseki
+#
+# WARNING: This is destructive and cannot be undone!
+NARTHEX_FILES:=$(HOME)/NarthexFiles
+FUSEKI_URL:=http://127.0.0.1:3033
+# Fuseki auth - override with: make purge-org ORG_ID=x FUSEKI_USER=admin FUSEKI_PASS=secret
+FUSEKI_USER?=admin
+FUSEKI_PASS?=pw123
+
+purge-org:
+	@if [ -z "$(ORG_ID)" ]; then echo "Error: ORG_ID is required. Usage: make purge-org ORG_ID=brabantcloud"; exit 1; fi
+	@if [ ! -d "$(NARTHEX_FILES)/$(ORG_ID)" ]; then echo "Error: $(NARTHEX_FILES)/$(ORG_ID) does not exist"; exit 1; fi
+	@echo ""
+	@echo "=== PURGE ORGANIZATION DATA: $(ORG_ID) ==="
+	@echo ""
+	@echo "This will DELETE all data for organization '$(ORG_ID)':"
+	@echo "  - $(NARTHEX_FILES)/$(ORG_ID)/datasets/*"
+	@echo "  - $(NARTHEX_FILES)/$(ORG_ID)/sips/*"
+	@echo "  - $(NARTHEX_FILES)/$(ORG_ID)/raw/*"
+	@echo "  - $(NARTHEX_FILES)/$(ORG_ID)/queue-state.json"
+	@echo "  - All graphs in Fuseki for $(ORG_ID)"
+	@echo ""
+	@echo "Current datasets:"
+	@ls -1 $(NARTHEX_FILES)/$(ORG_ID)/datasets/ 2>/dev/null || echo "  (none)"
+	@echo ""
+	@read -p "Are you sure you want to delete all this data? [y/N] " confirm && [ "$$confirm" = "y" ] || (echo "Aborted."; exit 1)
+	@echo ""
+	@echo "Step 1: Clearing Fuseki graphs..."
+	@curl -s -u $(FUSEKI_USER):$(FUSEKI_PASS) -X POST "$(FUSEKI_URL)/$(ORG_ID)/update" \
+		-H "Content-Type: application/sparql-update" \
+		--data "DROP ALL" && echo "  Fuseki graphs dropped" || echo "  Warning: Could not connect to Fuseki (may not be running)"
+	@echo ""
+	@echo "Step 2: Removing dataset directories..."
+	rm -rf $(NARTHEX_FILES)/$(ORG_ID)/datasets/*
+	@echo "  Datasets removed"
+	@echo ""
+	@echo "Step 3: Removing SIP files..."
+	rm -rf $(NARTHEX_FILES)/$(ORG_ID)/sips/*
+	@echo "  SIPs removed"
+	@echo ""
+	@echo "Step 4: Removing raw uploads..."
+	rm -rf $(NARTHEX_FILES)/$(ORG_ID)/raw/*
+	@echo "  Raw files removed"
+	@echo ""
+	@echo "Step 5: Clearing queue state..."
+	rm -f $(NARTHEX_FILES)/$(ORG_ID)/queue-state.json
+	@echo "  Queue cleared"
+	@echo ""
+	@echo "=== Purge complete for $(ORG_ID) ==="
+	@echo ""
+	@echo "Note: Restart Narthex to ensure clean state: sbt run"
+
+# List datasets for an organization (useful before purging)
+# Usage: make list-org ORG_ID=brabantcloud
+list-org:
+	@if [ -z "$(ORG_ID)" ]; then echo "Error: ORG_ID is required. Usage: make list-org ORG_ID=brabantcloud"; exit 1; fi
+	@echo ""
+	@echo "=== Organization: $(ORG_ID) ==="
+	@echo ""
+	@echo "Datasets:"
+	@ls -1 $(NARTHEX_FILES)/$(ORG_ID)/datasets/ 2>/dev/null || echo "  (none)"
+	@echo ""
+	@echo "Dataset sizes:"
+	@du -sh $(NARTHEX_FILES)/$(ORG_ID)/datasets/*/ 2>/dev/null || echo "  (none)"
+	@echo ""
+	@echo "SIP files:"
+	@ls -1 $(NARTHEX_FILES)/$(ORG_ID)/sips/ 2>/dev/null || echo "  (none)"
+	@echo ""
+	@echo "Raw uploads:"
+	@ls -1 $(NARTHEX_FILES)/$(ORG_ID)/raw/ 2>/dev/null || echo "  (none)"
