@@ -14,7 +14,7 @@
 //    limitations under the License.
 //===========================================================================
 
-define(["angular", "./index-stats-controllers"], function (angular, controllers) {
+define(["angular", "./index-stats-controllers", "datasetList"], function (angular, controllers) {
 
     var indexStatsRoutes = angular.module("indexStats.routes", ["narthex.common"]);
 
@@ -28,6 +28,7 @@ define(["angular", "./index-stats-controllers"], function (angular, controllers)
     return angular.module("narthex.indexStats", [
         "ngRoute",
         "indexStats.routes",
-        "narthex.common"
+        "narthex.common",
+        "datasetList.services"
     ]);
 });

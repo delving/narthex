@@ -114,6 +114,9 @@
                         <th ng-if="activeTab === 'wrongCount'" style="width: 100px;" class="text-right">
                             Difference
                         </th>
+                        <th style="width: 50px;" class="text-center">
+                            Actions
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -147,6 +150,26 @@
                         <td class="text-right">{{ formatNumber(ds.indexCount) || '-' }}</td>
                         <td ng-if="activeTab === 'wrongCount'" class="text-right" ng-class="getDifferenceClass(ds)">
                             <span ng-if="getDifference(ds) > 0">+</span>{{ formatNumber(getDifference(ds)) }}
+                        </td>
+                        <td class="text-center">
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-xs btn-default" dropdown-toggle
+                                        ng-disabled="isPending(ds.spec)">
+                                    <i class="fa" ng-class="isPending(ds.spec) ? 'fa-spinner fa-spin' : 'fa-ellipsis-v'"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-right" role="menu">
+                                    <li role="menuitem">
+                                        <a href="" ng-click="triggerSave(ds.spec)">
+                                            <i class="fa fa-save"></i> Resave
+                                        </a>
+                                    </li>
+                                    <li role="menuitem">
+                                        <a href="#/dataset/{{ ds.spec }}">
+                                            <i class="fa fa-folder-open"></i> Open Dataset
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </td>
                     </tr>
                 </tbody>

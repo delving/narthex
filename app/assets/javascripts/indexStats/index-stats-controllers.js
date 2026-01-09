@@ -21,7 +21,7 @@ define(["angular"], function (angular) {
      * Controller for the Index Stats page
      * Compares dataset record counts between Narthex and Hub3 search index
      */
-    var IndexStatsCtrl = function ($scope, $http) {
+    var IndexStatsCtrl = function ($scope, $http, datasetListService) {
         // Tab state
         $scope.activeTab = 'correct';
         $scope.loading = true;
@@ -40,6 +40,9 @@ define(["angular"], function (angular) {
         // Sorting
         $scope.sortField = 'spec';
         $scope.sortReverse = false;
+
+        // Track pending operations
+        $scope.pendingOps = {};
 
         /**
          * Load index statistics from the API
@@ -159,11 +162,42 @@ define(["angular"], function (angular) {
             }
         };
 
+        /**
+         * Trigger a save operation for a dataset
+         */
+        $scope.triggerSave = function (spec) {
+            if ($scope.pendingOps[spec]) {
+                return; // Already pending
+            }
+            $scope.pendingOps[spec] = true;
+            datasetListService.command(spec, "start saving").then(
+                function () {
+                    console.log("Save triggered for: " + spec);
+                    // Refresh stats after a short delay to show updated state
+                    setTimeout(function () {
+                        $scope.loadStats();
+                        delete $scope.pendingOps[spec];
+                    }, 2000);
+                },
+                function (error) {
+                    console.error("Error triggering save for " + spec + ":", error);
+                    delete $scope.pendingOps[spec];
+                }
+            );
+        };
+
+        /**
+         * Check if an operation is pending for a dataset
+         */
+        $scope.isPending = function (spec) {
+            return $scope.pendingOps[spec] === true;
+        };
+
         // Load stats on controller init
         $scope.loadStats();
     };
 
-    IndexStatsCtrl.$inject = ['$scope', '$http'];
+    IndexStatsCtrl.$inject = ['$scope', '$http', 'datasetListService'];
 
     return {
         IndexStatsCtrl: IndexStatsCtrl
