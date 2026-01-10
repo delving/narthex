@@ -35,27 +35,21 @@ This document captures the roadmap for data quality analysis features in Narthex
   - Valid/invalid counts for all URI-like values
   - Validation rate percentage
 
+### Phase 4: Quality Indicators in Tree View (Completed)
+- **Warning icon**: Yellow triangle (⚠) next to fields with quality issues
+- **Hover tooltip**: Shows summary of detected issues
+- **Color-coded completeness badge**: Green (≥90%), Yellow (≥50%), Red (<50%)
+- **Issues detected in tree**:
+  - Low completeness (< 50%)
+  - High empty rate (> 10%)
+- **Quality Tab Issues Alert Box**:
+  - Yellow alert box at top of Quality tab when issues exist
+  - Lists all issues with clear explanations
+  - Includes: low completeness, high empty rate, mixed types, whitespace issues, invalid URIs
+
 ---
 
 ## Planned Features
-
-### Phase 4: Quality Indicators in Tree View
-**Priority: High | Effort: Low**
-
-Add visual indicators to the schema tree to highlight quality issues at a glance:
-- Warning badge for low completeness (< 50%)
-- Alert icon for whitespace issues
-- Mixed type indicator
-- Color-coded completeness (green/yellow/red)
-
-```
-Example tree node:
-[folder] metadata
-  [field] title (98%) ✓
-  [field] description (45%) ⚠
-  [field] date (100%) ✓ [DATE]
-  [field] creator (72%) ⚠ [MIXED]
-```
 
 ### Phase 5: Quality Summary Dashboard
 **Priority: High | Effort: Medium**
