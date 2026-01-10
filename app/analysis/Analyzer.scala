@@ -136,16 +136,22 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
       log.info(s"Tree complete")
     }
 
-    case Counted(nodeRepo, uniqueCount, sampleSizes, typeAnalysis, valueStats) => actorWork(context) {
+    case Counted(nodeRepo, uniqueCount, sampleSizes, typeAnalysis, valueStats, patternAnalysis) => actorWork(context) {
       progress.get.checkInterrupt()
       collators = collators.filter(collator => collator != sender())
       deleteQuietly(nodeRepo.sorted)
-      nodeRepo.setStatus(Json.obj(
+      var statusJson = Json.obj(
         "uniqueCount" -> uniqueCount,
         "samples" -> sampleSizes,
         "typeInfo" -> typeAnalysis.toJson,
         "valueStats" -> valueStats.toJson
-      ))
+      )
+      // Only include patternInfo if patterns were detected
+      val patternJson = patternAnalysis.toJson
+      if (patternJson.fields.nonEmpty) {
+        statusJson = statusJson + ("patternInfo" -> patternJson)
+      }
+      nodeRepo.setStatus(statusJson)
       val sorter = context.actorOf(Sorter.props(nodeRepo))
       sorters = sorter :: sorters
       sorter ! Sort(SortType.HISTOGRAM_SORT)
@@ -170,15 +176,17 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
               val samples = current \ "samples"
               val typeInfo = current \ "typeInfo"
               val valueStats = current \ "valueStats"
+              val patternInfo = current \ "patternInfo"
               val histogramSizes = nodeRepo.writeHistograms(uniqueCount)
               var result = Json.obj(
                 "uniqueCount" -> uniqueCount,
                 "samples" -> samples.get,
                 "histograms" -> histogramSizes
               )
-              // Preserve typeInfo and valueStats if present
+              // Preserve typeInfo, valueStats, and patternInfo if present
               typeInfo.asOpt[JsObject].foreach(ti => result = result + ("typeInfo" -> ti))
               valueStats.asOpt[JsObject].foreach(vs => result = result + ("valueStats" -> vs))
+              patternInfo.asOpt[JsObject].foreach(pi => result = result + ("patternInfo" -> pi))
               result
           }
           deleteQuietly(nodeRepo.counted)
@@ -204,7 +212,8 @@ object Collator {
     uniqueCount: Int,
     sampleFiles: Seq[Int],
     typeAnalysis: TypeDetector.TypeAnalysis,
-    valueStats: ValueStats.ValueStatistics
+    valueStats: ValueStats.ValueStatistics,
+    patternAnalysis: TypeDetector.PatternAnalysis
   )
 
   def props(nodeRepo: NodeRepo) = Props(new Collator(nodeRepo))
@@ -226,6 +235,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
       val typeCounter = new TypeDetector.TypeCounter()
       val statsTracker = new ValueStats.StatsTracker()
+      val patternTracker = new TypeDetector.PatternTracker()
 
       def createSampleFile(randomSample: RandomSample, sampleFile: File) = {
         createJson(sampleFile, Json.obj("sample" -> randomSample.values))
@@ -243,8 +253,9 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
         unique.write(string)
         unique.write("\n")
         samples.foreach(pair => pair._1.record(string))
-        typeCounter.record(string)   // Track type for each unique value
-        statsTracker.record(string)  // Track value statistics
+        typeCounter.record(string)    // Track type for each unique value
+        statsTracker.record(string)   // Track value statistics
+        patternTracker.record(string) // Track patterns and URI validation
         uniqueCount += 1
       }
 
@@ -269,7 +280,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       val usefulSamples = if (bigEnoughSamples.isEmpty) List(samples.head) else bigEnoughSamples
       usefulSamples.foreach(pair => createSampleFile(pair._1, pair._2))
       sender() ! Counted(nodeRepo, uniqueCount, usefulSamples.map(pair => pair._1.size),
-        typeCounter.getAnalysis, statsTracker.getStatistics)
+        typeCounter.getAnalysis, statsTracker.getStatistics, patternTracker.getAnalysis)
   }
 }
 

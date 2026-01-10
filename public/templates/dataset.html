@@ -401,11 +401,64 @@
                             </table>
                         </div>
 
+                        <!-- Pattern Analysis Section -->
+                        <div data-ng-show="status.patternInfo" style="margin-top: 15px;">
+                            <h5><i class="fa fa-puzzle-piece"></i> Pattern Analysis</h5>
+                            <table class="table table-condensed">
+                                <tbody>
+                                    <tr data-ng-show="status.patternInfo.dominantPattern">
+                                        <td><strong>Dominant pattern</strong></td>
+                                        <td>
+                                            <span class="label"
+                                                  ng-class="{
+                                                    'label-success': status.patternInfo.dominantPattern == 'uuid',
+                                                    'label-info': status.patternInfo.dominantPattern == 'urn',
+                                                    'label-primary': status.patternInfo.dominantPattern == 'https_uri',
+                                                    'label-warning': status.patternInfo.dominantPattern == 'http_uri',
+                                                    'label-default': status.patternInfo.dominantPattern == 'prefix_id' || status.patternInfo.dominantPattern == 'ftp_uri'
+                                                  }">
+                                                {{ status.patternInfo.dominantPattern | uppercase }}
+                                            </span>
+                                            <span class="text-muted" style="margin-left: 10px;">
+                                                {{ status.patternInfo.patternConsistency }}% of values
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr data-ng-show="status.patternInfo.patterns">
+                                        <td><strong>Pattern distribution</strong></td>
+                                        <td>
+                                            <span data-ng-repeat="(pattern, info) in status.patternInfo.patterns" style="margin-right: 10px;">
+                                                <span class="label label-default">{{ pattern }}</span>
+                                                <small>{{ info.count }} ({{ info.percentage }}%)</small>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr data-ng-show="status.patternInfo.uriValidation">
+                                        <td><strong>URI validation</strong></td>
+                                        <td>
+                                            <span data-ng-show="status.patternInfo.uriValidation.invalid == 0" class="text-success">
+                                                <i class="fa fa-check-circle"></i>
+                                                All {{ status.patternInfo.uriValidation.total }} URIs valid
+                                            </span>
+                                            <span data-ng-show="status.patternInfo.uriValidation.invalid > 0" class="text-danger">
+                                                <i class="fa fa-exclamation-triangle"></i>
+                                                {{ status.patternInfo.uriValidation.invalid }} invalid URIs
+                                                <span class="text-muted">
+                                                    ({{ status.patternInfo.uriValidation.valid }} valid / {{ status.patternInfo.uriValidation.total }} total)
+                                                </span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                         <div class="text-muted small" style="margin-top: 10px;">
                             <p><strong>Completeness:</strong> Percentage of records that have at least one value for this field.</p>
                             <p><strong>Avg per record:</strong> Average number of values per record (>1 indicates multi-value field).</p>
                             <p data-ng-show="status.typeInfo"><strong>Type consistency:</strong> Percentage of values matching the detected dominant type.</p>
                             <p data-ng-show="status.valueStats"><strong>Word count:</strong> Number of words per value (split by whitespace).</p>
+                            <p data-ng-show="status.patternInfo"><strong>Pattern types:</strong> UUID, URN, PREFIX_ID (e.g., ABC-123), HTTP_URI, HTTPS_URI.</p>
                         </div>
                     </div>
                 </div>
