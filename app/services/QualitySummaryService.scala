@@ -408,4 +408,91 @@ class QualitySummaryService @Inject()(
 
     Math.round(score * 10) / 10.0  // Round to 1 decimal
   }
+
+  /**
+   * Convert quality summary to CSV format
+   */
+  def toCSV(summary: QualitySummary, spec: String, isSource: Boolean): String = {
+    val sb = new StringBuilder
+
+    // Header section
+    sb.append("# Quality Report for Dataset: ").append(spec)
+    if (isSource) sb.append(" (Source Analysis)")
+    sb.append("\n")
+    sb.append("# Generated: ").append(java.time.LocalDateTime.now().toString).append("\n")
+    sb.append("\n")
+
+    // Summary statistics
+    sb.append("# Summary Statistics\n")
+    sb.append("Metric,Value\n")
+    sb.append(s"Overall Quality Score,${summary.overallScore}%\n")
+    sb.append(s"Total Fields,${summary.totalFields}\n")
+    sb.append(s"Leaf Fields (with values),${summary.leafFields}\n")
+    sb.append(s"Total Records,${summary.totalRecords}\n")
+    sb.append(s"Fields with Issues,${summary.fieldsWithIssues}\n")
+    sb.append(s"Fields in Every Record,${summary.fieldsInEveryRecord}\n")
+    sb.append(s"Avg Fields per Record,${summary.avgFieldsPerRecord}\n")
+    sb.append(s"Avg Unique Fields per Record,${summary.avgUniqueFieldsPerRecord}\n")
+    sb.append(s"Avg Uniqueness,${summary.avgUniqueness}%\n")
+    sb.append("\n")
+
+    // Completeness distribution
+    sb.append("# Completeness Distribution\n")
+    sb.append("Category,Count\n")
+    sb.append(s"Excellent (>=90%),${summary.completenessDistribution.getOrElse("excellent", 0)}\n")
+    sb.append(s"Good (70-89%),${summary.completenessDistribution.getOrElse("good", 0)}\n")
+    sb.append(s"Fair (50-69%),${summary.completenessDistribution.getOrElse("fair", 0)}\n")
+    sb.append(s"Poor (<50%),${summary.completenessDistribution.getOrElse("poor", 0)}\n")
+    sb.append("\n")
+
+    // Uniqueness distribution
+    sb.append("# Uniqueness Distribution\n")
+    sb.append("Category,Count\n")
+    sb.append(s"Identifiers (100%),${summary.uniquenessDistribution.getOrElse("identifier", 0)}\n")
+    sb.append(s"High (80-99%),${summary.uniquenessDistribution.getOrElse("high", 0)}\n")
+    sb.append(s"Medium (20-79%),${summary.uniquenessDistribution.getOrElse("medium", 0)}\n")
+    sb.append(s"Low (<20%),${summary.uniquenessDistribution.getOrElse("low", 0)}\n")
+    sb.append("\n")
+
+    // Issues by type
+    sb.append("# Issues by Type\n")
+    sb.append("Issue Type,Count\n")
+    summary.issuesByType.foreach { case (issueType, count) =>
+      sb.append(s"$issueType,$count\n")
+    }
+    sb.append("\n")
+
+    // Fields in every record
+    if (summary.fieldsInEveryRecordList.nonEmpty) {
+      sb.append("# Fields in Every Record (100% Completeness)\n")
+      sb.append("Path,Tag,Avg Per Record\n")
+      summary.fieldsInEveryRecordList.foreach { field =>
+        sb.append(s"\"${field.path}\",\"${field.tag}\",${field.avgPerRecord}\n")
+      }
+      sb.append("\n")
+    }
+
+    // Identifier fields
+    if (summary.identifierFieldsList.nonEmpty) {
+      sb.append("# Identifier Fields (100% Unique)\n")
+      sb.append("Path,Tag,Unique Count,Total Count\n")
+      summary.identifierFieldsList.foreach { field =>
+        sb.append(s"\"${field.path}\",\"${field.tag}\",${field.uniqueCount},${field.totalCount}\n")
+      }
+      sb.append("\n")
+    }
+
+    // Problematic fields detail
+    sb.append("# All Fields with Quality Metrics\n")
+    sb.append("Path,Tag,Completeness %,Empty Rate %,Records With Value,Total Records,Avg Per Record,Total Count,Unique Count,Uniqueness %,Issue Count,Issues\n")
+    summary.problematicFields.foreach { field =>
+      val issuesStr = field.issues.mkString("; ")
+      sb.append(s"\"${field.path}\",\"${field.tag}\",${field.completeness},${field.emptyRate},")
+      sb.append(s"${field.recordsWithValue},${field.totalRecords},${field.avgPerRecord},")
+      sb.append(s"${field.totalCount},${field.uniqueCount},${field.uniqueness},")
+      sb.append(s"${field.issueCount},\"$issuesStr\"\n")
+    }
+
+    sb.toString()
+  }
 }

@@ -529,6 +529,37 @@ class AppController @Inject() (
     }
   }
 
+  /**
+   * Export quality summary as JSON file
+   */
+  def exportQualitySummaryJson(spec: String, isSource: Boolean) = Action { request =>
+    qualitySummaryService.getQualitySummary(spec, isSource) match {
+      case Some(summary) =>
+        val filename = s"${spec}-quality-summary${if (isSource) "-source" else ""}.json"
+        Ok(Json.prettyPrint(Json.toJson(summary)))
+          .as("application/json")
+          .withHeaders("Content-Disposition" -> s"""attachment; filename="$filename"""")
+      case None =>
+        NotFound(Json.obj("error" -> "Quality summary not available"))
+    }
+  }
+
+  /**
+   * Export quality summary as CSV file
+   */
+  def exportQualitySummaryCsv(spec: String, isSource: Boolean) = Action { request =>
+    qualitySummaryService.getQualitySummary(spec, isSource) match {
+      case Some(summary) =>
+        val filename = s"${spec}-quality-summary${if (isSource) "-source" else ""}.csv"
+        val csv = qualitySummaryService.toCSV(summary, spec, isSource)
+        Ok(csv)
+          .as("text/csv")
+          .withHeaders("Content-Disposition" -> s"""attachment; filename="$filename"""")
+      case None =>
+        NotFound(Json.obj("error" -> "Quality summary not available"))
+    }
+  }
+
   def setRecordDelimiter(spec: String) = Action(parse.json) { request =>
     val datasetContext = orgContext.datasetContext(spec)
     // todo: recordContainer instead perhaps

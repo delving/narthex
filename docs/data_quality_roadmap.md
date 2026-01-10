@@ -75,6 +75,20 @@ This document captures the roadmap for data quality analysis features in Narthex
 - **Navigation**: Click field to jump to it in tree view
 - **Source/Processed support**: Works with both analysis types
 
+### Phase 7: Export Quality Report (Completed)
+- **Export dropdown**: In Quality Summary modal footer
+- **CSV export**: Comprehensive report with sections for:
+  - Summary statistics (overall score, field counts, record counts)
+  - Completeness distribution
+  - Uniqueness distribution
+  - Issues by type
+  - Fields in every record (100% completeness)
+  - Identifier fields (100% unique)
+  - All fields with quality metrics (path, tag, completeness, uniqueness, issues)
+- **JSON export**: Full structured data for programmatic use
+- **Source/Processed support**: Exports respect current analysis type
+- **Direct download**: Files download with appropriate filenames
+
 ---
 
 ## Planned Features
@@ -94,21 +108,6 @@ Score ranges:
 - 70-89: Good
 - 50-69: Fair
 - 0-49: Poor
-
-### Phase 7: Export Quality Report
-**Priority: Medium | Effort: Low**
-
-Generate exportable reports in multiple formats:
-- **CSV**: All field statistics in tabular format
-- **JSON**: Full structured data for programmatic use
-- **PDF**: Formatted report for stakeholders (future)
-
-Report contents:
-- Dataset metadata
-- Per-field statistics
-- Quality scores
-- Issue summary
-- Recommendations
 
 ### Phase 8: Source vs Processed Comparison
 **Priority: Medium | Effort: Medium**

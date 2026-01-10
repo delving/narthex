@@ -424,6 +424,23 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <div class="btn-group dropup pull-left" ng-if="qualitySummary">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                        <i class="fa fa-download"></i> Export <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a ng-href="/narthex/app/dataset/{{ spec }}/export-quality-csv?isSource={{ isSourceAnalysis }}" target="_blank">
+                                <i class="fa fa-file-text-o"></i> Export as CSV
+                            </a>
+                        </li>
+                        <li>
+                            <a ng-href="/narthex/app/dataset/{{ spec }}/export-quality-json?isSource={{ isSourceAnalysis }}" target="_blank">
+                                <i class="fa fa-file-code-o"></i> Export as JSON
+                            </a>
+                        </li>
+                    </ul>
+                </div>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
             </div>
         </div>
