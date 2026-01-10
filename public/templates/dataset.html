@@ -338,10 +338,74 @@
                             </table>
                         </div>
 
+                        <!-- Value Statistics Section -->
+                        <div data-ng-show="status.valueStats" style="margin-top: 15px;">
+                            <h5><i class="fa fa-bar-chart"></i> Value Statistics</h5>
+                            <table class="table table-condensed">
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Length (chars)</strong></td>
+                                        <td>
+                                            <span class="text-muted">min:</span> {{ status.valueStats.length.min }}
+                                            <span class="text-muted" style="margin-left: 10px;">max:</span> {{ status.valueStats.length.max }}
+                                            <span class="text-muted" style="margin-left: 10px;">avg:</span> {{ status.valueStats.length.avg }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Word count</strong></td>
+                                        <td>
+                                            <span class="text-muted">min:</span> {{ status.valueStats.wordCount.min }}
+                                            <span class="text-muted" style="margin-left: 10px;">max:</span> {{ status.valueStats.wordCount.max }}
+                                            <span class="text-muted" style="margin-left: 10px;">avg:</span> {{ status.valueStats.wordCount.avg }}
+                                        </td>
+                                    </tr>
+                                    <tr data-ng-show="status.valueStats.numericRange">
+                                        <td><strong>Numeric range</strong></td>
+                                        <td>
+                                            <span class="text-muted">min:</span> {{ status.valueStats.numericRange.min }}
+                                            <span class="text-muted" style="margin-left: 10px;">max:</span> {{ status.valueStats.numericRange.max }}
+                                            <span class="text-muted" style="margin-left: 10px;">({{ status.valueStats.numericRange.count }} values)</span>
+                                        </td>
+                                    </tr>
+                                    <tr data-ng-show="status.valueStats.dateRange">
+                                        <td><strong>Year range</strong></td>
+                                        <td>
+                                            <span class="label label-info">{{ status.valueStats.dateRange.minYear }}</span>
+                                            <span class="text-muted"> to </span>
+                                            <span class="label label-info">{{ status.valueStats.dateRange.maxYear }}</span>
+                                            <span class="text-muted" style="margin-left: 10px;">({{ status.valueStats.dateRange.count }} dates)</span>
+                                        </td>
+                                    </tr>
+                                    <tr data-ng-show="status.valueStats.whitespaceIssues">
+                                        <td><strong>Whitespace issues</strong></td>
+                                        <td>
+                                            <span class="text-danger">
+                                                <i class="fa fa-exclamation-triangle"></i>
+                                                {{ status.valueStats.whitespaceIssues.total }} values with issues
+                                            </span>
+                                            <br>
+                                            <small class="text-muted">
+                                                <span data-ng-show="status.valueStats.whitespaceIssues.leadingWhitespace > 0">
+                                                    Leading: {{ status.valueStats.whitespaceIssues.leadingWhitespace }}
+                                                </span>
+                                                <span data-ng-show="status.valueStats.whitespaceIssues.trailingWhitespace > 0" style="margin-left: 8px;">
+                                                    Trailing: {{ status.valueStats.whitespaceIssues.trailingWhitespace }}
+                                                </span>
+                                                <span data-ng-show="status.valueStats.whitespaceIssues.multipleSpaces > 0" style="margin-left: 8px;">
+                                                    Multiple spaces: {{ status.valueStats.whitespaceIssues.multipleSpaces }}
+                                                </span>
+                                            </small>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                         <div class="text-muted small" style="margin-top: 10px;">
                             <p><strong>Completeness:</strong> Percentage of records that have at least one value for this field.</p>
                             <p><strong>Avg per record:</strong> Average number of values per record (>1 indicates multi-value field).</p>
                             <p data-ng-show="status.typeInfo"><strong>Type consistency:</strong> Percentage of values matching the detected dominant type.</p>
+                            <p data-ng-show="status.valueStats"><strong>Word count:</strong> Number of words per value (split by whitespace).</p>
                         </div>
                     </div>
                 </div>
