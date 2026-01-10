@@ -136,13 +136,14 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
       log.info(s"Tree complete")
     }
 
-    case Counted(nodeRepo, uniqueCount, sampleSizes) => actorWork(context) {
+    case Counted(nodeRepo, uniqueCount, sampleSizes, typeAnalysis) => actorWork(context) {
       progress.get.checkInterrupt()
       collators = collators.filter(collator => collator != sender())
       deleteQuietly(nodeRepo.sorted)
       nodeRepo.setStatus(Json.obj(
         "uniqueCount" -> uniqueCount,
-        "samples" -> sampleSizes
+        "samples" -> sampleSizes,
+        "typeInfo" -> typeAnalysis.toJson
       ))
       val sorter = context.actorOf(Sorter.props(nodeRepo))
       sorters = sorter :: sorters
@@ -166,12 +167,15 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
             current =>
               val uniqueCount = (current \ "uniqueCount").as[Int]
               val samples = current \ "samples"
+              val typeInfo = current \ "typeInfo"
               val histogramSizes = nodeRepo.writeHistograms(uniqueCount)
-              Json.obj(
+              val baseObj = Json.obj(
                 "uniqueCount" -> uniqueCount,
                 "samples" -> samples.get,
                 "histograms" -> histogramSizes
               )
+              // Preserve typeInfo if present
+              typeInfo.asOpt[JsObject].map(ti => baseObj + ("typeInfo" -> ti)).getOrElse(baseObj)
           }
           deleteQuietly(nodeRepo.counted)
           progress.foreach { p =>
@@ -191,7 +195,7 @@ object Collator {
 
   case class Count()
 
-  case class Counted(nodeRepo: NodeRepo, uniqueCount: Int, sampleFiles: Seq[Int])
+  case class Counted(nodeRepo: NodeRepo, uniqueCount: Int, sampleFiles: Seq[Int], typeAnalysis: TypeDetector.TypeAnalysis)
 
   def props(nodeRepo: NodeRepo) = Props(new Collator(nodeRepo))
 }
@@ -210,6 +214,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       val sorted = createReader(nodeRepo.sorted)
 
       val samples = nodeRepo.sampleJson.map(pair => (new RandomSample(pair._1), pair._2))
+      val typeCounter = new TypeDetector.TypeCounter()
 
       def createSampleFile(randomSample: RandomSample, sampleFile: File) = {
         createJson(sampleFile, Json.obj("sample" -> randomSample.values))
@@ -227,6 +232,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
         unique.write(string)
         unique.write("\n")
         samples.foreach(pair => pair._1.record(string))
+        typeCounter.record(string)  // Track type for each unique value
         uniqueCount += 1
       }
 
@@ -250,7 +256,7 @@ class Collator(val nodeRepo: NodeRepo) extends Actor with ActorLogging {
       val bigEnoughSamples = samples.filter(pair => uniqueCount > pair._1.size * 2)
       val usefulSamples = if (bigEnoughSamples.isEmpty) List(samples.head) else bigEnoughSamples
       usefulSamples.foreach(pair => createSampleFile(pair._1, pair._2))
-      sender() ! Counted(nodeRepo, uniqueCount, usefulSamples.map(pair => pair._1.size))
+      sender() ! Counted(nodeRepo, uniqueCount, usefulSamples.map(pair => pair._1.size), typeCounter.getAnalysis)
   }
 }
 

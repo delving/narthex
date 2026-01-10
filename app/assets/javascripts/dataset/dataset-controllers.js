@@ -64,8 +64,11 @@ define(["angular"], function () {
         };
 
         // Watch for type parameter changes and reload tree
+        var lastKnownType = $location.search().type;
         $scope.$watch(function() { return $location.search().type; }, function(newType, oldType) {
-            if (newType !== oldType) {
+            // Only reload if type actually changed (not just other search params)
+            if (newType !== lastKnownType) {
+                lastKnownType = newType;
                 updateAnalysisType();
                 $scope.selectedNode = null;
                 $scope.tree = null;
@@ -179,8 +182,9 @@ define(["angular"], function () {
         fetchInfo(fetchTree);
 
         $scope.toggleSkosifiedField = function(uri, tag, included) {
+            var path = $scope.selectedNode ? $scope.selectedNode.path : $routeParams.path;
             var payload = {
-                "histogramPath": $routeParams.path,
+                "histogramPath": path,
                 "skosFieldTag": tag,
                 "skosFieldUri": uri,
                 "included": included
@@ -322,11 +326,16 @@ define(["angular"], function () {
         };
 
         $scope.fetchSample = function () {
-            getSample($routeParams.path, $scope.sampleSize).then(function (data) {
+            var path = $scope.selectedNode ? $scope.selectedNode.path : $routeParams.path;
+            getSample(path, $scope.sampleSize).then(function (data) {
                 $scope.sample = data;
                 $scope.histogram = undefined;
             });
             setActiveView("sample");
+        };
+
+        $scope.showQuality = function () {
+            setActiveView("quality");
         };
 
         function checkSkosField(uri) {
@@ -349,7 +358,8 @@ define(["angular"], function () {
         }
 
         $scope.fetchHistogram = function () {
-            getHistogram($routeParams.path, $scope.histogramSize).then(function (data) {
+            var path = $scope.selectedNode ? $scope.selectedNode.path : $routeParams.path;
+            getHistogram(path, $scope.histogramSize).then(function (data) {
                 _.forEach(data.histogram, function (entry) {
                     var percent = (100 * entry[0]) / $scope.selectedNode.count;
                     entry.push(percent);

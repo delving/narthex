@@ -128,7 +128,7 @@
                         <a href="" data-ng-click="fetchSample()">Samples</a>
                     </li>
                     <li data-ng-class="{ active: activeView == 'quality' }" data-ng-show="selectedNode.quality">
-                        <a href="" data-ng-click="activeView = 'quality'">Quality</a>
+                        <a href="" data-ng-click="showQuality()">Quality</a>
                     </li>
                 </ul>
                 <ul class="list-inline pull-right">
@@ -291,9 +291,57 @@
                                 </tr>
                             </tbody>
                         </table>
-                        <div class="text-muted small">
+
+                        <!-- Type Detection Section -->
+                        <div data-ng-show="status.typeInfo" style="margin-top: 15px;">
+                            <h5><i class="fa fa-tags"></i> Data Type Analysis</h5>
+                            <table class="table table-condensed">
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Detected type</strong></td>
+                                        <td>
+                                            <span class="label"
+                                                  ng-class="{
+                                                    'label-primary': status.typeInfo.dominantType == 'text',
+                                                    'label-info': status.typeInfo.dominantType == 'integer' || status.typeInfo.dominantType == 'decimal',
+                                                    'label-success': status.typeInfo.dominantType == 'date',
+                                                    'label-warning': status.typeInfo.dominantType == 'url' || status.typeInfo.dominantType == 'email',
+                                                    'label-default': status.typeInfo.dominantType == 'identifier' || status.typeInfo.dominantType == 'boolean'
+                                                  }">
+                                                {{ status.typeInfo.dominantType | uppercase }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Type consistency</strong></td>
+                                        <td>
+                                            <div class="progress" style="margin-bottom: 0; min-width: 150px;">
+                                                <div class="progress-bar"
+                                                     ng-class="{'progress-bar-success': status.typeInfo.consistency >= 95, 'progress-bar-warning': status.typeInfo.consistency >= 80 && status.typeInfo.consistency < 95, 'progress-bar-danger': status.typeInfo.consistency < 80}"
+                                                     role="progressbar"
+                                                     style="width: {{ status.typeInfo.consistency }}%">
+                                                    {{ status.typeInfo.consistency }}%
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr data-ng-show="status.typeInfo.isMixed">
+                                        <td><strong>Type distribution</strong></td>
+                                        <td>
+                                            <span data-ng-repeat="(type, info) in status.typeInfo.distribution" style="margin-right: 8px;">
+                                                <span class="label label-default">{{ type }}</span>
+                                                <small>{{ info.percentage }}%</small>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="text-muted small" style="margin-top: 10px;">
                             <p><strong>Completeness:</strong> Percentage of records that have at least one value for this field.</p>
                             <p><strong>Avg per record:</strong> Average number of values per record (>1 indicates multi-value field).</p>
+                            <p data-ng-show="status.typeInfo"><strong>Type consistency:</strong> Percentage of values matching the detected dominant type.</p>
                         </div>
                     </div>
                 </div>
