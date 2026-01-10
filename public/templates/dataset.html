@@ -118,13 +118,13 @@
                     <div class="row" style="margin-top: 10px;">
                         <div class="col-md-4">
                             <div class="panel panel-default" style="cursor: pointer;"
-                                 ng-click="showFieldsInEveryRecord = !showFieldsInEveryRecord"
+                                 ng-click="qsToggles.showFieldsInEveryRecord = !qsToggles.showFieldsInEveryRecord"
                                  title="Click to show/hide field list">
                                 <div class="panel-heading text-center">
                                     <h3 style="margin: 0;">
                                         {{ qualitySummary.fieldsInEveryRecord }}
                                         <i class="fa fa-chevron-down" style="font-size: 12px; margin-left: 5px;"
-                                           ng-class="{'fa-chevron-up': showFieldsInEveryRecord, 'fa-chevron-down': !showFieldsInEveryRecord}"></i>
+                                           ng-class="{'fa-chevron-up': qsToggles.showFieldsInEveryRecord, 'fa-chevron-down': !qsToggles.showFieldsInEveryRecord}"></i>
                                     </h3>
                                     <small>Fields in Every Record</small>
                                 </div>
@@ -149,7 +149,7 @@
                     </div>
 
                     <!-- Fields in Every Record List (collapsible) -->
-                    <div class="panel panel-success" ng-if="showFieldsInEveryRecord && qualitySummary.fieldsInEveryRecordList.length > 0" style="margin-top: 10px;">
+                    <div class="panel panel-success" ng-if="qsToggles.showFieldsInEveryRecord && qualitySummary.fieldsInEveryRecordList.length > 0" style="margin-top: 10px;">
                         <div class="panel-heading">
                             <strong><i class="fa fa-check-circle"></i> Fields Present in Every Record</strong>
                             <span class="badge pull-right">{{ qualitySummary.fieldsInEveryRecordList.length }}</span>
@@ -231,12 +231,12 @@
                         <div class="panel-body">
                             <div class="row">
                                 <div class="col-xs-3 text-center" style="cursor: pointer;"
-                                     ng-click="showIdentifierFields = !showIdentifierFields"
+                                     ng-click="qsToggles.showIdentifierFields = !qsToggles.showIdentifierFields"
                                      title="Click to show/hide identifier fields">
                                     <span class="label label-primary" style="font-size: 16px; padding: 8px 12px;">
                                         {{ qualitySummary.uniquenessDistribution.identifier || 0 }}
                                         <i class="fa" style="font-size: 10px; margin-left: 3px;"
-                                           ng-class="{'fa-chevron-up': showIdentifierFields, 'fa-chevron-down': !showIdentifierFields}"
+                                           ng-class="{'fa-chevron-up': qsToggles.showIdentifierFields, 'fa-chevron-down': !qsToggles.showIdentifierFields}"
                                            ng-if="qualitySummary.identifierFieldsList.length > 0"></i>
                                     </span>
                                     <p style="margin-top: 5px;"><small>Identifiers (100%)</small></p>
@@ -264,7 +264,7 @@
                     </div>
 
                     <!-- Identifier Fields List (collapsible) -->
-                    <div class="panel panel-primary" ng-if="showIdentifierFields && qualitySummary.identifierFieldsList.length > 0" style="margin-top: -15px;">
+                    <div class="panel panel-primary" ng-if="qsToggles.showIdentifierFields && qualitySummary.identifierFieldsList.length > 0" style="margin-top: -15px;">
                         <div class="panel-heading">
                             <strong><i class="fa fa-key"></i> Identifier Fields (100% Unique)</strong>
                             <span class="badge pull-right">{{ qualitySummary.identifierFieldsList.length }}</span>
@@ -340,19 +340,19 @@
                             <span class="badge" style="margin-left: 5px;">{{ qualitySummary.problematicFields.length }}</span>
                             <div class="pull-right">
                                 <button class="btn btn-xs"
-                                        ng-class="{'btn-primary': showAllProblematicFields, 'btn-default': !showAllProblematicFields}"
-                                        ng-click="showAllProblematicFields = !showAllProblematicFields"
+                                        ng-class="{'btn-primary': qsToggles.showAllProblematicFields, 'btn-default': !qsToggles.showAllProblematicFields}"
+                                        ng-click="qsToggles.showAllProblematicFields = !qsToggles.showAllProblematicFields"
                                         ng-if="qualitySummary.problematicFields.length > 10">
-                                    <span ng-if="!showAllProblematicFields">
+                                    <span ng-if="!qsToggles.showAllProblematicFields">
                                         <i class="fa fa-expand"></i> Show All ({{ qualitySummary.problematicFields.length }})
                                     </span>
-                                    <span ng-if="showAllProblematicFields">
+                                    <span ng-if="qsToggles.showAllProblematicFields">
                                         <i class="fa fa-compress"></i> Show Top 10
                                     </span>
                                 </button>
                             </div>
                         </div>
-                        <div class="table-responsive" ng-style="{'max-height': showAllProblematicFields ? '400px' : 'none', 'overflow-y': showAllProblematicFields ? 'auto' : 'visible'}">
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
                             <table class="table table-condensed table-hover" style="margin-bottom: 0;">
                                 <thead>
                                     <tr>
@@ -363,7 +363,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr ng-repeat="field in qualitySummary.problematicFields | limitTo: (showAllProblematicFields ? qualitySummary.problematicFields.length : 10)">
+                                    <tr ng-repeat="field in qualitySummary.problematicFields | limitTo: (qsToggles.showAllProblematicFields ? 999 : 10)">
                                         <td>
                                             <a href ng-click="navigateToField(field.path)">
                                                 <code>{{ field.tag }}</code>
@@ -409,7 +409,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <div class="panel-footer text-center" ng-if="!showAllProblematicFields && qualitySummary.problematicFields.length > 10">
+                        <div class="panel-footer text-center" ng-if="!qsToggles.showAllProblematicFields && qualitySummary.problematicFields.length > 10">
                             <small class="text-muted">
                                 Showing top 10 of {{ qualitySummary.problematicFields.length }} fields with issues
                             </small>

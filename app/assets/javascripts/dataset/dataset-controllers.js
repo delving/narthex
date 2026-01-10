@@ -370,11 +370,21 @@ define(["angular"], function () {
         $scope.qualitySummary = null;
         $scope.qualitySummaryLoading = false;
         $scope.qualitySummaryError = null;
+        // Use object to avoid child scope issues with ng-if
+        $scope.qsToggles = {
+            showAllProblematicFields: false,
+            showFieldsInEveryRecord: false,
+            showIdentifierFields: false
+        };
 
         $scope.showQualitySummary = function () {
             $scope.qualitySummaryLoading = true;
             $scope.qualitySummaryError = null;
             $scope.qualitySummary = null;
+            // Reset toggle states when opening modal
+            $scope.qsToggles.showAllProblematicFields = false;
+            $scope.qsToggles.showFieldsInEveryRecord = false;
+            $scope.qsToggles.showIdentifierFields = false;
 
             // Show the modal
             $('#qualitySummaryModal').modal('show');
