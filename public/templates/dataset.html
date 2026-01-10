@@ -357,6 +357,7 @@
                                 <thead>
                                     <tr>
                                         <th>Field Path</th>
+                                        <th class="text-center" ng-if="qualitySummary.showFieldScores">Score</th>
                                         <th class="text-right">Completeness</th>
                                         <th class="text-right">Uniqueness</th>
                                         <th class="text-center">Issues</th>
@@ -370,6 +371,18 @@
                                             </a>
                                             <br>
                                             <small class="text-muted">{{ field.path }}</small>
+                                        </td>
+                                        <td class="text-center" ng-if="qualitySummary.showFieldScores">
+                                            <span class="label"
+                                                  ng-class="{
+                                                      'label-success': field.scoreCategory === 'excellent',
+                                                      'label-primary': field.scoreCategory === 'good',
+                                                      'label-warning': field.scoreCategory === 'fair',
+                                                      'label-danger': field.scoreCategory === 'poor'
+                                                  }"
+                                                  title="{{ field.scoreCategory }}">
+                                                {{ field.qualityScore | number:1 }}
+                                            </span>
                                         </td>
                                         <td class="text-right">
                                             <div class="progress" style="width: 80px; margin: 0; display: inline-block; vertical-align: middle;">
@@ -413,6 +426,127 @@
                             <small class="text-muted">
                                 Showing top 10 of {{ qualitySummary.problematicFields.length }} fields with issues
                             </small>
+                        </div>
+                    </div>
+
+                    <!-- Score Distribution (only when scores enabled) -->
+                    <div class="panel panel-default" ng-if="qualitySummary.showFieldScores">
+                        <div class="panel-heading">
+                            <strong><i class="fa fa-star"></i> Quality Score Distribution</strong>
+                        </div>
+                        <div class="panel-body">
+                            <div class="row">
+                                <div class="col-xs-3 text-center">
+                                    <span class="label label-success" style="font-size: 16px; padding: 8px 12px;">
+                                        {{ qualitySummary.scoreDistribution.excellent || 0 }}
+                                    </span>
+                                    <p style="margin-top: 5px;"><small>Excellent (&ge;90)</small></p>
+                                </div>
+                                <div class="col-xs-3 text-center">
+                                    <span class="label label-primary" style="font-size: 16px; padding: 8px 12px;">
+                                        {{ qualitySummary.scoreDistribution.good || 0 }}
+                                    </span>
+                                    <p style="margin-top: 5px;"><small>Good (70-89)</small></p>
+                                </div>
+                                <div class="col-xs-3 text-center">
+                                    <span class="label label-warning" style="font-size: 16px; padding: 8px 12px;">
+                                        {{ qualitySummary.scoreDistribution.fair || 0 }}
+                                    </span>
+                                    <p style="margin-top: 5px;"><small>Fair (50-69)</small></p>
+                                </div>
+                                <div class="col-xs-3 text-center">
+                                    <span class="label label-danger" style="font-size: 16px; padding: 8px 12px;">
+                                        {{ qualitySummary.scoreDistribution.poor || 0 }}
+                                    </span>
+                                    <p style="margin-top: 5px;"><small>Poor (&lt;50)</small></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- All Fields with Scores (only when scores enabled) -->
+                    <div class="panel panel-default" ng-if="qualitySummary.showFieldScores && qualitySummary.allFields.length > 0">
+                        <div class="panel-heading" style="cursor: pointer;"
+                             ng-click="qsToggles.showAllFieldsWithScores = !qsToggles.showAllFieldsWithScores">
+                            <strong><i class="fa fa-star-half-o"></i> All Fields with Quality Scores</strong>
+                            <span class="badge" style="margin-left: 5px;">{{ qualitySummary.allFields.length }}</span>
+                            <i class="fa pull-right" style="margin-top: 3px;"
+                               ng-class="{'fa-chevron-up': qsToggles.showAllFieldsWithScores, 'fa-chevron-down': !qsToggles.showAllFieldsWithScores}"></i>
+                        </div>
+                        <div ng-if="qsToggles.showAllFieldsWithScores">
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-condensed table-hover" style="margin-bottom: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th>Field Path</th>
+                                            <th class="text-center">Score</th>
+                                            <th class="text-right">Completeness</th>
+                                            <th class="text-right">Uniqueness</th>
+                                            <th class="text-center">Issues</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="field in qualitySummary.allFields">
+                                            <td>
+                                                <a href ng-click="navigateToField(field.path)">
+                                                    <code>{{ field.tag }}</code>
+                                                </a>
+                                                <br>
+                                                <small class="text-muted">{{ field.path }}</small>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="label"
+                                                      ng-class="{
+                                                          'label-success': field.scoreCategory === 'excellent',
+                                                          'label-primary': field.scoreCategory === 'good',
+                                                          'label-warning': field.scoreCategory === 'fair',
+                                                          'label-danger': field.scoreCategory === 'poor'
+                                                      }"
+                                                      title="{{ field.scoreCategory }}">
+                                                    {{ field.qualityScore | number:1 }}
+                                                </span>
+                                            </td>
+                                            <td class="text-right">
+                                                <div class="progress" style="width: 80px; margin: 0; display: inline-block; vertical-align: middle;">
+                                                    <div class="progress-bar"
+                                                         ng-class="{
+                                                            'progress-bar-success': field.completeness >= 90,
+                                                            'progress-bar-warning': field.completeness >= 50 && field.completeness < 90,
+                                                            'progress-bar-danger': field.completeness < 50
+                                                         }"
+                                                         style="width: {{ field.completeness }}%;">
+                                                    </div>
+                                                </div>
+                                                <span style="margin-left: 5px;">{{ field.completeness | number:1 }}%</span>
+                                            </td>
+                                            <td class="text-right">
+                                                <span ng-class="{
+                                                    'text-primary': field.uniqueness >= 100,
+                                                    'text-success': field.uniqueness >= 80 && field.uniqueness < 100,
+                                                    'text-warning': field.uniqueness >= 20 && field.uniqueness < 80,
+                                                    'text-muted': field.uniqueness < 20
+                                                }">
+                                                    {{ field.uniqueness | number:1 }}%
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span ng-if="field.issueCount === 0" class="text-success">
+                                                    <i class="fa fa-check"></i>
+                                                </span>
+                                                <span ng-if="field.issueCount > 0" ng-repeat="issue in field.issues" style="margin-right: 3px;">
+                                                    <span ng-switch="issue">
+                                                        <i ng-switch-when="low_completeness" class="fa fa-exclamation-circle text-danger" title="Low Completeness"></i>
+                                                        <i ng-switch-when="high_empty_rate" class="fa fa-minus-circle text-warning" title="High Empty Rate"></i>
+                                                        <i ng-switch-when="mixed_types" class="fa fa-random text-info" title="Mixed Types"></i>
+                                                        <i ng-switch-when="invalid_uris" class="fa fa-chain-broken text-danger" title="Invalid URIs"></i>
+                                                        <i ng-switch-when="whitespace_issues" class="fa fa-text-width text-warning" title="Whitespace Issues"></i>
+                                                    </span>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 

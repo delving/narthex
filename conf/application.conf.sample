@@ -83,6 +83,14 @@ narthex.harvest {
   retryIntervalMinutes = 60
 }
 
+# Quality analysis configuration
+narthex.quality {
+  # Enable per-field quality scores in quality summary
+  # Scores are calculated as weighted composite: completeness (40%), type consistency (25%),
+  # no whitespace issues (15%), reasonable lengths (10%), no empty values (10%)
+  showFieldScores = true
+}
+
 # GraphDB
 #triple-store = "http://127.0.0.1:7200/repositories"
 #sparql-query-path = ""

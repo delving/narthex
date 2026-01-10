@@ -374,7 +374,8 @@ define(["angular"], function () {
         $scope.qsToggles = {
             showAllProblematicFields: false,
             showFieldsInEveryRecord: false,
-            showIdentifierFields: false
+            showIdentifierFields: false,
+            showAllFieldsWithScores: false
         };
 
         $scope.showQualitySummary = function () {
@@ -385,6 +386,7 @@ define(["angular"], function () {
             $scope.qsToggles.showAllProblematicFields = false;
             $scope.qsToggles.showFieldsInEveryRecord = false;
             $scope.qsToggles.showIdentifierFields = false;
+            $scope.qsToggles.showAllFieldsWithScores = false;
 
             // Show the modal
             $('#qualitySummaryModal').modal('show');

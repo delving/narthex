@@ -18,7 +18,7 @@ package services
 import java.io.File
 import javax.inject._
 import play.api.libs.json._
-import play.api.Logging
+import play.api.{Configuration, Logging}
 import org.apache.commons.io.FileUtils
 import organization.OrgContext
 
@@ -38,6 +38,8 @@ case class FieldQuality(
   uniqueness: Double,  // Percentage of unique values (uniqueCount / totalCount * 100)
   issues: List[String],
   issueCount: Int,
+  qualityScore: Option[Double] = None,  // Per-field quality score (0-100)
+  scoreCategory: Option[String] = None,  // excellent, good, fair, poor
   typeInfo: Option[JsObject] = None,
   patternInfo: Option[JsObject] = None,
   valueStats: Option[JsObject] = None
@@ -92,7 +94,10 @@ case class QualitySummary(
   issuesByType: Map[String, Int],
   overallScore: Double,
   completenessDistribution: Map[String, Int],
-  problematicFields: List[FieldQuality]  // All fields with issues, sorted by severity
+  problematicFields: List[FieldQuality],  // All fields with issues, sorted by severity
+  showFieldScores: Boolean = false,  // Whether to display per-field quality scores
+  allFields: List[FieldQuality] = List.empty,  // All fields with quality scores (when enabled)
+  scoreDistribution: Map[String, Int] = Map.empty  // Distribution: excellent (>=90), good (70-89), fair (50-69), poor (<50)
 )
 
 object QualitySummary {
@@ -104,8 +109,12 @@ object QualitySummary {
  */
 @Singleton
 class QualitySummaryService @Inject()(
-  orgContext: OrgContext
+  orgContext: OrgContext,
+  config: Configuration
 ) extends Logging {
+
+  // Config: whether to show per-field quality scores
+  private val showFieldScores: Boolean = config.getOptional[Boolean]("narthex.quality.showFieldScores").getOrElse(false)
 
   private val LOW_COMPLETENESS_THRESHOLD = 50.0
   private val HIGH_EMPTY_RATE_THRESHOLD = 10.0
@@ -197,8 +206,35 @@ class QualitySummaryService @Inject()(
       // Calculate overall score
       val overallScore = calculateOverallScore(leafFields)
 
+      // Calculate per-field quality scores if enabled
+      val fieldsWithScores = if (showFieldScores) {
+        leafFields.map(calculateFieldScore)
+      } else {
+        leafFields
+      }
+
+      // All fields sorted by score (when enabled) or by path
+      val allFieldsSorted = if (showFieldScores) {
+        fieldsWithScores.sortBy(f => (-f.qualityScore.getOrElse(0.0), f.path)).toList
+      } else {
+        List.empty[FieldQuality]
+      }
+
+      // Score distribution (only meaningful when scores are calculated)
+      val scoreDistribution = if (showFieldScores) {
+        Map(
+          "excellent" -> fieldsWithScores.count(f => f.qualityScore.exists(_ >= 90)),
+          "good" -> fieldsWithScores.count(f => f.qualityScore.exists(s => s >= 70 && s < 90)),
+          "fair" -> fieldsWithScores.count(f => f.qualityScore.exists(s => s >= 50 && s < 70)),
+          "poor" -> fieldsWithScores.count(f => f.qualityScore.exists(_ < 50))
+        )
+      } else {
+        Map.empty[String, Int]
+      }
+
       // All problematic fields (sorted by issue count desc, then by completeness asc)
-      val allProblematic = fieldsWithIssues
+      val allProblematic = fieldsWithScores
+        .filter(_.issueCount > 0)
         .sortBy(f => (-f.issueCount, f.completeness))
         .toList
 
@@ -217,7 +253,10 @@ class QualitySummaryService @Inject()(
         issuesByType = issuesByType,
         overallScore = overallScore,
         completenessDistribution = completenessDistribution,
-        problematicFields = allProblematic
+        problematicFields = allProblematic,
+        showFieldScores = showFieldScores,
+        allFields = allFieldsSorted,
+        scoreDistribution = scoreDistribution
       ))
     } catch {
       case e: Exception =>
@@ -410,6 +449,71 @@ class QualitySummaryService @Inject()(
   }
 
   /**
+   * Calculate quality score for a single field (0-100)
+   * Weights: Completeness 40%, Type consistency 25%, No whitespace issues 15%,
+   *          Reasonable lengths 10%, No empty values 10%
+   */
+  private def calculateFieldScore(field: FieldQuality): FieldQuality = {
+    // Completeness score (40%)
+    val completenessScore = field.completeness
+
+    // Type consistency score (25%)
+    val typeConsistencyScore = field.typeInfo.map { ti =>
+      (ti \ "consistency").asOpt[Double].getOrElse(100.0)
+    }.getOrElse(100.0)
+
+    // No whitespace issues score (15%)
+    val whitespaceScore = field.valueStats.map { vs =>
+      (vs \ "whitespace").asOpt[JsObject].map { ws =>
+        val leading = (ws \ "leadingCount").asOpt[Int].getOrElse(0)
+        val trailing = (ws \ "trailingCount").asOpt[Int].getOrElse(0)
+        val multiple = (ws \ "multipleSpacesCount").asOpt[Int].getOrElse(0)
+        val total = leading + trailing + multiple
+        if (field.totalCount > 0) {
+          val issueRate = total.toDouble / field.totalCount
+          Math.max(0, 100 - (issueRate * 100))
+        } else 100.0
+      }.getOrElse(100.0)
+    }.getOrElse(100.0)
+
+    // Reasonable length score (10%) - penalize extremely short or long values
+    val lengthScore = field.valueStats.map { vs =>
+      (vs \ "length").asOpt[JsObject].map { len =>
+        val avgLen = (len \ "avg").asOpt[Double].getOrElse(0.0)
+        // Reasonable range: 1-500 characters average
+        if (avgLen < 1) 50.0  // Very short (might be empty-ish)
+        else if (avgLen > 1000) 70.0  // Very long
+        else 100.0
+      }.getOrElse(100.0)
+    }.getOrElse(100.0)
+
+    // No empty values score (10%)
+    val noEmptyScore = if (field.totalCount > 0) {
+      val emptyRatio = field.emptyRate / 100.0
+      Math.max(0, 100 - (emptyRatio * 100))
+    } else 100.0
+
+    // Calculate weighted score
+    val score = (completenessScore * 0.40) +
+                (typeConsistencyScore * 0.25) +
+                (whitespaceScore * 0.15) +
+                (lengthScore * 0.10) +
+                (noEmptyScore * 0.10)
+
+    val roundedScore = Math.round(score * 10) / 10.0
+
+    // Determine category
+    val category = roundedScore match {
+      case s if s >= 90 => "excellent"
+      case s if s >= 70 => "good"
+      case s if s >= 50 => "fair"
+      case _ => "poor"
+    }
+
+    field.copy(qualityScore = Some(roundedScore), scoreCategory = Some(category))
+  }
+
+  /**
    * Convert quality summary to CSV format
    */
   def toCSV(summary: QualitySummary, spec: String, isSource: Boolean): String = {
@@ -444,6 +548,17 @@ class QualitySummaryService @Inject()(
     sb.append(s"Fair (50-69%),${summary.completenessDistribution.getOrElse("fair", 0)}\n")
     sb.append(s"Poor (<50%),${summary.completenessDistribution.getOrElse("poor", 0)}\n")
     sb.append("\n")
+
+    // Score distribution (when enabled)
+    if (summary.showFieldScores && summary.scoreDistribution.nonEmpty) {
+      sb.append("# Quality Score Distribution\n")
+      sb.append("Category,Count\n")
+      sb.append(s"Excellent (>=90),${summary.scoreDistribution.getOrElse("excellent", 0)}\n")
+      sb.append(s"Good (70-89),${summary.scoreDistribution.getOrElse("good", 0)}\n")
+      sb.append(s"Fair (50-69),${summary.scoreDistribution.getOrElse("fair", 0)}\n")
+      sb.append(s"Poor (<50),${summary.scoreDistribution.getOrElse("poor", 0)}\n")
+      sb.append("\n")
+    }
 
     // Uniqueness distribution
     sb.append("# Uniqueness Distribution\n")
@@ -482,15 +597,40 @@ class QualitySummaryService @Inject()(
       sb.append("\n")
     }
 
+    // All fields with quality scores (when enabled)
+    if (summary.showFieldScores && summary.allFields.nonEmpty) {
+      sb.append("# All Fields with Quality Scores\n")
+      sb.append("Path,Tag,Quality Score,Category,Completeness %,Empty Rate %,Uniqueness %,Issue Count,Issues\n")
+      summary.allFields.foreach { field =>
+        val issuesStr = field.issues.mkString("; ")
+        val score = field.qualityScore.map(_.toString).getOrElse("")
+        val category = field.scoreCategory.getOrElse("")
+        sb.append(s"\"${field.path}\",\"${field.tag}\",$score,$category,${field.completeness},${field.emptyRate},")
+        sb.append(s"${field.uniqueness},${field.issueCount},\"$issuesStr\"\n")
+      }
+      sb.append("\n")
+    }
+
     // Problematic fields detail
-    sb.append("# All Fields with Quality Metrics\n")
-    sb.append("Path,Tag,Completeness %,Empty Rate %,Records With Value,Total Records,Avg Per Record,Total Count,Unique Count,Uniqueness %,Issue Count,Issues\n")
-    summary.problematicFields.foreach { field =>
-      val issuesStr = field.issues.mkString("; ")
-      sb.append(s"\"${field.path}\",\"${field.tag}\",${field.completeness},${field.emptyRate},")
-      sb.append(s"${field.recordsWithValue},${field.totalRecords},${field.avgPerRecord},")
-      sb.append(s"${field.totalCount},${field.uniqueCount},${field.uniqueness},")
-      sb.append(s"${field.issueCount},\"$issuesStr\"\n")
+    sb.append("# Fields with Issues\n")
+    if (summary.showFieldScores) {
+      sb.append("Path,Tag,Quality Score,Category,Completeness %,Empty Rate %,Uniqueness %,Issue Count,Issues\n")
+      summary.problematicFields.foreach { field =>
+        val issuesStr = field.issues.mkString("; ")
+        val score = field.qualityScore.map(_.toString).getOrElse("")
+        val category = field.scoreCategory.getOrElse("")
+        sb.append(s"\"${field.path}\",\"${field.tag}\",$score,$category,${field.completeness},${field.emptyRate},")
+        sb.append(s"${field.uniqueness},${field.issueCount},\"$issuesStr\"\n")
+      }
+    } else {
+      sb.append("Path,Tag,Completeness %,Empty Rate %,Records With Value,Total Records,Avg Per Record,Total Count,Unique Count,Uniqueness %,Issue Count,Issues\n")
+      summary.problematicFields.foreach { field =>
+        val issuesStr = field.issues.mkString("; ")
+        sb.append(s"\"${field.path}\",\"${field.tag}\",${field.completeness},${field.emptyRate},")
+        sb.append(s"${field.recordsWithValue},${field.totalRecords},${field.avgPerRecord},")
+        sb.append(s"${field.totalCount},${field.uniqueCount},${field.uniqueness},")
+        sb.append(s"${field.issueCount},\"$issuesStr\"\n")
+      }
     }
 
     sb.toString()
