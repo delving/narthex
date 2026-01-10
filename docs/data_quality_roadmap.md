@@ -23,6 +23,18 @@ This document captures the roadmap for data quality analysis features in Narthex
 - **Date/year range**: Min/max year extraction from date values
 - **Whitespace issues**: Detection of leading, trailing, and multiple spaces
 
+### Phase 3b: Pattern Analysis & URI Validation (Completed)
+- **Pattern detection**: Automatic detection of identifier patterns
+  - UUID: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
+  - URN: `urn:namespace:identifier`
+  - PREFIX_ID: `ABC-123`, `PREF_456`
+  - HTTP_URI, HTTPS_URI, FTP_URI
+- **Pattern consistency**: Percentage of values matching the dominant pattern
+- **Pattern distribution**: Breakdown when multiple patterns detected
+- **URI validation**: Syntax validation using Java's URI class
+  - Valid/invalid counts for all URI-like values
+  - Validation rate percentage
+
 ---
 
 ## Planned Features
@@ -112,17 +124,7 @@ Validation results:
 - Violation examples
 - Severity levels (error/warning/info)
 
-### Phase 10: Pattern Detection
-**Priority: Low | Effort: Medium**
-
-Automatic pattern detection for identifiers:
-- UUID detection
-- URN/URI patterns
-- Custom ID formats (e.g., "ABC-12345")
-- Suggest regex patterns
-- Detect inconsistent formats
-
-### Phase 11: Language Detection
+### Phase 10: Language Detection
 **Priority: Low | Effort: Medium**
 
 For text fields:
@@ -131,7 +133,7 @@ For text fields:
 - Language distribution
 - Character set analysis (Latin, Cyrillic, etc.)
 
-### Phase 12: Cross-field Analysis
+### Phase 11: Cross-field Analysis
 **Priority: Low | Effort: High**
 
 Analyze relationships between fields:
@@ -140,7 +142,7 @@ Analyze relationships between fields:
 - Hierarchical relationships
 - Conditional presence patterns
 
-### Phase 13: Encoding Issues Detection
+### Phase 12: Encoding Issues Detection
 **Priority: Low | Effort: Medium**
 
 Detect character encoding problems:
@@ -149,7 +151,7 @@ Detect character encoding problems:
 - HTML entities in text
 - Escaped characters that shouldn't be
 
-### Phase 14: Outlier Detection
+### Phase 13: Outlier Detection
 **Priority: Low | Effort: Medium**
 
 For numeric and date fields:
@@ -195,6 +197,8 @@ For museum/archive data, pay special attention to:
 ## References
 
 - Original analysis code: `app/analysis/` (2014)
-- Type detection: `app/analysis/TypeDetector.scala`
-- Value statistics: `app/analysis/ValueStats.scala`
-- Quality statistics: `app/analysis/TreeNode.scala` (QualityStats)
+- Type detection: `app/analysis/TypeDetector.scala` (TypeCounter, TypeAnalysis)
+- Pattern analysis: `app/analysis/TypeDetector.scala` (PatternTracker, PatternAnalysis)
+- Value statistics: `app/analysis/ValueStats.scala` (StatsTracker, ValueStatistics)
+- Quality statistics: `app/analysis/TreeNode.scala` (QualityStats, RecordTracker)
+- Collator integration: `app/analysis/Analyzer.scala` (Collator class)
