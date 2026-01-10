@@ -8,7 +8,7 @@
 # Ignore Play! working directory #
 db
 eclipse
-lib
+/lib
 log
 logs
 modules
@@ -42,5 +42,5 @@ editor/node_modules/
 editor/.svelte-kit/
 editor/package-lock.json
 
-# Built editor files (build on deploy or include in repo)
-# public/editor/
+# Built editor files (build on deploy)
+public/editor/
