@@ -89,34 +89,34 @@ This document captures the roadmap for data quality analysis features in Narthex
 - **Source/Processed support**: Exports respect current analysis type
 - **Direct download**: Files download with appropriate filenames
 
+### Phase 6: Data Quality Score (Completed)
+- **Per-field quality scores**: Composite score (0-100) calculated for each field
+- **Weighted scoring components**:
+  - Completeness: 40%
+  - Type consistency: 25%
+  - No whitespace issues: 15%
+  - Reasonable value lengths: 10%
+  - No empty values: 10%
+- **Score categories**: Excellent (≥90), Good (70-89), Fair (50-69), Poor (<50)
+- **Configurable display**: `narthex.quality.showFieldScores` config option
+- **Quality Score Distribution panel**: Shows count of fields in each category
+- **All Fields with Scores panel**: Collapsible list of all fields sorted by score
+- **Score column in issues table**: Color-coded score labels in problematic fields
+- **CSV export**: Includes score distribution and per-field scores when enabled
+
+### Phase 8: Source vs Processed Comparison (Completed - Tentative)
+*Note: This feature is tentative pending user feedback on its usefulness.*
+
+- **Comparison tab**: Added to Quality Summary modal alongside Source/Processed tab
+- **Summary comparison cards**: Field count, quality score, and issues with delta values
+- **Completeness change summary**: Counts of fields improved, decreased, or unchanged
+- **Fields lost in processing**: Collapsible list of fields only in source
+- **New fields in processed**: Collapsible list of fields only in processed
+- **Fields with changes**: Table showing before/after values for completeness, uniqueness, issues
+
 ---
 
 ## Planned Features
-
-### Phase 6: Data Quality Score
-**Priority: Medium | Effort: Medium**
-
-Calculate composite quality score per field combining:
-- Completeness weight: 40%
-- Type consistency weight: 25%
-- No whitespace issues: 15%
-- Reasonable value lengths: 10%
-- No empty values: 10%
-
-Score ranges:
-- 90-100: Excellent
-- 70-89: Good
-- 50-69: Fair
-- 0-49: Poor
-
-### Phase 8: Source vs Processed Comparison
-**Priority: Medium | Effort: Medium**
-
-Side-by-side comparison view:
-- Compare field counts between source and processed
-- Identify fields lost in processing
-- Compare completeness changes
-- Track type changes through processing pipeline
 
 ### Phase 9: Validation Rules
 **Priority: Low | Effort: High**
