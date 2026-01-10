@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/* Custom theme variables */
+@theme {
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-secondary: #6b7280;
+  --color-accent: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+
+  /* Panel colors */
+  --color-panel-bg: #1f2937;
+  --color-panel-border: #374151;
+  --color-panel-header: #111827;
+
+  /* Tree colors */
+  --color-tree-bg: #111827;
+  --color-tree-selected: #1e3a5f;
+  --color-tree-hover: #1f2937;
+
+  /* Connection line colors */
+  --color-connection: #60a5fa;
+  --color-connection-active: #3b82f6;
+}
+
+/* Base styles */
+html, body {
+  @apply h-full bg-gray-900 text-gray-100;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* Panel resize handle */
+[data-panel-group-direction="horizontal"] > [data-panel-resize-handle-id] {
+  @apply w-1 bg-gray-700 hover:bg-blue-500 transition-colors;
+}
+
+[data-panel-group-direction="vertical"] > [data-panel-resize-handle-id] {
+  @apply h-1 bg-gray-700 hover:bg-blue-500 transition-colors;
+}
+
+/* Tree node styles */
+.tree-node {
+  @apply flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-gray-800 rounded;
+}
+
+.tree-node.selected {
+  @apply bg-blue-900/50;
+}
+
+.tree-node.mapped {
+  @apply text-green-400;
+}
+
+/* Connection point indicator */
+.connection-point {
+  @apply w-3 h-3 rounded-full border-2 border-gray-500 cursor-pointer;
+}
+
+.connection-point:hover {
+  @apply border-blue-400 bg-blue-400/20;
+}
+
+.connection-point.connected {
+  @apply border-green-400 bg-green-400;
+}

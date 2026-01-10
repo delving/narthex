@@ -36,3 +36,11 @@ GEMINI.md
 # Node.js
 node_modules/
 package-lock.json
+
+# Editor (Svelte) development artifacts
+editor/node_modules/
+editor/.svelte-kit/
+editor/package-lock.json
+
+# Built editor files (build on deploy or include in repo)
+# public/editor/
