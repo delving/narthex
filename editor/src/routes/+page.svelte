@@ -7,6 +7,8 @@
 	import Preview from '$lib/components/Preview.svelte';
 	import MappingModal from '$lib/components/MappingModal.svelte';
 	import CodeEditModal from '$lib/components/CodeEditModal.svelte';
+	import KeyboardShortcutsOverlay from '$lib/components/KeyboardShortcutsOverlay.svelte';
+	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import { sampleSourceTree, sampleTargetTree } from '$lib/sampleData';
 	import type { TreeNode } from '$lib/types';
 	import { onMount } from 'svelte';
@@ -60,6 +62,160 @@
 		}
 	];
 
+	// Keyboard shortcuts overlay state
+	let shortcutsOverlayOpen = $state(false);
+
+	function toggleShortcutsOverlay() {
+		shortcutsOverlayOpen = !shortcutsOverlayOpen;
+	}
+
+	// Command palette state
+	let commandPaletteOpen = $state(false);
+
+	function toggleCommandPalette() {
+		commandPaletteOpen = !commandPaletteOpen;
+	}
+
+	// Define available commands
+	const commands = $derived([
+		// Navigation
+		{
+			id: 'goto-full-code',
+			label: 'Go to Full Code Editor',
+			description: 'Switch to the full Groovy code view',
+			category: 'Navigation',
+			action: () => { activeCodeTab = 'full'; }
+		},
+		{
+			id: 'goto-tweak',
+			label: 'Go to Tweak Panel',
+			description: 'Switch to the per-mapping tweak view',
+			category: 'Navigation',
+			action: () => { activeCodeTab = 'tweak'; }
+		},
+		// Mappings
+		{
+			id: 'clear-mappings',
+			label: 'Clear All Mappings',
+			description: 'Remove all current mappings',
+			category: 'Mappings',
+			action: () => { mappingsStore.clear(); }
+		},
+		{
+			id: 'regenerate-code',
+			label: 'Regenerate Groovy Code',
+			description: 'Regenerate code from current mappings',
+			shortcut: ['Ctrl', 'Shift', 'G'],
+			category: 'Code',
+			action: () => { regenerateCode(); }
+		},
+		// Records
+		{
+			id: 'prev-record',
+			label: 'Previous Record',
+			description: 'Go to the previous sample record',
+			shortcut: ['['],
+			category: 'Records',
+			action: () => { if (currentRecordIndex > 0) currentRecordIndex--; }
+		},
+		{
+			id: 'next-record',
+			label: 'Next Record',
+			description: 'Go to the next sample record',
+			shortcut: [']'],
+			category: 'Records',
+			action: () => { currentRecordIndex++; }
+		},
+		// Help
+		{
+			id: 'show-shortcuts',
+			label: 'Show Keyboard Shortcuts',
+			description: 'Display all available keyboard shortcuts',
+			shortcut: ['?'],
+			category: 'Help',
+			action: () => { shortcutsOverlayOpen = true; }
+		},
+		// Actions
+		{
+			id: 'save-mapping',
+			label: 'Save Mapping',
+			description: 'Save the current mapping to the server',
+			shortcut: ['Ctrl', 'S'],
+			category: 'Actions',
+			action: () => { alert('Save not implemented yet'); }
+		},
+		{
+			id: 'revert-mapping',
+			label: 'Revert Changes',
+			description: 'Revert all changes to the last saved state',
+			category: 'Actions',
+			action: () => { alert('Revert not implemented yet'); }
+		}
+	]);
+
+	// Global keyboard shortcut handler (used with svelte:window)
+	function handleGlobalKeydown(e: KeyboardEvent) {
+		// Don't trigger if user is typing in an input, textarea, or contenteditable
+		const target = e.target as HTMLElement;
+		const isEditing =
+			target.tagName === 'INPUT' ||
+			target.tagName === 'TEXTAREA' ||
+			target.isContentEditable ||
+			target.closest('.monaco-editor');
+
+		// Ctrl+K / Cmd+K - Open command palette (works everywhere)
+		// Use e.code for reliability across keyboard layouts
+		if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K' || e.code === 'KeyK')) {
+			e.preventDefault();
+			e.stopPropagation();
+			toggleCommandPalette();
+			return;
+		}
+
+		// Ctrl+P - Alternative command palette trigger (like VS Code)
+		if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'p' || e.key === 'P' || e.code === 'KeyP')) {
+			e.preventDefault();
+			e.stopPropagation();
+			toggleCommandPalette();
+			return;
+		}
+
+		// ? - Show keyboard shortcuts (works even in some contexts)
+		if (e.key === '?' && !isEditing) {
+			e.preventDefault();
+			toggleShortcutsOverlay();
+			return;
+		}
+
+		// Escape - close overlays
+		if (e.key === 'Escape') {
+			if (commandPaletteOpen) {
+				e.preventDefault();
+				commandPaletteOpen = false;
+				return;
+			}
+			if (shortcutsOverlayOpen) {
+				e.preventDefault();
+				shortcutsOverlayOpen = false;
+				return;
+			}
+		}
+
+		// Record navigation shortcuts (when not editing)
+		if (!isEditing) {
+			if (e.key === '[') {
+				e.preventDefault();
+				if (currentRecordIndex > 0) currentRecordIndex--;
+				return;
+			}
+			if (e.key === ']') {
+				e.preventDefault();
+				currentRecordIndex++;
+				return;
+			}
+		}
+	}
+
 	// Prevent default drag/drop behavior on document to enable custom drag/drop
 	onMount(() => {
 		const preventDrop = (e: DragEvent) => {
@@ -95,11 +251,23 @@
 			}
 		};
 
+		// Add keyboard listener with capture to intercept before browser defaults
+		const handleKeydownCapture = (e: KeyboardEvent) => {
+			// Ctrl+K / Cmd+K - must capture before browser uses it
+			if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K' || e.code === 'KeyK')) {
+				e.preventDefault();
+				e.stopPropagation();
+				toggleCommandPalette();
+			}
+		};
+
+		document.addEventListener('keydown', handleKeydownCapture, { capture: true });
 		document.addEventListener('drop', preventDrop);
 		document.addEventListener('dragover', preventDragOver);
 		document.addEventListener('tree-drop', handleTreeDrop as EventListener);
 
 		return () => {
+			document.removeEventListener('keydown', handleKeydownCapture, { capture: true });
 			document.removeEventListener('drop', preventDrop);
 			document.removeEventListener('dragover', preventDragOver);
 			document.removeEventListener('tree-drop', handleTreeDrop as EventListener);
@@ -262,6 +430,8 @@
 
 </script>
 
+<svelte:window onkeydown={handleGlobalKeydown} />
+
 <!-- Header -->
 <header class="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
 	<div class="flex items-center gap-4">
@@ -271,6 +441,14 @@
 		</span>
 	</div>
 	<div class="flex items-center gap-2">
+		<button
+			class="px-2 py-1 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded flex items-center gap-1"
+			onclick={toggleShortcutsOverlay}
+			title="Keyboard shortcuts"
+		>
+			<kbd class="px-1.5 py-0.5 text-[10px] bg-gray-700 rounded border border-gray-600">?</kbd>
+			<span>Shortcuts</span>
+		</button>
 		<button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm">
 			Revert
 		</button>
@@ -453,4 +631,17 @@
 	onClose={handleCodeEditModalClose}
 	onSave={handleCodeEditSave}
 	onRecordChange={handleRecordChange}
+/>
+
+<!-- Keyboard Shortcuts Overlay -->
+<KeyboardShortcutsOverlay
+	open={shortcutsOverlayOpen}
+	onClose={() => shortcutsOverlayOpen = false}
+/>
+
+<!-- Command Palette -->
+<CommandPalette
+	open={commandPaletteOpen}
+	onClose={() => commandPaletteOpen = false}
+	commands={commands}
 />

@@ -23,14 +23,37 @@
 		onAddClick?: (node: TreeNode, treeType: 'source' | 'target') => void;
 		searchQuery?: string;
 		forceExpand?: boolean;
+		// Keyboard navigation props (optional - for parent-controlled expansion)
+		highlightedId?: string | null;
+		expandedNodes?: Set<string>;
+		onToggleExpand?: (nodeId: string) => void;
 	}
 
-	let { node, depth = 0, selectedId = null, treeType, onSelect, onMappingClick, onAddClick, searchQuery = '', forceExpand = false }: Props = $props();
+	let {
+		node,
+		depth = 0,
+		selectedId = null,
+		treeType,
+		onSelect,
+		onMappingClick,
+		onAddClick,
+		searchQuery = '',
+		forceExpand = false,
+		highlightedId = null,
+		expandedNodes,
+		onToggleExpand
+	}: Props = $props();
 
 	// Auto-expand first 2 levels, or force expand when searching
+	// When parent provides expandedNodes, use that; otherwise fall back to local state
 	let manualExpanded = $state(depth < 2);
-	let expanded = $derived(forceExpand || manualExpanded);
+	const expanded = $derived(
+		forceExpand ? true : (expandedNodes ? expandedNodes.has(node.id) : manualExpanded)
+	);
 	let isDragOver = $state(false);
+
+	// Keyboard navigation highlight
+	const isKeyboardHighlighted = $derived(highlightedId === node.id);
 
 	const hasChildren = $derived(node.children && node.children.length > 0);
 
@@ -165,7 +188,11 @@
 
 	function toggle(e: MouseEvent) {
 		e.stopPropagation();
-		manualExpanded = !manualExpanded;
+		if (onToggleExpand) {
+			onToggleExpand(node.id);
+		} else {
+			manualExpanded = !manualExpanded;
+		}
 	}
 
 	function select() {
@@ -176,12 +203,20 @@
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
 			select();
-		} else if (e.key === 'ArrowRight' && hasChildren && !manualExpanded) {
+		} else if (e.key === 'ArrowRight' && hasChildren && !expanded) {
 			e.preventDefault();
-			manualExpanded = true;
-		} else if (e.key === 'ArrowLeft' && manualExpanded) {
+			if (onToggleExpand) {
+				onToggleExpand(node.id);
+			} else {
+				manualExpanded = true;
+			}
+		} else if (e.key === 'ArrowLeft' && expanded) {
 			e.preventDefault();
-			manualExpanded = false;
+			if (onToggleExpand) {
+				onToggleExpand(node.id);
+			} else {
+				manualExpanded = false;
+			}
 		}
 	}
 
@@ -290,6 +325,7 @@
 		class:dragging={isBeingDragged}
 		class:drag-over={isDragOver && canAcceptDrop}
 		class:can-drop={canAcceptDrop && currentDragState.isDragging}
+		class:keyboard-highlight={isKeyboardHighlighted}
 		style="padding-left: {paddingLeft}px"
 		onclick={select}
 		onkeydown={handleKeydown}
@@ -466,6 +502,9 @@
 					{onAddClick}
 					{searchQuery}
 					{forceExpand}
+					{highlightedId}
+					{expandedNodes}
+					{onToggleExpand}
 				/>
 			{/each}
 		</div>
@@ -506,6 +545,16 @@
 
 	.tree-node.selected {
 		background-color: var(--color-tree-selected, #1e3a5f);
+	}
+
+	.tree-node.keyboard-highlight {
+		background-color: rgba(59, 130, 246, 0.15);
+		outline: 2px solid #3b82f6;
+		outline-offset: -2px;
+	}
+
+	.tree-node.keyboard-highlight.selected {
+		background-color: #1e3a5f;
 	}
 
 	.tree-node.mapped .node-name {
