@@ -6,6 +6,7 @@
 	import CodeTweakPanel from '$lib/components/CodeTweakPanel.svelte';
 	import Preview from '$lib/components/Preview.svelte';
 	import MappingModal from '$lib/components/MappingModal.svelte';
+	import CodeEditModal from '$lib/components/CodeEditModal.svelte';
 	import { sampleSourceTree, sampleTargetTree } from '$lib/sampleData';
 	import type { TreeNode } from '$lib/types';
 	import { onMount } from 'svelte';
@@ -150,6 +151,28 @@
 	function handleModalClose() {
 		modalOpen = false;
 		modalSourceNode = null;
+	}
+
+	// Code edit modal state
+	let codeEditModalOpen = $state(false);
+	let codeEditMapping = $state<Mapping | null>(null);
+	let customMappingCode = $state<Record<string, string>>({});
+
+	// Handler for when edit button is clicked on a mapping
+	function handleEditClick(mapping: Mapping) {
+		codeEditMapping = mapping;
+		codeEditModalOpen = true;
+	}
+
+	// Handler for saving code from the modal
+	function handleCodeEditSave(mappingId: string, code: string) {
+		customMappingCode = { ...customMappingCode, [mappingId]: code };
+	}
+
+	// Close code edit modal handler
+	function handleCodeEditModalClose() {
+		codeEditModalOpen = false;
+		codeEditMapping = null;
 	}
 
 	function handleRecordChange(index: number) {
@@ -342,6 +365,7 @@
 									onRecordChange={handleRecordChange}
 									selectedMappingId={selectedMappingId}
 									onMappingSelect={handleMappingSelect}
+									onEditClick={handleEditClick}
 								/>
 							{/if}
 						</div>
@@ -371,4 +395,15 @@
 	sourceTreeType={modalSourceTreeType}
 	onClose={handleModalClose}
 	onCreateMapping={handleModalCreateMapping}
+/>
+
+<!-- Code Edit Modal -->
+<CodeEditModal
+	isOpen={codeEditModalOpen}
+	mapping={codeEditMapping}
+	currentRecordIndex={currentRecordIndex}
+	customCode={codeEditMapping ? customMappingCode[codeEditMapping.id] : undefined}
+	onClose={handleCodeEditModalClose}
+	onSave={handleCodeEditSave}
+	onRecordChange={handleRecordChange}
 />

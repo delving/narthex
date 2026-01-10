@@ -788,6 +788,85 @@ export const sampleRecords: SampleRecord[] = [
 			format: 'image/jpeg',
 			type: 'digitale reproductie'
 		}
+	},
+	// Record with multiple values for various fields
+	{
+		priref: 'AM-44444',
+		object_number: 'SK-A-3066',
+		title: ['Het Joodse bruidje', 'Isaac en Rebecca'],
+		_attr: { lang: 'nl' },
+		description: 'Een intieme scène van een man die een vrouw omhelst, bekend als Het Joodse bruidje',
+		maker: [
+			{
+				name: 'Rembrandt van Rijn',
+				role: 'schilder',
+				birth_date: '1606',
+				death_date: '1669'
+			},
+			{
+				name: 'Werkplaats van Rembrandt',
+				role: 'medewerker'
+			}
+		],
+		dating: {
+			'date.early': '1665',
+			'date.late': '1669',
+			period: '17de eeuw'
+		},
+		material: ['olieverf', 'doek', 'goud'],
+		technique: ['schilderen', 'impasto'],
+		dimensions: {
+			type: 'hoogte',
+			value: '121.5',
+			unit: 'cm'
+		},
+		collection: 'Rijksmuseum',
+		object_category: 'schilderij',
+		object_name: 'dubbelportret',
+		subject: ['liefde', 'huwelijk', 'bijbels thema', 'Isaac', 'Rebecca'],
+		reproduction: {
+			reference: 'https://upload.wikimedia.org/wikipedia/commons/f/fc/Rembrandt_Harmensz._van_Rijn_-_The_Jewish_Bride.jpg',
+			format: 'image/jpeg',
+			type: 'digitale reproductie'
+		}
+	},
+	{
+		priref: 'AM-55555',
+		object_number: 'BK-16676',
+		title: 'Poppenhuis',
+		_attr: { lang: 'nl' },
+		description: 'Miniatuur poppenhuis met volledig ingerichte kamers en huisraad',
+		maker: [
+			{
+				name: 'onbekend',
+				role: 'meubelmaker'
+			},
+			{
+				name: 'Petronella Oortman',
+				role: 'opdrachtgever'
+			}
+		],
+		dating: {
+			'date.early': '1686',
+			'date.late': '1710',
+			period: '17de-18de eeuw'
+		},
+		material: ['notenhout', 'eikenhout', 'zilver', 'porselein', 'glas', 'zijde', 'fluweel'],
+		technique: ['meubelmaken', 'zilversmeden', 'borduren', 'weven'],
+		dimensions: {
+			type: 'hoogte',
+			value: '255',
+			unit: 'cm'
+		},
+		collection: 'Rijksmuseum',
+		object_category: 'huisraad',
+		object_name: ['poppenhuis', 'miniatuur'],
+		subject: ['interieur', 'huishouden', '17de-eeuws leven', 'verzamelen'],
+		reproduction: {
+			reference: 'https://upload.wikimedia.org/wikipedia/commons/e/e5/Petronella_Oortman_Dollhouse.jpg',
+			format: 'image/jpeg',
+			type: 'digitale reproductie'
+		}
 	}
 ];
 
@@ -839,6 +918,13 @@ export function recordToXml(record: SampleRecord, indent: number = 0): string {
 
 		if (typeof value === 'string') {
 			return `${sp}<${key}>${escapeXml(value)}</${key}>\n`;
+		} else if (Array.isArray(value)) {
+			// Handle arrays - render each item with the same key
+			let result = '';
+			for (const item of value) {
+				result += renderValue(key, item, currentIndent);
+			}
+			return result;
 		} else if (typeof value === 'object' && value !== null) {
 			const obj = value as SampleRecord;
 			const attrs = obj._attr
@@ -885,8 +971,9 @@ function escapeXml(str: string): string {
 
 /**
  * Get a value from a record based on a source path like /record/maker/name
+ * Returns string for single values, or array of strings for multiple values
  */
-export function getValueFromPath(record: SampleRecord, path: string): string | undefined {
+export function getValueFromPath(record: SampleRecord, path: string): string | string[] | undefined {
 	// Remove /record prefix
 	const cleanPath = path.replace(/^\/record\/?/, '');
 	if (!cleanPath) return undefined;
@@ -896,6 +983,25 @@ export function getValueFromPath(record: SampleRecord, path: string): string | u
 
 	for (const part of parts) {
 		if (value && typeof value === 'object') {
+			// Handle arrays - if we have an array, try to get the property from each element
+			if (Array.isArray(value)) {
+				const results: string[] = [];
+				for (const item of value) {
+					if (typeof item === 'string') {
+						results.push(item);
+					} else if (typeof item === 'object' && item !== null) {
+						const cleanPart = part.startsWith('@') ? part.slice(1) : part;
+						const subValue = (item as Record<string, unknown>)[cleanPart];
+						if (typeof subValue === 'string') {
+							results.push(subValue);
+						} else if (typeof subValue === 'number') {
+							results.push(String(subValue));
+						}
+					}
+				}
+				return results.length > 0 ? (results.length === 1 ? results[0] : results) : undefined;
+			}
+
 			// Handle attribute paths like @lang
 			const cleanPart = part.startsWith('@') ? part.slice(1) : part;
 			// Handle special paths like date.early
@@ -909,6 +1015,10 @@ export function getValueFromPath(record: SampleRecord, path: string): string | u
 		return value;
 	} else if (typeof value === 'number') {
 		return String(value);
+	} else if (Array.isArray(value)) {
+		// Handle arrays of strings directly (e.g., subject: ['liefde', 'huwelijk'])
+		const results = value.filter((v): v is string => typeof v === 'string');
+		return results.length > 0 ? (results.length === 1 ? results[0] : results) : undefined;
 	}
 	return undefined;
 }
@@ -942,7 +1052,11 @@ export function transformRecordWithMappings(
 		for (const mapping of targetMappings) {
 			const value = getValueFromPath(record, mapping.sourcePath);
 			if (value !== undefined) {
-				values.push(value);
+				if (Array.isArray(value)) {
+					values.push(...value);
+				} else {
+					values.push(value);
+				}
 			}
 		}
 

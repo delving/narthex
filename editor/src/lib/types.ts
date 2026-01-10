@@ -53,7 +53,7 @@ export interface MappingState {
 
 // Sample record for preview - represents source XML as nested object
 export interface SampleRecord {
-	[key: string]: string | SampleRecord | SampleRecord[] | undefined;
+	[key: string]: string | string[] | SampleRecord | SampleRecord[] | undefined;
 	_attr?: { [key: string]: string }; // XML attributes
 }
 

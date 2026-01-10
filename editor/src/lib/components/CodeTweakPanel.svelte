@@ -9,9 +9,10 @@
 		onRecordChange?: (index: number) => void;
 		selectedMappingId?: string | null;
 		onMappingSelect?: (id: string) => void;
+		onEditClick?: (mapping: Mapping) => void;
 	}
 
-	let { currentRecordIndex = 0, onRecordChange, selectedMappingId: propSelectedId = null, onMappingSelect }: Props = $props();
+	let { currentRecordIndex = 0, onRecordChange, selectedMappingId: propSelectedId = null, onMappingSelect, onEditClick }: Props = $props();
 
 	// Track mappings from store
 	let mappings = $state<Mapping[]>([]);
@@ -64,7 +65,11 @@
 		if (!currentRecord) return '';
 
 		const value = getValueFromPath(currentRecord, mapping.sourcePath);
-		return value ?? '';
+		if (value === undefined) return '';
+		if (Array.isArray(value)) {
+			return value.join('\n');
+		}
+		return value;
 	}
 
 	// Simulate the mapping output (in real app, this would execute Groovy)
@@ -141,11 +146,22 @@
 					<div class="code-section">
 						<div class="section-header">
 							<span class="section-title">Groovy Code</span>
-							{#if isCustomized(selectedMapping)}
-								<button class="reset-btn" onclick={() => resetCode(selectedMapping)}>
-									Reset
-								</button>
-							{/if}
+							<div class="section-actions">
+								{#if isCustomized(selectedMapping)}
+									<button class="reset-btn" onclick={() => resetCode(selectedMapping)}>
+										Reset
+									</button>
+								{/if}
+								{#if onEditClick}
+									<button class="edit-btn" onclick={() => onEditClick(selectedMapping)} title="Open in editor">
+										<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+											<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+											<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+										</svg>
+										Edit
+									</button>
+								{/if}
+							</div>
 						</div>
 						<div class="code-input-wrapper">
 							<input
@@ -348,6 +364,12 @@
 		color: #9ca3af;
 	}
 
+	.section-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
 	.reset-btn {
 		padding: 2px 8px;
 		font-size: 10px;
@@ -360,6 +382,29 @@
 
 	.reset-btn:hover {
 		background: #6b7280;
+	}
+
+	.edit-btn {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 10px;
+		font-size: 11px;
+		background: #3b82f6;
+		border: none;
+		border-radius: 4px;
+		color: white;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.edit-btn:hover {
+		background: #2563eb;
+	}
+
+	.edit-btn svg {
+		width: 12px;
+		height: 12px;
 	}
 
 	.code-input-wrapper {
