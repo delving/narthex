@@ -61,6 +61,20 @@ object FieldInEveryRecord {
 }
 
 /**
+ * Simplified field info for identifier fields (100% unique values)
+ */
+case class IdentifierField(
+  path: String,
+  tag: String,
+  uniqueCount: Int,
+  totalCount: Int
+)
+
+object IdentifierField {
+  implicit val writes: Writes[IdentifierField] = Json.writes[IdentifierField]
+}
+
+/**
  * Quality summary statistics for a dataset
  */
 case class QualitySummary(
@@ -70,6 +84,7 @@ case class QualitySummary(
   fieldsWithIssues: Int,
   fieldsInEveryRecord: Int,  // Fields with 100% completeness
   fieldsInEveryRecordList: List[FieldInEveryRecord],  // List of fields with 100% completeness
+  identifierFieldsList: List[IdentifierField],  // List of fields with 100% uniqueness
   avgFieldsPerRecord: Double,  // Average number of field values per record
   avgUniqueFieldsPerRecord: Double,  // Average number of unique fields per record
   avgUniqueness: Double,  // Average uniqueness percentage across all fields
@@ -172,6 +187,13 @@ class QualitySummaryService @Inject()(
         "low" -> fieldsWithValues.count(f => f.uniqueness < 20)
       )
 
+      // Identifier fields list (100% unique values)
+      val identifierFieldsList = fieldsWithValues
+        .filter(f => f.uniqueness >= 100)
+        .sortBy(_.path)
+        .map(f => IdentifierField(f.path, f.tag, f.uniqueCount, f.totalCount))
+        .toList
+
       // Calculate overall score
       val overallScore = calculateOverallScore(leafFields)
 
@@ -187,6 +209,7 @@ class QualitySummaryService @Inject()(
         fieldsWithIssues = fieldsWithIssues.size,
         fieldsInEveryRecord = fieldsInEveryRecord,
         fieldsInEveryRecordList = fieldsInEveryRecordList,
+        identifierFieldsList = identifierFieldsList,
         avgFieldsPerRecord = avgFieldsPerRecord,
         avgUniqueFieldsPerRecord = avgUniqueFieldsPerRecord,
         avgUniqueness = avgUniqueness,

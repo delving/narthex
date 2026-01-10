@@ -247,9 +247,14 @@ define(["angular"], function () {
                 $scope.apiPathHistogram =  $scope.apiPrefix +  $scope.spec + "/histogram" + filePath;
                 $scope.sampleSize = 100;
                 $scope.histogramSize = 100;
-                switch ($routeParams.view) {
+                // Use sticky activeView if set, otherwise fall back to URL param or default
+                var currentView = $scope.activeView || $routeParams.view || 'histogram';
+                switch (currentView) {
                     case 'sample':
                         $scope.fetchSample();
+                        break;
+                    case 'quality':
+                        $scope.showQuality();
                         break;
                     default:
                         $scope.fetchHistogram();

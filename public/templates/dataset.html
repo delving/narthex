@@ -230,9 +230,14 @@
                         </div>
                         <div class="panel-body">
                             <div class="row">
-                                <div class="col-xs-3 text-center">
+                                <div class="col-xs-3 text-center" style="cursor: pointer;"
+                                     ng-click="showIdentifierFields = !showIdentifierFields"
+                                     title="Click to show/hide identifier fields">
                                     <span class="label label-primary" style="font-size: 16px; padding: 8px 12px;">
                                         {{ qualitySummary.uniquenessDistribution.identifier || 0 }}
+                                        <i class="fa" style="font-size: 10px; margin-left: 3px;"
+                                           ng-class="{'fa-chevron-up': showIdentifierFields, 'fa-chevron-down': !showIdentifierFields}"
+                                           ng-if="qualitySummary.identifierFieldsList.length > 0"></i>
                                     </span>
                                     <p style="margin-top: 5px;"><small>Identifiers (100%)</small></p>
                                 </div>
@@ -255,6 +260,40 @@
                                     <p style="margin-top: 5px;"><small>Low (&lt;20%)</small></p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Identifier Fields List (collapsible) -->
+                    <div class="panel panel-primary" ng-if="showIdentifierFields && qualitySummary.identifierFieldsList.length > 0" style="margin-top: -15px;">
+                        <div class="panel-heading">
+                            <strong><i class="fa fa-key"></i> Identifier Fields (100% Unique)</strong>
+                            <span class="badge pull-right">{{ qualitySummary.identifierFieldsList.length }}</span>
+                        </div>
+                        <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                            <table class="table table-condensed table-hover" style="margin-bottom: 0;">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th class="text-right">Unique / Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="field in qualitySummary.identifierFieldsList">
+                                        <td>
+                                            <a href ng-click="navigateToField(field.path)">
+                                                <code>{{ field.tag }}</code>
+                                            </a>
+                                            <br>
+                                            <small class="text-muted">{{ field.path }}</small>
+                                        </td>
+                                        <td class="text-right">
+                                            <span class="text-primary">
+                                                {{ field.uniqueCount }} / {{ field.totalCount }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -662,6 +701,26 @@
                                     <td>
                                         <span class="text-warning">{{ selectedNode.quality.emptyCount }}</span>
                                         <span class="text-muted">({{ selectedNode.quality.emptyRate }}%)</span>
+                                    </td>
+                                </tr>
+                                <tr data-ng-show="status.uniqueCount">
+                                    <td><strong>Unique values</strong></td>
+                                    <td>
+                                        <span ng-class="{
+                                            'text-primary': (status.uniqueCount / selectedNode.count * 100) >= 100,
+                                            'text-success': (status.uniqueCount / selectedNode.count * 100) >= 80 && (status.uniqueCount / selectedNode.count * 100) < 100,
+                                            'text-warning': (status.uniqueCount / selectedNode.count * 100) >= 20 && (status.uniqueCount / selectedNode.count * 100) < 80,
+                                            'text-muted': (status.uniqueCount / selectedNode.count * 100) < 20
+                                        }">
+                                            {{ status.uniqueCount }} / {{ selectedNode.count }}
+                                        </span>
+                                        <span class="text-muted">
+                                            ({{ (status.uniqueCount / selectedNode.count * 100) | number:1 }}% unique)
+                                        </span>
+                                        <span ng-if="(status.uniqueCount / selectedNode.count * 100) >= 100"
+                                              class="label label-primary" style="margin-left: 5px;">
+                                            <i class="fa fa-key"></i> Identifier
+                                        </span>
                                     </td>
                                 </tr>
                             </tbody>
