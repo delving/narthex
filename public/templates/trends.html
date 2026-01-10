@@ -60,14 +60,30 @@
             </div>
         </div>
 
-        <!-- Time Window Selector -->
-        <div class="btn-group" style="margin-bottom: 15px;">
-            <button class="btn btn-sm" ng-class="timeWindow === '24h' ? 'btn-primary' : 'btn-default'"
-                    ng-click="setTimeWindow('24h')">24 Hours</button>
-            <button class="btn btn-sm" ng-class="timeWindow === '7d' ? 'btn-primary' : 'btn-default'"
-                    ng-click="setTimeWindow('7d')">7 Days</button>
-            <button class="btn btn-sm" ng-class="timeWindow === '30d' ? 'btn-primary' : 'btn-default'"
-                    ng-click="setTimeWindow('30d')">30 Days</button>
+        <!-- Time Window Selector and Search -->
+        <div class="row" style="margin-bottom: 15px;">
+            <div class="col-md-6">
+                <div class="btn-group">
+                    <button class="btn btn-sm" ng-class="timeWindow === '24h' ? 'btn-primary' : 'btn-default'"
+                            ng-click="setTimeWindow('24h')">24 Hours</button>
+                    <button class="btn btn-sm" ng-class="timeWindow === '7d' ? 'btn-primary' : 'btn-default'"
+                            ng-click="setTimeWindow('7d')">7 Days</button>
+                    <button class="btn btn-sm" ng-class="timeWindow === '30d' ? 'btn-primary' : 'btn-default'"
+                            ng-click="setTimeWindow('30d')">30 Days</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                    <input type="text" class="form-control input-sm" placeholder="Search datasets..."
+                           ng-model="searchQuery" ng-model-options="{ debounce: 150 }">
+                    <span class="input-group-btn" ng-show="searchQuery">
+                        <button class="btn btn-sm btn-default" type="button" ng-click="clearSearch()">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </span>
+                </div>
+            </div>
         </div>
 
         <!-- Tabs -->
@@ -95,9 +111,10 @@
         <!-- Empty state -->
         <div ng-if="getActiveDatasets().length === 0" class="alert alert-info">
             <i class="fa fa-info-circle"></i>
-            <span ng-if="activeTab === 'growing'">No datasets with growth in the last {{ getTimeWindowLabel() }}.</span>
-            <span ng-if="activeTab === 'shrinking'">No datasets with decline in the last {{ getTimeWindowLabel() }}.</span>
-            <span ng-if="activeTab === 'stable'">No datasets with changes in the last {{ getTimeWindowLabel() }}.</span>
+            <span ng-if="searchQuery">No datasets matching "{{ searchQuery }}".</span>
+            <span ng-if="!searchQuery && activeTab === 'growing'">No datasets with growth in the last {{ getTimeWindowLabel() }}.</span>
+            <span ng-if="!searchQuery && activeTab === 'shrinking'">No datasets with decline in the last {{ getTimeWindowLabel() }}.</span>
+            <span ng-if="!searchQuery && activeTab === 'stable'">No datasets with changes in the last {{ getTimeWindowLabel() }}.</span>
         </div>
 
         <!-- Data table -->

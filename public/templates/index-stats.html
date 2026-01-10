@@ -75,15 +75,32 @@
             </li>
         </ul>
 
+        <!-- Search -->
+        <div class="row" style="margin-bottom: 15px;">
+            <div class="col-md-4 col-md-offset-8">
+                <div class="input-group">
+                    <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                    <input type="text" class="form-control input-sm" placeholder="Search datasets..."
+                           ng-model="searchQuery" ng-model-options="{ debounce: 150 }">
+                    <span class="input-group-btn" ng-show="searchQuery">
+                        <button class="btn btn-sm btn-default" type="button" ng-click="clearSearch()">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </span>
+                </div>
+            </div>
+        </div>
+
         <!-- Empty state -->
         <div ng-if="getActiveDatasets().length === 0" class="alert alert-info">
             <i class="fa fa-info-circle"></i>
-            <span ng-if="activeTab === 'correct'">No datasets with matching counts.</span>
-            <span ng-if="activeTab === 'notIndexed'">No datasets waiting to be indexed.</span>
-            <span ng-if="activeTab === 'notProcessed'">No datasets that haven't been processed.</span>
-            <span ng-if="activeTab === 'wrongCount'">No datasets with mismatched counts.</span>
-            <span ng-if="activeTab === 'disabled'">No disabled datasets.</span>
-            <span ng-if="activeTab === 'deleted'">No deleted datasets.</span>
+            <span ng-if="searchQuery">No datasets matching "{{ searchQuery }}".</span>
+            <span ng-if="!searchQuery && activeTab === 'correct'">No datasets with matching counts.</span>
+            <span ng-if="!searchQuery && activeTab === 'notIndexed'">No datasets waiting to be indexed.</span>
+            <span ng-if="!searchQuery && activeTab === 'notProcessed'">No datasets that haven't been processed.</span>
+            <span ng-if="!searchQuery && activeTab === 'wrongCount'">No datasets with mismatched counts.</span>
+            <span ng-if="!searchQuery && activeTab === 'disabled'">No disabled datasets.</span>
+            <span ng-if="!searchQuery && activeTab === 'deleted'">No deleted datasets.</span>
         </div>
 
         <!-- Data table -->

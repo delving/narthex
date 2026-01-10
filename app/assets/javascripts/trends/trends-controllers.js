@@ -23,6 +23,7 @@ define(["angular"], function () {
         $scope.trends = null;
         $scope.activeTab = 'growing';
         $scope.timeWindow = '24h';
+        $scope.searchQuery = '';
 
         // Cached categorization based on time window
         $scope.categorized = {
@@ -143,17 +144,39 @@ define(["angular"], function () {
         };
 
         /**
-         * Get datasets for current tab (using recategorized data)
+         * Filter datasets by search query
+         */
+        function filterBySearch(datasets) {
+            if (!$scope.searchQuery || $scope.searchQuery.trim() === '') {
+                return datasets;
+            }
+            var query = $scope.searchQuery.toLowerCase().trim();
+            return datasets.filter(function(ds) {
+                return ds.spec.toLowerCase().indexOf(query) !== -1;
+            });
+        }
+
+        /**
+         * Get datasets for current tab (using recategorized data, filtered by search)
          */
         $scope.getActiveDatasets = function () {
-            return $scope.categorized[$scope.activeTab] || [];
+            var datasets = $scope.categorized[$scope.activeTab] || [];
+            return filterBySearch(datasets);
         };
 
         /**
-         * Get tab count (using recategorized data)
+         * Get tab count (using recategorized data, filtered by search)
          */
         $scope.getTabCount = function (tab) {
-            return ($scope.categorized[tab] || []).length;
+            var datasets = $scope.categorized[tab] || [];
+            return filterBySearch(datasets).length;
+        };
+
+        /**
+         * Clear search query
+         */
+        $scope.clearSearch = function () {
+            $scope.searchQuery = '';
         };
 
         /**

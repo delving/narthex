@@ -37,7 +37,7 @@ define(["angular"], function () {
         'state-error': "Error"
     };
 
-    var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll, modalAlert, $timeout) {
+    var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll, modalAlert, $timeout, $routeParams) {
 
         $scope.apiPrefix = "/narthex/api/"
         $scope.enableIncrementalHarvest = $rootScope.enableIncrementalHarvest;
@@ -725,6 +725,22 @@ define(["angular"], function () {
                 _.forEach(array, $scope.decorateDatasetLight);
                 $scope.datasets = array;
                 $scope.updateDatasetStateCounter();
+
+                // Scroll to dataset if specified in URL parameter (from Index Stats / Trends)
+                if ($routeParams.dataset) {
+                    $timeout(function() {
+                        var elementId = 'dataset-' + $routeParams.dataset;
+                        var element = document.getElementById(elementId);
+                        if (element) {
+                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            // Add highlight effect
+                            element.classList.add('highlight-dataset');
+                            $timeout(function() {
+                                element.classList.remove('highlight-dataset');
+                            }, 2000);
+                        }
+                    }, 100);
+                }
             });
         };
 
@@ -1027,7 +1043,7 @@ define(["angular"], function () {
     };
 
     DatasetListCtrl.$inject = [
-        "$rootScope", "$scope", "datasetListService", "$location", "pageScroll", "modalAlert", "$timeout"
+        "$rootScope", "$scope", "datasetListService", "$location", "pageScroll", "modalAlert", "$timeout", "$routeParams"
     ];
 
     // these lists must match with DsInfo.scala

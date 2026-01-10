@@ -26,6 +26,7 @@ define(["angular"], function (angular) {
         $scope.activeTab = 'correct';
         $scope.loading = true;
         $scope.error = null;
+        $scope.searchQuery = '';
 
         // Stats data
         $scope.stats = {
@@ -45,6 +46,26 @@ define(["angular"], function (angular) {
 
         // Track pending operations
         $scope.pendingOps = {};
+
+        /**
+         * Filter datasets by search query
+         */
+        function filterBySearch(datasets) {
+            if (!$scope.searchQuery || $scope.searchQuery.trim() === '') {
+                return datasets;
+            }
+            var query = $scope.searchQuery.toLowerCase().trim();
+            return datasets.filter(function(ds) {
+                return ds.spec.toLowerCase().indexOf(query) !== -1;
+            });
+        }
+
+        /**
+         * Clear search query
+         */
+        $scope.clearSearch = function () {
+            $scope.searchQuery = '';
+        };
 
         /**
          * Load index statistics from the API (with trends data)
@@ -74,47 +95,39 @@ define(["angular"], function (angular) {
         };
 
         /**
-         * Get the datasets for the active tab
+         * Get raw datasets for a tab (before search filter)
          */
-        $scope.getActiveDatasets = function () {
-            switch ($scope.activeTab) {
+        function getRawDatasets(tab) {
+            switch (tab) {
                 case 'correct':
-                    return $scope.stats.correct;
+                    return $scope.stats.correct || [];
                 case 'notIndexed':
-                    return $scope.stats.notIndexed;
+                    return $scope.stats.notIndexed || [];
                 case 'notProcessed':
-                    return $scope.stats.notProcessed;
+                    return $scope.stats.notProcessed || [];
                 case 'wrongCount':
-                    return $scope.stats.wrongCount;
+                    return $scope.stats.wrongCount || [];
                 case 'disabled':
-                    return $scope.stats.disabled;
+                    return $scope.stats.disabled || [];
                 case 'deleted':
-                    return $scope.stats.deleted;
+                    return $scope.stats.deleted || [];
                 default:
                     return [];
             }
+        }
+
+        /**
+         * Get the datasets for the active tab (with search filter applied)
+         */
+        $scope.getActiveDatasets = function () {
+            return filterBySearch(getRawDatasets($scope.activeTab));
         };
 
         /**
-         * Get count for a tab
+         * Get count for a tab (with search filter applied)
          */
         $scope.getTabCount = function (tab) {
-            switch (tab) {
-                case 'correct':
-                    return $scope.stats.correct.length;
-                case 'notIndexed':
-                    return $scope.stats.notIndexed.length;
-                case 'notProcessed':
-                    return $scope.stats.notProcessed.length;
-                case 'wrongCount':
-                    return $scope.stats.wrongCount.length;
-                case 'disabled':
-                    return $scope.stats.disabled.length;
-                case 'deleted':
-                    return $scope.stats.deleted.length;
-                default:
-                    return 0;
-            }
+            return filterBySearch(getRawDatasets(tab)).length;
         };
 
         /**

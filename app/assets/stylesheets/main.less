@@ -1011,3 +1011,19 @@ p.help-block {
     margin-right: 10px;
   }
 }
+
+/* Dataset highlight when navigating from Index Stats / Trends */
+.highlight-dataset {
+  animation: highlight-pulse 2s ease-out;
+}
+
+@keyframes highlight-pulse {
+  0% {
+    background-color: #fff3cd;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
