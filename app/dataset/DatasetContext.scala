@@ -51,6 +51,10 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   val sourceDir = new File(rootDir, "source")
   val treeDir = new File(rootDir, "tree")
   val sourceTreeDir = new File(rootDir, "sourceTree")
+
+  // Violations index files for linking violations to records
+  def violationsIndex = new File(treeDir, "violations.jsonl")
+  def sourceViolationsIndex = new File(sourceTreeDir, "violations.jsonl")
   val processedDir = new File(rootDir, "processed")
   val harvestLogger = new File(rootDir, "harvesting_log.txt")
   val activityLog = new File(rootDir, "activity.jsonl")

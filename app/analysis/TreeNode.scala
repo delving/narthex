@@ -81,9 +81,17 @@ object TreeNode {
             datasetContext: DatasetContext,
             progressReporter: ProgressReporter,
             customTreeRoot: Option[NodeRepo] = None,
-            customIndexFile: Option[File] = None): TreeNode = {
-    val actualTreeRoot = customTreeRoot.getOrElse(datasetContext.treeRoot)
-    val actualIndexFile = customIndexFile.getOrElse(datasetContext.index)
+            customIndexFile: Option[File] = None,
+            customViolationsFile: Option[File] = None): TreeNode = {
+    val actualTreeRoot = customTreeRoot.getOrElse(
+      if (analysisType == Source) datasetContext.sourceTreeRoot else datasetContext.treeRoot
+    )
+    val actualIndexFile = customIndexFile.getOrElse(
+      if (analysisType == Source) datasetContext.sourceIndex else datasetContext.index
+    )
+    val actualViolationsFile = customViolationsFile.getOrElse(
+      if (analysisType == Source) datasetContext.sourceViolationsIndex else datasetContext.violationsIndex
+    )
     val base = new TreeNode(actualTreeRoot, null, null, null)
     var node = base
     val events = new XMLEventReader(source)
@@ -95,6 +103,10 @@ object TreeNode {
     var currentDepth = 0
     var recordRootDepth = -1
     val recordsWithValueCount = mutable.Map.empty[String, Int]
+
+    // Violation index for linking violations to records
+    val violationIndex = new ViolationIndex(actualViolationsFile)
+    var currentRecordId: String = ""
 
     def getNamespace(pre: String, scope: NamespaceBinding) = {
       val uri = scope.getURI(pre)
@@ -120,19 +132,30 @@ object TreeNode {
               recordRootDepth = currentDepth
             }
 
-            // Track record start
+            // Track record start and extract record ID
             if (recordRootPath.contains(node.path)) {
               totalRecords += 1
               recordTracker.reset()
+              // Extract record ID from attributes
+              // For source: <pocket id="...">
+              // For processed: <rdf:Description rdf:about="...">
+              currentRecordId = attrs.find(a => a.prefixedKey == "id" || a.prefixedKey == "rdf:about")
+                .map(_.value.toString())
+                .getOrElse(s"record-$totalRecords")
             }
 
             attrs.foreach { attr =>
               val uri = MetaData.getUniversalKey(attr, scope)
               val kid = node.kid(s"@${attr.prefixedKey}", uri)
-              kid.start().value(attr.value.toString()).end()
+              val attrValue = attr.value.toString()
+              kid.start().value(attrValue).end()
               // Mark attribute field as present if it has a value
-              if (attr.value.toString().trim.nonEmpty) {
+              if (attrValue.trim.nonEmpty) {
                 recordTracker.markFieldPresent(kid.path)
+                // Check for violations in attribute values
+                if (currentRecordId.nonEmpty) {
+                  violationIndex.checkAndRecordViolations(currentRecordId, kid.path, attrValue)
+                }
               }
             }
 
@@ -142,9 +165,15 @@ object TreeNode {
           case EvEntityRef(entity) => node.value(translateEntity(entity))
 
           case EvElemEnd(pre, label) =>
+            val elementValue = node.valueBuilder.toString()
+            val trimmedValue = elementValue.trim
             // Mark field as present if it has a non-empty value
-            if (node.valueBuilder.toString().trim.nonEmpty) {
+            if (trimmedValue.nonEmpty) {
               recordTracker.markFieldPresent(node.path)
+              // Check for violations in element values
+              if (currentRecordId.nonEmpty) {
+                violationIndex.checkAndRecordViolations(currentRecordId, node.path, trimmedValue)
+              }
             }
 
             node.end()
@@ -182,6 +211,11 @@ object TreeNode {
     base.finish()
     val pretty = Json.prettyPrint(Json.toJson(root))
     FileUtils.writeStringToFile(actualIndexFile, pretty, "UTF-8")
+
+    // Close the violation index
+    violationIndex.close()
+    logger.info(s"Indexed ${violationIndex.totalViolations} violations for ${datasetContext.dsInfo.spec}")
+
     root
   }
 

@@ -21,10 +21,14 @@ import play.api.Logging
 import dataset.DatasetContext
 import dataset.SourceRepo.VERBATIM_FILTER
 import record.PocketParser.Pocket
+import analysis.ViolationIndex
 
 /**
  * Service to find records containing specific values, enabling drill-down
  * from violation samples to source records.
+ *
+ * Uses the violations index for fast O(1) lookups when available,
+ * falls back to scanning source records if index doesn't exist.
  */
 @Singleton
 class ViolationRecordService @Inject()() extends Logging {
@@ -38,7 +42,7 @@ class ViolationRecordService @Inject()() extends Logging {
     recordId: String,
     fieldPath: String,
     matchedValue: String,
-    context: String,      // XML snippet around match
+    context: String,      // XML snippet around match or field path
     matchCount: Int = 1   // How many times value appears in this record
   )
 
@@ -48,20 +52,58 @@ class ViolationRecordService @Inject()() extends Logging {
 
   /**
    * Find records containing a specific value.
-   * Scans all source pockets and returns matching records.
+   * First checks the violations index for instant lookup,
+   * falls back to scanning source records if needed.
    *
    * @param datasetContext The dataset to search
    * @param targetValue The value to search for
    * @param limit Maximum number of records to return
+   * @param useSourceAnalysis Whether to use source analysis index (default true)
    * @return List of matching records with context
    */
   def findRecordsByValue(
     datasetContext: DatasetContext,
     targetValue: String,
-    limit: Int = 100
+    limit: Int = 100,
+    useSourceAnalysis: Boolean = true
   ): List[RecordMatch] = {
     if (targetValue.isEmpty) return List.empty
 
+    // Try the violations index first (fast path)
+    val violationsFile = if (useSourceAnalysis) {
+      datasetContext.sourceViolationsIndex
+    } else {
+      datasetContext.violationsIndex
+    }
+
+    if (violationsFile.exists()) {
+      logger.debug(s"Using violations index for ${datasetContext.dsInfo.spec}")
+      val indexMatches = ViolationIndex.findRecordsByValue(violationsFile, targetValue)
+      if (indexMatches.nonEmpty) {
+        return indexMatches.take(limit).map { entry =>
+          RecordMatch(
+            recordId = entry.recordId,
+            fieldPath = entry.fieldPath,
+            matchedValue = entry.value,
+            context = s"Field: ${entry.fieldPath} (${entry.violationType})"
+          )
+        }
+      }
+    }
+
+    // Fall back to scanning source records (slow path)
+    logger.debug(s"Falling back to source scan for ${datasetContext.dsInfo.spec}")
+    findRecordsByValueScan(datasetContext, targetValue, limit)
+  }
+
+  /**
+   * Scan source records to find matches (fallback when index not available).
+   */
+  private def findRecordsByValueScan(
+    datasetContext: DatasetContext,
+    targetValue: String,
+    limit: Int
+  ): List[RecordMatch] = {
     val matches = scala.collection.mutable.ListBuffer[RecordMatch]()
 
     datasetContext.sourceRepoOpt match {
@@ -234,17 +276,19 @@ class ViolationRecordService @Inject()() extends Logging {
 
   /**
    * Get all record IDs containing a specific value (for export).
-   * Unlike findRecordsByValue, this returns ALL matching records without limit.
+   * Uses the violations index when available for fast lookup.
    *
    * @param datasetContext The dataset to search
    * @param targetValue The value to search for
    * @param violationType Optional violation type for metadata
+   * @param useSourceAnalysis Whether to use source analysis index (default true)
    * @return Export result with all matching record IDs
    */
   def exportProblemRecordIds(
     datasetContext: DatasetContext,
     targetValue: String,
-    violationType: String = ""
+    violationType: String = "",
+    useSourceAnalysis: Boolean = true
   ): ProblemRecordExport = {
     if (targetValue.isEmpty) {
       return ProblemRecordExport(
@@ -256,6 +300,30 @@ class ViolationRecordService @Inject()() extends Logging {
       )
     }
 
+    // Try the violations index first (fast path)
+    val violationsFile = if (useSourceAnalysis) {
+      datasetContext.sourceViolationsIndex
+    } else {
+      datasetContext.violationsIndex
+    }
+
+    if (violationsFile.exists()) {
+      logger.debug(s"Using violations index for export: ${datasetContext.dsInfo.spec}")
+      val indexMatches = ViolationIndex.findRecordsByValue(violationsFile, targetValue)
+      if (indexMatches.nonEmpty) {
+        val recordIds = indexMatches.map(_.recordId).distinct
+        return ProblemRecordExport(
+          spec = datasetContext.dsInfo.spec,
+          searchValue = targetValue,
+          violationType = violationType,
+          totalRecords = recordIds.size,
+          recordIds = recordIds
+        )
+      }
+    }
+
+    // Fall back to scanning source records (slow path)
+    logger.debug(s"Falling back to source scan for export: ${datasetContext.dsInfo.spec}")
     val recordIds = scala.collection.mutable.ListBuffer[String]()
 
     datasetContext.sourceRepoOpt.foreach { sourceRepo =>
@@ -325,10 +393,10 @@ class ViolationRecordService @Inject()() extends Logging {
   /**
    * Format export as CSV string.
    */
-  def formatAsCsv(export: ProblemRecordExport): String = {
+  def formatAsCsv(problemExport: ProblemRecordExport): String = {
     val sb = new StringBuilder
     sb.append("record_id\n")
-    export.recordIds.foreach { id =>
+    problemExport.recordIds.foreach { id =>
       sb.append(id).append("\n")
     }
     sb.toString()
