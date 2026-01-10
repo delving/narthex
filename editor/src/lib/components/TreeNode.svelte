@@ -20,11 +20,12 @@
 		treeType: 'source' | 'target';
 		onSelect?: (node: TreeNode) => void;
 		onMappingClick?: (mappingId: string) => void;
+		onAddClick?: (node: TreeNode, treeType: 'source' | 'target') => void;
 		searchQuery?: string;
 		forceExpand?: boolean;
 	}
 
-	let { node, depth = 0, selectedId = null, treeType, onSelect, onMappingClick, searchQuery = '', forceExpand = false }: Props = $props();
+	let { node, depth = 0, selectedId = null, treeType, onSelect, onMappingClick, onAddClick, searchQuery = '', forceExpand = false }: Props = $props();
 
 	// Auto-expand first 2 levels, or force expand when searching
 	let manualExpanded = $state(depth < 2);
@@ -142,6 +143,12 @@
 		if (mapping.mappingId && onMappingClick) {
 			onMappingClick(mapping.mappingId);
 		}
+	}
+
+	// Click on "+" button to open mapping modal
+	function handleAddClick(e: MouseEvent) {
+		e.stopPropagation();
+		onAddClick?.(node, treeType);
 	}
 
 	// Can this node accept a drop?
@@ -333,6 +340,21 @@
 			</svg>
 		</span>
 
+		<!-- Add mapping button -->
+		{#if onAddClick}
+			<button
+				type="button"
+				class="add-btn"
+				onclick={handleAddClick}
+				title={treeType === 'source' ? 'Map to target field...' : 'Map from source field...'}
+				aria-label="Add mapping"
+			>
+				<svg viewBox="0 0 20 20" fill="currentColor">
+					<path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/>
+				</svg>
+			</button>
+		{/if}
+
 		<!-- Node icon -->
 		{#if node.isAttribute}
 			<span class="node-icon attribute">@</span>
@@ -441,6 +463,7 @@
 					{treeType}
 					{onSelect}
 					{onMappingClick}
+					{onAddClick}
 					{searchQuery}
 					{forceExpand}
 				/>
@@ -525,6 +548,38 @@
 
 	.tree-node:hover .drag-handle {
 		opacity: 1;
+	}
+
+	.add-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+		padding: 0;
+		border: none;
+		background: transparent;
+		color: #6b7280;
+		border-radius: 4px;
+		cursor: pointer;
+		flex-shrink: 0;
+		opacity: 0;
+		transition: all 0.15s;
+	}
+
+	.add-btn svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.tree-node:hover .add-btn,
+	.tree-node.selected .add-btn {
+		opacity: 1;
+	}
+
+	.add-btn:hover {
+		background: #3b82f6;
+		color: white;
 	}
 
 	.toggle {

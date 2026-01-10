@@ -8,10 +8,11 @@
 		treeType: 'source' | 'target';
 		onSelect?: (node: TreeNode) => void;
 		onMappingClick?: (mappingId: string) => void;
+		onAddClick?: (node: TreeNode, treeType: 'source' | 'target') => void;
 		showSearchToggle?: boolean;
 	}
 
-	let { nodes, selectedId = null, treeType, onSelect, onMappingClick, showSearchToggle = true }: Props = $props();
+	let { nodes, selectedId = null, treeType, onSelect, onMappingClick, onAddClick, showSearchToggle = true }: Props = $props();
 
 	// Search state
 	let searchQuery = $state('');
@@ -139,6 +140,7 @@
 				{treeType}
 				{onSelect}
 				{onMappingClick}
+				{onAddClick}
 				searchQuery={searchQuery}
 				forceExpand={!!searchQuery}
 			/>

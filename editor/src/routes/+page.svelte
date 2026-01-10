@@ -5,6 +5,7 @@
 	import CodeEditor from '$lib/components/CodeEditor.svelte';
 	import CodeTweakPanel from '$lib/components/CodeTweakPanel.svelte';
 	import Preview from '$lib/components/Preview.svelte';
+	import MappingModal from '$lib/components/MappingModal.svelte';
 	import { sampleSourceTree, sampleTargetTree } from '$lib/sampleData';
 	import type { TreeNode } from '$lib/types';
 	import { onMount } from 'svelte';
@@ -120,6 +121,37 @@
 	// Selected mapping ID for tweak panel
 	let selectedMappingId = $state<string | null>(null);
 
+	// Mapping modal state
+	let modalOpen = $state(false);
+	let modalSourceNode = $state<TreeNode | null>(null);
+	let modalSourceTreeType = $state<'source' | 'target'>('source');
+
+	// Handler for when "+" button is clicked on a tree node
+	function handleAddClick(node: TreeNode, treeType: 'source' | 'target') {
+		modalSourceNode = node;
+		modalSourceTreeType = treeType;
+		modalOpen = true;
+	}
+
+	// Handler for when mapping is created from modal
+	function handleModalCreateMapping(sourceNode: TreeNode, targetNode: TreeNode) {
+		// The modal's sourceNode is always the node where "+" was clicked
+		// The targetNode is what was selected in the modal (from the opposite tree)
+		if (modalSourceTreeType === 'source') {
+			// Clicked + on source tree, selected target in modal
+			mappingsStore.addMapping(sourceNode, targetNode);
+		} else {
+			// Clicked + on target tree, selected source in modal
+			mappingsStore.addMapping(targetNode, sourceNode);
+		}
+	}
+
+	// Close modal handler
+	function handleModalClose() {
+		modalOpen = false;
+		modalSourceNode = null;
+	}
+
 	function handleRecordChange(index: number) {
 		currentRecordIndex = index;
 	}
@@ -200,6 +232,7 @@
 								treeType="source"
 								onSelect={handleSourceSelect}
 								onMappingClick={handleMappingClick}
+								onAddClick={handleAddClick}
 							/>
 						</div>
 					</div>
@@ -235,6 +268,7 @@
 								treeType="target"
 								onSelect={handleTargetSelect}
 								onMappingClick={handleMappingClick}
+								onAddClick={handleAddClick}
 							/>
 						</div>
 					</div>
@@ -329,3 +363,12 @@
 		</Pane>
 	</PaneGroup>
 </main>
+
+<!-- Mapping Modal -->
+<MappingModal
+	isOpen={modalOpen}
+	sourceNode={modalSourceNode}
+	sourceTreeType={modalSourceTreeType}
+	onClose={handleModalClose}
+	onCreateMapping={handleModalCreateMapping}
+/>
