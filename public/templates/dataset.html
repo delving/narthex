@@ -250,6 +250,29 @@
                 data-offset="200"
                 ng-show="activeView == 'quality' && selectedNode.quality"
             >
+                <!-- Issues Alert Box -->
+                <div data-ng-show="selectedNode.hasIssues || (status.typeInfo && status.typeInfo.isMixed) || (status.valueStats && status.valueStats.whitespaceIssues) || (status.patternInfo && status.patternInfo.uriValidation && status.patternInfo.uriValidation.invalid > 0)"
+                     class="alert alert-warning" style="margin: 10px;">
+                    <h5 style="margin-top: 0;"><i class="fa fa-exclamation-triangle"></i> Quality Issues Detected</h5>
+                    <ul style="margin-bottom: 0; padding-left: 20px;">
+                        <li data-ng-show="selectedNode.quality && selectedNode.quality.completeness < 50">
+                            <strong>Low completeness:</strong> Only {{ selectedNode.quality.completeness }}% of records have this field
+                        </li>
+                        <li data-ng-show="selectedNode.quality && selectedNode.quality.emptyRate > 10">
+                            <strong>High empty rate:</strong> {{ selectedNode.quality.emptyRate }}% of values are empty
+                        </li>
+                        <li data-ng-show="status.typeInfo && status.typeInfo.isMixed">
+                            <strong>Mixed data types:</strong> Field contains multiple types ({{ status.typeInfo.consistency }}% consistency)
+                        </li>
+                        <li data-ng-show="status.valueStats && status.valueStats.whitespaceIssues">
+                            <strong>Whitespace issues:</strong> {{ status.valueStats.whitespaceIssues.total }} values have leading/trailing spaces or multiple spaces
+                        </li>
+                        <li data-ng-show="status.patternInfo && status.patternInfo.uriValidation && status.patternInfo.uriValidation.invalid > 0">
+                            <strong>Invalid URIs:</strong> {{ status.patternInfo.uriValidation.invalid }} URIs are malformed
+                        </li>
+                    </ul>
+                </div>
+
                 <div class="panel panel-default" style="margin: 10px;">
                     <div class="panel-heading">
                         <strong>Data Quality Statistics</strong>
@@ -523,6 +546,14 @@
             </span>
             <span data-ng-if="node == uniqueIdNode" class="badge badge-unique">
                 Unique Id
+            </span>
+
+            <!-- Quality warning icon -->
+            <span data-ng-if="node.hasIssues"
+                  class="text-warning"
+                  title="{{ node.issuesSummary }}"
+                  style="margin-right: 4px; cursor: help;">
+                <i class="fa fa-exclamation-triangle"></i>
             </span>
 
             <!-- Completeness indicator -->

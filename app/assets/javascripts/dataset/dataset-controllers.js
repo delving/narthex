@@ -126,6 +126,29 @@ define(["angular"], function () {
                 }
                 sortKids(tree);
 
+                // Mark nodes with quality issues for tree view warnings
+                function markQualityIssues(node) {
+                    if (node.quality && node.lengths && node.lengths.length > 0) {
+                        var issues = [];
+                        if (node.quality.completeness < 50) {
+                            issues.push('Low completeness (' + node.quality.completeness + '%)');
+                        }
+                        if (node.quality.emptyRate > 10) {
+                            issues.push('High empty rate (' + node.quality.emptyRate + '%)');
+                        }
+                        if (issues.length > 0) {
+                            node.hasIssues = true;
+                            node.issuesSummary = issues.join(', ');
+                        }
+                    }
+                    if (node.kids) {
+                        for (var i = 0; i < node.kids.length; i++) {
+                            markQualityIssues(node.kids[i]);
+                        }
+                    }
+                }
+                markQualityIssues(tree);
+
                 function setDelimiterNodes(node) {
                     if (node.path == $scope.recordRoot) {
                         $scope.recordRootNode = node;
